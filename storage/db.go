@@ -1,16 +1,15 @@
 package storage
 
 import (
-	"math/big"
-
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
+	"math/big"
+	_ "modernc.org/sqlite"
 )
 
 const (
-	driver   = "sqlite3"
+	driver   = "sqlite"
 	feePos   = 6
 	valuePos = 11
 )

@@ -11,7 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/storage"
-	"github.com/rsksmart/liquidity-provider/providers"
+	providers "github.com/rsksmart/liquidity-provider/providers"
 	log "github.com/sirupsen/logrus"
 	"github.com/tkanos/gonfig"
 )
