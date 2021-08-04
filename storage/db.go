@@ -16,6 +16,7 @@ const (
 
 const insertQuote = `
 INSERT INTO quotes (
+    hash,
 	fed_addr,
 	lbc_addr,
 	lp_rsk_addr,
@@ -34,6 +35,7 @@ INSERT INTO quotes (
 	confirmations
 )
 VALUES (
+    ?,
 	:fed_addr,
 	:lbc_addr,
 	:lp_rsk_addr,
@@ -102,13 +104,13 @@ func (db *DB) Close() error {
 
 func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	log.Debug("inserting quote: ", q)
-
 	query, args, _ := sqlx.Named(insertQuote, q)
 
 	callFee := args[feePos].(big.Int)
 	value := args[valuePos].(big.Int)
 	args[feePos] = callFee.String()
 	args[valuePos] = value.String()
+	args = append(args, 0)
 	copy(args[1:], args)
 	args[0] = id
 
