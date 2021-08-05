@@ -71,7 +71,7 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, db *storage.DB) {
-	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum))
+	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), nil)
 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
