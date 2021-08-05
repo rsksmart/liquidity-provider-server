@@ -134,31 +134,29 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	responses := []*acceptRes{}
-	for _, p := range s.providers {
-		response := acceptRes{}
-		hashBytes, err := hex.DecodeString(req.QuoteHash)
-		if err != nil {
-			panic(err)
-		}
-		signature, err := p.SignHash(hashBytes)
 
-		if err != nil {
-			log.Error(err)
-		}
+	p := s.providers[0]
 
-		response.Signature = hex.EncodeToString(signature)
-		response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+	response := acceptRes{}
+	hashBytes, err := hex.DecodeString(req.QuoteHash)
+	if err != nil {
+		panic(err)
+	}
+	signature, err := p.SignHash(hashBytes)
 
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			responses = append(responses, &response)
-		}
+	if err != nil {
+		log.Error(err)
+	}
+
+	response.Signature = hex.EncodeToString(signature)
+	response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 	enc := json.NewEncoder(w)
-	err = enc.Encode(responses)
+	err = enc.Encode(response)
 
 	if err != nil {
 		log.Error("error encoding quote list: ", err.Error())
