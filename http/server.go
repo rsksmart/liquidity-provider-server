@@ -143,11 +143,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	signature, err := p.SignHash(hashBytes)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	response.Signature = hex.EncodeToString(signature)
