@@ -1,17 +1,19 @@
 package storage
 
 import (
+	"math/big"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 	_ "modernc.org/sqlite"
 )
 
 const (
-	driver   = "sqlite"
-	feePos   = 6
-	valuePos = 11
+	driver     = "sqlite"
+	feePos     = 6
+	penaltyPos = 7
+	valuePos   = 12
 )
 
 const insertQuote = `
@@ -24,6 +26,7 @@ INSERT INTO quotes (
 	rsk_refund_addr,
 	lp_btc_addr,
 	call_fee,
+	penalty_fee,
 	contract_addr,
 	data,
 	gas_limit,
@@ -43,6 +46,7 @@ VALUES (
 	:rsk_refund_addr,
 	:lp_btc_addr,
 	:call_fee,
+	:penalty_fee,
 	:contract_addr,
 	:data,
 	:gas_limit,
@@ -64,6 +68,7 @@ CREATE TABLE IF NOT EXISTS quotes (
 	rsk_refund_addr TEXT,
 	lp_btc_addr TEXT,
 	call_fee TEXT,
+	penalty_fee TEXT,
 	contract_addr TEXT,
 	data TEXT,
 	gas_limit INTEGER,
@@ -107,8 +112,10 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	query, args, _ := sqlx.Named(insertQuote, q)
 
 	callFee := args[feePos].(big.Int)
+	penaltyFee := args[penaltyPos].(big.Int)
 	value := args[valuePos].(big.Int)
 	args[feePos] = callFee.String()
+	args[penaltyPos] = penaltyFee.String()
 	args[valuePos] = value.String()
 	args = append(args, 0)
 	copy(args[1:], args)
