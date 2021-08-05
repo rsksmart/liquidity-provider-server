@@ -1,9 +1,7 @@
 package connectors
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -150,21 +148,18 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 		return "", fmt.Errorf("error calling hashQuote %v: %v", pq, err)
 	}
 	arr := *results
-	bts, err := getBytes(arr[0])
-	if err != nil {
-		return "", fmt.Errorf("error encoding results %v: %v", results, err)
-	}
+	bts := getBytes(arr[0])
+
 	return hex.EncodeToString(bts), nil
 }
 
-func getBytes(key interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(key)
-	if err != nil {
-		return nil, err
+func getBytes(key interface{}) ([]byte) {
+	var bts []byte
+	for _, bt := range key.([32]byte) {
+		bts = append(bts, bt)
 	}
-	return buf.Bytes(), nil
+
+	return bts
 }
 
 func parseQuote(q *types.Quote) (*quote, error) {

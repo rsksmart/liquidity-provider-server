@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -51,6 +52,8 @@ func (s *Server) Start(port uint) error {
 	if err != http.ErrServerClosed {
 		return err
 	}
+
+	log.Info("started server at localhost", s.srv.Addr)
 	return nil
 }
 
@@ -90,11 +93,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	quotes := []*types.Quote{}
+	// TODO: fill in LBC and Fed address with existing info and prevent receiving it from the request payload
 
 	for _, p := range s.providers {
 		pq := p.GetQuote(q, gas, *price)
 
-		// validate quote
+		// TODO: validate that the received quote matches the expected params
 
 		if pq != nil {
 			err = s.storeQuote(pq)
@@ -120,6 +124,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	type acceptReq struct {
 		QuoteHash string
 	}
+
+	type acceptRes struct {
+		Signature                 string `json:"signature"`
+		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
+	}
 	req := acceptReq{}
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
@@ -127,7 +136,34 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Debug(req.QuoteHash)
+
+	p := s.providers[0]
+
+	response := acceptRes{}
+	hashBytes, err := hex.DecodeString(req.QuoteHash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	signature, err := p.SignHash(hashBytes)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	response.Signature = hex.EncodeToString(signature)
+	response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+
+	enc := json.NewEncoder(w)
+	err = enc.Encode(response)
+
+	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "error processing request", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {
