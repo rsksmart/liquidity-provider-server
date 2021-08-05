@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -90,11 +91,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	quotes := []*types.Quote{}
+	// TODO: fill in LBC and Fed address with existing info and prevent receiving it from the request payload
 
 	for _, p := range s.providers {
 		pq := p.GetQuote(q, gas, *price)
 
-		// validate quote
+		// TODO: validate that the received quote matches the expected params
 
 		if pq != nil {
 			err = s.storeQuote(pq)
@@ -120,6 +122,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	type acceptReq struct {
 		QuoteHash string
 	}
+
+	type acceptRes struct {
+		Signature                 string `json:"signature"`
+		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
+	}
 	req := acceptReq{}
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
@@ -127,7 +134,37 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Debug(req.QuoteHash)
+	responses := []*acceptRes{}
+	for _, p := range s.providers {
+		response := acceptRes{}
+		hashBytes, err := hex.DecodeString(req.QuoteHash)
+		if err != nil {
+			panic(err)
+		}
+		signature, err := p.SignHash(hashBytes)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		response.Signature = hex.EncodeToString(signature)
+		response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			responses = append(responses, &response)
+		}
+	}
+	enc := json.NewEncoder(w)
+	err = enc.Encode(responses)
+
+	if err != nil {
+		log.Error("error encoding quote list: ", err.Error())
+		http.Error(w, "error processing quotes", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {
