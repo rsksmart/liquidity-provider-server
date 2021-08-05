@@ -161,7 +161,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
 	if err != nil {
 		log.Error("error encoding quote list: ", err.Error())
-		http.Error(w, "error processing quotes", http.StatusInternalServerError)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 }
