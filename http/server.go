@@ -52,6 +52,8 @@ func (s *Server) Start(port uint) error {
 	if err != http.ErrServerClosed {
 		return err
 	}
+
+	log.Info("started server at localhost", s.srv.Addr)
 	return nil
 }
 
@@ -140,24 +142,21 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	response := acceptRes{}
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 	signature, err := p.SignHash(hashBytes)
 
 	if err != nil {
-		log.Error(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	response.Signature = hex.EncodeToString(signature)
 	response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
 
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(http.StatusInternalServerError)
-	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
 
+	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
 	if err != nil {
 		log.Error("error encoding quote list: ", err.Error())
 		http.Error(w, "error processing quotes", http.StatusInternalServerError)
