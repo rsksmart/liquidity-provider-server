@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"context"
 
 	"github.com/gorilla/handlers"
@@ -145,15 +147,28 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	signature, err := p.SignHash(hashBytes)
+	quote, err := s.db.GetQuote(req.QuoteHash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	signature, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	response.Signature = hex.EncodeToString(signature)
-	response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+
+	derivedFedAddress, err := getDerivedBitcoinAddressHash(
+		[]byte(quote.BTCRefundAddr), []byte(quote.LBCAddr), []byte(quote.LPBTCAddr), []byte(req.QuoteHash))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	response.BitcoinDepositAddressHash = hex.EncodeToString(derivedFedAddress)
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
@@ -164,6 +179,22 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getDerivedBitcoinAddressHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+	var resultData []byte
+	resultData = append(resultData, derivationArgumentsHash...)
+	resultData = append(resultData, userBtcRefundAddress...)
+	resultData = append(resultData, lpBtcAddress...)
+	resultData = append(resultData, lbcAddress...)
+
+	derivationValueHash := crypto.Keccak256(resultData)
+	btcAddressHash := deriveFastBridgeFederationAddress(derivationValueHash)
+	return btcAddressHash, nil
+}
+
+func deriveFastBridgeFederationAddress(derivationValue []byte) []byte {
+	return derivationValue // TODO: implement derivation
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {

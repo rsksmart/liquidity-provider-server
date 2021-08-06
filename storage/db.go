@@ -1,10 +1,11 @@
 package storage
 
 import (
+	"math/big"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 	_ "modernc.org/sqlite"
 )
 
@@ -118,4 +119,14 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 		return err
 	}
 	return nil
+}
+
+func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
+	log.Debug("retrieving quote: ", quoteHash)
+	var quote types.Quote
+	err := db.db.Select(quote, "SELECT * FROM quotes where hash = $1", quoteHash)
+	if err != nil {
+		return nil, err
+	}
+	return &quote, nil
 }
