@@ -18,6 +18,7 @@
     },
     "provider": {
         "keystore": ".geth_keystore",
-        "accountNum": 0
+        "accountNum": 0,
+        "pwdFilePath": "pwd.txt"
     }
 }

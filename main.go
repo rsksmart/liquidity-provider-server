@@ -36,8 +36,9 @@ type config struct {
 		Endpoint string
 	}
 	Provider struct {
-		Keystore   string
-		AccountNum uint
+		Keystore    string
+		AccountNum  uint
+		PwdFilePath string
 	}
 }
 
@@ -71,7 +72,8 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, db *storage.DB) {
-	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), nil)
+	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
+	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), pwdFile)
 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
@@ -105,7 +107,12 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.LBCABI)
+	abiFile, err := os.Open(cfg.RSK.LBCABI)
+	if err != nil {
+		log.Fatal("error connecting to RSK: ", err)
+	}
+
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}

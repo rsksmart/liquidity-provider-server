@@ -126,3 +126,13 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	}
 	return nil
 }
+
+func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
+	log.Debug("retrieving quote: ", quoteHash)
+	var quote types.Quote
+	err := db.db.Select(quote, "SELECT * FROM quotes where hash = $1", quoteHash)
+	if err != nil {
+		return nil, err
+	}
+	return &quote, nil
+}

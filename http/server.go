@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	federation "github.com/rsksmart/liquidity-provider-server/helpers"
+
 	"context"
 
 	"github.com/gorilla/handlers"
@@ -137,23 +140,44 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := s.providers[0]
-
 	response := acceptRes{}
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	signature, err := p.SignHash(hashBytes)
+	quote, err := s.db.GetQuote(req.QuoteHash)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	p := s.providers[0] // TODO: Take (and prior: store) the provider matching the quote hash specified
+	signature, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	response.Signature = hex.EncodeToString(signature)
-	response.BitcoinDepositAddressHash = hex.EncodeToString([]byte("sasdfdsafdsa")) // TODO: generate an address on the fly based on specs
+
+	btcRefAddr, lbcAddr, lpBTCAdrr, err := getBytesFromParams(err, quote)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	derivationValue, err := federation.GetDerivationValueHash(
+		btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
+
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	response.BitcoinDepositAddressHash = hex.EncodeToString(derivedFedAddress)
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
@@ -166,6 +190,27 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getBytesFromParams(err error, quote *types.Quote) ([]byte, []byte, []byte, error) {
+	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
+	if err != nil || len(btcRefAddr) == 0 {
+		return nil, nil, nil, err
+	}
+	if !common.IsHexAddress(quote.LBCAddr) {
+		return nil, nil, nil, err
+	}
+
+	lbcAddr := common.FromHex(quote.LBCAddr)
+	if err != nil || len(lbcAddr) == 0 {
+		return nil, nil, nil, err
+	}
+
+	lpBTCAdrr, err := hex.DecodeString(quote.LPBTCAddr)
+	if err != nil || len(lpBTCAdrr) == 0 {
+		return nil, nil, nil, err
+	}
+	return btcRefAddr, lbcAddr, lpBTCAdrr, nil
+}
+
 func (s *Server) storeQuote(q *types.Quote) error {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
@@ -174,7 +219,7 @@ func (s *Server) storeQuote(q *types.Quote) error {
 
 	err = s.db.InsertQuote(h, q)
 	if err != nil {
-		log.Fatal("error inserting quote: %v", err)
+		log.Fatalf("error inserting quote: %v", err)
 	}
 	return nil
 }
