@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/helpers"
 	"net/http"
 	"time"
@@ -159,8 +160,10 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Signature = hex.EncodeToString(signature)
 
+	btcRefAddr, lbcAddr, lpBTCAdrr := getBytesFromParams(w, err, quote)
+
 	derivationValue, err := federation.GetDerivationValueHash(
-		[]byte(quote.BTCRefundAddr), []byte(quote.LBCAddr), []byte(quote.LPBTCAddr), []byte(req.QuoteHash))
+		btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
 
 	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
 
@@ -180,6 +183,27 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getBytesFromParams(w http.ResponseWriter, err error, quote *types.Quote) ([]byte, []byte, []byte) {
+	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
+	if err != nil || len(btcRefAddr) == 0 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	if !common.IsHexAddress(quote.LBCAddr) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	lbcAddr := common.FromHex(quote.LBCAddr)
+	if err != nil || len(lbcAddr) == 0 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	lpBTCAdrr, err := hex.DecodeString(quote.LPBTCAddr)
+	if err != nil || len(lpBTCAdrr) == 0 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	return btcRefAddr, lbcAddr, lpBTCAdrr
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {
