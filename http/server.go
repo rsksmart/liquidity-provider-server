@@ -4,10 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/helpers"
 	"net/http"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"context"
 
@@ -139,8 +138,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := s.providers[0]
-
 	response := acceptRes{}
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
@@ -153,6 +150,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	p := s.providers[0] // TODO: Take (and prior: store) the provider matching the quote hash specified
 	signature, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -161,8 +159,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Signature = hex.EncodeToString(signature)
 
-	derivedFedAddress, err := getDerivedBitcoinAddressHash(
+	derivationValue, err := federation.GetDerivationValueHash(
 		[]byte(quote.BTCRefundAddr), []byte(quote.LBCAddr), []byte(quote.LPBTCAddr), []byte(req.QuoteHash))
+
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -179,22 +180,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
-}
-
-func getDerivedBitcoinAddressHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
-	var resultData []byte
-	resultData = append(resultData, derivationArgumentsHash...)
-	resultData = append(resultData, userBtcRefundAddress...)
-	resultData = append(resultData, lpBtcAddress...)
-	resultData = append(resultData, lbcAddress...)
-
-	derivationValueHash := crypto.Keccak256(resultData)
-	btcAddressHash := deriveFastBridgeFederationAddress(derivationValueHash)
-	return btcAddressHash, nil
-}
-
-func deriveFastBridgeFederationAddress(derivationValue []byte) []byte {
-	return derivationValue // TODO: implement derivation
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {
