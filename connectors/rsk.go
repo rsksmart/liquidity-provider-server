@@ -32,6 +32,7 @@ type quote struct {
 	RSKRefundAddr      [20]byte `abi:"rskRefundAddress"`
 	LPBTCAddr          []byte   `abi:"liquidityProviderBtcAddress"`
 	CallFee            *big.Int `abi:"callFee"`
+	PenaltyFee         *big.Int `abi:"penaltyFee"`
 	ContractAddr       [20]byte `abi:"contractAddress"`
 	Data               []byte   `abi:"data"`
 	GasLimit           *big.Int `abi:"gasLimit"`
@@ -57,9 +58,8 @@ func NewRSK(lbcAddress string, abiFile *os.File) (*RSK, error) {
 
 	def, err := loadLBCABI(abiFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading abi: %v", err)
 	}
-
 	return &RSK{abi: def, lbcAddress: common.HexToAddress(lbcAddress)}, nil
 }
 
@@ -153,7 +153,7 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	return hex.EncodeToString(bts), nil
 }
 
-func getBytes(key interface{}) ([]byte) {
+func getBytes(key interface{}) []byte {
 	var bts []byte
 	for _, bt := range key.([32]byte) {
 		bts = append(bts, bt)
@@ -191,6 +191,7 @@ func parseQuote(q *types.Quote) (*quote, error) {
 		return nil, fmt.Errorf("error parsing data: %v", err)
 	}
 	pq.CallFee = &q.CallFee
+	pq.PenaltyFee = &q.PenaltyFee
 	pq.GasLimit = new(big.Int).SetUint64(uint64(q.GasLimit))
 	pq.Nonce = new(big.Int).SetUint64(uint64(q.Nonce))
 	pq.Value = &q.Value
