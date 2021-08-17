@@ -160,7 +160,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Signature = hex.EncodeToString(signature)
 
-	btcRefAddr, lbcAddr, lpBTCAdrr := getBytesFromParams(w, err, quote)
+	btcRefAddr, lbcAddr, lpBTCAdrr, err := getBytesFromParams(err, quote)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
@@ -185,25 +189,25 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getBytesFromParams(w http.ResponseWriter, err error, quote *types.Quote) ([]byte, []byte, []byte) {
+func getBytesFromParams(err error, quote *types.Quote) ([]byte, []byte, []byte, error) {
 	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
 	if err != nil || len(btcRefAddr) == 0 {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil, nil, err
 	}
 	if !common.IsHexAddress(quote.LBCAddr) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil, nil, err
 	}
 
 	lbcAddr := common.FromHex(quote.LBCAddr)
 	if err != nil || len(lbcAddr) == 0 {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil, nil, err
 	}
 
 	lpBTCAdrr, err := hex.DecodeString(quote.LPBTCAddr)
 	if err != nil || len(lpBTCAdrr) == 0 {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, nil, nil, err
 	}
-	return btcRefAddr, lbcAddr, lpBTCAdrr
+	return btcRefAddr, lbcAddr, lpBTCAdrr, nil
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {
