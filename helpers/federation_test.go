@@ -2,27 +2,28 @@ package federation
 
 import (
 	"encoding/hex"
-	"github.com/ethereum/go-ethereum/common"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var testQuotes = []struct {
 	BTCRefundAddr string
-	LBCAddr string
-	LPBTCAddr string
-	QuoteHash string
-	Expected string
+	LBCAddr       string
+	LPBTCAddr     string
+	QuoteHash     string
+	Expected      string
 }{
 	{
-			LPBTCAddr: "746231713634706b667a306368773065753936776c6a677663683779357633397270643465786a337276",
-			LBCAddr:"0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95",
-			BTCRefundAddr: "74623171336b3463726832367936367335747575617333386733347775756a7074793466647579726e76",
-			QuoteHash: "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
-			Expected: "bb0afe83ab039e7ac51c581f0c9909a2c3c02e956c9c0f975baf5baefb39a715",
+		LPBTCAddr:     "746231713634706b667a306368773065753936776c6a677663683779357633397270643465786a337276",
+		LBCAddr:       "0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95",
+		BTCRefundAddr: "74623171336b3463726832367936367335747575617333386733347775756a7074793466647579726e76",
+		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		Expected:      "bb0afe83ab039e7ac51c581f0c9909a2c3c02e956c9c0f975baf5baefb39a715",
 	},
 }
 
-func TestGetDerivationValueHash(t *testing.T) {
+func testGetDerivationValueHash(t *testing.T) {
 	for _, tt := range testQuotes {
 		btcRefAddr, err := hex.DecodeString(tt.BTCRefundAddr)
 		if err != nil || len(btcRefAddr) == 0 {
@@ -60,5 +61,5 @@ func TestGetDerivationValueHash(t *testing.T) {
 	}
 }
 func TestRSKCreate(t *testing.T) {
-	t.Run("new", TestGetDerivationValueHash)
+	t.Run("new", testGetDerivationValueHash)
 }

@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/rsksmart/liquidity-provider-server/helpers"
 	"net/http"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	federation "github.com/rsksmart/liquidity-provider-server/helpers"
 
 	"context"
 
@@ -218,7 +219,7 @@ func (s *Server) storeQuote(q *types.Quote) error {
 
 	err = s.db.InsertQuote(h, q)
 	if err != nil {
-		log.Fatal("error inserting quote: %v", err)
+		log.Fatalf("error inserting quote: %v", err)
 	}
 	return nil
 }

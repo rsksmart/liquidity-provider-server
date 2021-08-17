@@ -6,7 +6,7 @@ import (
 )
 
 var validTests = []struct {
-	input    string
+	input string
 }{
 	{"0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95"},
 }
@@ -19,7 +19,7 @@ var invalidAddresses = []struct {
 	{"b3ba3b6e05821b456e04d95", "invalid contract address"},
 }
 
-func TestNewRSKWithInvalidAddresses(t *testing.T) {
+func testNewRSKWithInvalidAddresses(t *testing.T) {
 	abiFile, err := os.Open("abi_test.json")
 	if err != nil {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
@@ -39,7 +39,7 @@ func TestNewRSKWithInvalidAddresses(t *testing.T) {
 	}
 }
 
-func TestNewRSKWithValidAddresses(t *testing.T) {
+func testNewRSKWithValidAddresses(t *testing.T) {
 	abiFile, err := os.Open("abi_test.json")
 	if err != nil {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
@@ -56,6 +56,6 @@ func TestNewRSKWithValidAddresses(t *testing.T) {
 }
 
 func TestRSKCreate(t *testing.T) {
-	t.Run("new", TestNewRSKWithInvalidAddresses)
-	t.Run("new", TestNewRSKWithValidAddresses)
+	t.Run("new", testNewRSKWithInvalidAddresses)
+	t.Run("new", testNewRSKWithValidAddresses)
 }
