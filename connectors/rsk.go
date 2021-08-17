@@ -50,12 +50,12 @@ type RSK struct {
 	lbcAddress common.Address
 }
 
-func NewRSK(lbcAddress string, abiPath string) (*RSK, error) {
+func NewRSK(lbcAddress string, abiFile *os.File) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid contract address")
 	}
 
-	def, err := loadLBCABI(abiPath)
+	def, err := loadLBCABI(abiFile)
 	if err != nil {
 		return nil, err
 	}
@@ -218,13 +218,8 @@ func parseHex(str string) ([]byte, error) {
 	return bts, nil
 }
 
-func loadLBCABI(path string) (*abi.ABI, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	definition, err := abi.JSON(f)
+func loadLBCABI(in *os.File) (*abi.ABI, error) {
+	definition, err := abi.JSON(in)
 	if err != nil {
 		return nil, err
 	}
