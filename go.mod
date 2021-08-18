@@ -13,6 +13,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/rsksmart/liquidity-provider v0.0.0-20210812214821-23622d7d79bb
 	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	gopkg.in/yaml.v2 v2.4.0 // indirect
