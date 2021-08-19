@@ -25,7 +25,7 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
 	}
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, abiFile)
+		res, err := NewRSK(tt.input, abiFile, nil)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -45,7 +45,7 @@ func testNewRSKWithValidAddresses(t *testing.T) {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
 	}
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, abiFile)
+		res, err := NewRSK(tt.input, abiFile, nil)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
