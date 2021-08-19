@@ -44,6 +44,6 @@ func setup() {
 }
 func TestLiquidityProviderServer(t *testing.T) {
 	setup()
-	t.Run("new", TestGetProviderByAddress)
+	t.Run("get provider by address", testGetProviderByAddress)
 }
 
