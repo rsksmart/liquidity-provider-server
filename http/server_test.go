@@ -24,7 +24,7 @@ func (lp LiquidityProviderMock) SignHash(hash []byte) ([]byte, error) {
 var providerMocks = []LiquidityProviderMock {}
 
 
-func TestGetProviderByAddress(t *testing.T) {
+func testGetProviderByAddress(t *testing.T) {
 	var liquidityProviders []providers.LiquidityProvider
 	for _, mock := range providerMocks {
 		liquidityProviders = append(liquidityProviders, mock)
