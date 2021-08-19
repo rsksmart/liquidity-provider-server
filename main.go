@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -17,11 +18,12 @@ import (
 )
 
 type config struct {
-	LogFile   string
-	FedAddr   string
-	FedPubKey string
-	IsTestNet bool
-	Debug     bool
+	LogFile      string
+	FedAddr      string
+	FedPubKey    string
+	IsTestNet    bool
+	Debug        bool
+	RedeemScript string
 
 	Server struct {
 		Port uint
@@ -80,7 +82,7 @@ func startServer(rsk *connectors.RSK, db *storage.DB) {
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db, cfg.FedPubKey, cfg.IsTestNet)
+	srv = http.New(rsk, db, cfg.IsTestNet)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
@@ -114,7 +116,8 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile)
+	script, _ := hex.DecodeString(cfg.RedeemScript)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile, script)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
