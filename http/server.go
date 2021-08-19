@@ -27,13 +27,12 @@ type Server struct {
 	providers []providers.LiquidityProvider
 	rsk       *connectors.RSK
 	db        *storage.DB
-	fedPubKey string
 	isTestNet bool
 }
 
-func New(rsk *connectors.RSK, db *storage.DB, fedPubKey string, isTestNet bool) Server {
+func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool) Server {
 	var liqProviders []providers.LiquidityProvider
-	return Server{rsk: rsk, db: db, providers: liqProviders, fedPubKey: fedPubKey, isTestNet: isTestNet}
+	return Server{rsk: rsk, db: db, providers: liqProviders, isTestNet: isTestNet}
 }
 
 func (s *Server) AddProvider(lp providers.LiquidityProvider) {
@@ -98,7 +97,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quotes := []*types.Quote{}
+	var quotes []*types.Quote
 	// TODO: fill in LBC and Fed address with existing info and prevent receiving it from the request payload
 
 	for _, p := range s.providers {
@@ -180,14 +179,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		netParams = chaincfg.MainNetParams
 	}
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHashString(s.fedPubKey, derivationValue, &netParams)
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHashString(s.rsk, derivationValue, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	response.BitcoinDepositAddressHash = derivedFedAddress.String()
+	response.BitcoinDepositAddressHash = derivedFedAddress.EncodeAddress()
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)

@@ -45,13 +45,14 @@ type quote struct {
 }
 
 type RSK struct {
-	c          *ethclient.Client
-	lbc        *bind.BoundContract
-	abi        *abi.ABI
-	lbcAddress common.Address
+	c            *ethclient.Client
+	lbc          *bind.BoundContract
+	abi          *abi.ABI
+	lbcAddress   common.Address
+	redeemScript []byte
 }
 
-func NewRSK(lbcAddress string, abiFile *os.File) (*RSK, error) {
+func NewRSK(lbcAddress string, abiFile *os.File, redeemScript []byte) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid contract address")
 	}
@@ -60,7 +61,7 @@ func NewRSK(lbcAddress string, abiFile *os.File) (*RSK, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error loading abi: %v", err)
 	}
-	return &RSK{abi: def, lbcAddress: common.HexToAddress(lbcAddress)}, nil
+	return &RSK{abi: def, lbcAddress: common.HexToAddress(lbcAddress), redeemScript: redeemScript}, nil
 }
 
 func (rsk *RSK) Connect(endpoint string) error {
@@ -152,6 +153,40 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 
 	return hex.EncodeToString(bts), nil
 }
+
+func (rsk *RSK) GetRedeemScript() ([]byte, error) {
+	return rsk.redeemScript, nil
+
+	// TODO: The script is retrieved from config but it should be obtained from rsk
+	//var err error
+	//results := new([]interface{})
+	//opts := bind.CallOpts{}
+	//
+	//for i := 0; i < retries; i++ {
+	//	err = rsk.lbc.Call(&opts, results, "getRedeemScript")
+	//	if len(*results) > 0 {
+	//		break
+	//	}
+	//	time.Sleep(sleepTime)
+	//}
+	//if len(*results) == 0 {
+	//	return nil, fmt.Errorf("error calling getRedeemScript: %v", err)
+	//}
+	//arr := *results
+	//bts := getScriptBytes(arr[0])
+	//
+	//return bts, nil
+}
+
+//
+//func getScriptBytes(key interface{}) []byte {
+//	var bts []byte
+//	for _, bt := range key.([]byte) {
+//		bts = append(bts, bt)
+//	}
+//
+//	return bts
+//}
 
 func getBytes(key interface{}) []byte {
 	var bts []byte
