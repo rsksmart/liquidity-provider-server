@@ -17,9 +17,11 @@ import (
 )
 
 type config struct {
-	LogFile string
-	FedAddr string
-	Debug   bool
+	LogFile   string
+	FedAddr   string
+	FedPubKey string
+	IsTestNet bool
+	Debug     bool
 
 	Server struct {
 		Port uint
@@ -78,7 +80,7 @@ func startServer(rsk *connectors.RSK, db *storage.DB) {
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db)
+	srv = http.New(rsk, db, cfg.FedPubKey, cfg.IsTestNet)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 

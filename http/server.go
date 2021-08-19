@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"net/http"
 	"time"
 
@@ -26,11 +27,13 @@ type Server struct {
 	providers []providers.LiquidityProvider
 	rsk       *connectors.RSK
 	db        *storage.DB
+	fedPubKey string
+	isTestNet bool
 }
 
-func New(rsk *connectors.RSK, db *storage.DB) Server {
-	provs := []providers.LiquidityProvider{}
-	return Server{rsk: rsk, db: db, providers: provs}
+func New(rsk *connectors.RSK, db *storage.DB, fedPubKey string, isTestNet bool) Server {
+	var liqProviders []providers.LiquidityProvider
+	return Server{rsk: rsk, db: db, providers: liqProviders, fedPubKey: fedPubKey, isTestNet: isTestNet}
 }
 
 func (s *Server) AddProvider(lp providers.LiquidityProvider) {
@@ -171,14 +174,20 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
+	var netParams chaincfg.Params
+	if s.isTestNet {
+		netParams = chaincfg.TestNet3Params
+	} else {
+		netParams = chaincfg.MainNetParams
+	}
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHashString(s.fedPubKey, derivationValue, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	response.BitcoinDepositAddressHash = hex.EncodeToString(derivedFedAddress)
+	response.BitcoinDepositAddressHash = derivedFedAddress.String()
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
