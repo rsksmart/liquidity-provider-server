@@ -60,6 +60,6 @@ func testGetDerivationValueHash(t *testing.T) {
 		}
 	}
 }
-func TestRSKCreate(t *testing.T) {
+func TestFederationHelper(t *testing.T) {
 	t.Run("new", testGetDerivationValueHash)
 }

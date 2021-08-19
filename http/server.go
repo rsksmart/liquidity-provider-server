@@ -152,7 +152,8 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := s.providers[0] // TODO: Take (and prior: store) the provider matching the quote hash specified
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+
 	signature, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -161,14 +162,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Signature = hex.EncodeToString(signature)
 
-	btcRefAddr, lbcAddr, lpBTCAdrr, err := getBytesFromParams(err, quote)
+	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(err, quote)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	derivationValue, err := federation.GetDerivationValueHash(
-		btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
+		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
 	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
 
@@ -188,6 +189,15 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {
+	for _, p := range liquidityProviders {
+		if p.Address() == addr {
+			return p
+		}
+	}
+	return nil
 }
 
 func getBytesFromParams(err error, quote *types.Quote) ([]byte, []byte, []byte, error) {
