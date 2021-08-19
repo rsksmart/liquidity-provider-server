@@ -2,6 +2,7 @@
     "logFile": "",
     "debug": true,
     "fedAddr": "123",
+    "fedPubKey": "123",
     "server": {
         "port": 8080
     },
