@@ -3,7 +3,7 @@ module github.com/rsksmart/liquidity-provider-server
 go 1.16
 
 require (
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cbergoon/merkletree v0.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.4
