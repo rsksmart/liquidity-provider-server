@@ -71,8 +71,6 @@ github.com/btcsuite/btcutil v1.0.2 h1:9iZ1Terx9fMIOtq1VrwdqfsATL9MC2l8ZrUY6YZ2ut
 github.com/btcsuite/btcutil v1.0.2/go.mod h1:j9HUFwoQRsZL3V4n+qG+CUnEGHOarIxfC3Le2Yhbcts=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce h1:YtWJF7RHm2pYCvA5t0RPmAaLUhREsKuKd+SLhxFbFeQ=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce/go.mod h1:0DVlHczLPewLcPGEIeUEzfOJhqGPQ0mJJRDBtD307+o=
-github.com/btcsuite/btcutil v1.0.3-0.20210527170813-e2ba6805a890 h1:9aGy5p7oXRUB4MCTmWm0+jzuh79GpjPIfv1leA5POD4=
-github.com/btcsuite/btcutil v1.0.3-0.20210527170813-e2ba6805a890/go.mod h1:0DVlHczLPewLcPGEIeUEzfOJhqGPQ0mJJRDBtD307+o=
 github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd/go.mod h1:HHNXQzUsZCxOoE+CPiyCTO6x34Zs86zZUiwtpXoGdtg=
 github.com/btcsuite/goleveldb v0.0.0-20160330041536-7834afc9e8cd/go.mod h1:F+uVaaLLH7j4eDXPRvw78tMflu7Ie2bzYOH4Y8rRKBY=
 github.com/btcsuite/goleveldb v1.0.0/go.mod h1:QiK9vBlgftBg6rWQIj6wFzbPfRjiykIEhBH4obrXJ/I=
@@ -81,6 +79,8 @@ github.com/btcsuite/snappy-go v1.0.0/go.mod h1:8woku9dyThutzjeg+3xrA5iCpBRH8XEEg
 github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792/go.mod h1:ghJtEyQwv5/p4Mg4C0fgbePVuGr935/5ddU9Z3TmDRY=
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
 github.com/c-bata/go-prompt v0.2.2/go.mod h1:VzqtzE2ksDBcdln8G7mk2RX9QyGjH+OVqOCSiVIqS34=
+github.com/cbergoon/merkletree v0.2.0 h1:Bttqr3OuoiZEo4ed1L7fTasHka9II+BF9fhBfbNEEoQ=
+github.com/cbergoon/merkletree v0.2.0/go.mod h1:5c15eckUgiucMGDOCanvalj/yJnD+KAZj1qyJtRW5aM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/cp v0.1.0/go.mod h1:SOGHArjBr4JWaSDEVpWpo/hNg6RoKrls6Oh40hiwW+s=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
@@ -351,8 +351,12 @@ github.com/rsksmart/liquidity-provider v0.0.0-20210713070959-20483ed1f463 h1:RBo
 github.com/rsksmart/liquidity-provider v0.0.0-20210713070959-20483ed1f463/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
 github.com/rsksmart/liquidity-provider v0.0.0-20210713073118-05c7917d8b4c h1:d/gy+8c6aFygC7siRc6FviD4puuWkvmpOGsIWSc+gSg=
 github.com/rsksmart/liquidity-provider v0.0.0-20210713073118-05c7917d8b4c/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
-github.com/rsksmart/liquidity-provider v0.0.0-20210804122048-6a1824283669 h1:OZv4CRjcH7mDoK7xu7h8vsC4ILXfUD4goujlhZHUAiI=
-github.com/rsksmart/liquidity-provider v0.0.0-20210804122048-6a1824283669/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
+github.com/rsksmart/liquidity-provider v0.0.0-20210805170551-16a172b9f5e1 h1:46n1Hw+XWXkCOLEflAxs/7tp/ZNSOQHthGJoyOGc/5Q=
+github.com/rsksmart/liquidity-provider v0.0.0-20210805170551-16a172b9f5e1/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
+github.com/rsksmart/liquidity-provider v0.0.0-20210810223002-cd949e61f5f0 h1:b3cUrvz/XWYHAkt9ggHk9KXesEUvWkWX0u6uH+KyL8o=
+github.com/rsksmart/liquidity-provider v0.0.0-20210810223002-cd949e61f5f0/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
+github.com/rsksmart/liquidity-provider v0.0.0-20210812130736-b8de1bea308e h1:3WrDzVkR2j2nuV05FgVboHLhgYSnSvLlFtKk+U2ORrU=
+github.com/rsksmart/liquidity-provider v0.0.0-20210812130736-b8de1bea308e/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
 github.com/rsksmart/liquidity-provider v0.0.0-20210812214821-23622d7d79bb h1:zIa17cvmHFrTX/+phCu55fg7fCvEKc6hU0waU/Nyjfs=
 github.com/rsksmart/liquidity-provider v0.0.0-20210812214821-23622d7d79bb/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
