@@ -2,6 +2,8 @@
     "logFile": "",
     "debug": true,
     "fedAddr": "123",
+    "isTestNet": true,
+    "redeemScript": "",
     "server": {
         "port": 8080
     },

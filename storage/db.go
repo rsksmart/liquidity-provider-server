@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/jmoiron/sqlx"
@@ -15,6 +16,28 @@ const (
 	penaltyPos = 7
 	valuePos   = 12
 )
+
+const selectQuoteByHash = `
+SELECT 
+	fed_addr, 
+	lbc_addr, 
+	lp_rsk_addr, 
+	btc_refund_addr, 
+	lp_btc_addr, 
+	call_fee, 
+	penalty_fee, 
+	contract_addr, 
+	data, 
+	gas_limit, 
+	nonce, 
+	value, 
+	agreement_timestamp, 
+	time_for_deposit, 
+	call_time, 
+	confirmations
+FROM quotes 
+WHERE hash = '%s' 
+LIMIT 1`
 
 const insertQuote = `
 INSERT INTO quotes (
@@ -67,13 +90,13 @@ CREATE TABLE IF NOT EXISTS quotes (
 	btc_refund_addr TEXT,
 	rsk_refund_addr TEXT,
 	lp_btc_addr TEXT,
-	call_fee TEXT,
-	penalty_fee TEXT,
+	call_fee INTEGER,
+	penalty_fee INTEGER,
 	contract_addr TEXT,
 	data TEXT,
 	gas_limit INTEGER,
 	nonce INTEGER,
-	value TEXT,
+	value INTEGER,
 	agreement_timestamp INTEGER,
 	time_for_deposit INTEGER,
 	call_time INTEGER,
@@ -129,10 +152,28 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 
 func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
-	var quote types.Quote
-	err := db.db.Select(quote, "SELECT * FROM quotes where hash = $1", quoteHash)
+	//var quotes []types.Quote
+	quote := types.Quote{}
+	var callFee int64
+	var penaltyFee int64
+	var value int64
+
+	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
+			&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
+			&quote.BTCRefundAddr, &quote.LPBTCAddr, &callFee,
+			&penaltyFee, &quote.ContractAddr, &quote.Data,
+			&quote.GasLimit, &quote.Nonce, &value,
+			&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
+
+	quote.CallFee = *big.NewInt(callFee)
+	quote.PenaltyFee = *big.NewInt(penaltyFee)
+	quote.Value = *big.NewInt(value)
+
 	if err != nil {
 		return nil, err
 	}
+
+	//quote := quotes[0]
+
 	return &quote, nil
 }

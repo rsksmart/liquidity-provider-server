@@ -5,7 +5,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"log"
 )
 
@@ -21,12 +20,7 @@ func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBt
 	return derivationValueHash, nil
 }
 
-func GetDerivedFastBridgeFederationAddressHashString(rsk *connectors.RSK, derivationValue []byte, netParams *chaincfg.Params) *btcutil.AddressScriptHash {
-
-	fastBridgeScript, err := rsk.GetRedeemScript()
-	if err != nil {
-		log.Fatal("There was an error while creating fast bridge redeem script", err)
-	}
+func GetDerivedFastBridgeFederationAddressHash(fastBridgeScript []byte, derivationValue []byte, netParams *chaincfg.Params) *btcutil.AddressScriptHash {
 
 	modifiedScript := getModifiedRedeemScript(fastBridgeScript, derivationValue)
 

@@ -153,7 +153,10 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	if quote == nil {
+		http.Error(w, "Quote not found", http.StatusNotFound)
+		return
+	}
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
 	signature, err := p.SignHash(hashBytes)
@@ -173,13 +176,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
-	var netParams chaincfg.Params
-	if s.isTestNet {
-		netParams = chaincfg.TestNet3Params
-	} else {
-		netParams = chaincfg.MainNetParams
+	netParams := getNetworkParams(s)
+
+	redeemScript, err := s.rsk.GetRedeemScript()
+	if err != nil {
+		log.Fatal("There was an error while creating fast bridge redeem script", err)
 	}
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHashString(s.rsk, derivationValue, &netParams)
+
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(redeemScript, derivationValue, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -197,6 +201,16 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getNetworkParams(s *Server) chaincfg.Params {
+	var netParams chaincfg.Params
+	if s.isTestNet {
+		netParams = chaincfg.TestNet3Params
+	} else {
+		netParams = chaincfg.MainNetParams
+	}
+	return netParams
 }
 
 func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {

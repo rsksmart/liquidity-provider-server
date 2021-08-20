@@ -106,6 +106,11 @@ func main() {
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
+	script, err := hex.DecodeString(cfg.RedeemScript)
+	if err != nil {
+		log.Fatal("Config error: ", err)
+	}
+
 	db, err := storage.Connect(cfg.DB.Path)
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
@@ -116,7 +121,6 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	script, _ := hex.DecodeString(cfg.RedeemScript)
 	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile, script)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
