@@ -205,7 +205,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	fedInfo := &federation.FedInfo{FedThreshold: fedThreshold, FedSize: fedSize, PubKeys: pubKeys, FedAddress: fedAddress.ScriptAddress()}
 
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue, fedInfo, &netParams)
+	derivedFedAddress, err := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue, fedInfo, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

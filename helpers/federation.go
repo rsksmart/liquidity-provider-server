@@ -30,24 +30,32 @@ func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBt
 	return derivationValueHash, nil
 }
 
-func GetDerivedFastBridgeFederationAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) *btcutil.AddressScriptHash {
+func GetDerivedFastBridgeFederationAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
 
 	testScript, err := buildRedeemScript(fedInfo, nil)
 	if err != nil {
-		log.Fatal("there was an error while creating redeem script")
+		return nil, err
 	}
+
 	newAddr, err := btcutil.NewAddressScriptHash(testScript, netParams)
-	if bytes.Compare(newAddr.ScriptAddress(), fedInfo.FedAddress) != 0 {
-		fmt.Errorf("the generated redeem script does not match with the federation redeem script")
+	if err != nil {
+		return nil, err
 	}
-	flyoverScript := buildFlyOverScript(fedInfo, derivationValue)
+
+	if bytes.Compare(newAddr.ScriptAddress(), fedInfo.FedAddress) != 0 {
+		return nil, fmt.Errorf("the generated redeem script does not match with the federation redeem script")
+	}
+	flyoverScript, err := buildFlyOverScript(fedInfo, derivationValue)
+	if err != nil {
+		return nil, err
+	}
 
 	addressScriptHash, err := getAddressScriptHash(flyoverScript, netParams)
 	if err != nil {
-		log.Fatal("There was an error while creating fast bridge address script hash", err)
+		return nil, err
 	}
 
-	return addressScriptHash
+	return addressScriptHash, nil
 }
 
 func buildRedeemScript(fedInfo *FedInfo, scriptBuilder *txscript.ScriptBuilder) ([]byte, error) {
@@ -56,38 +64,43 @@ func buildRedeemScript(fedInfo *FedInfo, scriptBuilder *txscript.ScriptBuilder) 
 		builder = scriptBuilder
 	}
 
-	addStdLogicToScript(builder, fedInfo)
+	err := addStdLogicToScript(builder, fedInfo)
+	if err != nil {
+		return nil, err
+	}
 
 	result, err := builder.Script()
 	if err != nil {
-		log.Fatal("There was an error while generating redeem script", err)
+		return nil, err
 	}
 
 	scriptString, err := txscript.DisasmString(result)
 	if err != nil {
-		log.Fatal("There was an error while disassembling redeem script", err)
+		return nil, err
 	}
 	log.Printf("script: %v", scriptString)
 
 	return builder.Script()
 }
 
-func addStdLogicToScript(builder *txscript.ScriptBuilder, fedInfo *FedInfo) {
+func addStdLogicToScript(builder *txscript.ScriptBuilder, fedInfo *FedInfo) error {
 	builder.AddOp(getOpCodeFromInt(fedInfo.FedThreshold))
 
 	for _, pubKey := range fedInfo.PubKeys {
 		pkBuffer, err := hex.DecodeString(pubKey)
 		if err != nil {
-			log.Fatal("There was an error while decoding a public key", err)
+			return err
 		}
 		builder.AddData(pkBuffer)
 	}
 
 	builder.AddOp(getOpCodeFromInt(fedInfo.FedSize))
 	builder.AddOp(txscript.OP_CHECKMULTISIG)
+
+	return nil
 }
 
-func buildFlyOverScript(fedInfo *FedInfo, derivationValue []byte) []byte {
+func buildFlyOverScript(fedInfo *FedInfo, derivationValue []byte) ([]byte, error) {
 	builder := txscript.NewScriptBuilder()
 
 	// add
@@ -95,14 +108,23 @@ func buildFlyOverScript(fedInfo *FedInfo, derivationValue []byte) []byte {
 	builder.AddOp(txscript.OP_DROP)
 
 	// TODO: check if a simple concat of both script parts ([]byte) would work so we can remove this line.
-	addStdLogicToScript(builder, fedInfo)
+	err := addStdLogicToScript(builder, fedInfo)
+	if err != nil {
+		return nil, err
+	}
 
 	result, err := builder.Script()
 	if err != nil {
-		log.Fatal("There was an error while creating flyover redeem script", err)
+		return nil, err
 	}
 
-	return result
+	scriptString, err := txscript.DisasmString(result)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("script: %v", scriptString)
+	return result, nil
 }
 
 func getOpCodeFromInt(val int) byte {
@@ -153,7 +175,7 @@ func getAddressScriptHash(script []byte, network *chaincfg.Params) (*btcutil.Add
 
 	address, err := btcutil.NewAddressScriptHash(redeemHash, network)
 	if err != nil {
-		log.Fatal("There was an error creating an address from the script.", err)
+		return nil, err
 	}
 	return address, nil
 }

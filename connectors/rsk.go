@@ -27,23 +27,23 @@ const (
 )
 
 type quote struct {
-	FedBTCAddr         [20]byte `lbcAbi:"fedBtcAddress"`
-	LBCAddr            [20]byte `lbcAbi:"lbcAddress"`
-	LPRSKAddr          [20]byte `lbcAbi:"liquidityProviderRskAddress"`
-	BTCRefundAddr      []byte   `lbcAbi:"btcRefundAddress"`
-	RSKRefundAddr      [20]byte `lbcAbi:"rskRefundAddress"`
-	LPBTCAddr          []byte   `lbcAbi:"liquidityProviderBtcAddress"`
-	CallFee            *big.Int `lbcAbi:"callFee"`
-	PenaltyFee         *big.Int `lbcAbi:"penaltyFee"`
-	ContractAddr       [20]byte `lbcAbi:"contractAddress"`
-	Data               []byte   `lbcAbi:"data"`
-	GasLimit           *big.Int `lbcAbi:"gasLimit"`
-	Nonce              *big.Int `lbcAbi:"nonce"`
-	Value              *big.Int `lbcAbi:"value"`
-	AgreementTimestamp *big.Int `lbcAbi:"agreementTimestamp"`
-	TimeForDeposit     *big.Int `lbcAbi:"timeForDeposit"`
-	CallTime           *big.Int `lbcAbi:"callTime"`
-	Confirmations      *big.Int `lbcAbi:"depositConfirmations"`
+	FedBTCAddr         [20]byte `abi:"fedBtcAddress"`
+	LBCAddr            [20]byte `abi:"lbcAddress"`
+	LPRSKAddr          [20]byte `abi:"liquidityProviderRskAddress"`
+	BTCRefundAddr      []byte   `abi:"btcRefundAddress"`
+	RSKRefundAddr      [20]byte `abi:"rskRefundAddress"`
+	LPBTCAddr          []byte   `abi:"liquidityProviderBtcAddress"`
+	CallFee            *big.Int `abi:"callFee"`
+	PenaltyFee         *big.Int `abi:"penaltyFee"`
+	ContractAddr       [20]byte `abi:"contractAddress"`
+	Data               []byte   `abi:"data"`
+	GasLimit           *big.Int `abi:"gasLimit"`
+	Nonce              *big.Int `abi:"nonce"`
+	Value              *big.Int `abi:"value"`
+	AgreementTimestamp *big.Int `abi:"agreementTimestamp"`
+	TimeForDeposit     *big.Int `abi:"timeForDeposit"`
+	CallTime           *big.Int `abi:"callTime"`
+	Confirmations      *big.Int `abi:"depositConfirmations"`
 }
 
 type RSK struct {
