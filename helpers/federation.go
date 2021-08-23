@@ -78,7 +78,7 @@ func buildRedeemScript(fedInfo *FedInfo, scriptBuilder *txscript.ScriptBuilder) 
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("script: %v", scriptString)
+	log.Debug(scriptString)
 
 	return builder.Script()
 }
@@ -123,7 +123,7 @@ func buildFlyOverScript(fedInfo *FedInfo, derivationValue []byte) ([]byte, error
 		return nil, err
 	}
 
-	log.Debug("script: %v", scriptString)
+	log.Debug(scriptString)
 	return result, nil
 }
 
