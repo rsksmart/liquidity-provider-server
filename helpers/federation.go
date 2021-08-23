@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type FedInfo struct {
@@ -78,7 +78,7 @@ func buildRedeemScript(fedInfo *FedInfo, scriptBuilder *txscript.ScriptBuilder) 
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("script: %v", scriptString)
+	log.Debug("script: %v", scriptString)
 
 	return builder.Script()
 }
@@ -123,7 +123,7 @@ func buildFlyOverScript(fedInfo *FedInfo, derivationValue []byte) ([]byte, error
 		return nil, err
 	}
 
-	log.Printf("script: %v", scriptString)
+	log.Debug("script: %v", scriptString)
 	return result, nil
 }
 
@@ -159,12 +159,9 @@ func getOpCodeFromInt(val int) byte {
 		return txscript.OP_14
 	case 15:
 		return txscript.OP_15
-	case 16:
-		return txscript.OP_16
 	default:
-		return 0
+		return txscript.OP_16
 	}
-	return 0
 }
 
 func getAddressScriptHash(script []byte, network *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
