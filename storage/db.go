@@ -90,13 +90,13 @@ CREATE TABLE IF NOT EXISTS quotes (
 	btc_refund_addr TEXT,
 	rsk_refund_addr TEXT,
 	lp_btc_addr TEXT,
-	call_fee INTEGER,
-	penalty_fee INTEGER,
+	call_fee TEXT,
+	penalty_fee TEXT,
 	contract_addr TEXT,
 	data TEXT,
 	gas_limit INTEGER,
 	nonce INTEGER,
-	value INTEGER,
+	value TEXT,
 	agreement_timestamp INTEGER,
 	time_for_deposit INTEGER,
 	call_time INTEGER,
@@ -154,20 +154,20 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
 	//var quotes []types.Quote
 	quote := types.Quote{}
-	var callFee int64
-	var penaltyFee int64
-	var value int64
+	var callFee string
+	var penaltyFee string
+	var value string
 
 	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
-			&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
-			&quote.BTCRefundAddr, &quote.LPBTCAddr, &callFee,
-			&penaltyFee, &quote.ContractAddr, &quote.Data,
-			&quote.GasLimit, &quote.Nonce, &value,
-			&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
+		&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
+		&quote.BTCRefundAddr, &quote.LPBTCAddr, &callFee,
+		&penaltyFee, &quote.ContractAddr, &quote.Data,
+		&quote.GasLimit, &quote.Nonce, &value,
+		&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
 
-	quote.CallFee = *big.NewInt(callFee)
-	quote.PenaltyFee = *big.NewInt(penaltyFee)
-	quote.Value = *big.NewInt(value)
+	quote.CallFee.SetString(callFee, 0)
+	quote.PenaltyFee.SetString(penaltyFee, 0)
+	quote.Value.SetString(value, 0)
 
 	if err != nil {
 		return nil, err
