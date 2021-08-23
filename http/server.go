@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"net/http"
 	"time"
 
@@ -143,31 +144,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := acceptRes{}
+
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	quote, err := s.db.GetQuote(req.QuoteHash)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if quote == nil {
-		http.Error(w, "Quote not found", http.StatusNotFound)
-		return
-	}
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
-	signature, err := p.SignHash(hashBytes)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	response.Signature = hex.EncodeToString(signature)
-
-	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(err, quote)
+	signature, btcRefAddr, lbcAddr, lpBTCAddr, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -176,14 +160,52 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
+	response.Signature = signature
+
 	netParams := getNetworkParams(s)
 
-	redeemScript, err := s.rsk.GetRedeemScript()
+	fedSize, err := s.rsk.GetFedSize()
 	if err != nil {
-		log.Fatal("There was an error while creating fast bridge redeem script", err)
+		log.Error("error fetching federation size: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed size.", http.StatusInternalServerError)
+		return
 	}
 
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(redeemScript, derivationValue, &netParams)
+	var pubKeys []string
+	for i := 0; i < fedSize; i++ {
+		pubKey, err := s.rsk.GetFedPublicKeyOfType(i)
+		if err != nil {
+			log.Error("error fetching fed public key: ", err.Error())
+			http.Error(w, "there was an error retrieving public key from fed.", http.StatusInternalServerError)
+			return
+		}
+
+		pubKeys = append(pubKeys, pubKey)
+	}
+
+	fedThreshold, err := s.rsk.GetFedThreshold()
+	if err != nil {
+		log.Error("error fetching federation size: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed threshold.", http.StatusInternalServerError)
+		return
+	}
+
+	fedAddressStr, err := s.rsk.GetFedAddress()
+	if err != nil {
+		log.Error("error fetching federation address: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed address.", http.StatusInternalServerError)
+		return
+	}
+	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &netParams)
+	if err != nil {
+		log.Error("error decoding federation address: ", err.Error())
+		http.Error(w, "there was an error decoding the fed address.", http.StatusInternalServerError)
+		return
+	}
+
+	fedInfo := &federation.FedInfo{FedThreshold: fedThreshold, FedSize: fedSize, PubKeys: pubKeys, FedAddress: fedAddress.ScriptAddress()}
+
+	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue, fedInfo, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -201,6 +223,29 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, []byte, []byte, []byte, error) {
+
+	quote, err := s.db.GetQuote(hash)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+	if quote == nil {
+		return "", nil, nil, nil, fmt.Errorf("quote not found : %v", hash)
+	}
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+
+	signature, err := p.SignHash(hashBytes)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+
+	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(err, quote)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+	return hex.EncodeToString(signature), btcRefAddr, lbcAddr, lpBTCAddr, nil
 }
 
 func getNetworkParams(s *Server) chaincfg.Params {

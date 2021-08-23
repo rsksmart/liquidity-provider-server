@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -24,6 +23,7 @@ type config struct {
 	IsTestNet    bool
 	Debug        bool
 	RedeemScript string
+	FedPubKeys   []string
 
 	Server struct {
 		Port uint
@@ -32,9 +32,11 @@ type config struct {
 		Path string
 	}
 	RSK struct {
-		Endpoint string
-		LBCAddr  string
-		LBCABI   string
+		Endpoint   string
+		LBCAddr    string
+		LBCABI     string
+		BridgeAddr string
+		BridgeABI  string
 	}
 	BTC struct {
 		Endpoint string
@@ -106,22 +108,20 @@ func main() {
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
-	script, err := hex.DecodeString(cfg.RedeemScript)
-	if err != nil {
-		log.Fatal("Config error: ", err)
-	}
-
 	db, err := storage.Connect(cfg.DB.Path)
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	abiFile, err := os.Open(cfg.RSK.LBCABI)
+	lbcAbiFile, err := os.Open(cfg.RSK.LBCABI)
 	if err != nil {
-		log.Fatal("error connecting to RSK: ", err)
+		log.Fatal("error loading abi file: ", err)
 	}
-
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile, script)
+	bridgeAbiFile, err := os.Open(cfg.RSK.BridgeABI)
+	if err != nil {
+		log.Fatal("error loading abi file: ", err)
+	}
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, lbcAbiFile, cfg.RSK.BridgeAddr, bridgeAbiFile)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
@@ -130,6 +130,7 @@ func main() {
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
