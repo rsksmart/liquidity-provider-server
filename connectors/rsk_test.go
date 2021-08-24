@@ -24,8 +24,12 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
 	}
+	bridgeAbi, err := os.Open("abi_test_2.json")
+	if err != nil {
+		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
+	}
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, abiFile)
+		res, err := NewRSK(tt.input, abiFile, tt.input, bridgeAbi)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -33,7 +37,7 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 		if err == nil {
 			t.Errorf("Unexpected success for input %v: %v", tt.input, err)
 		}
-		if err.Error() != "invalid contract address" {
+		if err.Error() != "invalid contract address" && err.Error() != "invalid LBC contract address" {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
 	}
@@ -44,8 +48,13 @@ func testNewRSKWithValidAddresses(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
 	}
+	bridgeAbi, err := os.Open("abi_test_2.json")
+	if err != nil {
+		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
+	}
+
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, abiFile)
+		res, err := NewRSK(tt.input, abiFile, tt.input, bridgeAbi)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}

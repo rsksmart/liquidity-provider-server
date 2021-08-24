@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider/types"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -45,22 +47,40 @@ type quote struct {
 }
 
 type RSK struct {
-	c          *ethclient.Client
-	lbc        *bind.BoundContract
-	abi        *abi.ABI
-	lbcAddress common.Address
+	c             *ethclient.Client
+	lbc           *bind.BoundContract
+	lbcAbi        *abi.ABI
+	lbcAddress    common.Address
+	bridge        *bind.BoundContract
+	bridgeAbi     *abi.ABI
+	bridgeAddress common.Address
 }
 
-func NewRSK(lbcAddress string, abiFile *os.File) (*RSK, error) {
+func NewRSK(lbcAddress string, lbcAbiFile *os.File, bridgeAddress string, bridgeAbiFile *os.File) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
-		return nil, errors.New("invalid contract address")
+		return nil, errors.New("invalid LBC contract address")
 	}
 
-	def, err := loadLBCABI(abiFile)
+	lbcDef, err := loadABI(lbcAbiFile)
 	if err != nil {
-		return nil, fmt.Errorf("error loading abi: %v", err)
+		return nil, fmt.Errorf("error loading LBC abi: %v", err)
 	}
-	return &RSK{abi: def, lbcAddress: common.HexToAddress(lbcAddress)}, nil
+
+	if !common.IsHexAddress(lbcAddress) {
+		return nil, errors.New("invalid Bridge contract address")
+	}
+
+	bridgeDef, err := loadABI(bridgeAbiFile)
+	if err != nil {
+		return nil, fmt.Errorf("error loading Bridge abi: %v", err)
+	}
+
+	return &RSK{
+		lbcAbi:        lbcDef,
+		lbcAddress:    common.HexToAddress(lbcAddress),
+		bridgeAbi:     bridgeDef,
+		bridgeAddress: common.HexToAddress(bridgeAddress),
+	}, nil
 }
 
 func (rsk *RSK) Connect(endpoint string) error {
@@ -76,7 +96,10 @@ func (rsk *RSK) Connect(endpoint string) error {
 		return err
 	}
 	log.Debug("connected to RSK node")
-	rsk.lbc = bind.NewBoundContract(rsk.lbcAddress, *rsk.abi, rsk.c, rsk.c, rsk.c)
+	rsk.lbc = bind.NewBoundContract(rsk.lbcAddress, *rsk.lbcAbi, rsk.c, rsk.c, rsk.c)
+	rsk.bridge = bind.NewBoundContract(rsk.bridgeAddress, *rsk.bridgeAbi, rsk.c, rsk.c, rsk.c)
+	log.Debug("Connected to RSK contracts")
+
 	return nil
 }
 
@@ -153,6 +176,98 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	return hex.EncodeToString(bts), nil
 }
 
+func (rsk *RSK) GetFedSize() (int, error) {
+	var err error
+	results := new([]interface{})
+	opts := bind.CallOpts{}
+
+	for i := 0; i < retries; i++ {
+		err = rsk.bridge.Call(&opts, results, "getFederationSize")
+		if len(*results) > 0 {
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+	if len(*results) == 0 {
+		return 0, fmt.Errorf("error calling getFederationSize: %v", err)
+	}
+	out := *results
+	size := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	sizeInt, err := strconv.Atoi(size.String())
+	if err != nil {
+		return 0, fmt.Errorf("error parsing value from getFederationSize: %v", err)
+	}
+
+	return sizeInt, nil
+}
+
+func (rsk *RSK) GetFedThreshold() (int, error) {
+	var err error
+	results := new([]interface{})
+	opts := bind.CallOpts{}
+
+	for i := 0; i < retries; i++ {
+		err = rsk.bridge.Call(&opts, results, "getFederationThreshold")
+		if len(*results) > 0 {
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+	if len(*results) == 0 {
+		return 0, fmt.Errorf("error calling getFederationThreshold: %v", err)
+	}
+	out := *results
+	size := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	sizeInt, err := strconv.Atoi(size.String())
+	if err != nil {
+		return 0, fmt.Errorf("error parsing value from getFederationSize: %v", err)
+	}
+
+	return sizeInt, nil
+}
+
+func (rsk *RSK) GetFedPublicKeyOfType(index int) (string, error) {
+	var err error
+	results := new([]interface{})
+	opts := bind.CallOpts{}
+
+	for i := 0; i < retries; i++ {
+		err = rsk.bridge.Call(&opts, results, "getFederatorPublicKeyOfType", big.NewInt(int64(index)), "btc")
+		if len(*results) > 0 {
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+	if len(*results) == 0 {
+		return "", fmt.Errorf("error calling getFederatorPublicKeyOfType: %v", err)
+	}
+	arr := *results
+	key := getAddrBytes(arr[0])
+
+	return hex.EncodeToString(key), nil
+}
+
+func (rsk *RSK) GetFedAddress() (string, error) {
+	var err error
+	results := new([]interface{})
+	opts := bind.CallOpts{}
+
+	for i := 0; i < retries; i++ {
+		err = rsk.bridge.Call(&opts, results, "getFederationAddress")
+		if len(*results) > 0 {
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+	if len(*results) == 0 {
+		return "", fmt.Errorf("error calling getFederationAddress: %v", err)
+	}
+	arr := *results
+	addr := arr[0].(string)
+
+	return addr, nil
+}
+
 func getBytes(key interface{}) []byte {
 	var bts []byte
 	for _, bt := range key.([32]byte) {
@@ -162,6 +277,14 @@ func getBytes(key interface{}) []byte {
 	return bts
 }
 
+func getAddrBytes(key interface{}) []byte {
+	var bts []byte
+	for _, bt := range key.([]byte) {
+		bts = append(bts, bt)
+	}
+
+	return bts
+}
 func parseQuote(q *types.Quote) (*quote, error) {
 	pq := quote{}
 	var err error
@@ -219,7 +342,7 @@ func parseHex(str string) ([]byte, error) {
 	return bts, nil
 }
 
-func loadLBCABI(in *os.File) (*abi.ABI, error) {
+func loadABI(in *os.File) (*abi.ABI, error) {
 	definition, err := abi.JSON(in)
 	if err != nil {
 		return nil, err

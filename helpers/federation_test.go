@@ -60,6 +60,31 @@ func testGetDerivationValueHash(t *testing.T) {
 		}
 	}
 }
+//
+//func testBuildRedeemScript(t *testing.T) {
+//	for i, quote := range testQuotes {
+//		derivationValue, err := hex.DecodeString(quote.Expected)
+//		fedPubKey := fmt.Sprintf("someRandomKey%v", i)
+//		if err != nil {
+//			t.Errorf("Unexpected derivation value. value: %v, error: %v", derivationValue, err)
+//		}
+//
+//		script, err := buildRedeemScript(fedPubKey, derivationValue)
+//		if err != nil {
+//			t.Errorf("Unexpected output script. value: %v, error: %v", hex.EncodeToString(script), err)
+//		}
+//		t.Run("test get derived script address", func(t *testing.T) {
+//			address, err := getFastBridgeScriptHash(script, &chaincfg.TestNet3Params)
+//			if err != nil {
+//				t.Errorf("Unexpected error creating script address. value: %v, error: %v", hex.EncodeToString(script), err)
+//			}
+//			assert.EqualValues(t, "", address.String())
+//		})
+//	}
+//}
+
 func TestFederationHelper(t *testing.T) {
-	t.Run("new", testGetDerivationValueHash)
+	t.Run("get derivation value hash", testGetDerivationValueHash)
+	//t.Run("test get redeem script", testBuildRedeemScript)
+
 }

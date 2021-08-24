@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"net/http"
 	"time"
 
@@ -26,11 +28,12 @@ type Server struct {
 	providers []providers.LiquidityProvider
 	rsk       *connectors.RSK
 	db        *storage.DB
+	isTestNet bool
 }
 
-func New(rsk *connectors.RSK, db *storage.DB) Server {
-	provs := []providers.LiquidityProvider{}
-	return Server{rsk: rsk, db: db, providers: provs}
+func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool) Server {
+	var liqProviders []providers.LiquidityProvider
+	return Server{rsk: rsk, db: db, providers: liqProviders, isTestNet: isTestNet}
 }
 
 func (s *Server) AddProvider(lp providers.LiquidityProvider) {
@@ -95,7 +98,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quotes := []*types.Quote{}
+	var quotes []*types.Quote
 	// TODO: fill in LBC and Fed address with existing info and prevent receiving it from the request payload
 
 	for _, p := range s.providers {
@@ -141,28 +144,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := acceptRes{}
+
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	quote, err := s.db.GetQuote(req.QuoteHash)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
 
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-
-	signature, err := p.SignHash(hashBytes)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	response.Signature = hex.EncodeToString(signature)
-
-	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(err, quote)
+	signature, btcRefAddr, lbcAddr, lpBTCAddr, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -171,14 +160,59 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
-	derivedFedAddress := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue)
+	response.Signature = signature
+
+	netParams := getNetworkParams(s)
+
+	fedSize, err := s.rsk.GetFedSize()
+	if err != nil {
+		log.Error("error fetching federation size: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed size.", http.StatusInternalServerError)
+		return
+	}
+
+	var pubKeys []string
+	for i := 0; i < fedSize; i++ {
+		pubKey, err := s.rsk.GetFedPublicKeyOfType(i)
+		if err != nil {
+			log.Error("error fetching fed public key: ", err.Error())
+			http.Error(w, "there was an error retrieving public key from fed.", http.StatusInternalServerError)
+			return
+		}
+
+		pubKeys = append(pubKeys, pubKey)
+	}
+
+	fedThreshold, err := s.rsk.GetFedThreshold()
+	if err != nil {
+		log.Error("error fetching federation size: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed threshold.", http.StatusInternalServerError)
+		return
+	}
+
+	fedAddressStr, err := s.rsk.GetFedAddress()
+	if err != nil {
+		log.Error("error fetching federation address: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed address.", http.StatusInternalServerError)
+		return
+	}
+	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &netParams)
+	if err != nil {
+		log.Error("error decoding federation address: ", err.Error())
+		http.Error(w, "there was an error decoding the fed address.", http.StatusInternalServerError)
+		return
+	}
+
+	fedInfo := &federation.FedInfo{FedThreshold: fedThreshold, FedSize: fedSize, PubKeys: pubKeys, FedAddress: fedAddress.ScriptAddress()}
+
+	derivedFedAddress, err := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue, fedInfo, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	response.BitcoinDepositAddressHash = hex.EncodeToString(derivedFedAddress)
+	response.BitcoinDepositAddressHash = derivedFedAddress.EncodeAddress()
 
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
@@ -191,6 +225,39 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, []byte, []byte, []byte, error) {
+
+	quote, err := s.db.GetQuote(hash)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+	if quote == nil {
+		return "", nil, nil, nil, fmt.Errorf("quote not found : %v", hash)
+	}
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+
+	signature, err := p.SignHash(hashBytes)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+
+	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(quote)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+	return hex.EncodeToString(signature), btcRefAddr, lbcAddr, lpBTCAddr, nil
+}
+
+func getNetworkParams(s *Server) chaincfg.Params {
+	var netParams chaincfg.Params
+	if s.isTestNet {
+		netParams = chaincfg.TestNet3Params
+	} else {
+		netParams = chaincfg.MainNetParams
+	}
+	return netParams
+}
+
 func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {
 	for _, p := range liquidityProviders {
 		if p.Address() == addr {
@@ -200,7 +267,7 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func getBytesFromParams(err error, quote *types.Quote) ([]byte, []byte, []byte, error) {
+func getBytesFromParams(quote *types.Quote) ([]byte, []byte, []byte, error) {
 	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
 	if err != nil || len(btcRefAddr) == 0 {
 		return nil, nil, nil, err

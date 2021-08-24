@@ -2,6 +2,7 @@
     "logFile": "",
     "debug": true,
     "fedAddr": "123",
+    "isTestNet": true,
     "server": {
         "port": 8080
     },
@@ -11,7 +12,9 @@
     "rsk": {
         "endpoint": "http://localhost:7777",
         "lbcAddr": "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
-        "lbcABI": "lbc-abi.json"
+        "lbcABI": "lbc-abi.json",
+        "bridgeAddr": "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+        "bridgeABI": "bridge-abi.json"
     },
     "btc": {
         "endpoint": ""

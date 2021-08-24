@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/jmoiron/sqlx"
@@ -15,6 +16,28 @@ const (
 	penaltyPos = 7
 	valuePos   = 12
 )
+
+const selectQuoteByHash = `
+SELECT 
+	fed_addr, 
+	lbc_addr, 
+	lp_rsk_addr, 
+	btc_refund_addr, 
+	lp_btc_addr, 
+	call_fee, 
+	penalty_fee, 
+	contract_addr, 
+	data, 
+	gas_limit, 
+	nonce, 
+	value, 
+	agreement_timestamp, 
+	time_for_deposit, 
+	call_time, 
+	confirmations
+FROM quotes 
+WHERE hash = '%s' 
+LIMIT 1`
 
 const insertQuote = `
 INSERT INTO quotes (
@@ -129,10 +152,28 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 
 func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
-	var quote types.Quote
-	err := db.db.Select(quote, "SELECT * FROM quotes where hash = $1", quoteHash)
+	//var quotes []types.Quote
+	quote := types.Quote{}
+	var callFee string
+	var penaltyFee string
+	var value string
+
+	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
+		&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
+		&quote.BTCRefundAddr, &quote.LPBTCAddr, &callFee,
+		&penaltyFee, &quote.ContractAddr, &quote.Data,
+		&quote.GasLimit, &quote.Nonce, &value,
+		&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
+
+	quote.CallFee.SetString(callFee, 0)
+	quote.PenaltyFee.SetString(penaltyFee, 0)
+	quote.Value.SetString(value, 0)
+
 	if err != nil {
 		return nil, err
 	}
+
+	//quote := quotes[0]
+
 	return &quote, nil
 }

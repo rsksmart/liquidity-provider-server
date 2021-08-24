@@ -17,9 +17,11 @@ import (
 )
 
 type config struct {
-	LogFile string
-	FedAddr string
-	Debug   bool
+	LogFile   string
+	FedAddr   string
+	FedPubKey string
+	IsTestNet bool
+	Debug     bool
 
 	Server struct {
 		Port uint
@@ -28,9 +30,11 @@ type config struct {
 		Path string
 	}
 	RSK struct {
-		Endpoint string
-		LBCAddr  string
-		LBCABI   string
+		Endpoint   string
+		LBCAddr    string
+		LBCABI     string
+		BridgeAddr string
+		BridgeABI  string
 	}
 	BTC struct {
 		Endpoint string
@@ -78,7 +82,7 @@ func startServer(rsk *connectors.RSK, db *storage.DB) {
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db)
+	srv = http.New(rsk, db, cfg.IsTestNet)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
@@ -107,12 +111,15 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	abiFile, err := os.Open(cfg.RSK.LBCABI)
+	lbcAbiFile, err := os.Open(cfg.RSK.LBCABI)
 	if err != nil {
-		log.Fatal("error connecting to RSK: ", err)
+		log.Fatal("error loading abi file: ", err)
 	}
-
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, abiFile)
+	bridgeAbiFile, err := os.Open(cfg.RSK.BridgeABI)
+	if err != nil {
+		log.Fatal("error loading abi file: ", err)
+	}
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, lbcAbiFile, cfg.RSK.BridgeAddr, bridgeAbiFile)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
@@ -121,6 +128,7 @@ func main() {
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
