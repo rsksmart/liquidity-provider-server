@@ -84,34 +84,30 @@ func getStdRedeemScriptAddressWithoutPrefix(fedInfo *FedInfo, derivationValue []
 
 func buildFlyOverRedeemScript(fedInfo *FedInfo, derivationValue []byte, netParams *chaincfg.Params, addFlyOverPrefix bool) ([]byte, error) {
 	builder := txscript.NewScriptBuilder()
-	var outputScript []byte
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
 		err := buildFlyOverStdRedeemScript(fedInfo, derivationValue, builder, addFlyOverPrefix)
 		if err != nil {
 			return nil, err
 		}
-
-		result, err := builder.Script()
-		if err != nil {
-			return nil, err
-		}
-		outputScript = result
 	} else {
-		var result, err = buildFlyOverErpRedeemScript(fedInfo, derivationValue, builder, netParams)
+		var err = buildFlyOverErpRedeemScript(fedInfo, derivationValue, builder, netParams)
 		if err != nil {
 			return nil, err
 		}
-		outputScript = result
 	}
 
-	scriptString, err := txscript.DisasmString(outputScript)
+	result, err := builder.Script()
+	if err != nil {
+		return nil, err
+	}
+	scriptString, err := txscript.DisasmString(result)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Debug(scriptString)
-	return outputScript, nil
+	return result, nil
 }
 
 func buildFlyOverStdRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, addFlyOverPrefix bool) error {
@@ -129,43 +125,44 @@ func buildFlyOverStdRedeemScript(fedInfo *FedInfo, derivationValue []byte, build
 	return nil
 }
 
-func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, netParams *chaincfg.Params) ([]byte, error) {
+func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, netParams *chaincfg.Params) error {
 
-	var buf bytes.Buffer
 	addFlyOverPrefixHash(builder, derivationValue)
 	builder.AddOp(txscript.OP_NOTIF)
 
 	err := addStdNToMScriptPart(builder, fedInfo)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	builder.AddOp(txscript.OP_ELSE)
-	script, err := builder.Script()
-	if err != nil {
-		return nil, err
-	}
 
-	buf.Write(script)
 	csvValue, err := getCsvValueFromNetwork(netParams)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	buf.WriteString("02")
-	buf.Write(csvValue)
-	buf.WriteByte(txscript.OP_CHECKSEQUENCEVERIFY)
-	buf.WriteByte(txscript.OP_DROP)
+	builder.AddOp(txscript.OP_PUSHDATA2)
+	length, er := hex.DecodeString("0002")
+	if er != nil {
+		return er
+	}
 
-	erpScript, err := getErpNToMScriptPart(fedInfo)
+	builder.AddData(length)
+	builder.AddData(csvValue)
+
+	builder.AddOp(txscript.OP_CHECKSEQUENCEVERIFY)
+	builder.AddOp(txscript.OP_DROP)
+
+	err = addErpNToMScriptPart(builder, fedInfo)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	buf.Write(erpScript)
-	buf.WriteByte(txscript.OP_ENDIF)
-	buf.WriteByte(txscript.OP_CHECKMULTISIG)
 
-	return buf.Bytes(), nil
+	builder.AddOp(txscript.OP_ENDIF)
+	builder.AddOp(txscript.OP_CHECKMULTISIG)
+
+	return nil
 }
 
 func getCsvValueFromNetwork(params *chaincfg.Params) ([]byte, error) {
@@ -200,24 +197,20 @@ func addStdNToMScriptPart(builder *txscript.ScriptBuilder, fedInfo *FedInfo) err
 	return nil
 }
 
-func getErpNToMScriptPart(fedInfo *FedInfo) ([]byte, error) {
-	builder := txscript.NewScriptBuilder()
-	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)))
+func addErpNToMScriptPart(builder *txscript.ScriptBuilder, fedInfo *FedInfo) error {
+	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)/2 + 1))
 
 	for _, pubKey := range fedInfo.ErpKeys {
 		pkBuffer, err := hex.DecodeString(pubKey)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		builder.AddData(pkBuffer)
 	}
 
-	builder.AddOp(getOpCodeFromInt(fedInfo.FedSize))
-	script, err := builder.Script()
-	if err != nil {
-		return nil, err
-	}
-	return script, nil
+	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)))
+
+	return nil
 }
 
 func getOpCodeFromInt(val int) byte {
