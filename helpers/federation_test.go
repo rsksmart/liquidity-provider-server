@@ -1,7 +1,13 @@
 package federation
 
 import (
+	"bytes"
 	"encoding/hex"
+	"fmt"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/stretchr/testify/assert"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -60,31 +66,173 @@ func testGetDerivationValueHash(t *testing.T) {
 		}
 	}
 }
-//
-//func testBuildRedeemScript(t *testing.T) {
-//	for i, quote := range testQuotes {
-//		derivationValue, err := hex.DecodeString(quote.Expected)
-//		fedPubKey := fmt.Sprintf("someRandomKey%v", i)
-//		if err != nil {
-//			t.Errorf("Unexpected derivation value. value: %v, error: %v", derivationValue, err)
-//		}
-//
-//		script, err := buildRedeemScript(fedPubKey, derivationValue)
-//		if err != nil {
-//			t.Errorf("Unexpected output script. value: %v, error: %v", hex.EncodeToString(script), err)
-//		}
-//		t.Run("test get derived script address", func(t *testing.T) {
-//			address, err := getFastBridgeScriptHash(script, &chaincfg.TestNet3Params)
-//			if err != nil {
-//				t.Errorf("Unexpected error creating script address. value: %v, error: %v", hex.EncodeToString(script), err)
-//			}
-//			assert.EqualValues(t, "", address.String())
-//		})
-//	}
-//}
+
+func testBuildPowPegRedeemScript(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getPowPegRedeemScriptBuf(fedInfo, true)
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
+
+	op2 := fmt.Sprintf("%02x", txscript.OP_2)
+	assert.EqualValues(t, str[0:2], op2)
+
+	op3 := fmt.Sprintf("%02x", txscript.OP_3)
+	assert.EqualValues(t, str[len(str)-4:len(str)-2], op3)
+
+	sort.Slice(fedInfo.PubKeys, func(i, j int) bool {
+		return fedInfo.PubKeys[i] < fedInfo.PubKeys[j]
+	})
+
+	buf2, err := getPowPegRedeemScriptBuf(fedInfo, true)
+	if err != nil {
+		return
+	}
+	str2 := hex.EncodeToString(buf2.Bytes())
+
+	assert.EqualValues(t, str2, str)
+}
+
+func testBuildErpRedeemScript(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getErpRedeemScriptBuf(fedInfo)
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
+	assert.EqualValues(t, str, getErpScriptString())
+}
+
+func testBuildFlyoverRedeemScript(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, getFlyoverDerivationHash())
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
+	assert.EqualValues(t, str[len(getFlyoverDerivationHash()):], getFlyoverScriptString())
+}
+
+func testBuildFlyoverErpRedeemScript(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, getFlyoverDerivationHash())
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
+	assert.EqualValues(t, str, getFlyoverScriptString())
+}
+
+func getFlyoverDerivationHash() string {
+	return "ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c9"
+}
+func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
+	prefixBuf, err := getFlyoverPrefix(hash)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := getPowPegRedeemScriptBuf(info, true)
+	if err != nil {
+		return nil, err
+	}
+	prefixBuf.Write(buf.Bytes())
+	return prefixBuf, nil
+}
+
+func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
+	buf, err := getFlyoverPrefix(hash)
+	if err != nil {
+		return nil, err
+	}
+	hashBuf, err := getErpRedeemScriptBuf(info)
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Write(hashBuf.Bytes())
+
+	return buf, nil
+}
+
+func getFlyoverPrefix(hash string) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	hashLength, err := hex.DecodeString("20")
+	if err != nil {
+		return nil, err
+	}
+	encodedHash, err := hex.DecodeString(hash)
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(hashLength)
+	buf.Write(encodedHash)
+	buf.WriteByte(txscript.OP_DROP)
+
+	return &buf, nil
+}
+
+func getErpScriptString() string {
+	return "64522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
+}
+
+func getFlyoverScriptString() interface{} {
+	return "202e278c9504abaa60c6ab313943e530f910db8c21856ca472ec10917868cf03ed75522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
+}
+
+func checkSubstrings(str string, subs ...string) bool {
+
+	isCompleteMatch := true
+
+	fmt.Printf("String: \"%s\", Substrings: %s\n", str, subs)
+
+	for _, sub := range subs {
+		if !strings.Contains(str, sub) {
+			isCompleteMatch = false
+		}
+	}
+
+	return isCompleteMatch
+}
+
+func getFakeFedInfo() *FedInfo {
+	var keys []string
+	keys = append(keys, "02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1")
+	keys = append(keys, "0362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a124")
+	keys = append(keys, "03c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db")
+
+	var erpPubKeys []string
+	erpPubKeys = append(erpPubKeys, "0257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d4")
+	erpPubKeys = append(erpPubKeys, "03c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f9")
+	erpPubKeys = append(erpPubKeys, "03cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b3")
+	erpPubKeys = append(erpPubKeys, "02370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec80")
+
+	return &FedInfo{
+		ActiveFedBlockHeight: 0,
+		ErpKeys:              erpPubKeys,
+		FedSize:              len(keys),
+		FedThreshold:         len(keys)/2 + 1,
+		PubKeys:              keys,
+		IrisActivationHeight: -1,
+	}
+}
 
 func TestFederationHelper(t *testing.T) {
 	t.Run("get derivation value hash", testGetDerivationValueHash)
-	//t.Run("test get redeem script", testBuildRedeemScript)
-
+	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
+	t.Run("test get erp redeem script", testBuildErpRedeemScript)
+	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)
+	t.Run("test get flyover erp redeem script", testBuildFlyoverErpRedeemScript)
 }

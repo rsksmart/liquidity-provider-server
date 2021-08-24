@@ -2,6 +2,7 @@ package federation
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -126,7 +127,6 @@ func buildFlyOverStdRedeemScript(fedInfo *FedInfo, derivationValue []byte, build
 }
 
 func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, netParams *chaincfg.Params) error {
-
 	addFlyOverPrefixHash(builder, derivationValue)
 	builder.AddOp(txscript.OP_NOTIF)
 
@@ -134,22 +134,18 @@ func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, build
 	if err != nil {
 		return err
 	}
-
 	builder.AddOp(txscript.OP_ELSE)
 
-	csvValue, err := getCsvValueFromNetwork(netParams)
-	if err != nil {
-		return err
-	}
+	bs := make([]byte, 2)
+	binary.LittleEndian.PutUint16(bs, uint16(2))
+	binary.LittleEndian.PutUint16(bs, uint16(0))
+	builder.AddData(bs)
 
-	builder.AddOp(txscript.OP_PUSHDATA2)
-	length, er := hex.DecodeString("0002")
-	if er != nil {
-		return er
-	}
-
-	builder.AddData(length)
-	builder.AddData(csvValue)
+	//csv := getCsvValueFromNetwork(netParams)
+	//if err != nil {
+	//	return err
+	//}
+	//builder.AddData(csv)
 
 	builder.AddOp(txscript.OP_CHECKSEQUENCEVERIFY)
 	builder.AddOp(txscript.OP_DROP)
@@ -165,14 +161,83 @@ func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, build
 	return nil
 }
 
-func getCsvValueFromNetwork(params *chaincfg.Params) ([]byte, error) {
+func getPowPegRedeemScriptBuf(info *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	sb := txscript.NewScriptBuilder()
+	addStdNToMScriptPart(sb, info)
+	if addMultiSig {
+		sb.AddOp(txscript.OP_CHECKMULTISIG)
+	}
+
+	sbuf, err := sb.Script()
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(sbuf)
+	return &buf, nil
+}
+
+func getErpRedeemScriptBuf(info *FedInfo) (*bytes.Buffer, error) {
+
+	erpRedeemScriptBuf, err := p2ms(info, false)
+	if err != nil {
+		return nil, err
+	}
+	powPegRedeemScriptBuf, err := getPowPegRedeemScriptBuf(info, false)
+
+	scriptsA := txscript.NewScriptBuilder()
+	scriptsA.AddOp(txscript.OP_NOTIF)
+	var erpRedeemScriptBuffer bytes.Buffer
+	scrA, err := scriptsA.Script()
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(scrA)
+	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
+	bytes, err := hex.DecodeString("02")
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(bytes)
+
+	csv, err := hex.DecodeString(getCsvValueFromNetwork(&chaincfg.MainNetParams))
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(csv)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKSEQUENCEVERIFY)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_DROP)
+	erpRedeemScriptBuffer.Write(erpRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_ENDIF)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKMULTISIG)
+
+	return &erpRedeemScriptBuffer, nil
+}
+
+func p2ms(info *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	sb := txscript.NewScriptBuilder()
+	addErpNToMScriptPart(sb, info)
+	if addMultiSig {
+		sb.AddOp(txscript.OP_CHECKMULTISIG)
+	}
+	sbuf, err := sb.Script()
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(sbuf)
+	return &buf, nil
+}
+
+func getCsvValueFromNetwork(params *chaincfg.Params) string {
 	switch params.Name {
 	case chaincfg.MainNetParams.Name:
-		return hex.DecodeString("CD50")
+		return "CD50"
 	case chaincfg.TestNet3Params.Name:
-		return hex.DecodeString("CD50")
+		return "CD50"
 	default: // regtest
-		return hex.DecodeString("01F4")
+		return "01F4"
 	}
 }
 
@@ -198,7 +263,9 @@ func addStdNToMScriptPart(builder *txscript.ScriptBuilder, fedInfo *FedInfo) err
 }
 
 func addErpNToMScriptPart(builder *txscript.ScriptBuilder, fedInfo *FedInfo) error {
-	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)/2 + 1))
+	size := len(fedInfo.ErpKeys)
+	min := size/2 + 1
+	builder.AddOp(getOpCodeFromInt(min))
 
 	for _, pubKey := range fedInfo.ErpKeys {
 		pkBuffer, err := hex.DecodeString(pubKey)
