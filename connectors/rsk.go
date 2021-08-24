@@ -268,6 +268,28 @@ func (rsk *RSK) GetFedAddress() (string, error) {
 	return addr, nil
 }
 
+func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
+	var err error
+	results := new([]interface{})
+	opts := bind.CallOpts{}
+
+	for i := 0; i < retries; i++ {
+		err = rsk.bridge.Call(&opts, results, "getActiveFederationCreationBlockHeight")
+		if len(*results) > 0 {
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+	if len(*results) == 0 {
+		return 0, fmt.Errorf("error calling getActiveFederationCreationBlockHeight: %v", err)
+	}
+	arr := *results
+	heightBigInt := *abi.ConvertType(arr[0], new(*big.Int)).(**big.Int)
+	height, err := strconv.Atoi(heightBigInt.String())
+
+	return height, nil
+}
+
 func getBytes(key interface{}) []byte {
 	var bts []byte
 	for _, bt := range key.([32]byte) {

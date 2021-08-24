@@ -24,16 +24,25 @@ import (
 )
 
 type Server struct {
-	srv       http.Server
-	providers []providers.LiquidityProvider
-	rsk       *connectors.RSK
-	db        *storage.DB
-	isTestNet bool
+	srv                  http.Server
+	providers            []providers.LiquidityProvider
+	rsk                  *connectors.RSK
+	db                   *storage.DB
+	isTestNet            bool
+	irisActivationHeight int
+	erpKeys              []string
 }
 
-func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool) Server {
+func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool, irisActivationHeight int, erpKeys []string) Server {
 	var liqProviders []providers.LiquidityProvider
-	return Server{rsk: rsk, db: db, providers: liqProviders, isTestNet: isTestNet}
+	return Server{
+		rsk:                  rsk,
+		db:                   db,
+		providers:            liqProviders,
+		isTestNet:            isTestNet,
+		irisActivationHeight: irisActivationHeight,
+		erpKeys:              erpKeys,
+	}
 }
 
 func (s *Server) AddProvider(lp providers.LiquidityProvider) {
@@ -190,22 +199,30 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fedAddressStr, err := s.rsk.GetFedAddress()
+	fedAddress, err := getFedAddress(s, netParams)
 	if err != nil {
 		log.Error("error fetching federation address: ", err.Error())
 		http.Error(w, "there was an error retrieving the fed address.", http.StatusInternalServerError)
 		return
 	}
-	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &netParams)
+	activeFedBlockHeight, err := s.rsk.GetActiveFederationCreationBlockHeight()
 	if err != nil {
-		log.Error("error decoding federation address: ", err.Error())
-		http.Error(w, "there was an error decoding the fed address.", http.StatusInternalServerError)
+		log.Error("error fetching federation address: ", err.Error())
+		http.Error(w, "there was an error retrieving the fed address.", http.StatusInternalServerError)
 		return
 	}
 
-	fedInfo := &federation.FedInfo{FedThreshold: fedThreshold, FedSize: fedSize, PubKeys: pubKeys, FedAddress: fedAddress.ScriptAddress()}
+	fedInfo := &federation.FedInfo{
+		FedThreshold:         fedThreshold,
+		FedSize:              fedSize,
+		PubKeys:              pubKeys,
+		FedAddress:           fedAddress.ScriptAddress(),
+		ActiveFedBlockHeight: activeFedBlockHeight,
+		IrisActivationHeight: s.irisActivationHeight,
+		ErpKeys:              s.erpKeys,
+	}
 
-	derivedFedAddress, err := federation.GetDerivedFastBridgeFederationAddressHash(derivationValue, fedInfo, &netParams)
+	derivedFedAddress, err := federation.GetDerivedBitcoinAddressHash(derivationValue, fedInfo, &netParams)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -223,6 +240,18 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getFedAddress(s *Server, netParams chaincfg.Params) (btcutil.Address, error) {
+	fedAddressStr, err := s.rsk.GetFedAddress()
+	if err != nil {
+		return nil, err
+	}
+	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &netParams)
+	if err != nil {
+		return nil, err
+	}
+	return fedAddress, nil
 }
 
 func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, []byte, []byte, []byte, error) {
