@@ -119,8 +119,8 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 	}
 
 	str := hex.EncodeToString(buf.Bytes())
-	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
-	assert.EqualValues(t, str[len(getFlyoverDerivationHash()):], getFlyoverScriptString())
+	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
+	assert.EqualValues(t, getFlyoverScriptString(), str)
 }
 
 func testBuildFlyoverErpRedeemScript(t *testing.T) {
@@ -133,23 +133,22 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 
 	str := hex.EncodeToString(buf.Bytes())
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
-	assert.EqualValues(t, str, getFlyoverScriptString())
+	assert.EqualValues(t, getFlyoverErpScriptString(), str)
 }
 
-func getFlyoverDerivationHash() string {
-	return "ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c9"
-}
 func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
-	prefixBuf, err := getFlyoverPrefix(hash)
+	buf, err := getFlyoverPrefix(hash)
 	if err != nil {
 		return nil, err
 	}
-	buf, err := getPowPegRedeemScriptBuf(info, true)
+	hashBuf, err := getPowPegRedeemScriptBuf(info, true)
 	if err != nil {
 		return nil, err
 	}
-	prefixBuf.Write(buf.Bytes())
-	return prefixBuf, nil
+
+	buf.Write(hashBuf.Bytes())
+
+	return buf, nil
 }
 
 func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
@@ -189,7 +188,14 @@ func getErpScriptString() string {
 }
 
 func getFlyoverScriptString() interface{} {
-	return "202e278c9504abaa60c6ab313943e530f910db8c21856ca472ec10917868cf03ed75522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
+	return "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c975522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
+}
+func getFlyoverErpScriptString() interface{} {
+	return "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c97564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
+}
+
+func getFlyoverDerivationHash() string {
+	return "ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c9"
 }
 
 func checkSubstrings(str string, subs ...string) bool {
