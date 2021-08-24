@@ -241,7 +241,7 @@ func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, []
 		return "", nil, nil, nil, err
 	}
 
-	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(err, quote)
+	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(quote)
 	if err != nil {
 		return "", nil, nil, nil, err
 	}
@@ -267,7 +267,7 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func getBytesFromParams(err error, quote *types.Quote) ([]byte, []byte, []byte, error) {
+func getBytesFromParams(quote *types.Quote) ([]byte, []byte, []byte, error) {
 	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
 	if err != nil || len(btcRefAddr) == 0 {
 		return nil, nil, nil, err

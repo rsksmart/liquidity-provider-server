@@ -17,13 +17,11 @@ import (
 )
 
 type config struct {
-	LogFile      string
-	FedAddr      string
-	FedPubKey    string
-	IsTestNet    bool
-	Debug        bool
-	RedeemScript string
-	FedPubKeys   []string
+	LogFile   string
+	FedAddr   string
+	FedPubKey string
+	IsTestNet bool
+	Debug     bool
 
 	Server struct {
 		Port uint
