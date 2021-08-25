@@ -1,9 +1,9 @@
 package federation
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/stretchr/testify/assert"
 	"sort"
@@ -100,7 +100,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 func testBuildErpRedeemScript(t *testing.T) {
 	fedInfo := getFakeFedInfo()
 
-	buf, err := getErpRedeemScriptBuf(fedInfo)
+	buf, err := getErpRedeemScriptBuf(fedInfo, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -126,7 +126,7 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	fedInfo := getFakeFedInfo()
 
-	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, getFlyoverDerivationHash())
+	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, getFlyoverDerivationHash(), &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -134,53 +134,6 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	str := hex.EncodeToString(buf.Bytes())
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
 	assert.EqualValues(t, getFlyoverErpScriptString(), str)
-}
-
-func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
-	buf, err := getFlyoverPrefix(hash)
-	if err != nil {
-		return nil, err
-	}
-	hashBuf, err := getPowPegRedeemScriptBuf(info, true)
-	if err != nil {
-		return nil, err
-	}
-
-	buf.Write(hashBuf.Bytes())
-
-	return buf, nil
-}
-
-func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
-	buf, err := getFlyoverPrefix(hash)
-	if err != nil {
-		return nil, err
-	}
-	hashBuf, err := getErpRedeemScriptBuf(info)
-	if err != nil {
-		return nil, err
-	}
-
-	buf.Write(hashBuf.Bytes())
-
-	return buf, nil
-}
-
-func getFlyoverPrefix(hash string) (*bytes.Buffer, error) {
-	var buf bytes.Buffer
-	hashLength, err := hex.DecodeString("20")
-	if err != nil {
-		return nil, err
-	}
-	encodedHash, err := hex.DecodeString(hash)
-	if err != nil {
-		return nil, err
-	}
-	buf.Write(hashLength)
-	buf.Write(encodedHash)
-	buf.WriteByte(txscript.OP_DROP)
-
-	return &buf, nil
 }
 
 func getErpScriptString() string {

@@ -2,7 +2,6 @@ package federation
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -36,14 +35,23 @@ func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBt
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
 
-	ensureRedeemScriptIsValid(fedInfo, derivationValue, netParams)
-
-	flyoverScript, err := buildFlyOverRedeemScript(fedInfo, derivationValue, netParams, true)
+	err := ensureRedeemScriptIsValid(fedInfo, netParams)
 	if err != nil {
 		return nil, err
 	}
 
-	addressScriptHash, err := getAddressScriptHash(flyoverScript, netParams)
+	flyoverScriptBuf, err := GetRedeemScriptBuffer(fedInfo, derivationValue, netParams)
+	if err != nil {
+		return nil, err
+	}
+
+	scriptString, err := txscript.DisasmString(flyoverScriptBuf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	log.Debug(scriptString)
+
+	addressScriptHash, err := getAddressScriptHash(flyoverScriptBuf.Bytes(), netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -51,120 +59,121 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 	return addressScriptHash, nil
 }
 
-func ensureRedeemScriptIsValid(info *FedInfo, derivationValue []byte, params *chaincfg.Params) error {
-	newAddr, err := getStdRedeemScriptAddressWithoutPrefix(info, derivationValue, params)
+func ensureRedeemScriptIsValid(info *FedInfo, params *chaincfg.Params) error {
+	buf, err := GetRedeemScriptBufferWithoutPrefix(info)
 	if err != nil {
 		return err
 	}
 
-	if bytes.Compare(newAddr, info.FedAddress) != 0 {
+	script := buf.Bytes()
+	scriptString, err := txscript.DisasmString(script)
+	if err != nil {
+		return err
+	}
+	log.Debug(scriptString)
+	addr, err := btcutil.NewAddressScriptHash(script, params)
+	if err != nil {
+		return err
+	}
+
+	if bytes.Compare(addr.ScriptAddress(), info.FedAddress) != 0 {
 		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
 	}
 
 	return nil
 }
 
-func getStdRedeemScriptAddressWithoutPrefix(fedInfo *FedInfo, derivationValue []byte, netParams *chaincfg.Params) ([]byte, error) {
-	script, err := buildFlyOverRedeemScript(fedInfo, derivationValue, netParams, false)
-	if err != nil {
-		return nil, err
-	}
-
-	scriptString, err := txscript.DisasmString(script)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug(scriptString)
-
-	addr, err := btcutil.NewAddressScriptHash(script, netParams)
-	if err != nil {
-		return nil, err
-	}
-	return addr.ScriptAddress(), nil
-}
-
-func buildFlyOverRedeemScript(fedInfo *FedInfo, derivationValue []byte, netParams *chaincfg.Params, addFlyOverPrefix bool) ([]byte, error) {
-	builder := txscript.NewScriptBuilder()
+func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chaincfg.Params) (bytes.Buffer, error) {
+	var buf bytes.Buffer
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
-	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
-		err := buildFlyOverStdRedeemScript(fedInfo, derivationValue, builder, addFlyOverPrefix)
+	// TODO: Verify if bridge method that retrieves ActiveFedBlockHeight is giving correct results (0)
+	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
+		sb, err := getFlyoverRedeemScriptBuf(info, getDerivationHashString(derivationValue))
 		if err != nil {
-			return nil, err
+			return bytes.Buffer{}, err
 		}
+		buf = *sb
 	} else {
-		var err = buildFlyOverErpRedeemScript(fedInfo, derivationValue, builder, netParams)
+		sb, err := getFlyoverErpRedeemScriptBuf(info, getDerivationHashString(derivationValue), params)
 		if err != nil {
-			return nil, err
+			return bytes.Buffer{}, err
 		}
+		buf = *sb
 	}
+	return buf, nil
+}
 
-	result, err := builder.Script()
+func GetRedeemScriptBufferWithoutPrefix(info *FedInfo) (bytes.Buffer, error) {
+	var buf bytes.Buffer
+
+	// TODO: verify whether we must check the erp fed activation to prevent comparing ERP vs. powPeg script.
+	sb, err := getPowPegRedeemScriptBuf(info, true)
+	if err != nil {
+		return bytes.Buffer{}, err
+	}
+	buf = *sb
+
+	return buf, nil
+}
+
+func getDerivationHashString(derivationValue []byte) string {
+	return hex.EncodeToString(derivationValue)
+}
+
+func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
+	buf, err := getFlyoverPrefix(hash)
 	if err != nil {
 		return nil, err
 	}
-	scriptString, err := txscript.DisasmString(result)
+	hashBuf, err := getPowPegRedeemScriptBuf(info, true)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debug(scriptString)
-	return result, nil
+	buf.Write(hashBuf.Bytes())
+
+	return buf, nil
 }
 
-func buildFlyOverStdRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, addFlyOverPrefix bool) error {
-
-	if addFlyOverPrefix {
-		addFlyOverPrefixHash(builder, derivationValue)
-	}
-
-	err := addStdNToMScriptPart(builder, fedInfo)
+func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string, params *chaincfg.Params) (*bytes.Buffer, error) {
+	buf, err := getFlyoverPrefix(hash)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	builder.AddOp(txscript.OP_CHECKMULTISIG)
+	hashBuf, err := getErpRedeemScriptBuf(info, params)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil
+	buf.Write(hashBuf.Bytes())
+
+	return buf, nil
 }
 
-func buildFlyOverErpRedeemScript(fedInfo *FedInfo, derivationValue []byte, builder *txscript.ScriptBuilder, netParams *chaincfg.Params) error {
-	addFlyOverPrefixHash(builder, derivationValue)
-	builder.AddOp(txscript.OP_NOTIF)
-
-	err := addStdNToMScriptPart(builder, fedInfo)
+func getFlyoverPrefix(hash string) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	hashLength, err := hex.DecodeString("20")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	builder.AddOp(txscript.OP_ELSE)
-
-	bs := make([]byte, 2)
-	binary.LittleEndian.PutUint16(bs, uint16(2))
-	binary.LittleEndian.PutUint16(bs, uint16(0))
-	builder.AddData(bs)
-
-	//csv := getCsvValueFromNetwork(netParams)
-	//if err != nil {
-	//	return err
-	//}
-	//builder.AddData(csv)
-
-	builder.AddOp(txscript.OP_CHECKSEQUENCEVERIFY)
-	builder.AddOp(txscript.OP_DROP)
-
-	err = addErpNToMScriptPart(builder, fedInfo)
+	encodedHash, err := hex.DecodeString(hash)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	buf.Write(hashLength)
+	buf.Write(encodedHash)
+	buf.WriteByte(txscript.OP_DROP)
 
-	builder.AddOp(txscript.OP_ENDIF)
-	builder.AddOp(txscript.OP_CHECKMULTISIG)
-
-	return nil
+	return &buf, nil
 }
 
 func getPowPegRedeemScriptBuf(info *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
-	addStdNToMScriptPart(sb, info)
+	err := addStdNToMScriptPart(sb, info)
+	if err != nil {
+		return nil, err
+	}
 	if addMultiSig {
 		sb.AddOp(txscript.OP_CHECKMULTISIG)
 	}
@@ -177,7 +186,7 @@ func getPowPegRedeemScriptBuf(info *FedInfo, addMultiSig bool) (*bytes.Buffer, e
 	return &buf, nil
 }
 
-func getErpRedeemScriptBuf(info *FedInfo) (*bytes.Buffer, error) {
+func getErpRedeemScriptBuf(info *FedInfo, params *chaincfg.Params) (*bytes.Buffer, error) {
 
 	erpRedeemScriptBuf, err := p2ms(info, false)
 	if err != nil {
@@ -195,13 +204,13 @@ func getErpRedeemScriptBuf(info *FedInfo) (*bytes.Buffer, error) {
 	erpRedeemScriptBuffer.Write(scrA)
 	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
-	bytes, err := hex.DecodeString("02")
+	byteArr, err := hex.DecodeString("02")
 	if err != nil {
 		return nil, err
 	}
-	erpRedeemScriptBuffer.Write(bytes)
+	erpRedeemScriptBuffer.Write(byteArr)
 
-	csv, err := hex.DecodeString(getCsvValueFromNetwork(&chaincfg.MainNetParams))
+	csv, err := hex.DecodeString(getCsvValueFromNetwork(params))
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +227,10 @@ func getErpRedeemScriptBuf(info *FedInfo) (*bytes.Buffer, error) {
 func p2ms(info *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
-	addErpNToMScriptPart(sb, info)
+	err := addErpNToMScriptPart(sb, info)
+	if err != nil {
+		return nil, err
+	}
 	if addMultiSig {
 		sb.AddOp(txscript.OP_CHECKMULTISIG)
 	}
@@ -236,14 +248,9 @@ func getCsvValueFromNetwork(params *chaincfg.Params) string {
 		return "CD50"
 	case chaincfg.TestNet3Params.Name:
 		return "CD50"
-	default: // regtest
+	default: // RegTest
 		return "01F4"
 	}
-}
-
-func addFlyOverPrefixHash(builder *txscript.ScriptBuilder, derivationValue []byte) {
-	builder.AddData(derivationValue)
-	builder.AddOp(txscript.OP_DROP)
 }
 
 func addStdNToMScriptPart(builder *txscript.ScriptBuilder, fedInfo *FedInfo) error {
@@ -319,7 +326,6 @@ func getOpCodeFromInt(val int) byte {
 
 func getAddressScriptHash(script []byte, network *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
 	// calculate the hash160 of the redeem script
-
 	// TODO: Confirm that this is necessary.
 	redeemHash := btcutil.Hash160(script)
 
