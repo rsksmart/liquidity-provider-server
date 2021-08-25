@@ -60,7 +60,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 }
 
 func ensureRedeemScriptIsValid(info *FedInfo, params *chaincfg.Params) error {
-	buf, err := GetRedeemScriptBufferWithoutPrefix(info)
+	buf, err := GetRedeemScriptBufferWithoutPrefix(info, params)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,6 @@ func ensureRedeemScriptIsValid(info *FedInfo, params *chaincfg.Params) error {
 func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chaincfg.Params) (bytes.Buffer, error) {
 	var buf bytes.Buffer
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
-	// TODO: Verify if bridge method that retrieves ActiveFedBlockHeight is giving correct results (0)
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
 		sb, err := getFlyoverRedeemScriptBuf(info, getDerivationHashString(derivationValue))
 		if err != nil {
@@ -103,15 +102,22 @@ func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chainc
 	return buf, nil
 }
 
-func GetRedeemScriptBufferWithoutPrefix(info *FedInfo) (bytes.Buffer, error) {
+func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) (bytes.Buffer, error) {
 	var buf bytes.Buffer
 
-	// TODO: verify whether we must check the erp fed activation to prevent comparing ERP vs. powPeg script.
-	sb, err := getPowPegRedeemScriptBuf(info, true)
-	if err != nil {
-		return bytes.Buffer{}, err
+	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
+		sb, err := getPowPegRedeemScriptBuf(info, true)
+		if err != nil {
+			return bytes.Buffer{}, err
+		}
+		buf = *sb
+	} else {
+		sb, err := getErpRedeemScriptBuf(info, params)
+		if err != nil {
+			return bytes.Buffer{}, err
+		}
+		buf = *sb
 	}
-	buf = *sb
 
 	return buf, nil
 }
