@@ -51,7 +51,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 	}
 	log.Debug(scriptString)
 
-	addressScriptHash, err := getAddressScriptHash(flyoverScriptBuf.Bytes(), netParams)
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScriptBuf.Bytes(), netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -328,16 +328,4 @@ func getOpCodeFromInt(val int) byte {
 	default:
 		return txscript.OP_16
 	}
-}
-
-func getAddressScriptHash(script []byte, network *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
-	// calculate the hash160 of the redeem script
-	// TODO: Confirm that this is necessary.
-	redeemHash := btcutil.Hash160(script)
-
-	address, err := btcutil.NewAddressScriptHash(redeemHash, network)
-	if err != nil {
-		return nil, err
-	}
-	return address, nil
 }

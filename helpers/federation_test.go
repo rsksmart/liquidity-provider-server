@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcutil"
 	"github.com/stretchr/testify/assert"
 	"sort"
 	"strings"
@@ -136,6 +137,28 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	assert.EqualValues(t, getFlyoverErpScriptString(), str)
 }
 
+func testBuildPowPegAddressHash(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getPowPegRedeemScriptBuf(fedInfo, true)
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
+	assert.EqualValues(t, str, getPowPegScriptString())
+
+	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
+	powPegAddr := "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+
+	assert.EqualValues(t, powPegAddr, address.EncodeAddress())
+}
+
+func getPowPegScriptString() interface{} {
+	return "522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
+}
+
 func getErpScriptString() string {
 	return "64522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
 }
@@ -194,4 +217,6 @@ func TestFederationHelper(t *testing.T) {
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
 	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)
 	t.Run("test get flyover erp redeem script", testBuildFlyoverErpRedeemScript)
+	t.Run("test get powpeg address hash", testBuildPowPegAddressHash)
+
 }
