@@ -52,7 +52,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 	return addressScriptHash, nil
 }
 
-func ensureRedeemScriptIsValid(info *FedInfo, params *chaincfg.Params) error {
+func validateRedeemScript(info *FedInfo, params *chaincfg.Params) error {
 	script, err := GetRedeemScriptBufferWithoutPrefix(info, params)
 	if err != nil {
 		return err
