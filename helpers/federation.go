@@ -74,13 +74,13 @@ func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chainc
 	var script []byte
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
-		sb, err := getFlyoverRedeemScriptBuf(info, hex.EncodeToString(derivationValue))
+		sb, err := getFlyoverRedeemScriptBuf(info, derivationValue)
 		if err != nil {
 			return nil, err
 		}
 		script = sb.Bytes()
 	} else {
-		sb, err := getFlyoverErpRedeemScriptBuf(info, hex.EncodeToString(derivationValue), params)
+		sb, err := getFlyoverErpRedeemScriptBuf(info, derivationValue, params)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) 
 	return buf, nil
 }
 
-func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {
+func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte) (*bytes.Buffer, error) {
 	buf, err := getFlyoverPrefix(hash)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error
 	return buf, nil
 }
 
-func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string, params *chaincfg.Params) (*bytes.Buffer, error) {
+func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Params) (*bytes.Buffer, error) {
 	buf, err := getFlyoverPrefix(hash)
 	if err != nil {
 		return nil, err
@@ -139,18 +139,14 @@ func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash string, params *chaincfg.P
 	return buf, nil
 }
 
-func getFlyoverPrefix(hash string) (*bytes.Buffer, error) {
+func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	hashLength, err := hex.DecodeString("20")
 	if err != nil {
 		return nil, err
 	}
-	encodedHash, err := hex.DecodeString(hash)
-	if err != nil {
-		return nil, err
-	}
 	buf.Write(hashLength)
-	buf.Write(encodedHash)
+	buf.Write(hash)
 	buf.WriteByte(txscript.OP_DROP)
 
 	return &buf, nil
