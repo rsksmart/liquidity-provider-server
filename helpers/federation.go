@@ -63,21 +63,13 @@ func validateRedeemScript(script []byte, expectedAddress []byte, params *chaincf
 
 func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
 	var script []byte
-	sb, err := getFlyoverRedeemScriptBuf(info, derivationValue, params)
-	if err != nil {
-		return nil, err
-	}
-	script = sb.Bytes()
-
-	return script, nil
-}
-
-func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Params) (*bytes.Buffer, error) {
 	var hashBuf *bytes.Buffer
-	buf, err := getFlyoverPrefix(hash)
+
+	buf, err := getFlyoverPrefix(derivationValue)
 	if err != nil {
 		return nil, err
 	}
+
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
 		hashBuf, err = getPowPegRedeemScriptBuf(info, true)
@@ -98,7 +90,9 @@ func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Para
 
 	buf.Write(hashBuf.Bytes())
 
-	return buf, nil
+	script = buf.Bytes()
+
+	return script, nil
 }
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {

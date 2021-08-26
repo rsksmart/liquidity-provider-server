@@ -114,12 +114,12 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 		return
 	}
 	fedInfo.IrisActivationHeight = 1
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	bts, err := GetRedeemScript(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
 
-	str := hex.EncodeToString(buf.Bytes())
+	str := hex.EncodeToString(bts)
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
 	assert.EqualValues(t, FlyoverScriptString, str)
 }
@@ -133,12 +133,12 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 		return
 	}
 
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	bts, err := GetRedeemScript(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
 
-	str := hex.EncodeToString(buf.Bytes())
+	str := hex.EncodeToString(bts)
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
 	assert.EqualValues(t, FlyoverErpScriptString, str)
 }
@@ -169,16 +169,16 @@ func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 	if err != nil {
 		return
 	}
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	bts, err := GetRedeemScript(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
 
-	str := hex.EncodeToString(buf.Bytes())
+	str := hex.EncodeToString(bts)
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
 	assert.EqualValues(t, FlyoverScriptString, str)
 
-	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
+	address, err := btcutil.NewAddressScriptHash(bts, &chaincfg.MainNetParams)
 	expectedAddr := "34TNebhLLHsE6FHQVMmeHAhTFpaAWhfweR"
 
 	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
@@ -192,16 +192,16 @@ func testBuildFlyoverErpAddressHash(t *testing.T) {
 	if err != nil {
 		return
 	}
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	bts, err := GetRedeemScript(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
 
-	str := hex.EncodeToString(buf.Bytes())
+	str := hex.EncodeToString(bts)
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
 	assert.EqualValues(t, FlyoverErpScriptString, str)
 
-	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
+	address, err := btcutil.NewAddressScriptHash(bts, &chaincfg.MainNetParams)
 	expectedAddr := "3PS2FEphLJMbJURMdYYFNAZR6zLasX51RC"
 
 	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
