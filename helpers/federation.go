@@ -34,17 +34,12 @@ func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBt
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
 
-	err := validateRedeemScript(fedInfo, netParams)
+	flyoverScript, err := GetRedeemScript(fedInfo, derivationValue, netParams)
 	if err != nil {
 		return nil, err
 	}
 
-	flyoverScriptBuf, err := GetRedeemScript(fedInfo, derivationValue, netParams)
-	if err != nil {
-		return nil, err
-	}
-
-	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScriptBuf, netParams)
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -52,18 +47,14 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 	return addressScriptHash, nil
 }
 
-func validateRedeemScript(info *FedInfo, params *chaincfg.Params) error {
-	script, err := GetRedeemScriptWithoutPrefix(info, params)
-	if err != nil {
-		return err
-	}
+func validateRedeemScript(script []byte, expectedAddress []byte, params *chaincfg.Params) error {
 
 	addr, err := btcutil.NewAddressScriptHash(script, params)
 	if err != nil {
 		return err
 	}
 
-	if !bytes.Equal(addr.ScriptAddress(), info.FedAddress) {
+	if !bytes.Equal(addr.ScriptAddress(), expectedAddress) {
 		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
 	}
 
@@ -72,64 +63,35 @@ func validateRedeemScript(info *FedInfo, params *chaincfg.Params) error {
 
 func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
 	var script []byte
+	sb, err := getFlyoverRedeemScriptBuf(info, derivationValue, params)
+	if err != nil {
+		return nil, err
+	}
+	script = sb.Bytes()
+
+	return script, nil
+}
+
+func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Params) (*bytes.Buffer, error) {
+	var hashBuf *bytes.Buffer
+	buf, err := getFlyoverPrefix(hash)
+	if err != nil {
+		return nil, err
+	}
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
-		sb, err := getFlyoverRedeemScriptBuf(info, derivationValue)
+		hashBuf, err = getPowPegRedeemScriptBuf(info, true)
 		if err != nil {
 			return nil, err
 		}
-		script = sb.Bytes()
 	} else {
-		sb, err := getFlyoverErpRedeemScriptBuf(info, derivationValue, params)
+		hashBuf, err = getErpRedeemScriptBuf(info, params)
 		if err != nil {
 			return nil, err
 		}
-		script = sb.Bytes()
-	}
-	return script, nil
-}
-
-func GetRedeemScriptWithoutPrefix(info *FedInfo, params *chaincfg.Params) ([]byte, error) {
-	var script []byte
-
-	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
-		sb, err := getPowPegRedeemScriptBuf(info, true)
-		if err != nil {
-			return nil, err
-		}
-		script = sb.Bytes()
-	} else {
-		sb, err := getErpRedeemScriptBuf(info, params)
-		if err != nil {
-			return nil, err
-		}
-		script = sb.Bytes()
 	}
 
-	return script, nil
-}
-
-func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte) (*bytes.Buffer, error) {
-	buf, err := getFlyoverPrefix(hash)
-	if err != nil {
-		return nil, err
-	}
-	hashBuf, err := getPowPegRedeemScriptBuf(info, true)
-	if err != nil {
-		return nil, err
-	}
-
-	buf.Write(hashBuf.Bytes())
-
-	return buf, nil
-}
-
-func getFlyoverErpRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Params) (*bytes.Buffer, error) {
-	buf, err := getFlyoverPrefix(hash)
-	if err != nil {
-		return nil, err
-	}
-	hashBuf, err := getErpRedeemScriptBuf(info, params)
+	err = validateRedeemScript(hashBuf.Bytes(), info.FedAddress, params)
 	if err != nil {
 		return nil, err
 	}

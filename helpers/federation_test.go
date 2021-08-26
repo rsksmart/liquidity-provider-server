@@ -113,7 +113,8 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 	if err != nil {
 		return
 	}
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash)
+	fedInfo.IrisActivationHeight = 1
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -125,13 +126,14 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 
 func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	fedInfo := getFakeFedInfo()
+	fedInfo.IrisActivationHeight = -1
 
 	hash, err := getFlyoverDerivationHash()
 	if err != nil {
 		return
 	}
 
-	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -143,6 +145,7 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 
 func testBuildPowPegAddressHash(t *testing.T) {
 	fedInfo := getFakeFedInfo()
+	fedInfo.IrisActivationHeight = 1
 
 	buf, err := getPowPegRedeemScriptBuf(fedInfo, true)
 	if err != nil {
@@ -161,11 +164,12 @@ func testBuildPowPegAddressHash(t *testing.T) {
 
 func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 	fedInfo := getFakeFedInfo()
+	fedInfo.IrisActivationHeight = 1
 	hash, err := getFlyoverDerivationHash()
 	if err != nil {
 		return
 	}
-	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash)
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -183,10 +187,12 @@ func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 func testBuildFlyoverErpAddressHash(t *testing.T) {
 	fedInfo := getFakeFedInfo()
 	hash, err := getFlyoverDerivationHash()
+	fedInfo.IrisActivationHeight = -1
+
 	if err != nil {
 		return
 	}
-	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, hash, &chaincfg.MainNetParams)
 	if err != nil {
 		return
 	}
@@ -255,7 +261,7 @@ func getFakeFedInfo() *FedInfo {
 		FedSize:              len(keys),
 		FedThreshold:         len(keys)/2 + 1,
 		PubKeys:              keys,
-		IrisActivationHeight: -1,
+		IrisActivationHeight: 0,
 	}
 }
 
