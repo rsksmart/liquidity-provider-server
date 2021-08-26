@@ -8,7 +8,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	log "github.com/sirupsen/logrus"
 )
 
 type FedInfo struct {
@@ -45,13 +44,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 		return nil, err
 	}
 
-	scriptString, err := txscript.DisasmString(flyoverScriptBuf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	log.Debug(scriptString)
-
-	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScriptBuf.Bytes(), netParams)
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScriptBuf, netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -60,70 +53,60 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 }
 
 func ensureRedeemScriptIsValid(info *FedInfo, params *chaincfg.Params) error {
-	buf, err := GetRedeemScriptBufferWithoutPrefix(info, params)
+	script, err := GetRedeemScriptBufferWithoutPrefix(info, params)
 	if err != nil {
 		return err
 	}
 
-	script := buf.Bytes()
-	scriptString, err := txscript.DisasmString(script)
-	if err != nil {
-		return err
-	}
-	log.Debug(scriptString)
 	addr, err := btcutil.NewAddressScriptHash(script, params)
 	if err != nil {
 		return err
 	}
 
-	if bytes.Compare(addr.ScriptAddress(), info.FedAddress) != 0 {
+	if !bytes.Equal(addr.ScriptAddress(), info.FedAddress) {
 		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
 	}
 
 	return nil
 }
 
-func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chaincfg.Params) (bytes.Buffer, error) {
-	var buf bytes.Buffer
+func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
+	var script []byte
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
-		sb, err := getFlyoverRedeemScriptBuf(info, getDerivationHashString(derivationValue))
+		sb, err := getFlyoverRedeemScriptBuf(info, hex.EncodeToString(derivationValue))
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
-		buf = *sb
+		script = sb.Bytes()
 	} else {
-		sb, err := getFlyoverErpRedeemScriptBuf(info, getDerivationHashString(derivationValue), params)
+		sb, err := getFlyoverErpRedeemScriptBuf(info, hex.EncodeToString(derivationValue), params)
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
-		buf = *sb
+		script = sb.Bytes()
 	}
-	return buf, nil
+	return script, nil
 }
 
-func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) (bytes.Buffer, error) {
-	var buf bytes.Buffer
+func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) ([]byte, error) {
+	var buf []byte
 
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
 		sb, err := getPowPegRedeemScriptBuf(info, true)
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
-		buf = *sb
+		buf = sb.Bytes()
 	} else {
 		sb, err := getErpRedeemScriptBuf(info, params)
 		if err != nil {
-			return bytes.Buffer{}, err
+			return nil, err
 		}
-		buf = *sb
+		buf = sb.Bytes()
 	}
 
 	return buf, nil
-}
-
-func getDerivationHashString(derivationValue []byte) string {
-	return hex.EncodeToString(derivationValue)
 }
 
 func getFlyoverRedeemScriptBuf(info *FedInfo, hash string) (*bytes.Buffer, error) {

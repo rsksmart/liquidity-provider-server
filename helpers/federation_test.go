@@ -255,6 +255,6 @@ func TestFederationHelper(t *testing.T) {
 	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)
 	t.Run("test get flyover erp redeem script", testBuildFlyoverErpRedeemScript)
 	t.Run("test get powpeg address hash", testBuildPowPegAddressHash)
-	t.Run("test get powpeg address hash", testBuildFlyoverPowPegAddressHash)
-	t.Run("test get powpeg address hash", testBuildFlyoverErpAddressHash)
+	t.Run("test get flyover powpeg address hash", testBuildFlyoverPowPegAddressHash)
+	t.Run("test get flyover erp address hash", testBuildFlyoverErpAddressHash)
 }
