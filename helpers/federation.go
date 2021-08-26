@@ -39,7 +39,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 		return nil, err
 	}
 
-	flyoverScriptBuf, err := GetRedeemScriptBuffer(fedInfo, derivationValue, netParams)
+	flyoverScriptBuf, err := GetRedeemScript(fedInfo, derivationValue, netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netP
 }
 
 func validateRedeemScript(info *FedInfo, params *chaincfg.Params) error {
-	script, err := GetRedeemScriptBufferWithoutPrefix(info, params)
+	script, err := GetRedeemScriptWithoutPrefix(info, params)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func validateRedeemScript(info *FedInfo, params *chaincfg.Params) error {
 	return nil
 }
 
-func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
+func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
 	var script []byte
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
@@ -89,7 +89,7 @@ func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chainc
 	return script, nil
 }
 
-func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) ([]byte, error) {
+func GetRedeemScriptWithoutPrefix(info *FedInfo, params *chaincfg.Params) ([]byte, error) {
 	var script []byte
 
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
