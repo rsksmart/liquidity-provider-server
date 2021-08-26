@@ -103,6 +103,9 @@ func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte, params *chaincfg.Para
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
+	if len(hash) != 20 {
+		return nil, fmt.Errorf("unexpected hash length %v", len(hash))
+	}
 	hashLength, err := hex.DecodeString("20")
 	if err != nil {
 		return nil, err
