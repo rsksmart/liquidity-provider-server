@@ -90,23 +90,23 @@ func GetRedeemScriptBuffer(info *FedInfo, derivationValue []byte, params *chainc
 }
 
 func GetRedeemScriptBufferWithoutPrefix(info *FedInfo, params *chaincfg.Params) ([]byte, error) {
-	var buf []byte
+	var script []byte
 
 	if info.ActiveFedBlockHeight < info.IrisActivationHeight {
 		sb, err := getPowPegRedeemScriptBuf(info, true)
 		if err != nil {
 			return nil, err
 		}
-		buf = sb.Bytes()
+		script = sb.Bytes()
 	} else {
 		sb, err := getErpRedeemScriptBuf(info, params)
 		if err != nil {
 			return nil, err
 		}
-		buf = sb.Bytes()
+		script = sb.Bytes()
 	}
 
-	return buf, nil
+	return script, nil
 }
 
 func getFlyoverRedeemScriptBuf(info *FedInfo, hash []byte) (*bytes.Buffer, error) {
