@@ -55,11 +55,7 @@ func testGetDerivationValueHash(t *testing.T) {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
 
-		value, err := GetDerivationValueHash(btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
-
-		if err != nil {
-			t.Errorf("Unexpected error for quotehash %v: %v", tt.QuoteHash, err)
-		}
+		value := GetDerivationValueHash(btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
 
 		result := hex.EncodeToString(value)
 		if result != tt.Expected {

@@ -166,7 +166,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	derivationValue, err := federation.GetDerivationValueHash(
+	derivationValue := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 
 	response.Signature = signature

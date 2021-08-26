@@ -20,7 +20,7 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) []byte {
 	var resultData []byte
 	resultData = append(resultData, derivationArgumentsHash...)
 	resultData = append(resultData, userBtcRefundAddress...)
@@ -29,12 +29,12 @@ func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBt
 
 	derivationValueHash := crypto.Keccak256(resultData)
 
-	return derivationValueHash, nil
+	return derivationValueHash
 }
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
 
-	err := ensureRedeemScriptIsValid(fedInfo, netParams)
+	err := validateRedeemScript(fedInfo, netParams)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,9 @@ func getErpRedeemScriptBuf(info *FedInfo, params *chaincfg.Params) (*bytes.Buffe
 		return nil, err
 	}
 	powPegRedeemScriptBuf, err := getPowPegRedeemScriptBuf(info, false)
-
+	if err != nil {
+		return nil, err
+	}
 	scriptsA := txscript.NewScriptBuilder()
 	scriptsA.AddOp(txscript.OP_NOTIF)
 	var erpRedeemScriptBuffer bytes.Buffer
