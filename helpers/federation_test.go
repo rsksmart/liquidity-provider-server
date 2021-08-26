@@ -150,12 +150,48 @@ func testBuildPowPegAddressHash(t *testing.T) {
 	assert.EqualValues(t, str, getPowPegScriptString())
 
 	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
-	powPegAddr := "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+	expectedAddr := "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 
-	assert.EqualValues(t, powPegAddr, address.EncodeAddress())
+	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
 }
 
-func getPowPegScriptString() interface{} {
+func testBuildFlyoverPowPegAddressHash(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getFlyoverRedeemScriptBuf(fedInfo, getFlyoverDerivationHash())
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
+	assert.EqualValues(t, getFlyoverScriptString(), str)
+
+	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
+	expectedAddr := "34TNebhLLHsE6FHQVMmeHAhTFpaAWhfweR"
+
+	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
+}
+
+func testBuildFlyoverErpAddressHash(t *testing.T) {
+	fedInfo := getFakeFedInfo()
+
+	buf, err := getFlyoverErpRedeemScriptBuf(fedInfo, getFlyoverDerivationHash(), &chaincfg.MainNetParams)
+	if err != nil {
+		return
+	}
+
+	str := hex.EncodeToString(buf.Bytes())
+	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
+	assert.EqualValues(t, getFlyoverErpScriptString(), str)
+
+	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
+	expectedAddr := "3PS2FEphLJMbJURMdYYFNAZR6zLasX51RC"
+
+	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
+}
+
+func getPowPegScriptString() string {
 	return "522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
 }
 
@@ -163,10 +199,11 @@ func getErpScriptString() string {
 	return "64522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
 }
 
-func getFlyoverScriptString() interface{} {
+func getFlyoverScriptString() string {
 	return "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c975522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
 }
-func getFlyoverErpScriptString() interface{} {
+
+func getFlyoverErpScriptString() string {
 	return "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c97564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
 }
 
@@ -218,5 +255,6 @@ func TestFederationHelper(t *testing.T) {
 	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)
 	t.Run("test get flyover erp redeem script", testBuildFlyoverErpRedeemScript)
 	t.Run("test get powpeg address hash", testBuildPowPegAddressHash)
-
+	t.Run("test get powpeg address hash", testBuildFlyoverPowPegAddressHash)
+	t.Run("test get powpeg address hash", testBuildFlyoverErpAddressHash)
 }
