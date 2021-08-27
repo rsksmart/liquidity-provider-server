@@ -91,7 +91,7 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 
 	script = buf.Bytes()
 
-	return script, nil
+	return buf.Bytes(), nil
 }
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
