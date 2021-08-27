@@ -20,13 +20,35 @@ var testQuotes = []struct {
 	LPBTCAddr     string
 	QuoteHash     string
 	Expected      string
+	NetworkParams chaincfg.Params
 }{
 	{
 		LPBTCAddr:     "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
-		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		BTCRefundAddr: "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		Expected:      "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
+	},
+	{
+		LPBTCAddr:     "17VZNX1SN5NtKa8UQFxwQbFeFc3iqRYhem",
+		BTCRefundAddr: "17VZNX1SN5NtKa8UQFxwQbFeFc3iqRYhem",
+		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		Expected:      "f07f644aa9123cd339f232be7f02ec536d40247f6f0c89a93d625ee57918c544",
+	},
+	{
+		LPBTCAddr:     "3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX",
+		BTCRefundAddr: "3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX",
+		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		Expected:      "edb9cfe28705fa1619fe1c1bc70e55d5eee4965aea0de631bcf56434a7c454cc",
+	},
+	{
+		LPBTCAddr:     "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		BTCRefundAddr: "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		Expected:      "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
 	},
 }
 
