@@ -22,45 +22,42 @@ var testQuotes = []struct {
 	Expected      string
 }{
 	{
-		LPBTCAddr:     "746231713634706b667a306368773065753936776c6a677663683779357633397270643465786a337276",
-		LBCAddr:       "0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95",
-		BTCRefundAddr: "74623171336b3463726832367936367335747575617333386733347775756a7074793466647579726e76",
+		LPBTCAddr:     "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:       "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		BTCRefundAddr: "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		QuoteHash:     "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
-		Expected:      "bb0afe83ab039e7ac51c581f0c9909a2c3c02e956c9c0f975baf5baefb39a715",
+		Expected:      "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
 	},
 }
 
 func testGetDerivationValueHash(t *testing.T) {
 	for _, tt := range testQuotes {
-		btcRefAddr, err := hex.DecodeString(tt.BTCRefundAddr)
-		if err != nil || len(btcRefAddr) == 0 {
-			t.Errorf("Cannot parse BTCRefundAddr correctly. value: %v, error: %v", tt.BTCRefundAddr, err)
-		}
-
 		if !common.IsHexAddress(tt.LBCAddr) {
 			t.Errorf("invalid address: %v", tt.LBCAddr)
 		}
-
 		lbcAddr := common.FromHex(tt.LBCAddr)
-		if err != nil || len(lbcAddr) == 0 {
-			t.Errorf("Cannot parse LBCAddr correctly. value: %v, error: %v", tt.LBCAddr, err)
-		}
-
-		lpBTCAdrr, err := hex.DecodeString(tt.LPBTCAddr)
-		if err != nil || len(lpBTCAdrr) == 0 {
-			t.Errorf("Cannot parse LPBTCAddr correctly. value: %v, error: %v", tt.LPBTCAddr, err)
-		}
 		hashBytes, err := hex.DecodeString(tt.QuoteHash)
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
-
-		value := GetDerivationValueHash(btcRefAddr, lbcAddr, lpBTCAdrr, hashBytes)
-
+		value, _ := GetDerivationValueHash(tt.BTCRefundAddr, lbcAddr, tt.LPBTCAddr, hashBytes)
 		result := hex.EncodeToString(value)
 		if result != tt.Expected {
 			t.Errorf("Unexpected derivation value. value: %v, expected: %v, error: %v", result, tt.Expected, err)
 		}
+	}
+}
+
+func testDerivationValueHashIsCorrect(t *testing.T) {
+	for _, tt := range testQuotes {
+		lbcAddr := common.FromHex(tt.LBCAddr)
+		hashBytes, _ := hex.DecodeString(tt.QuoteHash)
+		value, err := GetDerivationValueHash(tt.BTCRefundAddr, lbcAddr, tt.LPBTCAddr, hashBytes)
+		if err != nil {
+			t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.Expected, err)
+		}
+		result := hex.EncodeToString(value)
+		assert.EqualValues(t, tt.Expected, result)
 	}
 }
 
@@ -254,6 +251,7 @@ func getFakeFedInfo() *FedInfo {
 
 func TestFederationHelper(t *testing.T) {
 	t.Run("get derivation value hash", testGetDerivationValueHash)
+	t.Run("get derivation value hash value is correct", testDerivationValueHashIsCorrect)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
 	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)

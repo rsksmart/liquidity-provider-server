@@ -166,8 +166,12 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	derivationValue := federation.GetDerivationValueHash(
+	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	response.Signature = signature
 
@@ -254,27 +258,27 @@ func getFedAddress(s *Server, netParams chaincfg.Params) (btcutil.Address, error
 	return fedAddress, nil
 }
 
-func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, []byte, []byte, []byte, error) {
+func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, string, []byte, string, error) {
 
 	quote, err := s.db.GetQuote(hash)
 	if err != nil {
-		return "", nil, nil, nil, err
+		return "", "", nil, "", err
 	}
 	if quote == nil {
-		return "", nil, nil, nil, fmt.Errorf("quote not found : %v", hash)
+		return "", "", nil, "", fmt.Errorf("quote not found : %v", hash)
 	}
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
 	signature, err := p.SignHash(hashBytes)
 	if err != nil {
-		return "", nil, nil, nil, err
+		return "", "", nil, "", err
 	}
 
-	btcRefAddr, lbcAddr, lpBTCAddr, err := getBytesFromParams(quote)
+	lbcAddr, err := getLbcAddressBytes(quote)
 	if err != nil {
-		return "", nil, nil, nil, err
+		return "", "", nil, "", err
 	}
-	return hex.EncodeToString(signature), btcRefAddr, lbcAddr, lpBTCAddr, nil
+	return hex.EncodeToString(signature), quote.BTCRefundAddr, lbcAddr, quote.LPBTCAddr, nil
 }
 
 func getNetworkParams(s *Server) chaincfg.Params {
@@ -296,25 +300,13 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func getBytesFromParams(quote *types.Quote) ([]byte, []byte, []byte, error) {
-	btcRefAddr, err := hex.DecodeString(quote.BTCRefundAddr)
-	if err != nil || len(btcRefAddr) == 0 {
-		return nil, nil, nil, err
-	}
+func getLbcAddressBytes(quote *types.Quote) ([]byte, error) {
 	if !common.IsHexAddress(quote.LBCAddr) {
-		return nil, nil, nil, err
+		return nil, fmt.Errorf("invalid LBC Address. value: %v", quote.LBCAddr)
 	}
-
 	lbcAddr := common.FromHex(quote.LBCAddr)
-	if err != nil || len(lbcAddr) == 0 {
-		return nil, nil, nil, err
-	}
 
-	lpBTCAdrr, err := hex.DecodeString(quote.LPBTCAddr)
-	if err != nil || len(lpBTCAdrr) == 0 {
-		return nil, nil, nil, err
-	}
-	return btcRefAddr, lbcAddr, lpBTCAdrr, nil
+	return lbcAddr, nil
 }
 
 func (s *Server) storeQuote(q *types.Quote) error {

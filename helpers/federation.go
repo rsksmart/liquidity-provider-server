@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -20,16 +21,36 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) []byte {
-	var resultData []byte
-	resultData = append(resultData, derivationArgumentsHash...)
-	resultData = append(resultData, userBtcRefundAddress...)
-	resultData = append(resultData, lpBtcAddress...)
-	resultData = append(resultData, lbcAddress...)
+func GetDerivationValueHash(userBtcRefundAddressStr string, lbcAddress []byte, lpBtcAddressStr string, derivationArgumentsHash []byte) ([]byte, error) {
+	userBtcRefundAddr, err := getBytesFromBtcAddress(userBtcRefundAddressStr)
+	if err != nil {
+		return nil, err
+	}
+	lpBtcAddress, err := getBytesFromBtcAddress(lpBtcAddressStr)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	buf.Write(derivationArgumentsHash)
+	buf.Write(userBtcRefundAddr)
+	buf.Write(lbcAddress)
+	buf.Write(lpBtcAddress)
 
-	derivationValueHash := crypto.Keccak256(resultData)
+	derivationValueHash := crypto.Keccak256(buf.Bytes())
 
-	return derivationValueHash
+	return derivationValueHash, nil
+}
+
+func getBytesFromBtcAddress(encoded string) ([]byte, error) {
+	addressBts, ver, err := base58.CheckDecode(encoded)
+	if err != nil {
+		return nil, err
+	}
+	var bts bytes.Buffer
+	bts.WriteByte(ver)
+	bts.Write(addressBts)
+
+	return bts.Bytes(), nil
 }
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
@@ -88,7 +109,6 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 	}
 
 	buf.Write(hashBuf.Bytes())
-
 
 	return buf.Bytes(), nil
 }
