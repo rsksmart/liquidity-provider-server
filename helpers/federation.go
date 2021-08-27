@@ -62,7 +62,6 @@ func validateRedeemScript(script []byte, expectedAddress []byte, params *chaincf
 }
 
 func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Params) ([]byte, error) {
-	var script []byte
 	var hashBuf *bytes.Buffer
 
 	buf, err := getFlyoverPrefix(derivationValue)
