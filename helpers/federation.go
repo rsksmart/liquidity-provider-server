@@ -89,7 +89,6 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 
 	buf.Write(hashBuf.Bytes())
 
-	script = buf.Bytes()
 
 	return buf.Bytes(), nil
 }
