@@ -115,14 +115,11 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
-	if len(hash) != 20 {
-		return nil, fmt.Errorf("unexpected hash length %v", len(hash))
-	}
-	hashLength, err := hex.DecodeString("20")
+	hashPrefix, err := hex.DecodeString("20")
 	if err != nil {
 		return nil, err
 	}
-	buf.Write(hashLength)
+	buf.Write(hashPrefix)
 	buf.Write(hash)
 	buf.WriteByte(txscript.OP_DROP)
 
