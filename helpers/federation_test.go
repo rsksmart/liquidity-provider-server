@@ -66,6 +66,28 @@ var testQuotes = []struct {
 	},
 }
 
+func getFakeFedInfo() *FedInfo {
+	var keys []string
+	keys = append(keys, "02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1")
+	keys = append(keys, "0362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a124")
+	keys = append(keys, "03c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db")
+
+	var erpPubKeys []string
+	erpPubKeys = append(erpPubKeys, "0257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d4")
+	erpPubKeys = append(erpPubKeys, "03c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f9")
+	erpPubKeys = append(erpPubKeys, "03cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b3")
+	erpPubKeys = append(erpPubKeys, "02370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec80")
+
+	return &FedInfo{
+		ActiveFedBlockHeight: 0,
+		ErpKeys:              erpPubKeys,
+		FedSize:              len(keys),
+		FedThreshold:         len(keys)/2 + 1,
+		PubKeys:              keys,
+		IrisActivationHeight: 0,
+	}
+}
+
 const (
 	PowPegScriptString     = "522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
 	ErpScriptString        = "64522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
@@ -73,8 +95,9 @@ const (
 	FlyoverErpScriptString = "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c97564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
 )
 
-func testGetDerivationValueHash(t *testing.T) {
+func testDerivationComplete(t *testing.T) {
 	for _, tt := range testQuotes {
+		tt.FedInfo.IrisActivationHeight = 1
 		if !common.IsHexAddress(tt.LBCAddr) {
 			t.Errorf("invalid address: %v", tt.LBCAddr)
 		}
@@ -83,20 +106,6 @@ func testGetDerivationValueHash(t *testing.T) {
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
-		value, _ := GetDerivationValueHash(tt.BTCRefundAddr, lbcAddr, tt.LPBTCAddr, hashBytes)
-		result := hex.EncodeToString(value)
-		if result != tt.ExpectedDerivationValueHash {
-			t.Errorf("Unexpected derivation value. value: %v, expected: %v, error: %v", result, tt.ExpectedDerivationValueHash, err)
-		}
-	}
-}
-
-func testDerivationComplete(t *testing.T) {
-	for _, tt := range testQuotes {
-		tt.FedInfo.IrisActivationHeight = 1
-
-		lbcAddr := common.FromHex(tt.LBCAddr)
-		hashBytes, _ := hex.DecodeString(tt.QuoteHash)
 		value, err := GetDerivationValueHash(tt.BTCRefundAddr, lbcAddr, tt.LPBTCAddr, hashBytes)
 		if err != nil {
 			t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.ExpectedDerivationValueHash, err)
@@ -279,30 +288,7 @@ func checkSubstrings(str string, subs ...string) bool {
 	return isCompleteMatch
 }
 
-func getFakeFedInfo() *FedInfo {
-	var keys []string
-	keys = append(keys, "02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1")
-	keys = append(keys, "0362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a124")
-	keys = append(keys, "03c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db")
-
-	var erpPubKeys []string
-	erpPubKeys = append(erpPubKeys, "0257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d4")
-	erpPubKeys = append(erpPubKeys, "03c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f9")
-	erpPubKeys = append(erpPubKeys, "03cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b3")
-	erpPubKeys = append(erpPubKeys, "02370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec80")
-
-	return &FedInfo{
-		ActiveFedBlockHeight: 0,
-		ErpKeys:              erpPubKeys,
-		FedSize:              len(keys),
-		FedThreshold:         len(keys)/2 + 1,
-		PubKeys:              keys,
-		IrisActivationHeight: 0,
-	}
-}
-
 func TestFederationHelper(t *testing.T) {
-	t.Run("test derivation value hash", testGetDerivationValueHash)
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
