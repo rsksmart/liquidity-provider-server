@@ -106,7 +106,15 @@ func testDerivationComplete(t *testing.T) {
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
-		value, err := GetDerivationValueHash(tt.BTCRefundAddr, lbcAddr, tt.LPBTCAddr, hashBytes)
+		userBtcRefundAddr, err := GetBytesFromBtcAddress(tt.BTCRefundAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+		}
+		lpBtcAddress, err := GetBytesFromBtcAddress(tt.LPBTCAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+		}
+		value, err := GetDerivationValueHash(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
 		if err != nil {
 			t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.ExpectedDerivationValueHash, err)
 		}

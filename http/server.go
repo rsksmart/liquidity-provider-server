@@ -160,12 +160,26 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signature, btcRefAddr, lbcAddr, lpBTCAddr, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
+	quote, err := s.db.GetQuote(req.QuoteHash)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	btcRefAddr, err := federation.GetBytesFromBtcAddress(quote.BTCRefundAddr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	lpBTCAddr, err := federation.GetBytesFromBtcAddress(quote.LPBTCAddr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	lbcAddr, err := getLbcAddressBytes(quote)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	derivationValue, err := federation.GetDerivationValueHash(
 		btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
@@ -173,6 +187,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	signature, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	response.Signature = signature
 
 	netParams := getNetworkParams(s)
@@ -258,27 +277,22 @@ func getFedAddress(s *Server, netParams chaincfg.Params) (btcutil.Address, error
 	return fedAddress, nil
 }
 
-func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, string, []byte, string, error) {
+func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, error) {
 
 	quote, err := s.db.GetQuote(hash)
 	if err != nil {
-		return "", "", nil, "", err
+		return "", err
 	}
 	if quote == nil {
-		return "", "", nil, "", fmt.Errorf("quote not found : %v", hash)
+		return "", fmt.Errorf("quote not found : %v", hash)
 	}
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
 	signature, err := p.SignHash(hashBytes)
 	if err != nil {
-		return "", "", nil, "", err
+		return "", err
 	}
-
-	lbcAddr, err := getLbcAddressBytes(quote)
-	if err != nil {
-		return "", "", nil, "", err
-	}
-	return hex.EncodeToString(signature), quote.BTCRefundAddr, lbcAddr, quote.LPBTCAddr, nil
+	return hex.EncodeToString(signature), nil
 }
 
 func getNetworkParams(s *Server) chaincfg.Params {

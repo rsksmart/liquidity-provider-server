@@ -21,15 +21,7 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-func GetDerivationValueHash(userBtcRefundAddressStr string, lbcAddress []byte, lpBtcAddressStr string, derivationArgumentsHash []byte) ([]byte, error) {
-	userBtcRefundAddr, err := getBytesFromBtcAddress(userBtcRefundAddressStr)
-	if err != nil {
-		return nil, err
-	}
-	lpBtcAddress, err := getBytesFromBtcAddress(lpBtcAddressStr)
-	if err != nil {
-		return nil, err
-	}
+func GetDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.Write(derivationArgumentsHash)
 	buf.Write(userBtcRefundAddr)
@@ -41,7 +33,7 @@ func GetDerivationValueHash(userBtcRefundAddressStr string, lbcAddress []byte, l
 	return derivationValueHash, nil
 }
 
-func getBytesFromBtcAddress(encoded string) ([]byte, error) {
+func GetBytesFromBtcAddress(encoded string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(encoded)
 	if err != nil {
 		return nil, err
@@ -54,12 +46,10 @@ func getBytesFromBtcAddress(encoded string) ([]byte, error) {
 }
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
-
 	flyoverScript, err := GetRedeemScript(fedInfo, derivationValue, netParams)
 	if err != nil {
 		return nil, err
 	}
-
 	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, netParams)
 	if err != nil {
 		return nil, err
@@ -109,7 +99,6 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 	}
 
 	buf.Write(hashBuf.Bytes())
-
 	return buf.Bytes(), nil
 }
 
