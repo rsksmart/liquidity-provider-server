@@ -6,13 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -26,59 +24,24 @@ const (
 	sleepTime time.Duration = 2 * time.Second
 )
 
-type quote struct {
-	FedBTCAddr         [20]byte `abi:"fedBtcAddress"`
-	LBCAddr            [20]byte `abi:"lbcAddress"`
-	LPRSKAddr          [20]byte `abi:"liquidityProviderRskAddress"`
-	BTCRefundAddr      []byte   `abi:"btcRefundAddress"`
-	RSKRefundAddr      [20]byte `abi:"rskRefundAddress"`
-	LPBTCAddr          []byte   `abi:"liquidityProviderBtcAddress"`
-	CallFee            *big.Int `abi:"callFee"`
-	PenaltyFee         *big.Int `abi:"penaltyFee"`
-	ContractAddr       [20]byte `abi:"contractAddress"`
-	Data               []byte   `abi:"data"`
-	GasLimit           *big.Int `abi:"gasLimit"`
-	Nonce              *big.Int `abi:"nonce"`
-	Value              *big.Int `abi:"value"`
-	AgreementTimestamp *big.Int `abi:"agreementTimestamp"`
-	TimeForDeposit     *big.Int `abi:"timeForDeposit"`
-	CallTime           *big.Int `abi:"callTime"`
-	Confirmations      *big.Int `abi:"depositConfirmations"`
-}
-
 type RSK struct {
 	c             *ethclient.Client
-	lbc           *bind.BoundContract
-	lbcAbi        *abi.ABI
+	lbc           *LBC
 	lbcAddress    common.Address
-	bridge        *bind.BoundContract
-	bridgeAbi     *abi.ABI
+	bridge        *RskBridge
 	bridgeAddress common.Address
 }
 
-func NewRSK(lbcAddress string, lbcAbiFile *os.File, bridgeAddress string, bridgeAbiFile *os.File) (*RSK, error) {
+func NewRSK(lbcAddress string, bridgeAddress string) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid LBC contract address")
 	}
-
-	lbcDef, err := loadABI(lbcAbiFile)
-	if err != nil {
-		return nil, fmt.Errorf("error loading LBC abi: %v", err)
-	}
-
-	if !common.IsHexAddress(lbcAddress) {
+	if !common.IsHexAddress(bridgeAddress) {
 		return nil, errors.New("invalid Bridge contract address")
 	}
 
-	bridgeDef, err := loadABI(bridgeAbiFile)
-	if err != nil {
-		return nil, fmt.Errorf("error loading Bridge abi: %v", err)
-	}
-
 	return &RSK{
-		lbcAbi:        lbcDef,
 		lbcAddress:    common.HexToAddress(lbcAddress),
-		bridgeAbi:     bridgeDef,
 		bridgeAddress: common.HexToAddress(bridgeAddress),
 	}, nil
 }
@@ -95,16 +58,23 @@ func (rsk *RSK) Connect(endpoint string) error {
 	if _, err := rsk.GasPrice(); err != nil {
 		return err
 	}
-	log.Debug("connected to RSK node")
-	rsk.lbc = bind.NewBoundContract(rsk.lbcAddress, *rsk.lbcAbi, rsk.c, rsk.c, rsk.c)
-	rsk.bridge = bind.NewBoundContract(rsk.bridgeAddress, *rsk.bridgeAbi, rsk.c, rsk.c, rsk.c)
+	log.Debug("Verified connection to node successfully")
+	rsk.bridge, err = NewRskBridge(rsk.lbcAddress, rsk.c)
+	if err != nil {
+		return err
+	}
+	rsk.lbc, err = NewLBC(rsk.lbcAddress, rsk.c)
+	if err != nil {
+		return err
+	}
+
 	log.Debug("Connected to RSK contracts")
 
 	return nil
 }
 
 func (rsk *RSK) Close() {
-	log.Debug("closing RSK connection")
+	log.Debug("Closing RSK connection")
 	rsk.c.Close()
 }
 
@@ -151,9 +121,8 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 }
 
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
-	var err error
-	results := new([]interface{})
 	opts := bind.CallOpts{}
+	var results [32]byte
 
 	pq, err := parseQuote(q)
 	if err != nil {
@@ -161,173 +130,137 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	}
 
 	for i := 0; i < retries; i++ {
-		err = rsk.lbc.Call(&opts, results, "hashQuote", pq)
-		if len(*results) > 0 {
+		results, err = rsk.lbc.HashQuote(&opts, pq)
+		if err == nil {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
-		return "", fmt.Errorf("error calling hashQuote %v: %v", pq, err)
+	if err != nil {
+		return "", fmt.Errorf("error calling HashQuote: %v", err)
 	}
-	arr := *results
-	bts := getBytes(arr[0])
-
-	return hex.EncodeToString(bts), nil
+	return hex.EncodeToString(results[:]), nil
 }
 
 func (rsk *RSK) GetFedSize() (int, error) {
 	var err error
-	results := new([]interface{})
 	opts := bind.CallOpts{}
+	var results *big.Int
 
 	for i := 0; i < retries; i++ {
-		err = rsk.bridge.Call(&opts, results, "getFederationSize")
-		if len(*results) > 0 {
+		results, err = rsk.bridge.GetFederationSize(&opts)
+		if results != nil {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
-		return 0, fmt.Errorf("error calling getFederationSize: %v", err)
-	}
-	out := *results
-	size := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	sizeInt, err := strconv.Atoi(size.String())
 	if err != nil {
-		return 0, fmt.Errorf("error parsing value from getFederationSize: %v", err)
+		return 0, fmt.Errorf("error calling GetFederationSize: %v", err)
 	}
+
+	sizeInt, err := strconv.Atoi(results.String())
 
 	return sizeInt, nil
 }
 
 func (rsk *RSK) GetFedThreshold() (int, error) {
 	var err error
-	results := new([]interface{})
 	opts := bind.CallOpts{}
+	var results *big.Int
 
 	for i := 0; i < retries; i++ {
-		err = rsk.bridge.Call(&opts, results, "getFederationThreshold")
-		if len(*results) > 0 {
+		results, err = rsk.bridge.GetFederationThreshold(&opts)
+		if results != nil {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
-		return 0, fmt.Errorf("error calling getFederationThreshold: %v", err)
-	}
-	out := *results
-	size := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	sizeInt, err := strconv.Atoi(size.String())
 	if err != nil {
-		return 0, fmt.Errorf("error parsing value from getFederationSize: %v", err)
+		return 0, fmt.Errorf("error calling GetFederationThreshold: %v", err)
 	}
+
+	sizeInt, err := strconv.Atoi(results.String())
 
 	return sizeInt, nil
 }
 
 func (rsk *RSK) GetFedPublicKeyOfType(index int) (string, error) {
 	var err error
-	results := new([]interface{})
+	var results []byte
 	opts := bind.CallOpts{}
 
 	for i := 0; i < retries; i++ {
-		err = rsk.bridge.Call(&opts, results, "getFederatorPublicKeyOfType", big.NewInt(int64(index)), "btc")
-		if len(*results) > 0 {
+		results, err = rsk.bridge.GetFederatorPublicKeyOfType(&opts, big.NewInt(int64(index)), "btc")
+		if len(results) > 0 {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
-		return "", fmt.Errorf("error calling getFederatorPublicKeyOfType: %v", err)
+	if len(results) == 0 {
+		return "", fmt.Errorf("error calling GetFederatorPublicKeyOfType: %v", err)
 	}
-	arr := *results
-	key := getAddrBytes(arr[0])
 
-	return hex.EncodeToString(key), nil
+	return hex.EncodeToString(results), nil
 }
 
 func (rsk *RSK) GetFedAddress() (string, error) {
 	var err error
-	results := new([]interface{})
+	var results string
 	opts := bind.CallOpts{}
 
 	for i := 0; i < retries; i++ {
-		err = rsk.bridge.Call(&opts, results, "getFederationAddress")
-		if len(*results) > 0 {
+		results, err = rsk.bridge.GetFederationAddress(&opts)
+		if results != "" {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
-		return "", fmt.Errorf("error calling getFederationAddress: %v", err)
+	if results == "" {
+		return "", fmt.Errorf("error calling GetFederationAddress: %v", err)
 	}
-	arr := *results
-	addr := arr[0].(string)
-
-	return addr, nil
+	return results, nil
 }
 
 func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 	var err error
-	results := new([]interface{})
 	opts := bind.CallOpts{}
-
+	var results *big.Int
 	for i := 0; i < retries; i++ {
-		err = rsk.bridge.Call(&opts, results, "getActiveFederationCreationBlockHeight")
-		if len(*results) > 0 {
+		results, err = rsk.bridge.GetActiveFederationCreationBlockHeight(&opts)
+		if results != nil {
 			break
 		}
 		time.Sleep(sleepTime)
 	}
-	if len(*results) == 0 {
+	if results == nil {
 		return 0, fmt.Errorf("error calling getActiveFederationCreationBlockHeight: %v", err)
 	}
-	arr := *results
-	heightBigInt := *abi.ConvertType(arr[0], new(*big.Int)).(**big.Int)
-	height, err := strconv.Atoi(heightBigInt.String())
+	height, err := strconv.Atoi(results.String())
 
 	return height, nil
 }
 
-func getBytes(key interface{}) []byte {
-	var bts []byte
-	for _, bt := range key.([32]byte) {
-		bts = append(bts, bt)
-	}
-
-	return bts
-}
-
-func getAddrBytes(key interface{}) []byte {
-	var bts []byte
-	for _, bt := range key.([]byte) {
-		bts = append(bts, bt)
-	}
-
-	return bts
-}
-func parseQuote(q *types.Quote) (*quote, error) {
-	pq := quote{}
+func parseQuote(q *types.Quote) (LiquidityBridgeContractQuote, error) {
+	pq := LiquidityBridgeContractQuote{}
 	var err error
 
-	if err := copyHex(q.FedBTCAddr, pq.FedBTCAddr[:]); err != nil {
-		return nil, fmt.Errorf("error parsing federation address: %v", err)
+	if err := copyHex(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
-	if err := copyHex(q.LBCAddr, pq.LBCAddr[:]); err != nil {
-		return nil, fmt.Errorf("error parsing LBC address: %v", err)
+	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
-	if err := copyHex(q.LPRSKAddr, pq.LPRSKAddr[:]); err != nil {
-		return nil, fmt.Errorf("error parsing provider RSK address: %v", err)
+	if err := copyHex(q.LPRSKAddr, pq.LiquidityProviderRskAddress[:]); err != nil {
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
 	}
-	if err := copyHex(q.RSKRefundAddr, pq.RSKRefundAddr[:]); err != nil {
-		return nil, fmt.Errorf("error parsing RSK refund address: %v", err)
+	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
-	if err := copyHex(q.ContractAddr, pq.ContractAddr[:]); err != nil {
-		return nil, fmt.Errorf("error parsing contract address: %v", err)
+	if err := copyHex(q.ContractAddr, pq.ContractAddress[:]); err != nil {
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing contract address: %v", err)
 	}
 	if pq.Data, err = parseHex(q.Data); err != nil {
-		return nil, fmt.Errorf("error parsing data: %v", err)
+		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing data: %v", err)
 	}
 	pq.CallFee = &q.CallFee
 	pq.PenaltyFee = &q.PenaltyFee
@@ -336,9 +269,9 @@ func parseQuote(q *types.Quote) (*quote, error) {
 	pq.Value = &q.Value
 	pq.AgreementTimestamp = new(big.Int).SetUint64(uint64(q.AgreementTimestamp))
 	pq.CallTime = new(big.Int).SetUint64(uint64(q.CallTime))
-	pq.Confirmations = new(big.Int).SetUint64(uint64(q.Confirmations))
+	pq.DepositConfirmations = new(big.Int).SetUint64(uint64(q.Confirmations))
 	pq.TimeForDeposit = new(big.Int).SetUint64(uint64(q.TimeForDeposit))
-	return &pq, nil
+	return pq, nil
 }
 
 func copyHex(str string, dst []byte) error {
@@ -356,12 +289,4 @@ func parseHex(str string) ([]byte, error) {
 		return nil, err
 	}
 	return bts, nil
-}
-
-func loadABI(in *os.File) (*abi.ABI, error) {
-	definition, err := abi.JSON(in)
-	if err != nil {
-		return nil, err
-	}
-	return &definition, nil
 }

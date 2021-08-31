@@ -1,7 +1,6 @@
 package connectors
 
 import (
-	"os"
 	"testing"
 )
 
@@ -20,16 +19,9 @@ var invalidAddresses = []struct {
 }
 
 func testNewRSKWithInvalidAddresses(t *testing.T) {
-	abiFile, err := os.Open("abi_test.json")
-	if err != nil {
-		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
-	}
-	bridgeAbi, err := os.Open("abi_test_2.json")
-	if err != nil {
-		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
-	}
+
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, abiFile, tt.input, bridgeAbi)
+		res, err := NewRSK(tt.input, tt.input)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -44,17 +36,8 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 }
 
 func testNewRSKWithValidAddresses(t *testing.T) {
-	abiFile, err := os.Open("abi_test.json")
-	if err != nil {
-		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
-	}
-	bridgeAbi, err := os.Open("abi_test_2.json")
-	if err != nil {
-		t.Errorf("Unexpected error while opening abi mock file %v: %v", "abi_test.json", err)
-	}
-
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, abiFile, tt.input, bridgeAbi)
+		res, err := NewRSK(tt.input, tt.input)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
