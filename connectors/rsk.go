@@ -59,7 +59,7 @@ func (rsk *RSK) Connect(endpoint string) error {
 		return err
 	}
 	log.Debug("Verified connection to node successfully")
-	rsk.bridge, err = NewRskBridge(rsk.lbcAddress, rsk.c)
+	rsk.bridge, err = NewRskBridge(rsk.bridgeAddress, rsk.c)
 	if err != nil {
 		return err
 	}
