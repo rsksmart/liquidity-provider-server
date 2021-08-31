@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -20,25 +21,35 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-func GetDerivationValueHash(userBtcRefundAddress []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) []byte {
-	var resultData []byte
-	resultData = append(resultData, derivationArgumentsHash...)
-	resultData = append(resultData, userBtcRefundAddress...)
-	resultData = append(resultData, lpBtcAddress...)
-	resultData = append(resultData, lbcAddress...)
+func GetDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write(derivationArgumentsHash)
+	buf.Write(userBtcRefundAddr)
+	buf.Write(lbcAddress)
+	buf.Write(lpBtcAddress)
 
-	derivationValueHash := crypto.Keccak256(resultData)
+	derivationValueHash := crypto.Keccak256(buf.Bytes())
 
-	return derivationValueHash
+	return derivationValueHash, nil
+}
+
+func GetBytesFromBtcAddress(encoded string) ([]byte, error) {
+	addressBts, ver, err := base58.CheckDecode(encoded)
+	if err != nil {
+		return nil, err
+	}
+	var bts bytes.Buffer
+	bts.WriteByte(ver)
+	bts.Write(addressBts)
+
+	return bts.Bytes(), nil
 }
 
 func GetDerivedBitcoinAddressHash(derivationValue []byte, fedInfo *FedInfo, netParams *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
-
 	flyoverScript, err := GetRedeemScript(fedInfo, derivationValue, netParams)
 	if err != nil {
 		return nil, err
 	}
-
 	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, netParams)
 	if err != nil {
 		return nil, err
@@ -88,21 +99,16 @@ func GetRedeemScript(info *FedInfo, derivationValue []byte, params *chaincfg.Par
 	}
 
 	buf.Write(hashBuf.Bytes())
-
-
 	return buf.Bytes(), nil
 }
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
-	if len(hash) != 20 {
-		return nil, fmt.Errorf("unexpected hash length %v", len(hash))
-	}
-	hashLength, err := hex.DecodeString("20")
+	hashPrefix, err := hex.DecodeString("20")
 	if err != nil {
 		return nil, err
 	}
-	buf.Write(hashLength)
+	buf.Write(hashPrefix)
 	buf.Write(hash)
 	buf.WriteByte(txscript.OP_DROP)
 

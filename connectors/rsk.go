@@ -326,12 +326,6 @@ func parseQuote(q *types.Quote) (*quote, error) {
 	if err := copyHex(q.ContractAddr, pq.ContractAddr[:]); err != nil {
 		return nil, fmt.Errorf("error parsing contract address: %v", err)
 	}
-	if pq.BTCRefundAddr, err = parseHex(q.BTCRefundAddr); err != nil {
-		return nil, fmt.Errorf("error parsing BTC refund address: %v", err)
-	}
-	if pq.LPBTCAddr, err = parseHex(q.LPBTCAddr); err != nil {
-		return nil, fmt.Errorf("error parsing provider BTC address: %v", err)
-	}
 	if pq.Data, err = parseHex(q.Data); err != nil {
 		return nil, fmt.Errorf("error parsing data: %v", err)
 	}
