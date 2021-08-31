@@ -14,12 +14,12 @@ Computes and returns a quote for the service.
 
 #### Parameters
 
-    callContractAddress (string) - Hex-encoded contract address.
-    callContractArguments (string) - Hex-encoded contract data.
-    valueToTransfer (int) - Value to send in the call.
+    contractAddr (string) - Hex-encoded contract address.
+    data (string) - Hex-encoded contract data.
+    value (int) - Value to send in the call.
     gasLimit (int) - Gas limit to use in the call.
-    rskRefundAddress (string) - Hex-encoded user RSK refund address.
-    bitcoinRefundAddress (string) - Base58-encoded user Bitcoin refund address.
+    rskRefundAddr (string) - Hex-encoded user RSK refund address.
+    btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
 
 #### Returns
 
@@ -27,13 +27,13 @@ Computes and returns a quote for the service.
 
         fedBtcAddress;                    // the BTC address of the Powpeg
         lbcAddress;                       // the address of the LBC
-        liquidityProviderRskAddress;      // the RSK address of the LP
+        lpRSKAddr;                        // the RSK address of the LP
         btcRefundAddress;                 // a user BTC refund address
         rskRefundAddress;                 // a user RSK refund address 
-        liquidityProviderBtcAddress;      // the BTC address of the LP
+        lpBTCAddr;                        // the BTC address of the LP
         callFee;                          // the fee charged by the LP
         penaltyFee;                       // the penalty that the LP pays if it fails to deliver the service
-        contractAddress;                  // the destination address of the peg-in
+        contractAddr;                     // the destination address of the peg-in
         data;                             // the arguments to send in the call
         gasLimit;                         // the gas limit
         nonce;                            // a nonce that uniquely identifies this quote
@@ -41,7 +41,7 @@ Computes and returns a quote for the service.
         agreementTimestamp;               // the timestamp of the agreement
         timeForDeposit;                   // the time (in seconds) that the user has to achieve one confirmation on the BTC deposit
         callTime;                         // the time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations
-        depositConfirmations;             // the number of confirmations that the LP requires before making the call
+        confirmations;                   // the number of confirmations that the LP requires before making the call
     
 ### acceptQuote
 
