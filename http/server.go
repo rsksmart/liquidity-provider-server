@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	"net/http"
 	"time"
+
+	"github.com/btcsuite/btcutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	federation "github.com/rsksmart/liquidity-provider-server/helpers"
@@ -27,19 +27,19 @@ type Server struct {
 	srv                  http.Server
 	providers            []providers.LiquidityProvider
 	rsk                  *connectors.RSK
+	btc                  *connectors.BTC
 	db                   *storage.DB
-	isTestNet            bool
 	irisActivationHeight int
 	erpKeys              []string
 }
 
-func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool, irisActivationHeight int, erpKeys []string) Server {
+func New(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB, irisActivationHeight int, erpKeys []string) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:                  rsk,
+		btc:                  btc,
 		db:                   db,
 		providers:            liqProviders,
-		isTestNet:            isTestNet,
 		irisActivationHeight: irisActivationHeight,
 		erpKeys:              erpKeys,
 	}
@@ -194,8 +194,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response.Signature = signature
 
-	netParams := getNetworkParams(s)
-
 	fedSize, err := s.rsk.GetFedSize()
 	if err != nil {
 		log.Error("error fetching federation size: ", err.Error())
@@ -222,7 +220,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fedAddress, err := getFedAddress(s, netParams)
+	fedAddress, err := s.getFedAddress()
 	if err != nil {
 		log.Error("error fetching federation address: ", err.Error())
 		http.Error(w, "there was an error retrieving the fed address.", http.StatusInternalServerError)
@@ -245,7 +243,8 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ErpKeys:              s.erpKeys,
 	}
 
-	derivedFedAddress, err := federation.GetDerivedBitcoinAddressHash(derivationValue, fedInfo, &netParams)
+	params := s.btc.GetParams()
+	derivedFedAddress, err := federation.GetDerivedBitcoinAddressHash(derivationValue, fedInfo, &params)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -265,12 +264,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getFedAddress(s *Server, netParams chaincfg.Params) (btcutil.Address, error) {
+func (s *Server) getFedAddress() (btcutil.Address, error) {
 	fedAddressStr, err := s.rsk.GetFedAddress()
 	if err != nil {
 		return nil, err
 	}
-	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &netParams)
+	params := s.btc.GetParams()
+	fedAddress, err := btcutil.DecodeAddress(fedAddressStr, &params)
 	if err != nil {
 		return nil, err
 	}
@@ -293,16 +293,6 @@ func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, er
 		return "", err
 	}
 	return hex.EncodeToString(signature), nil
-}
-
-func getNetworkParams(s *Server) chaincfg.Params {
-	var netParams chaincfg.Params
-	if s.isTestNet {
-		netParams = chaincfg.TestNet3Params
-	} else {
-		netParams = chaincfg.MainNetParams
-	}
-	return netParams
 }
 
 func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {
