@@ -21,7 +21,6 @@ type config struct {
 	Debug                bool
 	FedAddr              string
 	IrisActivationHeight int
-	IsTestNet            bool
 	ErpKeys              []string
 
 	Server struct {
@@ -37,6 +36,9 @@ type config struct {
 	}
 	BTC struct {
 		Endpoint string
+		Username string
+		Password string
+		Network  string
 	}
 	Provider struct {
 		Keystore    string
@@ -74,14 +76,14 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, db *storage.DB) {
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
 	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), pwdFile)
 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys)
+	srv = http.New(rsk, btc, db, cfg.IrisActivationHeight, cfg.ErpKeys)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
@@ -120,14 +122,21 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
+	btc := connectors.NewBTC()
+	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, cfg.BTC.Network)
+	if err != nil {
+		log.Fatal("error connecting to BTC: ", err)
+	}
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, db)
+	startServer(rsk, btc, db)
 
 	<-done
 
 	srv.Shutdown()
 	db.Close()
 	rsk.Close()
+	btc.Close()
 }
