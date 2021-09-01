@@ -33,9 +33,7 @@ type config struct {
 	RSK struct {
 		Endpoint   string
 		LBCAddr    string
-		LBCABI     string
 		BridgeAddr string
-		BridgeABI  string
 	}
 	BTC struct {
 		Endpoint string
@@ -112,15 +110,7 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	lbcAbiFile, err := os.Open(cfg.RSK.LBCABI)
-	if err != nil {
-		log.Fatal("error loading abi file: ", err)
-	}
-	bridgeAbiFile, err := os.Open(cfg.RSK.BridgeABI)
-	if err != nil {
-		log.Fatal("error loading abi file: ", err)
-	}
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, lbcAbiFile, cfg.RSK.BridgeAddr, bridgeAbiFile)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
