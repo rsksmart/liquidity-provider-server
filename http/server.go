@@ -205,7 +205,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var pubKeys []string
 	for i := 0; i < fedSize; i++ {
-		pubKey, err := s.rsk.GetFedPublicKeyOfType(i)
+		pubKey, err := s.rsk.GetFedPublicKey(i)
 		if err != nil {
 			log.Error("error fetching fed public key: ", err.Error())
 			http.Error(w, "there was an error retrieving public key from fed.", http.StatusInternalServerError)
