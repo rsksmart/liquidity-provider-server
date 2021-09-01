@@ -36,7 +36,7 @@ type Server struct {
 	lbcAddr              string
 }
 
-func New(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB, isTestNet bool, irisActivationHeight int, erpKeys []string, lbcAddr string) Server {
+func New(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB, irisActivationHeight int, erpKeys []string, lbcAddr string) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:                  rsk,

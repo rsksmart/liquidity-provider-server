@@ -59,7 +59,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
+	srv = http.New(rsk, btc, db, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
