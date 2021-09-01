@@ -4,7 +4,6 @@ type config struct {
 	LogFile              string
 	Debug                bool
 	IrisActivationHeight int
-	IsTestNet            bool
 	ErpKeys              []string
 
 	Server struct {
