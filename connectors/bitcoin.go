@@ -13,31 +13,53 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/bloom"
 	log "github.com/sirupsen/logrus"
+
+	"encoding/hex"
+
+	"github.com/btcsuite/btcd/txscript"
+
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type BTC struct {
-	c      *rpcclient.Client
-	chans  map[string]*chan bool
-	params chaincfg.Params
+	c       *rpcclient.Client
+	chans   map[string]*chan bool
+	params  chaincfg.Params
+	fedInfo *FedInfo
+}
+
+type FedInfo struct {
+	FedSize              int
+	FedThreshold         int
+	PubKeys              []string
+	FedAddress           string
+	ActiveFedBlockHeight int
+	IrisActivationHeight int
+	ErpKeys              []string
 }
 
 type AddressWatcher interface {
 	OnNewConfirmation(txHash string, confirmations int64, amount float64)
 }
 
-func NewBTC() *BTC {
-	return &BTC{chans: make(map[string]*chan bool)}
-}
-
-func (btc *BTC) Connect(endpoint string, username string, password string, network string) error {
+func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
+	btc := BTC{
+		chans:   make(map[string]*chan bool),
+		fedInfo: &fedInfo,
+	}
 	switch network {
 	case "mainnet":
 		btc.params = chaincfg.MainNetParams
 	case "testnet":
 		btc.params = chaincfg.TestNet3Params
 	default:
-		return fmt.Errorf("invalid network name: %v", network)
+		return nil, fmt.Errorf("invalid network name: %v", network)
 	}
+	return &btc, nil
+}
+
+func (btc *BTC) Connect(endpoint string, username string, password string) error {
 	config := rpcclient.ConnConfig{
 		Host:         endpoint,
 		User:         username,
@@ -136,6 +158,33 @@ func (btc *BTC) SerializeTx(txHash string) ([]byte, error) {
 	return serializeTx(rawTx)
 }
 
+func (btc *BTC) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	derivationValue, err := getDerivationValueHash(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	if err != nil {
+		return "", fmt.Errorf("error computing derivation value: %v", err)
+	}
+	flyoverScript, err := btc.getRedeemScript(derivationValue)
+	if err != nil {
+		return "", fmt.Errorf("error generating redeem script: %v", err)
+	}
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, &btc.params)
+	if err != nil {
+		return "", err
+	}
+	return addressScriptHash.EncodeAddress(), nil
+}
+
+func DecodeBTCAddress(address string) ([]byte, error) {
+	addressBts, ver, err := base58.CheckDecode(address)
+	if err != nil {
+		return nil, err
+	}
+	var bts bytes.Buffer
+	bts.WriteByte(ver)
+	bts.Write(addressBts)
+	return bts.Bytes(), nil
+}
+
 func serializeTx(tx *btcutil.Tx) ([]byte, error) {
 	var buf bytes.Buffer
 	err := tx.MsgTx().SerializeNoWitness(&buf)
@@ -202,4 +251,234 @@ func (btc *BTC) getBlockHash(txHash string) (*chainhash.Hash, error) {
 		return nil, fmt.Errorf("error parsing block hash %v: %v", tx.BlockHash, err)
 	}
 	return blockHash, nil
+}
+
+func getDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write(derivationArgumentsHash)
+	buf.Write(userBtcRefundAddr)
+	buf.Write(lbcAddress)
+	buf.Write(lpBtcAddress)
+
+	derivationValueHash := crypto.Keccak256(buf.Bytes())
+
+	return derivationValueHash, nil
+}
+
+func (btc *BTC) validateRedeemScript(script []byte) error {
+	addr, err := btcutil.NewAddressScriptHash(script, &btc.params)
+	if err != nil {
+		return err
+	}
+
+	fedAddrB, err := DecodeBTCAddress(btc.fedInfo.FedAddress)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(addr.ScriptAddress(), fedAddrB) {
+		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
+	}
+	return nil
+}
+
+func (btc *BTC) getRedeemScript(derivationValue []byte) ([]byte, error) {
+	var hashBuf *bytes.Buffer
+
+	buf, err := getFlyoverPrefix(derivationValue)
+	if err != nil {
+		return nil, err
+	}
+
+	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
+	if btc.fedInfo.ActiveFedBlockHeight < btc.fedInfo.IrisActivationHeight {
+		hashBuf, err = btc.getPowPegRedeemScriptBuf(true)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		hashBuf, err = btc.getErpRedeemScriptBuf()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = btc.validateRedeemScript(hashBuf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Write(hashBuf.Bytes())
+	return buf.Bytes(), nil
+}
+
+func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	hashPrefix, err := hex.DecodeString("20")
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(hashPrefix)
+	buf.Write(hash)
+	buf.WriteByte(txscript.OP_DROP)
+
+	return &buf, nil
+}
+
+func (btc *BTC) getPowPegRedeemScriptBuf(addMultiSig bool) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	sb := txscript.NewScriptBuilder()
+	err := btc.addStdNToMScriptPart(sb)
+	if err != nil {
+		return nil, err
+	}
+	if addMultiSig {
+		sb.AddOp(txscript.OP_CHECKMULTISIG)
+	}
+
+	sbuf, err := sb.Script()
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(sbuf)
+	return &buf, nil
+}
+
+func (btc *BTC) getErpRedeemScriptBuf() (*bytes.Buffer, error) {
+	erpRedeemScriptBuf, err := btc.p2ms(false)
+	if err != nil {
+		return nil, err
+	}
+	powPegRedeemScriptBuf, err := btc.getPowPegRedeemScriptBuf(false)
+	if err != nil {
+		return nil, err
+	}
+	scriptsA := txscript.NewScriptBuilder()
+	scriptsA.AddOp(txscript.OP_NOTIF)
+	var erpRedeemScriptBuffer bytes.Buffer
+	scrA, err := scriptsA.Script()
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(scrA)
+	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
+	byteArr, err := hex.DecodeString("02")
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(byteArr)
+
+	csv, err := hex.DecodeString(btc.getCsvValueFromNetwork())
+	if err != nil {
+		return nil, err
+	}
+	erpRedeemScriptBuffer.Write(csv)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKSEQUENCEVERIFY)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_DROP)
+	erpRedeemScriptBuffer.Write(erpRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_ENDIF)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKMULTISIG)
+
+	return &erpRedeemScriptBuffer, nil
+}
+
+func (btc *BTC) p2ms(addMultiSig bool) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	sb := txscript.NewScriptBuilder()
+	err := btc.addErpNToMScriptPart(sb)
+	if err != nil {
+		return nil, err
+	}
+	if addMultiSig {
+		sb.AddOp(txscript.OP_CHECKMULTISIG)
+	}
+	sbuf, err := sb.Script()
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(sbuf)
+	return &buf, nil
+}
+
+func (btc *BTC) getCsvValueFromNetwork() string {
+	switch btc.params.Name {
+	case chaincfg.MainNetParams.Name:
+		return "CD50"
+	case chaincfg.TestNet3Params.Name:
+		return "CD50"
+	default: // RegTest
+		return "01F4"
+	}
+}
+
+func (btc *BTC) addStdNToMScriptPart(builder *txscript.ScriptBuilder) error {
+	builder.AddOp(getOpCodeFromInt(btc.fedInfo.FedThreshold))
+
+	for _, pubKey := range btc.fedInfo.PubKeys {
+		pkBuffer, err := hex.DecodeString(pubKey)
+		if err != nil {
+			return err
+		}
+		builder.AddData(pkBuffer)
+	}
+
+	builder.AddOp(getOpCodeFromInt(btc.fedInfo.FedSize))
+
+	return nil
+}
+
+func (btc *BTC) addErpNToMScriptPart(builder *txscript.ScriptBuilder) error {
+	size := len(btc.fedInfo.ErpKeys)
+	min := size/2 + 1
+	builder.AddOp(getOpCodeFromInt(min))
+
+	for _, pubKey := range btc.fedInfo.ErpKeys {
+		pkBuffer, err := hex.DecodeString(pubKey)
+		if err != nil {
+			return err
+		}
+		builder.AddData(pkBuffer)
+	}
+
+	builder.AddOp(getOpCodeFromInt(len(btc.fedInfo.ErpKeys)))
+
+	return nil
+}
+
+func getOpCodeFromInt(val int) byte {
+	switch val {
+	case 1:
+		return txscript.OP_1
+	case 2:
+		return txscript.OP_2
+	case 3:
+		return txscript.OP_3
+	case 4:
+		return txscript.OP_4
+	case 5:
+		return txscript.OP_5
+	case 6:
+		return txscript.OP_6
+	case 7:
+		return txscript.OP_7
+	case 8:
+		return txscript.OP_8
+	case 9:
+		return txscript.OP_9
+	case 10:
+		return txscript.OP_10
+	case 11:
+		return txscript.OP_11
+	case 12:
+		return txscript.OP_12
+	case 13:
+		return txscript.OP_13
+	case 14:
+		return txscript.OP_14
+	case 15:
+		return txscript.OP_15
+	default:
+		return txscript.OP_16
+	}
 }

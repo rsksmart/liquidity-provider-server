@@ -245,8 +245,22 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 		return 0, fmt.Errorf("error calling getActiveFederationCreationBlockHeight: %v", err)
 	}
 	height, err := strconv.Atoi(results.String())
-
+	if err != nil {
+		return 0, err
+	}
 	return height, nil
+}
+
+func (rsk *RSK) GetLBCAddress() string {
+	return rsk.lbcAddress.String()
+}
+
+func DecodeRSKAddress(address string) ([]byte, error) {
+	trim := strings.Trim(address, "0x")
+	if !common.IsHexAddress(trim) {
+		return nil, fmt.Errorf("invalid address: %v", address)
+	}
+	return common.HexToAddress(trim).Bytes(), nil
 }
 
 func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
