@@ -159,7 +159,9 @@ func (rsk *RSK) GetFedSize() (int, error) {
 	}
 
 	sizeInt, err := strconv.Atoi(results.String())
-
+	if err != nil {
+		return 0, fmt.Errorf("error converting federation size to int. error: %v", err)
+	}
 	return sizeInt, nil
 }
 
@@ -180,6 +182,9 @@ func (rsk *RSK) GetFedThreshold() (int, error) {
 	}
 
 	sizeInt, err := strconv.Atoi(results.String())
+	if err != nil {
+		return 0, fmt.Errorf("error converting federation size to int. error: %v", err)
+	}
 
 	return sizeInt, nil
 }
