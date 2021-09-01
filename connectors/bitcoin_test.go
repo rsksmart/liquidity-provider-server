@@ -55,6 +55,48 @@ var (
 	}
 )
 
+func TestSerializeTx(t *testing.T) {
+	expected := "01000000010000000000000000000000000000000000000000000000000000000000000000" +
+		"ffffffff5f034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe" +
+		"6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b10000000000000" +
+		"0010c56e6700d262d24bd851bb829f9f0000ffffffff0401b3cc25000000001976a914536ffa992491" +
+		"508dca0354e52f32a3a7a679a53a88ac00000000000000002b6a2952534b424c4f434b3a040c866ad2" +
+		"fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce90000000000000000266a24b9e11b" +
+		"6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b0000000000000000" +
+		"266a24aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b800000000"
+
+	// this is block 0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3
+	f, err := os.Open("./testdata/test_block")
+	if err != nil {
+		t.Error("error opening test block file: ", err)
+	}
+	b, err := io.ReadAll(f)
+	if err != nil {
+		t.Error("error reading test file: ", err)
+	}
+	s := string(b)
+	h, err := hex.DecodeString(s)
+	if err != nil {
+		t.Error("error decoding test file: ", err)
+	}
+
+	block, err := btcutil.NewBlockFromBytes(h)
+	if err != nil {
+		t.Error("error parsing test block: ", err)
+	}
+	tx, err := block.Tx(0)
+	if err != nil {
+		t.Error("error reading transaction from test block: ", err)
+	}
+	result, err := serializeTx(tx)
+	if err != nil {
+		t.Error(err)
+	}
+	if hex.EncodeToString(result) != expected {
+		t.Errorf("serialized tx does not match expected: %x \n----\n %v", result, expected)
+	}
+}
+
 func TestPMTSerialization(t *testing.T) {
 	// this is block 0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3
 	f, err := os.Open("./testdata/test_block")
@@ -77,7 +119,7 @@ func TestPMTSerialization(t *testing.T) {
 	}
 
 	for _, p := range expectedPmts {
-		serializedPMT, err := SerializePMT(p.h, block)
+		serializedPMT, err := serializePMT(p.h, block)
 		if err != nil {
 			t.Errorf("error serializing PMT:\n %v", p.h)
 		}

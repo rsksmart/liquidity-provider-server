@@ -20,7 +20,10 @@
         "bridgeAddr": "0x00d80aA033fb51F191563B08Dc035fA128e942C5"
     },
     "btc": {
-        "endpoint": ""
+        "endpoint": "127.0.0.1:8332",
+        "username": "myusername",
+        "password": "mypass",
+        "network": "mainnet"
     },
     "provider": {
         "keystore": ".geth_keystore",

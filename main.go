@@ -45,7 +45,7 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, db *storage.DB) {
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
 	providerCfg := providers.ProviderConfig{
 		PwdFile:    pwdFile,
@@ -58,7 +58,8 @@ func startServer(rsk *connectors.RSK, db *storage.DB) {
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
+
+	srv = http.New(rsk, btc, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
@@ -97,14 +98,21 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
+	btc := connectors.NewBTC()
+	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, cfg.BTC.Network)
+	if err != nil {
+		log.Fatal("error connecting to BTC: ", err)
+	}
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, db)
+	startServer(rsk, btc, db)
 
 	<-done
 
 	srv.Shutdown()
 	db.Close()
 	rsk.Close()
+	btc.Close()
 }
