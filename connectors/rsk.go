@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/big"
 	"strconv"
 	"strings"
@@ -26,9 +27,9 @@ const (
 
 type RSK struct {
 	c             *ethclient.Client
-	lbc           *LBC
+	lbc           *bindings.LBC
 	lbcAddress    common.Address
-	bridge        *RskBridge
+	bridge        *bindings.RskBridge
 	bridgeAddress common.Address
 }
 
@@ -59,11 +60,11 @@ func (rsk *RSK) Connect(endpoint string) error {
 		return err
 	}
 	log.Debug("Verified connection to node successfully")
-	rsk.bridge, err = NewRskBridge(rsk.bridgeAddress, rsk.c)
+	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
 	if err != nil {
 		return err
 	}
-	rsk.lbc, err = NewLBC(rsk.lbcAddress, rsk.c)
+	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func (rsk *RSK) GetFedThreshold() (int, error) {
 	return sizeInt, nil
 }
 
-func (rsk *RSK) GetFedPublicKeyOfType(index int) (string, error) {
+func (rsk *RSK) GetFedPublicKey(index int) (string, error) {
 	var err error
 	var results []byte
 	opts := bind.CallOpts{}
@@ -245,27 +246,27 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 	return height, nil
 }
 
-func parseQuote(q *types.Quote) (LiquidityBridgeContractQuote, error) {
-	pq := LiquidityBridgeContractQuote{}
+func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 
 	if err := copyHex(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
 	if err := copyHex(q.LPRSKAddr, pq.LiquidityProviderRskAddress[:]); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
 	}
 	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 	if err := copyHex(q.ContractAddr, pq.ContractAddress[:]); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing contract address: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing contract address: %v", err)
 	}
 	if pq.Data, err = parseHex(q.Data); err != nil {
-		return LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing data: %v", err)
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing data: %v", err)
 	}
 	pq.CallFee = &q.CallFee
 	pq.PenaltyFee = &q.PenaltyFee
