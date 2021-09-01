@@ -16,35 +16,6 @@ import (
 	"github.com/tkanos/gonfig"
 )
 
-type config struct {
-	LogFile              string
-	Debug                bool
-	FedAddr              string
-	IrisActivationHeight int
-	IsTestNet            bool
-	ErpKeys              []string
-
-	Server struct {
-		Port uint
-	}
-	DB struct {
-		Path string
-	}
-	RSK struct {
-		Endpoint   string
-		LBCAddr    string
-		BridgeAddr string
-	}
-	BTC struct {
-		Endpoint string
-	}
-	Provider struct {
-		Keystore    string
-		AccountNum  uint
-		PwdFilePath string
-	}
-}
-
 var (
 	cfg config
 	srv http.Server
@@ -76,12 +47,18 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, db *storage.DB) {
 	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
-	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), pwdFile)
+	providerCfg := providers.ProviderConfig{
+		PwdFile:    pwdFile,
+		Keydir:     cfg.Provider.Keystore,
+		BtcAddr:    cfg.Provider.BtcAddress,
+		AccountNum: cfg.Provider.RskAccountNum,
+	}
+	lp, err := providers.NewLocalProvider(providerCfg)
 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys)
+	srv = http.New(rsk, db, cfg.IsTestNet, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 

@@ -1,7 +1,6 @@
 {
     "logFile": "",
     "debug": true,
-    "fedAddr": "123",
     "isTestNet": true,
     "irisActivationHeight": 226000,
     "erpKeys": [
@@ -25,7 +24,8 @@
     },
     "provider": {
         "keystore": ".geth_keystore",
-        "accountNum": 0,
+        "btcAddress": "2MpfeJdaLuMxuzwyEPgbt3puk1146Drc91f",
+        "rskAccountNum": 0,
         "pwdFilePath": "pwd.txt"
     }
 }

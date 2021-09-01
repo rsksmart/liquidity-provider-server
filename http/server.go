@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/http/models"
 	"net/http"
 	"time"
 
@@ -31,9 +32,10 @@ type Server struct {
 	isTestNet            bool
 	irisActivationHeight int
 	erpKeys              []string
+	lbcAddr              string
 }
 
-func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool, irisActivationHeight int, erpKeys []string) Server {
+func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool, irisActivationHeight int, erpKeys []string, lbcAddr string) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:                  rsk,
@@ -42,6 +44,7 @@ func New(rsk *connectors.RSK, db *storage.DB, isTestNet bool, irisActivationHeig
 		isTestNet:            isTestNet,
 		irisActivationHeight: irisActivationHeight,
 		erpKeys:              erpKeys,
+		lbcAddr:              lbcAddr,
 	}
 }
 
@@ -83,17 +86,17 @@ func (s *Server) Shutdown() {
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	q := types.Quote{}
+	qr := models.QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	err := dec.Decode(&q)
+	err := dec.Decode(&qr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Debug("received quote request: ", fmt.Sprintf("%+v", q))
+	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 
-	gas, err := s.rsk.EstimateGas(q.ContractAddr, q.Value, []byte(q.Data))
+	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer, []byte(qr.CallContractArguments))
 	if err != nil {
 		log.Error("error estimating gas: ", err.Error())
 		http.Error(w, "error estimating gas", http.StatusInternalServerError)
@@ -108,13 +111,16 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var quotes []*types.Quote
-	// TODO: fill in LBC and Fed address with existing info and prevent receiving it from the request payload
+	fedAddress, err := s.rsk.GetFedAddress()
+	if err != nil {
+		log.Error("error retrieving federation address: ", err.Error())
+		http.Error(w, "error retrieving federation address", http.StatusInternalServerError)
+		return
+	}
 
+	q := parseReqToQuote(qr, s.lbcAddr, fedAddress)
 	for _, p := range s.providers {
 		pq := p.GetQuote(q, gas, *price)
-
-		// TODO: validate that the received quote matches the expected params
-
 		if pq != nil {
 			err = s.storeQuote(pq)
 
@@ -132,6 +138,19 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error("error encoding quote list: ", err.Error())
 		http.Error(w, "error processing quotes", http.StatusInternalServerError)
 		return
+	}
+}
+
+func parseReqToQuote(qr models.QuoteRequest, lbcAddr string, fedAddr string) types.Quote {
+	return types.Quote{
+		LBCAddr:       lbcAddr,
+		FedBTCAddr:    fedAddr,
+		BTCRefundAddr: qr.BitcoinRefundAddress,
+		RSKRefundAddr: qr.RskRefundAddress,
+		ContractAddr:  qr.CallContractAddress,
+		Data:          qr.CallContractArguments,
+		Value:         qr.ValueToTransfer,
+		GasLimit:      qr.GasLimit,
 	}
 }
 
