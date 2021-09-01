@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/btcsuite/btcutil"
 	"net/http"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg"
-  "github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/http/models"
 
 	"github.com/ethereum/go-ethereum/common"
