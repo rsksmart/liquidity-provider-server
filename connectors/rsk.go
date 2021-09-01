@@ -5,7 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+
 	"math/big"
 	"strconv"
 	"strings"
@@ -250,8 +253,11 @@ func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 
-	if err := copyHex(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
+	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
+	}
+	if err := copyBtcAddr(q.BTCRefundAddr, pq.BtcRefundAddress[:]); err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
@@ -278,6 +284,15 @@ func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq.DepositConfirmations = new(big.Int).SetUint64(uint64(q.Confirmations))
 	pq.TimeForDeposit = new(big.Int).SetUint64(uint64(q.TimeForDeposit))
 	return pq, nil
+}
+
+func copyBtcAddr(addr string, dst []byte) error {
+	addressBts, _, err := base58.CheckDecode(addr)
+	if err != nil {
+		return err
+	}
+	copy(dst, addressBts)
+	return nil
 }
 
 func copyHex(str string, dst []byte) error {

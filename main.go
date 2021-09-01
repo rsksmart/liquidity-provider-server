@@ -11,41 +11,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/storage"
-	providers "github.com/rsksmart/liquidity-provider/providers"
+	"github.com/rsksmart/liquidity-provider/providers"
 	log "github.com/sirupsen/logrus"
 	"github.com/tkanos/gonfig"
 )
-
-type config struct {
-	LogFile              string
-	Debug                bool
-	FedAddr              string
-	IrisActivationHeight int
-	ErpKeys              []string
-
-	Server struct {
-		Port uint
-	}
-	DB struct {
-		Path string
-	}
-	RSK struct {
-		Endpoint   string
-		LBCAddr    string
-		BridgeAddr string
-	}
-	BTC struct {
-		Endpoint string
-		Username string
-		Password string
-		Network  string
-	}
-	Provider struct {
-		Keystore    string
-		AccountNum  uint
-		PwdFilePath string
-	}
-}
 
 var (
 	cfg config
@@ -78,12 +47,19 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
-	lp, err := providers.NewLocalProvider(cfg.Provider.Keystore, int(cfg.Provider.AccountNum), pwdFile)
+	providerCfg := providers.ProviderConfig{
+		PwdFile:    pwdFile,
+		Keydir:     cfg.Provider.Keystore,
+		BtcAddr:    cfg.Provider.BtcAddress,
+		AccountNum: cfg.Provider.RskAccountNum,
+	}
+	lp, err := providers.NewLocalProvider(providerCfg)
 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	srv = http.New(rsk, btc, db, cfg.IrisActivationHeight, cfg.ErpKeys)
+
+	srv = http.New(rsk, btc, db, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
