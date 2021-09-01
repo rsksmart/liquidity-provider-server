@@ -20,6 +20,9 @@ type config struct {
 	}
 	BTC struct {
 		Endpoint string
+		Username string
+		Password string
+		Network  string
 	}
 	Provider struct {
 		Keystore      string
