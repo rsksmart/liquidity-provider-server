@@ -162,7 +162,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	btcRefAddr, lbcAddr, lpBTCAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LBCAddr, quote.LPBTCAddr)
+	btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
