@@ -47,6 +47,10 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
+	if err != nil {
+		log.Fatal("cannot read password file: ", err)
+	}
+
 	providerCfg := providers.ProviderConfig{
 		PwdFile:    pwdFile,
 		Keydir:     cfg.Provider.Keystore,
@@ -59,7 +63,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, db, cfg.IrisActivationHeight, cfg.ErpKeys, cfg.RSK.LBCAddr)
+	srv = http.New(rsk, btc, db)
 	srv.AddProvider(lp)
 	port := cfg.Server.Port
 
@@ -73,6 +77,50 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 			log.Error("server error: ", err.Error())
 		}
 	}()
+}
+
+func initFederation(rsk connectors.RSK) (*connectors.FedInfo, error) {
+	fedSize, err := rsk.GetFedSize()
+	if err != nil {
+		return nil, err
+	}
+
+	var pubKeys []string
+	for i := 0; i < fedSize; i++ {
+		pubKey, err := rsk.GetFedPublicKey(i)
+		if err != nil {
+			log.Error("error fetching fed public key: ", err.Error())
+			return nil, err
+		}
+		pubKeys = append(pubKeys, pubKey)
+	}
+
+	fedThreshold, err := rsk.GetFedThreshold()
+	if err != nil {
+		log.Error("error fetching federation size: ", err.Error())
+		return nil, err
+	}
+
+	fedAddress, err := rsk.GetFedAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	activeFedBlockHeight, err := rsk.GetActiveFederationCreationBlockHeight()
+	if err != nil {
+		log.Error("error fetching federation address: ", err.Error())
+		return nil, err
+	}
+
+	return &connectors.FedInfo{
+		FedThreshold:         fedThreshold,
+		FedSize:              fedSize,
+		PubKeys:              pubKeys,
+		FedAddress:           fedAddress,
+		ActiveFedBlockHeight: activeFedBlockHeight,
+		IrisActivationHeight: cfg.IrisActivationHeight,
+		ErpKeys:              cfg.ErpKeys,
+	}, nil
 }
 
 func main() {
@@ -98,8 +146,17 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	btc := connectors.NewBTC()
-	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password, cfg.BTC.Network)
+	fedInfo, err := initFederation(*rsk)
+	if err != nil {
+		log.Fatal("error initializing federation info: ", err)
+	}
+
+	btc, err := connectors.NewBTC(cfg.BTC.Network, *fedInfo)
+	if err != nil {
+		log.Fatal("error initializing BTC connector: ", err)
+	}
+
+	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
