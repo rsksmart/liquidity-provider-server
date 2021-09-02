@@ -271,12 +271,12 @@ func (btc *BTC) validateRedeemScript(script []byte) error {
 		return err
 	}
 
-	fedAddrB, err := DecodeBTCAddress(btc.fedInfo.FedAddress)
+	fedAddress, err := btcutil.DecodeAddress(btc.fedInfo.FedAddress, &btc.params)
 	if err != nil {
 		return err
 	}
 
-	if !bytes.Equal(addr.ScriptAddress(), fedAddrB) {
+	if !bytes.Equal(addr.ScriptAddress(), fedAddress.ScriptAddress()) {
 		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
 	}
 	return nil
