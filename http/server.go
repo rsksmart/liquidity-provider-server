@@ -117,6 +117,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 			} else {
 				quotes = append(quotes, pq)
 			}
@@ -252,7 +253,7 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 func (s *Server) storeQuote(q *types.Quote) error {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
-		return fmt.Errorf("error hashing quote: %v", err)
+		return err
 	}
 
 	err = s.db.InsertQuote(h, q)
