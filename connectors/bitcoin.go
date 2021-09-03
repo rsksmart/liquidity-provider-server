@@ -177,7 +177,7 @@ func (btc *BTC) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []
 func GetBytesFromBtcAddress(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
 	}
 	var bts bytes.Buffer
 	bts.WriteByte(ver)
