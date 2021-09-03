@@ -174,7 +174,7 @@ func (btc *BTC) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []
 	return addressScriptHash.EncodeAddress(), nil
 }
 
-func DecodeBTCAddress(address string) ([]byte, error) {
+func GetBytesFromBtcAddress(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
 	if err != nil {
 		return nil, err

@@ -234,11 +234,11 @@ func testDerivationComplete(t *testing.T) {
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
-		userBtcRefundAddr, err := DecodeBTCAddress(tt.BTCRefundAddr)
+		userBtcRefundAddr, err := GetBytesFromBtcAddress(tt.BTCRefundAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
 		}
-		lpBtcAddress, err := DecodeBTCAddress(tt.LPBTCAddr)
+		lpBtcAddress, err := GetBytesFromBtcAddress(tt.LPBTCAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
 		}

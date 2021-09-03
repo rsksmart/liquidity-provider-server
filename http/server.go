@@ -208,11 +208,11 @@ func parseReqToQuote(qr models.QuoteRequest, lbcAddr string, fedAddr string) typ
 }
 
 func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]byte, []byte, []byte, error) {
-	btcRefAddrB, err := connectors.DecodeBTCAddress(btcRefundAddr)
+	btcRefAddrB, err := connectors.GetBytesFromBtcAddress(btcRefundAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	lpBTCAddrB, err := connectors.DecodeBTCAddress(lpBTCAddr)
+	lpBTCAddrB, err := connectors.GetBytesFromBtcAddress(lpBTCAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
