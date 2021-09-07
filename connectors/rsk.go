@@ -273,6 +273,9 @@ func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	if err := copyBtcAddr(q.BTCRefundAddr, pq.BtcRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}
+	if err := copyBtcAddr(q.LPBTCAddr, pq.LiquidityProviderBtcAddress[:]); err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
+	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
