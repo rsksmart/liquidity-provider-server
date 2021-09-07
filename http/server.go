@@ -117,6 +117,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 			} else {
 				quotes = append(quotes, pq)
 			}
@@ -161,7 +162,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	btcRefAddr, lbcAddr, lpBTCAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LBCAddr, quote.LPBTCAddr)
+	btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -207,11 +208,11 @@ func parseReqToQuote(qr models.QuoteRequest, lbcAddr string, fedAddr string) typ
 }
 
 func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]byte, []byte, []byte, error) {
-	btcRefAddrB, err := connectors.DecodeBTCAddress(btcRefundAddr)
+	btcRefAddrB, err := connectors.DecodeBTCAddressWithVersion(btcRefundAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	lpBTCAddrB, err := connectors.DecodeBTCAddress(lpBTCAddr)
+	lpBTCAddrB, err := connectors.DecodeBTCAddressWithVersion(lpBTCAddr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -252,7 +253,7 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 func (s *Server) storeQuote(q *types.Quote) error {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
-		return fmt.Errorf("error hashing quote: %v", err)
+		return err
 	}
 
 	err = s.db.InsertQuote(h, q)
