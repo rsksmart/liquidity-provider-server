@@ -56,6 +56,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		Keydir:     cfg.Provider.Keystore,
 		BtcAddr:    cfg.Provider.BtcAddress,
 		AccountNum: cfg.Provider.RskAccountNum,
+		ChainId:    rsk.GetChainId(),
 	}
 	lp, err := providers.NewLocalProvider(providerCfg)
 

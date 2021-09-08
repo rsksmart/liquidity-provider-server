@@ -101,18 +101,12 @@ func (w BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Trans
 }
 
 func (w BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAddress common.Address) *bind.TransactOpts {
-	tx := gethTypes.NewTx(nil) // TODO: empty transaction is ok at this point?
-	chainId := w.rsk.GetChainId()
-
 	limit := gasLimit + 150000
-	signer := func(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error) {
-		return w.lp.SignTx(tx, chainId)
-	}
 	opt := &bind.TransactOpts{
 		GasLimit: limit,
 		Value:    value,
 		From:     lpRskAddress,
-		Signer:   signer,
+		Signer:   w.lp.SignTx,
 	}
 	return opt
 }
