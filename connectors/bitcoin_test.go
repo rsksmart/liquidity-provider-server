@@ -149,7 +149,7 @@ var testQuotes = []struct {
 	QuoteHash                   string
 	ExpectedDerivationValueHash string
 	ExpectedAddressHash         string
-	NetworkParams               *chaincfg.Params
+	NetworkParams               string
 	FedInfo                     *FedInfo
 }{
 	{
@@ -159,7 +159,7 @@ var testQuotes = []struct {
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
 		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
-		NetworkParams:               &chaincfg.TestNet3Params,
+		NetworkParams:               "testnet",
 		FedInfo:                     getFakeFedInfo(),
 	},
 	{
@@ -169,7 +169,7 @@ var testQuotes = []struct {
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "2N6LxcNDYkKzeyXh7xjZUNZnS9G4Sq3mysi",
 		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
-		NetworkParams:               &chaincfg.TestNet3Params,
+		NetworkParams:               "testnet",
 		FedInfo:                     getFakeFedInfo(),
 	},
 	{
@@ -179,7 +179,7 @@ var testQuotes = []struct {
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "38r8PQdgw5vdebE9h12Eum6saVnWEXxbve",
 		ExpectedDerivationValueHash: "f07f644aa9123cd339f232be7f02ec536d40247f6f0c89a93d625ee57918c544",
-		NetworkParams:               &chaincfg.MainNetParams,
+		NetworkParams:               "mainnet",
 		FedInfo:                     getFakeFedInfo(),
 	},
 	{
@@ -189,7 +189,7 @@ var testQuotes = []struct {
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "33P85aACtqezxcGjhrferYkpg6djBtvstk",
 		ExpectedDerivationValueHash: "edb9cfe28705fa1619fe1c1bc70e55d5eee4965aea0de631bcf56434a7c454cc",
-		NetworkParams:               &chaincfg.MainNetParams,
+		NetworkParams:               "mainnet",
 		FedInfo:                     getFakeFedInfo(),
 	},
 }
@@ -234,11 +234,11 @@ func testDerivationComplete(t *testing.T) {
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
 		}
-		userBtcRefundAddr, err := DecodeBTCAddress(tt.BTCRefundAddr)
+		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
 		}
-		lpBtcAddress, err := DecodeBTCAddress(tt.LPBTCAddr)
+		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
 		}
@@ -252,21 +252,29 @@ func testDerivationComplete(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unexpected error in getFlyoverPrefix. error: %v", err)
 		}
-		btc, err := NewBTC("mainnet", *tt.FedInfo)
+		btc, err := NewBTC(tt.NetworkParams, *tt.FedInfo)
 		if err != nil {
 			t.Errorf("error initializing BTC: %v", err)
 		}
-
+		if btc.params.Name == chaincfg.TestNet3Params.Name {
+			btc.fedInfo.FedAddress = "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p"
+		} else {
+			btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+		}
 		scriptBuf, err := btc.getPowPegRedeemScriptBuf(true)
 		buf.Write(scriptBuf.Bytes())
 		if err != nil {
 			t.Errorf("Unexpected error in getPowPegRedeemScriptBuf. error: %v", err)
 		}
-		addr, err := btcutil.NewAddressScriptHash(buf.Bytes(), tt.NetworkParams)
+		addr, err := btcutil.NewAddressScriptHash(buf.Bytes(), &btc.params)
 		if err != nil {
 			t.Errorf("Unexpected error in NewAddressScriptHash. error: %v", err)
 		}
 		assert.EqualValues(t, tt.ExpectedAddressHash, addr.EncodeAddress())
+		err = btc.validateRedeemScript(scriptBuf.Bytes())
+		if err != nil {
+			t.Errorf("error in validateRedeemScript: %v", err)
+		}
 	}
 }
 
@@ -278,7 +286,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 
 	buf, err := btc.getPowPegRedeemScriptBuf(true)
 	if err != nil {
-		return
+		t.Errorf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
 
 	str := hex.EncodeToString(buf.Bytes())
@@ -299,7 +307,6 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 		return
 	}
 	str2 := hex.EncodeToString(buf2.Bytes())
-
 	assert.EqualValues(t, str2, str)
 }
 

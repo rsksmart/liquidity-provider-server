@@ -183,10 +183,10 @@ func (btc *BTC) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []
 	return addressScriptHash.EncodeAddress(), nil
 }
 
-func DecodeBTCAddress(address string) ([]byte, error) {
+func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
 	}
 	var bts bytes.Buffer
 	bts.WriteByte(ver)
@@ -280,12 +280,12 @@ func (btc *BTC) validateRedeemScript(script []byte) error {
 		return err
 	}
 
-	fedAddrB, err := DecodeBTCAddress(btc.fedInfo.FedAddress)
+	fedAddress, err := btcutil.DecodeAddress(btc.fedInfo.FedAddress, &btc.params)
 	if err != nil {
 		return err
 	}
 
-	if !bytes.Equal(addr.ScriptAddress(), fedAddrB) {
+	if !bytes.Equal(addr.ScriptAddress(), fedAddress.ScriptAddress()) {
 		return fmt.Errorf("the generated redeem script does not match with the federation redeem script")
 	}
 	return nil
