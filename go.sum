@@ -364,6 +364,10 @@ github.com/rsksmart/liquidity-provider v0.0.0-20210901130702-5348ad61637d h1:W2k
 github.com/rsksmart/liquidity-provider v0.0.0-20210901130702-5348ad61637d/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
 github.com/rsksmart/liquidity-provider v0.0.0-20210901135614-26716d8255bf h1:TFSPJSW0tjQiZquo4w8NZAsXKGKpUUp1ssYk/6jpbNA=
 github.com/rsksmart/liquidity-provider v0.0.0-20210901135614-26716d8255bf/go.mod h1:GdfYPl8aHrcNV8tGf6MjZwmZYj/Y105toCVZehYPB2Q=
+github.com/rsksmart/liquidity-provider v0.0.0-20210907124537-11c91eda675b h1:71Agp8OgiD2Y6znxJGlfIcnr+45/WhrGdpQInVCmoKY=
+github.com/rsksmart/liquidity-provider v0.0.0-20210907124537-11c91eda675b/go.mod h1:hPejfbXiTTvzoQU91JJXBQuqscK8CKZLqhwJogU53jo=
+github.com/rsksmart/liquidity-provider v0.0.0-20210907125853-c83fd5d7f5ee h1:KhG8uQte2hpb/PZ6nmwYY1p/W4EpuzB5a09zYPRAFXc=
+github.com/rsksmart/liquidity-provider v0.0.0-20210907125853-c83fd5d7f5ee/go.mod h1:hPejfbXiTTvzoQU91JJXBQuqscK8CKZLqhwJogU53jo=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
 github.com/segmentio/kafka-go v0.2.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
@@ -384,6 +388,8 @@ github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4 h1:Gb2Tyox57N
 github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4/go.mod h1:RZLeN1LMWmRsyYjvAu+I6Dm9QmlDaIIt+Y+4Kd7Tp+Q=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.3.0 h1:NGXK3lHquSN08v5vWalVI/L8XU9hdzE/G6xsrze47As=
+github.com/stretchr/objx v0.3.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=
 github.com/stretchr/testify v1.2.0/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=

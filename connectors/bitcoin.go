@@ -39,10 +39,6 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-type AddressWatcher interface {
-	OnNewConfirmation(txHash string, confirmations int64, amount float64)
-}
-
 func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
 	btc := BTC{
 		chans:   make(map[string]*chan bool),
@@ -99,7 +95,7 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 				if err != nil {
 					log.Error(err)
 				}
-				if conf > int64(confirmations) {
+				if conf > confirmations {
 					confirmations = conf
 					w.OnNewConfirmation(txHash, confirmations, amount)
 				}

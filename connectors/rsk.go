@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
@@ -124,11 +125,26 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 	return nil, fmt.Errorf("error estimating gas: %v", err)
 }
 
+func (rsk *RSK) GetBlockHeight() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var err error
+	for i := 0; i < retries; i++ {
+		var price uint64
+		price, err = rsk.c.BlockNumber(ctx)
+		if price > 0 {
+			return price, nil
+		}
+		time.Sleep(sleepTime)
+	}
+	return 0, fmt.Errorf("error estimating gas: %v", err)
+}
+
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
 
-	pq, err := parseQuote(q)
+	pq, err := ParseQuote(q)
 	if err != nil {
 		return "", err
 	}
@@ -255,6 +271,14 @@ func (rsk *RSK) GetLBCAddress() string {
 	return rsk.lbcAddress.String()
 }
 
+func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
+	return rsk.lbc.CallForUser(opt, q)
+}
+
+func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+}
+
 func DecodeRSKAddress(address string) ([]byte, error) {
 	trim := strings.Trim(address, "0x")
 	if !common.IsHexAddress(trim) {
@@ -263,7 +287,7 @@ func DecodeRSKAddress(address string) ([]byte, error) {
 	return common.HexToAddress(trim).Bytes(), nil
 }
 
-func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 

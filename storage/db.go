@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS quotes (
 )
 `
 
+type DBInterface interface {
+	Close() error
+	InsertQuote(id string, q *types.Quote) error
+	GetQuote(quoteHash string) (*types.Quote, error)
+}
+
 type DB struct {
 	db *sqlx.DB
 }

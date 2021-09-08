@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
 	"net/http"
 	"time"
 
@@ -24,12 +23,16 @@ import (
 type Server struct {
 	srv       http.Server
 	providers []providers.LiquidityProvider
-	rsk       *connectors.RSK
-	btc       *connectors.BTC
-	db        *storage.DB
+	rsk       connectors.RSKInterface
+	btc       connectors.BTCInterface
+	db        storage.DBInterface
 }
 
-func New(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) Server {
+type acceptReq struct {
+	QuoteHash string
+}
+
+func New(rsk connectors.RSKInterface, btc connectors.BTCInterface, db storage.DBInterface) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:       rsk,
@@ -133,10 +136,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	type acceptReq struct {
-		QuoteHash string
-	}
-
 	type acceptRes struct {
 		Signature                 string `json:"signature"`
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
@@ -181,6 +180,20 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	response := acceptRes{
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddress,
+	}
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+
+	// TODO: get required confirmations from config
+	watcher, err := connectors.NewBTCAddressWatcher(s.btc, s.rsk, p, quote, 10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.btc.AddAddressWatcher(depositAddress, time.Minute, watcher)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
