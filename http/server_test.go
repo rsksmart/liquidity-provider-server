@@ -2,16 +2,19 @@ package http
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/http/testmocks"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
+	http2 "github.com/stretchr/testify/http"
 	"math/big"
 	"math/rand"
 	"net/http"
 	"testing"
+	"time"
 )
 
 type LiquidityProviderMock struct {
@@ -34,13 +37,10 @@ func (lp LiquidityProviderMock) SignHash(hash []byte) ([]byte, error) {
 
 var providerMocks = []LiquidityProviderMock{
 	{address: "123"},
-	{address: "12345"},
+	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
 }
-var rsk testmocks.RskMock
-var btc testmocks.BtcMock
-var db testmocks.DbMock
 
-var testQuotes = []types.Quote{
+var testQuotes = []*types.Quote{
 	{
 		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		LBCAddr:            "2ff74F841b95E000625b3A77fed03714874C4fEa",
@@ -74,29 +74,48 @@ func testGetProviderByAddress(t *testing.T) {
 	}
 }
 
-func TestAcceptQuoteDbInteraction(t *testing.T) {
+func testAcceptQuoteComplete(t *testing.T) {
 	for _, quote := range testQuotes {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := new(testmocks.DbMock)
+		db := testmocks.NewDbMock(quote)
 
 		srv := New(rsk, btc, db)
-		var w http.ResponseWriter
+		for _, lp := range providerMocks {
+			srv.AddProvider(lp)
+		}
+		w := http2.TestResponseWriter{}
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		body := fmt.Sprintf("{\"quoteHash\":\"%v\"}", hash)
 
+		btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
+		if err != nil {
+			t.Errorf("couldn't decode addresses. error: %v", err)
+		}
 		req, err := http.NewRequest("POST", "acceptQuote", bytes.NewReader([]byte(body)))
 		if err != nil {
 			t.Errorf("couldn't instantiate request. error: %v", err)
 		}
+		hashBytes, err := hex.DecodeString(hash)
+		if err != nil {
+			t.Errorf("couldn't decode hash. error: %v", err)
+		}
 
+		watcher, err := NewBTCAddressWatcher(btc, rsk, providerMocks[1], quote)
+		if err != nil {
+			t.Errorf("couldn't create watcher. error: %v", err)
+		}
 		db.On("GetQuote", hash).Times(1).Return(quote)
+		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
+		btc.On("AddAddressWatcher", "", time.Minute, watcher).Times(1).Return("")
 
-		srv.acceptQuoteHandler(w, req)
+		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
+		btc.AssertExpectations(t)
 	}
 }
 
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
+	t.Run("accept quote", testAcceptQuoteComplete)
 }

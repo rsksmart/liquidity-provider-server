@@ -21,7 +21,7 @@ var invalidAddresses = []struct {
 func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, tt.input)
+		res, err := NewRSK(tt.input, tt.input, "testnet", 10)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -37,7 +37,7 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 func testNewRSKWithValidAddresses(t *testing.T) {
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, tt.input)
+		res, err := NewRSK(tt.input, tt.input, "testnet", 10)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}

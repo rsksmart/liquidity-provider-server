@@ -13,9 +13,14 @@ type RskMock struct {
 	mock.Mock
 }
 
-func (m *RskMock) GetBlockHeight() (uint64, error) {
+func (m *RskMock) GetRequiredBridgeConfirmations() int64 {
 	m.Called()
-	return 0, nil
+	return 0
+}
+
+func (m *RskMock) GetChainId() *big.Int {
+	m.Called()
+	return big.NewInt(0)
 }
 
 func (m *RskMock) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
@@ -37,7 +42,9 @@ func (m *RskMock) Connect(endpoint string) error {
 	m.Called(endpoint)
 	return nil
 }
-func (m *RskMock) Close() {}
+func (m *RskMock) Close() {
+	m.Called()
+}
 
 func (m *RskMock) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
 	args := m.Called(addr, value, data)

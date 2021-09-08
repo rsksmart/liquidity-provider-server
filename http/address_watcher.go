@@ -1,45 +1,38 @@
-package connectors
+package http
 
 import (
 	"encoding/hex"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	"math/big"
 )
 
-type AddressWatcher interface {
-	OnNewConfirmation(txHash string, confirmations int64, amount float64)
-}
-
 type BTCAddressWatcher struct {
-	btc                    BTCInterface
-	rsk                    RSKInterface
-	lp                     providers.LiquidityProvider
-	calledForUser          bool
-	quote                  *types.Quote
-	reqBridgeConfirmations int64
+	btc           connectors.BTCInterface
+	rsk           connectors.RSKInterface
+	lp            providers.LiquidityProvider
+	calledForUser bool
+	quote         *types.Quote
 }
 
-func NewBTCAddressWatcher(btc BTCInterface, rsk RSKInterface, provider providers.LiquidityProvider, q *types.Quote, reqBridgeConfirms int64) (*BTCAddressWatcher, error) {
+func NewBTCAddressWatcher(btc connectors.BTCInterface, rsk connectors.RSKInterface, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
-		btc:                    btc,
-		rsk:                    rsk,
-		lp:                     provider,
-		calledForUser:          false,
-		quote:                  q,
-		reqBridgeConfirmations: reqBridgeConfirms,
+		btc:           btc,
+		rsk:           rsk,
+		lp:            provider,
+		calledForUser: false,
+		quote:         q,
 	}
 	return &watcher, nil
 }
 
 func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
-	quoteConfirmations := new(big.Int).SetUint64(uint64(w.quote.Confirmations))
-	if !w.calledForUser && confirmations >= quoteConfirmations.Int64() {
+	if !w.calledForUser && confirmations >= int64(w.quote.Confirmations) {
 		_, err := w.performCallForUser()
 		if err != nil {
 			log.Errorf("error calling callForUser. value: %v. error: %v", txHash, err)
@@ -48,22 +41,12 @@ func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64,
 		w.calledForUser = true
 	}
 
-	if w.calledForUser && confirmations <= w.reqBridgeConfirmations {
+	if w.calledForUser && confirmations <= w.rsk.GetRequiredBridgeConfirmations() {
 		_, err := w.performRegisterPegIn(txHash)
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 			return
 		}
-	}
-}
-
-func getChainIdFromNetwork(params chaincfg.Params) *big.Int {
-	switch params.Name {
-	case "mainnet":
-		return big.NewInt(30)
-	default:
-		return big.NewInt(31)
-
 	}
 }
 
@@ -104,7 +87,7 @@ func (w BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Trans
 	if err != nil {
 		return nil, err
 	}
-	bh, err := w.rsk.GetBlockHeight()
+	bh, err := w.btc.GetBlockNumberByTx(txHash)
 	if err != nil {
 		log.Errorf("error getting block height: %v", err)
 		return nil, err
@@ -119,7 +102,7 @@ func (w BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Trans
 
 func (w BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAddress common.Address) *bind.TransactOpts {
 	tx := gethTypes.NewTx(nil) // TODO: empty transaction is ok at this point?
-	chainId := getChainIdFromNetwork(w.btc.GetParams())
+	chainId := w.rsk.GetChainId()
 	// add 10% to the gas limit, so it's enough for everything
 	limit := gasLimit + (10 * gasLimit / 100)
 
@@ -130,7 +113,7 @@ func (w BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAd
 		GasLimit: limit,
 		Value:    value,
 		From:     lpRskAddress,
-		Signer:   signer, // TODO: get signer fn. and assign to signer
+		Signer:   signer,
 	}
 	return opt
 }

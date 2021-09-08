@@ -7,19 +7,26 @@ import (
 
 type DbMock struct {
 	mock.Mock
+	quote *types.Quote
 }
 
-func (d DbMock) Close() error {
+func NewDbMock(q *types.Quote) *DbMock {
+	return &DbMock{
+		quote: q,
+	}
+}
+
+func (d *DbMock) Close() error {
 	d.Called()
 	return nil
 }
 
-func (d DbMock) InsertQuote(id string, q *types.Quote) error {
+func (d *DbMock) InsertQuote(id string, q *types.Quote) error {
 	d.Called(id, q)
 	return nil
 }
 
-func (d DbMock) GetQuote(quoteHash string) (*types.Quote, error) {
+func (d *DbMock) GetQuote(quoteHash string) (*types.Quote, error) {
 	d.Called(quoteHash)
-	return &types.Quote{}, nil
+	return d.quote, nil
 }

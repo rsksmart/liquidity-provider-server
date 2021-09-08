@@ -30,14 +30,16 @@ const (
 )
 
 type RSK struct {
-	c             *ethclient.Client
-	lbc           *bindings.LBC
-	lbcAddress    common.Address
-	bridge        *bindings.RskBridge
-	bridgeAddress common.Address
+	c                           *ethclient.Client
+	lbc                         *bindings.LBC
+	lbcAddress                  common.Address
+	bridge                      *bindings.RskBridge
+	bridgeAddress               common.Address
+	network                     string
+	requiredBridgeConfirmations int64
 }
 
-func NewRSK(lbcAddress string, bridgeAddress string) (*RSK, error) {
+func NewRSK(lbcAddress string, bridgeAddress string, network string, requiredBridgeConfirmations int64) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid LBC contract address")
 	}
@@ -46,8 +48,10 @@ func NewRSK(lbcAddress string, bridgeAddress string) (*RSK, error) {
 	}
 
 	return &RSK{
-		lbcAddress:    common.HexToAddress(lbcAddress),
-		bridgeAddress: common.HexToAddress(bridgeAddress),
+		lbcAddress:                  common.HexToAddress(lbcAddress),
+		bridgeAddress:               common.HexToAddress(bridgeAddress),
+		network:                     network,
+		requiredBridgeConfirmations: requiredBridgeConfirmations,
 	}, nil
 }
 
@@ -125,26 +129,21 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 	return nil, fmt.Errorf("error estimating gas: %v", err)
 }
 
-func (rsk *RSK) GetBlockHeight() (uint64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	var err error
-	for i := 0; i < retries; i++ {
-		var price uint64
-		price, err = rsk.c.BlockNumber(ctx)
-		if price > 0 {
-			return price, nil
-		}
-		time.Sleep(sleepTime)
+func (rsk *RSK) GetChainId() *big.Int {
+	switch rsk.network {
+	case "mainnet":
+		return big.NewInt(30)
+	default:
+		return big.NewInt(31)
+
 	}
-	return 0, fmt.Errorf("error estimating gas: %v", err)
 }
 
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
 
-	pq, err := ParseQuote(q)
+	pq, err := rsk.ParseQuote(q)
 	if err != nil {
 		return "", err
 	}
@@ -267,6 +266,9 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 	return height, nil
 }
 
+func (rsk *RSK) GetRequiredBridgeConfirmations() int64 {
+	return rsk.requiredBridgeConfirmations
+}
 func (rsk *RSK) GetLBCAddress() string {
 	return rsk.lbcAddress.String()
 }
@@ -287,7 +289,7 @@ func DecodeRSKAddress(address string) ([]byte, error) {
 	return common.HexToAddress(trim).Bytes(), nil
 }
 
-func ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 

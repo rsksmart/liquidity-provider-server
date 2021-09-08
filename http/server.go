@@ -160,7 +160,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	btcRefAddr, lbcAddr, lpBTCAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LBCAddr, quote.LPBTCAddr)
+	btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -172,7 +172,8 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signature, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+	signature, err := s.getSignatureFromHash(p, hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -181,15 +182,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddress,
 	}
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
 	// TODO: get required confirmations from config
-	watcher, err := connectors.NewBTCAddressWatcher(s.btc, s.rsk, p, quote, 10)
+	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	err = s.btc.AddAddressWatcher(depositAddress, time.Minute, watcher)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -235,17 +234,7 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
 }
 
-func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, error) {
-
-	quote, err := s.db.GetQuote(hash)
-	if err != nil {
-		return "", err
-	}
-	if quote == nil {
-		return "", fmt.Errorf("quote not found : %v", hash)
-	}
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-
+func (s *Server) getSignatureFromHash(p providers.LiquidityProvider, hashBytes []byte) (string, error) {
 	signature, err := p.SignHash(hashBytes)
 	if err != nil {
 		return "", err
