@@ -296,6 +296,9 @@ func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuot
 	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
+	if err := copyBtcAddr(q.LPBTCAddr, pq.LiquidityProviderBtcAddress[:]); err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
+	}
 	if err := copyBtcAddr(q.BTCRefundAddr, pq.BtcRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}

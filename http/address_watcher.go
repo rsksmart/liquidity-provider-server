@@ -105,7 +105,6 @@ func (w BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAd
 	chainId := w.rsk.GetChainId()
 
 	limit := gasLimit + 150000
-
 	signer := func(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 		return w.lp.SignTx(tx, chainId)
 	}
