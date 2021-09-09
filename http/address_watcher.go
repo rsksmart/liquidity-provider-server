@@ -41,7 +41,7 @@ func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64,
 		w.calledForUser = true
 	}
 
-	if w.calledForUser && confirmations <= w.rsk.GetRequiredBridgeConfirmations() {
+	if w.calledForUser && confirmations >= w.rsk.GetRequiredBridgeConfirmations() {
 		_, err := w.performRegisterPegIn(txHash)
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)

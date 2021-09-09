@@ -23,6 +23,7 @@ SELECT
 	lbc_addr, 
 	lp_rsk_addr, 
 	btc_refund_addr, 
+	rsk_refund_addr,
 	lp_btc_addr, 
 	call_fee, 
 	penalty_fee, 
@@ -166,7 +167,7 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 
 	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
 		&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
-		&quote.BTCRefundAddr, &quote.LPBTCAddr, &callFee,
+		&quote.BTCRefundAddr, &quote.RSKRefundAddr, &quote.LPBTCAddr, &callFee,
 		&penaltyFee, &quote.ContractAddr, &quote.Data,
 		&quote.GasLimit, &quote.Nonce, &value,
 		&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
@@ -178,8 +179,6 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//quote := quotes[0]
 
 	return &quote, nil
 }

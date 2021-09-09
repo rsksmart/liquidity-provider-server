@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/http/testmocks"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -21,7 +22,7 @@ type LiquidityProviderMock struct {
 	address string
 }
 
-func (lp LiquidityProviderMock) SignTx(tx *gethTypes.Transaction, chainId *big.Int) (*gethTypes.Transaction, error) {
+func (lp LiquidityProviderMock) SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
