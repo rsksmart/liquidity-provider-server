@@ -98,6 +98,9 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 				if conf > confirmations {
 					confirmations = conf
 					w.OnNewConfirmation(txHash, confirmations, amount)
+					if w.RegisteredPegIn() {
+						btc.RemoveAddressWatcher(address)
+					}
 				}
 			case <-ch:
 				ticker.Stop()

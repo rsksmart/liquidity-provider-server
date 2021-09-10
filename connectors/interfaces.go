@@ -12,6 +12,7 @@ import (
 
 type AddressWatcher interface {
 	OnNewConfirmation(txHash string, confirmations int64, amount float64)
+	RegisteredPegIn() bool
 }
 
 type BTCInterface interface {

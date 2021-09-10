@@ -13,22 +13,28 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	btc           connectors.BTCInterface
-	rsk           connectors.RSKInterface
-	lp            providers.LiquidityProvider
-	calledForUser bool
-	quote         *types.Quote
+	btc             connectors.BTCInterface
+	rsk             connectors.RSKInterface
+	lp              providers.LiquidityProvider
+	calledForUser   bool
+	registeredPegIn bool
+	quote           *types.Quote
 }
 
 func NewBTCAddressWatcher(btc connectors.BTCInterface, rsk connectors.RSKInterface, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
-		btc:           btc,
-		rsk:           rsk,
-		lp:            provider,
-		calledForUser: false,
-		quote:         q,
+		btc:             btc,
+		rsk:             rsk,
+		lp:              provider,
+		quote:           q,
+		calledForUser:   false,
+		registeredPegIn: false,
 	}
 	return &watcher, nil
+}
+
+func (w BTCAddressWatcher) RegisteredPegIn() bool {
+	return w.registeredPegIn
 }
 
 func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
@@ -47,6 +53,7 @@ func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64,
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 			return
 		}
+		w.registeredPegIn = true
 	}
 }
 
