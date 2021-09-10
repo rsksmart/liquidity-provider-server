@@ -22,7 +22,7 @@ type BTCInterface interface {
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
 	SerializeTx(txHash string) ([]byte, error)
-	GetBlockNumberByTx(txHash string) (int32, error)
+	GetBlockNumberByTx(txHash string) (int64, error)
 	GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 }
 
