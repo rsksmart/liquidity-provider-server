@@ -184,7 +184,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		BitcoinDepositAddressHash: depositAddress,
 	}
 
-	// TODO: get required confirmations from config
 	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
