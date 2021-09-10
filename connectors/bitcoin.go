@@ -142,17 +142,16 @@ func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	return serializePMT(txHash, block)
 }
 
-func (btc *BTC) GetBlockNumberByTx(txHash string) (int32, error) {
+func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
 	blockHash, err := btc.getBlockHash(txHash)
 	if err != nil {
 		return 0, err
 	}
-	msgBlock, err := btc.c.GetBlock(blockHash)
+	msgBlock, err := btc.c.GetBlockVerbose(blockHash)
 	if err != nil {
 		return 0, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
 	}
-	block := btcutil.NewBlock(msgBlock)
-	return block.Height(), nil
+	return msgBlock.Height, nil
 }
 
 func (btc *BTC) SerializeTx(txHash string) ([]byte, error) {
