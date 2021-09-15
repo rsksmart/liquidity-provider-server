@@ -1,7 +1,6 @@
 {
     "logFile": "",
     "debug": true,
-    "isTestNet": true,
     "irisActivationHeight": 226000,
     "erpKeys": [
         "0216c23b2ea8e4f11c3f9e22711addb1d16a93964796913830856b568cc3ea21d3",
@@ -17,7 +16,8 @@
     "rsk": {
         "endpoint": "http://localhost:7777",
         "lbcAddr": "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
-        "bridgeAddr": "0x00d80aA033fb51F191563B08Dc035fA128e942C5"
+        "bridgeAddr": "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+        "requiredBridgeConfirmations": 10
     },
     "btc": {
         "endpoint": "127.0.0.1:8332",

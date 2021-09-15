@@ -56,6 +56,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		Keydir:     cfg.Provider.Keystore,
 		BtcAddr:    cfg.Provider.BtcAddress,
 		AccountNum: cfg.Provider.RskAccountNum,
+		ChainId:    rsk.GetChainId(),
 	}
 	lp, err := providers.NewLocalProvider(providerCfg)
 
@@ -136,7 +137,7 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.BTC.Network, cfg.RSK.RequiredBridgeConfirmations)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
 	"net/http"
 	"time"
 
@@ -24,12 +23,16 @@ import (
 type Server struct {
 	srv       http.Server
 	providers []providers.LiquidityProvider
-	rsk       *connectors.RSK
-	btc       *connectors.BTC
-	db        *storage.DB
+	rsk       connectors.RSKConnector
+	btc       connectors.BTCConnector
+	db        storage.DBConnector
 }
 
-func New(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) Server {
+type acceptReq struct {
+	QuoteHash string
+}
+
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:       rsk,
@@ -134,10 +137,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	type acceptReq struct {
-		QuoteHash string
-	}
-
 	type acceptRes struct {
 		Signature                 string `json:"signature"`
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
@@ -174,14 +173,27 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signature, err := s.getSignatureFromHash(req.QuoteHash, hashBytes)
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+	signB, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	signature := hex.EncodeToString(signB)
 	response := acceptRes{
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddress,
+	}
+
+	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = s.btc.AddAddressWatcher(depositAddress, time.Minute, watcher)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
@@ -221,24 +233,6 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 		return nil, nil, nil, err
 	}
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
-}
-
-func (s *Server) getSignatureFromHash(hash string, hashBytes []byte) (string, error) {
-
-	quote, err := s.db.GetQuote(hash)
-	if err != nil {
-		return "", err
-	}
-	if quote == nil {
-		return "", fmt.Errorf("quote not found : %v", hash)
-	}
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-
-	signature, err := p.SignHash(hashBytes)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(signature), nil
 }
 
 func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {

@@ -13,9 +13,10 @@ type config struct {
 		Path string
 	}
 	RSK struct {
-		Endpoint   string
-		LBCAddr    string
-		BridgeAddr string
+		Endpoint                    string
+		LBCAddr                     string
+		BridgeAddr                  string
+		RequiredBridgeConfirmations int64
 	}
 	BTC struct {
 		Endpoint string
