@@ -39,10 +39,6 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-type AddressWatcher interface {
-	OnNewConfirmation(txHash string, confirmations int64, amount float64)
-}
-
 func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
 	btc := BTC{
 		chans:   make(map[string]*chan bool),
@@ -99,9 +95,12 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 				if err != nil {
 					log.Error(err)
 				}
-				if conf > int64(confirmations) {
+				if conf > confirmations {
 					confirmations = conf
 					w.OnNewConfirmation(txHash, confirmations, amount)
+					if w.RegisteredPegIn() {
+						btc.RemoveAddressWatcher(address)
+					}
 				}
 			case <-ch:
 				ticker.Stop()
@@ -144,6 +143,18 @@ func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	}
 	block := btcutil.NewBlock(msgBlock)
 	return serializePMT(txHash, block)
+}
+
+func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
+	blockHash, err := btc.getBlockHash(txHash)
+	if err != nil {
+		return 0, err
+	}
+	msgBlock, err := btc.c.GetBlockVerbose(blockHash)
+	if err != nil {
+		return 0, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+	}
+	return msgBlock.Height, nil
 }
 
 func (btc *BTC) SerializeTx(txHash string) ([]byte, error) {

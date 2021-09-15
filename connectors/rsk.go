@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
@@ -29,14 +30,16 @@ const (
 )
 
 type RSK struct {
-	c             *ethclient.Client
-	lbc           *bindings.LBC
-	lbcAddress    common.Address
-	bridge        *bindings.RskBridge
-	bridgeAddress common.Address
+	c                           *ethclient.Client
+	lbc                         *bindings.LBC
+	lbcAddress                  common.Address
+	bridge                      *bindings.RskBridge
+	bridgeAddress               common.Address
+	network                     string
+	requiredBridgeConfirmations int64
 }
 
-func NewRSK(lbcAddress string, bridgeAddress string) (*RSK, error) {
+func NewRSK(lbcAddress string, bridgeAddress string, network string, requiredBridgeConfirmations int64) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid LBC contract address")
 	}
@@ -45,8 +48,10 @@ func NewRSK(lbcAddress string, bridgeAddress string) (*RSK, error) {
 	}
 
 	return &RSK{
-		lbcAddress:    common.HexToAddress(lbcAddress),
-		bridgeAddress: common.HexToAddress(bridgeAddress),
+		lbcAddress:                  common.HexToAddress(lbcAddress),
+		bridgeAddress:               common.HexToAddress(bridgeAddress),
+		network:                     network,
+		requiredBridgeConfirmations: requiredBridgeConfirmations,
 	}, nil
 }
 
@@ -124,11 +129,21 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 	return nil, fmt.Errorf("error estimating gas: %v", err)
 }
 
+func (rsk *RSK) GetChainId() *big.Int {
+	switch rsk.network {
+	case "mainnet":
+		return big.NewInt(30)
+	default:
+		return big.NewInt(31)
+
+	}
+}
+
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
 
-	pq, err := parseQuote(q)
+	pq, err := rsk.ParseQuote(q)
 	if err != nil {
 		return "", err
 	}
@@ -251,8 +266,19 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 	return height, nil
 }
 
+func (rsk *RSK) GetRequiredBridgeConfirmations() int64 {
+	return rsk.requiredBridgeConfirmations
+}
 func (rsk *RSK) GetLBCAddress() string {
 	return rsk.lbcAddress.String()
+}
+
+func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
+	return rsk.lbc.CallForUser(opt, q)
+}
+
+func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
 }
 
 func DecodeRSKAddress(address string) ([]byte, error) {
@@ -263,14 +289,17 @@ func DecodeRSKAddress(address string) ([]byte, error) {
 	return common.HexToAddress(trim).Bytes(), nil
 }
 
-func parseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 
 	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
-	if err := copyBtcAddr(q.BTCRefundAddr, pq.BtcRefundAddress[:]); err != nil {
+	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
+	}
+	if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
