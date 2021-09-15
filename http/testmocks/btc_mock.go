@@ -44,7 +44,7 @@ func (b *BtcMock) SerializeTx(txHash string) ([]byte, error) {
 	return nil, nil
 }
 
-func (b *BtcMock) GetBlockNumberByTx(txHash string) (int32, error) {
+func (b *BtcMock) GetBlockNumberByTx(txHash string) (int64, error) {
 	b.Called(txHash)
 	return 0, nil
 }

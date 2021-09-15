@@ -86,7 +86,7 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 	ch := make(chan bool)
 	btc.chans[address] = &ch
 
-	go func(w AddressWatcher) {
+	go func(watcher AddressWatcher) {
 		var confirmations int64
 		for {
 			select {
@@ -97,8 +97,8 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 				}
 				if conf > confirmations {
 					confirmations = conf
-					w.OnNewConfirmation(txHash, confirmations, amount)
-					if w.RegisteredPegIn() {
+					watcher.OnNewConfirmation(txHash, confirmations, amount)
+					if watcher.RegisteredPegIn() {
 						btc.RemoveAddressWatcher(address)
 					}
 				}

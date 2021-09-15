@@ -33,11 +33,11 @@ func NewBTCAddressWatcher(btc connectors.BTCInterface, rsk connectors.RSKInterfa
 	return &watcher, nil
 }
 
-func (w BTCAddressWatcher) RegisteredPegIn() bool {
+func (w *BTCAddressWatcher) RegisteredPegIn() bool {
 	return w.registeredPegIn
 }
 
-func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
+func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
 	if !w.calledForUser && confirmations >= int64(w.quote.Confirmations) {
 		_, err := w.performCallForUser()
 		if err != nil {
@@ -57,9 +57,9 @@ func (w BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64,
 	}
 }
 
-func (w BTCAddressWatcher) performCallForUser() (*gethTypes.Transaction, error) {
+func (w *BTCAddressWatcher) performCallForUser() (*gethTypes.Transaction, error) {
 	q, err := w.rsk.ParseQuote(w.quote)
-	opt := w.getTxOptions(q.GasLimit.Uint64(), q.Value, q.LiquidityProviderRskAddress)
+	opt := w.getTxOptions(q.GasLimit.Uint64()+100000, q.Value, q.LiquidityProviderRskAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +70,9 @@ func (w BTCAddressWatcher) performCallForUser() (*gethTypes.Transaction, error) 
 	return res, nil
 }
 
-func (w BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Transaction, error) {
+func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Transaction, error) {
 	q, err := w.rsk.ParseQuote(w.quote)
-	opt := w.getTxOptions(q.GasLimit.Uint64(), q.Value, q.LiquidityProviderRskAddress)
+	opt := w.getTxOptions(250000, nil, q.LiquidityProviderRskAddress)
 	rawTx, err := w.btc.SerializeTx(txHash)
 	if err != nil {
 		return nil, err
@@ -107,10 +107,9 @@ func (w BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Trans
 	return tx, nil
 }
 
-func (w BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAddress common.Address) *bind.TransactOpts {
-	limit := gasLimit + 150000
+func (w *BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAddress common.Address) *bind.TransactOpts {
 	opt := &bind.TransactOpts{
-		GasLimit: limit,
+		GasLimit: gasLimit,
 		Value:    value,
 		From:     lpRskAddress,
 		Signer:   w.lp.SignTx,

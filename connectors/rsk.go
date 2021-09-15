@@ -296,10 +296,10 @@ func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuot
 	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
-	if pq.LiquidityProviderBtcAddress, err = getBtcAddr(q.LPBTCAddr); err != nil {
+	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
 	}
-	if pq.BtcRefundAddress, err = getBtcAddr(q.BTCRefundAddr); err != nil {
+	if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
@@ -336,14 +336,6 @@ func copyBtcAddr(addr string, dst []byte) error {
 	}
 	copy(dst, addressBts)
 	return nil
-}
-
-func getBtcAddr(addr string) ([]byte, error) {
-	addressBts, _, err := base58.CheckDecode(addr)
-	if err != nil {
-		return nil, err
-	}
-	return addressBts, nil
 }
 
 func copyHex(str string, dst []byte) error {
