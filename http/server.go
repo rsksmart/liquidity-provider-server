@@ -4,10 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"time"
-
-	"github.com/rsksmart/liquidity-provider-server/http/models"
 
 	"context"
 
@@ -26,6 +25,15 @@ type Server struct {
 	rsk       connectors.RSKConnector
 	btc       connectors.BTCConnector
 	db        storage.DBConnector
+}
+
+type QuoteRequest struct {
+	CallContractAddress   string  `json:"callContractAddress"`
+	CallContractArguments string  `json:"callContractArguments"`
+	ValueToTransfer       big.Int `json:"valueToTransfer"`
+	GasLimit              uint    `json:"gasLimit"`
+	RskRefundAddress      string  `json:"rskRefundAddress"`
+	BitcoinRefundAddress  string  `json:"bitcoinRefundAddress"`
 }
 
 type acceptReq struct {
@@ -58,14 +66,12 @@ func (s *Server) Start(port uint) error {
 		Addr:    ":" + fmt.Sprint(port),
 		Handler: h,
 	}
-	log.Info("starting server at localhost", s.srv.Addr)
+	log.Info("server started at localhost:", s.srv.Addr)
 
 	err := s.srv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		return err
 	}
-
-	log.Info("started server at localhost", s.srv.Addr)
 	return nil
 }
 
@@ -80,7 +86,7 @@ func (s *Server) Shutdown() {
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	qr := models.QuoteRequest{}
+	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
@@ -206,7 +212,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseReqToQuote(qr models.QuoteRequest, lbcAddr string, fedAddr string) types.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) types.Quote {
 	return types.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
