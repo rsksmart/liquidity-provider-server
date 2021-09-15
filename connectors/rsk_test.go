@@ -85,8 +85,8 @@ func testParseQuote(t *testing.T) {
 				t.Errorf("Unexpected error parsing quote %v: %v", quote, err)
 			}
 
-			assert.EqualValues(t, len(result.BtcRefundAddress), 20, "BtcRefundAddress should not be empty")
-			assert.EqualValues(t, len(result.LiquidityProviderBtcAddress), 20, "LiquidityProviderBtcAddress should not be empty")
+			assert.EqualValues(t, len(result.BtcRefundAddress), 21, "BtcRefundAddress should not be empty")
+			assert.EqualValues(t, len(result.LiquidityProviderBtcAddress), 21, "LiquidityProviderBtcAddress should not be empty")
 			assert.NotEmpty(t, len(result.FedBtcAddress), 20, "FedBtcAddress should not be empty")
 		}
 	}
