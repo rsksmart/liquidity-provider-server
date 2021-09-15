@@ -23,16 +23,16 @@ import (
 type Server struct {
 	srv       http.Server
 	providers []providers.LiquidityProvider
-	rsk       connectors.RSKInterface
-	btc       connectors.BTCInterface
-	db        storage.DBInterface
+	rsk       connectors.RSKConnector
+	btc       connectors.BTCConnector
+	db        storage.DBConnector
 }
 
 type acceptReq struct {
 	QuoteHash string
 }
 
-func New(rsk connectors.RSKInterface, btc connectors.BTCInterface, db storage.DBInterface) Server {
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
 	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:       rsk,

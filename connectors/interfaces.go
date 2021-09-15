@@ -15,7 +15,7 @@ type AddressWatcher interface {
 	RegisteredPegIn() bool
 }
 
-type BTCInterface interface {
+type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
 	AddAddressWatcher(address string, interval time.Duration, w AddressWatcher) error
 	GetParams() chaincfg.Params
@@ -27,7 +27,7 @@ type BTCInterface interface {
 	GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 }
 
-type RSKInterface interface {
+type RSKConnector interface {
 	Connect(endpoint string) error
 	Close()
 	EstimateGas(addr string, value big.Int, data []byte) (uint64, error)

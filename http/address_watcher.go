@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -13,15 +12,20 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	btc             connectors.BTCInterface
-	rsk             connectors.RSKInterface
+	btc             connectors.BTCConnector
+	rsk             connectors.RSKConnector
 	lp              providers.LiquidityProvider
 	calledForUser   bool
 	registeredPegIn bool
 	quote           *types.Quote
 }
 
-func NewBTCAddressWatcher(btc connectors.BTCInterface, rsk connectors.RSKInterface, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
+const (
+	pegInGasLim = 250000
+	CFUExtraGas = 100000
+)
+
+func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
 		btc:             btc,
 		rsk:             rsk,
@@ -59,7 +63,12 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 
 func (w *BTCAddressWatcher) performCallForUser() (*gethTypes.Transaction, error) {
 	q, err := w.rsk.ParseQuote(w.quote)
-	opt := w.getTxOptions(q.GasLimit.Uint64()+100000, q.Value, q.LiquidityProviderRskAddress)
+	opt := &bind.TransactOpts{
+		GasLimit: q.GasLimit.Uint64() + CFUExtraGas,
+		Value:    q.Value,
+		From:     q.LiquidityProviderRskAddress,
+		Signer:   w.lp.SignTx,
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +81,12 @@ func (w *BTCAddressWatcher) performCallForUser() (*gethTypes.Transaction, error)
 
 func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Transaction, error) {
 	q, err := w.rsk.ParseQuote(w.quote)
-	opt := w.getTxOptions(250000, nil, q.LiquidityProviderRskAddress)
+	opt := &bind.TransactOpts{
+		GasLimit: pegInGasLim,
+		Value:    nil,
+		From:     q.LiquidityProviderRskAddress,
+		Signer:   w.lp.SignTx,
+	}
 	rawTx, err := w.btc.SerializeTx(txHash)
 	if err != nil {
 		return nil, err
@@ -83,7 +97,6 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Tran
 	}
 	h, err := w.rsk.HashQuote(w.quote)
 	if err != nil {
-		log.Errorf("error hashing quote: %v", err)
 		return nil, err
 	}
 	hb, err := hex.DecodeString(h)
@@ -96,7 +109,6 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Tran
 	}
 	bh, err := w.btc.GetBlockNumberByTx(txHash)
 	if err != nil {
-		log.Errorf("error getting block height: %v", err)
 		return nil, err
 	}
 	tx, err := w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(int64(bh)))
@@ -105,14 +117,4 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) (*gethTypes.Tran
 	}
 
 	return tx, nil
-}
-
-func (w *BTCAddressWatcher) getTxOptions(gasLimit uint64, value *big.Int, lpRskAddress common.Address) *bind.TransactOpts {
-	opt := &bind.TransactOpts{
-		GasLimit: gasLimit,
-		Value:    value,
-		From:     lpRskAddress,
-		Signer:   w.lp.SignTx,
-	}
-	return opt
 }

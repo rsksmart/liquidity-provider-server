@@ -2,10 +2,7 @@ package connectors
 
 import (
 	"encoding/hex"
-	"github.com/rsksmart/liquidity-provider/types"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"math/big"
 	"os"
 	"testing"
 
@@ -467,31 +464,6 @@ func checkSubstrings(str string, subs ...string) bool {
 	}
 
 	return isCompleteMatch
-}
-
-func TestBla(t *testing.T) {
-	quote := types.Quote{
-		FedBTCAddr:         "2N1GMB8gxHYR5HLPSRgf9CJ9Lunjb9CTnKB",
-		LBCAddr:            "0x2ff74F841b95E000625b3A77fed03714874C4fEa",
-		LPRSKAddr:          "0xd903676Fc33612AE92F6C4CDb4c2c12520B27948",
-		BTCRefundAddr:      "mpyguGz5BNasaSaXock1vC8K2eEThUV8fU",
-		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
-		LPBTCAddr:          "mr3rrJjQvkwYKZGBEJRFUPKRttxGgQcvab",
-		CallFee:            big.Int{},
-		PenaltyFee:         big.Int{},
-		ContractAddr:       "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F",
-		Data:               "",
-		GasLimit:           6000000,
-		Nonce:              520597007081184679,
-		Value:              *big.NewInt(10000),
-		AgreementTimestamp: 1631541762,
-		TimeForDeposit:     3600,
-		CallTime:           3600,
-		Confirmations:      10,
-	}
-	log.Debug(quote.BTCRefundAddr)
-	quoteHash := "c1ae23dc79a5cf76b2f30fd8fdd0475ea47829e148615b57336ef8ded149f087"
-	log.Debug(quoteHash)
 }
 
 func TestFederationHelper(t *testing.T) {

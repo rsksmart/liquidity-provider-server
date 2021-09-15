@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS quotes (
 )
 `
 
-type DBInterface interface {
+type DBConnector interface {
 	Close() error
 	InsertQuote(id string, q *types.Quote) error
 	GetQuote(quoteHash string) (*types.Quote, error)
