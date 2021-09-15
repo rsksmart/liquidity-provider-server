@@ -174,11 +174,12 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-	signature, err := s.getSignatureFromHash(p, hashBytes)
+	signB, err := p.SignHash(hashBytes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	signature := hex.EncodeToString(signB)
 	response := acceptRes{
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddress,
@@ -232,14 +233,6 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 		return nil, nil, nil, err
 	}
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
-}
-
-func (s *Server) getSignatureFromHash(p providers.LiquidityProvider, hashBytes []byte) (string, error) {
-	signature, err := p.SignHash(hashBytes)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(signature), nil
 }
 
 func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {
