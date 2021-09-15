@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"math/rand"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/http/testmocks"
@@ -11,11 +17,6 @@ import (
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 	http2 "github.com/stretchr/testify/http"
-	"math/big"
-	"math/rand"
-	"net/http"
-	"testing"
-	"time"
 )
 
 type LiquidityProviderMock struct {
@@ -29,9 +30,11 @@ func (lp LiquidityProviderMock) SignTx(common.Address, *gethTypes.Transaction) (
 func (lp LiquidityProviderMock) Address() string {
 	return lp.address
 }
+
 func (lp LiquidityProviderMock) GetQuote(q types.Quote, gas uint64, gasPrice big.Int) *types.Quote {
 	return nil
 }
+
 func (lp LiquidityProviderMock) SignHash(hash []byte) ([]byte, error) {
 	return nil, nil
 }
