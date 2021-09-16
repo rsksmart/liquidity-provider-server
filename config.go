@@ -1,5 +1,7 @@
 package main
 
+import "github.com/rsksmart/liquidity-provider/providers"
+
 type config struct {
 	LogFile              string
 	Debug                bool
@@ -24,10 +26,5 @@ type config struct {
 		Password string
 		Network  string
 	}
-	Provider struct {
-		Keystore      string
-		RskAccountNum int
-		PwdFilePath   string
-		BtcAddress    string
-	}
+	Provider providers.ProviderConfig
 }

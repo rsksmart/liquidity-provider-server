@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -27,7 +28,27 @@ import (
 const (
 	retries   int           = 3
 	sleepTime time.Duration = 2 * time.Second
+
+	newAccountGasCost = uint64(25000)
 )
+
+type RSKConnector interface {
+	Connect(endpoint string) error
+	Close()
+	EstimateGas(addr string, value big.Int, data []byte) (uint64, error)
+	GasPrice() (*big.Int, error)
+	HashQuote(q *types.Quote) (string, error)
+	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
+	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error)
+	GetFedSize() (int, error)
+	GetFedThreshold() (int, error)
+	GetFedPublicKey(index int) (string, error)
+	GetFedAddress() (string, error)
+	GetActiveFederationCreationBlockHeight() (int, error)
+	GetLBCAddress() string
+	GetRequiredBridgeConfirmations() int64
+	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
+}
 
 type RSK struct {
 	c                           *ethclient.Client
@@ -35,11 +56,10 @@ type RSK struct {
 	lbcAddress                  common.Address
 	bridge                      *bindings.RskBridge
 	bridgeAddress               common.Address
-	network                     string
 	requiredBridgeConfirmations int64
 }
 
-func NewRSK(lbcAddress string, bridgeAddress string, network string, requiredBridgeConfirmations int64) (*RSK, error) {
+func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations int64) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid LBC contract address")
 	}
@@ -50,7 +70,6 @@ func NewRSK(lbcAddress string, bridgeAddress string, network string, requiredBri
 	return &RSK{
 		lbcAddress:                  common.HexToAddress(lbcAddress),
 		bridgeAddress:               common.HexToAddress(bridgeAddress),
-		network:                     network,
 		requiredBridgeConfirmations: requiredBridgeConfirmations,
 	}, nil
 }
@@ -63,11 +82,12 @@ func (rsk *RSK) Connect(endpoint string) error {
 	}
 	rsk.c = client
 
+	log.Debug("verifying connection to RSK node")
 	// test connection
 	if _, err := rsk.GasPrice(); err != nil {
 		return err
 	}
-	log.Debug("Verified connection to node successfully")
+	log.Debug("initializing RSK contracts")
 	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
 	if err != nil {
 		return err
@@ -76,14 +96,11 @@ func (rsk *RSK) Connect(endpoint string) error {
 	if err != nil {
 		return err
 	}
-
-	log.Debug("Connected to RSK contracts")
-
 	return nil
 }
 
 func (rsk *RSK) Close() {
-	log.Debug("Closing RSK connection")
+	log.Debug("closing RSK connection")
 	rsk.c.Close()
 }
 
@@ -93,6 +110,11 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 	}
 
 	dst := common.HexToAddress(addr)
+
+	var additionalGas uint64
+	if rsk.isNewAccount(dst) {
+		additionalGas = newAccountGasCost
+	}
 
 	msg := ethereum.CallMsg{
 		To:    &dst,
@@ -107,7 +129,7 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 		var gas uint64
 		gas, err = rsk.c.EstimateGas(ctx, msg)
 		if gas > 0 {
-			return gas, nil
+			return gas + additionalGas, nil
 		}
 		time.Sleep(sleepTime)
 	}
@@ -127,16 +149,6 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 		time.Sleep(sleepTime)
 	}
 	return nil, fmt.Errorf("error estimating gas: %v", err)
-}
-
-func (rsk *RSK) GetChainId() *big.Int {
-	switch rsk.network {
-	case "mainnet":
-		return big.NewInt(30)
-	default:
-		return big.NewInt(31)
-
-	}
 }
 
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
@@ -279,6 +291,28 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 
 func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
 	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+}
+
+func (rsk *RSK) isNewAccount(addr common.Address) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	bn, err := rsk.c.BlockNumber(ctx)
+	if err != nil {
+		return true
+	}
+	code, err := rsk.c.CodeAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	bal, err := rsk.c.BalanceAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	n, err := rsk.c.NonceAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	return len(code) == 0 && bal.Cmp(common.Big0) == 0 && n == 0
 }
 
 func DecodeRSKAddress(address string) ([]byte, error) {

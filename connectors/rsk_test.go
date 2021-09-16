@@ -1,11 +1,12 @@
 package connectors
 
 import (
-	"github.com/rsksmart/liquidity-provider/types"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"math/rand"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var validTests = []struct {
@@ -47,7 +48,7 @@ var quotes = []*types.Quote{
 func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, tt.input, "testnet", 10)
+		res, err := NewRSK(tt.input, tt.input, 10)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -63,7 +64,7 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 func testNewRSKWithValidAddresses(t *testing.T) {
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, tt.input, "testnet", 10)
+		res, err := NewRSK(tt.input, tt.input, 10)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
@@ -75,7 +76,7 @@ func testNewRSKWithValidAddresses(t *testing.T) {
 
 func testParseQuote(t *testing.T) {
 	for _, tt := range validTests {
-		rsk, err := NewRSK(tt.input, tt.input, "testnet", 10)
+		rsk, err := NewRSK(tt.input, tt.input, 10)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
