@@ -4,6 +4,7 @@
 package bindings
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -536,6 +537,23 @@ func (_LBC *LBCTransactor) RegisterPegIn(opts *bind.TransactOpts, quote Liquidit
 // Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
 func (_LBC *LBCSession) RegisterPegIn(quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LBC.Contract.RegisterPegIn(&_LBC.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
+}
+
+// RegisterPegIn is a paid mutator transaction binding the contract method 0x6b293206.
+//
+// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
+func (l *LBCTransactor) RegisterPegInWithoutTx(q LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int, txHash string) error {
+	opts := &bind.CallOpts{}
+	var res []interface{}
+	err := l.contract.Call(opts, &res, "registerPegIn", q, signature, tx, pmt, height)
+	if err != nil {
+		return err
+	}
+	code := res[0].(*big.Int)
+	if code != big.NewInt(999) {
+		return fmt.Errorf("invalid transaction. transaction: %x", tx)
+	}
+	return nil
 }
 
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x6b293206.

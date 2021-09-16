@@ -115,7 +115,11 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(int64(bh)))
+	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh), txHash)
+	if err != nil {
+		return err
+	}
+	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
 	}
