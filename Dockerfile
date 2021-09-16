@@ -1,4 +1,5 @@
-# To run issue this commands: 
+# To run issue this commands:
+# In your working directory: mv sample-config-ENV.json config.json
 # docker build --tag liquidity-provider-server .
 # docker run docker run liquidity-provider-server
 
