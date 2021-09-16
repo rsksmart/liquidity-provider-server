@@ -22,6 +22,23 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+type AddressWatcher interface {
+	OnNewConfirmation(txHash string, confirmations int64, amount float64)
+	RegisteredPegIn() bool
+}
+
+type BTCConnector interface {
+	Connect(endpoint string, username string, password string) error
+	AddAddressWatcher(address string, interval time.Duration, w AddressWatcher) error
+	GetParams() chaincfg.Params
+	RemoveAddressWatcher(address string)
+	Close()
+	SerializePMT(txHash string) ([]byte, error)
+	SerializeTx(txHash string) ([]byte, error)
+	GetBlockNumberByTx(txHash string) (int64, error)
+	GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+}
+
 type BTC struct {
 	c       *rpcclient.Client
 	chans   map[string]*chan bool
@@ -40,6 +57,7 @@ type FedInfo struct {
 }
 
 func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
+	log.Debug("initializing BTC connector")
 	btc := BTC{
 		chans:   make(map[string]*chan bool),
 		fedInfo: &fedInfo,
@@ -56,6 +74,7 @@ func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
 }
 
 func (btc *BTC) Connect(endpoint string, username string, password string) error {
+	log.Debug("connecting to BTC node")
 	config := rpcclient.ConnConfig{
 		Host:         endpoint,
 		User:         username,

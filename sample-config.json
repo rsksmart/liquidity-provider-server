@@ -26,9 +26,22 @@
         "network": "mainnet"
     },
     "provider": {
-        "keystore": ".geth_keystore",
-        "btcAddress": "2MpfeJdaLuMxuzwyEPgbt3puk1146Drc91f",
-        "rskAccountNum": 0,
-        "pwdFilePath": "pwd.txt"
+        "keyDir" : ".geth_keystore",
+        "accountNum" : 0,
+        "pwdFile" : ".secret",
+        "btcAddr" : "2MpfeJdaLuMxuzwyEPgbt3puk1146Drc91f",
+        "maxConf" : 60,
+        "confirmations" : {
+            "1000000" : 2,
+            "4000000" : 6,
+            "20000000" : 10,
+            "40000000" : 20,
+            "80000000" : 40
+        },
+        "timeForDeposit" : 3600,
+        "callTime" : 7200,
+        "callFee" : 1000,
+        "penaltyFee" : 1000000,
+        "chainId" : 31
     }
 }

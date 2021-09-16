@@ -46,20 +46,8 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
-	pwdFile, err := os.Open(cfg.Provider.PwdFilePath)
-	if err != nil {
-		log.Fatal("cannot read password file: ", err)
-	}
-
-	providerCfg := providers.ProviderConfig{
-		PwdFile:    pwdFile,
-		Keydir:     cfg.Provider.Keystore,
-		BtcAddr:    cfg.Provider.BtcAddress,
-		AccountNum: cfg.Provider.RskAccountNum,
-		ChainId:    rsk.GetChainId(),
-	}
-	lp, err := providers.NewLocalProvider(providerCfg)
-
+	log.Debug("initializing local provider")
+	lp, err := providers.NewLocalProvider(cfg.Provider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
@@ -137,7 +125,7 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.BTC.Network, cfg.RSK.RequiredBridgeConfirmations)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
