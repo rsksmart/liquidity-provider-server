@@ -28,6 +28,8 @@ import (
 const (
 	retries   int           = 3
 	sleepTime time.Duration = 2 * time.Second
+
+	newAccountGasCost = uint64(25000)
 )
 
 type RSKConnector interface {
@@ -109,6 +111,11 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 
 	dst := common.HexToAddress(addr)
 
+	var additionalGas uint64
+	if rsk.isNewAccount(dst) {
+		additionalGas = newAccountGasCost
+	}
+
 	msg := ethereum.CallMsg{
 		To:    &dst,
 		Data:  data,
@@ -122,7 +129,7 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 		var gas uint64
 		gas, err = rsk.c.EstimateGas(ctx, msg)
 		if gas > 0 {
-			return gas, nil
+			return gas + additionalGas, nil
 		}
 		time.Sleep(sleepTime)
 	}
@@ -284,6 +291,28 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 
 func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
 	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+}
+
+func (rsk *RSK) isNewAccount(addr common.Address) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	bn, err := rsk.c.BlockNumber(ctx)
+	if err != nil {
+		return true
+	}
+	code, err := rsk.c.CodeAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	bal, err := rsk.c.BalanceAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	n, err := rsk.c.NonceAt(ctx, addr, big.NewInt(int64(bn)))
+	if err != nil {
+		return true
+	}
+	return len(code) == 0 && bal.Cmp(common.Big0) == 0 && n == 0
 }
 
 func DecodeRSKAddress(address string) ([]byte, error) {
