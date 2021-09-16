@@ -1,3 +1,7 @@
+# To run issue this commands: 
+# docker build --tag liquidity-provider-server .
+# docker run docker run liquidity-provider-server
+
 FROM golang:1.16-alpine
 RUN apk add git
 RUN apk add gcc
