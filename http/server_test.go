@@ -125,7 +125,9 @@ func testGetQuoteComplete(t *testing.T) {
 		db := testmocks.NewDbMock(quote)
 
 		srv := New(rsk, btc, db)
+
 		for _, lp := range providerMocks {
+			rsk.On("GetCollateral", lp.address).Return(nil)
 			srv.AddProvider(lp)
 		}
 		w := http2.TestResponseWriter{}
@@ -171,8 +173,8 @@ func testGetQuoteComplete(t *testing.T) {
 		rsk.On("GasPrice").Times(1)
 		rsk.On("GetFedAddress").Times(1)
 		rsk.On("GetLBCAddress").Times(1)
-		rsk.On("HashQuote", &tq).Times(1).Return("", nil)
-		db.On("InsertQuote", "", &tq).Times(1).Return(quote)
+		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
+		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
 
 		srv.getQuoteHandler(&w, req)
 		db.AssertExpectations(t)
