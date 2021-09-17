@@ -3,13 +3,12 @@ package http
 import (
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"strings"
-
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	"math/big"
+	"strings"
 )
 
 type BTCAddressWatcher struct {
@@ -117,11 +116,8 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
-			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occured
+			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
-		// abort the transaction in case of error.
-		w.registeredPegIn = true
-		return err
 	}
 	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
