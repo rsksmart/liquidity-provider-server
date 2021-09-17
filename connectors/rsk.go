@@ -26,8 +26,11 @@ import (
 )
 
 const (
-	retries   int           = 3
-	sleepTime time.Duration = 2 * time.Second
+	retries    int           = 3
+	rpcSleep   time.Duration = 2 * time.Second
+	rpcTimeout time.Duration = 5 * time.Second
+	ethSleep   time.Duration = 5 * time.Second
+	ethTimeout time.Duration = 5 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -48,6 +51,10 @@ type RSKConnector interface {
 	GetLBCAddress() string
 	GetRequiredBridgeConfirmations() int64
 	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
+	GetCollateral(addr string) (*big.Int, *big.Int, error)
+	RegisterProvider(opts *bind.TransactOpts) error
+	AddCollateral(opts *bind.TransactOpts) error
+	GetAvailableLiquidity(addr string) (*big.Int, error)
 }
 
 type RSK struct {
@@ -104,6 +111,97 @@ func (rsk *RSK) Close() {
 	rsk.c.Close()
 }
 
+func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
+	if !common.IsHexAddress(addr) {
+		return nil, fmt.Errorf("invalid address: %v", addr)
+	}
+	a := common.HexToAddress(addr)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	var err error
+	var liq *big.Int
+	for i := 0; i < retries; i++ {
+		liq, err = rsk.c.BalanceAt(ctx, a, nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error getting balance of %v: %v", addr, err)
+	}
+	for i := 0; i < retries; i++ {
+		var bal *big.Int
+		bal, err = rsk.lbc.GetBalance(&bind.CallOpts{}, a)
+		if err == nil {
+			return liq.Add(liq, bal), nil
+		}
+		time.Sleep(rpcSleep)
+	}
+	return nil, fmt.Errorf("error getting %v balance: %v", addr, err)
+}
+
+func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
+	if !common.IsHexAddress(addr) {
+		return nil, nil, fmt.Errorf("invalid address: %v", addr)
+	}
+	a := common.HexToAddress(addr)
+	var (
+		min *big.Int
+		col *big.Int
+		err error
+	)
+	for i := 0; i < retries; i++ {
+		min, err = rsk.lbc.GetMinCollateral(&bind.CallOpts{})
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting minimum collateral: %v", err)
+	}
+	for i := 0; i < retries; i++ {
+		col, err = rsk.lbc.GetCollateral(&bind.CallOpts{}, a)
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting collateral: %v", err)
+	}
+	return col, min, nil
+}
+
+func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
+	tx, err := rsk.lbc.Register(opts)
+	if err != nil {
+		return fmt.Errorf("error registering provider: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+	s, err := rsk.getTxStatus(ctx, tx)
+	if err != nil || !s {
+		return fmt.Errorf("error registering provider: %v", err)
+	}
+	return nil
+}
+
+func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
+	tx, err := rsk.lbc.AddCollateral(opts)
+	if err != nil {
+		return fmt.Errorf("error adding collateral: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+	s, err := rsk.getTxStatus(ctx, tx)
+	if err != nil || !s {
+		return fmt.Errorf("error adding collateral: %v", err)
+	}
+	return nil
+}
+
 func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
 	if !common.IsHexAddress(addr) {
 		return 0, fmt.Errorf("invalid address: %v", addr)
@@ -121,32 +219,32 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 		Data:  data,
 		Value: &value,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	var err error
 	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
 		var gas uint64
 		gas, err = rsk.c.EstimateGas(ctx, msg)
 		if gas > 0 {
 			return gas + additionalGas, nil
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	return 0, fmt.Errorf("error estimating gas: %v", err)
 }
 
 func (rsk *RSK) GasPrice() (*big.Int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	var err error
 	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
 		var price *big.Int
 		price, err = rsk.c.SuggestGasPrice(ctx)
 		if price != nil && price.Cmp(big.NewInt(0)) > 0 {
 			return price, nil
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	return nil, fmt.Errorf("error estimating gas: %v", err)
 }
@@ -165,7 +263,7 @@ func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
 		if err == nil {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if err != nil {
 		return "", fmt.Errorf("error calling HashQuote: %v", err)
@@ -183,7 +281,7 @@ func (rsk *RSK) GetFedSize() (int, error) {
 		if results != nil {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if err != nil {
 		return 0, fmt.Errorf("error calling GetFederationSize: %v", err)
@@ -206,7 +304,7 @@ func (rsk *RSK) GetFedThreshold() (int, error) {
 		if results != nil {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if err != nil {
 		return 0, fmt.Errorf("error calling GetFederationThreshold: %v", err)
@@ -230,7 +328,7 @@ func (rsk *RSK) GetFedPublicKey(index int) (string, error) {
 		if len(results) > 0 {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if len(results) == 0 {
 		return "", fmt.Errorf("error calling GetFederatorPublicKeyOfType: %v", err)
@@ -249,7 +347,7 @@ func (rsk *RSK) GetFedAddress() (string, error) {
 		if results != "" {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if results == "" {
 		return "", fmt.Errorf("error calling GetFederationAddress: %v", err)
@@ -266,7 +364,7 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 		if results != nil {
 			break
 		}
-		time.Sleep(sleepTime)
+		time.Sleep(rpcSleep)
 	}
 	if results == nil {
 		return 0, fmt.Errorf("error calling getActiveFederationCreationBlockHeight: %v", err)
@@ -293,24 +391,58 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
 }
 
+func (rsk *RSK) getTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
+	ticker := time.NewTicker(ethSleep)
+
+	for {
+		select {
+		case <-ticker.C:
+			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
+			defer cancel()
+			r, _ := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			if r != nil {
+				return r.Status == 1, nil
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return false, fmt.Errorf("operation cancelled")
+		}
+	}
+}
+
 func (rsk *RSK) isNewAccount(addr common.Address) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	bn, err := rsk.c.BlockNumber(ctx)
-	if err != nil {
-		return true
+	var (
+		err  error
+		code []byte
+		bal  *big.Int
+		n    uint64
+	)
+	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
+		code, err = rsk.c.CodeAt(ctx, addr, nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
 	}
-	code, err := rsk.c.CodeAt(ctx, addr, big.NewInt(int64(bn)))
-	if err != nil {
-		return true
+	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
+		bal, err = rsk.c.BalanceAt(ctx, addr, nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
 	}
-	bal, err := rsk.c.BalanceAt(ctx, addr, big.NewInt(int64(bn)))
-	if err != nil {
-		return true
-	}
-	n, err := rsk.c.NonceAt(ctx, addr, big.NewInt(int64(bn)))
-	if err != nil {
-		return true
+	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
+		n, err = rsk.c.NonceAt(ctx, addr, nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(rpcSleep)
 	}
 	return len(code) == 0 && bal.Cmp(common.Big0) == 0 && n == 0
 }
