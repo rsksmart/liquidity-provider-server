@@ -48,7 +48,7 @@ type RSKConnector interface {
 	GetLBCAddress() string
 	GetRequiredBridgeConfirmations() int64
 	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
-	RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int, txHash string) error
+	RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int) error
 }
 
 type RSK struct {
@@ -58,6 +58,7 @@ type RSK struct {
 	bridge                      *bindings.RskBridge
 	bridgeAddress               common.Address
 	requiredBridgeConfirmations int64
+	lbcCaller                   *bindings.LBCCallerRaw
 }
 
 func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations int64) (*RSK, error) {
@@ -94,6 +95,10 @@ func (rsk *RSK) Connect(endpoint string) error {
 		return err
 	}
 	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
+	if err != nil {
+		return err
+	}
+	rsk.lbcCaller = &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
 	if err != nil {
 		return err
 	}
@@ -294,8 +299,14 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
 }
 
-func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int, txHash string) error {
-	return rsk.lbc.RegisterPegInWithoutTx(q, signature, tx, pmt, height, txHash)
+func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+	opts := &bind.CallOpts{}
+	var res []interface{}
+	err := rsk.lbcCaller.Call(opts, &res, "registerPegIn", q, signature, tx, pmt, height)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (rsk *RSK) isNewAccount(addr common.Address) bool {

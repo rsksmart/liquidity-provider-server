@@ -33,8 +33,8 @@ func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBrid
 	return nil, nil
 }
 
-func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int, txHash string) error {
-	m.Called(q, signature, tx, pmt, height, txHash)
+func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+	m.Called(q, signature, tx, pmt, height)
 	return nil
 }
 

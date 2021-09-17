@@ -114,7 +114,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh), txHash)
+	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occured
