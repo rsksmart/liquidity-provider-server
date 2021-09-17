@@ -33,6 +33,11 @@ func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBrid
 	return nil, nil
 }
 
+func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int, txHash string) error {
+	m.Called(q, signature, tx, pmt, height, txHash)
+	return nil
+}
+
 func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
 	m.Called(opt, q)
 	return nil, nil
@@ -47,17 +52,17 @@ func (m *RskMock) Close() {
 }
 
 func (m *RskMock) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
-	args := m.Called(addr, value, data)
-	return args.Get(0).(uint64), nil
+	m.Called(addr, value, data)
+	return 10000, nil
 }
 
 func (m *RskMock) GasPrice() (*big.Int, error) {
-	args := m.Called()
-	return args.Get(0).(*big.Int), nil
+	m.Called()
+	return big.NewInt(100000), nil
 }
 func (m *RskMock) HashQuote(q *types.Quote) (string, error) {
-	args := m.Called(q)
-	return args.String(), nil
+	m.Called(q)
+	return "", nil
 }
 func (m *RskMock) GetFedSize() (int, error) {
 	args := m.Called()

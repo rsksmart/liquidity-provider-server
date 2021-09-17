@@ -32,7 +32,7 @@ func (lp LiquidityProviderMock) Address() string {
 }
 
 func (lp LiquidityProviderMock) GetQuote(q types.Quote, gas uint64, gasPrice big.Int) *types.Quote {
-	return nil
+	return &q
 }
 
 func (lp LiquidityProviderMock) SignHash(hash []byte) ([]byte, error) {
@@ -119,7 +119,70 @@ func testAcceptQuoteComplete(t *testing.T) {
 	}
 }
 
+func testGetQuoteComplete(t *testing.T) {
+	for _, quote := range testQuotes {
+		rsk := new(testmocks.RskMock)
+		btc := new(testmocks.BtcMock)
+		db := testmocks.NewDbMock(quote)
+
+		srv := New(rsk, btc, db)
+		for _, lp := range providerMocks {
+			srv.AddProvider(lp)
+		}
+		w := http2.TestResponseWriter{}
+		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
+		callArgs := ""
+		value := 1000000
+		gasLim := 500000
+		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
+		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
+		body := fmt.Sprintf(
+			"{\"callContractAddress\":\"%v\","+
+				"\"callContractArguments\":\"%v\","+
+				"\"valueToTransfer\":%v,"+
+				"\"gaslimit\":%v,"+
+				"\"RskRefundAddress\":\"%v\","+
+				"\"bitcoinRefundAddress\":\"%v\"}",
+			destAddr, callArgs, value, gasLim, rskRefAddr, btcRefAddr)
+
+		tq := types.Quote{
+			FedBTCAddr:         "",
+			LBCAddr:            "",
+			LPRSKAddr:          "",
+			BTCRefundAddr:      btcRefAddr,
+			RSKRefundAddr:      rskRefAddr,
+			LPBTCAddr:          "",
+			CallFee:            big.Int{},
+			PenaltyFee:         big.Int{},
+			ContractAddr:       destAddr,
+			Data:               callArgs,
+			GasLimit:           500000,
+			Nonce:              0,
+			Value:              *big.NewInt(int64(value)),
+			AgreementTimestamp: 0,
+			TimeForDeposit:     0,
+			CallTime:           0,
+			Confirmations:      0,
+		}
+		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Errorf("couldn't instantiate request. error: %v", err)
+		}
+		rsk.On("EstimateGas", destAddr, *big.NewInt(int64(value)), []byte(callArgs)).Times(1)
+		rsk.On("GasPrice").Times(1)
+		rsk.On("GetFedAddress").Times(1)
+		rsk.On("GetLBCAddress").Times(1)
+		rsk.On("HashQuote", &tq).Times(1).Return("", nil)
+		db.On("InsertQuote", "", &tq).Times(1).Return(quote)
+
+		srv.getQuoteHandler(&w, req)
+		db.AssertExpectations(t)
+		rsk.AssertExpectations(t)
+		btc.AssertExpectations(t)
+	}
+}
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("accept quote", testAcceptQuoteComplete)
+	t.Run("get quote", testGetQuoteComplete)
 }
