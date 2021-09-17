@@ -46,14 +46,17 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
-	log.Debug("initializing local provider")
 	lp, err := providers.NewLocalProvider(cfg.Provider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
 	srv = http.New(rsk, btc, db)
-	srv.AddProvider(lp)
+	log.Debug("registering local provider (this might take a while)")
+	err = srv.AddProvider(lp)
+	if err != nil {
+		log.Fatalf("error registering local provider: %v", err)
+	}
 	port := cfg.Server.Port
 
 	if port == 0 {
@@ -69,6 +72,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 }
 
 func initFederation(rsk connectors.RSK) (*connectors.FedInfo, error) {
+	log.Debug("getting federation info")
 	fedSize, err := rsk.GetFedSize()
 	if err != nil {
 		return nil, err
