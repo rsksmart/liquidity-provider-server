@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"strings"
-  
+
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
@@ -126,7 +126,5 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	w.registeredPegIn = true
-
 	return nil
 }
