@@ -1,16 +1,37 @@
 package testmocks
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/mock"
-	"math/big"
 )
 
 type RskMock struct {
 	mock.Mock
+}
+
+func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
+	m.Called(addr)
+	return nil, nil
+}
+
+func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
+	m.Called(addr)
+	return big.NewInt(10), big.NewInt(10), nil
+}
+
+func (m *RskMock) RegisterProvider(opts *bind.TransactOpts) error {
+	m.Called()
+	return nil
+}
+
+func (m *RskMock) AddCollateral(opts *bind.TransactOpts) error {
+	m.Called()
+	return nil
 }
 
 func (m *RskMock) GetRequiredBridgeConfirmations() int64 {
