@@ -57,7 +57,6 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 			return
 		}
-		w.registeredPegIn = true
 	}
 }
 
@@ -117,12 +116,15 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh), txHash)
 	if err != nil {
+		// abort the transaction in case of error.
+		w.registeredPegIn = true
 		return err
 	}
 	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
 	}
+	w.registeredPegIn = true
 
 	return nil
 }

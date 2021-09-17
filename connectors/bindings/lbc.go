@@ -4,7 +4,6 @@
 package bindings
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -547,11 +546,10 @@ func (l *LBCTransactor) RegisterPegInWithoutTx(q LiquidityBridgeContractQuote, s
 	var res []interface{}
 	err := l.contract.Call(opts, &res, "registerPegIn", q, signature, tx, pmt, height)
 	if err != nil {
+		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+			return nil
+		}
 		return err
-	}
-	code := res[0].(*big.Int)
-	if code != big.NewInt(999) {
-		return fmt.Errorf("invalid transaction. transaction: %x", tx)
 	}
 	return nil
 }
