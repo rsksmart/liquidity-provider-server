@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -48,7 +49,6 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			log.Errorf("error calling callForUser. value: %v. error: %v", txHash, err)
 			return
 		}
-		w.calledForUser = true
 	}
 
 	if w.calledForUser && confirmations >= w.rsk.GetRequiredBridgeConfirmations() {
@@ -71,11 +71,11 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}
-
 	_, err = w.rsk.CallForUser(opt, q)
 	if err != nil {
 		return err
 	}
+	w.calledForUser = true
 	return nil
 }
 
@@ -116,6 +116,9 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh), txHash)
 	if err != nil {
+		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occured
+		}
 		// abort the transaction in case of error.
 		w.registeredPegIn = true
 		return err
