@@ -2,22 +2,24 @@ package http
 
 import (
 	"encoding/hex"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"math/big"
+	"strings"
+  
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"strings"
 )
 
 type BTCAddressWatcher struct {
-	btc             connectors.BTCConnector
-	rsk             connectors.RSKConnector
-	lp              providers.LiquidityProvider
-	calledForUser   bool
-	registeredPegIn bool
-	quote           *types.Quote
+	btc           connectors.BTCConnector
+	rsk           connectors.RSKConnector
+	lp            providers.LiquidityProvider
+	calledForUser bool
+	quote         *types.Quote
+	done          chan struct{}
 }
 
 const (
@@ -27,18 +29,14 @@ const (
 
 func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
-		btc:             btc,
-		rsk:             rsk,
-		lp:              provider,
-		quote:           q,
-		calledForUser:   false,
-		registeredPegIn: false,
+		btc:           btc,
+		rsk:           rsk,
+		lp:            provider,
+		quote:         q,
+		calledForUser: false,
+		done:          make(chan struct{}),
 	}
 	return &watcher, nil
-}
-
-func (w *BTCAddressWatcher) RegisteredPegIn() bool {
-	return w.registeredPegIn
 }
 
 func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
@@ -56,7 +54,12 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 			return
 		}
+		close(w.done)
 	}
+}
+
+func (w *BTCAddressWatcher) Done() <-chan struct{} {
+	return w.done
 }
 
 func (w *BTCAddressWatcher) performCallForUser() error {

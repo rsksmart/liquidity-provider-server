@@ -24,14 +24,13 @@ import (
 
 type AddressWatcher interface {
 	OnNewConfirmation(txHash string, confirmations int64, amount float64)
-	RegisteredPegIn() bool
+	Done() <-chan struct{}
 }
 
 type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
 	AddAddressWatcher(address string, interval time.Duration, w AddressWatcher) error
 	GetParams() chaincfg.Params
-	RemoveAddressWatcher(address string)
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
 	SerializeTx(txHash string) ([]byte, error)
@@ -41,7 +40,6 @@ type BTCConnector interface {
 
 type BTC struct {
 	c       *rpcclient.Client
-	chans   map[string]*chan bool
 	params  chaincfg.Params
 	fedInfo *FedInfo
 }
@@ -59,7 +57,6 @@ type FedInfo struct {
 func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
 	log.Debug("initializing BTC connector")
 	btc := BTC{
-		chans:   make(map[string]*chan bool),
 		fedInfo: &fedInfo,
 	}
 	switch network {
@@ -101,11 +98,9 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 	if err != nil {
 		return fmt.Errorf("error importing address %v: %v", address, err)
 	}
-	ticker := time.NewTicker(interval)
-	ch := make(chan bool)
-	btc.chans[address] = &ch
 
 	go func(w AddressWatcher) {
+		ticker := time.NewTicker(interval)
 		var confirmations int64
 		for {
 			select {
@@ -117,11 +112,8 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 				if conf > confirmations {
 					confirmations = conf
 					w.OnNewConfirmation(txHash, confirmations, amount)
-					if w.RegisteredPegIn() {
-						btc.RemoveAddressWatcher(address)
-					}
 				}
-			case <-ch:
+			case <-w.Done():
 				ticker.Stop()
 				return
 			}
@@ -132,10 +124,6 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 
 func (btc *BTC) GetParams() chaincfg.Params {
 	return btc.params
-}
-
-func (btc *BTC) RemoveAddressWatcher(address string) {
-	*btc.chans[address] <- true
 }
 
 func (btc *BTC) Close() {

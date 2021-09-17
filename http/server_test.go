@@ -17,6 +17,7 @@ import (
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 	http2 "github.com/stretchr/testify/http"
+	"github.com/stretchr/testify/mock"
 )
 
 type LiquidityProviderMock struct {
@@ -86,6 +87,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
+			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 			srv.AddProvider(lp)
 		}
 		w := http2.TestResponseWriter{}
@@ -105,17 +107,14 @@ func testAcceptQuoteComplete(t *testing.T) {
 			t.Errorf("couldn't decode hash. error: %v", err)
 		}
 
-		watcher, err := NewBTCAddressWatcher(btc, rsk, providerMocks[1], quote)
-		if err != nil {
-			t.Errorf("couldn't create watcher. error: %v", err)
-		}
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
-		btc.On("AddAddressWatcher", "", time.Minute, watcher).Times(1).Return("")
+		btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
+		rsk.AssertExpectations(t)
 	}
 }
 
