@@ -547,7 +547,7 @@ func (l *LBCTransactor) RegisterPegInWithoutTx(q LiquidityBridgeContractQuote, s
 	err := l.contract.Call(opts, &res, "registerPegIn", q, signature, tx, pmt, height)
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
-			return nil
+			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occured
 		}
 		return err
 	}
