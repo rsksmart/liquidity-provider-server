@@ -300,9 +300,8 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
-	opts := &bind.CallOpts{}
 	var res []interface{}
-	err := rsk.lbcCaller.Call(opts, &res, "registerPegIn", q, signature, tx, pmt, height)
+	err := rsk.lbcCaller.Call(&bind.CallOpts{}, &res, "registerPegIn", q, signature, tx, pmt, height)
 	if err != nil {
 		return err
 	}
