@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy-liquidity:
-    name: deploys liquidity
+    name: deploys liquidity server
     runs-on: ubuntu-latest
     environment:
       name: prod
