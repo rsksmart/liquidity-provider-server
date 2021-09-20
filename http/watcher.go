@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -54,8 +55,6 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		err := w.performRegisterPegIn(txHash)
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
-			close(w.done)
-			return
 		}
 		close(w.done)
 	}
@@ -80,11 +79,11 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), connectors.EthTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
 	defer cancel()
 	s, err := w.rsk.GetTxStatus(ctx, tx)
 	if err != nil {
-		return nil
+		return err
 	}
 	if !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
@@ -137,11 +136,11 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), connectors.EthTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
 	defer cancel()
 	s, err := w.rsk.GetTxStatus(ctx, tx)
 	if err != nil {
-		return nil
+		return err
 	}
 	if !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())

@@ -30,7 +30,7 @@ const (
 	rpcSleep   time.Duration = 2 * time.Second
 	rpcTimeout time.Duration = 5 * time.Second
 	ethSleep   time.Duration = 5 * time.Second
-	EthTimeout time.Duration = 5 * time.Minute
+	ethTimeout time.Duration = 5 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -181,7 +181,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
 	if err != nil {
 		return fmt.Errorf("error registering provider: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), EthTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
@@ -195,7 +195,7 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), EthTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
