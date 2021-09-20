@@ -1,6 +1,7 @@
 package testmocks
 
 import (
+	"context"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -49,9 +50,14 @@ func (m *RskMock) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQu
 	return bindings.LiquidityBridgeContractQuote{}, nil
 }
 
-func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	m.Called(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	m.Called(opt, q, signature, tx, pmt, height)
 	return nil, nil
+}
+
+func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+	m.Called(q, signature, tx, pmt, height)
+	return nil
 }
 
 func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
@@ -68,17 +74,17 @@ func (m *RskMock) Close() {
 }
 
 func (m *RskMock) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
-	args := m.Called(addr, value, data)
-	return args.Get(0).(uint64), nil
+	m.Called(addr, value, data)
+	return 10000, nil
 }
 
 func (m *RskMock) GasPrice() (*big.Int, error) {
-	args := m.Called()
-	return args.Get(0).(*big.Int), nil
+	m.Called()
+	return big.NewInt(100000), nil
 }
 func (m *RskMock) HashQuote(q *types.Quote) (string, error) {
-	args := m.Called(q)
-	return args.String(), nil
+	m.Called(q)
+	return "", nil
 }
 func (m *RskMock) GetFedSize() (int, error) {
 	args := m.Called()
@@ -105,4 +111,9 @@ func (m *RskMock) GetActiveFederationCreationBlockHeight() (int, error) {
 func (m *RskMock) GetLBCAddress() string {
 	args := m.Called()
 	return args.String()
+}
+
+func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
+	m.Called(ctx, tx)
+	return false, nil
 }

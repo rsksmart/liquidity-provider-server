@@ -42,7 +42,7 @@ type RSKConnector interface {
 	GasPrice() (*big.Int, error)
 	HashQuote(q *types.Quote) (string, error)
 	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
-	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error)
+	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
 	GetFedPublicKey(index int) (string, error)
@@ -51,10 +51,12 @@ type RSKConnector interface {
 	GetLBCAddress() string
 	GetRequiredBridgeConfirmations() int64
 	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
+	RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int) error
 	GetCollateral(addr string) (*big.Int, *big.Int, error)
 	RegisterProvider(opts *bind.TransactOpts) error
 	AddCollateral(opts *bind.TransactOpts) error
 	GetAvailableLiquidity(addr string) (*big.Int, error)
+	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 }
 
 type RSK struct {
@@ -181,7 +183,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
-	s, err := rsk.getTxStatus(ctx, tx)
+	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		return fmt.Errorf("error registering provider: %v", err)
 	}
@@ -195,7 +197,7 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
-	s, err := rsk.getTxStatus(ctx, tx)
+	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		return fmt.Errorf("error adding collateral: %v", err)
 	}
@@ -387,11 +389,21 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 	return rsk.lbc.CallForUser(opt, q)
 }
 
-func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	return rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
 }
 
-func (rsk *RSK) getTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
+func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+	var res []interface{}
+	lbcCaller := &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
+	err := lbcCaller.Call(&bind.CallOpts{}, &res, "registerPegIn", q, signature, tx, pmt, height)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
 	ticker := time.NewTicker(ethSleep)
 
 	for {
