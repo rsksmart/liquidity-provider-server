@@ -106,9 +106,6 @@ func (rsk *RSK) Connect(endpoint string) error {
 		return err
 	}
 	rsk.lbcCaller = &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -405,7 +402,6 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, 
 	}
 	return nil
 }
-
 
 func (rsk *RSK) getTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
 	ticker := time.NewTicker(ethSleep)
