@@ -42,7 +42,7 @@ type RSKConnector interface {
 	GasPrice() (*big.Int, error)
 	HashQuote(q *types.Quote) (string, error)
 	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
-	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error)
+	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
 	GetFedPublicKey(index int) (string, error)
@@ -65,7 +65,6 @@ type RSK struct {
 	bridge                      *bindings.RskBridge
 	bridgeAddress               common.Address
 	requiredBridgeConfirmations int64
-	lbcCaller                   *bindings.LBCCallerRaw
 }
 
 func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations int64) (*RSK, error) {
@@ -105,7 +104,6 @@ func (rsk *RSK) Connect(endpoint string) error {
 	if err != nil {
 		return err
 	}
-	rsk.lbcCaller = &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
 	return nil
 }
 
@@ -387,16 +385,39 @@ func (rsk *RSK) GetLBCAddress() string {
 }
 
 func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
-	return rsk.lbc.CallForUser(opt, q)
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+	tr, err := rsk.lbc.CallForUser(opt, q)
+	if err != nil {
+		return nil, fmt.Errorf("error calling for user: %v", err)
+
+	}
+	s, err := rsk.getTxStatus(ctx, tr)
+	if err != nil || !s {
+		return nil, fmt.Errorf("error calling for user: %v", err)
+	}
+	return tr, nil
 }
 
-func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	return rsk.lbc.RegisterPegIn(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tr, err := rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
+	if err != nil {
+		return nil, fmt.Errorf("error registering peg-in: %v", err)
+	}
+	s, err := rsk.getTxStatus(ctx, tr)
+	if err != nil || !s {
+		return nil, fmt.Errorf("error registering peg-in: %v", err)
+	}
+	return tr, nil
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
 	var res []interface{}
-	err := rsk.lbcCaller.Call(&bind.CallOpts{}, &res, "registerPegIn", q, signature, tx, pmt, height)
+	lbcCaller := &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
+	err := lbcCaller.Call(&bind.CallOpts{}, &res, "registerPegIn", q, signature, tx, pmt, height)
 	if err != nil {
 		return err
 	}

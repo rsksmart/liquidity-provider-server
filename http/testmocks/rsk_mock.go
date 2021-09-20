@@ -49,8 +49,8 @@ func (m *RskMock) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQu
 	return bindings.LiquidityBridgeContractQuote{}, nil
 }
 
-func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, btcRawTrx []byte, partialMerkleTree []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	m.Called(opt, q, signature, btcRawTrx, partialMerkleTree, height)
+func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+	m.Called(opt, q, signature, tx, pmt, height)
 	return nil, nil
 }
 

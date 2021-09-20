@@ -77,7 +77,6 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 	if err != nil {
 		return err
 	}
-	w.calledForUser = true
 	return nil
 }
 
