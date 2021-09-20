@@ -10,6 +10,7 @@ RUN apk add musl-dev
 WORKDIR /app
 
 COPY config.json ./
+COPY pwd.txt ./
 COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
