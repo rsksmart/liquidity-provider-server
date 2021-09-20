@@ -31,7 +31,7 @@ jobs:
         run: |
           aws ssm send-command \
               --document-name "AWS-RunRemoteScript" \
-              --instance-ids "${{ secrets.EC2_ID }}" \
+              --instance-ids "${{ secrets.VM_EC2_ID }}" \
               --region=${{ secrets.AWS_REGION }} \
               --comment "github interaction-liquidity-server" \
               --parameters '{"sourceType":["GitHub"],"sourceInfo":["{\"owner\":\"rootstock\", \"repository\":\"ask-devops\", \"path\": \"liquidity-server/\",\"tokenInfo\":\"{{ssm-secure:github-token}}\"}"],"commandLine":["deploy-liquidity-server.sh"]}'
