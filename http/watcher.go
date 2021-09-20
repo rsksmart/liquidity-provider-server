@@ -56,6 +56,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			close(w.done)
 			return
 		}
+		close(w.done)
 	}
 }
 
