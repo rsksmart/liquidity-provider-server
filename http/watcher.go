@@ -1,11 +1,13 @@
 package http
 
 import (
+	"context"
 	"encoding/hex"
-
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-
 	"math/big"
+	"strings"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -44,6 +46,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		err := w.performCallForUser()
 		if err != nil {
 			log.Errorf("error calling callForUser. value: %v. error: %v", txHash, err)
+			close(w.done)
 			return
 		}
 		w.calledForUser = true
@@ -53,7 +56,6 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		err := w.performRegisterPegIn(txHash)
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
-			return
 		}
 		close(w.done)
 	}
@@ -74,10 +76,15 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}
-
-	_, err = w.rsk.CallForUser(opt, q)
+	tx, err := w.rsk.CallForUser(opt, q)
 	if err != nil {
 		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
+	defer cancel()
+	s, err := w.rsk.GetTxStatus(ctx, tx)
+	if err != nil || !s {
+		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
 	return nil
 }
@@ -117,9 +124,21 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(int64(bh)))
+	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh))
+	if err != nil {
+		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
+		}
+	}
+	tx, err := w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
+	defer cancel()
+	s, err := w.rsk.GetTxStatus(ctx, tx)
+	if err != nil || !s {
+		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
 
 	return nil

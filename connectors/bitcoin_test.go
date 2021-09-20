@@ -67,7 +67,7 @@ var (
 	}
 )
 
-func TestSerializeTx(t *testing.T) {
+func testSerializeTx(t *testing.T) {
 	expected := "01000000010000000000000000000000000000000000000000000000000000000000000000" +
 		"ffffffff5f034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe" +
 		"6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b10000000000000" +
@@ -109,7 +109,7 @@ func TestSerializeTx(t *testing.T) {
 	}
 }
 
-func TestPMTSerialization(t *testing.T) {
+func testPMTSerialization(t *testing.T) {
 	// this is block 0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3
 	f, err := os.Open("./testdata/test_block")
 	if err != nil {
@@ -466,7 +466,7 @@ func checkSubstrings(str string, subs ...string) bool {
 	return isCompleteMatch
 }
 
-func TestFederationHelper(t *testing.T) {
+func TestBitcoinConnector(t *testing.T) {
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
@@ -475,4 +475,6 @@ func TestFederationHelper(t *testing.T) {
 	t.Run("test get powpeg address hash", testBuildPowPegAddressHash)
 	t.Run("test get flyover powpeg address hash", testBuildFlyoverPowPegAddressHash)
 	t.Run("test get flyover erp address hash", testBuildFlyoverErpAddressHash)
+	t.Run("test pmt serialization", testPMTSerialization)
+	t.Run("test tx serialization", testSerializeTx)
 }
