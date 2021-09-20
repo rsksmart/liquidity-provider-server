@@ -65,6 +65,7 @@ func (w *BTCAddressWatcher) Done() <-chan struct{} {
 func (w *BTCAddressWatcher) performCallForUser() error {
 	q, err := w.rsk.ParseQuote(w.quote)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	opt := &bind.TransactOpts{
@@ -75,6 +76,7 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 	}
 	_, err = w.rsk.CallForUser(opt, q)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	return nil
@@ -83,6 +85,7 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	q, err := w.rsk.ParseQuote(w.quote)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	opt := &bind.TransactOpts{
@@ -93,26 +96,32 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	rawTx, err := w.btc.SerializeTx(txHash)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	pmt, err := w.btc.SerializePMT(txHash)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	h, err := w.rsk.HashQuote(w.quote)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	hb, err := hex.DecodeString(h)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	signature, err := w.lp.SignHash(hb)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	bh, err := w.btc.GetBlockNumberByTx(txHash)
 	if err != nil {
+		close(w.done)
 		return err
 	}
 	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh))
@@ -123,7 +132,10 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
+		close(w.done)
 		return err
 	}
+
+	close(w.done)
 	return nil
 }
