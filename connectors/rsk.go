@@ -30,7 +30,7 @@ const (
 	rpcSleep   time.Duration = 2 * time.Second
 	rpcTimeout time.Duration = 5 * time.Second
 	ethSleep   time.Duration = 5 * time.Second
-	ethTimeout time.Duration = 5 * time.Minute
+	EthTimeout time.Duration = 5 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -56,6 +56,7 @@ type RSKConnector interface {
 	RegisterProvider(opts *bind.TransactOpts) error
 	AddCollateral(opts *bind.TransactOpts) error
 	GetAvailableLiquidity(addr string) (*big.Int, error)
+	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 }
 
 type RSK struct {
@@ -180,9 +181,9 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
 	if err != nil {
 		return fmt.Errorf("error registering provider: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), EthTimeout)
 	defer cancel()
-	s, err := rsk.getTxStatus(ctx, tx)
+	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		return fmt.Errorf("error registering provider: %v", err)
 	}
@@ -194,9 +195,9 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), EthTimeout)
 	defer cancel()
-	s, err := rsk.getTxStatus(ctx, tx)
+	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		return fmt.Errorf("error adding collateral: %v", err)
 	}
@@ -385,33 +386,11 @@ func (rsk *RSK) GetLBCAddress() string {
 }
 
 func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	tr, err := rsk.lbc.CallForUser(opt, q)
-	if err != nil {
-		return nil, fmt.Errorf("error calling for user: %v", err)
-
-	}
-	s, err := rsk.getTxStatus(ctx, tr)
-	if err != nil || !s {
-		return nil, fmt.Errorf("error calling for user: %v", err)
-	}
-	return tr, nil
+	return rsk.lbc.CallForUser(opt, q)
 }
 
 func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-
-	tr, err := rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
-	if err != nil {
-		return nil, fmt.Errorf("error registering peg-in: %v", err)
-	}
-	s, err := rsk.getTxStatus(ctx, tr)
-	if err != nil || !s {
-		return nil, fmt.Errorf("error registering peg-in: %v", err)
-	}
-	return tr, nil
+	return rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
@@ -424,7 +403,7 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, 
 	return nil
 }
 
-func (rsk *RSK) getTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
+func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
 	ticker := time.NewTicker(ethSleep)
 
 	for {

@@ -1,8 +1,9 @@
 package http
 
 import (
+	"context"
 	"encoding/hex"
-
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"strings"
@@ -75,9 +76,18 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}
-	_, err = w.rsk.CallForUser(opt, q)
+	tx, err := w.rsk.CallForUser(opt, q)
 	if err != nil {
 		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), connectors.EthTimeout)
+	defer cancel()
+	s, err := w.rsk.GetTxStatus(ctx, tx)
+	if err != nil {
+		return nil
+	}
+	if !s {
+		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
 	return nil
 }
@@ -123,9 +133,19 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
 	}
-	_, err = w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
+	tx, err := w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), connectors.EthTimeout)
+	defer cancel()
+	s, err := w.rsk.GetTxStatus(ctx, tx)
+	if err != nil {
+		return nil
+	}
+	if !s {
+		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
+	}
+
 	return nil
 }

@@ -1,6 +1,7 @@
 package testmocks
 
 import (
+	"context"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -110,4 +111,9 @@ func (m *RskMock) GetActiveFederationCreationBlockHeight() (int, error) {
 func (m *RskMock) GetLBCAddress() string {
 	args := m.Called()
 	return args.String()
+}
+
+func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
+	m.Called(ctx, tx)
+	return false, nil
 }
