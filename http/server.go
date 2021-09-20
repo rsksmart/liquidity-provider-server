@@ -10,6 +10,8 @@ import (
 
 	"context"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
@@ -41,17 +43,45 @@ type acceptReq struct {
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
-	var liqProviders []providers.LiquidityProvider
 	return Server{
 		rsk:       rsk,
 		btc:       btc,
 		db:        db,
-		providers: liqProviders,
+		providers: make([]providers.LiquidityProvider, 0),
 	}
 }
 
-func (s *Server) AddProvider(lp providers.LiquidityProvider) {
-	s.providers = []providers.LiquidityProvider{lp}
+func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
+	s.providers = append(s.providers, lp)
+	addrStr := lp.Address()
+	c, m, err := s.rsk.GetCollateral(addrStr)
+	if err != nil {
+		return err
+	}
+	addr := common.HexToAddress(addrStr)
+	cmp := c.Cmp(big.NewInt(0))
+	if cmp == 0 { // provider not registered
+		opts := &bind.TransactOpts{
+			Value:  m,
+			From:   addr,
+			Signer: lp.SignTx,
+		}
+		err := s.rsk.RegisterProvider(opts)
+		if err != nil {
+			return err
+		}
+	} else if cmp < 0 { // not enough collateral
+		opts := &bind.TransactOpts{
+			Value:  m.Sub(m, c),
+			From:   addr,
+			Signer: lp.SignTx,
+		}
+		err := s.rsk.AddCollateral(opts)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Server) Start(port uint) error {
