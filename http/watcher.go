@@ -49,6 +49,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			close(w.done)
 			return
 		}
+		w.calledForUser = true
 	}
 
 	if w.calledForUser && confirmations >= w.rsk.GetRequiredBridgeConfirmations() {
@@ -82,10 +83,7 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
 	defer cancel()
 	s, err := w.rsk.GetTxStatus(ctx, tx)
-	if err != nil {
-		return err
-	}
-	if !s {
+	if err != nil || !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
 	return nil
@@ -139,10 +137,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
 	defer cancel()
 	s, err := w.rsk.GetTxStatus(ctx, tx)
-	if err != nil {
-		return err
-	}
-	if !s {
+	if err != nil || !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
 
