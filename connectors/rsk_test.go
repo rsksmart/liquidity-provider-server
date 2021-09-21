@@ -93,7 +93,7 @@ func testParseQuote(t *testing.T) {
 }
 
 func TestRSKCreate(t *testing.T) {
-	t.Run("new", testNewRSKWithInvalidAddresses)
-	t.Run("new", testNewRSKWithValidAddresses)
+	t.Run("new invalid", testNewRSKWithInvalidAddresses)
+	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
 }
