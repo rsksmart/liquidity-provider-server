@@ -40,6 +40,9 @@ func (lp LiquidityProviderMock) SignHash(_ []byte) ([]byte, error) {
 	return nil, nil
 }
 
+func (lp LiquidityProviderMock) SetLiquidity(_ *big.Int) {
+}
+
 var providerMocks = []LiquidityProviderMock{
 	{address: "123"},
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
