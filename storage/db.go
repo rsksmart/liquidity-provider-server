@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/jmoiron/sqlx"
@@ -159,23 +158,16 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 
 func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
-	//var quotes []types.Quote
 	quote := types.Quote{}
-	var callFee string
-	var penaltyFee string
-	var value string
 
-	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
-		&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
-		&quote.BTCRefundAddr, &quote.RSKRefundAddr, &quote.LPBTCAddr, &callFee,
-		&penaltyFee, &quote.ContractAddr, &quote.Data,
-		&quote.GasLimit, &quote.Nonce, &value,
-		&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
+	//err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
+	//	&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
+	//	&quote.BTCRefundAddr, &quote.RSKRefundAddr, &quote.LPBTCAddr, &quote.CallFee,
+	//	&quote.PenaltyFee, &quote.ContractAddr, &quote.Data,
+	//	&quote.GasLimit, &quote.Nonce, &quote.Value,
+	//	&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
 
-	quote.CallFee.SetString(callFee, 0)
-	quote.PenaltyFee.SetString(penaltyFee, 0)
-	quote.Value.SetString(value, 0)
-
+	err := sqlx.Get(db.db, quote, selectQuoteByHash, quoteHash)
 	if err != nil {
 		return nil, err
 	}
