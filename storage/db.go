@@ -1,9 +1,6 @@
 package storage
 
 import (
-	"fmt"
-	"math/big"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
@@ -11,10 +8,7 @@ import (
 )
 
 const (
-	driver     = "sqlite"
-	feePos     = 6
-	penaltyPos = 7
-	valuePos   = 12
+	driver = "sqlite"
 )
 
 const selectQuoteByHash = `
@@ -35,9 +29,10 @@ SELECT
 	agreement_timestamp, 
 	time_for_deposit, 
 	call_time, 
-	confirmations
+	confirmations,
+    call_on_register
 FROM quotes 
-WHERE hash = '%s' 
+WHERE hash = ?
 LIMIT 1`
 
 const insertQuote = `
@@ -59,7 +54,8 @@ INSERT INTO quotes (
 	agreement_timestamp,
 	time_for_deposit,
 	call_time,
-	confirmations
+	confirmations,
+	call_on_register
 )
 VALUES (
     ?,
@@ -79,7 +75,8 @@ VALUES (
 	:agreement_timestamp,
 	:time_for_deposit,
 	:call_time,
-	:confirmations
+	:confirmations,
+    :call_on_register
 )
 `
 const createTable = `
@@ -101,7 +98,8 @@ CREATE TABLE IF NOT EXISTS quotes (
 	agreement_timestamp INTEGER,
 	time_for_deposit INTEGER,
 	call_time INTEGER,
-	confirmations INTEGER
+	confirmations INTEGER,
+	call_on_register INTEGER
 )
 `
 
@@ -140,13 +138,6 @@ func (db *DB) Close() error {
 func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	log.Debug("inserting quote: ", q)
 	query, args, _ := sqlx.Named(insertQuote, q)
-
-	callFee := args[feePos].(big.Int)
-	penaltyFee := args[penaltyPos].(big.Int)
-	value := args[valuePos].(big.Int)
-	args[feePos] = callFee.String()
-	args[penaltyPos] = penaltyFee.String()
-	args[valuePos] = value.String()
 	args = append(args, 0)
 	copy(args[1:], args)
 	args[0] = id
@@ -159,23 +150,8 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 
 func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
-	//var quotes []types.Quote
 	quote := types.Quote{}
-	var callFee string
-	var penaltyFee string
-	var value string
-
-	err := db.db.QueryRow(fmt.Sprintf(selectQuoteByHash, quoteHash)).Scan(
-		&quote.FedBTCAddr, &quote.LBCAddr, &quote.LPRSKAddr,
-		&quote.BTCRefundAddr, &quote.RSKRefundAddr, &quote.LPBTCAddr, &callFee,
-		&penaltyFee, &quote.ContractAddr, &quote.Data,
-		&quote.GasLimit, &quote.Nonce, &value,
-		&quote.AgreementTimestamp, &quote.TimeForDeposit, &quote.CallTime, &quote.Confirmations)
-
-	quote.CallFee.SetString(callFee, 0)
-	quote.PenaltyFee.SetString(penaltyFee, 0)
-	quote.Value.SetString(value, 0)
-
+	err := db.db.Get(&quote, selectQuoteByHash, quoteHash)
 	if err != nil {
 		return nil, err
 	}

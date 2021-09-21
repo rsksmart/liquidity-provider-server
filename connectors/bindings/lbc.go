@@ -4,6 +4,7 @@
 package bindings
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
@@ -34,21 +36,28 @@ type LiquidityBridgeContractQuote struct {
 	BtcRefundAddress            []byte
 	RskRefundAddress            common.Address
 	LiquidityProviderBtcAddress []byte
-	CallFee                     *big.Int
-	PenaltyFee                  *big.Int
+	CallFee                     uint64
+	PenaltyFee                  uint64
 	ContractAddress             common.Address
 	Data                        []byte
-	GasLimit                    *big.Int
-	Nonce                       *big.Int
-	Value                       *big.Int
-	AgreementTimestamp          *big.Int
-	TimeForDeposit              *big.Int
-	CallTime                    *big.Int
-	DepositConfirmations        *big.Int
+	GasLimit                    uint32
+	Nonce                       int64
+	Value                       uint64
+	AgreementTimestamp          uint32
+	TimeForDeposit              uint32
+	CallTime                    uint32
+	DepositConfirmations        uint16
+	CallOnRegister              bool
+}
+
+// LBCMetaData contains all meta data concerning the LBC contract.
+var LBCMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"minimumCollateral\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"rewardPercentage\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"resignDelayBlocks\",\"type\":\"uint32\"},{\"internalType\":\"int256\",\"name\":\"dustThreshold\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"amount\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint64\",\"name\":\"callFee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"value\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getDustThreshold\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint64\",\"name\":\"callFee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"value\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint64\",\"name\":\"callFee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"value\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
 }
 
 // LBCABI is the input ABI used to generate the binding from.
-const LBCABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minCollateral\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"rewardRatio\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resignationBlocks\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"amount\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"agreementTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"timeForDeposit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"callTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"depositConfirmations\",\"type\":\"uint256\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignationBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardRatio\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"agreementTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"timeForDeposit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"callTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"depositConfirmations\",\"type\":\"uint256\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"agreementTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"timeForDeposit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"callTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"depositConfirmations\",\"type\":\"uint256\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]"
+// Deprecated: Use LBCMetaData.ABI instead.
+var LBCABI = LBCMetaData.ABI
 
 // LBC is an auto generated Go binding around an Ethereum contract.
 type LBC struct {
@@ -285,6 +294,37 @@ func (_LBC *LBCCallerSession) GetCollateral(addr common.Address) (*big.Int, erro
 	return _LBC.Contract.GetCollateral(&_LBC.CallOpts, addr)
 }
 
+// GetDustThreshold is a free data retrieval call binding the contract method 0x33f07ad3.
+//
+// Solidity: function getDustThreshold() view returns(int256)
+func (_LBC *LBCCaller) GetDustThreshold(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LBC.contract.Call(opts, &out, "getDustThreshold")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetDustThreshold is a free data retrieval call binding the contract method 0x33f07ad3.
+//
+// Solidity: function getDustThreshold() view returns(int256)
+func (_LBC *LBCSession) GetDustThreshold() (*big.Int, error) {
+	return _LBC.Contract.GetDustThreshold(&_LBC.CallOpts)
+}
+
+// GetDustThreshold is a free data retrieval call binding the contract method 0x33f07ad3.
+//
+// Solidity: function getDustThreshold() view returns(int256)
+func (_LBC *LBCCallerSession) GetDustThreshold() (*big.Int, error) {
+	return _LBC.Contract.GetDustThreshold(&_LBC.CallOpts)
+}
+
 // GetMinCollateral is a free data retrieval call binding the contract method 0xe830b690.
 //
 // Solidity: function getMinCollateral() view returns(uint256)
@@ -316,12 +356,12 @@ func (_LBC *LBCCallerSession) GetMinCollateral() (*big.Int, error) {
 	return _LBC.Contract.GetMinCollateral(&_LBC.CallOpts)
 }
 
-// GetResignationBlocks is a free data retrieval call binding the contract method 0xd9a20674.
+// GetResignDelayBlocks is a free data retrieval call binding the contract method 0xbd5798c3.
 //
-// Solidity: function getResignationBlocks() view returns(uint256)
-func (_LBC *LBCCaller) GetResignationBlocks(opts *bind.CallOpts) (*big.Int, error) {
+// Solidity: function getResignDelayBlocks() view returns(uint256)
+func (_LBC *LBCCaller) GetResignDelayBlocks(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _LBC.contract.Call(opts, &out, "getResignationBlocks")
+	err := _LBC.contract.Call(opts, &out, "getResignDelayBlocks")
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -333,26 +373,26 @@ func (_LBC *LBCCaller) GetResignationBlocks(opts *bind.CallOpts) (*big.Int, erro
 
 }
 
-// GetResignationBlocks is a free data retrieval call binding the contract method 0xd9a20674.
+// GetResignDelayBlocks is a free data retrieval call binding the contract method 0xbd5798c3.
 //
-// Solidity: function getResignationBlocks() view returns(uint256)
-func (_LBC *LBCSession) GetResignationBlocks() (*big.Int, error) {
-	return _LBC.Contract.GetResignationBlocks(&_LBC.CallOpts)
+// Solidity: function getResignDelayBlocks() view returns(uint256)
+func (_LBC *LBCSession) GetResignDelayBlocks() (*big.Int, error) {
+	return _LBC.Contract.GetResignDelayBlocks(&_LBC.CallOpts)
 }
 
-// GetResignationBlocks is a free data retrieval call binding the contract method 0xd9a20674.
+// GetResignDelayBlocks is a free data retrieval call binding the contract method 0xbd5798c3.
 //
-// Solidity: function getResignationBlocks() view returns(uint256)
-func (_LBC *LBCCallerSession) GetResignationBlocks() (*big.Int, error) {
-	return _LBC.Contract.GetResignationBlocks(&_LBC.CallOpts)
+// Solidity: function getResignDelayBlocks() view returns(uint256)
+func (_LBC *LBCCallerSession) GetResignDelayBlocks() (*big.Int, error) {
+	return _LBC.Contract.GetResignDelayBlocks(&_LBC.CallOpts)
 }
 
-// GetRewardRatio is a free data retrieval call binding the contract method 0x97e1b4bc.
+// GetRewardPercentage is a free data retrieval call binding the contract method 0xc7213163.
 //
-// Solidity: function getRewardRatio() view returns(uint256)
-func (_LBC *LBCCaller) GetRewardRatio(opts *bind.CallOpts) (*big.Int, error) {
+// Solidity: function getRewardPercentage() view returns(uint256)
+func (_LBC *LBCCaller) GetRewardPercentage(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _LBC.contract.Call(opts, &out, "getRewardRatio")
+	err := _LBC.contract.Call(opts, &out, "getRewardPercentage")
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -364,23 +404,23 @@ func (_LBC *LBCCaller) GetRewardRatio(opts *bind.CallOpts) (*big.Int, error) {
 
 }
 
-// GetRewardRatio is a free data retrieval call binding the contract method 0x97e1b4bc.
+// GetRewardPercentage is a free data retrieval call binding the contract method 0xc7213163.
 //
-// Solidity: function getRewardRatio() view returns(uint256)
-func (_LBC *LBCSession) GetRewardRatio() (*big.Int, error) {
-	return _LBC.Contract.GetRewardRatio(&_LBC.CallOpts)
+// Solidity: function getRewardPercentage() view returns(uint256)
+func (_LBC *LBCSession) GetRewardPercentage() (*big.Int, error) {
+	return _LBC.Contract.GetRewardPercentage(&_LBC.CallOpts)
 }
 
-// GetRewardRatio is a free data retrieval call binding the contract method 0x97e1b4bc.
+// GetRewardPercentage is a free data retrieval call binding the contract method 0xc7213163.
 //
-// Solidity: function getRewardRatio() view returns(uint256)
-func (_LBC *LBCCallerSession) GetRewardRatio() (*big.Int, error) {
-	return _LBC.Contract.GetRewardRatio(&_LBC.CallOpts)
+// Solidity: function getRewardPercentage() view returns(uint256)
+func (_LBC *LBCCallerSession) GetRewardPercentage() (*big.Int, error) {
+	return _LBC.Contract.GetRewardPercentage(&_LBC.CallOpts)
 }
 
-// HashQuote is a free data retrieval call binding the contract method 0xbc258bbd.
+// HashQuote is a free data retrieval call binding the contract method 0x71c6e1de.
 //
-// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) pure returns(bytes32)
+// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) pure returns(bytes32)
 func (_LBC *LBCCaller) HashQuote(opts *bind.CallOpts, quote LiquidityBridgeContractQuote) ([32]byte, error) {
 	var out []interface{}
 	err := _LBC.contract.Call(opts, &out, "hashQuote", quote)
@@ -395,16 +435,16 @@ func (_LBC *LBCCaller) HashQuote(opts *bind.CallOpts, quote LiquidityBridgeContr
 
 }
 
-// HashQuote is a free data retrieval call binding the contract method 0xbc258bbd.
+// HashQuote is a free data retrieval call binding the contract method 0x71c6e1de.
 //
-// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) pure returns(bytes32)
+// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) pure returns(bytes32)
 func (_LBC *LBCSession) HashQuote(quote LiquidityBridgeContractQuote) ([32]byte, error) {
 	return _LBC.Contract.HashQuote(&_LBC.CallOpts, quote)
 }
 
-// HashQuote is a free data retrieval call binding the contract method 0xbc258bbd.
+// HashQuote is a free data retrieval call binding the contract method 0x71c6e1de.
 //
-// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) pure returns(bytes32)
+// Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) pure returns(bytes32)
 func (_LBC *LBCCallerSession) HashQuote(quote LiquidityBridgeContractQuote) ([32]byte, error) {
 	return _LBC.Contract.HashQuote(&_LBC.CallOpts, quote)
 }
@@ -461,23 +501,23 @@ func (_LBC *LBCTransactorSession) AddCollateral() (*types.Transaction, error) {
 	return _LBC.Contract.AddCollateral(&_LBC.TransactOpts)
 }
 
-// CallForUser is a paid mutator transaction binding the contract method 0xfbac6fce.
+// CallForUser is a paid mutator transaction binding the contract method 0xe291c81e.
 //
-// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) payable returns(bool)
+// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
 func (_LBC *LBCTransactor) CallForUser(opts *bind.TransactOpts, quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
 	return _LBC.contract.Transact(opts, "callForUser", quote)
 }
 
-// CallForUser is a paid mutator transaction binding the contract method 0xfbac6fce.
+// CallForUser is a paid mutator transaction binding the contract method 0xe291c81e.
 //
-// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) payable returns(bool)
+// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
 func (_LBC *LBCSession) CallForUser(quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
 	return _LBC.Contract.CallForUser(&_LBC.TransactOpts, quote)
 }
 
-// CallForUser is a paid mutator transaction binding the contract method 0xfbac6fce.
+// CallForUser is a paid mutator transaction binding the contract method 0xe291c81e.
 //
-// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote) payable returns(bool)
+// Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
 func (_LBC *LBCTransactorSession) CallForUser(quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
 	return _LBC.Contract.CallForUser(&_LBC.TransactOpts, quote)
 }
@@ -524,23 +564,23 @@ func (_LBC *LBCTransactorSession) Register() (*types.Transaction, error) {
 	return _LBC.Contract.Register(&_LBC.TransactOpts)
 }
 
-// RegisterPegIn is a paid mutator transaction binding the contract method 0x6b293206.
+// RegisterPegIn is a paid mutator transaction binding the contract method 0xf4318e56.
 //
-// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
+// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
 func (_LBC *LBCTransactor) RegisterPegIn(opts *bind.TransactOpts, quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LBC.contract.Transact(opts, "registerPegIn", quote, signature, btcRawTransaction, partialMerkleTree, height)
 }
 
-// RegisterPegIn is a paid mutator transaction binding the contract method 0x6b293206.
+// RegisterPegIn is a paid mutator transaction binding the contract method 0xf4318e56.
 //
-// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
+// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
 func (_LBC *LBCSession) RegisterPegIn(quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LBC.Contract.RegisterPegIn(&_LBC.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
 }
 
-// RegisterPegIn is a paid mutator transaction binding the contract method 0x6b293206.
+// RegisterPegIn is a paid mutator transaction binding the contract method 0xf4318e56.
 //
-// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint256,uint256,uint256,uint256,uint256,uint256,uint256) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
+// Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint64,uint64,address,bytes,uint32,int64,uint64,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
 func (_LBC *LBCTransactorSession) RegisterPegIn(quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LBC.Contract.RegisterPegIn(&_LBC.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
 }

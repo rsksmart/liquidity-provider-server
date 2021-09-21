@@ -26,12 +26,12 @@ func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 }
 
 func (m *RskMock) RegisterProvider(opts *bind.TransactOpts) error {
-	m.Called()
+	m.Called(opts)
 	return nil
 }
 
 func (m *RskMock) AddCollateral(opts *bind.TransactOpts) error {
-	m.Called()
+	m.Called(opts)
 	return nil
 }
 
@@ -73,14 +73,14 @@ func (m *RskMock) Close() {
 	m.Called()
 }
 
-func (m *RskMock) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
+func (m *RskMock) EstimateGas(addr string, value uint64, data []byte) (uint64, error) {
 	m.Called(addr, value, data)
 	return 10000, nil
 }
 
-func (m *RskMock) GasPrice() (*big.Int, error) {
+func (m *RskMock) GasPrice() (uint64, error) {
 	m.Called()
-	return big.NewInt(100000), nil
+	return 100000, nil
 }
 func (m *RskMock) HashQuote(q *types.Quote) (string, error) {
 	m.Called(q)

@@ -1,7 +1,6 @@
 package connectors
 
 import (
-	"math/big"
 	"math/rand"
 	"testing"
 
@@ -31,13 +30,13 @@ var quotes = []*types.Quote{
 		BTCRefundAddr:      "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
 		LPBTCAddr:          "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
-		CallFee:            *big.NewInt(250),
-		PenaltyFee:         *big.NewInt(5000),
+		CallFee:            250,
+		PenaltyFee:         5000,
 		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
 		Data:               "",
 		GasLimit:           6000000,
-		Nonce:              rand.Int(),
-		Value:              *big.NewInt(250),
+		Nonce:              int64(rand.Int()),
+		Value:              250,
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
 		CallTime:           3600,
@@ -94,7 +93,7 @@ func testParseQuote(t *testing.T) {
 }
 
 func TestRSKCreate(t *testing.T) {
-	t.Run("new", testNewRSKWithInvalidAddresses)
-	t.Run("new", testNewRSKWithValidAddresses)
+	t.Run("new invalid", testNewRSKWithInvalidAddresses)
+	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
 }
