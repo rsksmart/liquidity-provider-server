@@ -24,6 +24,10 @@ type LiquidityProviderMock struct {
 	address string
 }
 
+func (lp LiquidityProviderMock) RefundLiquidity(_ string, _ *big.Int) error {
+	return nil
+}
+
 func (lp LiquidityProviderMock) SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
@@ -36,7 +40,7 @@ func (lp LiquidityProviderMock) GetQuote(q types.Quote, _ uint64, _ uint64) *typ
 	return &q
 }
 
-func (lp LiquidityProviderMock) SignHash(_ []byte) ([]byte, error) {
+func (lp LiquidityProviderMock) SignQuote(_ []byte, _ *big.Int) ([]byte, error) {
 	return nil, nil
 }
 
@@ -115,6 +119,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		}
 
 		db.On("GetQuote", hash).Times(1).Return(quote)
+		rsk.On("EstimateGas", quote.ContractAddr, quote.Value, []byte(quote.Data)).Times(1)
 		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
 		btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 		srv.acceptQuoteHandler(&w, req)

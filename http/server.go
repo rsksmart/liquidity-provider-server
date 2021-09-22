@@ -216,18 +216,19 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-	signB, err := p.SignHash(hashBytes)
+	cfuCost, err := s.rsk.EstimateGas(quote.ContractAddr, quote.Value, []byte(quote.Data))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	reqLiq := big.NewInt(int64(quote.GasLimit) + int64(CFUExtraGas)*int64(cfuCost+quote.Value))
+	signB, err := p.SignQuote(hashBytes, reqLiq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	signature := hex.EncodeToString(signB)
-	response := acceptRes{
-		Signature:                 signature,
-		BitcoinDepositAddressHash: depositAddress,
-	}
 
-	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote)
+	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote, signB, reqLiq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -237,7 +238,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	enc := json.NewEncoder(w)
+	signature := hex.EncodeToString(signB)
+	response := acceptRes{
+		Signature:                 signature,
+		BitcoinDepositAddressHash: depositAddress,
+	}
 	err = enc.Encode(response)
 
 	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
