@@ -40,6 +40,9 @@ func (lp LiquidityProviderMock) SignHash(_ []byte) ([]byte, error) {
 	return nil, nil
 }
 
+func (lp LiquidityProviderMock) SetLiquidity(_ *big.Int) {
+}
+
 var providerMocks = []LiquidityProviderMock{
 	{address: "123"},
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
@@ -88,6 +91,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
+			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 			err := srv.AddProvider(lp)
 			if err != nil {
 				t.Errorf("couldn't add provider. error: %v", err)
@@ -113,7 +117,6 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
 		btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
-
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
@@ -131,6 +134,7 @@ func testGetQuoteComplete(t *testing.T) {
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
+			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 			err := srv.AddProvider(lp)
 			if err != nil {
 				t.Errorf("couldn't add provider. error: %v", err)

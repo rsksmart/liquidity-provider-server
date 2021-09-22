@@ -81,6 +81,12 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 			return err
 		}
 	}
+	liq, err := s.rsk.GetAvailableLiquidity(addrStr)
+	if err != nil {
+		return err
+	}
+	lp.SetLiquidity(liq)
+
 	return nil
 }
 
