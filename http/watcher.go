@@ -27,7 +27,7 @@ type BTCAddressWatcher struct {
 
 const (
 	pegInGasLim = 250000
-	CFUExtraGas = 100000
+	CFUExtraGas = 150000
 )
 
 func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote, signature []byte) (*BTCAddressWatcher, error) {
