@@ -466,6 +466,42 @@ func checkSubstrings(str string, subs ...string) bool {
 	return isCompleteMatch
 }
 
+func testGetDerivedBitcoinAddress(t *testing.T) {
+	for _, tt := range testQuotes {
+		btc, err := NewBTC(tt.NetworkParams, *getFakeFedInfo())
+		if err != nil {
+			t.Errorf("error initializing BTC: %v", err)
+		}
+		btc.fedInfo.IrisActivationHeight = 1
+		if btc.params.Name == chaincfg.TestNet3Params.Name {
+			btc.fedInfo.FedAddress = "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p"
+		} else {
+			btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+		}
+		lbcAddr, err := DecodeRSKAddress(tt.LBCAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeRSKAddress. error: %v", err)
+		}
+		hashBytes, err := hex.DecodeString(tt.QuoteHash)
+		if err != nil || len(hashBytes) == 0 {
+			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+		}
+		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+		}
+		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+		}
+		addr, err := btc.GetDerivedBitcoinAddress(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
+		if err != nil {
+			t.Errorf("Unexpected error in GetDerivedBitcoinAddress. error: %v", err)
+		}
+		assert.EqualValues(t, tt.ExpectedAddressHash, addr)
+	}
+}
+
 func TestBitcoinConnector(t *testing.T) {
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
@@ -477,4 +513,5 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test get flyover erp address hash", testBuildFlyoverErpAddressHash)
 	t.Run("test pmt serialization", testPMTSerialization)
 	t.Run("test tx serialization", testSerializeTx)
+	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
 }

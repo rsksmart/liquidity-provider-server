@@ -38,8 +38,8 @@ const (
 type RSKConnector interface {
 	Connect(endpoint string) error
 	Close()
-	EstimateGas(addr string, value big.Int, data []byte) (uint64, error)
-	GasPrice() (*big.Int, error)
+	EstimateGas(addr string, value uint64, data []byte) (uint64, error)
+	GasPrice() (uint64, error)
 	HashQuote(q *types.Quote) (string, error)
 	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
 	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
@@ -204,7 +204,7 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 	return nil
 }
 
-func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, error) {
+func (rsk *RSK) EstimateGas(addr string, value uint64, data []byte) (uint64, error) {
 	if !common.IsHexAddress(addr) {
 		return 0, fmt.Errorf("invalid address: %v", addr)
 	}
@@ -219,7 +219,7 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 	msg := ethereum.CallMsg{
 		To:    &dst,
 		Data:  data,
-		Value: &value,
+		Value: big.NewInt(int64(value)),
 	}
 
 	var err error
@@ -236,7 +236,7 @@ func (rsk *RSK) EstimateGas(addr string, value big.Int, data []byte) (uint64, er
 	return 0, fmt.Errorf("error estimating gas: %v", err)
 }
 
-func (rsk *RSK) GasPrice() (*big.Int, error) {
+func (rsk *RSK) GasPrice() (uint64, error) {
 	var err error
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
@@ -244,11 +244,11 @@ func (rsk *RSK) GasPrice() (*big.Int, error) {
 		var price *big.Int
 		price, err = rsk.c.SuggestGasPrice(ctx)
 		if price != nil && price.Cmp(big.NewInt(0)) > 0 {
-			return price, nil
+			return price.Uint64(), nil
 		}
 		time.Sleep(rpcSleep)
 	}
-	return nil, fmt.Errorf("error estimating gas: %v", err)
+	return 0, fmt.Errorf("error estimating gas: %v", err)
 }
 
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
@@ -495,15 +495,15 @@ func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuot
 	if pq.Data, err = parseHex(q.Data); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing data: %v", err)
 	}
-	pq.CallFee = &q.CallFee
-	pq.PenaltyFee = &q.PenaltyFee
-	pq.GasLimit = new(big.Int).SetUint64(uint64(q.GasLimit))
-	pq.Nonce = new(big.Int).SetUint64(uint64(q.Nonce))
-	pq.Value = &q.Value
-	pq.AgreementTimestamp = new(big.Int).SetUint64(uint64(q.AgreementTimestamp))
-	pq.CallTime = new(big.Int).SetUint64(uint64(q.CallTime))
-	pq.DepositConfirmations = new(big.Int).SetUint64(uint64(q.Confirmations))
-	pq.TimeForDeposit = new(big.Int).SetUint64(uint64(q.TimeForDeposit))
+	pq.CallFee = q.CallFee
+	pq.PenaltyFee = q.PenaltyFee
+	pq.GasLimit = q.GasLimit
+	pq.Nonce = q.Nonce
+	pq.Value = q.Value
+	pq.AgreementTimestamp = q.AgreementTimestamp
+	pq.CallTime = q.CallTime
+	pq.DepositConfirmations = q.Confirmations
+	pq.TimeForDeposit = q.TimeForDeposit
 	return pq, nil
 }
 

@@ -41,7 +41,7 @@ func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnect
 	return &watcher, nil
 }
 
-func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount float64) {
+func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, _ float64) {
 	if !w.calledForUser && confirmations >= int64(w.quote.Confirmations) {
 		err := w.performCallForUser()
 		if err != nil {
@@ -71,8 +71,8 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 		return err
 	}
 	opt := &bind.TransactOpts{
-		GasLimit: q.GasLimit.Uint64() + CFUExtraGas,
-		Value:    q.Value,
+		GasLimit: uint64(q.GasLimit + CFUExtraGas),
+		Value:    big.NewInt(int64(q.Value)),
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}

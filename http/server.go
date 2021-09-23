@@ -30,12 +30,12 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallContractAddress   string  `json:"callContractAddress"`
-	CallContractArguments string  `json:"callContractArguments"`
-	ValueToTransfer       big.Int `json:"valueToTransfer"`
-	GasLimit              uint    `json:"gasLimit"`
-	RskRefundAddress      string  `json:"rskRefundAddress"`
-	BitcoinRefundAddress  string  `json:"bitcoinRefundAddress"`
+	CallContractAddress   string `json:"callContractAddress"`
+	CallContractArguments string `json:"callContractArguments"`
+	ValueToTransfer       uint64 `json:"valueToTransfer"`
+	GasLimit              uint32 `json:"gasLimit"`
+	RskRefundAddress      string `json:"rskRefundAddress"`
+	BitcoinRefundAddress  string `json:"bitcoinRefundAddress"`
 }
 
 type acceptReq struct {
@@ -81,6 +81,12 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 			return err
 		}
 	}
+	liq, err := s.rsk.GetAvailableLiquidity(addrStr)
+	if err != nil {
+		return err
+	}
+	lp.SetLiquidity(liq)
+
 	return nil
 }
 
@@ -150,7 +156,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
 	for _, p := range s.providers {
-		pq := p.GetQuote(q, gas, *price)
+		pq := p.GetQuote(q, gas, price)
 		if pq != nil {
 			err = s.storeQuote(pq)
 
