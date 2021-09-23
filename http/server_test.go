@@ -32,12 +32,15 @@ func (lp LiquidityProviderMock) Address() string {
 	return lp.address
 }
 
-func (lp LiquidityProviderMock) GetQuote(q types.Quote, gas uint64, gasPrice big.Int) *types.Quote {
+func (lp LiquidityProviderMock) GetQuote(q types.Quote, _ uint64, _ uint64) *types.Quote {
 	return &q
 }
 
-func (lp LiquidityProviderMock) SignHash(hash []byte) ([]byte, error) {
+func (lp LiquidityProviderMock) SignHash(_ []byte) ([]byte, error) {
 	return nil, nil
+}
+
+func (lp LiquidityProviderMock) SetLiquidity(_ *big.Int) {
 }
 
 var providerMocks = []LiquidityProviderMock{
@@ -53,13 +56,13 @@ var testQuotes = []*types.Quote{
 		BTCRefundAddr:      "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
 		LPBTCAddr:          "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
-		CallFee:            *big.NewInt(250),
-		PenaltyFee:         *big.NewInt(5000),
+		CallFee:            250,
+		PenaltyFee:         5000,
 		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
 		Data:               "",
 		GasLimit:           6000000,
-		Nonce:              rand.Int(),
-		Value:              *big.NewInt(250),
+		Nonce:              int64(rand.Int()),
+		Value:              250,
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
 		CallTime:           3600,
@@ -69,8 +72,8 @@ var testQuotes = []*types.Quote{
 
 func testGetProviderByAddress(t *testing.T) {
 	var liquidityProviders []providers.LiquidityProvider
-	for _, mock := range providerMocks {
-		liquidityProviders = append(liquidityProviders, mock)
+	for _, providerMock := range providerMocks {
+		liquidityProviders = append(liquidityProviders, providerMock)
 	}
 
 	for _, tt := range liquidityProviders {
@@ -88,7 +91,11 @@ func testAcceptQuoteComplete(t *testing.T) {
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-			srv.AddProvider(lp)
+			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
+			err := srv.AddProvider(lp)
+			if err != nil {
+				t.Errorf("couldn't add provider. error: %v", err)
+			}
 		}
 		w := http2.TestResponseWriter{}
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
@@ -110,7 +117,6 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
 		btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
-
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
@@ -128,7 +134,11 @@ func testGetQuoteComplete(t *testing.T) {
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
-			srv.AddProvider(lp)
+			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
+			err := srv.AddProvider(lp)
+			if err != nil {
+				t.Errorf("couldn't add provider. error: %v", err)
+			}
 		}
 		w := http2.TestResponseWriter{}
 		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
@@ -153,13 +163,13 @@ func testGetQuoteComplete(t *testing.T) {
 			BTCRefundAddr:      btcRefAddr,
 			RSKRefundAddr:      rskRefAddr,
 			LPBTCAddr:          "",
-			CallFee:            big.Int{},
-			PenaltyFee:         big.Int{},
+			CallFee:            0,
+			PenaltyFee:         0,
 			ContractAddr:       destAddr,
 			Data:               callArgs,
 			GasLimit:           500000,
 			Nonce:              0,
-			Value:              *big.NewInt(int64(value)),
+			Value:              uint64(value),
 			AgreementTimestamp: 0,
 			TimeForDeposit:     0,
 			CallTime:           0,
@@ -169,7 +179,7 @@ func testGetQuoteComplete(t *testing.T) {
 		if err != nil {
 			t.Errorf("couldn't instantiate request. error: %v", err)
 		}
-		rsk.On("EstimateGas", destAddr, *big.NewInt(int64(value)), []byte(callArgs)).Times(1)
+		rsk.On("EstimateGas", destAddr, uint64(value), []byte(callArgs)).Times(1)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("GetFedAddress").Times(1)
 		rsk.On("GetLBCAddress").Times(1)
