@@ -24,7 +24,7 @@ type LiquidityProviderMock struct {
 	address string
 }
 
-func (lp LiquidityProviderMock) RefundLiquidity(_ string, _ *big.Int) error {
+func (lp LiquidityProviderMock) RefundLiquidity(_ []byte) error {
 	return nil
 }
 
