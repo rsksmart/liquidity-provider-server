@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
@@ -15,14 +16,13 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	btc            connectors.BTCConnector
-	rsk            connectors.RSKConnector
-	lp             providers.LiquidityProvider
-	calledForUser  bool
-	quote          *types.Quote
-	done           chan struct{}
-	signature      []byte
-	retainedAmount *big.Int
+	btc           connectors.BTCConnector
+	rsk           connectors.RSKConnector
+	lp            providers.LiquidityProvider
+	calledForUser bool
+	quote         *types.Quote
+	done          chan struct{}
+	signature     []byte
 }
 
 const (
@@ -30,16 +30,15 @@ const (
 	CFUExtraGas = 100000
 )
 
-func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote, signature []byte, retAmount *big.Int) (*BTCAddressWatcher, error) {
+func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote, signature []byte) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
-		btc:            btc,
-		rsk:            rsk,
-		lp:             provider,
-		quote:          q,
-		calledForUser:  false,
-		signature:      signature,
-		done:           make(chan struct{}),
-		retainedAmount: retAmount,
+		btc:           btc,
+		rsk:           rsk,
+		lp:            provider,
+		quote:         q,
+		calledForUser: false,
+		signature:     signature,
+		done:          make(chan struct{}),
 	}
 	return &watcher, nil
 }
@@ -135,9 +134,13 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	err = w.lp.RefundLiquidity(h, w.retainedAmount)
+	hb, err := hex.DecodeString(h)
 	if err != nil {
-		return fmt.Errorf("refund to liquidity provider has failed. quote: %v", h)
+		return err
+	}
+	err = w.lp.RefundLiquidity(hb)
+	if err != nil {
+		return fmt.Errorf("failed to refund to liquidity provider. quote: %v. error: %v", h, err)
 	}
 	return nil
 }

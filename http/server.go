@@ -228,7 +228,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote, signB, reqLiq)
+	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote, signB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

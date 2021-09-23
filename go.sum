@@ -368,6 +368,8 @@ github.com/rsksmart/liquidity-provider v0.0.0-20210922114417-4b836ed4ea4e h1:1fG
 github.com/rsksmart/liquidity-provider v0.0.0-20210922114417-4b836ed4ea4e/go.mod h1:PDlOYGawBQWjj/BWjATPUcse1BmuBr1qiDjkjgiRKTI=
 github.com/rsksmart/liquidity-provider v0.0.0-20210922152900-328d7832f0ab h1:KZXuFWTcDlXll3ktPJV4VIOyGhf1ywD+0889OPGCXAo=
 github.com/rsksmart/liquidity-provider v0.0.0-20210922152900-328d7832f0ab/go.mod h1:PDlOYGawBQWjj/BWjATPUcse1BmuBr1qiDjkjgiRKTI=
+github.com/rsksmart/liquidity-provider v0.0.0-20210923095730-6b02c793e32f h1:yR3pCl5MgLcCrmjK3SeHSs2jryhwPqhz5rU8Yr2Su+U=
+github.com/rsksmart/liquidity-provider v0.0.0-20210923095730-6b02c793e32f/go.mod h1:PDlOYGawBQWjj/BWjATPUcse1BmuBr1qiDjkjgiRKTI=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
 github.com/segmentio/kafka-go v0.2.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
