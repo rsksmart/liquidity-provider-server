@@ -59,6 +59,10 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 		}
+		err = w.refundProvider()
+		if err != nil {
+			log.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
+		}
 		close(w.done)
 	}
 }
@@ -130,6 +134,10 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil || !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
+	return nil
+}
+
+func (w *BTCAddressWatcher) refundProvider() error {
 	h, err := w.rsk.HashQuote(w.quote)
 	if err != nil {
 		return err

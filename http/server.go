@@ -216,13 +216,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
-	cfuCost, err := s.rsk.EstimateGas(quote.ContractAddr, quote.Value, []byte(quote.Data))
+	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reqLiq := big.NewInt(int64(CFUExtraGas) + int64(cfuCost))
-	signB, err := p.SignQuote(hashBytes, reqLiq)
+	reqLiq := (uint64(CFUExtraGas)+uint64(quote.GasLimit))*gasPrice + quote.Value
+	signB, err := p.SignQuote(hashBytes, big.NewInt(int64(reqLiq)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
