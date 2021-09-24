@@ -22,20 +22,22 @@ type BTCAddressWatcher struct {
 	calledForUser bool
 	quote         *types.Quote
 	done          chan struct{}
+	signature     []byte
 }
 
 const (
 	pegInGasLim = 250000
-	CFUExtraGas = 100000
+	CFUExtraGas = 150000
 )
 
-func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote) (*BTCAddressWatcher, error) {
+func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote, signature []byte) (*BTCAddressWatcher, error) {
 	watcher := BTCAddressWatcher{
 		btc:           btc,
 		rsk:           rsk,
 		lp:            provider,
 		quote:         q,
 		calledForUser: false,
+		signature:     signature,
 		done:          make(chan struct{}),
 	}
 	return &watcher, nil
@@ -56,6 +58,10 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		err := w.performRegisterPegIn(txHash)
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
+		}
+		err = w.notifyProvider()
+		if err != nil {
+			log.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
 		}
 		close(w.done)
 	}
@@ -108,29 +114,18 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		return err
 	}
-	h, err := w.rsk.HashQuote(w.quote)
-	if err != nil {
-		return err
-	}
-	hb, err := hex.DecodeString(h)
-	if err != nil {
-		return err
-	}
-	signature, err := w.lp.SignHash(hb)
-	if err != nil {
-		return err
-	}
 	bh, err := w.btc.GetBlockNumberByTx(txHash)
 	if err != nil {
 		return err
 	}
-	err = w.rsk.RegisterPegInWithoutTx(q, signature, rawTx, pmt, big.NewInt(bh))
+	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+			log.Printf("bridge failed to validate BTC transaction. retrying on next confirmation. tx: %v", txHash)
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
 	}
-	tx, err := w.rsk.RegisterPegIn(opt, q, signature, rawTx, pmt, big.NewInt(bh))
+	tx, err := w.rsk.RegisterPegIn(opt, q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
 	}
@@ -140,6 +135,21 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil || !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
+	return nil
+}
 
+func (w *BTCAddressWatcher) notifyProvider() error {
+	h, err := w.rsk.HashQuote(w.quote)
+	if err != nil {
+		return err
+	}
+	hb, err := hex.DecodeString(h)
+	if err != nil {
+		return err
+	}
+	err = w.lp.RefundLiquidity(hb)
+	if err != nil {
+		return fmt.Errorf("failed to refund to liquidity provider. quote: %v. error: %v", h, err)
+	}
 	return nil
 }
