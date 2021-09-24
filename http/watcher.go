@@ -59,7 +59,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 		}
-		err = w.refundProvider()
+		err = w.notifyProvider()
 		if err != nil {
 			log.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
 		}
@@ -121,6 +121,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+			log.Printf("bridge failed to validate BTC transaction. retrying on next confirmation. tx: %v", txHash)
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
 	}
@@ -137,7 +138,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	return nil
 }
 
-func (w *BTCAddressWatcher) refundProvider() error {
+func (w *BTCAddressWatcher) notifyProvider() error {
 	h, err := w.rsk.HashQuote(w.quote)
 	if err != nil {
 		return err
