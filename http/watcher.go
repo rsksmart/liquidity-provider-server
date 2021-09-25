@@ -52,6 +52,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 			return
 		}
 		w.calledForUser = true
+		log.Debugf("registered callforuser for tx %v", txHash)
 	}
 
 	if w.calledForUser && confirmations >= w.rsk.GetRequiredBridgeConfirmations() {
@@ -116,10 +117,12 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
-			log.Printf("bridge failed to validate BTC transaction. retrying on next confirmation. tx: %v", txHash)
+			log.Debugf("bridge failed to validate BTC transaction. retrying on next confirmation. tx: %v", txHash)
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
 	}
+
+	log.Debugf("calling pegin for tx %v", txHash)
 	tx, err := w.rsk.RegisterPegIn(opt, q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		return err
@@ -130,11 +133,12 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil || !s {
 		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
 	}
-	close(w.done)
+	log.Debugf("registered pegin for tx %v", txHash)
 	err = w.notifyProvider()
 	if err != nil {
 		log.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
 	}
+	close(w.done)
 	return nil
 }
 
