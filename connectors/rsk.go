@@ -396,7 +396,7 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 		time.Sleep(rpcSleep)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
+		return nil, fmt.Errorf("error calling callForUser: %v", err)
 	}
 	return tx, nil
 }
