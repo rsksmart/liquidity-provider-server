@@ -221,6 +221,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	reqLiq := (uint64(CFUExtraGas)+uint64(quote.GasLimit))*gasPrice + quote.Value
 	signB, err := p.SignQuote(hashBytes, big.NewInt(int64(reqLiq)))
 	if err != nil {
