@@ -11,7 +11,7 @@ WORKDIR /app
 
 COPY config.json ./
 COPY pwd.txt ./
-COPY keystore/ ./
+COPY .geth_keystore/ ./
 COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
