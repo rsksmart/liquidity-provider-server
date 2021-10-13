@@ -41,7 +41,8 @@ Computes and returns a quote for the service.
         agreementTimestamp;               // the timestamp of the agreement
         timeForDeposit;                   // the time (in seconds) that the user has to achieve one confirmation on the BTC deposit
         callTime;                         // the time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations
-        confirmations;                   // the number of confirmations that the LP requires before making the call
+        confirmations;                    // the number of confirmations that the LP requires before making the call
+        callOnRegister:                   // a boolean value indicating whether the callForUser can be called on registerPegIn.
     
 ### acceptQuote
 
