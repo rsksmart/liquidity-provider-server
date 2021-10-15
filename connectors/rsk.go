@@ -386,11 +386,35 @@ func (rsk *RSK) GetLBCAddress() string {
 }
 
 func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
-	return rsk.lbc.CallForUser(opt, q)
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.CallForUser(opt, q)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if tx == nil && err != nil {
+		return nil, fmt.Errorf("error calling callForUser: %v", err)
+	}
+	return tx, nil
 }
 
 func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	return rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
+	var err error
+	var t *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		t, err = rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
+		if err == nil && t != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if tx == nil && err != nil {
+		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
+	}
+	return t, nil
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
