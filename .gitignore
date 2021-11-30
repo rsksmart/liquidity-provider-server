@@ -1,2 +1,11 @@
+# IDE
+.vscode/
 .idea/
+
+# Project-specific content
+.geth_keystore/
+.secret
+logs/
 config.json
+liquidity-provider-server
+server.db

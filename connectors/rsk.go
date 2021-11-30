@@ -243,7 +243,7 @@ func (rsk *RSK) GasPrice() (uint64, error) {
 		defer cancel()
 		var price *big.Int
 		price, err = rsk.c.SuggestGasPrice(ctx)
-		if price != nil && price.Cmp(big.NewInt(0)) > 0 {
+		if price != nil && price.Cmp(big.NewInt(0)) >= 0 {
 			return price.Uint64(), nil
 		}
 		time.Sleep(rpcSleep)

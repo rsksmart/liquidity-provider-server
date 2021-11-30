@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/btcsuite/btcd/btcjson"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -64,6 +65,8 @@ func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
 		btc.params = chaincfg.MainNetParams
 	case "testnet":
 		btc.params = chaincfg.TestNet3Params
+	case "regtest":
+		btc.params = chaincfg.RegressionNetParams
 	default:
 		return nil, fmt.Errorf("invalid network name: %v", network)
 	}
@@ -84,6 +87,22 @@ func (btc *BTC) Connect(endpoint string, username string, password string) error
 	if err != nil {
 		return fmt.Errorf("RPC client error: %v", err)
 	}
+
+	info, err := c.GetNetworkInfo()
+
+	switch err := err.(type) {
+	case nil:
+		log.Debugf("detected btcd version: %v", info.Version)
+	// Inspect the RPC error to ensure the method was not found, otherwise
+	// we actually ran into an error.
+	case *btcjson.RPCError:
+		if err.Code != btcjson.ErrRPCMethodNotFound.Code {
+			return fmt.Errorf("unable to detect btcd version: %v", err)
+		}
+	default:
+		return fmt.Errorf("unable to detect btcd version: %v", err)
+	}
+
 	btc.c = c
 	return nil
 }
