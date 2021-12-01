@@ -40,9 +40,9 @@ func (m *RskMock) GetRequiredBridgeConfirmations() int64 {
 	return 0
 }
 
-func (m *RskMock) GetChainId() *big.Int {
+func (m *RskMock) GetChainId() (*big.Int, error) {
 	m.Called()
-	return big.NewInt(0)
+	return big.NewInt(0), nil
 }
 
 func (m *RskMock) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
@@ -65,8 +65,8 @@ func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridge
 	return nil, nil
 }
 
-func (m *RskMock) Connect(endpoint string) error {
-	m.Called(endpoint)
+func (m *RskMock) Connect(endpoint string, chainId *big.Int) error {
+	m.Called(endpoint, chainId)
 	return nil
 }
 func (m *RskMock) Close() {

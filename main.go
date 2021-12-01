@@ -134,7 +134,7 @@ func main() {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(cfg.RSK.Endpoint)
+	err = rsk.Connect(cfg.RSK.Endpoint, cfg.Provider.ChainId)
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
