@@ -36,8 +36,9 @@ const (
 )
 
 type RSKConnector interface {
-	Connect(endpoint string) error
+	Connect(endpoint string, chainId *big.Int) error
 	Close()
+	GetChainId() (*big.Int, error)
 	EstimateGas(addr string, value uint64, data []byte) (uint64, error)
 	GasPrice() (uint64, error)
 	HashQuote(q *types.Quote) (string, error)
@@ -83,7 +84,7 @@ func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations
 	}, nil
 }
 
-func (rsk *RSK) Connect(endpoint string) error {
+func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	log.Debug("connecting to RSK node on ", endpoint)
 	client, err := ethclient.Dial(endpoint)
 	if err != nil {
@@ -93,9 +94,15 @@ func (rsk *RSK) Connect(endpoint string) error {
 
 	log.Debug("verifying connection to RSK node")
 	// test connection
-	if _, err := rsk.GasPrice(); err != nil {
+	rskChainId, err := rsk.GetChainId()
+	if err != nil {
 		return err
 	}
+	//check chain id
+	if chainId.Cmp(rskChainId) != 0 {
+		return fmt.Errorf("chain id mismatch; expected chain id: %v, rsk node chain id: %v", chainId, rskChainId)
+	}
+
 	log.Debug("initializing RSK contracts")
 	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
 	if err != nil {
@@ -204,6 +211,21 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 	return nil
 }
 
+func (rsk *RSK) GetChainId() (*big.Int, error) {
+	var err error
+	for i := 0; i < retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+		defer cancel()
+		var chainId *big.Int
+		chainId, err = rsk.c.ChainID(ctx)
+		if err == nil {
+			return chainId, nil
+		}
+		time.Sleep(rpcSleep)
+	}
+	return nil, fmt.Errorf("error retrieving chain id: %v", err)
+}
+
 func (rsk *RSK) EstimateGas(addr string, value uint64, data []byte) (uint64, error) {
 	if !common.IsHexAddress(addr) {
 		return 0, fmt.Errorf("invalid address: %v", addr)
@@ -243,7 +265,7 @@ func (rsk *RSK) GasPrice() (uint64, error) {
 		defer cancel()
 		var price *big.Int
 		price, err = rsk.c.SuggestGasPrice(ctx)
-		if price != nil && price.Cmp(big.NewInt(0)) > 0 {
+		if price != nil && price.Cmp(big.NewInt(0)) >= 0 {
 			return price.Uint64(), nil
 		}
 		time.Sleep(rpcSleep)

@@ -1,5 +1,5 @@
 {
-    "logFile": "",
+    "logFile": "./logs/lps.log",
     "debug": true,
     "irisActivationHeight": 226000,
     "erpKeys": [
