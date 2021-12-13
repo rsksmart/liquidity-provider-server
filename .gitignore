@@ -3,9 +3,10 @@
 .idea/
 
 # Project-specific content
-.geth_keystore/
-.secret
-logs/
-config.json
-liquidity-provider-server
-server.db
+/.geth_keystore/
+/.secret
+/logs/
+/docker-compose/volumes/
+/config.json
+/liquidity-provider-server
+/server.db

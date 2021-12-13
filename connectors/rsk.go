@@ -207,7 +207,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
-		return fmt.Errorf("error registering provider: %v", err)
+		return fmt.Errorf("error getting tx status while registering provider: %v", err)
 	}
 	return nil
 }
