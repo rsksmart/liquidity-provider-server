@@ -14,6 +14,8 @@ fi
 
 echo "LBC_ADDR: $LBC_ADDR"
 
+export RSK="{ \"LBCAddr\":\"$LBC_ADDR\" }"
+
 PROVIDER_BALANCE=$(curl -X POST "http://rskj:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBalance\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
 PROVIDER_TX_COUNT=$(curl -X POST "http://rskj:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
 if [[ "$PROVIDER_BALANCE" = "0x0" && "$PROVIDER_TX_COUNT" = "0x0" ]]; then
