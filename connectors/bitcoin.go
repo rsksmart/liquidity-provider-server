@@ -400,13 +400,13 @@ func (btc *BTC) getErpRedeemScriptBuf() (*bytes.Buffer, error) {
 	erpRedeemScriptBuffer.Write(scrA)
 	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
-	byteArr, err := hex.DecodeString("02")
+	byteArr, err := hex.DecodeString("0300") // Patch to bypass testnet issue. the csv takes 3 bytes instead of 2. The third byte in here represents a positive number
 	if err != nil {
 		return nil, err
 	}
 	erpRedeemScriptBuffer.Write(byteArr)
 
-	csv, err := hex.DecodeString(btc.getCsvValueFromNetwork())
+	csv, err := hex.DecodeString(btc.getCsvValueFromNetwork()) // We keep the same serialization for the CSV
 	if err != nil {
 		return nil, err
 	}
