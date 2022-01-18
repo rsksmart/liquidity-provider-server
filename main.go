@@ -46,7 +46,7 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
-	lp, err := providers.NewLocalProvider(cfg.Provider)
+	lp, err := providers.NewLocalProvider(cfg.Provider, db)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
@@ -162,7 +162,11 @@ func main() {
 	<-done
 
 	srv.Shutdown()
-	db.Close()
 	rsk.Close()
 	btc.Close()
+
+	err = db.Close()
+	if err != nil {
+		log.Fatal("error closing DB connection: ", err)
+	}
 }
