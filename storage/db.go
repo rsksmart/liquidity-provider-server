@@ -2,6 +2,7 @@ package storage
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	_ "modernc.org/sqlite"
@@ -11,106 +12,24 @@ const (
 	driver = "sqlite"
 )
 
-const selectQuoteByHash = `
-SELECT 
-	fed_addr, 
-	lbc_addr, 
-	lp_rsk_addr, 
-	btc_refund_addr, 
-	rsk_refund_addr,
-	lp_btc_addr, 
-	call_fee, 
-	penalty_fee, 
-	contract_addr, 
-	data, 
-	gas_limit, 
-	nonce, 
-	value, 
-	agreement_timestamp, 
-	time_for_deposit, 
-	call_time, 
-	confirmations,
-    call_on_register
-FROM quotes 
-WHERE hash = ?
-LIMIT 1`
-
-const insertQuote = `
-INSERT INTO quotes (
-    hash,
-	fed_addr,
-	lbc_addr,
-	lp_rsk_addr,
-	btc_refund_addr,
-	rsk_refund_addr,
-	lp_btc_addr,
-	call_fee,
-	penalty_fee,
-	contract_addr,
-	data,
-	gas_limit,
-	nonce,
-	value,
-	agreement_timestamp,
-	time_for_deposit,
-	call_time,
-	confirmations,
-	call_on_register
-)
-VALUES (
-    ?,
-	:fed_addr,
-	:lbc_addr,
-	:lp_rsk_addr,
-	:btc_refund_addr,
-	:rsk_refund_addr,
-	:lp_btc_addr,
-	:call_fee,
-	:penalty_fee,
-	:contract_addr,
-	:data,
-	:gas_limit,
-	:nonce,
-	:value,
-	:agreement_timestamp,
-	:time_for_deposit,
-	:call_time,
-	:confirmations,
-    :call_on_register
-)
-`
-const createTable = `
-CREATE TABLE IF NOT EXISTS quotes (
-	hash TEXT PRIMARY KEY,
-	fed_addr TEXT ,
-	lbc_addr TEXT,
-	lp_rsk_addr TEXT,
-	btc_refund_addr TEXT,
-	rsk_refund_addr TEXT,
-	lp_btc_addr TEXT,
-	call_fee TEXT,
-	penalty_fee TEXT,
-	contract_addr TEXT,
-	data TEXT,
-	gas_limit INTEGER,
-	nonce INTEGER,
-	value TEXT,
-	agreement_timestamp INTEGER,
-	time_for_deposit INTEGER,
-	call_time INTEGER,
-	confirmations INTEGER,
-	call_on_register INTEGER
-)
-`
-
 type DBConnector interface {
+	providers.RetainedQuotesRepository
+
 	Close() error
+
 	InsertQuote(id string, q *types.Quote) error
 	GetQuote(quoteHash string) (*types.Quote, error)
+
+	GetRetainedQuotes() ([]*types.RetainedQuote, error)
+	SetRetainedQuoteCalledForUserFlag(hash string) error
 }
 
 type DB struct {
 	db *sqlx.DB
+}
+
+type QuoteHash struct {
+	QuoteHash string `db:"quote_hash"`
 }
 
 func Connect(dbPath string) (*DB, error) {
@@ -120,9 +39,16 @@ func Connect(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	if _, err := db.Exec(createTable); err != nil {
+	if _, err := db.Exec(enableForeignKeysCheck); err != nil {
 		return nil, err
 	}
+	if _, err := db.Exec(createQuoteTable); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(createRetainedQuoteTable); err != nil {
+		return nil, err
+	}
+
 	return &DB{db}, nil
 }
 
@@ -157,4 +83,84 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	}
 
 	return &quote, nil
+}
+
+func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
+	log.Debug("inserting retained quote:", entry.QuoteHash)
+	query, args, _ := sqlx.Named(insertRetainedQuote, entry)
+
+	_, err := db.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) GetRetainedQuotes() ([]*types.RetainedQuote, error) {
+	log.Debug("retrieving retained quotes")
+	var retainedQuotes []*types.RetainedQuote
+	rows, err := db.db.Queryx(selectRetainedQuotes)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	for rows.Next() {
+		entry := types.RetainedQuote{}
+
+		err = rows.StructScan(&entry)
+		if err != nil {
+			return nil, err
+		}
+
+		retainedQuotes = append(retainedQuotes, &entry)
+	}
+
+	return retainedQuotes, nil
+}
+
+func (db *DB) SetRetainedQuoteCalledForUserFlag(hash string) error {
+	log.Debug("setting retained quote's calledForUser flag")
+	query, args, _ := sqlx.Named(setRetainedQuoteCalledForUserFlag, QuoteHash{QuoteHash: hash})
+	if _, err := db.db.Exec(query, args...); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
+	log.Debug("getting retained quote: ", hash)
+	rows, err := db.db.Queryx(getRetainedQuote, hash)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	if rows.Next() {
+		entry := types.RetainedQuote{}
+
+		err = rows.StructScan(&entry)
+		if err != nil {
+			return nil, err
+		}
+
+		return &entry, nil
+	}
+
+	return nil, nil
+}
+
+func (db *DB) DeleteRetainedQuote(hash string) error {
+	log.Debug("deleting retained quote:", hash)
+
+	query, args, _ := sqlx.Named(deleteRetainedQuote, QuoteHash{QuoteHash: hash} )
+	if _, err := db.db.Exec(query, args...); err != nil {
+		return err
+	}
+	return nil
 }
