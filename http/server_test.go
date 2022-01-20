@@ -40,7 +40,7 @@ func (lp LiquidityProviderMock) GetQuote(q types.Quote, _ uint64, _ uint64) *typ
 	return &q
 }
 
-func (lp LiquidityProviderMock) SignQuote(_ []byte, _ *big.Int) ([]byte, error) {
+func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *big.Int) ([]byte, error) {
 	return nil, nil
 }
 
@@ -90,7 +90,7 @@ func testGetQuoteComplete(t *testing.T) {
 	for _, quote := range testQuotes {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := testmocks.NewDbMock(quote)
+		db := testmocks.NewDbMock("", quote)
 
 		srv := New(rsk, btc, db)
 
@@ -157,9 +157,10 @@ func testGetQuoteComplete(t *testing.T) {
 
 func testAcceptQuoteComplete(t *testing.T) {
 	for _, quote := range testQuotes {
+		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := testmocks.NewDbMock(quote)
+		db := testmocks.NewDbMock(hash, quote)
 
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
@@ -171,7 +172,6 @@ func testAcceptQuoteComplete(t *testing.T) {
 			}
 		}
 		w := http2.TestResponseWriter{}
-		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		body := fmt.Sprintf("{\"quoteHash\":\"%v\"}", hash)
 
 		btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
@@ -198,8 +198,38 @@ func testAcceptQuoteComplete(t *testing.T) {
 	}
 }
 
+func testInitBtcWatchers(t *testing.T) {
+	hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
+	quote := testQuotes[0]
+	rsk := new(testmocks.RskMock)
+	btc := new(testmocks.BtcMock)
+	db := testmocks.NewDbMock(hash, quote)
+
+	srv := New(rsk, btc, db)
+	for _, lp := range providerMocks {
+		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
+		rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
+		err := srv.AddProvider(lp)
+		if err != nil {
+			t.Errorf("couldn't add provider. error: %v", err)
+		}
+	}
+
+	db.On("GetRetainedQuotes").Times(1).Return([]*types.RetainedQuote{{ QuoteHash: hash }})
+	db.On("GetQuote", hash).Times(1).Return(quote)
+	btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+	err := srv.initBtcWatchers()
+	if err != nil {
+		t.Errorf("couldn't init BTC watchers. error: %v", err)
+	}
+	db.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("get quote", testGetQuoteComplete)
 	t.Run("accept quote", testAcceptQuoteComplete)
+	t.Run("init BTC watchers", testInitBtcWatchers)
 }

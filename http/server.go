@@ -3,7 +3,9 @@ package http
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"time"
@@ -96,7 +98,14 @@ func (s *Server) Start(port uint) error {
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
-	defer w.Close()
+	defer func(w *io.PipeWriter) {
+		_ = w.Close()
+	}(w)
+
+	err := s.initBtcWatchers()
+	if err != nil {
+		return err
+	}
 
 	s.srv = http.Server{
 		Addr:    ":" + fmt.Sprint(port),
@@ -104,10 +113,42 @@ func (s *Server) Start(port uint) error {
 	}
 	log.Info("server started at localhost:", s.srv.Addr)
 
-	err := s.srv.ListenAndServe()
+	err = s.srv.ListenAndServe()
 	if err != http.ErrServerClosed {
 		return err
 	}
+	return nil
+}
+
+func (s *Server) initBtcWatchers() error {
+	retainedQuotes, err := s.db.GetRetainedQuotes()
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range retainedQuotes {
+		quote, err := s.db.GetQuote(entry.QuoteHash)
+		if err != nil {
+			return err
+		}
+
+		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+		if p == nil {
+			return errors.New(fmt.Sprintf("provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
+		}
+
+		signB, err := hex.DecodeString(entry.Signature)
+		if err != nil {
+			return err
+		}
+
+		watcher := NewBTCAddressWatcher(entry.QuoteHash, s.btc, s.rsk, p, s.db, quote, signB, entry.CalledForUser)
+		err = s.btc.AddAddressWatcher(entry.DepositAddr, time.Minute, watcher)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -223,17 +264,15 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqLiq := (uint64(CFUExtraGas)+uint64(quote.GasLimit))*gasPrice + quote.Value
-	signB, err := p.SignQuote(hashBytes, big.NewInt(int64(reqLiq)))
+	signB, err := p.SignQuote(hashBytes, depositAddress, big.NewInt(int64(reqLiq)))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	watcher, err := NewBTCAddressWatcher(s.btc, s.rsk, p, quote, signB)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	signature := hex.EncodeToString(signB)
+
+	watcher := NewBTCAddressWatcher(req.QuoteHash, s.btc, s.rsk, p, s.db, quote, signB, false)
 	err = s.btc.AddAddressWatcher(depositAddress, time.Minute, watcher)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -241,7 +280,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	enc := json.NewEncoder(w)
-	signature := hex.EncodeToString(signB)
 	response := acceptRes{
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddress,

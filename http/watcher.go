@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/rsksmart/liquidity-provider-server/storage"
 	"math/big"
 	"strings"
 	"time"
@@ -16,13 +17,15 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	btc           connectors.BTCConnector
-	rsk           connectors.RSKConnector
-	lp            providers.LiquidityProvider
-	calledForUser bool
-	quote         *types.Quote
-	done          chan struct{}
-	signature     []byte
+	hash			string
+	btc				connectors.BTCConnector
+	rsk				connectors.RSKConnector
+	lp				providers.LiquidityProvider
+	db				storage.DBConnector
+	calledForUser	bool
+	quote			*types.Quote
+	done			chan struct{}
+	signature		[]byte
 }
 
 const (
@@ -30,17 +33,21 @@ const (
 	CFUExtraGas = 150000
 )
 
-func NewBTCAddressWatcher(btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, q *types.Quote, signature []byte) (*BTCAddressWatcher, error) {
+func NewBTCAddressWatcher(hash string,
+	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, db storage.DBConnector,
+	q *types.Quote, signature []byte, calledForUser	bool) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
-		btc:           btc,
-		rsk:           rsk,
-		lp:            provider,
-		quote:         q,
-		calledForUser: false,
-		signature:     signature,
-		done:          make(chan struct{}),
+		hash:			hash,
+		btc:			btc,
+		rsk:			rsk,
+		lp:				provider,
+		db:				db,
+		quote:			q,
+		calledForUser:	calledForUser,
+		signature:		signature,
+		done:			make(chan struct{}),
 	}
-	return &watcher, nil
+	return &watcher
 }
 
 func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, _ float64) {
@@ -48,6 +55,23 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		err := w.performCallForUser()
 		if err != nil {
 			log.Errorf("error calling callForUser. value: %v. error: %v", txHash, err)
+			err = w.db.DeleteRetainedQuote(w.hash)
+			if err != nil {
+				log.Errorf("error deleting retained quote from db. hash: %v", w.hash)
+			}
+
+			close(w.done)
+			return
+		}
+
+		err = w.db.SetRetainedQuoteCalledForUserFlag(w.hash)
+		if err != nil {
+			log.Errorf("error setting CalledForUser flag for retained quote. hash: %v", w.hash)
+			err = w.db.DeleteRetainedQuote(w.hash)
+			if err != nil {
+				log.Errorf("error deleting retained quote from db. hash: %v", w.hash)
+			}
+
 			close(w.done)
 			return
 		}
