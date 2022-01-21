@@ -333,16 +333,29 @@ func (btc *BTC) getRedeemScript(derivationValue []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		err = btc.validateRedeemScript(hashBuf.Bytes())
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		hashBuf, err = btc.getErpRedeemScriptBuf()
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	err = btc.validateRedeemScript(hashBuf.Bytes())
-	if err != nil {
-		return nil, err
+		err = btc.validateRedeemScript(hashBuf.Bytes())
+		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
+			hashBuf, err = btc.getPowPegRedeemScriptBuf(true)
+			if err != nil {
+				return nil, err
+			}
+
+			err = btc.validateRedeemScript(hashBuf.Bytes())
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	buf.Write(hashBuf.Bytes())

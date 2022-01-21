@@ -80,29 +80,29 @@ func testSerializeTx(t *testing.T) {
 	// this is block 0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3
 	f, err := os.Open("./testdata/test_block")
 	if err != nil {
-		t.Error("error opening test block file: ", err)
+		t.Fatalf("error opening test block file: %v", err)
 	}
 	b, err := io.ReadAll(f)
 	if err != nil {
-		t.Error("error reading test file: ", err)
+		t.Fatalf("error reading test file: %v", err)
 	}
 	s := string(b)
 	h, err := hex.DecodeString(s)
 	if err != nil {
-		t.Error("error decoding test file: ", err)
+		t.Fatalf("error decoding test file: %v", err)
 	}
 
 	block, err := btcutil.NewBlockFromBytes(h)
 	if err != nil {
-		t.Error("error parsing test block: ", err)
+		t.Fatalf("error parsing test block: %v", err)
 	}
 	tx, err := block.Tx(0)
 	if err != nil {
-		t.Error("error reading transaction from test block: ", err)
+		t.Fatalf("error reading transaction from test block: %v", err)
 	}
 	result, err := serializeTx(tx)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if hex.EncodeToString(result) != expected {
 		t.Errorf("serialized tx does not match expected: %x \n----\n %v", result, expected)
@@ -113,27 +113,28 @@ func testPMTSerialization(t *testing.T) {
 	// this is block 0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3
 	f, err := os.Open("./testdata/test_block")
 	if err != nil {
-		t.Error("error opening test block file: ", err)
+		t.Fatalf("error opening test block file: %v", err)
 	}
 	b, err := io.ReadAll(f)
 	if err != nil {
-		t.Error("error reading test file: ", err)
+		t.Fatalf("error reading test file: %v", err)
 	}
 	s := string(b)
 	h, err := hex.DecodeString(s)
 	if err != nil {
-		t.Error("error decoding test file: ", err)
+		t.Fatalf("error decoding test file: %v", err)
 	}
 
 	block, err := btcutil.NewBlockFromBytes(h)
 	if err != nil {
-		t.Error("error parsing test block: ", err)
+		t.Fatalf("error parsing test block: %v", err)
 	}
 
 	for _, p := range expectedPmts {
 		serializedPMT, err := serializePMT(p.h, block)
 		if err != nil {
 			t.Errorf("error serializing PMT:\n %v", p.h)
+			continue
 		}
 		result := hex.EncodeToString(serializedPMT)
 		if result != p.pmt {
@@ -228,33 +229,40 @@ func testDerivationComplete(t *testing.T) {
 		tt.FedInfo.IrisActivationHeight = 1
 		if !common.IsHexAddress(tt.LBCAddr) {
 			t.Errorf("invalid address: %v", tt.LBCAddr)
+			continue
 		}
 		lbcAddr := common.FromHex(tt.LBCAddr)
 		hashBytes, err := hex.DecodeString(tt.QuoteHash)
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+			continue
 		}
 		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+			continue
 		}
 		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+			continue
 		}
 		value, err := getDerivationValueHash(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
 		if err != nil {
 			t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.ExpectedDerivationValueHash, err)
+			continue
 		}
 		result := hex.EncodeToString(value)
 		assert.EqualValues(t, tt.ExpectedDerivationValueHash, result)
 		buf, err := getFlyoverPrefix(value)
 		if err != nil {
 			t.Errorf("Unexpected error in getFlyoverPrefix. error: %v", err)
+			continue
 		}
 		btc, err := NewBTC(tt.NetworkParams, *tt.FedInfo)
 		if err != nil {
 			t.Errorf("error initializing BTC: %v", err)
+			continue
 		}
 		if btc.params.Name == chaincfg.TestNet3Params.Name {
 			btc.fedInfo.FedAddress = "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p"
@@ -262,13 +270,15 @@ func testDerivationComplete(t *testing.T) {
 			btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 		}
 		scriptBuf, err := btc.getPowPegRedeemScriptBuf(true)
-		buf.Write(scriptBuf.Bytes())
 		if err != nil {
 			t.Errorf("Unexpected error in getPowPegRedeemScriptBuf. error: %v", err)
+			continue
 		}
+		buf.Write(scriptBuf.Bytes())
 		addr, err := btcutil.NewAddressScriptHash(buf.Bytes(), &btc.params)
 		if err != nil {
 			t.Errorf("Unexpected error in NewAddressScriptHash. error: %v", err)
+			continue
 		}
 		assert.EqualValues(t, tt.ExpectedAddressHash, addr.EncodeAddress())
 		err = btc.validateRedeemScript(scriptBuf.Bytes())
@@ -281,12 +291,12 @@ func testDerivationComplete(t *testing.T) {
 func testBuildPowPegRedeemScript(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
 
 	buf, err := btc.getPowPegRedeemScriptBuf(true)
 	if err != nil {
-		t.Errorf("error in getPowPegRedeemScriptBuf: %v", err)
+		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
 
 	str := hex.EncodeToString(buf.Bytes())
@@ -304,7 +314,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 
 	buf2, err := btc.getPowPegRedeemScriptBuf(true)
 	if err != nil {
-		return
+		t.Errorf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
 	str2 := hex.EncodeToString(buf2.Bytes())
 	assert.EqualValues(t, str2, str)
@@ -313,12 +323,12 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 func testBuildErpRedeemScript(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
 
 	buf, err := btc.getErpRedeemScriptBuf()
 	if err != nil {
-		return
+		t.Fatalf("error in getErpRedeemScriptBuf: %v", err)
 	}
 
 	str := hex.EncodeToString(buf.Bytes())
@@ -329,16 +339,19 @@ func testBuildErpRedeemScript(t *testing.T) {
 func testBuildFlyoverRedeemScript(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
+	btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+	btc.fedInfo.IrisActivationHeight = 1
+
 	hash, err := getFlyoverDerivationHash()
 	if err != nil {
-		return
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
-	btc.fedInfo.IrisActivationHeight = 1
+
 	bts, err := btc.getRedeemScript(hash)
 	if err != nil {
-		return
+		t.Fatalf("error in getRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -349,18 +362,19 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
+	btc.fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	btc.fedInfo.IrisActivationHeight = -1
 
 	hash, err := getFlyoverDerivationHash()
 	if err != nil {
-		return
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
 	bts, err := btc.getRedeemScript(hash)
 	if err != nil {
-		return
+		t.Fatalf("error in getRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -368,16 +382,39 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	assert.EqualValues(t, FlyoverErpScriptString, str)
 }
 
+func testBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
+	btc, err := NewBTC("mainnet", *getFakeFedInfo())
+	if err != nil {
+		t.Fatalf("error initializing BTC: %v", err)
+	}
+	btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+	btc.fedInfo.IrisActivationHeight = -1
+
+	hash, err := getFlyoverDerivationHash()
+	if err != nil {
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
+	}
+
+	bts, err := btc.getRedeemScript(hash)
+	if err != nil {
+		t.Fatalf("error in getRedeemScript: %v", err)
+	}
+
+	str := hex.EncodeToString(bts)
+	assert.True(t, checkSubstrings(str, btc.fedInfo.PubKeys...))
+	assert.EqualValues(t, FlyoverScriptString, str)
+}
+
 func testBuildPowPegAddressHash(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
 	btc.fedInfo.IrisActivationHeight = 1
 
 	buf, err := btc.getPowPegRedeemScriptBuf(true)
 	if err != nil {
-		return
+		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
 
 	str := hex.EncodeToString(buf.Bytes())
@@ -386,8 +423,9 @@ func testBuildPowPegAddressHash(t *testing.T) {
 
 	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("error in NewAddressScriptHash: %v", err)
 	}
+
 	expectedAddr := "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 
 	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
@@ -396,16 +434,18 @@ func testBuildPowPegAddressHash(t *testing.T) {
 func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
+	btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 	btc.fedInfo.IrisActivationHeight = 1
+
 	hash, err := getFlyoverDerivationHash()
 	if err != nil {
-		return
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 	bts, err := btc.getRedeemScript(hash)
 	if err != nil {
-		return
+		t.Fatalf("error in getRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -414,7 +454,7 @@ func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 
 	address, err := btcutil.NewAddressScriptHash(bts, &chaincfg.MainNetParams)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("error in NewAddressScriptHash: %v", err)
 	}
 	expectedAddr := "34TNebhLLHsE6FHQVMmeHAhTFpaAWhfweR"
 
@@ -424,17 +464,19 @@ func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 func testBuildFlyoverErpAddressHash(t *testing.T) {
 	btc, err := NewBTC("mainnet", *getFakeFedInfo())
 	if err != nil {
-		t.Errorf("error initializing BTC: %v", err)
+		t.Fatalf("error initializing BTC: %v", err)
 	}
-	hash, err := getFlyoverDerivationHash()
+	btc.fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	btc.fedInfo.IrisActivationHeight = -1
 
+	hash, err := getFlyoverDerivationHash()
 	if err != nil {
-		return
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
+
 	bts, err := btc.getRedeemScript(hash)
 	if err != nil {
-		return
+		t.Fatalf("error in getRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -443,9 +485,40 @@ func testBuildFlyoverErpAddressHash(t *testing.T) {
 
 	address, err := btcutil.NewAddressScriptHash(bts, &chaincfg.MainNetParams)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("error in NewAddressScriptHash: %v", err)
 	}
 	expectedAddr := "3PS2FEphLJMbJURMdYYFNAZR6zLasX51RC"
+
+	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
+}
+
+func testBuildFlyoverErpAddressHashFallback(t *testing.T) {
+	btc, err := NewBTC("mainnet", *getFakeFedInfo())
+	if err != nil {
+		t.Fatalf("error initializing BTC: %v", err)
+	}
+	btc.fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+	btc.fedInfo.IrisActivationHeight = -1
+
+	hash, err := getFlyoverDerivationHash()
+	if err != nil {
+		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
+	}
+
+	bts, err := btc.getRedeemScript(hash)
+	if err != nil {
+		t.Fatalf("error in getRedeemScript: %v", err)
+	}
+
+	str := hex.EncodeToString(bts)
+	assert.True(t, checkSubstrings(str, btc.fedInfo.PubKeys...))
+	assert.EqualValues(t, FlyoverScriptString, str)
+
+	address, err := btcutil.NewAddressScriptHash(bts, &chaincfg.MainNetParams)
+	if err != nil {
+		t.Fatalf("error in NewAddressScriptHash: %v", err)
+	}
+	expectedAddr := "34TNebhLLHsE6FHQVMmeHAhTFpaAWhfweR"
 
 	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
 }
@@ -471,6 +544,7 @@ func testGetDerivedBitcoinAddress(t *testing.T) {
 		btc, err := NewBTC(tt.NetworkParams, *getFakeFedInfo())
 		if err != nil {
 			t.Errorf("error initializing BTC: %v", err)
+			continue
 		}
 		btc.fedInfo.IrisActivationHeight = 1
 		if btc.params.Name == chaincfg.TestNet3Params.Name {
@@ -481,22 +555,27 @@ func testGetDerivedBitcoinAddress(t *testing.T) {
 		lbcAddr, err := DecodeRSKAddress(tt.LBCAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in DecodeRSKAddress. error: %v", err)
+			continue
 		}
 		hashBytes, err := hex.DecodeString(tt.QuoteHash)
 		if err != nil || len(hashBytes) == 0 {
 			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+			continue
 		}
 		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+			continue
 		}
 		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
 		if err != nil {
 			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+			continue
 		}
 		addr, err := btc.GetDerivedBitcoinAddress(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
 		if err != nil {
 			t.Errorf("Unexpected error in GetDerivedBitcoinAddress. error: %v", err)
+			continue
 		}
 		assert.EqualValues(t, tt.ExpectedAddressHash, addr)
 	}
@@ -508,9 +587,11 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
 	t.Run("test get flyover redeem script", testBuildFlyoverRedeemScript)
 	t.Run("test get flyover erp redeem script", testBuildFlyoverErpRedeemScript)
+	t.Run("test get flyover erp redeem script fallback", testBuildFlyoverErpRedeemScriptFallback)
 	t.Run("test get powpeg address hash", testBuildPowPegAddressHash)
 	t.Run("test get flyover powpeg address hash", testBuildFlyoverPowPegAddressHash)
 	t.Run("test get flyover erp address hash", testBuildFlyoverErpAddressHash)
+	t.Run("test get flyover erp address hash fallback", testBuildFlyoverErpAddressHashFallback)
 	t.Run("test pmt serialization", testPMTSerialization)
 	t.Run("test tx serialization", testSerializeTx)
 	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
