@@ -184,10 +184,19 @@ func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 }
 
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
-	tx, err := rsk.lbc.Register(opts)
-	if err != nil {
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.Register(opts)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if tx == nil || err != nil {
 		return fmt.Errorf("error registering provider: %v", err)
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
@@ -198,15 +207,24 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
-	tx, err := rsk.lbc.AddCollateral(opts)
-	if err != nil {
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.AddCollateral(opts)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if tx == nil || err != nil {
 		return fmt.Errorf("error adding collateral: %v", err)
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
-		return fmt.Errorf("error adding collateral: %v", err)
+		return fmt.Errorf("error getting tx status while adding collateral: %v", err)
 	}
 	return nil
 }
