@@ -24,13 +24,14 @@ import (
 )
 
 type AddressWatcher interface {
-	OnNewConfirmation(txHash string, confirmations int64, amount float64)
+	OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount)
+	OnExpire()
 	Done() <-chan struct{}
 }
 
 type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
-	AddAddressWatcher(address string, interval time.Duration, w AddressWatcher) error
+	AddAddressWatcher(address string, minAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
@@ -39,8 +40,18 @@ type BTCConnector interface {
 	GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 }
 
+type BTCClient interface {
+	ImportAddressRescan(address string, account string, rescan bool) error
+	GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error)
+	GetBlockVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockVerboseResult, error)
+	ListUnspentMinMaxAddresses(minConf, maxConf int, addrs []btcutil.Address) ([]btcjson.ListUnspentResult, error)
+	GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error)
+	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
+	Disconnect()
+}
+
 type BTC struct {
-	c       *rpcclient.Client
+	c       BTCClient
 	params  chaincfg.Params
 	fedInfo *FedInfo
 }
@@ -107,7 +118,7 @@ func (btc *BTC) Connect(endpoint string, username string, password string) error
 	return nil
 }
 
-func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w AddressWatcher) error {
+func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
 		return fmt.Errorf("error decoding address %v: %v", address, err)
@@ -124,14 +135,7 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 		for {
 			select {
 			case <-ticker.C:
-				conf, amount, txHash, err := btc.getConfirmations(btcAddr)
-				if err != nil {
-					log.Error(err)
-				}
-				if conf > confirmations {
-					confirmations = conf
-					w.OnNewConfirmation(txHash, confirmations, amount)
-				}
+				_ = btc.checkBtcAddr(w, btcAddr, minBtcAmount, exp, &confirmations, time.Now)
 			case <-w.Done():
 				ticker.Stop()
 				return
@@ -139,6 +143,26 @@ func (btc *BTC) AddAddressWatcher(address string, interval time.Duration, w Addr
 		}
 	}(w)
 	return nil
+}
+
+func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
+	conf, amount, txHash, err := btc.getConfirmations(btcAddr, minBtcAmount)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if amount < minBtcAmount && now().After(expTime) {
+		w.OnExpire()
+		return fmt.Errorf("time for depositing %v has elapsed; addr: %v", minBtcAmount, btcAddr)
+	}
+
+	if conf > *confirmations {
+		*confirmations = conf
+		w.OnNewConfirmation(txHash, conf, amount)
+		return nil
+	}
+
+	return fmt.Errorf("num of confirmations has not advanced; conf: %v", conf)
 }
 
 func (btc *BTC) GetParams() chaincfg.Params {
@@ -149,7 +173,7 @@ func (btc *BTC) Close() {
 	btc.c.Disconnect()
 }
 
-// Computes the serialized partial merkle tree of a transaction in a block.
+// SerializePMT computes the serialized partial merkle tree of a transaction in a block.
 // The format of the serialized PMT is:
 //
 // - uint32     total_transactions (4 bytes)
@@ -250,28 +274,66 @@ func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
 	binary.LittleEndian.PutUint32(b, uint32(len(block.Transactions())))
 	buf.Write(b)
 
-	wire.WriteVarInt(&buf, wire.ProtocolVersion, uint64(len(msg.Hashes)))
+	err = wire.WriteVarInt(&buf, wire.ProtocolVersion, uint64(len(msg.Hashes)))
+	if err != nil {
+		return nil, err
+	}
 
 	for _, h := range msg.Hashes {
 		buf.Write(h[:])
 	}
-	wire.WriteVarInt(&buf, wire.ProtocolVersion, uint64(len(msg.Flags)))
+	err = wire.WriteVarInt(&buf, wire.ProtocolVersion, uint64(len(msg.Flags)))
+	if err != nil {
+		return nil, err
+	}
 
 	buf.Write(msg.Flags)
 
 	return buf.Bytes(), nil
 }
 
-func (btc *BTC) getConfirmations(address btcutil.Address) (int64, float64, string, error) {
+func (btc *BTC) getConfirmations(address btcutil.Address, minAmount btcutil.Amount) (int64, btcutil.Amount, string, error) {
 	unspent, err := btc.c.ListUnspentMinMaxAddresses(0, 9999, []btcutil.Address{address})
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("error retrieving unspent outputs for address %v: %v", address.EncodeAddress(), err)
 	}
 	if len(unspent) > 0 {
-		return unspent[0].Confirmations, unspent[0].Amount, unspent[0].TxID, nil
-	} else {
-		return 0, 0, "", nil
+		type CumulativeResult struct {
+			TxID          string
+			Amount        btcutil.Amount
+			Confirmations int64
+		}
+		var cumResults []*CumulativeResult
+
+	outer:
+		for _, u := range unspent {
+			ua, err := btcutil.NewAmount(u.Amount)
+			if err != nil {
+				return 0, 0, "", fmt.Errorf("error retrieving unspent outputs for address %v: %v", address.EncodeAddress(), err)
+			}
+
+			for _, cr := range cumResults {
+				if u.TxID == cr.TxID {
+					cr.Amount += ua
+					continue outer
+				}
+			}
+
+			cumResults = append(cumResults, &CumulativeResult{
+				TxID:          u.TxID,
+				Amount:        ua,
+				Confirmations: u.Confirmations,
+			})
+		}
+
+		for _, cr := range cumResults {
+			if cr.Amount >= minAmount {
+				return cr.Confirmations, cr.Amount, cr.TxID, nil
+			}
+		}
 	}
+
+	return 0, 0, "", nil
 }
 
 func (btc *BTC) getBlockHash(txHash string) (*chainhash.Hash, error) {

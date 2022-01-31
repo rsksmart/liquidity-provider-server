@@ -2,9 +2,14 @@ package connectors
 
 import (
 	"encoding/hex"
+	"errors"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
+	"github.com/stretchr/testify/mock"
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcutil"
 
@@ -581,6 +586,92 @@ func testGetDerivedBitcoinAddress(t *testing.T) {
 	}
 }
 
+func testCheckBtcAddr(t *testing.T) {
+	btcClientMock := new(testmocks.BTCClientMock)
+	addrWatcherMock := new(testmocks.AddressWatcherMock)
+	amountInBtc := float64(1)
+	amount, err := btcutil.NewAmount(amountInBtc)
+	assert.Nil(t, err)
+	var confirmations int64
+
+	btc, err := NewBTC("mainnet", *getFakeFedInfo())
+	if err != nil {
+		t.Fatalf("error initializing BTC: %v", err)
+	}
+	btc.c = btcClientMock
+
+	btcAddr, err := btcutil.DecodeAddress("38r8PQdgw5vdebE9h12Eum6saVnWEXxbve", &btc.params)
+	if err != nil {
+		t.Fatalf("error initializing BTC: %v", err)
+	}
+
+	// check error when retrieving unspent outputs for address
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{}, errors.New("ListUnspentMinMaxAddresses failed")).Once()
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, btcutil.Amount(0), time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(0, 0) })
+	assert.NotNil(t, err)
+	assert.EqualValues(t, "error retrieving unspent outputs for address 38r8PQdgw5vdebE9h12Eum6saVnWEXxbve: ListUnspentMinMaxAddresses failed", err.Error())
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+
+	// check happy flow
+	confirmations = 0
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{{TxID: "0xabc", Confirmations: 1, Amount: amountInBtc}}, nil).Once()
+	addrWatcherMock.On("OnNewConfirmation", "0xabc", int64(1), amount).Once()
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, amount, time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(0, 0) })
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1, confirmations)
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+
+	// check happy flow #2: case when agreed amount has been deposited in the second tx (with two UTXOs)
+	confirmations = 0
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{
+		{TxID: "0xabc", Confirmations: 1, Amount: float64(0.98)},
+		{TxID: "0xdef", Confirmations: 1, Amount: float64(0.4)}, // \
+		{TxID: "0xdef", Confirmations: 1, Amount: float64(0.6)}, // -- these two txs with hash 0xdef are going to be selected
+		{TxID: "0xghi", Confirmations: 1, Amount: float64(0.99)},
+		{TxID: "0xjkl", Confirmations: 1, Amount: float64(1.1)},
+	}, nil).Once()
+	addrWatcherMock.On("OnNewConfirmation", "0xdef", int64(1), amount).Once()
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, amount, time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(0, 0) })
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1, confirmations)
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+
+	// check case when time for depositing has elapsed
+	confirmations = 0
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{{TxID: "0xabc", Confirmations: 1, Amount: float64(0.98)}}, nil).Once()
+	addrWatcherMock.On("OnExpire").Once()
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, amount, time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(1, 0) })
+	assert.NotNil(t, err)
+	assert.EqualValues(t, "time for depositing 1 BTC has elapsed; addr: 38r8PQdgw5vdebE9h12Eum6saVnWEXxbve", err.Error())
+	assert.EqualValues(t, 0, confirmations)
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+
+	// check case when time for depositing has elapsed, but agreed amount has been deposited
+	confirmations = 0
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{{TxID: "0xabc", Confirmations: 1, Amount: amountInBtc}}, nil).Times(1)
+	addrWatcherMock.On("OnNewConfirmation", "0xabc", int64(1), amount).Times(0)
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, amount, time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(1, 0) })
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1, confirmations)
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+
+	// check case when number of confirmations has not advanced after the previous check
+	confirmations = 1
+	btcClientMock.On("ListUnspentMinMaxAddresses", 0, 9999, mock.AnythingOfType("[]btcutil.Address")).Return([]btcjson.ListUnspentResult{{TxID: "0xabc", Confirmations: 1, Amount: amountInBtc}}, nil).Times(1)
+	addrWatcherMock.On("OnNewConfirmation", "0xabc", int64(1), amount).Times(0)
+	err = btc.checkBtcAddr(addrWatcherMock, btcAddr, amount, time.Unix(0, 0), &confirmations, func() time.Time { return time.Unix(0, 0) })
+	assert.NotNil(t, err)
+	assert.EqualValues(t, "num of confirmations has not advanced; conf: 1", err.Error())
+	assert.EqualValues(t, 1, confirmations)
+	btcClientMock.AssertExpectations(t)
+	addrWatcherMock.AssertExpectations(t)
+}
+
 func TestBitcoinConnector(t *testing.T) {
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
@@ -595,4 +686,5 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test pmt serialization", testPMTSerialization)
 	t.Run("test tx serialization", testSerializeTx)
 	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
+	t.Run("test check btc addr", testCheckBtcAddr)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcutil"
 	"io"
 	"math/big"
 	"net/http"
@@ -142,14 +143,21 @@ func (s *Server) initBtcWatchers() error {
 			return err
 		}
 
-		watcher := NewBTCAddressWatcher(entry.QuoteHash, s.btc, s.rsk, p, s.db, quote, signB, entry.CalledForUser)
-		err = s.btc.AddAddressWatcher(entry.DepositAddr, time.Minute, watcher)
+		err = s.addAddressWatcher(quote, entry.QuoteHash, entry.DepositAddr, signB, p, entry.CalledForUser)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, calledForUser bool) error {
+	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+	expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, calledForUser)
+	err := s.btc.AddAddressWatcher(depositAddr, minAmount, time.Minute, expTime, watcher)
+	return err
 }
 
 func (s *Server) Shutdown() {
@@ -270,15 +278,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signature := hex.EncodeToString(signB)
-
-	watcher := NewBTCAddressWatcher(req.QuoteHash, s.btc, s.rsk, p, s.db, quote, signB, false)
-	err = s.btc.AddAddressWatcher(depositAddress, time.Minute, watcher)
+	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	signature := hex.EncodeToString(signB)
 	enc := json.NewEncoder(w)
 	response := acceptRes{
 		Signature:                 signature,
