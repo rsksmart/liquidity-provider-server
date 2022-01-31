@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/stretchr/testify/mock"
 	"time"
@@ -11,8 +12,8 @@ type BtcMock struct {
 	mock.Mock
 }
 
-func (b *BtcMock) AddAddressWatcher(address string, interval time.Duration, w connectors.AddressWatcher) error {
-	b.Called(address, interval, w)
+func (b *BtcMock) AddAddressWatcher(address string, minAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher) error {
+	b.Called(address, minAmount, interval, exp, w)
 	return nil
 }
 

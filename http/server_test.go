@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcutil"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -161,6 +162,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock(hash, quote)
+		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+		expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
 
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
@@ -190,7 +193,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		rsk.On("GasPrice").Times(1)
 		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
-		btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
@@ -204,6 +207,8 @@ func testInitBtcWatchers(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock(hash, quote)
+	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+	expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
 
 	srv := New(rsk, btc, db)
 	for _, lp := range providerMocks {
@@ -217,7 +222,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 	db.On("GetRetainedQuotes").Times(1).Return([]*types.RetainedQuote{{ QuoteHash: hash }})
 	db.On("GetQuote", hash).Times(1).Return(quote)
-	btc.On("AddAddressWatcher", "", time.Minute, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 	err := srv.initBtcWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
