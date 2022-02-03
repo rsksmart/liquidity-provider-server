@@ -15,6 +15,7 @@ const (
 type DBConnector interface {
 	providers.RetainedQuotesRepository
 
+	CheckConnection() error
 	Close() error
 
 	InsertQuote(id string, q *types.Quote) error
@@ -30,6 +31,10 @@ type DB struct {
 
 type QuoteHash struct {
 	QuoteHash string `db:"quote_hash"`
+}
+
+func (db *DB) CheckConnection() error {
+	return db.db.Ping()
 }
 
 func Connect(dbPath string) (*DB, error) {
@@ -158,7 +163,7 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 func (db *DB) DeleteRetainedQuote(hash string) error {
 	log.Debug("deleting retained quote:", hash)
 
-	query, args, _ := sqlx.Named(deleteRetainedQuote, QuoteHash{QuoteHash: hash} )
+	query, args, _ := sqlx.Named(deleteRetainedQuote, QuoteHash{QuoteHash: hash})
 	if _, err := db.db.Exec(query, args...); err != nil {
 		return err
 	}
