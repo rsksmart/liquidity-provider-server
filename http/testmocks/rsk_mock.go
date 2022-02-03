@@ -69,6 +69,12 @@ func (m *RskMock) Connect(endpoint string, chainId *big.Int) error {
 	m.Called(endpoint, chainId)
 	return nil
 }
+
+func (m *RskMock) CheckConnection() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func (m *RskMock) Close() {
 	m.Called()
 }

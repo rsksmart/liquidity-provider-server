@@ -26,17 +26,18 @@ import (
 )
 
 const (
-	retries    int           = 3
-	rpcSleep   time.Duration = 2 * time.Second
-	rpcTimeout time.Duration = 5 * time.Second
-	ethSleep   time.Duration = 5 * time.Second
-	ethTimeout time.Duration = 5 * time.Minute
+	retries    int = 3
+	rpcSleep       = 2 * time.Second
+	rpcTimeout     = 5 * time.Second
+	ethSleep       = 5 * time.Second
+	ethTimeout     = 5 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
 
 type RSKConnector interface {
 	Connect(endpoint string, chainId *big.Int) error
+	CheckConnection() error
 	Close()
 	GetChainId() (*big.Int, error)
 	EstimateGas(addr string, value uint64, data []byte) (uint64, error)
@@ -113,6 +114,11 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 		return err
 	}
 	return nil
+}
+
+func (rsk *RSK) CheckConnection() error {
+	_, err := rsk.GetChainId()
+	return err
 }
 
 func (rsk *RSK) Close() {

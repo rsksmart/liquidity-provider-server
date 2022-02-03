@@ -22,6 +22,11 @@ func (b *BtcMock) Connect(endpoint string, username string, password string) err
 	return nil
 }
 
+func (b *BtcMock) CheckConnection() error {
+	args := b.Called()
+	return args.Error(0)
+}
+
 func (b *BtcMock) GetParams() chaincfg.Params {
 	b.Called()
 	return chaincfg.TestNet3Params

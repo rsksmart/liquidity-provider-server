@@ -23,6 +23,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const unknownBtcdVersion = -1
+
 type AddressWatcher interface {
 	OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount)
 	OnExpire()
@@ -31,6 +33,7 @@ type AddressWatcher interface {
 
 type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
+	CheckConnection() error
 	AddAddressWatcher(address string, minAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error
 	GetParams() chaincfg.Params
 	Close()
@@ -47,6 +50,7 @@ type BTCClient interface {
 	ListUnspentMinMaxAddresses(minConf, maxConf int, addrs []btcutil.Address) ([]btcjson.ListUnspentResult, error)
 	GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error)
 	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
+	GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error)
 	Disconnect()
 }
 
@@ -99,23 +103,23 @@ func (btc *BTC) Connect(endpoint string, username string, password string) error
 		return fmt.Errorf("RPC client error: %v", err)
 	}
 
-	info, err := c.GetNetworkInfo()
-
-	switch err := err.(type) {
-	case nil:
-		log.Debugf("detected btcd version: %v", info.Version)
-	// Inspect the RPC error to ensure the method was not found, otherwise
-	// we actually ran into an error.
-	case *btcjson.RPCError:
-		if err.Code != btcjson.ErrRPCMethodNotFound.Code {
-			return fmt.Errorf("unable to detect btcd version: %v", err)
-		}
-	default:
-		return fmt.Errorf("unable to detect btcd version: %v", err)
+	ver, err := checkBtcdVersion(c)
+	if err != nil {
+		return err
+	}
+	if ver == unknownBtcdVersion {
+		log.Warn("unable to detect btcd version, but it is up and running")
+	} else {
+		log.Debugf("detected btcd version: %v", ver)
 	}
 
 	btc.c = c
 	return nil
+}
+
+func (btc *BTC) CheckConnection() error {
+	_, err := checkBtcdVersion(btc.c)
+	return err
 }
 
 func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error {
@@ -556,6 +560,22 @@ func (btc *BTC) addErpNToMScriptPart(builder *txscript.ScriptBuilder) error {
 	builder.AddOp(getOpCodeFromInt(len(btc.fedInfo.ErpKeys)))
 
 	return nil
+}
+
+func checkBtcdVersion(c BTCClient) (int32, error) {
+	info, err := c.GetNetworkInfo()
+
+	switch err := err.(type) {
+	case nil:
+		return info.Version, nil
+	case *btcjson.RPCError:
+		if err.Code != btcjson.ErrRPCMethodNotFound.Code {
+			return 0, fmt.Errorf("unable to detect btcd version: %v", err)
+		}
+		return unknownBtcdVersion, nil
+	default:
+		return 0, fmt.Errorf("unable to detect btcd version: %v", err)
+	}
 }
 
 func getOpCodeFromInt(val int) byte {

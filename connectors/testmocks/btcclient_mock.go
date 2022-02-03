@@ -12,6 +12,11 @@ type BTCClientMock struct {
 	mock.Mock
 }
 
+func (B *BTCClientMock) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
+	args := B.Called()
+	return args.Get(0).(*btcjson.GetNetworkInfoResult), args.Error(1)
+}
+
 func (B *BTCClientMock) ImportAddressRescan(address string, account string, rescan bool) error {
 	args := B.Called(address, account, rescan)
 	return args.Error(0)
