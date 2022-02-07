@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.4
-	github.com/rsksmart/liquidity-provider v0.0.0-20220118111413-c1cf038f2ab2
+	github.com/rsksmart/liquidity-provider v0.0.0-20220120203849-caba0697b4ec
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
