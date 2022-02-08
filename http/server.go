@@ -24,6 +24,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	svcStatusOk          = "ok"
+	svcStatusDegraded    = "degraded"
+	svcStatusUnreachable = "unreachable"
+)
+
 type Server struct {
 	srv       http.Server
 	providers []providers.LiquidityProvider
@@ -95,6 +101,7 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
+	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -170,6 +177,57 @@ func (s *Server) Shutdown() {
 	log.Info("server stopped")
 }
 
+func (s *Server) checkHealthHandler(w http.ResponseWriter, r *http.Request) {
+	type services struct {
+		Db  string `json:"db"`
+		Rsk string `json:"rsk"`
+		Btc string `json:"btc"`
+	}
+	type healthRes struct {
+		Status   string   `json:"status"`
+		Services services `json:"services"`
+	}
+
+	lpsSvcStatus := svcStatusOk
+	dbSvcStatus := svcStatusOk
+	rskSvcStatus := svcStatusOk
+	btcSvcStatus := svcStatusOk
+
+	if err := s.db.CheckConnection(); err != nil {
+		log.Error("error checking db connection status: ", err.Error())
+		dbSvcStatus = svcStatusUnreachable
+		lpsSvcStatus = svcStatusDegraded
+	}
+
+	if err := s.rsk.CheckConnection(); err != nil {
+		log.Error("error checking rsk connection status: ", err.Error())
+		rskSvcStatus = svcStatusUnreachable
+		lpsSvcStatus = svcStatusDegraded
+	}
+
+	if err := s.btc.CheckConnection(); err != nil {
+		log.Error("error checking btcd connection status: ", err.Error())
+		btcSvcStatus = svcStatusUnreachable
+		lpsSvcStatus = svcStatusDegraded
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	response := healthRes{
+		Status: lpsSvcStatus,
+		Services: services{
+			Db:  dbSvcStatus,
+			Rsk: rskSvcStatus,
+			Btc: btcSvcStatus,
+		},
+	}
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "error processing request", http.StatusInternalServerError)
+	}
+}
+
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
@@ -218,6 +276,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&quotes)
 	if err != nil {
@@ -233,6 +292,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
 	}
 	req := acceptReq{}
+	w.Header().Set("Content-Type", "application/json")
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
 	if err != nil {

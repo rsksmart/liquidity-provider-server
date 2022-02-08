@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcutil"
 	"math/big"
@@ -87,6 +88,61 @@ func testGetProviderByAddress(t *testing.T) {
 	}
 }
 
+func testCheckHealth(t *testing.T) {
+	rsk := new(testmocks.RskMock)
+	btc := new(testmocks.BtcMock)
+	db := testmocks.NewDbMock("", testQuotes[0])
+	srv := New(rsk, btc, db)
+
+	w := http2.TestResponseWriter{}
+	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
+	if err != nil {
+		t.Fatalf("couldn't instantiate request. error: %v", err)
+	}
+	db.On("CheckConnection").Return(nil).Times(1)
+	rsk.On("CheckConnection").Return(nil).Times(1)
+	btc.On("CheckConnection").Return(nil).Times(1)
+	srv.checkHealthHandler(&w, req)
+	db.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	assert.EqualValues(t, 200, w.StatusCode)
+	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+	assert.EqualValues(t, "{\"status\":\"ok\",\"services\":{\"db\":\"ok\",\"rsk\":\"ok\",\"btc\":\"ok\"}}\n", w.Output)
+
+	w = http2.TestResponseWriter{}
+	req, err = http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
+	if err != nil {
+		t.Fatalf("couldn't instantiate request. error: %v", err)
+	}
+	db.On("CheckConnection").Return(errors.New("db error")).Times(1)
+	rsk.On("CheckConnection").Return(nil).Times(1)
+	btc.On("CheckConnection").Return(nil).Times(1)
+	srv.checkHealthHandler(&w, req)
+	db.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	assert.EqualValues(t, 200, w.StatusCode)
+	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+	assert.EqualValues(t, "{\"status\":\"degraded\",\"services\":{\"db\":\"unreachable\",\"rsk\":\"ok\",\"btc\":\"ok\"}}\n", w.Output)
+
+	w = http2.TestResponseWriter{}
+	req, err = http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
+	if err != nil {
+		t.Fatalf("couldn't instantiate request. error: %v", err)
+	}
+	db.On("CheckConnection").Return(errors.New("db error")).Times(1)
+	rsk.On("CheckConnection").Return(errors.New("rsk error")).Times(1)
+	btc.On("CheckConnection").Return(errors.New("btc error")).Times(1)
+	srv.checkHealthHandler(&w, req)
+	db.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	assert.EqualValues(t, 200, w.StatusCode)
+	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+	assert.EqualValues(t, "{\"status\":\"degraded\",\"services\":{\"db\":\"unreachable\",\"rsk\":\"unreachable\",\"btc\":\"unreachable\"}}\n", w.Output)
+}
+
 func testGetQuoteComplete(t *testing.T) {
 	for _, quote := range testQuotes {
 		rsk := new(testmocks.RskMock)
@@ -153,6 +209,7 @@ func testGetQuoteComplete(t *testing.T) {
 		db.AssertExpectations(t)
 		rsk.AssertExpectations(t)
 		btc.AssertExpectations(t)
+		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
 	}
 }
 
@@ -198,6 +255,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
 		rsk.AssertExpectations(t)
+		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
 	}
 }
 
@@ -220,7 +278,7 @@ func testInitBtcWatchers(t *testing.T) {
 		}
 	}
 
-	db.On("GetRetainedQuotes").Times(1).Return([]*types.RetainedQuote{{ QuoteHash: hash }})
+	db.On("GetRetainedQuotes").Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	db.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 	err := srv.initBtcWatchers()
@@ -234,6 +292,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
+	t.Run("check health", testCheckHealth)
 	t.Run("get quote", testGetQuoteComplete)
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)

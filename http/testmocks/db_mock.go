@@ -7,15 +7,20 @@ import (
 
 type DbMock struct {
 	mock.Mock
-	hash string
+	hash  string
 	quote *types.Quote
 }
 
 func NewDbMock(h string, q *types.Quote) *DbMock {
 	return &DbMock{
-		hash: h,
+		hash:  h,
 		quote: q,
 	}
+}
+
+func (d *DbMock) CheckConnection() error {
+	args := d.Called()
+	return args.Error(0)
 }
 
 func (d *DbMock) Close() error {
@@ -40,7 +45,7 @@ func (d *DbMock) RetainQuote(quote *types.RetainedQuote) error {
 
 func (d *DbMock) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	d.Called(hash)
-	return &types.RetainedQuote{ QuoteHash: hash }, nil
+	return &types.RetainedQuote{QuoteHash: hash}, nil
 }
 
 func (d *DbMock) DeleteRetainedQuote(hash string) error {
