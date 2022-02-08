@@ -67,7 +67,7 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) InsertQuote(id string, q *types.Quote) error {
-	log.Debug("inserting quote: ", q)
+	log.Debug("inserting quote{", id, "}", ": ", q)
 	query, args, _ := sqlx.Named(insertQuote, q)
 	args = append(args, 0)
 	copy(args[1:], args)
