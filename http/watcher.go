@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	"math/big"
@@ -17,15 +18,16 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	hash			string
-	btc				connectors.BTCConnector
-	rsk				connectors.RSKConnector
-	lp				providers.LiquidityProvider
-	db				storage.DBConnector
-	calledForUser	bool
-	quote			*types.Quote
-	done			chan struct{}
-	signature		[]byte
+	hash          string
+	btc           connectors.BTCConnector
+	rsk           connectors.RSKConnector
+	lp            providers.LiquidityProvider
+	db            storage.DBConnector
+	calledForUser bool
+	quote         *types.Quote
+	done          chan struct{}
+	closed        bool
+	signature     []byte
 }
 
 const (
@@ -35,22 +37,28 @@ const (
 
 func NewBTCAddressWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, db storage.DBConnector,
-	q *types.Quote, signature []byte, calledForUser	bool) *BTCAddressWatcher {
+	q *types.Quote, signature []byte, calledForUser bool) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
-		hash:			hash,
-		btc:			btc,
-		rsk:			rsk,
-		lp:				provider,
-		db:				db,
-		quote:			q,
-		calledForUser:	calledForUser,
-		signature:		signature,
-		done:			make(chan struct{}),
+		hash:          hash,
+		btc:           btc,
+		rsk:           rsk,
+		lp:            provider,
+		db:            db,
+		quote:         q,
+		calledForUser: calledForUser,
+		signature:     signature,
+		done:          make(chan struct{}),
 	}
 	return &watcher
 }
 
-func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, _ float64) {
+func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount) {
+	if w.closed {
+		log.Errorf("watcher is closed; cannot handle OnNewConfirmation; hash: %v", w.hash)
+		return
+	}
+	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
+
 	if !w.calledForUser && confirmations >= int64(w.quote.Confirmations) {
 		err := w.performCallForUser()
 		if err != nil {
@@ -60,7 +68,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 				log.Errorf("error deleting retained quote from db. hash: %v", w.hash)
 			}
 
-			close(w.done)
+			w.close()
 			return
 		}
 
@@ -72,7 +80,7 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 				log.Errorf("error deleting retained quote from db. hash: %v", w.hash)
 			}
 
-			close(w.done)
+			w.close()
 			return
 		}
 		w.calledForUser = true
@@ -84,7 +92,21 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		if err != nil {
 			log.Errorf("error calling registerPegIn. value: %v. error: %v", txHash, err)
 		}
+		log.Debugf("performed RegisterPegIn for tx %v", txHash)
 	}
+}
+
+func (w *BTCAddressWatcher) OnExpire() {
+	if w.closed {
+		log.Errorf("watcher is closed; cannot handle OnExpire; hash: %v", w.hash)
+		return
+	}
+	log.Debugf("time has expired for quote: %v", w.hash)
+	err := w.db.DeleteRetainedQuote(w.hash)
+	if err != nil {
+		log.Errorf("error deleting retained quote from db. hash: %v", w.hash)
+	}
+	w.close()
 }
 
 func (w *BTCAddressWatcher) Done() <-chan struct{} {
@@ -162,7 +184,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	if err != nil {
 		log.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
 	}
-	close(w.done)
+	w.close()
 	return nil
 }
 
@@ -180,4 +202,9 @@ func (w *BTCAddressWatcher) notifyProvider() error {
 		return fmt.Errorf("failed to refund to liquidity provider. quote: %v. error: %v", h, err)
 	}
 	return nil
+}
+
+func (w *BTCAddressWatcher) close() {
+	w.closed = true
+	close(w.done)
 }
