@@ -4,6 +4,7 @@
 package bindings
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
@@ -26,8 +28,14 @@ var (
 	_ = event.NewSubscription
 )
 
+// RskBridgeMetaData contains all meta data concerning the RskBridge contract.
+var RskBridgeMetaData = &bind.MetaData{
+	ABI: "[{\"name\":\"getBtcBlockchainBlockHeaderByHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcBlockHeight\",\"type\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"registerFastBridgeBtcTransaction\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\"},{\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"name\":\"derivationArgumentsHash\",\"type\":\"bytes32\"},{\"name\":\"userRefundBtcAddress\",\"type\":\"bytes\"},{\"name\":\"liquidityBridgeContractAddress\",\"type\":\"address\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"name\":\"shouldTransferToContract\",\"type\":\"bool\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getActiveFederationCreationBlockHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}]},{\"name\":\"getFederatorPublicKeyOfType\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"},{\"name\":\"\",\"type\":\"string\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederatorPublicKey\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederationThreshold\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationSize\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationAddress\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"string\"}]},{\"name\":\"getMinimumLockTxValue\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]}]",
+}
+
 // RskBridgeABI is the input ABI used to generate the binding from.
-const RskBridgeABI = "[{\"name\":\"getBtcBlockchainBlockHeaderByHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcBlockHeight\",\"type\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"registerFastBridgeBtcTransaction\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\"},{\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"name\":\"derivationArgumentsHash\",\"type\":\"bytes32\"},{\"name\":\"userRefundBtcAddress\",\"type\":\"bytes\"},{\"name\":\"liquidityBridgeContractAddress\",\"type\":\"address\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"name\":\"shouldTransferToContract\",\"type\":\"bool\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getActiveFederationCreationBlockHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}]},{\"name\":\"getFederatorPublicKeyOfType\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"},{\"name\":\"\",\"type\":\"string\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederatorPublicKey\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederationThreshold\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationSize\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationAddress\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"string\"}]}]"
+// Deprecated: Use RskBridgeMetaData.ABI instead.
+var RskBridgeABI = RskBridgeMetaData.ABI
 
 // RskBridge is an auto generated Go binding around an Ethereum contract.
 type RskBridge struct {
@@ -386,6 +394,37 @@ func (_RskBridge *RskBridgeSession) GetFederatorPublicKeyOfType(index *big.Int, 
 // Solidity: function getFederatorPublicKeyOfType(int256 index, string ) returns(bytes)
 func (_RskBridge *RskBridgeCallerSession) GetFederatorPublicKeyOfType(index *big.Int, arg1 string) ([]byte, error) {
 	return _RskBridge.Contract.GetFederatorPublicKeyOfType(&_RskBridge.CallOpts, index, arg1)
+}
+
+// GetMinimumLockTxValue is a free data retrieval call binding the contract method 0x2f8d158f.
+//
+// Solidity: function getMinimumLockTxValue() returns(int256)
+func (_RskBridge *RskBridgeCaller) GetMinimumLockTxValue(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _RskBridge.contract.Call(opts, &out, "getMinimumLockTxValue")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetMinimumLockTxValue is a free data retrieval call binding the contract method 0x2f8d158f.
+//
+// Solidity: function getMinimumLockTxValue() returns(int256)
+func (_RskBridge *RskBridgeSession) GetMinimumLockTxValue() (*big.Int, error) {
+	return _RskBridge.Contract.GetMinimumLockTxValue(&_RskBridge.CallOpts)
+}
+
+// GetMinimumLockTxValue is a free data retrieval call binding the contract method 0x2f8d158f.
+//
+// Solidity: function getMinimumLockTxValue() returns(int256)
+func (_RskBridge *RskBridgeCallerSession) GetMinimumLockTxValue() (*big.Int, error) {
+	return _RskBridge.Contract.GetMinimumLockTxValue(&_RskBridge.CallOpts)
 }
 
 // RegisterFastBridgeBtcTransaction is a free data retrieval call binding the contract method 0x6adc0133.
