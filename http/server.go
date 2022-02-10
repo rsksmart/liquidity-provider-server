@@ -290,8 +290,8 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(quotes) == 0 && amountBelowMinLockTxValue {
-		log.Error("error getting quote; requested amount below bridge's min lock tx value: ", qr.ValueToTransfer)
-		http.Error(w, "bad request; requested amount below bridge's min lock tx value", http.StatusBadRequest)
+		log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+		http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
 		return
 	}
 
