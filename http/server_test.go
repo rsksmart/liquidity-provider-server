@@ -225,7 +225,7 @@ func testGetQuoteComplete(t *testing.T) {
 		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
 		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
 		srv.getQuoteHandler(&w, req)
-		assert.EqualValues(t, "bad request; requested amount below bridge's min lock tx value\n", w.Output)
+		assert.EqualValues(t, "bad request; requested amount below bridge's min pegin tx value\n", w.Output)
 	}
 }
 
@@ -236,7 +236,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock(hash, quote)
 		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-		expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
@@ -282,7 +282,7 @@ func testInitBtcWatchers(t *testing.T) {
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock(hash, quote)
 	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-	expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 	srv := New(rsk, btc, db)
 	for _, lp := range providerMocks {
