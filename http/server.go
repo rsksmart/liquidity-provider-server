@@ -161,7 +161,7 @@ func (s *Server) initBtcWatchers() error {
 
 func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, calledForUser bool) error {
 	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-	expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, calledForUser)
 	err := s.btc.AddAddressWatcher(depositAddr, minAmount, time.Minute, expTime, watcher)
 	return err
@@ -224,7 +224,7 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, r *http.Request) {
 	err := enc.Encode(response)
 	if err != nil {
 		log.Error("error encoding response: ", err.Error())
-		http.Error(w, "error processing request", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -234,7 +234,8 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
@@ -242,14 +243,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer, []byte(qr.CallContractArguments))
 	if err != nil {
 		log.Error("error estimating gas: ", err.Error())
-		http.Error(w, "error estimating gas", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	price, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error estimating gas price: ", err.Error())
-		http.Error(w, "error estimating gas price", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -257,14 +258,26 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	fedAddress, err := s.rsk.GetFedAddress()
 	if err != nil {
 		log.Error("error retrieving federation address: ", err.Error())
-		http.Error(w, "error retrieving federation address", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	minLockTxValue, err := s.rsk.GetMinimumLockTxValue()
+	if err != nil {
+		log.Error("error retrieving minimum lock tx value: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
 	for _, p := range s.providers {
 		pq := p.GetQuote(q, gas, price)
 		if pq != nil {
+			if pq.Value+pq.CallFee < minLockTxValue.Uint64() {
+				amountBelowMinLockTxValue = true
+				continue
+			}
 			err = s.storeQuote(pq)
 
 			if err != nil {
@@ -276,12 +289,18 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(quotes) == 0 && amountBelowMinLockTxValue {
+		log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+		http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&quotes)
 	if err != nil {
 		log.Error("error encoding quote list: ", err.Error())
-		http.Error(w, "error processing quotes", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -296,51 +315,59 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error decoding quote hash: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	quote, err := s.db.GetQuote(req.QuoteHash)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error retrieving quote from db: ", err.Error())
+		http.Error(w, "quote not found", http.StatusNotFound)
 		return
 	}
 
 	btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error decoding addresses: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	depositAddress, err := s.btc.GetDerivedBitcoinAddress(btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error getting derived bitcoin address: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error("error getting provider by address: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	reqLiq := (uint64(CFUExtraGas)+uint64(quote.GasLimit))*gasPrice + quote.Value
 	signB, err := p.SignQuote(hashBytes, depositAddress, big.NewInt(int64(reqLiq)))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Error("error signing quote: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, false)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Error("error adding address watcher: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -355,7 +382,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
 	if err != nil {
 		log.Error("error encoding response: ", err.Error())
-		http.Error(w, "error processing request", http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }

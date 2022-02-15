@@ -15,6 +15,11 @@ type RskMock struct {
 	mock.Mock
 }
 
+func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
+	args := m.Called()
+	return args.Get(0).(*big.Int), args.Error(1)
+}
+
 func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
 	m.Called(addr)
 	return nil, nil

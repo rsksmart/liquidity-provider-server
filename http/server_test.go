@@ -156,13 +156,13 @@ func testGetQuoteComplete(t *testing.T) {
 			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 			err := srv.AddProvider(lp)
 			if err != nil {
-				t.Errorf("couldn't add provider. error: %v", err)
+				t.Fatalf("couldn't add provider. error: %v", err)
 			}
 		}
 		w := http2.TestResponseWriter{}
 		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
 		callArgs := ""
-		value := 1000000
+		value := quote.Value
 		gasLim := 500000
 		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
 		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
@@ -196,12 +196,13 @@ func testGetQuoteComplete(t *testing.T) {
 		}
 		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
 		if err != nil {
-			t.Errorf("couldn't instantiate request. error: %v", err)
+			t.Fatalf("couldn't instantiate request. error: %v", err)
 		}
 		rsk.On("EstimateGas", destAddr, uint64(value), []byte(callArgs)).Times(1)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("GetFedAddress").Times(1)
 		rsk.On("GetLBCAddress").Times(1)
+		rsk.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
 		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
 		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
 
@@ -210,6 +211,21 @@ func testGetQuoteComplete(t *testing.T) {
 		rsk.AssertExpectations(t)
 		btc.AssertExpectations(t)
 		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+
+		req, err = http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Fatalf("couldn't instantiate request. error: %v", err)
+		}
+		w = http2.TestResponseWriter{}
+		rsk.On("EstimateGas", destAddr, uint64(value), []byte(callArgs)).Times(1)
+		rsk.On("GasPrice").Times(1)
+		rsk.On("GetFedAddress").Times(1)
+		rsk.On("GetLBCAddress").Times(1)
+		rsk.On("GetMinimumLockTxValue").Return(big.NewInt(int64(quote.Value+quote.CallFee-1)), nil).Times(1)
+		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
+		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
+		srv.getQuoteHandler(&w, req)
+		assert.EqualValues(t, "bad request; requested amount below bridge's min pegin tx value\n", w.Output)
 	}
 }
 
@@ -220,7 +236,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock(hash, quote)
 		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-		expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 		srv := New(rsk, btc, db)
 		for _, lp := range providerMocks {
@@ -266,7 +282,7 @@ func testInitBtcWatchers(t *testing.T) {
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock(hash, quote)
 	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-	expTime := time.Unix(int64(quote.AgreementTimestamp + quote.TimeForDeposit), 0)
+	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 	srv := New(rsk, btc, db)
 	for _, lp := range providerMocks {

@@ -59,6 +59,7 @@ type RSKConnector interface {
 	AddCollateral(opts *bind.TransactOpts) error
 	GetAvailableLiquidity(addr string) (*big.Int, error)
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
+	GetMinimumLockTxValue() (*big.Int, error)
 }
 
 type RSK struct {
@@ -527,6 +528,23 @@ func (rsk *RSK) isNewAccount(addr common.Address) bool {
 		time.Sleep(rpcSleep)
 	}
 	return len(code) == 0 && bal.Cmp(common.Big0) == 0 && n == 0
+}
+
+func (rsk *RSK) GetMinimumLockTxValue() (*big.Int, error) {
+	var err error
+	opts := bind.CallOpts{}
+	var value *big.Int
+	for i := 0; i < retries; i++ {
+		value, err = rsk.bridge.GetMinimumLockTxValue(&opts)
+		if value != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if value == nil {
+		return nil, fmt.Errorf("error calling GetMinimumLockTxValue: %v", err)
+	}
+	return value, nil
 }
 
 func DecodeRSKAddress(address string) ([]byte, error) {
