@@ -38,6 +38,11 @@ func (d *DbMock) GetQuote(quoteHash string) (*types.Quote, error) {
 	return d.quote, nil
 }
 
+func (d *DbMock) DeleteExpiredQuotes(expTimestamp int64) error {
+	d.Called(expTimestamp)
+	return nil
+}
+
 func (d *DbMock) RetainQuote(quote *types.RetainedQuote) error {
 	d.Called(quote)
 	return nil
@@ -53,12 +58,12 @@ func (d *DbMock) DeleteRetainedQuote(hash string) error {
 	return nil
 }
 
-func (d *DbMock) GetRetainedQuotes() ([]*types.RetainedQuote, error) {
-	d.Called()
+func (d *DbMock) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error) {
+	d.Called(filter)
 	return []*types.RetainedQuote{{QuoteHash: d.hash}}, nil
 }
 
-func (d *DbMock) SetRetainedQuoteCalledForUserFlag(hash string) error {
-	d.Called(hash)
+func (d *DbMock) UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error {
+	d.Called(hash, oldState, newState)
 	return nil
 }

@@ -30,12 +30,16 @@ const (
 	svcStatusUnreachable = "unreachable"
 )
 
+const quoteCleaningInterval = 1 * time.Hour
+const quoteExpTimeThreshold = 5 * time.Minute
+
 type Server struct {
 	srv       http.Server
 	providers []providers.LiquidityProvider
 	rsk       connectors.RSKConnector
 	btc       connectors.BTCConnector
 	db        storage.DBConnector
+	now       func() time.Time
 }
 
 type QuoteRequest struct {
@@ -52,11 +56,16 @@ type acceptReq struct {
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
+	return newServer(rsk, btc, db, time.Now)
+}
+
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time) Server {
 	return Server{
 		rsk:       rsk,
 		btc:       btc,
 		db:        db,
 		providers: make([]providers.LiquidityProvider, 0),
+		now:       now,
 	}
 }
 
@@ -115,6 +124,8 @@ func (s *Server) Start(port uint) error {
 		return err
 	}
 
+	s.initExpiredQuotesCleaner()
+
 	s.srv = http.Server{
 		Addr:    ":" + fmt.Sprint(port),
 		Handler: h,
@@ -129,7 +140,8 @@ func (s *Server) Start(port uint) error {
 }
 
 func (s *Server) initBtcWatchers() error {
-	retainedQuotes, err := s.db.GetRetainedQuotes()
+	quoteStatesToWatch := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded, types.RQStateRegisterPegInSucceeded}
+	retainedQuotes, err := s.db.GetRetainedQuotes(quoteStatesToWatch)
 	if err != nil {
 		return err
 	}
@@ -150,7 +162,7 @@ func (s *Server) initBtcWatchers() error {
 			return err
 		}
 
-		err = s.addAddressWatcher(quote, entry.QuoteHash, entry.DepositAddr, signB, p, entry.CalledForUser)
+		err = s.addAddressWatcher(quote, entry.QuoteHash, entry.DepositAddr, signB, p, entry.State)
 		if err != nil {
 			return err
 		}
@@ -159,12 +171,31 @@ func (s *Server) initBtcWatchers() error {
 	return nil
 }
 
-func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, calledForUser bool) error {
+func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, state types.RQState) error {
 	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
-	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
-	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, calledForUser)
+	expTime := getQuoteExpTime(quote)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state)
 	err := s.btc.AddAddressWatcher(depositAddr, minAmount, time.Minute, expTime, watcher)
 	return err
+}
+
+func (s *Server) initExpiredQuotesCleaner() {
+	go func() {
+		ticker := time.NewTicker(quoteCleaningInterval)
+		quit := make(chan struct{})
+		for {
+			select {
+			case <-ticker.C:
+				err := s.db.DeleteExpiredQuotes(time.Now().Add(-1 * quoteExpTimeThreshold).Unix())
+				if err != nil {
+					log.Info("error deleting expired quites: ", err)
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }
 
 func (s *Server) Shutdown() {
@@ -177,7 +208,7 @@ func (s *Server) Shutdown() {
 	log.Info("server stopped")
 }
 
-func (s *Server) checkHealthHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	type services struct {
 		Db  string `json:"db"`
 		Rsk string `json:"rsk"`
@@ -334,6 +365,13 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expTime := getQuoteExpTime(quote)
+	if s.now().After(expTime) {
+		log.Error("quote deposit time has elapsed; hash: ", req.QuoteHash)
+		http.Error(w, "forbidden; quote deposit time has elapsed", http.StatusForbidden)
+		return
+	}
+
 	btcRefAddr, lpBTCAddr, lbcAddr, err := decodeAddresses(quote.BTCRefundAddr, quote.LPBTCAddr, quote.LBCAddr)
 	if err != nil {
 		log.Error("error decoding addresses: ", err.Error())
@@ -364,7 +402,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, false)
+	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, types.RQStateWaitingForDeposit)
 	if err != nil {
 		log.Error("error adding address watcher: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -436,4 +474,8 @@ func (s *Server) storeQuote(q *types.Quote) error {
 		log.Fatalf("error inserting quote: %v", err)
 	}
 	return nil
+}
+
+func getQuoteExpTime(q *types.Quote) time.Time {
+	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
 }
