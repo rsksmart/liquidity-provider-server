@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
@@ -20,9 +21,10 @@ type DBConnector interface {
 
 	InsertQuote(id string, q *types.Quote) error
 	GetQuote(quoteHash string) (*types.Quote, error)
+	DeleteExpiredQuotes(expTimestamp int64) error
 
-	GetRetainedQuotes() ([]*types.RetainedQuote, error)
-	SetRetainedQuoteCalledForUserFlag(hash string) error
+	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
+	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 }
 
 type DB struct {
@@ -31,6 +33,12 @@ type DB struct {
 
 type QuoteHash struct {
 	QuoteHash string `db:"quote_hash"`
+}
+
+type UpdateQuoteState struct {
+	QuoteHash string        `db:"quote_hash"`
+	OldState  types.RQState `db:"old_state"`
+	NewState  types.RQState `db:"new_state"`
 }
 
 func (db *DB) CheckConnection() error {
@@ -51,6 +59,9 @@ func Connect(dbPath string) (*DB, error) {
 		return nil, err
 	}
 	if _, err := db.Exec(createRetainedQuoteTable); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(createRetainedQuoteIndexes); err != nil {
 		return nil, err
 	}
 
@@ -90,6 +101,27 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	return &quote, nil
 }
 
+func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
+	log.Debug("deleting expired quotes...")
+	res, err := db.db.Exec(deleteExpiredQuotes, expTimestamp)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected > 0 {
+		log.Infof("deleted %v expired quote(s)", rowsAffected)
+	} else {
+		log.Debug("no expired quotes found; nothing to delete")
+	}
+
+	return nil
+}
+
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	log.Debug("inserting retained quote:", entry.QuoteHash)
 	query, args, _ := sqlx.Named(insertRetainedQuote, entry)
@@ -102,10 +134,12 @@ func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	return nil
 }
 
-func (db *DB) GetRetainedQuotes() ([]*types.RetainedQuote, error) {
+func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error) {
 	log.Debug("retrieving retained quotes")
 	var retainedQuotes []*types.RetainedQuote
-	rows, err := db.db.Queryx(selectRetainedQuotes)
+
+	query, args, err := sqlx.In(selectRetainedQuotes, filter)
+	rows, err := db.db.Queryx(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,15 +159,6 @@ func (db *DB) GetRetainedQuotes() ([]*types.RetainedQuote, error) {
 	}
 
 	return retainedQuotes, nil
-}
-
-func (db *DB) SetRetainedQuoteCalledForUserFlag(hash string) error {
-	log.Debug("setting retained quote's calledForUser flag")
-	query, args, _ := sqlx.Named(setRetainedQuoteCalledForUserFlag, QuoteHash{QuoteHash: hash})
-	if _, err := db.db.Exec(query, args...); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
@@ -160,12 +185,21 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	return nil, nil
 }
 
-func (db *DB) DeleteRetainedQuote(hash string) error {
-	log.Debug("deleting retained quote:", hash)
+func (db *DB) UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error {
+	log.Debugf("updating state from %v to %v for retained quote: %v", oldState, newState, hash)
 
-	query, args, _ := sqlx.Named(deleteRetainedQuote, QuoteHash{QuoteHash: hash})
-	if _, err := db.db.Exec(query, args...); err != nil {
+	query, args, _ := sqlx.Named(updateRetainedQuoteState, UpdateQuoteState{QuoteHash: hash, OldState: oldState, NewState: newState})
+	res, err := db.db.Exec(query, args...)
+	if err != nil {
 		return err
 	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("error updating retained quote: %v; oldState: %v; newState: %v", hash, oldState, newState)
+	}
+
 	return nil
 }
