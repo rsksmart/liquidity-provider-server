@@ -60,6 +60,7 @@ type RSKConnector interface {
 	GetAvailableLiquidity(addr string) (*big.Int, error)
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
+	FetchFederationInfo() (*FedInfo, error)
 }
 
 type RSK struct {
@@ -69,9 +70,11 @@ type RSK struct {
 	bridge                      *bindings.RskBridge
 	bridgeAddress               common.Address
 	requiredBridgeConfirmations int64
+	irisActivationHeight        int
+	erpKeys                     []string
 }
 
-func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations int64) (*RSK, error) {
+func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations int64, irisActivationHeight int, erpKeys []string) (*RSK, error) {
 	if !common.IsHexAddress(lbcAddress) {
 		return nil, errors.New("invalid LBC contract address")
 	}
@@ -83,6 +86,8 @@ func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations
 		lbcAddress:                  common.HexToAddress(lbcAddress),
 		bridgeAddress:               common.HexToAddress(bridgeAddress),
 		requiredBridgeConfirmations: requiredBridgeConfirmations,
+		irisActivationHeight:        irisActivationHeight,
+		erpKeys:                     erpKeys,
 	}, nil
 }
 
@@ -593,6 +598,51 @@ func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuot
 	pq.DepositConfirmations = q.Confirmations
 	pq.TimeForDeposit = q.TimeForDeposit
 	return pq, nil
+}
+
+func (rsk *RSK) FetchFederationInfo() (*FedInfo, error) {
+	log.Debug("getting federation info")
+	fedSize, err := rsk.GetFedSize()
+	if err != nil {
+		return nil, err
+	}
+
+	var pubKeys []string
+	for i := 0; i < fedSize; i++ {
+		pubKey, err := rsk.GetFedPublicKey(i)
+		if err != nil {
+			log.Error("error fetching fed public key: ", err.Error())
+			return nil, err
+		}
+		pubKeys = append(pubKeys, pubKey)
+	}
+
+	fedThreshold, err := rsk.GetFedThreshold()
+	if err != nil {
+		log.Error("error fetching federation size: ", err.Error())
+		return nil, err
+	}
+
+	fedAddress, err := rsk.GetFedAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	activeFedBlockHeight, err := rsk.GetActiveFederationCreationBlockHeight()
+	if err != nil {
+		log.Error("error fetching federation address: ", err.Error())
+		return nil, err
+	}
+
+	return &FedInfo{
+		FedThreshold:         fedThreshold,
+		FedSize:              fedSize,
+		PubKeys:              pubKeys,
+		FedAddress:           fedAddress,
+		ActiveFedBlockHeight: activeFedBlockHeight,
+		IrisActivationHeight: rsk.irisActivationHeight,
+		ErpKeys:              rsk.erpKeys,
+	}, nil
 }
 
 func copyBtcAddr(addr string, dst []byte) error {

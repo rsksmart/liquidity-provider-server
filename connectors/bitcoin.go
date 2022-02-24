@@ -40,7 +40,7 @@ type BTCConnector interface {
 	SerializePMT(txHash string) ([]byte, error)
 	SerializeTx(txHash string) ([]byte, error)
 	GetBlockNumberByTx(txHash string) (int64, error)
-	GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 }
 
 type BTCClient interface {
@@ -55,26 +55,13 @@ type BTCClient interface {
 }
 
 type BTC struct {
-	c       BTCClient
-	params  chaincfg.Params
-	fedInfo *FedInfo
+	c      BTCClient
+	params chaincfg.Params
 }
 
-type FedInfo struct {
-	FedSize              int
-	FedThreshold         int
-	PubKeys              []string
-	FedAddress           string
-	ActiveFedBlockHeight int
-	IrisActivationHeight int
-	ErpKeys              []string
-}
-
-func NewBTC(network string, fedInfo FedInfo) (*BTC, error) {
+func NewBTC(network string) (*BTC, error) {
 	log.Debug("initializing BTC connector")
-	btc := BTC{
-		fedInfo: &fedInfo,
-	}
+	btc := BTC{}
 	switch network {
 	case "mainnet":
 		btc.params = chaincfg.MainNetParams
@@ -223,12 +210,12 @@ func (btc *BTC) SerializeTx(txHash string) ([]byte, error) {
 	return serializeTx(rawTx)
 }
 
-func (btc *BTC) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+func (btc *BTC) GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
 	derivationValue, err := getDerivationValueHash(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	if err != nil {
 		return "", fmt.Errorf("error computing derivation value: %v", err)
 	}
-	flyoverScript, err := btc.getRedeemScript(derivationValue)
+	flyoverScript, err := btc.getRedeemScript(fedInfo, derivationValue)
 	if err != nil {
 		return "", fmt.Errorf("error generating redeem script: %v", err)
 	}
@@ -368,13 +355,13 @@ func getDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAd
 	return derivationValueHash, nil
 }
 
-func (btc *BTC) validateRedeemScript(script []byte) error {
+func (btc *BTC) validateRedeemScript(fedInfo *FedInfo, script []byte) error {
 	addr, err := btcutil.NewAddressScriptHash(script, &btc.params)
 	if err != nil {
 		return err
 	}
 
-	fedAddress, err := btcutil.DecodeAddress(btc.fedInfo.FedAddress, &btc.params)
+	fedAddress, err := btcutil.DecodeAddress(fedInfo.FedAddress, &btc.params)
 	if err != nil {
 		return err
 	}
@@ -385,7 +372,7 @@ func (btc *BTC) validateRedeemScript(script []byte) error {
 	return nil
 }
 
-func (btc *BTC) getRedeemScript(derivationValue []byte) ([]byte, error) {
+func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byte, error) {
 	var hashBuf *bytes.Buffer
 
 	buf, err := getFlyoverPrefix(derivationValue)
@@ -394,30 +381,30 @@ func (btc *BTC) getRedeemScript(derivationValue []byte) ([]byte, error) {
 	}
 
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
-	if btc.fedInfo.ActiveFedBlockHeight < btc.fedInfo.IrisActivationHeight {
-		hashBuf, err = btc.getPowPegRedeemScriptBuf(true)
+	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
+		hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
 		if err != nil {
 			return nil, err
 		}
 
-		err = btc.validateRedeemScript(hashBuf.Bytes())
+		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		hashBuf, err = btc.getErpRedeemScriptBuf()
+		hashBuf, err = btc.getErpRedeemScriptBuf(fedInfo)
 		if err != nil {
 			return nil, err
 		}
 
-		err = btc.validateRedeemScript(hashBuf.Bytes())
+		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
 		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
-			hashBuf, err = btc.getPowPegRedeemScriptBuf(true)
+			hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
 			if err != nil {
 				return nil, err
 			}
 
-			err = btc.validateRedeemScript(hashBuf.Bytes())
+			err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
 			if err != nil {
 				return nil, err
 			}
@@ -441,10 +428,10 @@ func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-func (btc *BTC) getPowPegRedeemScriptBuf(addMultiSig bool) (*bytes.Buffer, error) {
+func (btc *BTC) getPowPegRedeemScriptBuf(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
-	err := btc.addStdNToMScriptPart(sb)
+	err := btc.addStdNToMScriptPart(fedInfo, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -460,12 +447,12 @@ func (btc *BTC) getPowPegRedeemScriptBuf(addMultiSig bool) (*bytes.Buffer, error
 	return &buf, nil
 }
 
-func (btc *BTC) getErpRedeemScriptBuf() (*bytes.Buffer, error) {
-	erpRedeemScriptBuf, err := btc.p2ms(false)
+func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
+	erpRedeemScriptBuf, err := btc.p2ms(fedInfo, false)
 	if err != nil {
 		return nil, err
 	}
-	powPegRedeemScriptBuf, err := btc.getPowPegRedeemScriptBuf(false)
+	powPegRedeemScriptBuf, err := btc.getPowPegRedeemScriptBuf(fedInfo, false)
 	if err != nil {
 		return nil, err
 	}
@@ -499,10 +486,10 @@ func (btc *BTC) getErpRedeemScriptBuf() (*bytes.Buffer, error) {
 	return &erpRedeemScriptBuffer, nil
 }
 
-func (btc *BTC) p2ms(addMultiSig bool) (*bytes.Buffer, error) {
+func (btc *BTC) p2ms(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
-	err := btc.addErpNToMScriptPart(sb)
+	err := btc.addErpNToMScriptPart(fedInfo, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -528,10 +515,10 @@ func (btc *BTC) getCsvValueFromNetwork() string {
 	}
 }
 
-func (btc *BTC) addStdNToMScriptPart(builder *txscript.ScriptBuilder) error {
-	builder.AddOp(getOpCodeFromInt(btc.fedInfo.FedThreshold))
+func (btc *BTC) addStdNToMScriptPart(fedInfo *FedInfo, builder *txscript.ScriptBuilder) error {
+	builder.AddOp(getOpCodeFromInt(fedInfo.FedThreshold))
 
-	for _, pubKey := range btc.fedInfo.PubKeys {
+	for _, pubKey := range fedInfo.PubKeys {
 		pkBuffer, err := hex.DecodeString(pubKey)
 		if err != nil {
 			return err
@@ -539,17 +526,17 @@ func (btc *BTC) addStdNToMScriptPart(builder *txscript.ScriptBuilder) error {
 		builder.AddData(pkBuffer)
 	}
 
-	builder.AddOp(getOpCodeFromInt(btc.fedInfo.FedSize))
+	builder.AddOp(getOpCodeFromInt(fedInfo.FedSize))
 
 	return nil
 }
 
-func (btc *BTC) addErpNToMScriptPart(builder *txscript.ScriptBuilder) error {
-	size := len(btc.fedInfo.ErpKeys)
+func (btc *BTC) addErpNToMScriptPart(fedInfo *FedInfo, builder *txscript.ScriptBuilder) error {
+	size := len(fedInfo.ErpKeys)
 	min := size/2 + 1
 	builder.AddOp(getOpCodeFromInt(min))
 
-	for _, pubKey := range btc.fedInfo.ErpKeys {
+	for _, pubKey := range fedInfo.ErpKeys {
 		pkBuffer, err := hex.DecodeString(pubKey)
 		if err != nil {
 			return err
@@ -557,7 +544,7 @@ func (btc *BTC) addErpNToMScriptPart(builder *txscript.ScriptBuilder) error {
 		builder.AddData(pkBuffer)
 	}
 
-	builder.AddOp(getOpCodeFromInt(len(btc.fedInfo.ErpKeys)))
+	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)))
 
 	return nil
 }

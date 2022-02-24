@@ -379,7 +379,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	depositAddress, err := s.btc.GetDerivedBitcoinAddress(btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+	fedInfo, err := s.rsk.FetchFederationInfo()
+	if err != nil {
+		log.Error("error fetching fed info: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	depositAddress, err := s.btc.GetDerivedBitcoinAddress(fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
 		log.Error("error getting derived bitcoin address: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
