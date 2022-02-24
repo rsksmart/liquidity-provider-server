@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -237,6 +238,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db := testmocks.NewDbMock(hash, quote)
 		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
+		fedInfo := &connectors.FedInfo{}
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
@@ -267,7 +269,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		rsk.On("GasPrice").Times(1)
-		btc.On("GetDerivedBitcoinAddress", btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
+		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
+		btc.On("GetDerivedBitcoinAddress", fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
 		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)

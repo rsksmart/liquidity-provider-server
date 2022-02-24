@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -127,4 +128,9 @@ func (m *RskMock) GetLBCAddress() string {
 func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
 	m.Called(ctx, tx)
 	return false, nil
+}
+
+func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
+	args := m.Called()
+	return args.Get(0).(*connectors.FedInfo), args.Error(1)
 }

@@ -47,7 +47,7 @@ var quotes = []*types.Quote{
 func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 	for _, tt := range invalidAddresses {
-		res, err := NewRSK(tt.input, tt.input, 10)
+		res, err := NewRSK(tt.input, tt.input, 10, 0, nil)
 
 		if res != nil {
 			t.Errorf("Unexpected value for input %v: %v", tt.input, res)
@@ -63,7 +63,7 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 func testNewRSKWithValidAddresses(t *testing.T) {
 	for _, tt := range validTests {
-		res, err := NewRSK(tt.input, tt.input, 10)
+		res, err := NewRSK(tt.input, tt.input, 10, 0, nil)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
@@ -75,7 +75,7 @@ func testNewRSKWithValidAddresses(t *testing.T) {
 
 func testParseQuote(t *testing.T) {
 	for _, tt := range validTests {
-		rsk, err := NewRSK(tt.input, tt.input, 10)
+		rsk, err := NewRSK(tt.input, tt.input, 10, 0, nil)
 		if err != nil {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
