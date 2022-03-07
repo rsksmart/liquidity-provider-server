@@ -238,7 +238,9 @@ func testAcceptQuoteComplete(t *testing.T) {
 		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
-		srv := New(rsk, btc, db)
+		srv := newServer(rsk, btc, db, func() time.Time {
+			return time.Unix(0, 0)
+		})
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
@@ -284,7 +286,9 @@ func testInitBtcWatchers(t *testing.T) {
 	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
 	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
-	srv := New(rsk, btc, db)
+	srv := newServer(rsk, btc, db, func() time.Time {
+		return time.Unix(0, 0)
+	})
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 		rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
@@ -294,7 +298,7 @@ func testInitBtcWatchers(t *testing.T) {
 		}
 	}
 
-	db.On("GetRetainedQuotes").Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
+	db.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded, types.RQStateRegisterPegInSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	db.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 	err := srv.initBtcWatchers()
@@ -306,10 +310,17 @@ func testInitBtcWatchers(t *testing.T) {
 	rsk.AssertExpectations(t)
 }
 
+func testGetQuoteExpTime(t *testing.T) {
+	quote := types.Quote{AgreementTimestamp: 2, TimeForDeposit: 3}
+	expTime := getQuoteExpTime(&quote)
+	assert.Equal(t, time.Unix(5, 0), expTime)
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
 	t.Run("get quote", testGetQuoteComplete)
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
+	t.Run("get quote exp time", testGetQuoteExpTime)
 }

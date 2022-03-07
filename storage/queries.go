@@ -69,13 +69,19 @@ VALUES (
 )
 `
 
+const deleteExpiredQuotes = `
+DELETE FROM quotes
+WHERE hash NOT IN (SELECT quote_hash FROM retained_quotes)
+AND agreement_timestamp + time_for_deposit < ?
+`
+
 const getRetainedQuote = `
 SELECT
 	quote_hash,
 	deposit_addr,
 	signature,
-	called_for_user,
-	req_liq
+	req_liq,
+	state
 FROM retained_quotes
 WHERE quote_hash = ?
 LIMIT 1`
@@ -85,27 +91,22 @@ INSERT INTO retained_quotes (
     quote_hash,
 	deposit_addr,
 	signature,
-	called_for_user,
-	req_liq
+	req_liq,
+	state
 )
 VALUES (
     :quote_hash,
 	:deposit_addr,
 	:signature,
-	:called_for_user,
-	:req_liq
+	:req_liq,
+	:state
 )
 `
 
-const setRetainedQuoteCalledForUserFlag = `
+const updateRetainedQuoteState = `
 UPDATE retained_quotes
-SET called_for_user = 1
-WHERE quote_hash = :quote_hash
-`
-
-const deleteRetainedQuote = `
-DELETE FROM retained_quotes
-WHERE quote_hash = :quote_hash
+SET state = :new_state
+WHERE quote_hash = :quote_hash AND state = :old_state
 `
 
 const selectRetainedQuotes = `
@@ -113,6 +114,8 @@ SELECT
 	quote_hash,
 	deposit_addr,
 	signature,
-	called_for_user,
-	req_liq
-FROM retained_quotes`
+	req_liq,
+	state
+FROM retained_quotes
+WHERE state IN (?)
+`
