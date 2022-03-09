@@ -71,51 +71,6 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 	}()
 }
 
-func initFederation(rsk connectors.RSK) (*connectors.FedInfo, error) {
-	log.Debug("getting federation info")
-	fedSize, err := rsk.GetFedSize()
-	if err != nil {
-		return nil, err
-	}
-
-	var pubKeys []string
-	for i := 0; i < fedSize; i++ {
-		pubKey, err := rsk.GetFedPublicKey(i)
-		if err != nil {
-			log.Error("error fetching fed public key: ", err.Error())
-			return nil, err
-		}
-		pubKeys = append(pubKeys, pubKey)
-	}
-
-	fedThreshold, err := rsk.GetFedThreshold()
-	if err != nil {
-		log.Error("error fetching federation size: ", err.Error())
-		return nil, err
-	}
-
-	fedAddress, err := rsk.GetFedAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	activeFedBlockHeight, err := rsk.GetActiveFederationCreationBlockHeight()
-	if err != nil {
-		log.Error("error fetching federation address: ", err.Error())
-		return nil, err
-	}
-
-	return &connectors.FedInfo{
-		FedThreshold:         fedThreshold,
-		FedSize:              fedSize,
-		PubKeys:              pubKeys,
-		FedAddress:           fedAddress,
-		ActiveFedBlockHeight: activeFedBlockHeight,
-		IrisActivationHeight: cfg.IrisActivationHeight,
-		ErpKeys:              cfg.ErpKeys,
-	}, nil
-}
-
 func main() {
 	loadConfig()
 	initLogger()
@@ -129,7 +84,7 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations, cfg.IrisActivationHeight, cfg.ErpKeys)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
@@ -139,12 +94,7 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	fedInfo, err := initFederation(*rsk)
-	if err != nil {
-		log.Fatal("error initializing federation info: ", err)
-	}
-
-	btc, err := connectors.NewBTC(cfg.BTC.Network, *fedInfo)
+	btc, err := connectors.NewBTC(cfg.BTC.Network)
 	if err != nil {
 		log.Fatal("error initializing BTC connector: ", err)
 	}

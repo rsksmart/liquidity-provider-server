@@ -55,7 +55,7 @@ func (b *BtcMock) GetBlockNumberByTx(txHash string) (int64, error) {
 	return 0, nil
 }
 
-func (b *BtcMock) GetDerivedBitcoinAddress(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
-	b.Called(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	b.Called(fedInfo, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return "", nil
 }
