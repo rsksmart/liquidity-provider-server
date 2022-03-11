@@ -5,6 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rpc"
+	"net/http"
+	"net/url"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -93,11 +96,35 @@ func NewRSK(lbcAddress string, bridgeAddress string, requiredBridgeConfirmations
 
 func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	log.Debug("connecting to RSK node on ", endpoint)
-	client, err := ethclient.Dial(endpoint)
+
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return err
 	}
-	rsk.c = client
+
+	var ethC *ethclient.Client
+	switch u.Scheme {
+	case "http", "https":
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.DisableKeepAlives = true
+
+		httpC := new(http.Client)
+		httpC.Transport = transport
+
+		c, err := rpc.DialHTTPWithClient(endpoint, httpC)
+		if err != nil {
+			return err
+		}
+
+		ethC = ethclient.NewClient(c)
+	default:
+		ethC, err = ethclient.Dial(endpoint)
+		if err != nil {
+			return err
+		}
+	}
+
+	rsk.c = ethC
 
 	log.Debug("verifying connection to RSK node")
 	// test connection
