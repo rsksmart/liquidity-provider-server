@@ -580,7 +580,7 @@ func (rsk *RSK) GetMinimumLockTxValue() (*big.Int, error) {
 }
 
 func DecodeRSKAddress(address string) ([]byte, error) {
-	trim := strings.Trim(address, "0x")
+	trim := strings.TrimPrefix(address, "0x")
 	if !common.IsHexAddress(trim) {
 		return nil, fmt.Errorf("invalid address: %v", address)
 	}
@@ -691,7 +691,7 @@ func copyHex(str string, dst []byte) error {
 }
 
 func parseHex(str string) ([]byte, error) {
-	bts, err := hex.DecodeString(strings.Trim(str, "0x"))
+	bts, err := hex.DecodeString(strings.TrimPrefix(str, "0x"))
 	if err != nil {
 		return nil, err
 	}
