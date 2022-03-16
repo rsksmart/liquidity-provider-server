@@ -132,14 +132,18 @@ func testBuildFlyoverRedeemScript(t *testing.T) {
 	fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 	fedInfo.IrisActivationHeight = 1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -156,14 +160,18 @@ func testBuildFlyoverErpRedeemScript(t *testing.T) {
 	fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	fedInfo.IrisActivationHeight = -1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -180,14 +188,18 @@ func testBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
 	fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 	fedInfo.IrisActivationHeight = -1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -227,13 +239,18 @@ func testBuildFlyoverPowPegAddressHash(t *testing.T) {
 	fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 	fedInfo.IrisActivationHeight = 1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -258,14 +275,18 @@ func testBuildFlyoverErpAddressHash(t *testing.T) {
 	fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	fedInfo.IrisActivationHeight = -1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)
@@ -290,14 +311,18 @@ func testBuildFlyoverErpAddressHashFallback(t *testing.T) {
 	fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 	fedInfo.IrisActivationHeight = -1
 
-	hash, err := getFlyoverDerivationHash()
+	derivationValue, err := getFlyoverDerivationHash()
 	if err != nil {
 		t.Fatalf("error in getFlyoverDerivationHash: %v", err)
 	}
 
-	bts, err := fedInfo.getRedeemScript(btc.params, hash)
+	fedRedeemScript, err := fedInfo.getFedRedeemScript(btc.params)
 	if err != nil {
-		t.Fatalf("error in getRedeemScript: %v", err)
+		t.Fatalf("error in getFedRedeemScript: %v", err)
+	}
+	bts, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		t.Fatalf("error in getFlyoverRedeemScript: %v", err)
 	}
 
 	str := hex.EncodeToString(bts)

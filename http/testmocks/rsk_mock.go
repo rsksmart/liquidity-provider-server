@@ -145,3 +145,8 @@ func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParam
 	args := m.Called(fedInfo, btcParams, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return args.String(0), args.Error(1)
 }
+
+func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}

@@ -3,6 +3,8 @@ package connectors
 import (
 	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
+	"github.com/stretchr/testify/mock"
 	"math/rand"
 	"testing"
 
@@ -47,7 +49,6 @@ var quotes = []*types.Quote{
 }
 
 func testNewRSKWithInvalidAddresses(t *testing.T) {
-
 	for _, tt := range invalidAddresses {
 		res, err := NewRSK(tt.input, tt.input, 10, 0, nil)
 
@@ -100,6 +101,11 @@ func testGetDerivedBitcoinAddress(t *testing.T) {
 		if err != nil {
 			t.Errorf("error initializing RSK: %v", err)
 		}
+		rskClientMock := new(testmocks.RSKClientMock)
+		rskBridgeMock := new(testmocks.RskBridgeMock)
+		rskBridgeMock.On("GetActivePowpegRedeemScript", mock.AnythingOfType("*bind.CallOpts")).Times(1).Return([]byte{}, nil)
+		rsk.c = rskClientMock
+		rsk.bridge = rskBridgeMock
 		btc, err := NewBTC(tt.NetworkParams)
 		if err != nil {
 			t.Errorf("error initializing BTC: %v", err)
