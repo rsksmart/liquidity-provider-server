@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type FedInfo struct {
@@ -19,46 +20,50 @@ type FedInfo struct {
 	ErpKeys              []string
 }
 
-func (fedInfo *FedInfo) getRedeemScript(btcParams chaincfg.Params, derivationValue []byte) ([]byte, error) {
-	var hashBuf *bytes.Buffer
+func (fedInfo *FedInfo) getFedRedeemScript(btcParams chaincfg.Params) ([]byte, error) {
+	var buf *bytes.Buffer
+	var err error
+	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
+	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
+		buf, err = fedInfo.getPowPegRedeemScriptBuf(true)
+		if err != nil {
+			return nil, err
+		}
 
+		err = fedInfo.validateRedeemScript(btcParams, buf.Bytes())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		buf, err = fedInfo.getErpRedeemScriptBuf(btcParams)
+		if err != nil {
+			return nil, err
+		}
+
+		err = fedInfo.validateRedeemScript(btcParams, buf.Bytes())
+		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
+			buf, err = fedInfo.getPowPegRedeemScriptBuf(true)
+			if err != nil {
+				return nil, err
+			}
+
+			err = fedInfo.validateRedeemScript(btcParams, buf.Bytes())
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (fedInfo *FedInfo) getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) ([]byte, error) {
 	buf, err := getFlyoverPrefix(derivationValue)
 	if err != nil {
 		return nil, err
 	}
 
-	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
-	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
-		hashBuf, err = fedInfo.getPowPegRedeemScriptBuf(true)
-		if err != nil {
-			return nil, err
-		}
-
-		err = fedInfo.validateRedeemScript(btcParams, hashBuf.Bytes())
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		hashBuf, err = fedInfo.getErpRedeemScriptBuf(btcParams)
-		if err != nil {
-			return nil, err
-		}
-
-		err = fedInfo.validateRedeemScript(btcParams, hashBuf.Bytes())
-		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
-			hashBuf, err = fedInfo.getPowPegRedeemScriptBuf(true)
-			if err != nil {
-				return nil, err
-			}
-
-			err = fedInfo.validateRedeemScript(btcParams, hashBuf.Bytes())
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	buf.Write(hashBuf.Bytes())
+	buf.Write(fedRedeemScript)
 	return buf.Bytes(), nil
 }
 
@@ -187,6 +192,18 @@ func (fedInfo *FedInfo) addErpNToMScriptPart(builder *txscript.ScriptBuilder) er
 	builder.AddOp(getOpCodeFromInt(len(fedInfo.ErpKeys)))
 
 	return nil
+}
+
+func getDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write(derivationArgumentsHash)
+	buf.Write(userBtcRefundAddr)
+	buf.Write(lbcAddress)
+	buf.Write(lpBtcAddress)
+
+	derivationValueHash := crypto.Keccak256(buf.Bytes())
+
+	return derivationValueHash, nil
 }
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
