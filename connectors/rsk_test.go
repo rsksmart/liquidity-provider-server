@@ -1,6 +1,8 @@
 package connectors
 
 import (
+	"encoding/hex"
+	"github.com/btcsuite/btcd/chaincfg"
 	"math/rand"
 	"testing"
 
@@ -92,6 +94,53 @@ func testParseQuote(t *testing.T) {
 	}
 }
 
+func testGetDerivedBitcoinAddress(t *testing.T) {
+	for _, tt := range TestQuotes {
+		rsk, err := NewRSK("0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95", "0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95", 10, 0, nil)
+		if err != nil {
+			t.Errorf("error initializing RSK: %v", err)
+		}
+		btc, err := NewBTC(tt.NetworkParams)
+		if err != nil {
+			t.Errorf("error initializing BTC: %v", err)
+			continue
+		}
+		fedInfo := getFakeFedInfo()
+		fedInfo.IrisActivationHeight = 1
+		if btc.params.Name == chaincfg.TestNet3Params.Name {
+			fedInfo.FedAddress = "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p"
+		} else {
+			fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
+		}
+		lbcAddr, err := DecodeRSKAddress(tt.LBCAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeRSKAddress. error: %v", err)
+			continue
+		}
+		hashBytes, err := hex.DecodeString(tt.QuoteHash)
+		if err != nil || len(hashBytes) == 0 {
+			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+			continue
+		}
+		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+			continue
+		}
+		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
+		if err != nil {
+			t.Errorf("Unexpected error in DecodeBTCAddressWithVersion. error: %v", err)
+			continue
+		}
+		addr, err := rsk.GetDerivedBitcoinAddress(fedInfo, btc.GetParams(), userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
+		if err != nil {
+			t.Errorf("Unexpected error in GetDerivedBitcoinAddress. error: %v", err)
+			continue
+		}
+		assert.EqualValues(t, tt.ExpectedAddressHash, addr)
+	}
+}
+
 func testCopyBtcAddress(t *testing.T) {
 	err := copyBtcAddr("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", []byte{})
 	assert.Empty(t, err)
@@ -106,6 +155,7 @@ func TestRSKCreate(t *testing.T) {
 	t.Run("new invalid", testNewRSKWithInvalidAddresses)
 	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
+	t.Run("get derived bitcoin address", testGetDerivedBitcoinAddress)
 	t.Run("test copy btc address", testCopyBtcAddress)
 	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
 }

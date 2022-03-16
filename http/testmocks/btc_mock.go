@@ -32,10 +32,6 @@ func (b *BtcMock) GetParams() chaincfg.Params {
 	return chaincfg.TestNet3Params
 }
 
-func (b *BtcMock) RemoveAddressWatcher(address string) {
-	b.Called(address)
-}
-
 func (b *BtcMock) Close() {
 	b.Called()
 }
@@ -53,9 +49,4 @@ func (b *BtcMock) SerializeTx(txHash string) ([]byte, error) {
 func (b *BtcMock) GetBlockNumberByTx(txHash string) (int64, error) {
 	b.Called(txHash)
 	return 0, nil
-}
-
-func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
-	b.Called(fedInfo, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
-	return "", nil
 }

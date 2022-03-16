@@ -1,10 +1,14 @@
 package connectors
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
@@ -65,6 +69,7 @@ type RSKConnector interface {
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
+	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 }
 
 type RSK struct {
@@ -543,6 +548,22 @@ func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (boo
 	}
 }
 
+func (rsk *RSK) GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	derivationValue, err := getDerivationValueHash(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	if err != nil {
+		return "", fmt.Errorf("error computing derivation value: %v", err)
+	}
+	flyoverScript, err := fedInfo.getRedeemScript(btcParams, derivationValue)
+	if err != nil {
+		return "", fmt.Errorf("error generating redeem script: %v", err)
+	}
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
+	if err != nil {
+		return "", err
+	}
+	return addressScriptHash.EncodeAddress(), nil
+}
+
 func (rsk *RSK) isNewAccount(addr common.Address) bool {
 	var (
 		err  error
@@ -714,4 +735,16 @@ func parseHex(str string) ([]byte, error) {
 		return nil, err
 	}
 	return bts, nil
+}
+
+func getDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write(derivationArgumentsHash)
+	buf.Write(userBtcRefundAddr)
+	buf.Write(lbcAddress)
+	buf.Write(lpBtcAddress)
+
+	derivationValueHash := crypto.Keccak256(buf.Bytes())
+
+	return derivationValueHash, nil
 }

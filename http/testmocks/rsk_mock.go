@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	"context"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
 
@@ -138,4 +139,9 @@ func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (b
 func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*connectors.FedInfo), args.Error(1)
+}
+
+func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	args := m.Called(fedInfo, btcParams, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	return args.String(0), args.Error(1)
 }
