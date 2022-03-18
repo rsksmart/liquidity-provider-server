@@ -34,7 +34,7 @@ type AddressWatcher interface {
 type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
 	CheckConnection() error
-	AddAddressWatcher(address string, minAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error
+	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
