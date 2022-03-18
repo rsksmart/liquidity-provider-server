@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcutil"
 	"io"
+	"math"
 	"math/big"
 	"net/http"
 	"time"
@@ -172,10 +173,11 @@ func (s *Server) initBtcWatchers() error {
 }
 
 func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, state types.RQState) error {
-	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+	sats := weiToSatoshi(quote.Value + quote.CallFee)
+	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sats)))
 	expTime := getQuoteExpTime(quote)
 	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state)
-	err := s.btc.AddAddressWatcher(depositAddr, minAmount, time.Minute, expTime, watcher)
+	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher)
 	return err
 }
 
@@ -293,19 +295,20 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	minLockTxValue, err := s.rsk.GetMinimumLockTxValue()
+	minLockTxValueInSatoshi, err := s.rsk.GetMinimumLockTxValue()
 	if err != nil {
 		log.Error("error retrieving minimum lock tx value: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	minLockTxValueInWei := satoshiToWei(minLockTxValueInSatoshi.Uint64())
 
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
 	for _, p := range s.providers {
 		pq := p.GetQuote(q, gas, price)
 		if pq != nil {
-			if pq.Value+pq.CallFee < minLockTxValue.Uint64() {
+			if pq.Value+pq.CallFee < minLockTxValueInWei {
 				amountBelowMinLockTxValue = true
 				continue
 			}
@@ -485,4 +488,12 @@ func (s *Server) storeQuote(q *types.Quote) error {
 
 func getQuoteExpTime(q *types.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
+}
+
+func satoshiToWei(sat uint64) uint64 {
+	return sat * uint64(math.Pow10(10))
+}
+
+func weiToSatoshi(wei uint64) float64 {
+	return float64(wei) / math.Pow10(10)
 }

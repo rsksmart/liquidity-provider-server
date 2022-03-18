@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
+	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -236,7 +237,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock(hash, quote)
-		minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+		sats := weiToSatoshi(quote.Value + quote.CallFee)
+		minAmount := btcutil.Amount(uint64(math.Ceil(sats)))
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 		fedInfo := &connectors.FedInfo{}
 
@@ -286,7 +288,8 @@ func testInitBtcWatchers(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock(hash, quote)
-	minAmount := btcutil.Amount(quote.Value + quote.CallFee)
+	sats := weiToSatoshi(quote.Value + quote.CallFee)
+	minAmount := btcutil.Amount(uint64(math.Ceil(sats)))
 	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 	srv := newServer(rsk, btc, db, func() time.Time {
@@ -319,6 +322,11 @@ func testGetQuoteExpTime(t *testing.T) {
 	assert.Equal(t, time.Unix(5, 0), expTime)
 }
 
+func testUnitsConversion(t *testing.T) {
+	assert.Equal(t, uint64(math.Pow10(10)), satoshiToWei(1))
+	assert.Equal(t, 1/math.Pow10(10), weiToSatoshi(1))
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -326,4 +334,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)
+	t.Run("check units conversion", testUnitsConversion)
 }

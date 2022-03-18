@@ -12,8 +12,8 @@ type BtcMock struct {
 	mock.Mock
 }
 
-func (b *BtcMock) AddAddressWatcher(address string, minAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher) error {
-	b.Called(address, minAmount, interval, exp, w)
+func (b *BtcMock) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher) error {
+	b.Called(address, minBtcAmount, interval, exp, w)
 	return nil
 }
 
