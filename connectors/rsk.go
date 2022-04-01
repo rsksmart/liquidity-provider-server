@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
@@ -64,13 +66,36 @@ type RSKConnector interface {
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
+	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+	GetActivePowpegRedeemScript() ([]byte, error)
+}
+
+type RSKClient interface {
+	ChainID(ctx context.Context) (*big.Int, error)
+	EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
+	TransactionReceipt(ctx context.Context, txHash common.Hash) (*gethTypes.Receipt, error)
+	Close()
+}
+
+type RSKBridge interface {
+	GetActiveFederationCreationBlockHeight(opts *bind.CallOpts) (*big.Int, error)
+	GetFederationSize(opts *bind.CallOpts) (*big.Int, error)
+	GetFederationThreshold(opts *bind.CallOpts) (*big.Int, error)
+	GetFederationAddress(opts *bind.CallOpts) (string, error)
+	GetFederatorPublicKeyOfType(opts *bind.CallOpts, index *big.Int, arg1 string) ([]byte, error)
+	GetMinimumLockTxValue(opts *bind.CallOpts) (*big.Int, error)
+	GetActivePowpegRedeemScript(opts *bind.CallOpts) ([]byte, error)
 }
 
 type RSK struct {
-	c                           *ethclient.Client
+	c                           RSKClient
 	lbc                         *bindings.LBC
 	lbcAddress                  common.Address
-	bridge                      *bindings.RskBridge
+	bridge                      RSKBridge
 	bridgeAddress               common.Address
 	requiredBridgeConfirmations int64
 	irisActivationHeight        int
@@ -138,11 +163,11 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	}
 
 	log.Debug("initializing RSK contracts")
-	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
+	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, ethC)
 	if err != nil {
 		return err
 	}
-	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
+	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, ethC)
 	if err != nil {
 		return err
 	}
@@ -525,6 +550,61 @@ func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (boo
 	}
 }
 
+func (rsk *RSK) GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	derivationValue, err := getDerivationValueHash(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	if err != nil {
+		return "", fmt.Errorf("error computing derivation value: %v", err)
+	}
+	var fedRedeemScript []byte
+	fedRedeemScript, err = rsk.GetActivePowpegRedeemScript()
+	if err != nil {
+		return "", fmt.Errorf("error retreiving fed redeem script from bridge: %v", err)
+	}
+	if len(fedRedeemScript) == 0 {
+		fedRedeemScript, err = fedInfo.getFedRedeemScript(btcParams)
+		if err != nil {
+			return "", fmt.Errorf("error generating fed redeem script: %v", err)
+		}
+	} else {
+		err = fedInfo.validateRedeemScript(btcParams, fedRedeemScript)
+		if err != nil {
+			return "", fmt.Errorf("error validating fed redeem script: %v", err)
+		}
+	}
+	flyoverScript, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	if err != nil {
+		return "", fmt.Errorf("error generating flyover redeem script: %v", err)
+	}
+	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
+	if err != nil {
+		return "", err
+	}
+	return addressScriptHash.EncodeAddress(), nil
+}
+
+// GetActivePowpegRedeemScript returns a PowPeg redeem script fetched from the RSK bridge.
+// It returns a PowPeg redeem script, if the method is activated on the bridge. Otherwise - empty result.
+// It returns an error, if encountered a communication issue with the bridge.
+func (rsk *RSK) GetActivePowpegRedeemScript() ([]byte, error) {
+	var err error
+	opts := bind.CallOpts{}
+	var value []byte
+	for i := 0; i < retries; i++ {
+		value, err = rsk.bridge.GetActivePowpegRedeemScript(&opts)
+		if err == nil || isNoContractError(err) {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if err != nil {
+		if isNoContractError(err) {
+			return []byte{}, nil
+		}
+		return nil, fmt.Errorf("error calling GetActivePowpegRedeemScript: %v", err)
+	}
+	return value, nil
+}
+
 func (rsk *RSK) isNewAccount(addr common.Address) bool {
 	var (
 		err  error
@@ -696,4 +776,8 @@ func parseHex(str string) ([]byte, error) {
 		return nil, err
 	}
 	return bts, nil
+}
+
+func isNoContractError(err error) bool {
+	return "no contract code at given address" == err.Error()
 }

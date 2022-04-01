@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math"
@@ -241,6 +242,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		minAmount := btcutil.Amount(uint64(math.Ceil(sats)))
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 		fedInfo := &connectors.FedInfo{}
+		fedInfo.FedAddress = "2NGMGVeMYKgtDLB3YDV8bg1qKZFdPPmRzMW"
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
@@ -272,8 +274,9 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.On("GetQuote", hash).Times(1).Return(quote)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
-		btc.On("GetDerivedBitcoinAddress", fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
-		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+		rsk.On("GetDerivedBitcoinAddress", fedInfo, chaincfg.TestNet3Params, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("2N6LWQUrCPwexzzDTrBa1fvx1ZXn1YNXtqU", nil)
+		btc.On("GetParams").Times(1).Return(chaincfg.TestNet3Params)
+		btc.On("AddAddressWatcher", "2N6LWQUrCPwexzzDTrBa1fvx1ZXn1YNXtqU", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
