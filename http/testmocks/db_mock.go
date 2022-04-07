@@ -67,3 +67,8 @@ func (d *DbMock) UpdateRetainedQuoteState(hash string, oldState types.RQState, n
 	d.Called(hash, oldState, newState)
 	return nil
 }
+
+func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
+	d.Called()
+	return new(types.Wei), nil
+}

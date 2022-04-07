@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	"context"
@@ -35,21 +36,24 @@ const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 
 type Server struct {
-	srv       http.Server
-	providers []providers.LiquidityProvider
-	rsk       connectors.RSKConnector
-	btc       connectors.BTCConnector
-	db        storage.DBConnector
-	now       func() time.Time
+	srv             http.Server
+	providers       []providers.LiquidityProvider
+	rsk             connectors.RSKConnector
+	btc             connectors.BTCConnector
+	db              storage.DBConnector
+	now             func() time.Time
+	watchers        map[string]*BTCAddressWatcher
+	addWatcherMu    sync.Mutex
+	sharedWatcherMu sync.Mutex
 }
 
 type QuoteRequest struct {
-	CallContractAddress   string `json:"callContractAddress"`
-	CallContractArguments string `json:"callContractArguments"`
-	ValueToTransfer       uint64 `json:"valueToTransfer"`
-	GasLimit              uint32 `json:"gasLimit"`
-	RskRefundAddress      string `json:"rskRefundAddress"`
-	BitcoinRefundAddress  string `json:"bitcoinRefundAddress"`
+	CallContractAddress   string     `json:"callContractAddress"`
+	CallContractArguments string     `json:"callContractArguments"`
+	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
+	GasLimit              uint32     `json:"gasLimit"`
+	RskRefundAddress      string     `json:"rskRefundAddress"`
+	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
 type acceptReq struct {
@@ -67,6 +71,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		db:        db,
 		providers: make([]providers.LiquidityProvider, 0),
 		now:       now,
+		watchers:  make(map[string]*BTCAddressWatcher),
 	}
 }
 
@@ -100,11 +105,6 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 			return err
 		}
 	}
-	liq, err := s.rsk.GetAvailableLiquidity(addrStr)
-	if err != nil {
-		return err
-	}
-	lp.SetLiquidity(liq)
 
 	return nil
 }
@@ -141,7 +141,7 @@ func (s *Server) Start(port uint) error {
 }
 
 func (s *Server) initBtcWatchers() error {
-	quoteStatesToWatch := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded, types.RQStateRegisterPegInSucceeded}
+	quoteStatesToWatch := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}
 	retainedQuotes, err := s.db.GetRetainedQuotes(quoteStatesToWatch)
 	if err != nil {
 		return err
@@ -173,11 +173,26 @@ func (s *Server) initBtcWatchers() error {
 }
 
 func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, state types.RQState) error {
-	sats := weiToSatoshi(quote.Value + quote.CallFee)
-	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sats)))
+	s.addWatcherMu.Lock()
+	defer s.addWatcherMu.Unlock()
+
+	_, ok := s.watchers[hash]
+	if ok {
+		return nil
+	}
+
+	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
-	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state)
-	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
+		s.addWatcherMu.Lock()
+		defer s.addWatcherMu.Unlock()
+		delete(s.watchers, hash)
+	})
+	if err == nil {
+		s.watchers[hash] = watcher
+	}
 	return err
 }
 
@@ -273,7 +288,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 
-	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer, []byte(qr.CallContractArguments))
+	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
 		log.Error("error estimating gas: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -301,14 +316,21 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	minLockTxValueInWei := satoshiToWei(minLockTxValueInSatoshi.Uint64())
+	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
 
+	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
 	for _, p := range s.providers {
-		pq := p.GetQuote(q, gas, price)
+		pq, err := p.GetQuote(q, gas, types.NewBigWei(price))
+		if err != nil {
+			log.Error("error getting quote: ", err)
+			getQuoteFailed = true
+			continue
+		}
 		if pq != nil {
-			if pq.Value+pq.CallFee < minLockTxValueInWei {
+			if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
+				log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
 				amountBelowMinLockTxValue = true
 				continue
 			}
@@ -316,17 +338,23 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
 			} else {
 				quotes = append(quotes, pq)
 			}
 		}
 	}
 
-	if len(quotes) == 0 && amountBelowMinLockTxValue {
-		log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
-		http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
-		return
+	if len(quotes) == 0 {
+		if amountBelowMinLockTxValue {
+			http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
+			return
+		}
+		if getQuoteFailed {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -404,8 +432,10 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reqLiq := (uint64(CFUExtraGas)+uint64(quote.GasLimit))*gasPrice + quote.Value
-	signB, err := p.SignQuote(hashBytes, depositAddress, big.NewInt(int64(reqLiq)))
+	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
+	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
+	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
+	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
 		log.Error("error signing quote: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -435,15 +465,15 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) types.Quote {
-	return types.Quote{
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quote {
+	return &types.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
 		BTCRefundAddr: qr.BitcoinRefundAddress,
 		RSKRefundAddr: qr.RskRefundAddress,
 		ContractAddr:  qr.CallContractAddress,
 		Data:          qr.CallContractArguments,
-		Value:         qr.ValueToTransfer,
+		Value:         qr.ValueToTransfer.Copy(),
 		GasLimit:      qr.GasLimit,
 	}
 }
@@ -488,12 +518,4 @@ func (s *Server) storeQuote(q *types.Quote) error {
 
 func getQuoteExpTime(q *types.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
-}
-
-func satoshiToWei(sat uint64) uint64 {
-	return sat * uint64(math.Pow10(10))
-}
-
-func weiToSatoshi(wei uint64) float64 {
-	return float64(wei) / math.Pow10(10)
 }

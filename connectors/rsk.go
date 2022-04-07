@@ -43,8 +43,8 @@ type RSKConnector interface {
 	CheckConnection() error
 	Close()
 	GetChainId() (*big.Int, error)
-	EstimateGas(addr string, value uint64, data []byte) (uint64, error)
-	GasPrice() (uint64, error)
+	EstimateGas(addr string, value *big.Int, data []byte) (uint64, error)
+	GasPrice() (*big.Int, error)
 	HashQuote(q *types.Quote) (string, error)
 	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
 	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
@@ -60,6 +60,7 @@ type RSKConnector interface {
 	GetCollateral(addr string) (*big.Int, *big.Int, error)
 	RegisterProvider(opts *bind.TransactOpts) error
 	AddCollateral(opts *bind.TransactOpts) error
+	GetLbcBalance(addr string) (*big.Int, error)
 	GetAvailableLiquidity(addr string) (*big.Int, error)
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
@@ -157,6 +158,23 @@ func (rsk *RSK) CheckConnection() error {
 func (rsk *RSK) Close() {
 	log.Debug("closing RSK connection")
 	rsk.c.Close()
+}
+
+func (rsk *RSK) GetLbcBalance(addr string) (*big.Int, error) {
+	if !common.IsHexAddress(addr) {
+		return nil, fmt.Errorf("invalid address: %v", addr)
+	}
+	a := common.HexToAddress(addr)
+	var err error
+	for i := 0; i < retries; i++ {
+		var bal *big.Int
+		bal, err = rsk.lbc.GetBalance(&bind.CallOpts{}, a)
+		if err == nil {
+			return bal, nil
+		}
+		time.Sleep(rpcSleep)
+	}
+	return nil, fmt.Errorf("error getting %v balance: %v", addr, err)
 }
 
 func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
@@ -283,7 +301,7 @@ func (rsk *RSK) GetChainId() (*big.Int, error) {
 	return nil, fmt.Errorf("error retrieving chain id: %v", err)
 }
 
-func (rsk *RSK) EstimateGas(addr string, value uint64, data []byte) (uint64, error) {
+func (rsk *RSK) EstimateGas(addr string, value *big.Int, data []byte) (uint64, error) {
 	if !common.IsHexAddress(addr) {
 		return 0, fmt.Errorf("invalid address: %v", addr)
 	}
@@ -298,7 +316,7 @@ func (rsk *RSK) EstimateGas(addr string, value uint64, data []byte) (uint64, err
 	msg := ethereum.CallMsg{
 		To:    &dst,
 		Data:  data,
-		Value: big.NewInt(int64(value)),
+		Value: new(big.Int).Set(value),
 	}
 
 	var err error
@@ -315,7 +333,7 @@ func (rsk *RSK) EstimateGas(addr string, value uint64, data []byte) (uint64, err
 	return 0, fmt.Errorf("error estimating gas: %v", err)
 }
 
-func (rsk *RSK) GasPrice() (uint64, error) {
+func (rsk *RSK) GasPrice() (*big.Int, error) {
 	var err error
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
@@ -323,11 +341,11 @@ func (rsk *RSK) GasPrice() (uint64, error) {
 		var price *big.Int
 		price, err = rsk.c.SuggestGasPrice(ctx)
 		if price != nil && price.Cmp(big.NewInt(0)) >= 0 {
-			return price.Uint64(), nil
+			return price, nil
 		}
 		time.Sleep(rpcSleep)
 	}
-	return 0, fmt.Errorf("error estimating gas: %v", err)
+	return nil, fmt.Errorf("error estimating gas: %v", err)
 }
 
 func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
@@ -615,11 +633,11 @@ func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuot
 	if pq.Data, err = parseHex(q.Data); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing data: %v", err)
 	}
-	pq.CallFee = q.CallFee
-	pq.PenaltyFee = q.PenaltyFee
+	pq.CallFee = q.CallFee.Copy().AsBigInt()
+	pq.PenaltyFee = q.PenaltyFee.Copy().AsBigInt()
 	pq.GasLimit = q.GasLimit
 	pq.Nonce = q.Nonce
-	pq.Value = q.Value
+	pq.Value = q.Value.Copy().AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
 	pq.CallTime = q.CallTime
 	pq.DepositConfirmations = q.Confirmations
