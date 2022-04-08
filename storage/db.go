@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/rsksmart/liquidity-provider/types"
@@ -17,12 +18,12 @@ type DBConnector interface {
 	Close() error
 
 	InsertQuote(id string, q *types.Quote) error
-	GetQuote(quoteHash string) (*types.Quote, error)
+	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
 	DeleteExpiredQuotes(expTimestamp int64) error
 
 	RetainQuote(entry *types.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
-	GetRetainedQuote(hash string) (*types.RetainedQuote, error)
+	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
 }
@@ -94,11 +95,14 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
 	quote := types.Quote{}
 	err := db.db.Get(&quote, selectQuoteByHash, quoteHash)
-	if err != nil {
+	switch err {
+	case nil:
+		return &quote, nil
+	case sql.ErrNoRows:
+		return nil, nil
+	default:
 		return nil, err
 	}
-
-	return &quote, nil
 }
 
 func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {

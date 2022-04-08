@@ -50,7 +50,7 @@ func (d *DbMock) RetainQuote(quote *types.RetainedQuote) error {
 
 func (d *DbMock) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	d.Called(hash)
-	return &types.RetainedQuote{QuoteHash: hash}, nil
+	return nil, nil
 }
 
 func (d *DbMock) DeleteRetainedQuote(hash string) error {

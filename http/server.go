@@ -152,10 +152,13 @@ func (s *Server) initBtcWatchers() error {
 		if err != nil {
 			return err
 		}
+		if quote == nil {
+			return errors.New(fmt.Sprintf("initBtcWatchers: quote not found for hash: %s", entry.QuoteHash))
+		}
 
 		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 		if p == nil {
-			return errors.New(fmt.Sprintf("provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
+			return errors.New(fmt.Sprintf("initBtcWatchers: provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
 		}
 
 		signB, err := hex.DecodeString(entry.Signature)
@@ -372,6 +375,20 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		Signature                 string `json:"signature"`
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
 	}
+	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
+		enc := json.NewEncoder(w)
+		response := acceptRes{
+			Signature:                 signature,
+			BitcoinDepositAddressHash: depositAddr,
+		}
+
+		err := enc.Encode(response)
+		if err != nil {
+			log.Error("error encoding response: ", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
+	}
+
 	req := acceptReq{}
 	w.Header().Set("Content-Type", "application/json")
 	dec := json.NewDecoder(r.Body)
@@ -392,6 +409,11 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	quote, err := s.db.GetQuote(req.QuoteHash)
 	if err != nil {
 		log.Error("error retrieving quote from db: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if quote == nil {
+		log.Error("quote not found for hash: ", req.QuoteHash)
 		http.Error(w, "quote not found", http.StatusNotFound)
 		return
 	}
@@ -400,6 +422,17 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if s.now().After(expTime) {
 		log.Error("quote deposit time has elapsed; hash: ", req.QuoteHash)
 		http.Error(w, "forbidden; quote deposit time has elapsed", http.StatusForbidden)
+		return
+	}
+
+	rq, err := s.db.GetRetainedQuote(req.QuoteHash)
+	if err != nil {
+		log.Error("error fetching retained quote: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if rq != nil { // if the quote has already been accepted, just return signature and deposit addr
+		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr)
 		return
 	}
 
@@ -450,19 +483,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signature := hex.EncodeToString(signB)
-	enc := json.NewEncoder(w)
-	response := acceptRes{
-		Signature:                 signature,
-		BitcoinDepositAddressHash: depositAddress,
-	}
-	err = enc.Encode(response)
-
-	// TODO: ensure that the quote is not processed if there is any kind of error in the communication with the client
-	if err != nil {
-		log.Error("error encoding response: ", err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
+	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
 func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quote {

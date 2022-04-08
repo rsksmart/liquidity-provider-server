@@ -263,7 +263,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 			t.Errorf("couldn't decode hash. error: %v", err)
 		}
 
-		db.On("GetQuote", hash).Times(1).Return(quote)
+		db.On("GetQuote", hash).Times(1).Return(quote, nil)
+		db.On("GetRetainedQuote", hash).Times(1).Return(nil, nil)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
 		btc.On("GetDerivedBitcoinAddress", fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
