@@ -5,64 +5,27 @@ services:
     image: bitcond:latest
     container_name: bitcoind01
     ports:
-      - "18443:18443"
-      - "18444:18444"
+      - "127.0.0.1:5555:5555"
+    volumes:
+      - ${BTCD_HOME:-./volumes/bitcoind}:/root/.bitcoin
     networks:
       - net_lps
-    command: ["-rpcuser=test", "-rpcpassword=test", "-addresstype=legacy", "-regtest", "-printtoconsole", "-server",
+    command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
               "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
-              "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0"]
+              "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
 
   rskj:
     build: rskj
     image: rskj:latest
     container_name: rskj01
     ports:
-      - "4444:4444"
-    networks:
-      - net_lps
-    command: [ "--regtest" ]
-    healthcheck:
-      test: ["CMD", "bash", "-c", "curl http://rskj:4444 -X POST -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\": [],\"id\":1}'"]
-      interval: 6s
-      timeout: 10s
-      retries: 10
-
-  lbc-deployer:
-    build: lbc-deployer
-    image: lbc-deployer:latest
-    container_name: lbc-deployer01
-    environment:
-      - LBC_ADDR
-    depends_on:
-      - rskj
+      - "127.0.0.1:4444:4444"
     volumes:
-      - ${PWD}/volumes/lbc-deployer/contracts:/contracts
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/root/.rsk
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
-
-  lps:
-    build:
-      context: ../
-      dockerfile: docker-compose/lps/Dockerfile
-    image: lps:latest
-    container_name: lps01
-    environment:
-      - LIQUIDITY_PROVIDER_RSK_ADDR
-      - LIQUIDITY_PROVIDER_RSK_KEY
-      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
-      - LBC_ADDR
-    depends_on:
-      - bitcoind
-      - rskj
-      - lbc-deployer
-    ports:
-      - "8080:8080"
-    volumes:
-      - ${PWD}/volumes/lps/logs:/lps/logs
-      - ${PWD}/volumes/lbc-deployer/contracts:/lps/contracts
-    networks:
-      - net_lps
+    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
 
 networks:
   net_lps:
