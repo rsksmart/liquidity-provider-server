@@ -127,7 +127,7 @@ func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
 }
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
-	log.Debug("inserting retained quote:", entry.QuoteHash)
+	log.Debug("inserting retained quote:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	query, args, _ := sqlx.Named(insertRetainedQuote, entry)
 
 	_, err := db.db.Exec(query, args...)
