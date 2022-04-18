@@ -194,6 +194,7 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 		delete(s.watchers, hash)
 	})
 	if err == nil {
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", depositAddr)
 		s.watchers[hash] = watcher
 	}
 	return err
@@ -208,7 +209,7 @@ func (s *Server) initExpiredQuotesCleaner() {
 			case <-ticker.C:
 				err := s.db.DeleteExpiredQuotes(time.Now().Add(-1 * quoteExpTimeThreshold).Unix())
 				if err != nil {
-					log.Info("error deleting expired quites: ", err)
+					log.Error("error deleting expired quites: ", err)
 				}
 			case <-quit:
 				ticker.Stop()
