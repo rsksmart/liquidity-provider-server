@@ -25,6 +25,8 @@ import (
 
 const unknownBtcdVersion = -1
 
+type AddressWatcherCompleteCallback = func(w AddressWatcher)
+
 type AddressWatcher interface {
 	OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount)
 	OnExpire()
@@ -34,7 +36,7 @@ type AddressWatcher interface {
 type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
 	CheckConnection() error
-	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error
+	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
@@ -109,7 +111,7 @@ func (btc *BTC) CheckConnection() error {
 	return err
 }
 
-func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher) error {
+func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
 		return fmt.Errorf("error decoding address %v: %v", address, err)
@@ -129,6 +131,7 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 				_ = btc.checkBtcAddr(w, btcAddr, minBtcAmount, exp, &confirmations, time.Now)
 			case <-w.Done():
 				ticker.Stop()
+				cb(w)
 				return
 			}
 		}

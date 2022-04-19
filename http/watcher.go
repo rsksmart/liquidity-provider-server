@@ -2,13 +2,13 @@ package http
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
@@ -18,16 +18,17 @@ import (
 )
 
 type BTCAddressWatcher struct {
-	hash      string
-	btc       connectors.BTCConnector
-	rsk       connectors.RSKConnector
-	lp        providers.LiquidityProvider
-	db        storage.DBConnector
-	state     types.RQState
-	quote     *types.Quote
-	done      chan struct{}
-	closed    bool
-	signature []byte
+	hash         string
+	btc          connectors.BTCConnector
+	rsk          connectors.RSKConnector
+	lp           providers.LiquidityProvider
+	db           storage.DBConnector
+	state        types.RQState
+	quote        *types.Quote
+	done         chan struct{}
+	closed       bool
+	signature    []byte
+	sharedLocker sync.Locker
 }
 
 const (
@@ -37,17 +38,18 @@ const (
 
 func NewBTCAddressWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, db storage.DBConnector,
-	q *types.Quote, signature []byte, state types.RQState) *BTCAddressWatcher {
+	q *types.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
-		hash:      hash,
-		btc:       btc,
-		rsk:       rsk,
-		lp:        provider,
-		db:        db,
-		quote:     q,
-		state:     state,
-		signature: signature,
-		done:      make(chan struct{}),
+		hash:         hash,
+		btc:          btc,
+		rsk:          rsk,
+		lp:           provider,
+		db:           db,
+		quote:        q,
+		state:        state,
+		signature:    signature,
+		done:         make(chan struct{}),
+		sharedLocker: sharedLocker,
 	}
 	return &watcher
 }
@@ -92,12 +94,28 @@ func (w *BTCAddressWatcher) Done() <-chan struct{} {
 func (w *BTCAddressWatcher) performCallForUser() error {
 	q, err := w.rsk.ParseQuote(w.quote)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
+		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
 		return err
 	}
+
+	w.sharedLocker.Lock()
+	defer w.sharedLocker.Unlock()
+
+	lbcBalance, err := w.rsk.GetLbcBalance(w.lp.Address())
+	if err != nil {
+		return err
+	}
+
+	var val *big.Int
+	if lbcBalance.Cmp(q.Value) >= 0 { // lbc balance is sufficient, no need to transfer any value
+		val = nil
+	} else { // lbc balance is not sufficient, calc delta to transfer
+		val = new(big.Int).Sub(q.Value, lbcBalance)
+	}
+
 	opt := &bind.TransactOpts{
 		GasLimit: uint64(q.GasLimit + CFUExtraGas),
-		Value:    big.NewInt(int64(q.Value)),
+		Value:    val,
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}
@@ -125,7 +143,7 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	q, err := w.rsk.ParseQuote(w.quote)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
 	}
 	opt := &bind.TransactOpts{
@@ -136,17 +154,17 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	rawTx, err := w.btc.SerializeTx(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
 	}
 	pmt, err := w.btc.SerializePMT(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
 	}
 	bh, err := w.btc.GetBlockNumberByTx(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
 	}
 	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
@@ -178,40 +196,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 	log.Debugf("registered pegin for tx %v", txHash)
 
-	err = w.notifyProvider()
-
-	if err != nil {
-		return fmt.Errorf("error refunding provider. value: %v. error: %v", txHash, err)
-	}
-
 	w.close()
-
-	log.Debugf("performed RegisterPegIn for tx %v", txHash)
-	return nil
-}
-
-func (w *BTCAddressWatcher) notifyProvider() error {
-	h, err := w.rsk.HashQuote(w.quote)
-	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
-		return err
-	}
-	hb, err := hex.DecodeString(h)
-	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateInternalError)
-		return err
-	}
-	err = w.lp.RefundLiquidity(hb)
-	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRefundLiquidityFailed)
-		return fmt.Errorf("failed to refund to liquidity provider. quote: %v. error: %v", h, err)
-	}
-
-	err = w.updateQuoteState(types.RQStateRefundLiquiditySucceeded)
-	if err != nil {
-		w.close()
-		return err
-	}
 	return nil
 }
 

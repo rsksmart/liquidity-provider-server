@@ -21,7 +21,7 @@ PROVIDER_TX_COUNT=$(curl -X POST "http://rskj:4444" -H "Content-Type: applicatio
 if [[ "$PROVIDER_BALANCE" = "0x0" && "$PROVIDER_TX_COUNT" = "0x0" ]]; then
   echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
 
-  TX_HASH=$(curl -X POST "http://rskj:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x1000000000\"}],\"id\":1}" | jq -r ".result")
+  TX_HASH=$(curl -X POST "http://rskj:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
   echo "Result: $TX_HASH"
   sleep 10
 else
