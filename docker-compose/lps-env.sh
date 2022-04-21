@@ -34,9 +34,9 @@ elif [ "$SCRIPT_CMD" = "stop" ]; then
   echo "Stopping LPS env..."
   docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml stop
   exit 0
-elif [ "$SCRIPT_CMD" = "start" ]; then
-  echo "Starting LPS env..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml start
+elif [ "$SCRIPT_CMD" = "ps" ]; then
+  echo "List of running services:"
+  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml ps
   exit 0
 elif [ "$SCRIPT_CMD" = "deploy" ]; then
   echo "Stopping LPS..."
@@ -62,12 +62,24 @@ fi
 # start bitcoind and RSKJ dependant services
 docker-compose --env-file "$ENV_FILE" up -d
 
+# read env vars
+. ./"$ENV_FILE"
+
 echo "Waiting for RskJ to be up and running..."
 while true
 do
   sleep 3
   curl -s "http://127.0.0.1:4444" -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_chainId","params": [],"id":1}' \
     && echo "RskJ is up and running" \
+    && break
+done
+
+echo "Waiting for Bitcoind to be up and running..."
+while true
+do
+  sleep 3
+  curl -s "http://127.0.0.1:5555" -X POST --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnetworkinfo", "params": [], "id":"1"}' | grep "\"result\":{" \
+    && echo "Bitcoind is up and running" \
     && break
 done
 
