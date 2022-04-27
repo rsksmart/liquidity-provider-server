@@ -25,5 +25,3 @@ COPY docker-compose/lps/config.json ./
 COPY docker-compose/lps/start.sh /
 
 EXPOSE 8080
-
-ENTRYPOINT [ "sh", "/start.sh" ]
