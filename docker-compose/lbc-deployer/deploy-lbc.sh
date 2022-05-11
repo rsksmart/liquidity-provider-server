@@ -2,8 +2,6 @@
 
 set -e
 
-cd /code/lbc
-
 echo "Deploying contracts to RskJ..."
 
 RSK_NETWORK="rsk${LPS_STAGE^}"

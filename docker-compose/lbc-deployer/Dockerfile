@@ -1,11 +1,12 @@
 FROM node:16
 
-RUN apt-get update -y && \
-    apt-get install -qq --no-install-recommends jq
+RUN apt-get update -y && apt-get install -qq --no-install-recommends jq
 
 RUN npm install -g truffle
 
-WORKDIR /code/lbc
+USER node
+
+WORKDIR /home/node
 
 ARG LBC_GIT_BRANCH=master
 RUN gitBranch=${LBC_GIT_BRANCH} && \
@@ -14,11 +15,12 @@ RUN gitBranch=${LBC_GIT_BRANCH} && \
     git fetch --depth 1 origin "$gitBranch" && \
     git checkout "$gitBranch"
 
-COPY truffle-config.patch ./
+COPY --chown=node truffle-config.patch ./
+
 RUN git apply truffle-config.patch
 
 RUN npm ci
 
 RUN npx truffle compile
 
-COPY deploy-lbc.sh ./
+COPY --chown=node deploy-lbc.sh ./

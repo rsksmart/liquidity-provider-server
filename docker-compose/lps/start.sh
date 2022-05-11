@@ -21,4 +21,4 @@ if [[ ! -f ./pwd.txt ]]; then
 fi
 
 echo "Starting LP Server..."
-/liquidity-provider-server
+liquidity-provider-server

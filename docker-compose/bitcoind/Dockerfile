@@ -8,10 +8,9 @@ ENV BITCOIN_VERSION=$BITCOIN_VERSION
 ENV BITCOIN_RELEASES_KEY=$BITCOIN_RELEASES_KEY
 ENV BITCOIN_DOWNLOAD_FILENAME=$BITCOIN_DOWNLOAD_FILENAME
 
-RUN apt-get update \
-        && apt-get install -y wget gnupg2
+RUN apt-get update && apt-get install -y wget gnupg2
 
-RUN rm -f SHA256SUMS.asc; wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
+RUN wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
     && wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME \
         && wget https://bitcoin.org/laanwj-releases.asc \
         && gpg2 --import laanwj-releases.asc \
@@ -24,3 +23,12 @@ RUN rm -f SHA256SUMS.asc; wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VER
         && cd / \
         && rm -Rfv bitcoin-* *.asc
 
+ARG UID=1000
+ARG HOME="/home/bitcoin"
+RUN useradd -m -u "$UID" --home="$HOME" bitcoin
+
+RUN mkdir -p "$HOME/.bitcoin"; chown "$UID" "$HOME/.bitcoin"
+
+WORKDIR "$HOME"
+
+USER bitcoin

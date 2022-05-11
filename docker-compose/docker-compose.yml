@@ -1,13 +1,16 @@
 version: "3"
 services:
   bitcoind:
-    build: bitcoind
+    build:
+      context: bitcoind
+      args:
+        UID: "${LPS_UID}"
     image: bitcond:latest
     container_name: bitcoind01
     ports:
       - "127.0.0.1:5555:5555"
     volumes:
-      - ${BTCD_HOME:-./volumes/bitcoind}:/root/.bitcoin
+      - ${BTCD_HOME:-./volumes/bitcoind}:/home/bitcoin/.bitcoin
     networks:
       - net_lps
     command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
@@ -15,13 +18,16 @@ services:
               "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
 
   rskj:
-    build: rskj
+    build:
+      context: rskj
+      args:
+        UID: "${LPS_UID}"
     image: rskj:latest
     container_name: rskj01
     ports:
       - "127.0.0.1:4444:4444"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/root/.rsk
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
       - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
