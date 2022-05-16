@@ -14,7 +14,15 @@ else
   exit 1
 fi
 
-echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE"
+if [ -z "${LPS_UID}" ]; then
+  export LPS_UID=$(id -u)
+  if [ "$LPS_UID" = "0" ]; then
+    echo "Please set LPS_UID env var or run as a non-root user"
+    exit 1
+  fi
+fi
+
+echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
@@ -59,6 +67,16 @@ else
   exit 1
 fi
 
+BTCD_HOME="${BTCD_HOME:-./volumes/bitcoind}"
+RSKJ_HOME="${RSKJ_HOME:-./volumes/rskj}"
+LPS_HOME="${LPS_HOME:-./volumes/lps}"
+
+[ -d "$BTCD_HOME" ] || mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME"
+[ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
+[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/db" && mkdir -p "$LPS_HOME/logs" && chown -R "$LPS_UID" "$LPS_HOME"
+
+echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'"
+
 # start bitcoind and RSKJ dependant services
 docker-compose --env-file "$ENV_FILE" up -d
 
@@ -87,16 +105,15 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   # pre-fund provider in regtest, if needed
   LIQUIDITY_PROVIDER_RSK_ADDR_LINE=$(cat "$ENV_FILE" | grep LIQUIDITY_PROVIDER_RSK_ADDR | head -n 1 | tr -d '\r')
   LIQUIDITY_PROVIDER_RSK_ADDR="${LIQUIDITY_PROVIDER_RSK_ADDR_LINE#"LIQUIDITY_PROVIDER_RSK_ADDR="}"
-  PROVIDER_BALANCE=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBalance\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
   PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
-  if [[ "$PROVIDER_BALANCE" = "0x0" && "$PROVIDER_TX_COUNT" = "0x0" ]]; then
+  if [ "$PROVIDER_TX_COUNT" = "0x0" ]; then
     echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
 
     TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
     echo "Result: $TX_HASH"
     sleep 10
   else
-    echo "No need to fund the '$LIQUIDITY_PROVIDER_RSK_ADDR' provider. Balance: $PROVIDER_BALANCE, nonce: $PROVIDER_TX_COUNT"
+    echo "No need to fund the '$LIQUIDITY_PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
   fi
 
   if [ -z "${LBC_ADDR}" ]; then
