@@ -23,6 +23,15 @@ RUN gpg --keyserver https://secchannel.rsk.co/release.asc --recv-keys 1A92D89421
 
 FROM openjdk:8-jdk as runner
 
-WORKDIR /home/rsk
+ARG UID=1000
+ARG HOME="/home/rsk"
+RUN useradd -m -u "$UID" --home="$HOME" rsk
 
-COPY --from=builder /code/rskj/rskj-core/build/libs/rskj-core-*-all.jar ./rskj-core.jar
+COPY --from=builder --chown="$UID" "/code/rskj/rskj-core/build/libs/rskj-core-*-all.jar" "$HOME/rskj-core.jar"
+
+RUN mkdir -p "$HOME/.rsk"; chown "$UID" "$HOME/.rsk"
+RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+
+WORKDIR "$HOME"
+
+USER rsk

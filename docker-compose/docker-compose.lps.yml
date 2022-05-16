@@ -4,6 +4,8 @@ services:
     build:
       context: ../
       dockerfile: docker-compose/lps/Dockerfile
+      args:
+        UID: "${LPS_UID}"
     image: lps:latest
     container_name: lps01
     environment:
@@ -18,8 +20,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ${LPS_HOME:-./volumes/lps/db}:/lps/db
-      - ${LPS_HOME:-./volumes/lps/logs}:/lps/logs
+      - ${LPS_HOME:-./volumes/lps/db}:/home/lps/db
+      - ${LPS_HOME:-./volumes/lps/logs}:/home/lps/logs
     networks:
       - net_lps
-    command: ["sh", "/start.sh"]
+    command: ["sh", "start.sh"]
