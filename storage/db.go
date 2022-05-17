@@ -1,9 +1,9 @@
 package storage
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
-	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	_ "modernc.org/sqlite"
@@ -14,17 +14,18 @@ const (
 )
 
 type DBConnector interface {
-	providers.RetainedQuotesRepository
-
 	CheckConnection() error
 	Close() error
 
 	InsertQuote(id string, q *types.Quote) error
-	GetQuote(quoteHash string) (*types.Quote, error)
+	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
 	DeleteExpiredQuotes(expTimestamp int64) error
 
+	RetainQuote(entry *types.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
+	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	GetLockedLiquidity() (*types.Wei, error)
 }
 
 type DB struct {
@@ -94,11 +95,14 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
 	quote := types.Quote{}
 	err := db.db.Get(&quote, selectQuoteByHash, quoteHash)
-	if err != nil {
+	switch err {
+	case nil:
+		return &quote, nil
+	case sql.ErrNoRows:
+		return nil, nil
+	default:
 		return nil, err
 	}
-
-	return &quote, nil
 }
 
 func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
@@ -123,7 +127,7 @@ func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
 }
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
-	log.Debug("inserting retained quote:", entry.QuoteHash)
+	log.Debug("inserting retained quote:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	query, args, _ := sqlx.Named(insertRetainedQuote, entry)
 
 	_, err := db.db.Exec(query, args...)
@@ -139,6 +143,9 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 	var retainedQuotes []*types.RetainedQuote
 
 	query, args, err := sqlx.In(selectRetainedQuotes, filter)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := db.db.Queryx(query, args...)
 	if err != nil {
 		return nil, err
@@ -202,4 +209,35 @@ func (db *DB) UpdateRetainedQuoteState(hash string, oldState types.RQState, newS
 	}
 
 	return nil
+}
+
+func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
+	log.Debug("retrieving locked liquidity")
+
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query, args, err := sqlx.In(selectRetainedQuotesReqLiq, filter)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.db.Queryx(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	lockedLiq := types.NewWei(0)
+	for rows.Next() {
+		reqLiq := new(types.Wei)
+
+		err = rows.Scan(reqLiq)
+		if err != nil {
+			return nil, err
+		}
+
+		lockedLiq.Add(lockedLiq, reqLiq)
+	}
+
+	return lockedLiq, nil
 }

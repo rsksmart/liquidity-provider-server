@@ -5,12 +5,12 @@ go 1.16
 require (
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/ethereum/go-ethereum v1.10.8
+	github.com/ethereum/go-ethereum v1.10.10
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.4
-	github.com/rsksmart/liquidity-provider v0.0.0-20220218123942-bc02bd7d8b7c
+	github.com/rsksmart/liquidity-provider v0.0.0-20220407085629-6b03864a1079
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0

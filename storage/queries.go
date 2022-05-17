@@ -119,3 +119,10 @@ SELECT
 FROM retained_quotes
 WHERE state IN (?)
 `
+
+const selectRetainedQuotesReqLiq = `
+SELECT
+	req_liq
+FROM retained_quotes
+WHERE state IN (?)
+`

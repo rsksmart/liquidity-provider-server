@@ -17,13 +17,20 @@ COPY connectors ./connectors
 COPY http ./http
 COPY storage ./storage
 
-RUN go build -o /liquidity-provider-server
+RUN go build -o /usr/local/bin/liquidity-provider-server
 
-WORKDIR /lps
+ARG UID=1000
+ARG HOME="/home/lps"
+RUN adduser -u "$UID" --home="$HOME" lps -D lps
 
-COPY docker-compose/lps/config.json ./
-COPY docker-compose/lps/start.sh /
+COPY --chown=lps "docker-compose/lps/config.json" "$HOME/"
+COPY --chown=lps "docker-compose/lps/start.sh" "$HOME/"
+
+RUN mkdir -p "$HOME/db"; chown "$UID" "$HOME/db"
+RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+
+WORKDIR "$HOME"
+
+USER lps
 
 EXPOSE 8080
-
-ENTRYPOINT [ "sh", "/start.sh" ]

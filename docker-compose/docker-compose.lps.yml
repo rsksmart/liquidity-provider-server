@@ -1,0 +1,27 @@
+version: "3"
+services:
+  lps:
+    build:
+      context: ../
+      dockerfile: docker-compose/lps/Dockerfile
+      args:
+        UID: "${LPS_UID}"
+    image: lps:latest
+    container_name: lps01
+    environment:
+      - LIQUIDITY_PROVIDER_RSK_ADDR
+      - LIQUIDITY_PROVIDER_RSK_KEY
+      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
+      - BTCD_RPC_USER
+      - BTCD_RPC_PASS
+      - RSK_CHAIN_ID
+      - LBC_ADDR
+      - LPS_STAGE
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${LPS_HOME:-./volumes/lps/db}:/home/lps/db
+      - ${LPS_HOME:-./volumes/lps/logs}:/home/lps/logs
+    networks:
+      - net_lps
+    command: ["sh", "start.sh"]

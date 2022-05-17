@@ -28,11 +28,7 @@ type LiquidityProviderMock struct {
 	address string
 }
 
-func (lp LiquidityProviderMock) RefundLiquidity(_ []byte) error {
-	return nil
-}
-
-func (lp LiquidityProviderMock) SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error) {
+func (lp LiquidityProviderMock) SignTx(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
@@ -40,15 +36,15 @@ func (lp LiquidityProviderMock) Address() string {
 	return lp.address
 }
 
-func (lp LiquidityProviderMock) GetQuote(q types.Quote, _ uint64, _ uint64) *types.Quote {
-	return &q
+func (lp LiquidityProviderMock) GetQuote(quote *types.Quote, _ uint64, _ *types.Wei) (*types.Quote, error) {
+	res := *quote
+	res.CallFee = types.NewWei(0)
+	res.PenaltyFee = types.NewWei(0)
+	return &res, nil
 }
 
-func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *big.Int) ([]byte, error) {
+func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *types.Wei) ([]byte, error) {
 	return nil, nil
-}
-
-func (lp LiquidityProviderMock) SetLiquidity(_ *big.Int) {
 }
 
 var providerMocks = []LiquidityProviderMock{
@@ -64,13 +60,13 @@ var testQuotes = []*types.Quote{
 		BTCRefundAddr:      "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
 		LPBTCAddr:          "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
-		CallFee:            250,
-		PenaltyFee:         5000,
+		CallFee:            types.NewWei(250),
+		PenaltyFee:         types.NewWei(5000),
 		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
 		Data:               "",
 		GasLimit:           6000000,
 		Nonce:              int64(rand.Int()),
-		Value:              250,
+		Value:              types.NewWei(250),
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
 		CallTime:           3600,
@@ -155,7 +151,6 @@ func testGetQuoteComplete(t *testing.T) {
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
-			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 			err := srv.AddProvider(lp)
 			if err != nil {
 				t.Fatalf("couldn't add provider. error: %v", err)
@@ -184,13 +179,13 @@ func testGetQuoteComplete(t *testing.T) {
 			BTCRefundAddr:      btcRefAddr,
 			RSKRefundAddr:      rskRefAddr,
 			LPBTCAddr:          "",
-			CallFee:            0,
-			PenaltyFee:         0,
+			CallFee:            types.NewWei(0),
+			PenaltyFee:         types.NewWei(0),
 			ContractAddr:       destAddr,
 			Data:               callArgs,
 			GasLimit:           500000,
 			Nonce:              0,
-			Value:              uint64(value),
+			Value:              value.Copy(),
 			AgreementTimestamp: 0,
 			TimeForDeposit:     0,
 			CallTime:           0,
@@ -200,7 +195,7 @@ func testGetQuoteComplete(t *testing.T) {
 		if err != nil {
 			t.Fatalf("couldn't instantiate request. error: %v", err)
 		}
-		rsk.On("EstimateGas", destAddr, uint64(value), []byte(callArgs)).Times(1)
+		rsk.On("EstimateGas", destAddr, value.AsBigInt(), []byte(callArgs)).Times(1)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("GetFedAddress").Times(1)
 		rsk.On("GetLBCAddress").Times(1)
@@ -219,11 +214,11 @@ func testGetQuoteComplete(t *testing.T) {
 			t.Fatalf("couldn't instantiate request. error: %v", err)
 		}
 		w = http2.TestResponseWriter{}
-		rsk.On("EstimateGas", destAddr, uint64(value), []byte(callArgs)).Times(1)
+		rsk.On("EstimateGas", destAddr, value.AsBigInt(), []byte(callArgs)).Times(1)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("GetFedAddress").Times(1)
 		rsk.On("GetLBCAddress").Times(1)
-		rsk.On("GetMinimumLockTxValue").Return(big.NewInt(int64(quote.Value+quote.CallFee-1)), nil).Times(1)
+		rsk.On("GetMinimumLockTxValue").Return(new(big.Int).Add(big.NewInt(-1), new(big.Int).Add(quote.Value.AsBigInt(), quote.CallFee.AsBigInt())), nil).Times(1)
 		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
 		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
 		srv.getQuoteHandler(&w, req)
@@ -237,8 +232,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock(hash, quote)
-		sats := weiToSatoshi(quote.Value + quote.CallFee)
-		minAmount := btcutil.Amount(uint64(math.Ceil(sats)))
+		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 		fedInfo := &connectors.FedInfo{}
 
@@ -247,7 +242,6 @@ func testAcceptQuoteComplete(t *testing.T) {
 		})
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-			rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 			err := srv.AddProvider(lp)
 			if err != nil {
 				t.Errorf("couldn't add provider. error: %v", err)
@@ -269,11 +263,12 @@ func testAcceptQuoteComplete(t *testing.T) {
 			t.Errorf("couldn't decode hash. error: %v", err)
 		}
 
-		db.On("GetQuote", hash).Times(1).Return(quote)
+		db.On("GetQuote", hash).Times(1).Return(quote, nil)
+		db.On("GetRetainedQuote", hash).Times(1).Return(nil, nil)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
 		btc.On("GetDerivedBitcoinAddress", fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
-		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
@@ -288,8 +283,8 @@ func testInitBtcWatchers(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock(hash, quote)
-	sats := weiToSatoshi(quote.Value + quote.CallFee)
-	minAmount := btcutil.Amount(uint64(math.Ceil(sats)))
+	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+	minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 	srv := newServer(rsk, btc, db, func() time.Time {
@@ -297,16 +292,15 @@ func testInitBtcWatchers(t *testing.T) {
 	})
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-		rsk.On("GetAvailableLiquidity", lp.address).Times(1).Return()
 		err := srv.AddProvider(lp)
 		if err != nil {
 			t.Errorf("couldn't add provider. error: %v", err)
 		}
 	}
 
-	db.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded, types.RQStateRegisterPegInSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
+	db.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	db.On("GetQuote", hash).Times(1).Return(quote)
-	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher")).Times(1).Return("")
+	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
 	err := srv.initBtcWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
@@ -322,11 +316,6 @@ func testGetQuoteExpTime(t *testing.T) {
 	assert.Equal(t, time.Unix(5, 0), expTime)
 }
 
-func testUnitsConversion(t *testing.T) {
-	assert.Equal(t, uint64(math.Pow10(10)), satoshiToWei(1))
-	assert.Equal(t, 1/math.Pow10(10), weiToSatoshi(1))
-}
-
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -334,5 +323,4 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)
-	t.Run("check units conversion", testUnitsConversion)
 }

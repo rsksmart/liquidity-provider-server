@@ -1,13 +1,16 @@
-FROM ubuntu:latest
+FROM ubuntu:18.04
 
-ENV BITCOIN_VERSION 0.17.1
-ENV BITCOIN_RELEASES_KEY 01EA5486DE18A882D4C2684590C8019E36C2E964
-ENV BITCOIN_DOWNLOAD_FILENAME bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
+ARG BITCOIN_VERSION=0.17.1
+ARG BITCOIN_RELEASES_KEY=01EA5486DE18A882D4C2684590C8019E36C2E964
+ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
 
-RUN apt-get update \
-        && apt-get install -y wget gnupg2
+ENV BITCOIN_VERSION=$BITCOIN_VERSION
+ENV BITCOIN_RELEASES_KEY=$BITCOIN_RELEASES_KEY
+ENV BITCOIN_DOWNLOAD_FILENAME=$BITCOIN_DOWNLOAD_FILENAME
 
-RUN rm -f SHA256SUMS.asc; wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
+RUN apt-get update && apt-get install -y wget gnupg2
+
+RUN wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
     && wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME \
         && wget https://bitcoin.org/laanwj-releases.asc \
         && gpg2 --import laanwj-releases.asc \
@@ -20,4 +23,12 @@ RUN rm -f SHA256SUMS.asc; wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VER
         && cd / \
         && rm -Rfv bitcoin-* *.asc
 
-ENTRYPOINT [ "bitcoind" ]
+ARG UID=1000
+ARG HOME="/home/bitcoin"
+RUN useradd -m -u "$UID" --home="$HOME" bitcoin
+
+RUN mkdir -p "$HOME/.bitcoin"; chown "$UID" "$HOME/.bitcoin"
+
+WORKDIR "$HOME"
+
+USER bitcoin

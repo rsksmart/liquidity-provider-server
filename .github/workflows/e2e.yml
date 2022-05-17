@@ -1,0 +1,25 @@
+name: LPS E2E test
+
+on:
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Building LPS environment...
+        run: cd docker-compose && LPS_STAGE=regtest sh lps-env.sh build
+
+      - name: Setting LPS environment up...
+        run: cd docker-compose && LPS_STAGE=regtest sh lps-env.sh up && sleep 10
+
+      - name: Checking LPS health...
+        run: curl -X GET http://localhost:8080/health
+
+      - name: Shutting LPS environment down...
+        run: cd docker-compose && LPS_STAGE=regtest sh lps-env.sh down

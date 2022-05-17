@@ -50,7 +50,7 @@ func (d *DbMock) RetainQuote(quote *types.RetainedQuote) error {
 
 func (d *DbMock) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	d.Called(hash)
-	return &types.RetainedQuote{QuoteHash: hash}, nil
+	return nil, nil
 }
 
 func (d *DbMock) DeleteRetainedQuote(hash string) error {
@@ -66,4 +66,9 @@ func (d *DbMock) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuo
 func (d *DbMock) UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error {
 	d.Called(hash, oldState, newState)
 	return nil
+}
+
+func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
+	d.Called()
+	return new(types.Wei), nil
 }

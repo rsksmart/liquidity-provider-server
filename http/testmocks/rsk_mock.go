@@ -21,9 +21,14 @@ func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
 	return args.Get(0).(*big.Int), args.Error(1)
 }
 
+func (m *RskMock) GetLbcBalance(addr string) (*big.Int, error) {
+	args := m.Called(addr)
+	return args.Get(0).(*big.Int), args.Error(1)
+}
+
 func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
-	m.Called(addr)
-	return nil, nil
+	args := m.Called(addr)
+	return args.Get(0).(*big.Int), args.Error(1)
 }
 
 func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
@@ -85,14 +90,14 @@ func (m *RskMock) Close() {
 	m.Called()
 }
 
-func (m *RskMock) EstimateGas(addr string, value uint64, data []byte) (uint64, error) {
+func (m *RskMock) EstimateGas(addr string, value *big.Int, data []byte) (uint64, error) {
 	m.Called(addr, value, data)
 	return 10000, nil
 }
 
-func (m *RskMock) GasPrice() (uint64, error) {
+func (m *RskMock) GasPrice() (*big.Int, error) {
 	m.Called()
-	return 100000, nil
+	return big.NewInt(100000), nil
 }
 func (m *RskMock) HashQuote(q *types.Quote) (string, error) {
 	m.Called(q)

@@ -5,7 +5,10 @@ RUN apt-get update -y && \
 
 WORKDIR /code/rskj
 
-RUN gitrev=IRIS-3.1.0 && \
+ARG RSKJ_RELEASE="IRIS"
+ARG RSKJ_VERSION="3.3.0"
+
+RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
     git remote add origin https://github.com/rsksmart/rskj.git && \
     git fetch --depth 1 origin tag "$gitrev" && \
@@ -20,11 +23,15 @@ RUN gpg --keyserver https://secchannel.rsk.co/release.asc --recv-keys 1A92D89421
 
 FROM openjdk:8-jdk as runner
 
-RUN useradd -m rsk
+ARG UID=1000
+ARG HOME="/home/rsk"
+RUN useradd -m -u "$UID" --home="$HOME" rsk
 
-WORKDIR /home/rsk
+COPY --from=builder --chown="$UID" "/code/rskj/rskj-core/build/libs/rskj-core-*-all.jar" "$HOME/rskj-core.jar"
+
+RUN mkdir -p "$HOME/.rsk"; chown "$UID" "$HOME/.rsk"
+RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+
+WORKDIR "$HOME"
 
 USER rsk
-COPY --from=builder --chown=rsk:rsk /code/rskj/rskj-core/build/libs/rskj-core-* ./
-
-ENTRYPOINT ["java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core-3.1.0-IRIS-all.jar", "co.rsk.Start"]
