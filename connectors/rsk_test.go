@@ -109,6 +109,7 @@ func testParseHex(t *testing.T) {
 
 func testParseHexWithAnInvalidHex(t *testing.T) {
 	_, err := parseHex("0x895E7D15510C3f77726422669B0Ef768d26T7FEb")
+
 	assert.Equal(t, "encoding/hex: invalid byte: U+0054 'T'", err.Error())
 }
 
