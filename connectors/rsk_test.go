@@ -1,12 +1,21 @@
 package connectors
 
 import (
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	gethTypes "github.com/ethereum/go-ethereum/core/types"
+	"math/big"
 	"math/rand"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 )
+
+type LPMock struct {
+	address string
+	signTx  func(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transaction, error)
+}
 
 var validTests = []struct {
 	input string
@@ -20,6 +29,17 @@ var invalidAddresses = []struct {
 }{
 	{"123", "invalid contract address"},
 	{"b3ba3b6e05821b456e04d95", "invalid contract address"},
+}
+
+func signTxMock(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transaction, error) {
+	return nil, nil
+}
+
+var lps = []LPMock{
+	{
+		address: "0xb794b2B2f17Dd432417148762662fBd1DDDd7c07",
+		signTx:  signTxMock,
+	},
 }
 
 var quotes = []*types.Quote{
@@ -102,10 +122,27 @@ func testCopyBtcAddressWithAnInvalidAddress(t *testing.T) {
 	assert.Equal(t, "invalid format: version and/or checksum bytes missing", err.Error())
 }
 
+func testRegisterProvider(t *testing.T) {
+	rsk, err := NewRSK(validTests[0].input, validTests[0].input, 10, 0, nil)
+	assert.Empty(t, err)
+
+	lp := lps[0]
+	opts := &bind.TransactOpts{
+		Value:  big.NewInt(10),
+		From:   common.HexToAddress(lp.address),
+		Signer: lp.signTx,
+		Nonce:  big.NewInt(0),
+	}
+
+	registerErr := rsk.RegisterProvider(opts)
+	assert.Empty(t, registerErr)
+}
+
 func TestRSKCreate(t *testing.T) {
 	t.Run("new invalid", testNewRSKWithInvalidAddresses)
 	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
 	t.Run("test copy btc address", testCopyBtcAddress)
 	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
+	t.Run("test Register provider", testRegisterProvider)
 }
