@@ -102,10 +102,23 @@ func testCopyBtcAddressWithAnInvalidAddress(t *testing.T) {
 	assert.Equal(t, "invalid format: version and/or checksum bytes missing", err.Error())
 }
 
+func testParseHex(t *testing.T) {
+	_, err := parseHex("0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95")
+	assert.Empty(t, err)
+}
+
+func testParseHexWithAnInvalidHex(t *testing.T) {
+	_, err := parseHex("0x895E7D15510C3f77726422669B0Ef768d26T7FEb")
+
+	assert.Equal(t, "encoding/hex: invalid byte: U+0054 'T'", err.Error())
+}
+
 func TestRSKCreate(t *testing.T) {
 	t.Run("new invalid", testNewRSKWithInvalidAddresses)
 	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
 	t.Run("test copy btc address", testCopyBtcAddress)
 	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
+	t.Run("test parse hexadecimal", testParseHex)
+	t.Run("test parse hexadecimal with an invalid string", testParseHexWithAnInvalidHex)
 }
