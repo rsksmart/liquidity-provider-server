@@ -5,8 +5,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/rskj
 
-ARG RSKJ_RELEASE="IRIS"
-ARG RSKJ_VERSION="3.3.0"
+ARG RSKJ_RELEASE="HOP"
+ARG RSKJ_VERSION="4.0.0"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
@@ -14,7 +14,7 @@ RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git fetch --depth 1 origin tag "$gitrev" && \
     git checkout "$gitrev"
 
-RUN gpg --keyserver https://secchannel.rsk.co/release.asc --recv-keys 1A92D8942171AFA951A857365DECF4415E3B8FA4 && \
+RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys 1DC9157991323D23FD37BAA7A6DBEAC640C5A14B && \
     gpg --verify --output SHA256SUMS SHA256SUMS.asc && \
     sha256sum --check SHA256SUMS && \
     ./configure.sh && \
