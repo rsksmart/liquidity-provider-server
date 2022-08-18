@@ -469,7 +469,7 @@ func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
 	erpRedeemScriptBuffer.Write(scrA)
 	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
-	byteArr, err := hex.DecodeString("02")
+	byteArr, err := hex.DecodeString("03")
 	if err != nil {
 		return nil, err
 	}
@@ -512,9 +512,9 @@ func (btc *BTC) getCsvValueFromNetwork() string {
 	case chaincfg.MainNetParams.Name:
 		return "CD50"
 	case chaincfg.TestNet3Params.Name:
-		return "CD50"
+		return "50cd00"
 	default: // RegTest
-		return "01F4"
+		return "F401"
 	}
 }
 
