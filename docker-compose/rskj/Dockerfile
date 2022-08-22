@@ -21,7 +21,7 @@ RUN gpg --keyserver https://secchannel.rsk.co/release.asc --recv-keys 1A92D89421
     ./gradlew --no-daemon clean build -x test
 
 
-FROM openjdk:8-jdk as runner
+FROM --platform=linux/amd64 openjdk:8-jdk as runner
 
 ARG UID=1000
 ARG HOME="/home/rsk"
