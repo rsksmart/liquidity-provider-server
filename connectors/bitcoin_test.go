@@ -3,13 +3,14 @@ package connectors
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/btcsuite/btcutil"
 
@@ -146,6 +147,41 @@ func testPMTSerialization(t *testing.T) {
 			t.Errorf("expected PMT:\n%v\n is different from serialized PMT:\n%v\n", p.pmt, result)
 		}
 	}
+}
+
+var testPegOutQuotes = []struct {
+	BTCRefundAddr               string
+	LBCAddr                     string
+	LPBTCAddr                   string
+	QuoteHash                   string
+	UserAddress                 string
+	ExpectedDerivationValueHash string
+	ExpectedAddressHash         string
+	NetworkParams               string
+	DerivationAddress           string
+}{
+	{
+		LPBTCAddr:                   "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		BTCRefundAddr:               "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:                     "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		UserAddress:                 "1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k",
+		ExpectedAddressHash:         "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
+		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
+		NetworkParams:               "testnet",
+		DerivationAddress:           "2N6vMBWR8eRizLq1FUoNyfLEFaHQWRt5RUg",
+	},
+	{
+		LPBTCAddr:                   "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		BTCRefundAddr:               "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		LBCAddr:                     "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
+		UserAddress:                 "1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k",
+		ExpectedAddressHash:         "2N6LxcNDYkKzeyXh7xjZUNZnS9G4Sq3mysi",
+		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
+		NetworkParams:               "testnet",
+		DerivationAddress:           "2N6vMBWR8eRizLq1FUoNyfLEFaHQWRt5RUg",
+	},
 }
 
 var testQuotes = []struct {
@@ -683,6 +719,16 @@ func testCheckBtcAddr(t *testing.T) {
 	addrWatcherMock.AssertExpectations(t)
 }
 
+func testComputeDerivationAddress(t *testing.T) {
+	for _, tt := range testPegOutQuotes {
+		btc, err := NewBTC(tt.NetworkParams)
+		assert.Nil(t, err)
+		derivationAddress, err := btc.ComputeDerivationAddresss([]byte(tt.UserAddress), []byte(tt.QuoteHash))
+		assert.Nil(t, err)
+		assert.Equal(t, tt.DerivationAddress, derivationAddress)
+	}
+}
+
 func TestBitcoinConnector(t *testing.T) {
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
@@ -698,4 +744,5 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test tx serialization", testSerializeTx)
 	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
 	t.Run("test check btc addr", testCheckBtcAddr)
+	t.Run("test compute derivation address", testComputeDerivationAddress)
 }
