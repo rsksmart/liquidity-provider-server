@@ -126,8 +126,8 @@ func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
-	r.Path("/getQuotePegOut").Methods(http.MethodPost).HandlerFunc(s.getQuotePegOutHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
+	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -564,7 +564,7 @@ func getQuoteExpTime(q *types.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
 }
 
-func (s *Server) getQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuotePegOutRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
