@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -43,6 +44,7 @@ type BTCConnector interface {
 	SerializeTx(txHash string) ([]byte, error)
 	GetBlockNumberByTx(txHash string) (int64, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 }
 
 type BTCClient interface {
@@ -227,6 +229,31 @@ func (btc *BTC) GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []b
 		return "", err
 	}
 	return addressScriptHash.EncodeAddress(), nil
+}
+
+func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte) (string, error) {
+	rootScriptBuilder := txscript.NewScriptBuilder()
+
+	rootScriptBuilder.AddData(quoteHash)
+	rootScriptBuilder.AddOp(txscript.OP_DROP)
+	rootScriptBuilder.AddInt64(txscript.OP_1)
+	rootScriptBuilder.AddData(userPublicKey)
+	rootScriptBuilder.AddInt64(txscript.OP_1)
+	rootScriptBuilder.AddOp(txscript.OP_CHECKMULTISIG)
+
+	rootScript, err := rootScriptBuilder.Script()
+
+	if err != nil {
+		return "", fmt.Errorf("error generating root script: %v", err)
+	}
+
+	redeemScript, err := btcutil.NewAddressScriptHash(rootScript[:], &btc.params)
+
+	if err != nil {
+		return "", err
+	}
+
+	return redeemScript.EncodeAddress(), nil
 }
 
 func DecodeBTCAddressWithVersion(address string) ([]byte, error) {

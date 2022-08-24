@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcutil"
 	"io"
 	"math"
 	"math/big"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/btcsuite/btcutil"
 
 	"context"
 
@@ -54,6 +55,18 @@ type QuoteRequest struct {
 	GasLimit              uint32     `json:"gasLimit"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
+}
+
+type QuotePegOutRequest struct {
+	From                 string     `json:"from"`
+	ValueToTransfer      *types.Wei `json:"valueToTransfer"`
+	RskRefundAddress     string     `json:"rskRefundAddress"`
+	BitcoinRefundAddress string     `json:"bitcoinRefundAddress"`
+}
+
+type QuotePegOutResponse struct {
+	Quote             *types.Quote `json:"quote"`
+	DerivationAddress string       `json:"derivationAddress"`
 }
 
 type acceptReq struct {
@@ -114,6 +127,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
+	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -500,6 +514,14 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quo
 	}
 }
 
+func parseQuotePegOutRequestToQuote(qr QuotePegOutRequest) *types.Quote {
+	return &types.Quote{
+		RSKRefundAddr: qr.RskRefundAddress,
+		Value:         qr.ValueToTransfer.Copy(),
+		BTCRefundAddr: qr.BitcoinRefundAddress,
+	}
+}
+
 func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]byte, []byte, []byte, error) {
 	btcRefAddrB, err := connectors.DecodeBTCAddressWithVersion(btcRefundAddr)
 	if err != nil {
@@ -540,4 +562,99 @@ func (s *Server) storeQuote(q *types.Quote) error {
 
 func getQuoteExpTime(q *types.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
+}
+
+func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) {
+	qr := QuotePegOutRequest{}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	err := dec.Decode(&qr)
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	getQuoteFailed := false
+	amountBelowMinLockTxValue := false
+	q := parseQuotePegOutRequestToQuote(qr)
+	quotes := make([]QuotePegOutResponse, 0)
+	for _, p := range s.providers {
+
+		fedAddress, err := s.rsk.GetFedAddress()
+
+		if err != nil {
+			log.Error("error retrieving federation address: ", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		pq, err := p.GetQuote(q, 0, types.NewWei(0))
+
+		if err != nil {
+			log.Error("error getting quote: ", err)
+			getQuoteFailed = true
+			continue
+		}
+
+		if pq != nil {
+
+			pq.FedBTCAddr = fedAddress
+
+			pq.LBCAddr = s.rsk.GetLBCAddress()
+
+			h, err := s.rsk.HashQuote(pq)
+
+			if err != nil {
+				log.Error("error getting quote: unable to hash quote", err)
+				getQuoteFailed = true
+				continue
+			}
+
+			derivationAddress, err := s.btc.ComputeDerivationAddresss([]byte(qr.From), []byte(h))
+
+			if err != nil {
+				log.Error("Unable to generate derivationAddress", err)
+				getQuoteFailed = true
+				continue
+			}
+
+			err = s.storeQuote(pq)
+
+			if err != nil {
+				log.Error(err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			} else {
+				quote := &QuotePegOutResponse{
+					Quote:             pq,
+					DerivationAddress: derivationAddress,
+				}
+				quotes = append(quotes, *quote)
+			}
+		}
+
+		// generate derivation
+	}
+
+	if len(quotes) == 0 {
+		if amountBelowMinLockTxValue {
+			http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
+			return
+		}
+		if getQuoteFailed {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	err = enc.Encode(&quotes)
+	if err != nil {
+		log.Error("error encoding quote list: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 }
