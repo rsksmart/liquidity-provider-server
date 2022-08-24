@@ -154,7 +154,7 @@ var testPegOutQuotes = []struct {
 	LBCAddr                     string
 	LPBTCAddr                   string
 	QuoteHash                   string
-	UserAddress                 string
+	UserPubKey                  string
 	ExpectedDerivationValueHash string
 	ExpectedAddressHash         string
 	NetworkParams               string
@@ -165,22 +165,22 @@ var testPegOutQuotes = []struct {
 		BTCRefundAddr:               "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		LBCAddr:                     "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
-		UserAddress:                 "1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k",
+		UserPubKey:                  "029448e68904c4ebd63a65a0e6b8a887fbd51bacd45092d3279902aba37fb7f994",
 		ExpectedAddressHash:         "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
 		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
 		NetworkParams:               "testnet",
-		DerivationAddress:           "2N6vMBWR8eRizLq1FUoNyfLEFaHQWRt5RUg",
+		DerivationAddress:           "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D",
 	},
 	{
 		LPBTCAddr:                   "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
 		BTCRefundAddr:               "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
 		LBCAddr:                     "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
-		UserAddress:                 "1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k",
+		UserPubKey:                  "029448e68904c4ebd63a65a0e6b8a887fbd51bacd45092d3279902aba37fb7f994",
 		ExpectedAddressHash:         "2N6LxcNDYkKzeyXh7xjZUNZnS9G4Sq3mysi",
 		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
 		NetworkParams:               "testnet",
-		DerivationAddress:           "2N6vMBWR8eRizLq1FUoNyfLEFaHQWRt5RUg",
+		DerivationAddress:           "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D",
 	},
 }
 
@@ -723,7 +723,7 @@ func testComputeDerivationAddress(t *testing.T) {
 	for _, tt := range testPegOutQuotes {
 		btc, err := NewBTC(tt.NetworkParams)
 		assert.Nil(t, err)
-		derivationAddress, err := btc.ComputeDerivationAddresss([]byte(tt.UserAddress), []byte(tt.QuoteHash))
+		derivationAddress, err := btc.ComputeDerivationAddresss([]byte(tt.UserPubKey), []byte(tt.QuoteHash))
 		assert.Nil(t, err)
 		assert.Equal(t, tt.DerivationAddress, derivationAddress)
 	}
