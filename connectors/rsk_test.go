@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -37,7 +38,7 @@ func signTxMock(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transact
 
 var lps = []LPMock{
 	{
-		address: "0xb794b2B2f17Dd432417148762662fBd1DDDd7c07",
+		address: "0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95",
 		signTx:  signTxMock,
 	},
 }
@@ -79,6 +80,15 @@ func testNewRSKWithInvalidAddresses(t *testing.T) {
 			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
 		}
 	}
+}
+
+func testRskLbcCreation(t *testing.T) {
+	rsk, err := NewRSK(validTests[0].input, validTests[0].input, 10, 0, nil)
+	assert.Empty(t, err)
+
+	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
+	assert.Empty(t, err)
+	assert.NotEmpty(t, rsk.lbc)
 }
 
 func testNewRSKWithValidAddresses(t *testing.T) {
@@ -125,6 +135,17 @@ func testCopyBtcAddressWithAnInvalidAddress(t *testing.T) {
 func testRegisterProvider(t *testing.T) {
 	rsk, err := NewRSK(validTests[0].input, validTests[0].input, 10, 0, nil)
 	assert.Empty(t, err)
+
+	//rsk.lbc = &bindings.LBC{}
+
+	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
+	assert.Empty(t, err)
+
+	// override register maybe?
+	// or create a new rsk type which extends rsk but with diffenrent register func
+	//rsk.lbc.Register := func() {
+	//
+	//}
 
 	lp := lps[0]
 	opts := &bind.TransactOpts{
