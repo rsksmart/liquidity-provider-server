@@ -78,6 +78,10 @@ type acceptRes struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
 }
 
+type acceptResPegOut struct {
+	Signature string `json:"signature"`
+}
+
 type acceptReqPegout struct {
 	QuoteHash         string `json:"quoteHash"`
 	DerivationAddress string `json:"derivationAddress"`
@@ -667,6 +671,19 @@ func returnQuoteSignFunc(w http.ResponseWriter, signature string, depositAddr st
 	}
 }
 
+func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
+	enc := json.NewEncoder(w)
+	response := acceptResPegOut{
+		Signature: signature,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
 	req := acceptReqPegout{}
 	w.Header().Set("Content-type", "application/json")
@@ -713,6 +730,5 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	signature := hex.EncodeToString(signB)
-	returnQuoteSignFunc(w, signature, req.DerivationAddress)
-
+	returnQuotePegOutSignFunc(w, signature)
 }
