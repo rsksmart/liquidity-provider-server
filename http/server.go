@@ -223,7 +223,6 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 		delete(s.watchers, hash)
 	})
 	if err == nil {
-		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", depositAddr)
 		s.watchers[hash] = watcher
 	}
 	return err
@@ -712,7 +711,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
-	quoteHashInBytes, err := hex.DecodeString(req.QuoteHash)
+	quoteHashInBytes, _ := hex.DecodeString(req.QuoteHash)
 
 	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, new(types.Wei))
 
