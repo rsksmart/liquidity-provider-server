@@ -73,6 +73,20 @@ type acceptReq struct {
 	QuoteHash string
 }
 
+type acceptRes struct {
+	Signature                 string `json:"signature"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
+}
+
+type acceptResPegOut struct {
+	Signature string `json:"signature"`
+}
+
+type acceptReqPegout struct {
+	QuoteHash         string `json:"quoteHash"`
+	DerivationAddress string `json:"derivationAddress"`
+}
+
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
 	return newServer(rsk, btc, db, time.Now)
 }
@@ -128,6 +142,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
+	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -386,23 +401,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	type acceptRes struct {
-		Signature                 string `json:"signature"`
-		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
-	}
-	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
-		enc := json.NewEncoder(w)
-		response := acceptRes{
-			Signature:                 signature,
-			BitcoinDepositAddressHash: depositAddr,
-		}
-
-		err := enc.Encode(response)
-		if err != nil {
-			log.Error("error encoding response: ", err.Error())
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-		}
-	}
 
 	req := acceptReq{}
 	w.Header().Set("Content-Type", "application/json")
@@ -657,4 +655,80 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func returnQuoteSignFunc(w http.ResponseWriter, signature string, depositAddr string) {
+	enc := json.NewEncoder(w)
+	response := acceptRes{
+		Signature:                 signature,
+		BitcoinDepositAddressHash: depositAddr,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
+	enc := json.NewEncoder(w)
+	response := acceptResPegOut{
+		Signature: signature,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
+	req := acceptReqPegout{}
+	w.Header().Set("Content-type", "application/json")
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&req)
+
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	quote, err := s.db.GetQuote(req.QuoteHash)
+
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if quote == nil {
+		log.Error("quote not found:", err.Error())
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+
+	quoteHashInBytes, err := hex.DecodeString(req.QuoteHash)
+
+	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, new(types.Wei))
+
+	if err != nil {
+		log.Error("error signing quote: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = s.addAddressWatcher(quote, req.QuoteHash, req.DerivationAddress, signB, p, types.RQStateWaitingForDeposit)
+	if err != nil {
+		log.Error("error adding address watcher: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	signature := hex.EncodeToString(signB)
+	returnQuotePegOutSignFunc(w, signature)
 }

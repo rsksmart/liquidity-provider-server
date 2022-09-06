@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -45,7 +46,7 @@ func (lp LiquidityProviderMock) GetQuote(quote *types.Quote, _ uint64, _ *types.
 }
 
 func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *types.Wei) ([]byte, error) {
-	return nil, nil
+	return []byte("fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c"), nil
 }
 
 var providerMocks = []LiquidityProviderMock{
@@ -348,6 +349,52 @@ func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
 	assert.Equal(t, "invalid address: 1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", err.Error())
 }
 
+func testcAcceptQuotePegoutComplete(t *testing.T) {
+	for _, quote := range testQuotes {
+		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
+		derivationAddress := "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D"
+		rsk := new(testmocks.RskMock)
+		btc := new(testmocks.BtcMock)
+		db := testmocks.NewDbMock(hash, quote)
+		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
+		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
+
+		srv := newServer(rsk, btc, db, func() time.Time {
+			return time.Unix(0, 0)
+		})
+
+		for _, lp := range providerMocks {
+			rsk.On("GetCollateral", lp.address).Return(nil)
+			err := srv.AddProvider(lp)
+			if err != nil {
+				t.Fatalf("couldn't add provider. error: %v", err)
+			}
+		}
+
+		w := http2.TestResponseWriter{}
+		body := fmt.Sprintf("{\"quoteHash\":\"%v\", \"derivationAddress\":\"%v\"}", hash, derivationAddress)
+
+		req, err := http.NewRequest("POST", "pegout/acceptQuote", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Errorf("couldn't instantiate request. error: %v", err)
+		}
+
+		db.On("GetQuote", hash).Times(1).Return(quote, nil)
+
+		btc.On("AddAddressWatcher", "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
+		srv.acceptQuotePegOutHandler(&w, req)
+		response := acceptResPegOut{}
+		fmt.Println(w.Output)
+		json.Unmarshal([]byte(w.Output), &response)
+		db.AssertExpectations(t)
+		btc.AssertExpectations(t)
+		rsk.AssertExpectations(t)
+		assert.NotEmpty(t, response.Signature)
+		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+	}
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -360,4 +407,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
 	t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
 	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
+	t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
 }

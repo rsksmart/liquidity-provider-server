@@ -1,0 +1,104 @@
+{
+	"info": {
+		"_postman_id": "d5ad5613-a918-4143-ac55-0bf1efa5f2b3",
+		"name": "LIQUIDITY-PROVIDER-SERVER",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1450134"
+	},
+	"item": [
+		{
+			"name": "GET QUOTE PEG-OUT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('should have statos code 200', function() {",
+							"    pm.response.to.have.status(200);",
+							"    const data = JSON.parse(pm.response.body);",
+							"    pm.environment.set(\"derivationAddress\", data[0]['derivationAddress']);",
+							"});",
+							"",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"from\": \"1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k\",\n    \"valueToTransfer\": 600000000000000000,\n    \"rskRefundAddress\": \"0xa554d96413FF72E93437C4072438302C38350EE3\",\n    \"bitcoinRefundAddress\": \"1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/pegout/getQuotes",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"pegout",
+						"getQuotes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ACCEPT QUOTE PEG-OUT",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"derivationAddress\": \"{{derivationAddress}}\",\n    \"quoteHash\": \"7c94b8a93e3ae04f2563665ecf43448e02e20f8a6952b96684f6a13a999b11b0\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/pegout/acceptQuote",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"pegout",
+						"acceptQuote"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "HEALTH",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/health",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
