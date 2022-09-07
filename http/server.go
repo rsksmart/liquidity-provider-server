@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -223,6 +224,9 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 		delete(s.watchers, hash)
 	})
 	if err == nil {
+		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
+		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
 		s.watchers[hash] = watcher
 	}
 	return err
@@ -711,7 +715,13 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 
-	quoteHashInBytes, _ := hex.DecodeString(req.QuoteHash)
+	quoteHashInBytes, err := hex.DecodeString(req.QuoteHash)
+
+	if err != nil {
+		log.Error("error decoding string: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, new(types.Wei))
 
