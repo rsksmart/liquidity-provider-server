@@ -132,5 +132,20 @@ if [ -z "${LBC_ADDR}" ]; then
 fi
 echo "LBC deployed at $LBC_ADDR"
 
+DEPLOY_DATA=$(jq \
+  --arg lbcAddr "$LBC_ADDR" \
+  --arg btcUser "$BTCD_RPC_USER" \
+  --arg btcPass "$BTCD_RPC_PASS" \
+  --arg btcNetwork "$LPS_STAGE" \
+  --arg chainId "$RSK_CHAIN_ID" \
+  '.rsk.lbcAddr=$lbcAddr | .btc.username=$btcUser | .btc.password=$btcPass | .btc.network=$btcNetwork | .provider.chainId=($chainId | tonumber)' <<< '{}' )
+
+
+CURRENT_JSON=$(cat ../it/config.json)
+
+rm -rf ../it/config.json 
+
+echo $CURRENT_JSON $DEPLOY_DATA | jq --slurp 'reduce .[] as $item ({}; . * $item)' >> ../it/config.json 
+
 # start LPS
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
