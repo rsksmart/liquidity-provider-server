@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"strings"
@@ -180,6 +181,11 @@ func acceptQuote(suite *ExampleTestSuite, hash string, derivationAddress string)
 	return acceptQuote
 }
 
+var runIntegration = flag.Bool("integration", false, "Run the integration testsuite (in addition to the unit tests)")
+
 func TestPegoutSuite(t *testing.T) {
+	if !*runIntegration {
+		t.Skip("skipping integration tests")
+	}
 	suite.Run(t, new(ExampleTestSuite))
 }

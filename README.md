@@ -107,7 +107,7 @@ Accepts one of the LPs quotes.
 
 1. You should run LPS env into [docker-compose](./docker-compose/README.md)
 2. Then you need to change directory to it
-3. Then into it folder you only need to run `go test`
+3. Then into it folder you only need to run `go test -integration`
 
 
 #### Note: 
