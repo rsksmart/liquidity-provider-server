@@ -101,3 +101,14 @@ Accepts one of the LPs quotes.
 
     signature - Signature of the quote
     bitcoinDepositAddressHash - Hash of the deposit BTC address
+
+
+## Run Integration Tests
+
+1. You should run LPS env into [docker-compose](./docker-compose/README.md)
+2. Then you need to change directory to it
+3. Then into it folder you only need to run `go test`
+
+
+#### Note: 
+It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.
