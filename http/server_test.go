@@ -384,7 +384,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 		btc.On("AddAddressWatcher", "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
 		srv.acceptQuotePegOutHandler(&w, req)
-		response := acceptResPegOut{}
+		response := AcceptResPegOut{}
 		fmt.Println(w.Output)
 		json.Unmarshal([]byte(w.Output), &response)
 		db.AssertExpectations(t)

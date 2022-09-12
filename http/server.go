@@ -78,7 +78,7 @@ type acceptRes struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
 }
 
-type acceptResPegOut struct {
+type AcceptResPegOut struct {
 	Signature string `json:"signature"`
 }
 
@@ -673,7 +673,7 @@ func returnQuoteSignFunc(w http.ResponseWriter, signature string, depositAddr st
 
 func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
 	enc := json.NewEncoder(w)
-	response := acceptResPegOut{
+	response := AcceptResPegOut{
 		Signature: signature,
 	}
 
@@ -705,7 +705,6 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if quote == nil {
-		log.Error("quote not found:", err.Error())
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
