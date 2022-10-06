@@ -232,13 +232,19 @@ func (btc *BTC) GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []b
 }
 
 func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte) (string, error) {
+
 	rootScriptBuilder := txscript.NewScriptBuilder()
 
 	rootScriptBuilder.AddData(quoteHash)
+
 	rootScriptBuilder.AddOp(txscript.OP_DROP)
-	rootScriptBuilder.AddInt64(txscript.OP_1)
+
+	rootScriptBuilder.AddOp(txscript.OP_1)
+
 	rootScriptBuilder.AddData(userPublicKey)
-	rootScriptBuilder.AddInt64(txscript.OP_1)
+
+	rootScriptBuilder.AddOp(txscript.OP_1)
+
 	rootScriptBuilder.AddOp(txscript.OP_CHECKMULTISIG)
 
 	rootScript, err := rootScriptBuilder.Script()

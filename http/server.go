@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcutil/base58"
 
 	"context"
 
@@ -613,7 +614,7 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 				continue
 			}
 
-			derivationAddress, err := s.btc.ComputeDerivationAddresss([]byte(qr.From), []byte(h))
+			derivationAddress, err := s.btc.ComputeDerivationAddresss(base58.Decode(qr.From), []byte(h))
 
 			if err != nil {
 				log.Error("Unable to generate derivationAddress", err)
@@ -722,7 +723,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, new(types.Wei))
+	signB, err := p.SignQuote(quoteHashInBytes, p.Address(), new(types.Wei))
 
 	if err != nil {
 		log.Error("error signing quote: ", err.Error())
