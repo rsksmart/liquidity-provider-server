@@ -437,6 +437,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				amountBelowMinLockTxValue = true
 				continue
 			}
+
 			hash, err := s.storeQuote(pq)
 
 			if err != nil {
