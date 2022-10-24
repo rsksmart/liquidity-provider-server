@@ -58,6 +58,11 @@ type QuoteRequest struct {
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
+type QuoteReturn struct {
+	Quote     *types.Quote `json:"quote"`
+	QuoteHash string       `json:"quoteHash"`
+}
+
 type QuotePegOutRequest struct {
 	From                 string     `json:"from"`
 	ValueToTransfer      *types.Wei `json:"valueToTransfer"`
@@ -338,7 +343,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var quotes []*types.Quote
+	var quotes []*QuoteReturn
 	fedAddress, err := s.rsk.GetFedAddress()
 	if err != nil {
 		log.Error("error retrieving federation address: ", err.Error())
@@ -370,14 +375,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				amountBelowMinLockTxValue = true
 				continue
 			}
-			err = s.storeQuote(pq)
+			hash, err := s.storeQuote(pq)
 
 			if err != nil {
 				log.Error(err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			} else {
-				quotes = append(quotes, pq)
+				quotes = append(quotes, &QuoteReturn{pq, hash})
 			}
 		}
 	}
@@ -548,17 +553,17 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func (s *Server) storeQuote(q *types.Quote) error {
+func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.db.InsertQuote(h, q)
 	if err != nil {
 		log.Fatalf("error inserting quote: %v", err)
 	}
-	return nil
+	return h, nil
 }
 
 func getQuoteExpTime(q *types.Quote) time.Time {
@@ -621,7 +626,7 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 				continue
 			}
 
-			err = s.storeQuote(pq)
+			_, err = s.storeQuote(pq)
 
 			if err != nil {
 				log.Error(err)
