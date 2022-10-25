@@ -21,6 +21,7 @@ RUN git clone https://github.com/rsksmart/liquidity-provider-server.git
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/connectors
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/http
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/storage
+RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/pegout
 
 RUN cd liquidity-provider-server && go build -o /liquidity-provider-server
 
