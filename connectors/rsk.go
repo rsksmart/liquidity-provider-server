@@ -313,19 +313,22 @@ func (rsk *RSK) GetChainId() (*big.Int, error) {
 	return nil, fmt.Errorf("error retrieving chain id: %v", err)
 }
 
-func (rsk *RSK) GetProcessedPegOutQuotes() (*big.Int, error) {
+func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (uint8, error) {
 	var err error
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 		defer cancel()
-		var chainId *big.Int
-		chainId, err = rsk.c.ChainID(ctx)
+		var status uint8
+		status, err = rsk.lbc.GetProcessedQuote(&bind.CallOpts{
+			Context: ctx,
+		}, quoteHash)
 		if err == nil {
-			return chainId, nil
+			return status, nil
 		}
 		time.Sleep(rpcSleep)
 	}
-	return nil, fmt.Errorf("error retrieving chain id: %v", err)
+
+	return 0, fmt.Errorf("error retrieving processed pegout status: %v", err)
 }
 
 func (rsk *RSK) EstimateGas(addr string, value *big.Int, data []byte) (uint64, error) {
@@ -806,7 +809,7 @@ func (rsk *RSK) checkPegoutRegister(quoteHash string, w QuotePegOutWatcher, expT
 
 	copy(b32[:], b)
 
-	status, err := rsk.lbc.ProcessedPegOutQuotes(nil, b32)
+	status, err := rsk.GetProcessedPegOutQuotes(b32)
 
 	if err != nil {
 		w.OnRegisterPegOut(types.RQStateCallForUserFailed)
