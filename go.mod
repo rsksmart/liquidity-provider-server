@@ -15,5 +15,6 @@ require (
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
+	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	modernc.org/sqlite v1.12.0
 )
