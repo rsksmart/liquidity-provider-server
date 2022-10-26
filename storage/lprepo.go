@@ -2,6 +2,7 @@ package storage
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 )
@@ -37,4 +38,21 @@ func (r *LPRepository) HasLiquidity(lp providers.LiquidityProvider, wei *types.W
 		return false, err
 	}
 	return new(types.Wei).Sub(types.NewBigWei(availableLiq), lockedLiq).Cmp(wei) >= 0, nil
+}
+
+func (r *LPRepository) RetainPegOutQuote(rq *pegout.RetainedQuote) error {
+	return r.db.RetainPegOutQuote(rq)
+}
+
+func (r *LPRepository) HasRetainedPegOutQuote(hash string) (bool, error) {
+	rq, err := r.db.GetRetainedQuote(hash)
+	if err != nil {
+		return false, err
+	}
+	return rq != nil, nil
+}
+
+// TODO: Needs to implement
+func (r *LPRepository) HasLiquidityPegOut(lp pegout.LiquidityProvider, satoshis uint64) (bool, error) {
+	return true, nil
 }

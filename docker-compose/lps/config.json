@@ -43,5 +43,25 @@
         "callFee" : 1000,
         "penaltyFee" : 1000000,
         "chainId" : 33
+    },
+    "pegoutProvier": {
+        "keyDir" : "geth_keystore",
+        "accountNum" : 0,
+        "pwdFile" : "pwd.txt",
+        "btcAddr" : "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6",
+        "maxConf" : 60,
+        "confirmations" : {
+            "100000000000000000" : 2,
+            "400000000000000000" : 6,
+            "2000000000000000000" : 10,
+            "4000000000000000000" : 20,
+            "8000000000000000000" : 40
+        },
+        "timeForDeposit" : 3600,
+        "callTime" : 7200,
+        "callFee" : 1000,
+        "penaltyFee" : 1000000,
+        "chainId" : 33,
+        "depositDateLimit": 3600
     }
 }

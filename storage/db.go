@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	_ "modernc.org/sqlite"
@@ -16,15 +17,17 @@ const (
 type DBConnector interface {
 	CheckConnection() error
 	Close() error
-
 	InsertQuote(id string, q *types.Quote) error
+	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
 	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
+	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
 	DeleteExpiredQuotes(expTimestamp int64) error
-
 	RetainQuote(entry *types.RetainedQuote) error
+	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
 	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
 }
 
@@ -56,6 +59,7 @@ func Connect(dbPath string) (*DB, error) {
 	if _, err := db.Exec(enableForeignKeysCheck); err != nil {
 		return nil, err
 	}
+	//Peg in
 	if _, err := db.Exec(createQuoteTable); err != nil {
 		return nil, err
 	}
@@ -63,6 +67,16 @@ func Connect(dbPath string) (*DB, error) {
 		return nil, err
 	}
 	if _, err := db.Exec(createRetainedQuoteIndexes); err != nil {
+		return nil, err
+	}
+	//Peg out
+	if _, err := db.Exec(createPegoutQuoteTable); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(createRetainedPegoutQuoteTable); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(createRetainedPegoutQuoteIndexes); err != nil {
 		return nil, err
 	}
 
@@ -91,10 +105,38 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	return nil
 }
 
+func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
+	query, args, _ := sqlx.Named(insertPegOutQuote, q)
+	args = append(args, 0)
+	copy(args[1:], args)
+	args[0] = id
+	args = append(args, derivationAddress)
+	fmt.Println(args)
+	if _, err := db.db.Exec(query, args...); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
 	quote := types.Quote{}
 	err := db.db.Get(&quote, selectQuoteByHash, quoteHash)
+	switch err {
+	case nil:
+		return &quote, nil
+	case sql.ErrNoRows:
+		return nil, nil
+	default:
+		return nil, err
+	}
+}
+
+func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
+	log.Debug("retrieving pegout quote: ", quoteHash)
+	quote := pegout.Quote{}
+	err := db.db.Get(&quote, selectPegOutQuoteByHash, quoteHash)
 	switch err {
 	case nil:
 		return &quote, nil
@@ -129,6 +171,18 @@ func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	log.Debug("inserting retained quote:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	query, args, _ := sqlx.Named(insertRetainedQuote, entry)
+
+	_, err := db.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) RetainPegOutQuote(entry *pegout.RetainedQuote) error {
+	log.Debug("inserting retained quote:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
+	query, args, _ := sqlx.Named(insertRetainedPegOutQuote, entry)
 
 	_, err := db.db.Exec(query, args...)
 	if err != nil {
@@ -196,6 +250,25 @@ func (db *DB) UpdateRetainedQuoteState(hash string, oldState types.RQState, newS
 	log.Debugf("updating state from %v to %v for retained quote: %v", oldState, newState, hash)
 
 	query, args, _ := sqlx.Named(updateRetainedQuoteState, UpdateQuoteState{QuoteHash: hash, OldState: oldState, NewState: newState})
+	res, err := db.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("error updating retained quote: %v; oldState: %v; newState: %v", hash, oldState, newState)
+	}
+
+	return nil
+}
+
+func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error {
+	log.Debugf("updating state from %v to %v for retained quote: %v", oldState, newState, hash)
+
+	query, args, _ := sqlx.Named(updateRetainedPegOutQuoteState, UpdateQuoteState{QuoteHash: hash, OldState: oldState, NewState: newState})
 	res, err := db.db.Exec(query, args...)
 	if err != nil {
 		return err
