@@ -692,8 +692,6 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 		if pq != nil {
 
-			pq.FedBTCAddr = fedAddress
-
 			pq.LBCAddr = s.rsk.GetLBCAddress()
 
 			h, err := s.rsk.HashPegOutQuote(pq)
