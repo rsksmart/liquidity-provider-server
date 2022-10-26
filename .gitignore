@@ -10,3 +10,5 @@
 /config.json
 /liquidity-provider-server
 /server.db
+
+/docker-compose/lbc-deployer/liquidity-bridge-contract/
