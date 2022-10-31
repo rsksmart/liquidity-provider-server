@@ -169,7 +169,7 @@ var testPegOutQuotes = []struct {
 		ExpectedAddressHash:         "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
 		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
 		NetworkParams:               "testnet",
-		DerivationAddress:           "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D",
+		DerivationAddress:           "2NE1twHkPzqvaJvuQWEUuAG2pUU337H7ots",
 	},
 	{
 		LPBTCAddr:                   "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
@@ -180,7 +180,7 @@ var testPegOutQuotes = []struct {
 		ExpectedAddressHash:         "2N6LxcNDYkKzeyXh7xjZUNZnS9G4Sq3mysi",
 		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
 		NetworkParams:               "testnet",
-		DerivationAddress:           "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D",
+		DerivationAddress:           "2NE1twHkPzqvaJvuQWEUuAG2pUU337H7ots",
 	},
 }
 

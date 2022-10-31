@@ -1,6 +1,7 @@
 package testmocks
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/mock"
 )
@@ -71,4 +72,23 @@ func (d *DbMock) UpdateRetainedQuoteState(hash string, oldState types.RQState, n
 func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
 	d.Called()
 	return new(types.Wei), nil
+}
+
+func (d *DbMock) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
+	return nil, nil
+}
+
+func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+	return nil
+}
+
+func (d *DbMock) RetainPegOutQuote(entry *pegout.RetainedQuote) error {
+	return nil
+}
+
+func (d *DbMock) UpdateRetainedPegOutQuoteState(
+	hash string,
+	oldState types.RQState,
+	newState types.RQState) error {
+	return nil
 }
