@@ -325,6 +325,8 @@ func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (uint8, error) {
 		if err == nil {
 			return status, nil
 		}
+
+		log.Debugf("Exp:: GetProcessedPegOutQuotes error ::: %v", err)
 		time.Sleep(rpcSleep)
 	}
 
@@ -815,6 +817,8 @@ func (rsk *RSK) checkPegoutRegister(quoteHash string, w QuotePegOutWatcher, expT
 		w.OnRegisterPegOut(types.RQStateCallForUserFailed)
 		return
 	}
+
+	log.Debugf("Exp:: status %v\n", status)
 
 	if status == 2 {
 		w.OnRegisterPegOut(types.RQStateCallForUserSucceeded)
