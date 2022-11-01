@@ -239,6 +239,7 @@ func testGetQuoteComplete(t *testing.T) {
 		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
 		srv.getQuoteHandler(&w, req)
 		assert.EqualValues(t, "bad request; requested amount below bridge's min pegin tx value\n", w.Output)
+
 	}
 }
 
