@@ -47,6 +47,7 @@ type Server struct {
 	db              storage.DBConnector
 	now             func() time.Time
 	watchers        map[string]*BTCAddressWatcher
+	pegOutWatchers  map[string]*BTCAddressPegOutWatcher
 	rskWatchers     map[string]*RegisterPegoutWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
@@ -109,6 +110,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		pegoutProviders: make([]pegout.LiquidityProvider, 0),
 		now:             now,
 		watchers:        make(map[string]*BTCAddressWatcher),
+		pegOutWatchers:  make(map[string]*BTCAddressPegOutWatcher),
 		rskWatchers:     make(map[string]*RegisterPegoutWatcher),
 	}
 }
@@ -276,7 +278,32 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 	return err
 }
 
-func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, hash string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
+func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depositAddr string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
+	_, ok := s.pegOutWatchers[hash]
+
+	if ok {
+		return nil
+	}
+
+	minBtcAmount := btcutil.Amount(quote.Value)
+	expTime := getPegOutQuoteExpTime(quote)
+	watcher := NewBTCAddressPegOutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	err := s.btc.AddAddressPegOutWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
+		log.Debugln("Done: addAddressPegOutWatcher")
+		s.addWatcherMu.Lock()
+		defer s.addWatcherMu.Unlock()
+		delete(s.pegOutWatchers, hash)
+	})
+	if err == nil {
+		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
+		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
+		s.pegOutWatchers[hash] = watcher
+	}
+	return err
+}
+
+func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, hash string, derivationAddress string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
 	s.addWatcherMu.Lock()
 	defer s.addWatcherMu.Unlock()
 
@@ -291,6 +318,14 @@ func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, ha
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
 		delete(s.rskWatchers, hash)
+
+		if watcher.state == types.RQStateCallForUserSucceeded {
+			log.Debugf("Start Verification of derivationAddress deposit ::: %v", derivationAddress)
+			err := s.addAddressPegOutWatcher(quote, hash, derivationAddress, signB, provider, types.RQStateCallForUserSucceeded)
+			if err != nil {
+				log.Errorf("Impossible to send money to p2sh, %v", derivationAddress)
+			}
+		}
 	})
 	if err == nil {
 		log.Info("added watcher for quote: : ", hash, "; deposit addr: ")
@@ -837,7 +872,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = s.addAddressWatcherToVerifyRegisterPegOut(quote, req.QuoteHash, signB, p, types.RQStateWaitingForDeposit)
+	err = s.addAddressWatcherToVerifyRegisterPegOut(quote, req.QuoteHash, req.DerivationAddress, signB, p, types.RQStateWaitingForDeposit)
 	if err != nil {
 		log.Error("error adding address watcher: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
