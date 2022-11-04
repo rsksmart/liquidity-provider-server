@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -113,9 +114,8 @@ func (suite *ExampleTestSuite) SetupTest() {
 func (suite *ExampleTestSuite) TestGetQuotePegOut() {
 	quote := getQuote(suite)
 	assert.NotNil(suite.T(), quote.DerivationAddress)
-	assert.Equal(suite.T(), quote.Quote.Value.String(), "600000000000000000")
+	assert.Equal(suite.T(), strconv.FormatUint(quote.Quote.Value, 10), "600000000000000000")
 	assert.Equal(suite.T(), quote.Quote.RSKRefundAddr, "0xa554d96413FF72E93437C4072438302C38350EE3")
-	assert.Equal(suite.T(), quote.Quote.BTCRefundAddr, "1NwGDBiQzGFcyH9aQqeia9XEmaftsgBS4k")
 }
 
 func getQuote(suite *ExampleTestSuite) server.QuotePegOutResponse {
@@ -148,7 +148,7 @@ func (suite *ExampleTestSuite) TestAcceptQuotePegOut() {
 	suite.SetupTest()
 	quote := getQuote(suite)
 
-	h, err := suite.rsk.HashQuote(quote.Quote)
+	h, err := suite.rsk.HashPegOutQuote(quote.Quote)
 
 	if err != nil {
 		fmt.Println(err)
