@@ -8,14 +8,16 @@ import (
 
 type DbMock struct {
 	mock.Mock
-	hash  string
-	quote *types.Quote
+	hash        string
+	quote       *types.Quote
+	pegoutQuote *pegout.Quote
 }
 
-func NewDbMock(h string, q *types.Quote) *DbMock {
+func NewDbMock(h string, q *types.Quote, pq *pegout.Quote) *DbMock {
 	return &DbMock{
-		hash:  h,
-		quote: q,
+		hash:        h,
+		quote:       q,
+		pegoutQuote: pq,
 	}
 }
 
@@ -75,7 +77,8 @@ func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
 }
 
 func (d *DbMock) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
-	return nil, nil
+	d.Called(quoteHash)
+	return d.pegoutQuote, nil
 }
 
 func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {

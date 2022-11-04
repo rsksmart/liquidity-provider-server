@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math"
 	"math/big"
 	"math/rand"
@@ -30,6 +31,18 @@ type LiquidityProviderMock struct {
 	address string
 }
 
+type LiquidityPegOutProviderMock struct {
+	address string
+}
+
+func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote) (*pegout.Quote, error) {
+	return quote, nil
+}
+
+func (lp LiquidityPegOutProviderMock) SignTx(address common.Address, transaction *gethTypes.Transaction) (*gethTypes.Transaction, error) {
+	return &gethTypes.Transaction{}, nil
+}
+
 func (lp LiquidityProviderMock) SignTx(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
@@ -49,9 +62,22 @@ func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *types.Wei) ([]b
 	return []byte("fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c"), nil
 }
 
+func (lp LiquidityPegOutProviderMock) SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error) {
+	return hex.DecodeString("fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c")
+}
+
+func (lp LiquidityPegOutProviderMock) Address() string {
+	return lp.address
+}
+
 var providerMocks = []LiquidityProviderMock{
 	{address: "123"},
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
+}
+
+var providerPegOutMocks = []LiquidityPegOutProviderMock{
+	{address: "456"},
+	{address: "0xa554d96413FF72E93437C4072438302C38350EE3"},
 }
 
 var testQuotes = []*types.Quote{
@@ -73,6 +99,25 @@ var testQuotes = []*types.Quote{
 		TimeForDeposit:     3600,
 		CallTime:           3600,
 		Confirmations:      10,
+	},
+}
+
+var testPegOutQuotes = []*pegout.Quote{
+	{
+		LBCAddr:               "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		LPRSKAddr:             "0xa554d96413FF72E93437C4072438302C38350EE3",
+		RSKRefundAddr:         "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
+		Fee:                   250,
+		PenaltyFee:            5000,
+		Nonce:                 int64(rand.Int()),
+		Value:                 250,
+		AgreementTimestamp:    0,
+		DepositDateLimit:      0,
+		DepositConfirmations:  0,
+		TransferConfirmations: 0,
+		TransferTime:          0,
+		ExpireDate:            0,
+		ExpireBlocks:          0,
 	},
 }
 
@@ -102,7 +147,7 @@ func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
 func testCheckHealth(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
-	db := testmocks.NewDbMock("", testQuotes[0])
+	db := testmocks.NewDbMock("", testQuotes[0], nil)
 	srv := New(rsk, btc, db)
 
 	w := http2.TestResponseWriter{}
@@ -158,7 +203,7 @@ func testGetQuoteComplete(t *testing.T) {
 	for _, quote := range testQuotes {
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := testmocks.NewDbMock("", quote)
+		db := testmocks.NewDbMock("", quote, nil)
 
 		srv := New(rsk, btc, db)
 
@@ -248,7 +293,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := testmocks.NewDbMock(hash, quote)
+		db := testmocks.NewDbMock(hash, quote, nil)
 		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
@@ -299,7 +344,7 @@ func testInitBtcWatchers(t *testing.T) {
 	quote := testQuotes[0]
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
-	db := testmocks.NewDbMock(hash, quote)
+	db := testmocks.NewDbMock(hash, quote, nil)
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
@@ -354,23 +399,22 @@ func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
 }
 
 func testcAcceptQuotePegoutComplete(t *testing.T) {
-	for _, quote := range testQuotes {
+	for _, quote := range testPegOutQuotes {
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		derivationAddress := "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		db := testmocks.NewDbMock(hash, quote)
-		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
-		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
-		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
+		db := testmocks.NewDbMock(hash, nil, quote)
+		minAmount := quote.Value + quote.Fee
+		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.DepositDateLimit), 0)
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
 		})
 
-		for _, lp := range providerMocks {
+		for _, lp := range providerPegOutMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddProvider(lp)
+			err := srv.AddPegOutProvider(lp)
 			if err != nil {
 				t.Fatalf("couldn't add provider. error: %v", err)
 			}
@@ -384,27 +428,28 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 			t.Errorf("couldn't instantiate request. error: %v", err)
 		}
 
-		db.On("GetQuote", hash).Times(1).Return(quote, nil)
+		db.On("GetPegOutQuote", hash).Times(1).Return(quote, nil)
+		rsk.On("AddQuoteToWatch", "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228", time.Minute, expTime, mock.AnythingOfType("*http.RegisterPegoutWatcher"), mock.AnythingOfType("func(connectors.QuotePegOutWatcher)")).Times(1).Return("")
 
 		btc.On("AddAddressWatcher", "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
 		srv.acceptQuotePegOutHandler(&w, req)
 		response := AcceptResPegOut{}
 		json.Unmarshal([]byte(w.Output), &response)
-		assert.Empty(t, response.Signature)
+		assert.Equal(t, "fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c", response.Signature)
 	}
 }
 
 func TestLiquidityProviderServer(t *testing.T) {
-	// t.Run("get provider by address", testGetProviderByAddress)
-	// t.Run("check health", testCheckHealth)
-	// t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
+	t.Run("get provider by address", testGetProviderByAddress)
+	t.Run("check health", testCheckHealth)
+	t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
 	t.Run("get quote", testGetQuoteComplete)
-	// t.Run("accept quote", testAcceptQuoteComplete)
-	// t.Run("init BTC watchers", testInitBtcWatchers)
-	// t.Run("get quote exp time", testGetQuoteExpTime)
-	// t.Run("decode address", testDecodeAddress)
-	// t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
-	// t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
-	// t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
-	// t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
+	t.Run("accept quote", testAcceptQuoteComplete)
+	t.Run("init BTC watchers", testInitBtcWatchers)
+	t.Run("get quote exp time", testGetQuoteExpTime)
+	t.Run("decode address", testDecodeAddress)
+	t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
+	t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
+	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
+	t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
 }
