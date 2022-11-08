@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine
+FROM --platform=linux/amd64 golang:1.16-alpine
 
 RUN apk add git
 RUN apk add gcc
@@ -16,6 +16,7 @@ COPY *.go ./
 COPY connectors ./connectors
 COPY http ./http
 COPY storage ./storage
+COPY pegout ./pegout
 
 RUN go build -o /usr/local/bin/liquidity-provider-server
 
