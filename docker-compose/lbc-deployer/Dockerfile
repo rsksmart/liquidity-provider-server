@@ -8,7 +8,7 @@ USER node
 
 WORKDIR /home/node
 
-ARG LBC_GIT_BRANCH=master
+ARG LBC_GIT_BRANCH=feature/peg_out
 RUN gitBranch=${LBC_GIT_BRANCH} && \
     git init && \
     git remote add origin https://github.com/rsksmart/liquidity-bridge-contract.git && \
