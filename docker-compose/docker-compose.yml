@@ -25,7 +25,7 @@ services:
     image: rskj:latest
     container_name: rskj01
     ports:
-      - "127.0.0.1:4444:4444"
+      - "4444:4444"
     volumes:
       - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
       - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
