@@ -17,6 +17,7 @@ import (
 
 type RskMock struct {
 	mock.Mock
+	QuoteHash string
 }
 
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
