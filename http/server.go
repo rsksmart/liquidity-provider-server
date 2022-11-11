@@ -97,6 +97,14 @@ type acceptReqPegout struct {
 	DerivationAddress string `json:"derivationAddress"`
 }
 
+type pegOutQuoteReq struct {
+	Quote *pegout.Quote `json:"quote"`
+}
+
+type pegOutQuoteResponse struct {
+	QuoteHash string `json:"quoteHash"`
+}
+
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
 	return newServer(rsk, btc, db, time.Now)
 }
@@ -190,6 +198,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
+	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -881,4 +890,39 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	signature := hex.EncodeToString(signB)
 	returnQuotePegOutSignFunc(w, signature)
+}
+
+func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	payload := pegOutQuoteReq{}
+
+	dec := json.NewDecoder(r.Body)
+
+	err := dec.Decode(&payload)
+
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	quote := payload.Quote
+
+	hash, err := s.rsk.HashPegOutQuote(quote)
+	if err != nil {
+		http.Error(w, "Unable to hash quote", http.StatusInternalServerError)
+		return
+	}
+
+	response := &pegOutQuoteResponse{
+		QuoteHash: hash,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		return
+	}
 }
