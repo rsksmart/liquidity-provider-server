@@ -439,6 +439,50 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 	}
 }
 
+func testHashPegOutQuote(t *testing.T) {
+
+	w := http2.TestResponseWriter{}
+
+	h := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
+	rsk := new(testmocks.RskMock)
+
+	rsk.QuoteHash = h
+	btc := new(testmocks.BtcMock)
+	quote := testPegOutQuotes[0]
+
+	db := testmocks.NewDbMock(h, nil, quote)
+
+	srv := newServer(rsk, btc, db, func() time.Time {
+		return time.Unix(0, 0)
+	})
+
+	req, err := http.NewRequest("POST", "/pegout/hashQuote", bytes.NewReader([]byte("{\"\"}")))
+	if err != nil {
+		t.Errorf("couldn't instantiate request. error: %v", err)
+	}
+
+	srv.hashPegOutQuote(&w, req)
+
+	fmt.Println(w)
+
+	assert.Equal(t, http.StatusBadRequest, w.StatusCode)
+
+	req, err = http.NewRequest("POST", "/pegout/hashQuote", bytes.NewReader([]byte("{\n        \"quote\": {\n            \"lbcAddress\": \"0xE1189cDE27b1101dc08B3f7670B71C07F7156638\",\n            \"liquidityProviderRskAddress\": \"0x9D93929A9099be4355fC2389FbF253982F9dF47c\",\n            \"rskRefundAddress\": \"0xa554d96413FF72E93437C4072438302C38350EE3\",\n            \"fee\": 1000,\n            \"penaltyFee\": 1000000,\n            \"nonce\": 5260449950446393215,\n            \"value\": 200,\n            \"agreementTimestamp\": 1667921736,\n            \"depositDateLimit\": 3600,\n            \"depositConfirmations\": 2,\n            \"transferConfirmations\": 0,\n            \"transferTime\": 0,\n            \"expireDate\": 0,\n            \"expireBlocks\": 0\n        },\n        \"derivationAddress\": \"2NErfqCbrNoXLiHzRtzHb9H12Faq4iqKHSD\"\n    }")))
+	if err != nil {
+		t.Errorf("couldn't instantiate request. error: %v", err)
+	}
+
+	w = http2.TestResponseWriter{}
+
+	srv.hashPegOutQuote(&w, req)
+
+	response := pegOutQuoteResponse{}
+	json.Unmarshal([]byte(w.Output), &response)
+
+	assert.Equal(t, http.StatusOK, w.StatusCode)
+	assert.Equal(t, response.QuoteHash, "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228")
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -452,4 +496,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
 	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
 	t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
+	t.Run("hash peg out quote", testHashPegOutQuote)
 }

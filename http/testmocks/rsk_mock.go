@@ -149,5 +149,5 @@ func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.
 }
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
-	return "", nil
+	return m.QuoteHash, nil
 }
