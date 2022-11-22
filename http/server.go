@@ -52,7 +52,6 @@ type QuoteRequest struct {
 	CallContractAddress   string     `json:"callContractAddress"`
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
-	GasLimit              uint32     `json:"gasLimit"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
@@ -330,7 +329,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
 	for _, p := range s.providers {
 		pq, err := p.GetQuote(q, gas, types.NewBigWei(price))
 		if err != nil {
@@ -345,7 +344,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			hash, err := s.storeQuote(pq, true)
+			hash, err := s.storeQuote(pq)
 
 			if err != nil {
 				log.Error(err)
@@ -494,7 +493,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *types.Quote {
 	return &types.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
@@ -503,7 +502,7 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quo
 		ContractAddr:  qr.CallContractAddress,
 		Data:          qr.CallContractArguments,
 		Value:         qr.ValueToTransfer.Copy(),
-		GasLimit:      qr.GasLimit,
+		GasLimit:      uint32(limitGas),
 	}
 }
 
@@ -532,11 +531,7 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func (s *Server) storeQuote(q *types.Quote, limitGas bool) (string, error) {
-	if limitGas {
-		q.GasLimit = uint32(q.CallFee.Uint64())
-	}
-
+func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
 		return "", err
