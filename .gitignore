@@ -10,3 +10,5 @@
 /config.json
 /liquidity-provider-server
 /server.db
+
+.DS_Store

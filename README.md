@@ -62,7 +62,6 @@ Computes and returns a quote for the service.
     contractAddr (string) - Hex-encoded contract address.
     data (string) - Hex-encoded contract data.
     value (int) - Value to send in the call.
-    gasLimit (int) - Gas limit to use in the call.
     rskRefundAddr (string) - Hex-encoded user RSK refund address.
     btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
 
@@ -80,7 +79,7 @@ Computes and returns a quote for the service.
         penaltyFee;                       // the penalty that the LP pays if it fails to deliver the service
         contractAddr;                     // the destination address of the peg-in
         data;                             // the arguments to send in the call
-        gasLimit;                         // the gas limit
+        gasLimit;                         // the gas limit -> Calculated based on the estimated gas in the network
         nonce;                            // a nonce that uniquely identifies this quote
         value;                            // the value to transfer in the call
         agreementTimestamp;               // the timestamp of the agreement
