@@ -5,14 +5,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcutil"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -84,6 +85,17 @@ func testGetProviderByAddress(t *testing.T) {
 		result := getProviderByAddress(liquidityProviders, tt.Address())
 		assert.EqualValues(t, tt.Address(), result.Address())
 	}
+}
+
+func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
+	var liquidityProviders []providers.LiquidityProvider
+	for _, providerMock := range providerMocks {
+		liquidityProviders = append(liquidityProviders, providerMock)
+	}
+
+	var nonLiquidityProviderAddress = "0xa554d96413FF72E93437C4072438302C38350EE3"
+	result := getProviderByAddress(liquidityProviders, nonLiquidityProviderAddress)
+	assert.Empty(t, result)
 }
 
 func testCheckHealth(t *testing.T) {
@@ -316,11 +328,36 @@ func testGetQuoteExpTime(t *testing.T) {
 	assert.Equal(t, time.Unix(5, 0), expTime)
 }
 
+func testDecodeAddress(t *testing.T) {
+	_, _, _, err := decodeAddresses("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", "1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", "0xa554d96413FF72E93437C4072438302C38350EE3")
+	assert.Empty(t, err)
+}
+
+func testDecodeAddressWithAnInvalidBtcRefundAddr(t *testing.T) {
+	_, _, _, err := decodeAddresses("0xa554d96413FF72E93437C4072438302C38350EE3", "1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", "0xa554d96413FF72E93437C4072438302C38350EE3")
+	assert.Equal(t, "the provider address is not a valid base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
+}
+
+func testDecodeAddressWithAnInvalidLpBTCAddrB(t *testing.T) {
+	_, _, _, err := decodeAddresses("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", "0xa554d96413FF72E93437C4072438302C38350EE3", "0xa554d96413FF72E93437C4072438302C38350EE3")
+	assert.Equal(t, "the provider address is not a valid base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
+}
+
+func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
+	_, _, _, err := decodeAddresses("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", "1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", "1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF")
+	assert.Equal(t, "invalid address: 1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", err.Error())
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
+	t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
 	t.Run("get quote", testGetQuoteComplete)
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)
+	t.Run("decode address", testDecodeAddress)
+	t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
+	t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
+	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
 }
