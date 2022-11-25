@@ -1,12 +1,17 @@
 package main
 
-import "github.com/rsksmart/liquidity-provider/providers"
+import (
+	"github.com/rsksmart/liquidity-provider-server/http"
+	"github.com/rsksmart/liquidity-provider/providers"
+)
 
 type config struct {
 	LogFile              string
 	Debug                bool
 	IrisActivationHeight int
 	ErpKeys              []string
+	MaxQuoteValue        int
+	SimultaneouslyQuotes int
 
 	Server struct {
 		Port uint
@@ -14,12 +19,7 @@ type config struct {
 	DB struct {
 		Path string
 	}
-	RSK struct {
-		Endpoint                    string
-		LBCAddr                     string
-		BridgeAddr                  string
-		RequiredBridgeConfirmations int64
-	}
+	RSK []http.LiquidityProvider
 	BTC struct {
 		Endpoint string
 		Username string

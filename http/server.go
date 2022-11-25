@@ -36,6 +36,22 @@ const (
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 
+type LiquidityProvider struct {
+	Endpoint                    string
+	LBCAddr                     string
+	BridgeAddr                  string
+	RequiredBridgeConfirmations int64
+	MaxQuoteValue               int
+	SimultaneouslyQuotes        int
+}
+
+type ConfigData struct {
+	MaxQuoteValue        int
+	SimultaneouslyQuotes int
+
+	RSK []LiquidityProvider
+}
+
 type Server struct {
 	srv             http.Server
 	providers       []providers.LiquidityProvider
@@ -46,6 +62,7 @@ type Server struct {
 	watchers        map[string]*BTCAddressWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
+	cfgData         ConfigData
 }
 
 type QuoteRequest struct {
@@ -65,11 +82,11 @@ type acceptReq struct {
 	QuoteHash string
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
-	return newServer(rsk, btc, db, time.Now)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
+	return newServer(rsk, btc, db, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:       rsk,
 		btc:       btc,
@@ -77,6 +94,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		providers: make([]providers.LiquidityProvider, 0),
 		now:       now,
 		watchers:  make(map[string]*BTCAddressWatcher),
+		cfgData:   cfgData,
 	}
 }
 
@@ -290,6 +308,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
+	log.Debug(s.cfgData)
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
 		http.Error(w, "bad request", http.StatusBadRequest)
