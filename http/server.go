@@ -42,7 +42,7 @@ type LiquidityProvider struct {
 	BridgeAddr                  string
 	RequiredBridgeConfirmations int64
 	MaxQuoteValue               int
-	SimultaneouslyQuotes        int
+	SimultaneousQuotes          int
 }
 
 type ConfigData struct {
