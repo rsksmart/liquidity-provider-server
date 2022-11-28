@@ -53,9 +53,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
-	cfgData.SimultaneouslyQuotes = cfg.SimultaneouslyQuotes
-	cfgData.RSK = cfg.RSK
+	initCfgData()
 
 	srv = http.New(rsk, btc, db, cfgData)
 	log.Debug("registering local provider (this might take a while)")
@@ -90,12 +88,12 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK[0].LBCAddr, cfg.RSK[0].BridgeAddr, cfg.RSK[0].RequiredBridgeConfirmations, cfg.IrisActivationHeight, cfg.ErpKeys)
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations, cfg.IrisActivationHeight, cfg.ErpKeys)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(cfg.RSK[0].Endpoint, cfg.Provider.ChainId)
+	err = rsk.Connect(cfg.RSK.Endpoint, cfg.Provider.ChainId)
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
@@ -124,5 +122,28 @@ func main() {
 	err = db.Close()
 	if err != nil {
 		log.Fatal("error closing DB connection: ", err)
+	}
+}
+
+func initCfgData() {
+	if cfg.MaxQuoteValue > 0 {
+		cfgData.MaxQuoteValue = cfg.MaxQuoteValue
+	} else {
+		cfgData.MaxQuoteValue = 600000000000000000
+	}
+
+	if cfg.MaxQuoteValue > 0 {
+		cfgData.MaxQuoteValue = cfg.MaxQuoteValue
+	} else {
+		cfgData.SimultaneouslyQuotes = 1
+	}
+
+	cfgData.RSK = cfg.RSK
+
+	if cfg.RSK.MaxQuoteValue == 0 {
+		cfgData.RSK.MaxQuoteValue = 600000000000000000
+	}
+	if cfg.RSK.SimultaneousQuotes == 0 {
+		cfgData.RSK.MaxQuoteValue = 1
 	}
 }

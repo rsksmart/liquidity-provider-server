@@ -36,20 +36,19 @@ const (
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 
-type LiquidityProvider struct {
+type LiquidityProviderList struct {
 	Endpoint                    string
 	LBCAddr                     string
 	BridgeAddr                  string
 	RequiredBridgeConfirmations int64
-	MaxQuoteValue               int
+	MaxQuoteValue               uint64
 	SimultaneousQuotes          int
 }
 
 type ConfigData struct {
-	MaxQuoteValue        int
+	MaxQuoteValue        uint64
 	SimultaneouslyQuotes int
-
-	RSK []LiquidityProvider
+	RSK                  LiquidityProviderList
 }
 
 type Server struct {
@@ -308,13 +307,25 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
-	log.Debug(s.cfgData)
+
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	maxValueTotransfer := s.cfgData.RSK.MaxQuoteValue
+
+	if maxValueTotransfer > 0 {
+		maxValueTotransfer = s.cfgData.MaxQuoteValue
+	}
+
+	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+		log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {

@@ -10,7 +10,7 @@ type config struct {
 	Debug                bool
 	IrisActivationHeight int
 	ErpKeys              []string
-	MaxQuoteValue        int
+	MaxQuoteValue        uint64
 	SimultaneouslyQuotes int
 
 	Server struct {
@@ -19,7 +19,7 @@ type config struct {
 	DB struct {
 		Path string
 	}
-	RSK []http.LiquidityProvider
+	RSK http.LiquidityProviderList
 	BTC struct {
 		Endpoint string
 		Username string

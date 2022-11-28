@@ -2,8 +2,9 @@ package testmocks
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -14,6 +15,21 @@ import (
 
 type RskMock struct {
 	mock.Mock
+}
+
+type LiquidityProviderListMock struct {
+	Endpoint                    string
+	LBCAddr                     string
+	BridgeAddr                  string
+	RequiredBridgeConfirmations int64
+	MaxQuoteValue               uint64
+	SimultaneousQuotes          int
+}
+
+type ConfigDataMock struct {
+	MaxQuoteValue        uint64
+	SimultaneouslyQuotes int
+	RSK                  LiquidityProviderListMock
 }
 
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {

@@ -53,6 +53,25 @@ var providerMocks = []LiquidityProviderMock{
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
 }
 
+type ConfigDataMock struct {
+	MaxQuoteValue        uint64
+	SimultaneouslyQuotes int
+	RSK                  LiquidityProviderList
+}
+
+var cfgDataMock = http.ConfigData{
+	MaxQuoteValue:        600000000000000000,
+	SimultaneouslyQuotes: 1,
+	RSK: LiquidityProviderList{
+		Endpoint:                    "http://localhost:7777",
+		LBCAddr:                     "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
+		BridgeAddr:                  "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+		RequiredBridgeConfirmations: 10,
+		MaxQuoteValue:               600000000000000000,
+		SimultaneousQuotes:          1,
+	},
+}
+
 var testQuotes = []*types.Quote{
 	{
 		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
@@ -102,7 +121,8 @@ func testCheckHealth(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock("", testQuotes[0])
-	srv := New(rsk, btc, db)
+
+	srv := New(rsk, btc, db, cfgDataMock)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
@@ -159,7 +179,7 @@ func testGetQuoteComplete(t *testing.T) {
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock("", quote)
 
-		srv := New(rsk, btc, db)
+		srv := New(rsk, btc, db, cfgDataMock)
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
@@ -251,7 +271,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
-		})
+		}, cfgDataMock)
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 			err := srv.AddProvider(lp)
@@ -301,7 +321,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 	srv := newServer(rsk, btc, db, func() time.Time {
 		return time.Unix(0, 0)
-	})
+	}, cfgDataMock)
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 		err := srv.AddProvider(lp)
