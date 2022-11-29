@@ -53,19 +53,13 @@ var providerMocks = []LiquidityProviderMock{
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
 }
 
-type ConfigDataMock struct {
-	MaxQuoteValue        uint64
-	SimultaneouslyQuotes int
-	RSK                  LiquidityProviderList
-}
-
-var cfgDataMock = http.ConfigData{
+var cfgData = ConfigData{
 	MaxQuoteValue:        600000000000000000,
 	SimultaneouslyQuotes: 1,
 	RSK: LiquidityProviderList{
-		Endpoint:                    "http://localhost:7777",
-		LBCAddr:                     "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
-		BridgeAddr:                  "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+		Endpoint:                    "",
+		LBCAddr:                     "",
+		BridgeAddr:                  "",
 		RequiredBridgeConfirmations: 10,
 		MaxQuoteValue:               600000000000000000,
 		SimultaneousQuotes:          1,
@@ -122,7 +116,7 @@ func testCheckHealth(t *testing.T) {
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock("", testQuotes[0])
 
-	srv := New(rsk, btc, db, cfgDataMock)
+	srv := New(rsk, btc, db, cfgData)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
@@ -179,7 +173,7 @@ func testGetQuoteComplete(t *testing.T) {
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock("", quote)
 
-		srv := New(rsk, btc, db, cfgDataMock)
+		srv := New(rsk, btc, db, cfgData)
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
@@ -192,17 +186,15 @@ func testGetQuoteComplete(t *testing.T) {
 		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
 		callArgs := ""
 		value := quote.Value
-		gasLim := 500000
 		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
 		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
 		body := fmt.Sprintf(
 			"{\"callContractAddress\":\"%v\","+
 				"\"callContractArguments\":\"%v\","+
 				"\"valueToTransfer\":%v,"+
-				"\"gaslimit\":%v,"+
 				"\"RskRefundAddress\":\"%v\","+
 				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, value, gasLim, rskRefAddr, btcRefAddr)
+			destAddr, callArgs, value, rskRefAddr, btcRefAddr)
 
 		tq := types.Quote{
 			FedBTCAddr:         "",
@@ -215,7 +207,7 @@ func testGetQuoteComplete(t *testing.T) {
 			PenaltyFee:         types.NewWei(0),
 			ContractAddr:       destAddr,
 			Data:               callArgs,
-			GasLimit:           500000,
+			GasLimit:           10000,
 			Nonce:              0,
 			Value:              value.Copy(),
 			AgreementTimestamp: 0,
@@ -271,7 +263,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgDataMock)
+		}, cfgData)
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 			err := srv.AddProvider(lp)
@@ -321,7 +313,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 	srv := newServer(rsk, btc, db, func() time.Time {
 		return time.Unix(0, 0)
-	}, cfgDataMock)
+	}, cfgData)
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 		err := srv.AddProvider(lp)

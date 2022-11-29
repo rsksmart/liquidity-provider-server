@@ -17,21 +17,6 @@ type RskMock struct {
 	mock.Mock
 }
 
-type LiquidityProviderListMock struct {
-	Endpoint                    string
-	LBCAddr                     string
-	BridgeAddr                  string
-	RequiredBridgeConfirmations int64
-	MaxQuoteValue               uint64
-	SimultaneousQuotes          int
-}
-
-type ConfigDataMock struct {
-	MaxQuoteValue        uint64
-	SimultaneouslyQuotes int
-	RSK                  LiquidityProviderListMock
-}
-
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
 	args := m.Called()
 	return args.Get(0).(*big.Int), args.Error(1)
