@@ -54,15 +54,13 @@ var providerMocks = []LiquidityProviderMock{
 }
 
 var cfgData = ConfigData{
-	MaxQuoteValue:        600000000000000000,
-	SimultaneouslyQuotes: 1,
+	MaxQuoteValue: 600000000000000000,
 	RSK: LiquidityProviderList{
 		Endpoint:                    "",
 		LBCAddr:                     "",
 		BridgeAddr:                  "",
 		RequiredBridgeConfirmations: 10,
 		MaxQuoteValue:               600000000000000000,
-		SimultaneousQuotes:          1,
 	},
 }
 
