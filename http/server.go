@@ -42,13 +42,11 @@ type LiquidityProviderList struct {
 	BridgeAddr                  string
 	RequiredBridgeConfirmations int64
 	MaxQuoteValue               uint64
-	SimultaneousQuotes          int
 }
 
 type ConfigData struct {
-	MaxQuoteValue        uint64
-	SimultaneouslyQuotes int
-	RSK                  LiquidityProviderList
+	MaxQuoteValue uint64
+	RSK           LiquidityProviderList
 }
 
 type Server struct {
@@ -315,10 +313,10 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 
-	maxValueTotransfer := s.cfgData.RSK.MaxQuoteValue
+	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
-	if maxValueTotransfer > 0 {
-		maxValueTotransfer = s.cfgData.MaxQuoteValue
+	if maxValueTotransfer <= 0 {
+		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {

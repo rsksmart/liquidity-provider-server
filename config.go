@@ -11,7 +11,6 @@ type config struct {
 	IrisActivationHeight int
 	ErpKeys              []string
 	MaxQuoteValue        uint64
-	SimultaneouslyQuotes int
 
 	Server struct {
 		Port uint

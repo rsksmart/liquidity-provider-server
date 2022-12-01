@@ -126,24 +126,16 @@ func main() {
 }
 
 func initCfgData() {
+	log.Debug("Init Data: ", cfg)
 	if cfg.MaxQuoteValue > 0 {
 		cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 	} else {
 		cfgData.MaxQuoteValue = 600000000000000000
 	}
 
-	if cfg.MaxQuoteValue > 0 {
-		cfgData.MaxQuoteValue = cfg.MaxQuoteValue
-	} else {
-		cfgData.SimultaneouslyQuotes = 1
-	}
-
 	cfgData.RSK = cfg.RSK
 
 	if cfg.RSK.MaxQuoteValue == 0 {
 		cfgData.RSK.MaxQuoteValue = 600000000000000000
-	}
-	if cfg.RSK.SimultaneousQuotes == 0 {
-		cfgData.RSK.MaxQuoteValue = 1
 	}
 }
