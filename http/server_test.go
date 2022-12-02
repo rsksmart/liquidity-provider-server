@@ -53,6 +53,17 @@ var providerMocks = []LiquidityProviderMock{
 	{address: "0x00d80aA033fb51F191563B08Dc035fA128e942C5"},
 }
 
+var cfgData = ConfigData{
+	MaxQuoteValue: 600000000000000000,
+	RSK: LiquidityProviderList{
+		Endpoint:                    "",
+		LBCAddr:                     "",
+		BridgeAddr:                  "",
+		RequiredBridgeConfirmations: 10,
+		MaxQuoteValue:               600000000000000000,
+	},
+}
+
 var testQuotes = []*types.Quote{
 	{
 		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
@@ -102,7 +113,8 @@ func testCheckHealth(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
 	db := testmocks.NewDbMock("", testQuotes[0])
-	srv := New(rsk, btc, db)
+
+	srv := New(rsk, btc, db, cfgData)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
@@ -159,7 +171,7 @@ func testGetQuoteComplete(t *testing.T) {
 		btc := new(testmocks.BtcMock)
 		db := testmocks.NewDbMock("", quote)
 
-		srv := New(rsk, btc, db)
+		srv := New(rsk, btc, db, cfgData)
 
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
@@ -172,17 +184,15 @@ func testGetQuoteComplete(t *testing.T) {
 		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
 		callArgs := ""
 		value := quote.Value
-		gasLim := 500000
 		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
 		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
 		body := fmt.Sprintf(
 			"{\"callContractAddress\":\"%v\","+
 				"\"callContractArguments\":\"%v\","+
 				"\"valueToTransfer\":%v,"+
-				"\"gaslimit\":%v,"+
 				"\"RskRefundAddress\":\"%v\","+
 				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, value, gasLim, rskRefAddr, btcRefAddr)
+			destAddr, callArgs, value, rskRefAddr, btcRefAddr)
 
 		tq := types.Quote{
 			FedBTCAddr:         "",
@@ -195,7 +205,7 @@ func testGetQuoteComplete(t *testing.T) {
 			PenaltyFee:         types.NewWei(0),
 			ContractAddr:       destAddr,
 			Data:               callArgs,
-			GasLimit:           500000,
+			GasLimit:           10000,
 			Nonce:              0,
 			Value:              value.Copy(),
 			AgreementTimestamp: 0,
@@ -251,7 +261,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, db, func() time.Time {
 			return time.Unix(0, 0)
-		})
+		}, cfgData)
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 			err := srv.AddProvider(lp)
@@ -301,7 +311,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 	srv := newServer(rsk, btc, db, func() time.Time {
 		return time.Unix(0, 0)
-	})
+	}, cfgData)
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
 		err := srv.AddProvider(lp)
@@ -348,11 +358,52 @@ func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
 	assert.Equal(t, "invalid address: 1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", err.Error())
 }
 
+func testInvalidQuoteValue(t *testing.T) {
+	for _, quote := range testQuotes {
+		rsk := new(testmocks.RskMock)
+		btc := new(testmocks.BtcMock)
+		db := testmocks.NewDbMock("", quote)
+
+		srv := New(rsk, btc, db, cfgData)
+
+		for _, lp := range providerMocks {
+			rsk.On("GetCollateral", lp.address).Return(nil)
+			err := srv.AddProvider(lp)
+			if err != nil {
+				t.Fatalf("couldn't add provider. error: %v", err)
+			}
+		}
+		w := http2.TestResponseWriter{}
+		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
+		callArgs := ""
+		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
+		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
+		body := fmt.Sprintf(
+			"{\"callContractAddress\":\"%v\","+
+				"\"callContractArguments\":\"%v\","+
+				"\"valueToTransfer\":%v,"+
+				"\"RskRefundAddress\":\"%v\","+
+				"\"bitcoinRefundAddress\":\"%v\"}",
+			destAddr, callArgs, 600000000000000001, rskRefAddr, btcRefAddr)
+
+		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Log("Tewst")
+			t.Fatalf("couldn't instantiate request. error: %v", err)
+		}
+
+		srv.getQuoteHandler(&w, req)
+		assert.EqualValues(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
+		assert.EqualValues(t, "internal server error\n", w.Output)
+	}
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
 	t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
 	t.Run("get quote", testGetQuoteComplete)
+	t.Run("get quote invalid quote value", testInvalidQuoteValue)
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)

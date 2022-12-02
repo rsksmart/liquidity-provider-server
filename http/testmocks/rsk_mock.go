@@ -2,8 +2,9 @@ package testmocks
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
