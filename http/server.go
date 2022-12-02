@@ -36,6 +36,19 @@ const (
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 
+type LiquidityProviderList struct {
+	Endpoint                    string
+	LBCAddr                     string
+	BridgeAddr                  string
+	RequiredBridgeConfirmations int64
+	MaxQuoteValue               uint64
+}
+
+type ConfigData struct {
+	MaxQuoteValue uint64
+	RSK           LiquidityProviderList
+}
+
 type Server struct {
 	srv             http.Server
 	providers       []providers.LiquidityProvider
@@ -46,6 +59,7 @@ type Server struct {
 	watchers        map[string]*BTCAddressWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
+	cfgData         ConfigData
 }
 
 type QuoteRequest struct {
@@ -65,11 +79,11 @@ type acceptReq struct {
 	QuoteHash string
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
-	return newServer(rsk, btc, db, time.Now)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
+	return newServer(rsk, btc, db, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:       rsk,
 		btc:       btc,
@@ -77,6 +91,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		providers: make([]providers.LiquidityProvider, 0),
 		now:       now,
 		watchers:  make(map[string]*BTCAddressWatcher),
+		cfgData:   cfgData,
 	}
 }
 
@@ -290,12 +305,25 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
+
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	maxValueTotransfer := s.cfgData.MaxQuoteValue
+
+	if maxValueTotransfer <= 0 {
+		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
+	}
+
+	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+		log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
