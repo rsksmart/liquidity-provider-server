@@ -132,6 +132,7 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
+	r.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(s.getProvidersHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -298,6 +299,11 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 		log.Error("error encoding response: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
+}
+
+func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
+	opts := &bind.CallOpts{}
+	quote, err := s.rsk.GetProviders(rsk, opts)
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {

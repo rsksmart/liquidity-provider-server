@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -65,6 +66,7 @@ type RSKConnector interface {
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
+	GetProviders() (LiquidityProviderLBC error)
 }
 
 type RSK struct {
@@ -714,4 +716,13 @@ func parseHex(str string) ([]byte, error) {
 		return nil, err
 	}
 	return bts, nil
+}
+
+func (rsk *RSK) GetProviders(opts *bind.CallOpts) ([]*bindings.LiquidityProviderLBC, error) {
+	var err error
+	var providers []*bindings.LiquidityProviderLBC
+
+	providers, err = rsk.lbc.GetProviders(opts)
+
+	return providers, err
 }
