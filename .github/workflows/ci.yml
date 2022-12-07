@@ -1,0 +1,31 @@
+name: liquidity provider server CI
+
+on:
+  push:
+    branches:
+      - testnet
+      - features/devops
+
+jobs:
+  ci:
+    name: CI for liquidity server
+    runs-on: ubuntu-latest
+    environment:
+      name: testnet
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+            
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Build
+        run: go build -v ./

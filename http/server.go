@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcutil"
 	"io"
 	"math"
 	"math/big"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/btcsuite/btcutil"
 
 	"context"
 
@@ -35,6 +36,19 @@ const (
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 
+type LiquidityProviderList struct {
+	Endpoint                    string
+	LBCAddr                     string
+	BridgeAddr                  string
+	RequiredBridgeConfirmations int64
+	MaxQuoteValue               uint64
+}
+
+type ConfigData struct {
+	MaxQuoteValue uint64
+	RSK           LiquidityProviderList
+}
+
 type Server struct {
 	srv             http.Server
 	providers       []providers.LiquidityProvider
@@ -45,26 +59,31 @@ type Server struct {
 	watchers        map[string]*BTCAddressWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
+	cfgData         ConfigData
 }
 
 type QuoteRequest struct {
 	CallContractAddress   string     `json:"callContractAddress"`
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
-	GasLimit              uint32     `json:"gasLimit"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
+}
+
+type QuoteReturn struct {
+	Quote     *types.Quote `json:"quote"`
+	QuoteHash string       `json:"quoteHash"`
 }
 
 type acceptReq struct {
 	QuoteHash string
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
-	return newServer(rsk, btc, db, time.Now)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
+	return newServer(rsk, btc, db, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:       rsk,
 		btc:       btc,
@@ -72,6 +91,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		providers: make([]providers.LiquidityProvider, 0),
 		now:       now,
 		watchers:  make(map[string]*BTCAddressWatcher),
+		cfgData:   cfgData,
 	}
 }
 
@@ -285,12 +305,25 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
+
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	maxValueTotransfer := s.cfgData.MaxQuoteValue
+
+	if maxValueTotransfer <= 0 {
+		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
+	}
+
+	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+		log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
@@ -306,7 +339,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var quotes []*types.Quote
+	var quotes []*QuoteReturn
 	fedAddress, err := s.rsk.GetFedAddress()
 	if err != nil {
 		log.Error("error retrieving federation address: ", err.Error())
@@ -324,7 +357,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress)
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
 	for _, p := range s.providers {
 		pq, err := p.GetQuote(q, gas, types.NewBigWei(price))
 		if err != nil {
@@ -338,14 +371,15 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				amountBelowMinLockTxValue = true
 				continue
 			}
-			err = s.storeQuote(pq)
+
+			hash, err := s.storeQuote(pq)
 
 			if err != nil {
 				log.Error(err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			} else {
-				quotes = append(quotes, pq)
+				quotes = append(quotes, &QuoteReturn{pq, hash})
 			}
 		}
 	}
@@ -487,7 +521,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *types.Quote {
 	return &types.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
@@ -496,7 +530,7 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quo
 		ContractAddr:  qr.CallContractAddress,
 		Data:          qr.CallContractArguments,
 		Value:         qr.ValueToTransfer.Copy(),
-		GasLimit:      qr.GasLimit,
+		GasLimit:      uint32(limitGas),
 	}
 }
 
@@ -525,17 +559,17 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
-func (s *Server) storeQuote(q *types.Quote) error {
+func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.db.InsertQuote(h, q)
 	if err != nil {
 		log.Fatalf("error inserting quote: %v", err)
 	}
-	return nil
+	return h, nil
 }
 
 func getQuoteExpTime(q *types.Quote) time.Time {

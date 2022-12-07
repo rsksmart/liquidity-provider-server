@@ -13,6 +13,7 @@ The server's functionality is provided through a JSON HTTP interface. In additio
     - logfile (string): the path where the logs are saved to. If empty, it prints logs to the console.
     - debug (bool): the value that indicates whether the server is run in debug mode.
     - irisActivationHeight: the block height at where Iris was activated, so the federation goes into ERP.
+    - maxQuoteValue: The maximum allowed value to a quote globaly.
     - erpKeys (array[string]): the public keys of the erp pegnatories to be used in p2sh scripts.
     - server (object): object that holds settings for the http server.
         - port (int): port where the api is served.
@@ -23,6 +24,7 @@ The server's functionality is provided through a JSON HTTP interface. In additio
         - lbcAddr (string): address of the Liquidity Bridge Contract.
         - bridgeAddr (string): address of the Bridge Contract.
         - requiredBridgeConfirmations (int): amount of confirmations required by the Bridge Contract.
+        - maxQuoteValue: The maximum allowed value to a quote to the liquidity provider, will be overrided by global value if that value where greater than 0.
     - btc (object): object that holds settings for the bitcoin connector.
         - endpoint (string): Url where the Bitcoin node is hosted (in the format IP:PORT).
         - username (string): username to be used in the connection to the bitcoin node.
@@ -62,7 +64,6 @@ Computes and returns a quote for the service.
     contractAddr (string) - Hex-encoded contract address.
     data (string) - Hex-encoded contract data.
     value (int) - Value to send in the call.
-    gasLimit (int) - Gas limit to use in the call.
     rskRefundAddr (string) - Hex-encoded user RSK refund address.
     btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
 
@@ -80,7 +81,7 @@ Computes and returns a quote for the service.
         penaltyFee;                       // the penalty that the LP pays if it fails to deliver the service
         contractAddr;                     // the destination address of the peg-in
         data;                             // the arguments to send in the call
-        gasLimit;                         // the gas limit
+        gasLimit;                         // the gas limit -> Calculated based on the estimated gas in the network
         nonce;                            // a nonce that uniquely identifies this quote
         value;                            // the value to transfer in the call
         agreementTimestamp;               // the timestamp of the agreement
