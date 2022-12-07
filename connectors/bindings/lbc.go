@@ -302,8 +302,9 @@ func (_LBC *LBCCallerSession) GetCollateral(addr common.Address) (*big.Int, erro
 // GetProviders is a method to get the registered providers in the LBC.
 //
 // Solidity: function getProviders(address addr) view returns(Provider[])
-func (_LBC *LBCCaller) GetProviders(opts *bind.CallOpts) ([]*LiquidityProviderLBC, error) {
+func (_LBC *LBCCaller) GetProviders() ([]*LiquidityProviderLBC, error) {
 	var out []interface{}
+	opts := &bind.CallOpts{}
 	err := _LBC.contract.Call(opts, &out, "getProviders")
 
 	if err != nil {

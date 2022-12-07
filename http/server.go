@@ -41,7 +41,7 @@ type LiquidityProviderList struct {
 	LBCAddr                     string
 	BridgeAddr                  string
 	RequiredBridgeConfirmations int64
-	MaxQuoteValue               uint64
+	MaxQuoteValue               int64
 }
 
 type ConfigData struct {
@@ -302,8 +302,15 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
-	opts := &bind.CallOpts{}
-	quote, err := s.rsk.GetProviders(rsk, opts)
+	w.Header().Set("Content-Type", "application/json")
+	rp, error := s.rsk.GetProviders()
+
+	if error != nil {
+		log.Error("error encoding response: ", error)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+
+	log.Debug(rp)
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -322,7 +329,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
 	if maxValueTotransfer <= 0 {
-		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
+		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {

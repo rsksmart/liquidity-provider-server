@@ -66,7 +66,7 @@ type RSKConnector interface {
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
-	GetProviders() (LiquidityProviderLBC error)
+	GetProviders() ([]*bindings.LiquidityProviderLBC, error)
 }
 
 type RSK struct {
@@ -718,11 +718,15 @@ func parseHex(str string) ([]byte, error) {
 	return bts, nil
 }
 
-func (rsk *RSK) GetProviders(opts *bind.CallOpts) ([]*bindings.LiquidityProviderLBC, error) {
+func (rsk *RSK) GetProviders() ([]*bindings.LiquidityProviderLBC, error) {
 	var err error
 	var providers []*bindings.LiquidityProviderLBC
 
-	providers, err = rsk.lbc.GetProviders(opts)
+	providers, err = rsk.lbc.GetProviders()
+
+	if err != nil {
+		log.Debug("Error RSK.go", err)
+	}
 
 	return providers, err
 }
