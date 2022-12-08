@@ -307,10 +307,17 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
 
 	if error != nil {
 		log.Error("error encoding response: ", error)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, "internal server error "+error.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	log.Debug(rp)
+	enc := json.NewEncoder(w)
+	err := enc.Encode(&rp)
+	if err != nil {
+		log.Error("error encoding registered providers list: ", err.Error())
+		http.Error(w, "internal server error "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {

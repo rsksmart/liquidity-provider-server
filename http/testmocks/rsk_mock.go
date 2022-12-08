@@ -140,3 +140,8 @@ func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*connectors.FedInfo), args.Error(1)
 }
+
+func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+	args := m.Called()
+	return args.Get(0).([]bindings.LiquidityBridgeContractProvider), args.Error(1)
+}
