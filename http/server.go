@@ -132,6 +132,7 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
+	r.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(s.getProvidersHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -295,8 +296,27 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	err := enc.Encode(response)
 	if err != nil {
-		log.Error("error encoding response: ", err.Error())
+		log.Error("Heath Check - error encoding response: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	rp, error := s.rsk.GetProviders()
+
+	if error != nil {
+		log.Error("GetProviders - error encoding response: ", error)
+		http.Error(w, "internal server error "+error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	err := enc.Encode(&rp)
+	if err != nil {
+		log.Error("error encoding registered providers list: ", err.Error())
+		http.Error(w, "internal server error "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -308,7 +328,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "bad request "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
@@ -316,7 +336,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
 	if maxValueTotransfer <= 0 {
-		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
+		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
@@ -419,7 +439,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := enc.Encode(response)
 		if err != nil {
-			log.Error("error encoding response: ", err.Error())
+			log.Error("AcceptQuote - error encoding response: ", err.Error())
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
