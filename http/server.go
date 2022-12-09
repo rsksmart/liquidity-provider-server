@@ -296,7 +296,7 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	err := enc.Encode(response)
 	if err != nil {
-		log.Error("error encoding response: ", err.Error())
+		log.Error("Heath Check - error encoding response: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
@@ -306,7 +306,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
 	rp, error := s.rsk.GetProviders()
 
 	if error != nil {
-		log.Error("error encoding response: ", error)
+		log.Error("GetProviders - error encoding response: ", error)
 		http.Error(w, "internal server error "+error.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -439,7 +439,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := enc.Encode(response)
 		if err != nil {
-			log.Error("error encoding response: ", err.Error())
+			log.Error("AcceptQuote - error encoding response: ", err.Error())
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
