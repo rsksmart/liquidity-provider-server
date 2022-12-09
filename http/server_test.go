@@ -398,6 +398,26 @@ func testInvalidQuoteValue(t *testing.T) {
 	}
 }
 
+func testGetProviders(t *testing.T) {
+	rsk := new(testmocks.RskMock)
+	btc := new(testmocks.BtcMock)
+	db := testmocks.NewDbMock("", nil)
+
+	srv := New(rsk, btc, db, cfgData)
+	req, err := http.NewRequest("GET", "getProviders", bytes.NewReader([]byte("")))
+	w := http2.TestResponseWriter{}
+
+	if err != nil {
+		t.Fatalf("couldn't instantiate request. error: %v", err)
+	}
+
+	rsk.On("GetProviders").Return(nil)
+	srv.getProvidersHandler(&w, req)
+
+	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
+	assert.EqualValues(t, "null\n", w.Output)
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -411,4 +431,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
 	t.Run("decode address with an invalid lpBTCAddrB", testDecodeAddressWithAnInvalidLpBTCAddrB)
 	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
+	t.Run("get registered providers", testGetProviders)
 }
