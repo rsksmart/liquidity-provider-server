@@ -63,12 +63,11 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallContractAddress      string     `json:"callContractAddress"`
-	CallContractArguments    string     `json:"callContractArguments"`
-	ValueToTransfer          *types.Wei `json:"valueToTransfer"`
-	RskRefundAddress         string     `json:"rskRefundAddress"`
-	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress"`
-	LiquidityProviderAddress string     `json:"liquiditProviderAddress"`
+	CallContractAddress   string     `json:"callContractAddress"`
+	CallContractArguments string     `json:"callContractArguments"`
+	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
+	RskRefundAddress      string     `json:"rskRefundAddress"`
+	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
 type QuoteReturn struct {
@@ -329,7 +328,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "bad request "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
