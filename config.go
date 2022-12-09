@@ -10,7 +10,7 @@ type config struct {
 	Debug                bool
 	IrisActivationHeight int
 	ErpKeys              []string
-	MaxQuoteValue        int
+	MaxQuoteValue        uint64
 
 	Server struct {
 		Port uint

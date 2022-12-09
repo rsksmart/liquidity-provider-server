@@ -41,7 +41,7 @@ type LiquidityProviderList struct {
 	LBCAddr                     string
 	BridgeAddr                  string
 	RequiredBridgeConfirmations int64
-	MaxQuoteValue               int64
+	MaxQuoteValue               uint64
 }
 
 type ConfigData struct {
@@ -63,11 +63,12 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallContractAddress   string     `json:"callContractAddress"`
-	CallContractArguments string     `json:"callContractArguments"`
-	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
-	RskRefundAddress      string     `json:"rskRefundAddress"`
-	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
+	CallContractAddress      string     `json:"callContractAddress"`
+	CallContractArguments    string     `json:"callContractArguments"`
+	ValueToTransfer          *types.Wei `json:"valueToTransfer"`
+	RskRefundAddress         string     `json:"rskRefundAddress"`
+	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress"`
+	LiquidityProviderAddress string     `json:"liquiditProviderAddress"`
 }
 
 type QuoteReturn struct {

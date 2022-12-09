@@ -66,6 +66,7 @@ Computes and returns a quote for the service.
     value (int) - Value to send in the call.
     rskRefundAddr (string) - Hex-encoded user RSK refund address.
     btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
+    liquiditProviderAddress (string) - Base58-encoded Hex-encoded RSK liquidity Provider address.
 
 #### Returns
 
@@ -102,3 +103,18 @@ Accepts one of the LPs quotes.
 
     signature - Signature of the quote
     bitcoinDepositAddressHash - Hash of the deposit BTC address
+    
+    
+### getProviders
+
+Gets the registered providers List.
+
+#### Parameters
+
+
+#### Returns
+
+    Array of registered providers with the fields.
+
+    Id - The Id of the provider
+    Provider - The address of the Liquidity Provider in RSK Network

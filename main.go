@@ -126,7 +126,7 @@ func main() {
 }
 
 func initCfgData() {
-	cfgData.MaxQuoteValue = uint64(cfg.MaxQuoteValue)
+	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 
 	cfgData.RSK = cfg.RSK
 }
