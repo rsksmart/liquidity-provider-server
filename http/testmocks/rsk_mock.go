@@ -2,8 +2,9 @@ package testmocks
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"math/big"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -138,4 +139,10 @@ func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (b
 func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*connectors.FedInfo), args.Error(1)
+}
+
+func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+	m.Called()
+
+	return nil, nil
 }
