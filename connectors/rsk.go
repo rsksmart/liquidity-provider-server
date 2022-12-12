@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -65,11 +66,12 @@ type RSKConnector interface {
 	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
+	GetProviders() ([]bindings.LiquidityBridgeContractProvider, error)
 }
 
 type RSK struct {
 	c                           *ethclient.Client
-	lbc                         *bindings.LBC
+	lbc                         *bindings.LiquidityBridgeContract
 	lbcAddress                  common.Address
 	bridge                      *bindings.RskBridge
 	bridgeAddress               common.Address
@@ -143,7 +145,7 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	if err != nil {
 		return err
 	}
-	rsk.lbc, err = bindings.NewLBC(rsk.lbcAddress, rsk.c)
+	rsk.lbc, err = bindings.NewLiquidityBridgeContract(rsk.lbcAddress, rsk.c)
 	if err != nil {
 		return err
 	}
@@ -516,7 +518,7 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
 	var res []interface{}
-	lbcCaller := &bindings.LBCCallerRaw{Contract: &rsk.lbc.LBCCaller}
+	lbcCaller := &bindings.LiquidityBridgeContractCallerRaw{Contract: &rsk.lbc.LiquidityBridgeContractCaller}
 	err := lbcCaller.Call(&bind.CallOpts{}, &res, "registerPegIn", q, signature, tx, pmt, height)
 	if err != nil {
 		return err
@@ -714,4 +716,18 @@ func parseHex(str string) ([]byte, error) {
 		return nil, err
 	}
 	return bts, nil
+}
+
+func (rsk *RSK) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+	opts := bind.CallOpts{}
+	var err error
+	var providers []bindings.LiquidityBridgeContractProvider
+
+	providers, err = rsk.lbc.GetProviders(&opts)
+
+	if err != nil {
+		log.Debug("Error RSK.go", err)
+	}
+
+	return providers, err
 }

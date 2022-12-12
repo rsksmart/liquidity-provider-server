@@ -92,8 +92,20 @@ func testParseQuote(t *testing.T) {
 	}
 }
 
+func testCopyBtcAddress(t *testing.T) {
+	err := copyBtcAddr("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", []byte{})
+	assert.Empty(t, err)
+}
+
+func testCopyBtcAddressWithAnInvalidAddress(t *testing.T) {
+	err := copyBtcAddr("0x895E7D15510C3f77726422669B0Ef768d26F7FEb", []byte{})
+	assert.Equal(t, "invalid format: version and/or checksum bytes missing", err.Error())
+}
+
 func TestRSKCreate(t *testing.T) {
 	t.Run("new invalid", testNewRSKWithInvalidAddresses)
 	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
+	t.Run("test copy btc address", testCopyBtcAddress)
+	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
 }

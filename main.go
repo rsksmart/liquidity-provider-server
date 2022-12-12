@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	cfg config
-	srv http.Server
+	cfg     config
+	srv     http.Server
+	cfgData http.ConfigData
 )
 
 func loadConfig() {
@@ -52,7 +53,9 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, db)
+	initCfgData()
+
+	srv = http.New(rsk, btc, db, cfgData)
 	log.Debug("registering local provider (this might take a while)")
 	err = srv.AddProvider(lp)
 	if err != nil {
@@ -120,4 +123,10 @@ func main() {
 	if err != nil {
 		log.Fatal("error closing DB connection: ", err)
 	}
+}
+
+func initCfgData() {
+	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
+
+	cfgData.RSK = cfg.RSK
 }
