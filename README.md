@@ -65,6 +65,7 @@ Computes and returns a quote for the service.
     data (string) - Hex-encoded contract data.
     value (int) - Value to send in the call.
     rskRefundAddr (string) - Hex-encoded user RSK refund address.
+    lpAddress (string) - The address of the liquidity provider that will do the cross chain conversion
     btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
     liquiditProviderAddress (string) - Base58-encoded Hex-encoded RSK liquidity Provider address.
 

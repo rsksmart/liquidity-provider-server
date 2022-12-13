@@ -67,6 +67,7 @@ type QuoteRequest struct {
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
+	LpAddress             string     `json:"lpAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
@@ -331,12 +332,17 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 
 	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
 	if maxValueTotransfer <= 0 {
 		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
+	}
+
+	if qr.LpAddress == "" {
+		log.Debug("Liquidity Provider Address lpAddress not sent")
+		http.Error(w, "Validation error: lpAddress not sent", http.StatusBadRequest)
+		return
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
