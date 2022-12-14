@@ -414,6 +414,21 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func (a *QuoteRequest) validateQuoteRequest() string {
+	err := ""
+
+	if len(a.RskRefundAddress) == 0 {
+		err += "RskRefundAddress is empty; "
+	}
+	if len(a.BitcoinRefundAddress) == 0 {
+		err += "BitcoinRefundAddress is empty; "
+	}
+	if len(a.CallContractAddress) == 0 {
+		err += "CallContractAddress is empty; "
+	}
+
+	return err
+}
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
@@ -425,6 +440,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
+		log.Error("qr is: ", qr)
+		log.Error("error validating body params: ", errval)
+		w.Header().Set("Content-type", "application/json")
+		http.Error(w, "bad request body", http.StatusBadRequest)
+		return
+	}
 
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
