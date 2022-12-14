@@ -8,9 +8,9 @@ services:
     image: bitcond:latest
     container_name: bitcoind01
     ports:
-      - "127.0.0.1:5555:5555"
+      - "5555:5555"
     volumes:
-      - ${BTCD_HOME:-./volumes/bitcoind}:/home/bitcoin/.bitcoin
+      - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoind/.bitcoind
     networks:
       - net_lps
     command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
@@ -25,14 +25,53 @@ services:
     image: rskj:latest
     container_name: rskj01
     ports:
-      - "127.0.0.1:4444:4444"
+      - "4444:4444"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
+      - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
     networks:
       - net_lps
     command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
-
+  
+  lps:
+    build:
+      context: ../
+      dockerfile: docker-compose/lps/Dockerfile
+      args:
+        UID: "${LPS_UID}"
+    image: lps:latest
+    container_name: lps01
+    environment:
+      - LIQUIDITY_PROVIDER_RSK_ADDR
+      - LIQUIDITY_PROVIDER_RSK_KEY
+      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
+      - BTCD_RPC_USER
+      - BTCD_RPC_PASS
+      - RSK_CHAIN_ID
+      - LBC_ADDR
+      - LPS_STAGE
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${LPS_HOME:-/mnt/lps/db}:/home/lps/db
+      - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
+    networks:
+      - net_lps
+    command: ["sh", "start.sh"]
+   
+  lbc-deployer:
+    build:
+      context: lbc-deployer
+      args:
+        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
+    image: lbc-deployer:latest
+    container_name: lbc-deployer01
+    environment:
+      - LPS_STAGE
+    networks:
+      - net_lps
+ 
 networks:
   net_lps:
     driver: "bridge"
+
