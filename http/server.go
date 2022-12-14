@@ -80,6 +80,16 @@ type acceptReq struct {
 	QuoteHash string
 }
 
+func enableCors(res *http.ResponseWriter) {
+	headers := (*res).Header()
+	headers.Add("Access-Control-Allow-Origin", "*")
+	headers.Add("Vary", "Origin")
+	headers.Add("Vary", "Access-Control-Request-Method")
+	headers.Add("Vary", "Access-Control-Request-Headers")
+	headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token")
+	headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+}
+
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
 	return newServer(rsk, btc, db, time.Now, cfgData)
 }
@@ -136,6 +146,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(s.getProvidersHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
+	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -160,6 +171,11 @@ func (s *Server) Start(port uint) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) initBtcWatchers() error {
@@ -252,6 +268,7 @@ func (s *Server) Shutdown() {
 }
 
 func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
+	enableCors(&w)
 	type services struct {
 		Db  string `json:"db"`
 		Rsk string `json:"rsk"`
@@ -302,7 +319,8 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
 	rp, error := s.rsk.GetProviders()
 
@@ -322,6 +340,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -432,6 +451,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	type acceptRes struct {
 		Signature                 string `json:"signature"`
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
