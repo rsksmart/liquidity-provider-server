@@ -5,8 +5,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/rskj
 
-ARG RSKJ_RELEASE="IRIS"
-ARG RSKJ_VERSION="3.3.0"
+ARG RSKJ_RELEASE="HOP-TESTNET"
+ARG RSKJ_VERSION="4.1.1"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
@@ -14,12 +14,15 @@ RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git fetch --depth 1 origin tag "$gitrev" && \
     git checkout "$gitrev"
 
-RUN gpg --keyserver https://secchannel.rsk.co/release.asc --recv-keys 1A92D8942171AFA951A857365DECF4415E3B8FA4 && \
+RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys 1DC9157991323D23FD37BAA7A6DBEAC640C5A14B && \
     gpg --verify --output SHA256SUMS SHA256SUMS.asc && \
     sha256sum --check SHA256SUMS && \
     ./configure.sh && \
-    ./gradlew --no-daemon clean build -x test
-
+    ./gradlew --no-daemon clean build -x test && \
+    file=rskj-core/src/main/resources/version.properties && \
+    version_number=$(sed -n 's/^versionNumber=//p' "$file" | tr -d "\"'") && \
+    modifier=$(sed -n 's/^modifier=//p' "$file" | tr -d "\"'") && \
+    cp "rskj-core/build/libs/rskj-core-$version_number-$modifier-all.jar" rsk.jar
 
 FROM --platform=linux/amd64 openjdk:8-jdk as runner
 
@@ -30,7 +33,7 @@ RUN useradd -m -u "$UID" --home="$HOME" rsk
 COPY --from=builder --chown="$UID" "/code/rskj/rskj-core/build/libs/rskj-core-*-all.jar" "$HOME/rskj-core.jar"
 
 RUN mkdir -p "$HOME/.rsk"; chown "$UID" "$HOME/.rsk"
-RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+RUN mkdir -p "$HOME/logs"; chown -R "$UID" "$HOME/logs"
 
 WORKDIR "$HOME"
 

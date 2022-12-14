@@ -24,9 +24,9 @@ RUN gitBranch=${LBC_GIT_BRANCH} && \
 # this is to simplify the way to interact with liquidity-bridge-contract
 # COPY --chown=node liquidity-bridge-contract ./
 
-COPY --chown=node truffle-config.patch ./
+#COPY --chown=node truffle-config.patch ./
 
-RUN git apply truffle-config.patch
+#RUN git apply truffle-config.patch
 
 RUN npm ci
 
