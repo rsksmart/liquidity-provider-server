@@ -27,8 +27,8 @@ services:
     ports:
       - "4444:4444"
     volumes:
-      - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-./volumes/rsk}/db:/home/rsk/.rsk
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
     command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
