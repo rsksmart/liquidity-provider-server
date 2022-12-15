@@ -2,7 +2,7 @@ version: "3"
 services:
   lps:
     build:
-      context: ../
+      context: ../../
       dockerfile: docker-compose/lps/Dockerfile
       args:
         UID: "${LPS_UID}"

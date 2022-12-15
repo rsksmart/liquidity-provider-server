@@ -6,7 +6,7 @@
 /.geth_keystore/
 /.secret
 /logs/
-/docker-compose/volumes/
+/docker-compose/local/volumes/
 /config.json
 /liquidity-provider-server
 /server.db
