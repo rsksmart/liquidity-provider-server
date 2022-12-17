@@ -30,7 +30,7 @@ var (
 
 // RskBridgeMetaData contains all meta data concerning the RskBridge contract.
 var RskBridgeMetaData = &bind.MetaData{
-	ABI: "[{\"name\":\"getBtcBlockchainBlockHeaderByHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcBlockHeight\",\"type\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"registerFastBridgeBtcTransaction\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\"},{\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"name\":\"derivationArgumentsHash\",\"type\":\"bytes32\"},{\"name\":\"userRefundBtcAddress\",\"type\":\"bytes\"},{\"name\":\"liquidityBridgeContractAddress\",\"type\":\"address\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"name\":\"shouldTransferToContract\",\"type\":\"bool\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getActiveFederationCreationBlockHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}]},{\"name\":\"getFederatorPublicKeyOfType\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"},{\"name\":\"\",\"type\":\"string\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederatorPublicKey\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederationThreshold\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationSize\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationAddress\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"string\"}]},{\"name\":\"getMinimumLockTxValue\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]}]",
+	ABI: "[{\"name\":\"getBtcBlockchainBlockHeaderByHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcBlockHeight\",\"type\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"registerFastBridgeBtcTransaction\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\"},{\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"name\":\"derivationArgumentsHash\",\"type\":\"bytes32\"},{\"name\":\"userRefundBtcAddress\",\"type\":\"bytes\"},{\"name\":\"liquidityBridgeContractAddress\",\"type\":\"address\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"name\":\"shouldTransferToContract\",\"type\":\"bool\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getActiveFederationCreationBlockHeight\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}]},{\"name\":\"getFederatorPublicKeyOfType\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"},{\"name\":\"\",\"type\":\"string\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederatorPublicKey\",\"type\":\"function\",\"constant\":true,\"inputs\":[{\"name\":\"index\",\"type\":\"int256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]},{\"name\":\"getFederationThreshold\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationSize\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getFederationAddress\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"string\"}]},{\"name\":\"getMinimumLockTxValue\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"int256\"}]},{\"name\":\"getActivePowpegRedeemScript\",\"type\":\"function\",\"constant\":true,\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"}]}]",
 }
 
 // RskBridgeABI is the input ABI used to generate the binding from.
@@ -208,6 +208,37 @@ func (_RskBridge *RskBridgeSession) GetActiveFederationCreationBlockHeight() (*b
 // Solidity: function getActiveFederationCreationBlockHeight() returns(uint256)
 func (_RskBridge *RskBridgeCallerSession) GetActiveFederationCreationBlockHeight() (*big.Int, error) {
 	return _RskBridge.Contract.GetActiveFederationCreationBlockHeight(&_RskBridge.CallOpts)
+}
+
+// GetActivePowpegRedeemScript is a free data retrieval call binding the contract method 0x1d73d5dd.
+//
+// Solidity: function getActivePowpegRedeemScript() returns(bytes)
+func (_RskBridge *RskBridgeCaller) GetActivePowpegRedeemScript(opts *bind.CallOpts) ([]byte, error) {
+	var out []interface{}
+	err := _RskBridge.contract.Call(opts, &out, "getActivePowpegRedeemScript")
+
+	if err != nil {
+		return *new([]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
+
+	return out0, err
+
+}
+
+// GetActivePowpegRedeemScript is a free data retrieval call binding the contract method 0x1d73d5dd.
+//
+// Solidity: function getActivePowpegRedeemScript() returns(bytes)
+func (_RskBridge *RskBridgeSession) GetActivePowpegRedeemScript() ([]byte, error) {
+	return _RskBridge.Contract.GetActivePowpegRedeemScript(&_RskBridge.CallOpts)
+}
+
+// GetActivePowpegRedeemScript is a free data retrieval call binding the contract method 0x1d73d5dd.
+//
+// Solidity: function getActivePowpegRedeemScript() returns(bytes)
+func (_RskBridge *RskBridgeCallerSession) GetActivePowpegRedeemScript() ([]byte, error) {
+	return _RskBridge.Contract.GetActivePowpegRedeemScript(&_RskBridge.CallOpts)
 }
 
 // GetBtcBlockchainBlockHeaderByHeight is a free data retrieval call binding the contract method 0xbd0c1fff.
