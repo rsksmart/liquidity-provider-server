@@ -15,7 +15,7 @@
         "path": "./db/server.db"
     },
     "rsk": {
-        "endpoint": "https://public-node.testnet.rsk.co",
+        "endpoint": "http://rskj:4444",
         "lbcAddr": "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4",
         "bridgeAddr": "0x0000000000000000000000000000000001000006",
         "requiredBridgeConfirmations": 10,
