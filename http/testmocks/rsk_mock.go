@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -145,4 +146,12 @@ func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, er
 	m.Called()
 
 	return nil, nil
+}
+
+func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
+	return nil, nil
+}
+
+func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	return "", nil
 }
