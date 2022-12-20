@@ -339,6 +339,19 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *QuoteRequest) validateQuoteRequest() string {
+	err := ""
+
+	if len(a.RskRefundAddress) == 0 {
+		err += "RskRefundAddress is empty; "
+	}
+	if len(a.BitcoinRefundAddress) == 0 {
+		err += "BitcoinRefundAddress is empty; "
+	}
+
+	return err
+}
+
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	qr := QuoteRequest{}
@@ -349,6 +362,13 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
 		http.Error(w, "bad request "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
+		log.Error("error validating body params: ", errval)
+		w.Header().Set("Content-type", "application/json")
+		http.Error(w, "bad request body", http.StatusBadRequest)
 		return
 	}
 
