@@ -6,7 +6,7 @@ diff --git a/truffle-config.js b/truffle-config.js
    networks: {
      rskRegtest: {
 -      host: '127.0.0.1',
-+      host: 'rskj',
++      host: 'powpeg',
        port: 4444,
        network_id: 33,
      },
