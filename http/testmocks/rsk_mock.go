@@ -17,6 +17,7 @@ import (
 
 type RskMock struct {
 	mock.Mock
+	QuoteHash string
 }
 
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
@@ -148,5 +149,5 @@ func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.
 }
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
-	return "", nil
+	return m.QuoteHash, nil
 }
