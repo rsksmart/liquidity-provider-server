@@ -191,8 +191,9 @@ func testGetQuoteComplete(t *testing.T) {
 				"\"callContractArguments\":\"%v\","+
 				"\"valueToTransfer\":%v,"+
 				"\"RskRefundAddress\":\"%v\","+
+				"\"lpAddress\":\"%v\","+
 				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, value, rskRefAddr, btcRefAddr)
+			destAddr, callArgs, value, rskRefAddr, rskRefAddr, btcRefAddr)
 
 		tq := types.Quote{
 			FedBTCAddr:         "",
@@ -289,8 +290,9 @@ func testAcceptQuoteComplete(t *testing.T) {
 		db.On("GetRetainedQuote", hash).Times(1).Return(nil, nil)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
-		btc.On("GetDerivedBitcoinAddress", fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes).Times(1).Return("")
-		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
+		btc.On("GetParams")
+		rsk.On("GetDerivedBitcoinAddress", fedInfo, nil, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)"))
 		srv.acceptQuoteHandler(&w, req)
 		db.AssertExpectations(t)
 		btc.AssertExpectations(t)
@@ -383,8 +385,9 @@ func testInvalidQuoteValue(t *testing.T) {
 				"\"callContractArguments\":\"%v\","+
 				"\"valueToTransfer\":%v,"+
 				"\"RskRefundAddress\":\"%v\","+
+				"\"lpAddress\":\"%v\","+
 				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, 600000000000000001, rskRefAddr, btcRefAddr)
+			destAddr, callArgs, 600000000000000001, rskRefAddr, rskRefAddr, btcRefAddr)
 
 		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
 		if err != nil {
