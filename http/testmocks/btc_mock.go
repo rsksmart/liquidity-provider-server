@@ -1,11 +1,12 @@
 package testmocks
 
 import (
+	"time"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 type BtcMock struct {
@@ -53,9 +54,4 @@ func (b *BtcMock) SerializeTx(txHash string) ([]byte, error) {
 func (b *BtcMock) GetBlockNumberByTx(txHash string) (int64, error) {
 	b.Called(txHash)
 	return 0, nil
-}
-
-func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
-	b.Called(fedInfo, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
-	return "", nil
 }
