@@ -13,6 +13,11 @@ type BtcMock struct {
 	mock.Mock
 }
 
+func (b *BtcMock) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher, cb connectors.AddressWatcherCompleteCallback) error {
+	b.Called(address, minBtcAmount, interval, exp, w, cb)
+	return nil
+}
+
 func (b *BtcMock) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher, cb connectors.AddressWatcherCompleteCallback) error {
 	b.Called(address, minBtcAmount, interval, exp, w, cb)
 	return nil

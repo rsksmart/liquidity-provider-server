@@ -97,6 +97,14 @@ type acceptReqPegout struct {
 	DerivationAddress string `json:"derivationAddress"`
 }
 
+type pegOutQuoteReq struct {
+	Quote *pegout.Quote `json:"quote"`
+}
+
+type pegOutQuoteResponse struct {
+	QuoteHash string `json:"quoteHash"`
+}
+
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector) Server {
 	return newServer(rsk, btc, db, time.Now)
 }
@@ -190,6 +198,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
+	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -414,6 +423,21 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func (a *QuoteRequest) validateQuoteRequest() string {
+	err := ""
+
+	if len(a.RskRefundAddress) == 0 {
+		err += "RskRefundAddress is empty; "
+	}
+	if len(a.BitcoinRefundAddress) == 0 {
+		err += "BitcoinRefundAddress is empty; "
+	}
+	if len(a.CallContractAddress) == 0 {
+		err += "CallContractAddress is empty; "
+	}
+
+	return err
+}
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
@@ -425,6 +449,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
+		log.Error("qr is: ", qr)
+		log.Error("error validating body params: ", errval)
+		w.Header().Set("Content-type", "application/json")
+		http.Error(w, "bad request body", http.StatusBadRequest)
+		return
+	}
 
 	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
@@ -881,4 +913,39 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	signature := hex.EncodeToString(signB)
 	returnQuotePegOutSignFunc(w, signature)
+}
+
+func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	payload := pegOutQuoteReq{}
+
+	dec := json.NewDecoder(r.Body)
+
+	err := dec.Decode(&payload)
+
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	quote := payload.Quote
+
+	hash, err := s.rsk.HashPegOutQuote(quote)
+	if err != nil {
+		http.Error(w, "Unable to hash quote", http.StatusInternalServerError)
+		return
+	}
+
+	response := &pegOutQuoteResponse{
+		QuoteHash: hash,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		return
+	}
 }
