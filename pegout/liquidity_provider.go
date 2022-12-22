@@ -52,7 +52,7 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote) (*Quote, error)
+	GetQuote(*Quote, uint64) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
@@ -91,7 +91,7 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository)
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -99,8 +99,8 @@ func (lp *LocalProvider) GetQuote(q *Quote) (*Quote, error) {
 	res.DepositDateLimit = lp.cfg.DepositDateLimit
 	res.TransferConfirmations = lp.cfg.TransferConfirmations
 	res.TransferTime = lp.cfg.TransferTime
-	res.ExpireDate = lp.cfg.ExpireDate
-	res.ExpireBlocks = lp.cfg.ExpireBlocks
+	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
+	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
 	res.PenaltyFee = lp.cfg.PenaltyFee
 
 	res.DepositConfirmations = lp.cfg.MaxConf
