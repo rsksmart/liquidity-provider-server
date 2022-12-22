@@ -199,6 +199,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
+	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -741,6 +742,14 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 	amountBelowMinLockTxValue := false
 	q := parseQuotePegOutRequestToQuote(qr)
 	quotes := make([]QuotePegOutResponse, 0)
+
+	rskBlockNumber, err := s.rsk.GetRskHeight()
+	if err != nil {
+		log.Error("error retrieving federation address: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	for _, p := range s.pegoutProviders {
 
 		if err != nil {
@@ -749,7 +758,7 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		pq, err := p.GetQuote(q)
+		pq, err := p.GetQuote(q, rskBlockNumber)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)
@@ -932,12 +941,88 @@ func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
 
 	hash, err := s.rsk.HashPegOutQuote(quote)
 	if err != nil {
+		log.Error("error :: %v", err)
 		http.Error(w, "Unable to hash quote", http.StatusInternalServerError)
 		return
 	}
 
 	response := &pegOutQuoteResponse{
 		QuoteHash: hash,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		return
+	}
+}
+
+type SendBTCReq struct {
+	Amount uint64 `json:"amount"`
+	To     string `json:"to"`
+}
+
+type RegisterPegOutReg struct {
+	quote     *pegout.Quote
+	signature string
+}
+
+type BuildRefundPegOutPayloadRequest struct {
+	QuoteHash         string `json:"quoteHash"`
+	BtcTxHash         string `json:"btcTxHash"`
+	DerivationAddress string `json:"derivationAddress"`
+}
+
+type BuildRefundPegOutPayloadResponse struct {
+	Quote              *pegout.Quote `json:"quote"`
+	MerkleBranchPath   int           `json:"merkleBranchPath"`
+	MerkleBranchHashes []string      `json:"merkleBranchHashes"`
+}
+
+func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	payload := BuildRefundPegOutPayloadRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+
+	if err != nil {
+		log.Errorf("Unable to deserialize payload: %v", err)
+		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("payload ::: %v", payload)
+
+	quote, err := s.db.GetPegOutQuote(payload.QuoteHash)
+
+	if err != nil {
+		log.Errorf("Quote not found: %v", err)
+		http.Error(w, "Quote not found", http.StatusBadRequest)
+		return
+	}
+
+	branch, err := s.btc.BuildMerkleBranchByEndpoint(payload.BtcTxHash, payload.DerivationAddress)
+
+	if err != nil {
+		log.Errorf("Unable to create merkle branch: %v", err)
+		http.Error(w, "Unable to create merkle branch", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	var hashes = make([]string, len(branch.Hashes))
+	for i, hash := range branch.Hashes {
+		hashes[i] = hash.String()
+	}
+
+	response := &BuildRefundPegOutPayloadResponse{
+		Quote:              quote,
+		MerkleBranchPath:   branch.Path,
+		MerkleBranchHashes: hashes,
 	}
 
 	encoder := json.NewEncoder(w)
