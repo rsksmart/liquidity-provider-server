@@ -358,9 +358,9 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
-	if qr.LpAddress == "" {
+	if qr.LpAddress == "" || !common.IsHexAddress(qr.LpAddress) {
 		log.Debug("Liquidity Provider Address lpAddress not sent")
-		http.Error(w, "Validation error: lpAddress not sent", http.StatusBadRequest)
+		http.Error(w, "Validation error: lpAddress not sent or is not valid", http.StatusBadRequest)
 		return
 	}
 
