@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/http"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/providers"
 )
 
@@ -25,5 +26,6 @@ type config struct {
 		Password string
 		Network  string
 	}
-	Provider providers.ProviderConfig
+	Provider      providers.ProviderConfig
+	PegoutProvier pegout.ProviderConfig
 }

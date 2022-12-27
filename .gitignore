@@ -12,3 +12,5 @@
 /server.db
 
 .DS_Store
+
+/docker-compose/lbc-deployer/liquidity-bridge-contract/

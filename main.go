@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -53,11 +54,22 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB) {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
+	lpPegOut, err := pegout.NewLocalProvider(cfg.PegoutProvier, lpRepository)
+	if err != nil {
+		log.Fatal("cannot create local provider: ", err)
+	}
+
 	initCfgData()
 
 	srv = http.New(rsk, btc, db, cfgData)
 	log.Debug("registering local provider (this might take a while)")
 	err = srv.AddProvider(lp)
+	if err != nil {
+		log.Fatalf("error registering local provider: %v", err)
+	}
+
+	err = srv.AddPegOutProvider(lpPegOut)
+
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}

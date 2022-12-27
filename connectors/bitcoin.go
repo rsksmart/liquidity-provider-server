@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
 	"time"
+
+	"github.com/btcsuite/btcd/btcjson"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -37,12 +38,14 @@ type BTCConnector interface {
 	Connect(endpoint string, username string, password string) error
 	CheckConnection() error
 	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
+	AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
 	SerializeTx(txHash string) ([]byte, error)
 	GetBlockNumberByTx(txHash string) (int64, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 }
 
 type BTCClient interface {
@@ -139,12 +142,52 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 	return nil
 }
 
+func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
+	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
+	if err != nil {
+		log.Errorf("error decoding address %v: %v", address, err)
+		return fmt.Errorf("error decoding address %v: %v", address, err)
+	}
+
+	err = btc.c.ImportAddressRescan(address, "", false)
+	if err != nil {
+		log.Errorf("error importing address %v: %v", address, err)
+		return fmt.Errorf("error importing address %v: %v", address, err)
+	}
+
+	go func(w AddressWatcher) {
+		ticker := time.NewTicker(interval)
+		var confirmations int64
+		for {
+			select {
+			case <-ticker.C:
+				_ = btc.checkBtcAddr(w, btcAddr, minBtcAmount, exp, &confirmations, time.Now)
+			case <-w.Done():
+				ticker.Stop()
+				cb(w)
+				return
+			}
+		}
+	}(w)
+	return nil
+}
+
 func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
+	log.Debugf("Derivation Address:: %v", btcAddr)
+	log.Debugf("minBtcAmount:: %v", minBtcAmount)
+	log.Debugf("confirmations:: %v", confirmations)
 	conf, amount, txHash, err := btc.getConfirmations(btcAddr, minBtcAmount)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+
+	log.Debugf("conf:: %v", conf)
+	log.Debugf("amount:: %v", amount)
+	log.Debugf("txHash:: %v", txHash)
+	log.Debugf("expTime:: %v", expTime)
+	log.Debugf("now:: %v", now())
+
 	if amount < minBtcAmount && now().After(expTime) {
 		w.OnExpire()
 		return fmt.Errorf("time for depositing %v has elapsed; addr: %v", minBtcAmount, btcAddr)
@@ -227,6 +270,37 @@ func (btc *BTC) GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []b
 		return "", err
 	}
 	return addressScriptHash.EncodeAddress(), nil
+}
+
+func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte) (string, error) {
+
+	rootScriptBuilder := txscript.NewScriptBuilder()
+
+	rootScriptBuilder.AddData(quoteHash)
+
+	rootScriptBuilder.AddOp(txscript.OP_DROP)
+
+	rootScriptBuilder.AddOp(txscript.OP_1)
+
+	rootScriptBuilder.AddData(userPublicKey)
+
+	rootScriptBuilder.AddOp(txscript.OP_1)
+
+	rootScriptBuilder.AddOp(txscript.OP_CHECKMULTISIG)
+
+	rootScript, err := rootScriptBuilder.Script()
+
+	if err != nil {
+		return "", fmt.Errorf("error generating root script: %v", err)
+	}
+
+	redeemScript, err := btcutil.NewAddressScriptHash(rootScript[:], &btc.params)
+
+	if err != nil {
+		return "", err
+	}
+
+	return redeemScript.EncodeAddress(), nil
 }
 
 func DecodeBTCAddressWithVersion(address string) ([]byte, error) {

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"io"
 	"math"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,11 +54,14 @@ type ConfigData struct {
 type Server struct {
 	srv             http.Server
 	providers       []providers.LiquidityProvider
+	pegoutProviders []pegout.LiquidityProvider
 	rsk             connectors.RSKConnector
 	btc             connectors.BTCConnector
 	db              storage.DBConnector
 	now             func() time.Time
 	watchers        map[string]*BTCAddressWatcher
+	pegOutWatchers  map[string]*BTCAddressPegOutWatcher
+	rskWatchers     map[string]*RegisterPegoutWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
 	cfgData         ConfigData
@@ -75,6 +80,18 @@ type QuoteReturn struct {
 	QuoteHash string       `json:"quoteHash"`
 }
 
+type QuotePegOutRequest struct {
+	From                 string `json:"from"`
+	ValueToTransfer      uint64 `json:"valueToTransfer"`
+	RskRefundAddress     string `json:"rskRefundAddress"`
+	BitcoinRefundAddress string `json:"bitcoinRefundAddress"`
+}
+
+type QuotePegOutResponse struct {
+	Quote             *pegout.Quote `json:"quote"`
+	DerivationAddress string        `json:"derivationAddress"`
+}
+
 type acceptReq struct {
 	QuoteHash string
 }
@@ -83,14 +100,39 @@ func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DB
 	return newServer(rsk, btc, db, time.Now, cfgData)
 }
 
+type acceptRes struct {
+	Signature                 string `json:"signature"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
+}
+
+type AcceptResPegOut struct {
+	Signature string `json:"signature"`
+}
+
+type acceptReqPegout struct {
+	QuoteHash         string `json:"quoteHash"`
+	DerivationAddress string `json:"derivationAddress"`
+}
+
+type pegOutQuoteReq struct {
+	Quote *pegout.Quote `json:"quote"`
+}
+
+type pegOutQuoteResponse struct {
+	QuoteHash string `json:"quoteHash"`
+}
+
 func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
-		rsk:       rsk,
-		btc:       btc,
-		db:        db,
-		providers: make([]providers.LiquidityProvider, 0),
-		now:       now,
-		watchers:  make(map[string]*BTCAddressWatcher),
+		rsk:             rsk,
+		btc:             btc,
+		db:              db,
+		providers:       make([]providers.LiquidityProvider, 0),
+		pegoutProviders: make([]pegout.LiquidityProvider, 0),
+		now:             now,
+		watchers:        make(map[string]*BTCAddressWatcher),
+		pegOutWatchers:  make(map[string]*BTCAddressPegOutWatcher),
+		rskWatchers:     make(map[string]*RegisterPegoutWatcher),
 		cfgData:   cfgData,
 	}
 }
@@ -129,11 +171,48 @@ func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
 	return nil
 }
 
+func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
+	s.pegoutProviders = append(s.pegoutProviders, lp)
+	addrStr := lp.Address()
+	c, m, err := s.rsk.GetCollateral(addrStr)
+	if err != nil {
+		return err
+	}
+	addr := common.HexToAddress(addrStr)
+	cmp := c.Cmp(big.NewInt(0))
+	if cmp == 0 { // provider not registered
+		opts := &bind.TransactOpts{
+			Value:  m,
+			From:   addr,
+			Signer: lp.SignTx,
+		}
+		err := s.rsk.RegisterProvider(opts)
+		if err != nil {
+			return err
+		}
+	} else if cmp < 0 { // not enough collateral
+		opts := &bind.TransactOpts{
+			Value:  m.Sub(m, c),
+			From:   addr,
+			Signer: lp.SignTx,
+		}
+		err := s.rsk.AddCollateral(opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
+	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
+	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
+	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -214,8 +293,66 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 		delete(s.watchers, hash)
 	})
 	if err == nil {
-		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", depositAddr)
+		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
+		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
 		s.watchers[hash] = watcher
+	}
+	return err
+}
+
+func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depositAddr string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
+	_, ok := s.pegOutWatchers[hash]
+
+	if ok {
+		return nil
+	}
+
+	minBtcAmount := btcutil.Amount(quote.Value)
+	expTime := getPegOutQuoteExpTime(quote)
+	watcher := NewBTCAddressPegOutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	err := s.btc.AddAddressPegOutWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
+		log.Debugln("Done: addAddressPegOutWatcher")
+		s.addWatcherMu.Lock()
+		defer s.addWatcherMu.Unlock()
+		delete(s.pegOutWatchers, hash)
+	})
+	if err == nil {
+		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
+		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
+		s.pegOutWatchers[hash] = watcher
+	}
+	return err
+}
+
+func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, hash string, derivationAddress string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
+	s.addWatcherMu.Lock()
+	defer s.addWatcherMu.Unlock()
+
+	_, ok := s.watchers[hash]
+	if ok {
+		return nil
+	}
+
+	expTime := getPegOutQuoteExpTime(quote)
+	watcher := NewRegisterPegoutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	err := s.rsk.AddQuoteToWatch(hash, time.Minute, expTime, watcher, func(w connectors.QuotePegOutWatcher) {
+		s.addWatcherMu.Lock()
+		defer s.addWatcherMu.Unlock()
+		delete(s.rskWatchers, hash)
+
+		if watcher.state == types.RQStateCallForUserSucceeded {
+			log.Debugf("Start Verification of derivationAddress deposit ::: %v", derivationAddress)
+			err := s.addAddressPegOutWatcher(quote, hash, derivationAddress, signB, provider, types.RQStateCallForUserSucceeded)
+			if err != nil {
+				log.Errorf("Impossible to send money to p2sh, %v", derivationAddress)
+			}
+		}
+	})
+	if err == nil {
+		log.Info("added watcher for quote: : ", hash, "; deposit addr: ")
+		s.rskWatchers[hash] = watcher
 	}
 	return err
 }
@@ -300,6 +437,22 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func (a *QuoteRequest) validateQuoteRequest() string {
+	err := ""
+
+	if len(a.RskRefundAddress) == 0 {
+		err += "RskRefundAddress is empty; "
+	}
+	if len(a.BitcoinRefundAddress) == 0 {
+		err += "BitcoinRefundAddress is empty; "
+	}
+	if len(a.CallContractAddress) == 0 {
+		err += "CallContractAddress is empty; "
+	}
+
+	return err
+}
+
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
@@ -322,6 +475,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
 		log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
+		log.Error("qr is: ", qr)
+		log.Error("error validating body params: ", errval)
+		w.Header().Set("Content-type", "application/json")
+		http.Error(w, "bad request body", http.StatusBadRequest)
 		return
 	}
 
@@ -534,6 +695,13 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas u
 	}
 }
 
+func parseQuotePegOutRequestToQuote(qr QuotePegOutRequest) *pegout.Quote {
+	return &pegout.Quote{
+		RSKRefundAddr: qr.RskRefundAddress,
+		Value:         qr.ValueToTransfer,
+	}
+}
+
 func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]byte, []byte, []byte, error) {
 	btcRefAddrB, err := connectors.DecodeBTCAddressWithVersion(btcRefundAddr)
 	if err != nil {
@@ -559,6 +727,15 @@ func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr
 	return nil
 }
 
+func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, addr string) (ret pegout.LiquidityProvider) {
+	for _, p := range liquidityProviders {
+		if p.Address() == addr {
+			return p
+		}
+	}
+	return nil
+}
+
 func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
@@ -572,6 +749,248 @@ func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	return h, nil
 }
 
+func (s *Server) storePegoutQuote(q *pegout.Quote, derivationAddress string) error {
+	h, err := s.rsk.HashPegOutQuote(q)
+	if err != nil {
+		return err
+	}
+
+	err = s.db.InsertPegOutQuote(h, q, derivationAddress)
+	if err != nil {
+		log.Fatalf("error inserting quote: %v", err)
+	}
+	return nil
+}
+
 func getQuoteExpTime(q *types.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
+}
+
+func getPegOutQuoteExpTime(q *pegout.Quote) time.Time {
+	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
+}
+
+func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) {
+	qr := QuotePegOutRequest{}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	err := dec.Decode(&qr)
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+
+	getQuoteFailed := false
+	amountBelowMinLockTxValue := false
+	q := parseQuotePegOutRequestToQuote(qr)
+	quotes := make([]QuotePegOutResponse, 0)
+	for _, p := range s.pegoutProviders {
+
+		if err != nil {
+			log.Error("error retrieving federation address: ", err.Error())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		pq, err := p.GetQuote(q)
+
+		if err != nil {
+			log.Error("error getting quote: ", err)
+			getQuoteFailed = true
+			continue
+		}
+
+		if pq != nil {
+
+			pq.LBCAddr = s.rsk.GetLBCAddress()
+
+			h, err := s.rsk.HashPegOutQuote(pq)
+
+			if err != nil {
+				log.Error("error getting quote: unable to hash quote", err)
+				getQuoteFailed = true
+				continue
+			}
+
+			pubKey, err := hex.DecodeString(qr.From)
+
+			if err != nil {
+				log.Error("Unable to decode bitocin user public key")
+				log.Error(err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			decodedQuoteHash, err := hex.DecodeString(h)
+
+			if err != nil {
+				log.Error("Unable to decode quote hash")
+				log.Error(err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			derivationAddress, err := s.btc.ComputeDerivationAddresss(pubKey, decodedQuoteHash)
+
+			if err != nil {
+				log.Error("Unable to generate derivationAddress", err)
+				getQuoteFailed = true
+				continue
+			}
+
+			err = s.storePegoutQuote(pq, derivationAddress)
+
+			if err != nil {
+				log.Error(err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			} else {
+				quote := &QuotePegOutResponse{
+					Quote:             pq,
+					DerivationAddress: derivationAddress,
+				}
+				quotes = append(quotes, *quote)
+			}
+		}
+
+		// generate derivation
+	}
+
+	if len(quotes) == 0 {
+		if amountBelowMinLockTxValue {
+			http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
+			return
+		}
+		if getQuoteFailed {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	err = enc.Encode(&quotes)
+	if err != nil {
+		log.Error("error encoding quote list: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func returnQuoteSignFunc(w http.ResponseWriter, signature string, depositAddr string) {
+	enc := json.NewEncoder(w)
+	response := acceptRes{
+		Signature:                 signature,
+		BitcoinDepositAddressHash: depositAddr,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
+	enc := json.NewEncoder(w)
+	response := AcceptResPegOut{
+		Signature: signature,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("error encoding response: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
+	req := acceptReqPegout{}
+	w.Header().Set("Content-type", "application/json")
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&req)
+
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	quote, err := s.db.GetPegOutQuote(req.QuoteHash)
+
+	if err != nil {
+		log.Error("error decoding request: ", err.Error())
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	if quote == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	p := getPegOutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
+
+	quoteHashInBytes, err := hex.DecodeString(req.QuoteHash)
+
+	if err != nil {
+		log.Error("error decoding string: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, quote.Value)
+
+	if err != nil {
+		log.Error("error signing quote: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = s.addAddressWatcherToVerifyRegisterPegOut(quote, req.QuoteHash, req.DerivationAddress, signB, p, types.RQStateWaitingForDeposit)
+	if err != nil {
+		log.Error("error adding address watcher: ", err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	signature := hex.EncodeToString(signB)
+	returnQuotePegOutSignFunc(w, signature)
+}
+
+func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	payload := pegOutQuoteReq{}
+
+	dec := json.NewDecoder(r.Body)
+
+	err := dec.Decode(&payload)
+
+	if err != nil {
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	quote := payload.Quote
+
+	hash, err := s.rsk.HashPegOutQuote(quote)
+	if err != nil {
+		http.Error(w, "Unable to hash quote", http.StatusInternalServerError)
+		return
+	}
+
+	response := &pegOutQuoteResponse{
+		QuoteHash: hash,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		return
+	}
 }
