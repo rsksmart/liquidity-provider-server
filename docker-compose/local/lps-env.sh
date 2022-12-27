@@ -116,13 +116,14 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     echo "No need to fund the '$LIQUIDITY_PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
   fi
 
-  if [ -z "${LBC_ADDR}" ]; then
-    echo "LBC_ADDR is not set. Deploying LBC contract..."
+  # if [ -z "${LBC_ADDR}" ]; then
+    # echo "LBC_ADDR is not set. Deploying LBC contract..."
 
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
-  fi
+    # LBC_ADDR_LINE=$(docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    # export LBC_ADDR="0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8"
+  # fi
+  export LBC_ADDR="0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8"
 fi
 
 if [ -z "${LBC_ADDR}" ]; then

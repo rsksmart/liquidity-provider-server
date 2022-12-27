@@ -102,6 +102,21 @@ Accepts one of the LPs quotes.
 
     signature - Signature of the quote
     bitcoinDepositAddressHash - Hash of the deposit BTC address
+    
+    
+### getProviders
+
+Gets the registered providers List.
+
+#### Parameters
+
+
+#### Returns
+
+    Array of registered providers with the fields.
+
+    Id - The Id of the provider
+    Provider - The address of the Liquidity Provider in RSK Network
 
 
 ## Run Integration Tests

@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -152,4 +153,19 @@ func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
+}
+
+func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+	m.Called()
+
+	return nil, nil
+}
+
+func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
+	return nil, nil
+}
+
+func (b *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	b.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	return "", nil
 }

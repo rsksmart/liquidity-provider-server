@@ -72,6 +72,7 @@ type QuoteRequest struct {
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
+	LpAddress             string     `json:"lpAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
@@ -94,6 +95,16 @@ type QuotePegOutResponse struct {
 
 type acceptReq struct {
 	QuoteHash string
+}
+
+func enableCors(res *http.ResponseWriter) {
+	headers := (*res).Header()
+	headers.Add("Access-Control-Allow-Origin", "*")
+	headers.Add("Vary", "Origin")
+	headers.Add("Vary", "Access-Control-Request-Method")
+	headers.Add("Vary", "Access-Control-Request-Headers")
+	headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token")
+	headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
@@ -133,7 +144,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db stor
 		watchers:        make(map[string]*BTCAddressWatcher),
 		pegOutWatchers:  make(map[string]*BTCAddressPegOutWatcher),
 		rskWatchers:     make(map[string]*RegisterPegoutWatcher),
-		cfgData:   cfgData,
+		cfgData:         cfgData,
 	}
 }
 
@@ -208,11 +219,13 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
+	r.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(s.getProvidersHandler)
 	r.Path("/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
 	r.Path("/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
+	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
 	defer func(w *io.PipeWriter) {
@@ -237,6 +250,11 @@ func (s *Server) Start(port uint) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) initBtcWatchers() error {
@@ -387,6 +405,7 @@ func (s *Server) Shutdown() {
 }
 
 func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
+	enableCors(&w)
 	type services struct {
 		Db  string `json:"db"`
 		Rsk string `json:"rsk"`
@@ -432,7 +451,7 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	err := enc.Encode(response)
 	if err != nil {
-		log.Error("error encoding response: ", err.Error())
+		log.Error("Heath Check - error encoding response: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
@@ -453,7 +472,28 @@ func (a *QuoteRequest) validateQuoteRequest() string {
 	return err
 }
 
+func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.Header().Set("Content-Type", "application/json")
+	rp, error := s.rsk.GetProviders()
+
+	if error != nil {
+		log.Error("GetProviders - error encoding response: ", error)
+		http.Error(w, "internal server error "+error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+	err := enc.Encode(&rp)
+	if err != nil {
+		log.Error("error encoding registered providers list: ", err.Error())
+		http.Error(w, "internal server error "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -461,7 +501,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, "bad request "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
@@ -469,7 +509,13 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
 	if maxValueTotransfer <= 0 {
-		maxValueTotransfer = s.cfgData.RSK.MaxQuoteValue
+		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
+	}
+
+	if qr.LpAddress == "" || !common.IsHexAddress(qr.LpAddress) {
+		log.Debug("Liquidity Provider Address lpAddress not sent")
+		http.Error(w, "Validation error: lpAddress not sent or is not valid", http.StatusBadRequest)
+		return
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
@@ -567,6 +613,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	type acceptRes struct {
 		Signature                 string `json:"signature"`
 		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
@@ -580,7 +627,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := enc.Encode(response)
 		if err != nil {
-			log.Error("error encoding response: ", err.Error())
+			log.Error("AcceptQuote - error encoding response: ", err.Error())
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
@@ -646,7 +693,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	depositAddress, err := s.btc.GetDerivedBitcoinAddress(fedInfo, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+	depositAddress, err := s.rsk.GetDerivedBitcoinAddress(fedInfo, s.btc.GetParams(), btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
 		log.Error("error getting derived bitcoin address: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)

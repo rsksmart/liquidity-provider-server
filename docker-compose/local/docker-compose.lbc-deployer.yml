@@ -2,7 +2,7 @@ version: "3"
 services:
   lbc-deployer:
     build:
-      context: lbc-deployer
+      context: ../lbc-deployer
       args:
         LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
     image: lbc-deployer:latest
