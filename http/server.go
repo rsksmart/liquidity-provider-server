@@ -752,14 +752,23 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	quotes, ok := s.generateQuotesByProviders(q, rskBlockNumber, qr, quotes)
+	if !ok {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	buildResponseGetQuotePegOut(w, quotes)
+}
+
+func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint64, qr QuotePegOutRequest, quotes []QuotePegOutResponse) ([]QuotePegOutResponse, bool) {
 	for _, p := range s.pegoutProviders {
 
 		pq, err := p.GetQuote(q, rskBlockNumber)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
+			return nil, false
 		}
 
 		if pq != nil {
@@ -770,21 +779,20 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 			if err != nil {
 				log.Error("error getting quote: unable to hash quote", err)
-				return
+				return nil, false
 			}
 
 			derivationAddress, ok := s.buildDerivationAddress(qr, h)
+
 			if !ok {
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
+				return nil, false
 			}
 
 			err = s.storePegoutQuote(pq, derivationAddress)
 
 			if err != nil {
 				log.Error(err)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
+				return nil, false
 			}
 
 			quote := &QuotePegOutResponse{
@@ -795,8 +803,7 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 		}
 	}
-
-	buildResponseGetQuotePegOut(w, quotes)
+	return quotes, true
 }
 
 func (s *Server) buildDerivationAddress(qr QuotePegOutRequest, h string) (string, bool) {
