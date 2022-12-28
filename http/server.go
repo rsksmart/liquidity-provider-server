@@ -38,6 +38,7 @@ const (
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
 const ErrorRetrievingFederationAddress = "error retrieving federation address: "
+const BadRequestError = "bad request"
 
 type Server struct {
 	srv             http.Server
@@ -450,8 +451,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	err := dec.Decode(&qr)
 	if err != nil {
-		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		buildErrorDecodingRequest(w, err)
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
@@ -551,15 +551,14 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
 	if err != nil {
-		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		buildErrorDecodingRequest(w, err)
 		return
 	}
 
 	hashBytes, err := hex.DecodeString(req.QuoteHash)
 	if err != nil {
 		log.Error("error decoding quote hash: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, BadRequestError, http.StatusBadRequest)
 		return
 	}
 
@@ -742,11 +741,11 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 
-	getQuoteFailed := false
 	q := parseQuotePegOutRequestToQuote(qr)
 	quotes := make([]QuotePegOutResponse, 0)
 
 	rskBlockNumber, err := s.rsk.GetRskHeight()
+
 	if err != nil {
 		log.Error(ErrorRetrievingFederationAddress, err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -755,18 +754,12 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 	for _, p := range s.pegoutProviders {
 
-		if err != nil {
-			log.Error(ErrorRetrievingFederationAddress, err.Error())
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
-
 		pq, err := p.GetQuote(q, rskBlockNumber)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)
-			getQuoteFailed = true
-			continue
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
 
 		if pq != nil {
@@ -777,34 +770,13 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 			if err != nil {
 				log.Error("error getting quote: unable to hash quote", err)
-				getQuoteFailed = true
-				continue
-			}
-
-			pubKey, err := hex.DecodeString(qr.From)
-
-			if err != nil {
-				log.Error("Unable to decode bitocin user public key")
-				log.Error(err)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			}
 
-			decodedQuoteHash, err := hex.DecodeString(h)
-
-			if err != nil {
-				log.Error("Unable to decode quote hash")
-				log.Error(err)
+			derivationAddress, ok := s.buildDerivationAddress(qr, h)
+			if !ok {
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
-			}
-
-			derivationAddress, err := s.btc.ComputeDerivationAddresss(pubKey, decodedQuoteHash)
-
-			if err != nil {
-				log.Error("Unable to generate derivationAddress", err)
-				getQuoteFailed = true
-				continue
 			}
 
 			err = s.storePegoutQuote(pq, derivationAddress)
@@ -813,26 +785,39 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 				log.Error(err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
-			} else {
-				quote := &QuotePegOutResponse{
-					Quote:             pq,
-					DerivationAddress: derivationAddress,
-				}
-				quotes = append(quotes, *quote)
 			}
-		}
 
-		// generate derivation
-	}
+			quote := &QuotePegOutResponse{
+				Quote:             pq,
+				DerivationAddress: derivationAddress,
+			}
+			quotes = append(quotes, *quote)
 
-	if len(quotes) == 0 {
-		if getQuoteFailed {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
 		}
 	}
 
 	buildResponseGetQuotePegOut(w, quotes)
+}
+
+func (s *Server) buildDerivationAddress(qr QuotePegOutRequest, h string) (string, bool) {
+	pubKey, err := hex.DecodeString(qr.From)
+
+	if err != nil {
+		log.Error("Unable to decode bitocin user public key")
+		log.Error(err)
+		return "", false
+	}
+
+	decodedQuoteHash, err := hex.DecodeString(h)
+
+	if err != nil {
+		log.Error("Unable to decode quote hash")
+		log.Error(err)
+		return "", false
+	}
+
+	derivationAddress, err := s.btc.ComputeDerivationAddresss(pubKey, decodedQuoteHash)
+	return derivationAddress, true
 }
 
 func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResponse) {
@@ -848,7 +833,7 @@ func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResp
 
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("error decoding request: ", err.Error())
-	http.Error(w, "bad request", http.StatusBadRequest)
+	http.Error(w, BadRequestError, http.StatusBadRequest)
 	return
 }
 
@@ -886,16 +871,14 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	err := dec.Decode(&req)
 
 	if err != nil {
-		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		buildErrorDecodingRequest(w, err)
 		return
 	}
 
 	quote, err := s.db.GetPegOutQuote(req.QuoteHash)
 
 	if err != nil {
-		log.Error("error decoding request: ", err.Error())
-		http.Error(w, "bad request", http.StatusBadRequest)
+		buildErrorDecodingRequest(w, err)
 		return
 	}
 
