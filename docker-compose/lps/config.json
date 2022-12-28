@@ -64,6 +64,8 @@
         "callFee" : 1000,
         "penaltyFee" : 1000000,
         "chainId" : 33,
-        "depositDateLimit": 3600
+        "depositDateLimit": 3600,
+        "expireDate": 3600,
+        "expireBlocks": 5000
     }
 }
