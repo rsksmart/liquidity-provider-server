@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"net/http"
 	"net/url"
@@ -350,7 +352,7 @@ func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (uint8, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 		defer cancel()
 		var status uint8
-		status, err = rsk.lbc.GetProcessedQuote(&bind.CallOpts{
+		status, err = rsk.lbc.GetPegOutProcessedQuote(&bind.CallOpts{
 			Context: ctx,
 		}, quoteHash)
 		if err == nil {

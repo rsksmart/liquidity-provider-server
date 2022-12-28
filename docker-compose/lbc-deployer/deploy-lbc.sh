@@ -11,5 +11,5 @@ npx truffle deploy --network $RSK_NETWORK
 
 echo "Deployment succeeded"
 
-LBC_ADDR=$(cat ./build/contracts/LiquidityBridgeContract.json | jq -r '.networks."33".address')
+LBC_ADDR=$(cat ./build/contracts/LiquidityBridgeContractProxy.json | jq -r '.networks."33".address')
 echo "LBC_ADDR=$LBC_ADDR"

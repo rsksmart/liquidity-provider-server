@@ -66,14 +66,15 @@ type Server struct {
 	rskWatchers     map[string]*RegisterPegoutWatcher
 	addWatcherMu    sync.Mutex
 	sharedWatcherMu sync.Mutex
+	cfgData         ConfigData
 }
 
 type QuoteRequest struct {
 	CallContractAddress   string     `json:"callContractAddress"`
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
-	GasLimit              uint32     `json:"gasLimit"`
 	RskRefundAddress      string     `json:"rskRefundAddress"`
+	LpAddress             string     `json:"lpAddress"`
 	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
 }
 
@@ -98,6 +99,16 @@ type acceptReq struct {
 	QuoteHash string
 }
 
+func enableCors(res *http.ResponseWriter) {
+	headers := (*res).Header()
+	headers.Add("Access-Control-Allow-Origin", "*")
+	headers.Add("Vary", "Origin")
+	headers.Add("Vary", "Access-Control-Request-Method")
+	headers.Add("Vary", "Access-Control-Request-Headers")
+	headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token")
+	headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+}
+
 type acceptRes struct {
 	Signature                 string `json:"signature"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
@@ -118,6 +129,10 @@ type pegOutQuoteReq struct {
 
 type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
+}
+
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
+	return newServer(rsk, btc, db, time.Now, cfgData)
 }
 
 func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
@@ -719,7 +734,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *types.Quote {
 	return &types.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
@@ -728,7 +743,7 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string) *types.Quo
 		ContractAddr:  qr.CallContractAddress,
 		Data:          qr.CallContractArguments,
 		Value:         qr.ValueToTransfer.Copy(),
-		GasLimit:      qr.GasLimit,
+		GasLimit:      uint32(limitGas),
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type FedInfo struct {
@@ -202,32 +201,6 @@ func (fedInfo *FedInfo) addErpNToMScriptPart(builder *txscript.ScriptBuilder) er
 	return nil
 }
 
-func getDerivationValueHash(userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	buf.Write(derivationArgumentsHash)
-	buf.Write(userBtcRefundAddr)
-	buf.Write(lbcAddress)
-	buf.Write(lpBtcAddress)
-
-	derivationValueHash := crypto.Keccak256(buf.Bytes())
-
-	return derivationValueHash, nil
-}
-
-func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
-	var buf bytes.Buffer
-	hashPrefix, err := hex.DecodeString("20")
-	if err != nil {
-		return nil, err
-	}
-
-	buf.Write(hashPrefix)
-	buf.Write(hash)
-	buf.WriteByte(txscript.OP_DROP)
-
-	return &buf, nil
-}
-
 func getCsvValueFromNetwork(btcParams chaincfg.Params) string {
 	switch btcParams.Name {
 	case chaincfg.MainNetParams.Name:
@@ -236,43 +209,5 @@ func getCsvValueFromNetwork(btcParams chaincfg.Params) string {
 		return "CD50"
 	default:
 		return "01F4"
-	}
-}
-
-func getOpCodeFromInt(val int) byte {
-	switch val {
-	case 1:
-		return txscript.OP_1
-	case 2:
-		return txscript.OP_2
-	case 3:
-		return txscript.OP_3
-	case 4:
-		return txscript.OP_4
-	case 5:
-		return txscript.OP_5
-	case 6:
-		return txscript.OP_6
-	case 7:
-		return txscript.OP_7
-	case 8:
-		return txscript.OP_8
-	case 9:
-		return txscript.OP_9
-	case 10:
-		return txscript.OP_10
-	case 11:
-		return txscript.OP_11
-	case 12:
-		return txscript.OP_12
-	case 13:
-		return txscript.OP_13
-	case 14:
-		return txscript.OP_14
-	case 15:
-		return txscript.OP_15
-	default:
-		return txscript.OP_16
-
 	}
 }
