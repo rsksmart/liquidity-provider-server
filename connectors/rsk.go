@@ -75,6 +75,8 @@ type RSKConnector interface {
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
+	GetRskHeight() (uint64, error)
+	RefundPegout(quote *types.Quote, branch *MerkleBranch) error
 }
 
 type RSK struct {
@@ -86,6 +88,11 @@ type RSK struct {
 	requiredBridgeConfirmations int64
 	irisActivationHeight        int
 	erpKeys                     []string
+}
+
+func (rsk *RSK) RefundPegout(quote *types.Quote, branch *MerkleBranch) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 type RegisterPegOutQuoteWatcherCompleteCallback = func(w QuotePegOutWatcher)
@@ -721,6 +728,8 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 	pq.DepositConfirmations = q.DepositConfirmations
 	pq.TransferConfirmations = q.TransferConfirmations
 	pq.TransferTime = q.TransferTime
+	pq.ExpireDate = q.ExpireDate
+	pq.ExpireBlocks = q.ExpireBlocks
 
 	return pq, nil
 }
@@ -785,6 +794,18 @@ func (rsk *RSK) AddQuoteToWatch(hash string, interval time.Duration, exp time.Ti
 		}
 	}(w)
 	return nil
+}
+
+func (rsk *RSK) GetRskHeight() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	number, err := rsk.c.BlockNumber(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return number, nil
 }
 
 func (rsk *RSK) checkPegoutRegister(quoteHash string, w QuotePegOutWatcher, expTime time.Time, now func() time.Time) {

@@ -18,13 +18,14 @@ import (
 
 	"encoding/hex"
 
+	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/txscript"
-
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const unknownBtcdVersion = -1
+const ERROR_DECODING_ADDRESS = "error decoding address %v: %v"
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
 
@@ -46,6 +47,8 @@ type BTCConnector interface {
 	GetBlockNumberByTx(txHash string) (int64, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
+	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
+	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
 }
 
 type BTCClient interface {
@@ -117,12 +120,12 @@ func (btc *BTC) CheckConnection() error {
 func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		return fmt.Errorf("error decoding address %v: %v", address, err)
+		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		return fmt.Errorf("error importing address %v: %v", address, err)
+		return buildErrorImportAddress(address, err)
 	}
 
 	go func(w AddressWatcher) {
@@ -145,14 +148,13 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		log.Errorf("error decoding address %v: %v", address, err)
-		return fmt.Errorf("error decoding address %v: %v", address, err)
+		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		log.Errorf("error importing address %v: %v", address, err)
-		return fmt.Errorf("error importing address %v: %v", address, err)
+		return buildErrorImportAddress(address, err)
 	}
 
 	go func(w AddressWatcher) {
@@ -170,6 +172,11 @@ func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amo
 		}
 	}(w)
 	return nil
+}
+
+func buildErrorImportAddress(address string, err error) error {
+	log.Errorf("error importing address %v: %v", address, err)
+	return fmt.Errorf("error importing address %v: %v", address, err)
 }
 
 func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
@@ -196,6 +203,13 @@ func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAm
 	if conf > *confirmations {
 		*confirmations = conf
 		w.OnNewConfirmation(txHash, conf, amount)
+		branch, err := btc.BuildMerkleBranch(txHash)
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Merkle Branch info :::: path:%v hashes:%v ", branch.Path, branch.Hashes)
+
 		return nil
 	}
 
@@ -226,10 +240,14 @@ func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	}
 	msgBlock, err := btc.c.GetBlock(blockHash)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+		return nil, buildErrorRetrievingBlock(blockHash, err)
 	}
 	block := btcutil.NewBlock(msgBlock)
 	return serializePMT(txHash, block)
+}
+
+func buildErrorRetrievingBlock(blockHash *chainhash.Hash, err error) error {
+	return fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
 }
 
 func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
@@ -239,7 +257,7 @@ func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
 	}
 	msgBlock, err := btc.c.GetBlockVerbose(blockHash)
 	if err != nil {
-		return 0, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+		return 0, buildErrorRetrievingBlock(blockHash, err)
 	}
 	return msgBlock.Height, nil
 }
@@ -323,6 +341,57 @@ func serializeTx(tx *btcutil.Tx) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (btc *BTC) BuildMerkleBranch(txHash string) (*MerkleBranch, error) {
+	blockHash, err := btc.getBlockHash(txHash)
+	if err != nil {
+		return nil, err
+	}
+	msgBlock, err := btc.c.GetBlock(blockHash)
+	if err != nil {
+		return nil, buildErrorRetrievingBlock(blockHash, err)
+	}
+	block := btcutil.NewBlock(msgBlock)
+
+	txs := make([]*btcutil.Tx, len(block.MsgBlock().Transactions))
+	for i, t := range block.MsgBlock().Transactions {
+		tx := btcutil.NewTx(t)
+		txs[i] = tx
+	}
+
+	hash, err := chainhash.NewHashFromStr(txHash)
+
+	if err != nil {
+		return nil, fmt.Errorf("error parsing hash: %v", err)
+	}
+
+	store := blockchain.BuildMerkleTreeStore(txs, false)
+
+	idx := FindInMerkleTreeStore(store, hash)
+	if idx == -1 {
+		return nil, fmt.Errorf("tx not found in merkle tree: %v", err)
+	}
+
+	branch := buildMerkleBranch(store, uint32(len(block.Transactions())), uint32(idx))
+
+	return branch, nil
+}
+
+func (btc *BTC) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error) {
+
+	btcAdd, err := btcutil.DecodeAddress(btcAddress, &btc.params)
+	if err != nil {
+		log.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
+		return nil, fmt.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
+	}
+
+	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
+	if err != nil {
+		return nil, buildErrorImportAddress(btcAddress, err)
+	}
+
+	return btc.BuildMerkleBranch(txHash)
+}
+
 func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
 	filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 	hash, err := chainhash.NewHashFromStr(txHash)
@@ -358,6 +427,54 @@ func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
 	buf.Write(msg.Flags)
 
 	return buf.Bytes(), nil
+}
+
+func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
+	for i, h := range store {
+		if h.IsEqual(hash) {
+			return i
+		}
+	}
+	return -1
+}
+
+type MerkleBranch struct {
+	Hashes []*chainhash.Hash
+	Path   int
+}
+
+func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uint32) *MerkleBranch {
+	hashes := make([]*chainhash.Hash, 0)
+	path := 0
+	pathIndex := 0
+	var levelOffset uint32 = 0
+	currentNodeOffset := txIndex
+
+	for levelSize := txCount; levelSize > 1; levelSize = (levelSize + 1) / 2 {
+		var targetOffset uint32
+		if currentNodeOffset%2 == 0 {
+			// Target is left hand side, use right hand side
+			targetOffset = min(currentNodeOffset+1, levelSize-1)
+		} else {
+			// Target is right hand side, use left hand side
+			targetOffset = currentNodeOffset - 1
+			path = path + (1 << pathIndex)
+		}
+		hashes = append(hashes, merkleTree[levelOffset+targetOffset])
+
+		levelOffset += levelSize
+		currentNodeOffset = currentNodeOffset / 2
+		pathIndex++
+	}
+
+	return &MerkleBranch{hashes, path}
+}
+
+func min(a, b uint32) uint32 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (btc *BTC) getConfirmations(address btcutil.Address, minAmount btcutil.Amount) (int64, btcutil.Amount, string, error) {
