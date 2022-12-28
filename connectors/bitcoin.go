@@ -25,6 +25,7 @@ import (
 )
 
 const unknownBtcdVersion = -1
+const ERROR_DECODING_ADDRESS = "error decoding address %v: %v"
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
 
@@ -119,12 +120,12 @@ func (btc *BTC) CheckConnection() error {
 func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		return fmt.Errorf("error decoding address %v: %v", address, err)
+		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		return fmt.Errorf("error importing address %v: %v", address, err)
+		return buildErrorImportAddress(address, err)
 	}
 
 	go func(w AddressWatcher) {
@@ -147,14 +148,13 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		log.Errorf("error decoding address %v: %v", address, err)
-		return fmt.Errorf("error decoding address %v: %v", address, err)
+		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		log.Errorf("error importing address %v: %v", address, err)
-		return fmt.Errorf("error importing address %v: %v", address, err)
+		return buildErrorImportAddress(address, err)
 	}
 
 	go func(w AddressWatcher) {
@@ -172,6 +172,11 @@ func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amo
 		}
 	}(w)
 	return nil
+}
+
+func buildErrorImportAddress(address string, err error) error {
+	log.Errorf("error importing address %v: %v", address, err)
+	return fmt.Errorf("error importing address %v: %v", address, err)
 }
 
 func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
@@ -235,10 +240,14 @@ func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	}
 	msgBlock, err := btc.c.GetBlock(blockHash)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+		return nil, buildErrorRetrievingBlock(blockHash, err)
 	}
 	block := btcutil.NewBlock(msgBlock)
 	return serializePMT(txHash, block)
+}
+
+func buildErrorRetrievingBlock(blockHash *chainhash.Hash, err error) error {
+	return fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
 }
 
 func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
@@ -248,7 +257,7 @@ func (btc *BTC) GetBlockNumberByTx(txHash string) (int64, error) {
 	}
 	msgBlock, err := btc.c.GetBlockVerbose(blockHash)
 	if err != nil {
-		return 0, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+		return 0, buildErrorRetrievingBlock(blockHash, err)
 	}
 	return msgBlock.Height, nil
 }
@@ -339,7 +348,7 @@ func (btc *BTC) BuildMerkleBranch(txHash string) (*MerkleBranch, error) {
 	}
 	msgBlock, err := btc.c.GetBlock(blockHash)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving block %v: %v", blockHash.String(), err)
+		return nil, buildErrorRetrievingBlock(blockHash, err)
 	}
 	block := btcutil.NewBlock(msgBlock)
 
@@ -371,14 +380,13 @@ func (btc *BTC) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*
 
 	btcAdd, err := btcutil.DecodeAddress(btcAddress, &btc.params)
 	if err != nil {
-		log.Errorf("error decoding address %v: %v", btcAddress, err)
-		return nil, fmt.Errorf("error decoding address %v: %v", btcAddress, err)
+		log.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
+		return nil, fmt.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
 	}
 
 	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
 	if err != nil {
-		log.Errorf("error importing address %v: %v", btcAddress, err)
-		return nil, fmt.Errorf("error importing address %v: %v", btcAddress, err)
+		return nil, buildErrorImportAddress(btcAddress, err)
 	}
 
 	return btc.BuildMerkleBranch(txHash)
