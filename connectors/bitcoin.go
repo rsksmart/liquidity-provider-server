@@ -48,6 +48,7 @@ type BTCConnector interface {
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
+	SendBTC(address string, amount uint) (string, error)
 }
 
 type BTCClient interface {
@@ -59,6 +60,7 @@ type BTCClient interface {
 	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
 	GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error)
 	Disconnect()
+	SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error)
 }
 
 type BTC struct {
@@ -435,6 +437,28 @@ func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
 		}
 	}
 	return -1
+}
+
+func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
+
+	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
+	if err != nil {
+		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return "", fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
+	}
+
+	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
+	if err != nil {
+		return "", buildErrorImportAddress(address, err)
+	}
+
+	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(btcutil.Amount(amount).ToBTC()))
+
+	if err != nil {
+		return "", err
+	}
+
+	return hash.String(), nil
 }
 
 type MerkleBranch struct {

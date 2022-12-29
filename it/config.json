@@ -15,7 +15,7 @@
   },
   "rsk": {
     "endpoint": "http://localhost:4444",
-    "lbcAddr": "0x0e19674ebc2c2B6Df3e7a1417c49b50235c61924",
+    "lbcAddr": "0x463F29B11503e198f6EbeC9903b4e5AaEddf6D29",
     "bridgeAddr": "0x0000000000000000000000000000000001000006",
     "requiredBridgeConfirmations": 10
   },

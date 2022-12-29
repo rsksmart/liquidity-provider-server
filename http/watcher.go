@@ -49,17 +49,18 @@ type BTCAddressPegOutWatcher struct {
 }
 
 type RegisterPegoutWatcher struct {
-	hash         string
-	btc          connectors.BTCConnector
-	rsk          connectors.RSKConnector
-	lp           pegout.LiquidityProvider
-	db           storage.DBConnector
-	state        types.RQState
-	quote        *pegout.Quote
-	done         chan struct{}
-	closed       bool
-	signature    []byte
-	sharedLocker sync.Locker
+	hash              string
+	btc               connectors.BTCConnector
+	rsk               connectors.RSKConnector
+	lp                pegout.LiquidityProvider
+	db                storage.DBConnector
+	state             types.RQState
+	quote             *pegout.Quote
+	done              chan struct{}
+	closed            bool
+	signature         []byte
+	sharedLocker      sync.Locker
+	derivationAddress string
 }
 
 const (
@@ -105,18 +106,19 @@ func NewBTCAddressPegOutWatcher(hash string,
 
 func NewRegisterPegoutWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider pegout.LiquidityProvider, db storage.DBConnector,
-	q *pegout.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *RegisterPegoutWatcher {
+	q *pegout.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker, derivationAddress string) *RegisterPegoutWatcher {
 	watcher := RegisterPegoutWatcher{
-		hash:         hash,
-		btc:          btc,
-		rsk:          rsk,
-		lp:           provider,
-		db:           db,
-		quote:        q,
-		state:        state,
-		signature:    signature,
-		done:         make(chan struct{}),
-		sharedLocker: sharedLocker,
+		hash:              hash,
+		btc:               btc,
+		rsk:               rsk,
+		lp:                provider,
+		db:                db,
+		quote:             q,
+		state:             state,
+		signature:         signature,
+		done:              make(chan struct{}),
+		sharedLocker:      sharedLocker,
+		derivationAddress: derivationAddress,
 	}
 	return &watcher
 }
@@ -326,6 +328,15 @@ func (r *RegisterPegoutWatcher) OnRegisterPegOut(newState types.RQState) {
 
 	if newState == types.RQStateCallForUserSucceeded {
 		if newState != r.state {
+			txHash, err := r.btc.SendBTC(r.derivationAddress, uint(r.quote.Value))
+			if err != nil {
+				log.Errorf("Error to send %v BTC to %v of quote hash %v", r.derivationAddress, r.quote.Value, r.hash)
+				log.Errorf("Error: %v", err)
+				return
+			}
+
+			log.Infof("it was sent %v BTC to %v of quote hash %v (transaction hash: %v)", r.derivationAddress, r.quote.Value, r.hash, txHash)
+
 			r.updateQuoteState(newState)
 			r.close()
 		}

@@ -228,6 +228,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
+	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -357,19 +358,11 @@ func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, ha
 	}
 
 	expTime := getPegOutQuoteExpTime(quote)
-	watcher := NewRegisterPegoutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	watcher := NewRegisterPegoutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu, derivationAddress)
 	err := s.rsk.AddQuoteToWatch(hash, time.Minute, expTime, watcher, func(w connectors.QuotePegOutWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
 		delete(s.rskWatchers, hash)
-
-		if watcher.state == types.RQStateCallForUserSucceeded {
-			log.Debugf("Start Verification of derivationAddress deposit ::: %v", derivationAddress)
-			err := s.addAddressPegOutWatcher(quote, hash, derivationAddress, signB, provider, types.RQStateCallForUserSucceeded)
-			if err != nil {
-				log.Errorf("Impossible to send money to p2sh, %v", derivationAddress)
-			}
-		}
 	})
 	if err == nil {
 		log.Info("added watcher for quote: : ", hash, "; deposit addr: ")
@@ -1114,6 +1107,50 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 		Quote:              quote,
 		MerkleBranchPath:   branch.Path,
 		MerkleBranchHashes: hashes,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		return
+	}
+}
+
+type SenBTCRequest struct {
+	Address string `json:"address"`
+	Amount  uint   `json:"amount"`
+}
+
+type SenBTCResponse struct {
+	TxHash string `json:"txHash"`
+}
+
+func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := SenBTCRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+
+	if err != nil {
+		log.Errorf("Unable to deserialize payload: %v", err)
+		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		return
+	}
+
+	txHash, err := s.btc.SendBTC(payload.Address, payload.Amount)
+
+	if err != nil {
+		log.Errorf("Unable to deserialize payload: %v", err)
+		http.Error(w, "Unable to sendAddress", http.StatusBadRequest)
+		return
+	}
+
+	response := &SenBTCResponse{
+		TxHash: txHash,
 	}
 
 	encoder := json.NewEncoder(w)
