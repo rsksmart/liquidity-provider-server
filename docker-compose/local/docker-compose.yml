@@ -17,21 +17,24 @@ services:
               "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
               "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
 
-  rskj:
+  powpeg:
     build:
-      context: ../rskj
+      context: ../powpeg
       args:
         UID: "${LPS_UID}"
-    image: rskj:latest
-    container_name: rskj01
+    image: powpeg:latest
+    container_name: powpeg-node-instance
     ports:
-      - "4444:4444"
+      - "127.0.0.1:4444:4444"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rsk}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-./volumes/powpeg}/db:/home/powpeg/.powpeg
+      - ${RSKJ_HOME:-./volumes/powpeg}/logs:/home/powpeg/logs
     networks:
       - net_lps
-    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
+    #    command: tail -f /dev/null
+    command: java -cp powpeg.jar -Drsk.conf.file=regtest-fed.conf -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.cors=* -Drpc.providers.web.ws.enabled=true -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=powpeg co.rsk.federate.FederateRunner --regtest --reset
+
+
 
 networks:
   net_lps:

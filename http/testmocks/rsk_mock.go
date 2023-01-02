@@ -3,6 +3,10 @@ package testmocks
 import (
 	"context"
 	"math/big"
+	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
@@ -16,6 +20,7 @@ import (
 
 type RskMock struct {
 	mock.Mock
+	QuoteHash string
 }
 
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
@@ -140,6 +145,14 @@ func (m *RskMock) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (b
 func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 	args := m.Called()
 	return args.Get(0).(*connectors.FedInfo), args.Error(1)
+}
+
+func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w connectors.QuotePegOutWatcher, cb func(w connectors.QuotePegOutWatcher)) error {
+	return nil
+}
+
+func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
+	return m.QuoteHash, nil
 }
 
 func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {

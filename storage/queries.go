@@ -126,3 +126,102 @@ SELECT
 FROM retained_quotes
 WHERE state IN (?)
 `
+
+const insertPegOutQuote = `
+INSERT INTO pegout_quotes (
+	hash,
+	lbc_addr,
+	lp_rsk_addr,
+	rsk_refund_addr,
+	fee,
+	penalty_fee,
+	nonce,
+	value,
+	agreement_timestamp,
+	deposit_date_limit,
+	deposit_confirmations,
+	transfer_confirmations,
+	transfer_time,
+	expire_date,
+	expire_blocks,
+    derivation_address
+)
+VALUES (
+    ?,
+	:lbc_addr,
+	:lp_rsk_addr,
+	:rsk_refund_addr,
+	:fee,
+	:penalty_fee,
+	:nonce,
+	:value,
+	:agreement_timestamp,
+	:deposit_date_limit,
+	:deposit_confirmations,
+	:transfer_confirmations,
+    :transfer_time,
+    :expire_date,
+    :expire_blocks,
+    ?
+)
+`
+
+const insertRetainedPegOutQuote = `
+INSERT INTO retained_pegout_quotes (
+    quote_hash,
+	deposit_addr,
+	signature,
+	req_liq,
+	state
+)
+VALUES (
+    :quote_hash,
+	:deposit_addr,
+	:signature,
+	:req_liq,
+	:state
+)
+`
+
+const updateRetainedPegOutQuoteState = `
+UPDATE retained_pegout_quotes
+SET state = :new_state
+WHERE quote_hash = :quote_hash AND state = :old_state
+`
+
+const getRetainedPegOutQuote = `
+SELECT
+	quote_hash,
+	deposit_addr,
+	signature,
+	req_liq,
+	state
+FROM retained_pegout_quotes
+WHERE quote_hash = ?
+LIMIT 1`
+
+const deleteExpiredPegOutQuotes = `
+DELETE FROM pegout_quotes
+WHERE hash NOT IN (SELECT quote_hash FROM retained_quotes)
+AND agreement_timestamp + time_for_deposit < ?
+`
+
+const selectPegOutQuoteByHash = `
+SELECT 
+	lbc_addr,
+	lp_rsk_addr,
+	rsk_refund_addr,
+	fee,
+	penalty_fee,
+	nonce,
+	value,
+	agreement_timestamp,
+	deposit_date_limit,
+	deposit_confirmations,
+	transfer_confirmations,
+	transfer_time,
+	expire_date,
+	expire_blocks
+FROM pegout_quotes 
+WHERE hash = ?
+LIMIT 1`

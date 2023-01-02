@@ -67,7 +67,6 @@ Computes and returns a quote for the service.
     rskRefundAddr (string) - Hex-encoded user RSK refund address.
     lpAddress (string) - The address of the liquidity provider that will do the cross chain conversion
     btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
-    liquiditProviderAddress (string) - Base58-encoded Hex-encoded RSK liquidity Provider address.
 
 #### Returns
 
@@ -119,3 +118,14 @@ Gets the registered providers List.
 
     Id - The Id of the provider
     Provider - The address of the Liquidity Provider in RSK Network
+
+
+## Run Integration Tests
+
+1. You should run LPS env into [docker-compose](./docker-compose/README.md)
+2. Then you need to change directory to it
+3. Then into it folder you only need to run `go test -integration`
+
+
+#### Note: 
+It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.

@@ -13,6 +13,11 @@ type BtcMock struct {
 	mock.Mock
 }
 
+func (b *BtcMock) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher, cb connectors.AddressWatcherCompleteCallback) error {
+	b.Called(address, minBtcAmount, interval, exp, w, cb)
+	return nil
+}
+
 func (b *BtcMock) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher, cb connectors.AddressWatcherCompleteCallback) error {
 	b.Called(address, minBtcAmount, interval, exp, w, cb)
 	return nil
@@ -54,4 +59,15 @@ func (b *BtcMock) SerializeTx(txHash string) ([]byte, error) {
 func (b *BtcMock) GetBlockNumberByTx(txHash string) (int64, error) {
 	b.Called(txHash)
 	return 0, nil
+}
+
+func (b *BtcMock) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte) (string, error) {
+	b.Called(userPublicKey)
+	b.Called(quoteHash)
+	return "", nil
+}
+
+func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	b.Called(fedInfo, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+	return "", nil
 }
