@@ -190,7 +190,6 @@ func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAm
 		return err
 	}
 
-	log.Debugf("conf:: %v", conf)
 	log.Debugf("amount:: %v", amount)
 	log.Debugf("txHash:: %v", txHash)
 	log.Debugf("expTime:: %v", expTime)
