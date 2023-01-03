@@ -327,7 +327,7 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 }
 
 func logAddWatcher(hash string, escapedDepositAddr string) {
-	log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
+	log.Infof("added watcher for quote: : %v; deposit addr: %v", hash, escapedDepositAddr)
 }
 
 func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depositAddr string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {

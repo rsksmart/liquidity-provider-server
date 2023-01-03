@@ -443,7 +443,7 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
 		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
-		return "", fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return "", err
 	}
 
 	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
