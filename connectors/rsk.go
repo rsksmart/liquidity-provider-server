@@ -78,7 +78,6 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	RefundPegout(quote *types.Quote, branch *MerkleBranch) error
 	GetProviders() ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActivePowpegRedeemScript() ([]byte, error)
@@ -114,11 +113,6 @@ type RSK struct {
 	requiredBridgeConfirmations int64
 	irisActivationHeight        int
 	erpKeys                     []string
-}
-
-func (rsk *RSK) RefundPegout(quote *types.Quote, branch *MerkleBranch) error {
-	//TODO implement me
-	panic("implement me")
 }
 
 type RegisterPegOutQuoteWatcherCompleteCallback = func(w QuotePegOutWatcher)

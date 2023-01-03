@@ -26,6 +26,7 @@ type DBConnector interface {
 	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
 	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
+	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
@@ -234,6 +235,30 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 
 	if rows.Next() {
 		entry := types.RetainedQuote{}
+
+		err = rows.StructScan(&entry)
+		if err != nil {
+			return nil, err
+		}
+
+		return &entry, nil
+	}
+
+	return nil, nil
+}
+
+func (db *DB) GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error) {
+	log.Debug("getting retained quote: ", hash)
+	rows, err := db.db.Queryx(getRetainedPegOutQuote, hash)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sqlx.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	if rows.Next() {
+		entry := pegout.RetainedQuote{}
 
 		err = rows.StructScan(&entry)
 		if err != nil {

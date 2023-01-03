@@ -184,7 +184,7 @@ var testPegOutQuotes = []struct {
 	},
 }
 
-var testQuotes = []struct {
+type TestQuote struct {
 	BTCRefundAddr               string
 	LBCAddr                     string
 	LPBTCAddr                   string
@@ -193,7 +193,9 @@ var testQuotes = []struct {
 	ExpectedAddressHash         string
 	NetworkParams               string
 	FedInfo                     *FedInfo
-}{
+}
+
+var testQuotes = []TestQuote{
 	{
 		LPBTCAddr:                   "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		BTCRefundAddr:               "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
@@ -265,34 +267,46 @@ const (
 	FlyoverErpScriptString = "20ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c97564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db536702cd50b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec805468ae"
 )
 
+func buildDerivationValueHash(tt TestQuote, t *testing.T) ([]byte, bool) {
+	lbcAddr := common.FromHex(tt.LBCAddr)
+	hashBytes, err := hex.DecodeString(tt.QuoteHash)
+	if err != nil || len(hashBytes) == 0 {
+		t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+		return nil, false
+	}
+	userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
+	if err != nil {
+		t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+		return nil, false
+	}
+	lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
+	if err != nil {
+		t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
+		return nil, false
+	}
+	value, err := getDerivationValueHash(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
+	if err != nil {
+		t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.ExpectedDerivationValueHash, err)
+		return nil, false
+	}
+	return value, true
+}
+
 func testDerivationComplete(t *testing.T) {
 	for _, tt := range testQuotes {
 		tt.FedInfo.IrisActivationHeight = 1
+
 		if !common.IsHexAddress(tt.LBCAddr) {
 			t.Errorf("invalid address: %v", tt.LBCAddr)
 			continue
 		}
-		lbcAddr := common.FromHex(tt.LBCAddr)
-		hashBytes, err := hex.DecodeString(tt.QuoteHash)
-		if err != nil || len(hashBytes) == 0 {
-			t.Errorf("Cannot parse QuoteHash correctly. value: %v, error: %v", tt.QuoteHash, err)
+
+		value, ok := buildDerivationValueHash(tt, t)
+
+		if !ok {
 			continue
 		}
-		userBtcRefundAddr, err := DecodeBTCAddressWithVersion(tt.BTCRefundAddr)
-		if err != nil {
-			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
-			continue
-		}
-		lpBtcAddress, err := DecodeBTCAddressWithVersion(tt.LPBTCAddr)
-		if err != nil {
-			t.Errorf("Unexpected error in getBytesFromBtcAddress. error: %v", err)
-			continue
-		}
-		value, err := getDerivationValueHash(userBtcRefundAddr, lbcAddr, lpBtcAddress, hashBytes)
-		if err != nil {
-			t.Errorf("Unexpected error in GetDerivationValueHash. value: %v, expected: %v, error: %v", value, tt.ExpectedDerivationValueHash, err)
-			continue
-		}
+
 		result := hex.EncodeToString(value)
 		assert.EqualValues(t, tt.ExpectedDerivationValueHash, result)
 		buf, err := getFlyoverPrefix(value)
