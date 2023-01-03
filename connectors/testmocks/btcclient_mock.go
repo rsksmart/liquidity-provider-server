@@ -13,7 +13,6 @@ type BTCClientMock struct {
 }
 
 func (B *BTCClientMock) SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error) {
-	//TODO implement me
 	panic("implement me")
 }
 
