@@ -24,7 +24,6 @@ import (
 )
 
 const unknownBtcdVersion = -1
-const ERROR_DECODING_ADDRESS = "error decoding address %v: %v"
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
 
@@ -121,12 +120,12 @@ func (btc *BTC) CheckConnection() error {
 func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return err
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		return buildErrorImportAddress(address, err)
+		return err
 	}
 
 	go func(w AddressWatcher) {
@@ -149,13 +148,12 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
 	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
-		return fmt.Errorf(ERROR_DECODING_ADDRESS, address, err)
+		return err
 	}
 
 	err = btc.c.ImportAddressRescan(address, "", false)
 	if err != nil {
-		return buildErrorImportAddress(address, err)
+		return err
 	}
 
 	go func(w AddressWatcher) {
@@ -380,8 +378,7 @@ func (btc *BTC) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*
 
 	btcAdd, err := btcutil.DecodeAddress(btcAddress, &btc.params)
 	if err != nil {
-		log.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
-		return nil, fmt.Errorf(ERROR_DECODING_ADDRESS, btcAddress, err)
+		return nil, err
 	}
 
 	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
@@ -442,13 +439,12 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 
 	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
-		log.Errorf(ERROR_DECODING_ADDRESS, address, err)
 		return "", err
 	}
 
 	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
 	if err != nil {
-		return "", buildErrorImportAddress(address, err)
+		return "", err
 	}
 
 	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(btcutil.Amount(amount).ToBTC()))
