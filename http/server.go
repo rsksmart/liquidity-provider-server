@@ -37,8 +37,11 @@ const (
 
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
+
 const ErrorRetrievingFederationAddress = "error retrieving federation address: "
 const BadRequestError = "bad request"
+const UnableToBuildResponse = "Unable to build response"
+const UnableToDeserializePayloadError = "Unable to deserialize payload: %v"
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -317,10 +320,14 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 	if err == nil {
 		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
 		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
-		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
+		logAddWatcher(hash, escapedDepositAddr)
 		s.watchers[hash] = watcher
 	}
 	return err
+}
+
+func logAddWatcher(hash string, escapedDepositAddr string) {
+	log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
 }
 
 func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depositAddr string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
@@ -332,7 +339,18 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 
 	minBtcAmount := btcutil.Amount(quote.Value)
 	expTime := getPegOutQuoteExpTime(quote)
-	watcher := NewBTCAddressPegOutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	watcher := &BTCAddressPegOutWatcher{
+		hash:         hash,
+		btc:          s.btc,
+		rsk:          s.rsk,
+		lp:           provider,
+		db:           s.db,
+		quote:        quote,
+		state:        state,
+		signature:    signB,
+		done:         make(chan struct{}),
+		sharedLocker: &s.sharedWatcherMu,
+	}
 	err := s.btc.AddAddressPegOutWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		log.Debugln("Done: addAddressPegOutWatcher")
 		s.addWatcherMu.Lock()
@@ -342,7 +360,7 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 	if err == nil {
 		escapedDepositAddr := strings.Replace(depositAddr, "\n", "", -1)
 		escapedDepositAddr = strings.Replace(escapedDepositAddr, "\r", "", -1)
-		log.Info("added watcher for quote: : ", hash, "; deposit addr: ", escapedDepositAddr)
+		logAddWatcher(hash, escapedDepositAddr)
 		s.pegOutWatchers[hash] = watcher
 	}
 	return err
@@ -358,14 +376,26 @@ func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, ha
 	}
 
 	expTime := getPegOutQuoteExpTime(quote)
-	watcher := NewRegisterPegoutWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu, derivationAddress)
+	watcher := &RegisterPegoutWatcher{
+		hash:              hash,
+		btc:               s.btc,
+		rsk:               s.rsk,
+		lp:                provider,
+		db:                s.db,
+		quote:             quote,
+		state:             state,
+		signature:         signB,
+		done:              make(chan struct{}),
+		sharedLocker:      &s.sharedWatcherMu,
+		derivationAddress: derivationAddress,
+	}
 	err := s.rsk.AddQuoteToWatch(hash, time.Minute, expTime, watcher, func(w connectors.QuotePegOutWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
 		delete(s.rskWatchers, hash)
 	})
 	if err == nil {
-		log.Info("added watcher for quote: : ", hash, "; deposit addr: ")
+		logAddWatcher(hash, "")
 		s.rskWatchers[hash] = watcher
 	}
 	return err
@@ -1039,7 +1069,7 @@ func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 
 	if err != nil {
-		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
 		return
 	}
 }
@@ -1073,7 +1103,7 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&payload)
 
 	if err != nil {
-		log.Errorf("Unable to deserialize payload: %v", err)
+		log.Errorf(UnableToDeserializePayloadError, err)
 		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
 		return
 	}
@@ -1114,7 +1144,7 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 
 	if err != nil {
-		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
 		return
 	}
 }
@@ -1136,7 +1166,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&payload)
 
 	if err != nil {
-		log.Errorf("Unable to deserialize payload: %v", err)
+		log.Errorf(UnableToDeserializePayloadError, err)
 		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
 		return
 	}
@@ -1144,7 +1174,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 	txHash, err := s.btc.SendBTC(payload.Address, payload.Amount)
 
 	if err != nil {
-		log.Errorf("Unable to deserialize payload: %v", err)
+		log.Errorf(UnableToDeserializePayloadError, err)
 		http.Error(w, "Unable to sendAddress", http.StatusBadRequest)
 		return
 	}
@@ -1158,7 +1188,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 
 	if err != nil {
-		http.Error(w, "Unable to build response", http.StatusInternalServerError)
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
 		return
 	}
 }

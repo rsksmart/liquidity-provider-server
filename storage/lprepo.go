@@ -45,14 +45,13 @@ func (r *LPRepository) RetainPegOutQuote(rq *pegout.RetainedQuote) error {
 }
 
 func (r *LPRepository) HasRetainedPegOutQuote(hash string) (bool, error) {
-	rq, err := r.db.GetRetainedQuote(hash)
+	rq, err := r.db.GetRetainedPegOutQuote(hash)
 	if err != nil {
 		return false, err
 	}
 	return rq != nil, nil
 }
 
-// TODO: Needs to implement
 func (r *LPRepository) HasLiquidityPegOut(lp pegout.LiquidityProvider, satoshis uint64) (bool, error) {
 	return true, nil
 }

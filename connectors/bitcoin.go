@@ -598,12 +598,7 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
-		hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
-		if err != nil {
-			return nil, err
-		}
-
-		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
+		err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
 		if err != nil {
 			return nil, err
 		}
@@ -615,12 +610,7 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 
 		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
 		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
-			hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
-			if err != nil {
-				return nil, err
-			}
-
-			err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
+			err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
 			if err != nil {
 				return nil, err
 			}
@@ -629,6 +619,20 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 
 	buf.Write(hashBuf.Bytes())
 	return buf.Bytes(), nil
+}
+
+func (btc *BTC) buildPowPegRedeemScriptBuf(fedInfo *FedInfo, hashBuf *bytes.Buffer, err error) error {
+	hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
+	if err != nil {
+		return err
+	}
+
+	err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {

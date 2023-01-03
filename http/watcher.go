@@ -64,8 +64,12 @@ type RegisterPegoutWatcher struct {
 }
 
 const (
-	pegInGasLim = 250000
-	CFUExtraGas = 150000
+	pegInGasLim           = 250000
+	CFUExtraGas           = 150000
+	WatcherClosedError    = "watcher is closed; cannot handle OnNewConfirmation; hash: %v"
+	WatcherOnExpireError  = "watcher is closed; cannot handle OnExpire; hash: %v"
+	TimeExpiredError      = "time has expired for quote: %v"
+	UpdateQuoteStateError = "error updating quote state; hash: %v; error: %v"
 )
 
 func NewBTCAddressWatcher(hash string,
@@ -86,46 +90,9 @@ func NewBTCAddressWatcher(hash string,
 	return &watcher
 }
 
-func NewBTCAddressPegOutWatcher(hash string,
-	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider pegout.LiquidityProvider, db storage.DBConnector,
-	q *pegout.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressPegOutWatcher {
-	watcher := BTCAddressPegOutWatcher{
-		hash:         hash,
-		btc:          btc,
-		rsk:          rsk,
-		lp:           provider,
-		db:           db,
-		quote:        q,
-		state:        state,
-		signature:    signature,
-		done:         make(chan struct{}),
-		sharedLocker: sharedLocker,
-	}
-	return &watcher
-}
-
-func NewRegisterPegoutWatcher(hash string,
-	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider pegout.LiquidityProvider, db storage.DBConnector,
-	q *pegout.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker, derivationAddress string) *RegisterPegoutWatcher {
-	watcher := RegisterPegoutWatcher{
-		hash:              hash,
-		btc:               btc,
-		rsk:               rsk,
-		lp:                provider,
-		db:                db,
-		quote:             q,
-		state:             state,
-		signature:         signature,
-		done:              make(chan struct{}),
-		sharedLocker:      sharedLocker,
-		derivationAddress: derivationAddress,
-	}
-	return &watcher
-}
-
 func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount) {
 	if w.closed {
-		log.Errorf("watcher is closed; cannot handle OnNewConfirmation; hash: %v", w.hash)
+		log.Errorf(WatcherClosedError, w.hash)
 		return
 	}
 	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
@@ -149,10 +116,10 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 
 func (w *BTCAddressWatcher) OnExpire() {
 	if w.closed {
-		log.Errorf("watcher is closed; cannot handle OnExpire; hash: %v", w.hash)
+		log.Errorf(WatcherOnExpireError, w.hash)
 		return
 	}
-	log.Debugf("time has expired for quote: %v", w.hash)
+	log.Debugf(TimeExpiredError, w.hash)
 	_ = w.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
 }
 
@@ -162,7 +129,7 @@ func (w *BTCAddressWatcher) Done() <-chan struct{} {
 
 func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations int64, amount btcutil.Amount) {
 	if w.closed {
-		log.Errorf("watcher is closed; cannot handle OnNewConfirmation; hash: %v", w.hash)
+		log.Errorf(WatcherClosedError, w.hash)
 		return
 	}
 	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
@@ -171,10 +138,10 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 
 func (w *BTCAddressPegOutWatcher) OnExpire() {
 	if w.closed {
-		log.Errorf("watcher is closed; cannot handle OnExpire; hash: %v", w.hash)
+		log.Errorf(WatcherOnExpireError, w.hash)
 		return
 	}
-	log.Debugf("time has expired for quote: %v", w.hash)
+	log.Debugf(TimeExpiredError, w.hash)
 	_ = w.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
 }
 
@@ -294,7 +261,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 func (w *BTCAddressWatcher) updateQuoteState(newState types.RQState) error {
 	err := w.db.UpdateRetainedQuoteState(w.hash, w.state, newState)
 	if err != nil {
-		log.Errorf("error updating quote state; hash: %v; error: %v", w.hash, err)
+		log.Errorf(UpdateQuoteStateError, w.hash, err)
 		return err
 	}
 
@@ -314,7 +281,7 @@ func (w *BTCAddressWatcher) close() {
 
 func (r *RegisterPegoutWatcher) OnRegisterPegOut(newState types.RQState) {
 	if r.closed {
-		log.Errorf("watcher is closed; cannot handle OnNewConfirmation; hash: %v", r.hash)
+		log.Errorf(WatcherClosedError, r.hash)
 		return
 	}
 
@@ -345,10 +312,10 @@ func (r *RegisterPegoutWatcher) OnRegisterPegOut(newState types.RQState) {
 
 func (r *RegisterPegoutWatcher) OnExpire() {
 	if r.closed {
-		log.Errorf("watcher is closed; cannot handle OnExpire; hash: %v", r.hash)
+		log.Errorf(WatcherOnExpireError, r.hash)
 		return
 	}
-	log.Debugf("time has expired for quote: %v", r.hash)
+	log.Debugf(TimeExpiredError, r.hash)
 	_ = r.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
 }
 
@@ -379,7 +346,7 @@ func (b *BTCAddressPegOutWatcher) close() {
 func (r *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
 	err := r.db.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
 	if err != nil {
-		log.Errorf("error updating quote state; hash: %v; error: %v", r.hash, err)
+		log.Errorf(UpdateQuoteStateError, r.hash, err)
 		return err
 	}
 
@@ -390,7 +357,7 @@ func (r *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
 func (r *BTCAddressPegOutWatcher) updateQuoteState(newState types.RQState) error {
 	err := r.db.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
 	if err != nil {
-		log.Errorf("error updating quote state; hash: %v; error: %v", r.hash, err)
+		log.Errorf(UpdateQuoteStateError, r.hash, err)
 		return err
 	}
 

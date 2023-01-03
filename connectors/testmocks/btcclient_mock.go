@@ -12,6 +12,11 @@ type BTCClientMock struct {
 	mock.Mock
 }
 
+func (B *BTCClientMock) SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (B *BTCClientMock) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
 	args := B.Called()
 	return args.Get(0).(*btcjson.GetNetworkInfoResult), args.Error(1)
