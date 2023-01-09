@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gorilla/handlers"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
+	"github.com/rsksmart/liquidity-provider-server/response"
 	"io"
 	"math"
 	"math/big"
@@ -20,7 +22,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/storage"
@@ -221,6 +222,23 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 	return nil
 }
 
+func wrapHandler(h http.Handler) http.Handler {
+	//func wrapHandler(w http.ResponseWriter, h http.Handler) http.Handler {
+	//	fn := func(r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+
+		res := response.New(true, {}, nil)
+		_, err := w.Write([]byte(res.JsonMarshal()))
+		if err != nil {
+			w.Write([]byte("error while formating response @wrapHandler"))
+			return
+		}
+	}
+
+	return http.HandlerFunc(fn)
+}
+
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
@@ -233,8 +251,12 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
+
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
-	h := handlers.LoggingHandler(w, r)
+
+	// todo: check how to combine loggingHandler and runsafter in one middleware/handler
+	//h := handlers.LoggingHandler(w, r)
+
 	defer func(w *io.PipeWriter) {
 		_ = w.Close()
 	}(w)
@@ -247,8 +269,10 @@ func (s *Server) Start(port uint) error {
 	s.initExpiredQuotesCleaner()
 
 	s.srv = http.Server{
-		Addr:    ":" + fmt.Sprint(port),
-		Handler: h,
+		Addr: ":" + fmt.Sprint(port),
+		//Handler: h,
+		//Handler: wrapHandler(w,r),
+		Handler: wrapHandler(r),
 	}
 	log.Info("server started at localhost:", s.srv.Addr)
 
