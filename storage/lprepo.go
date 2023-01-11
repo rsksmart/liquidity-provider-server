@@ -2,26 +2,28 @@ package storage
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 )
 
 type LPRepository struct {
-	db  DBConnector
-	rsk connectors.RSKConnector
+	db      DBConnector
+	dbMongo *mongoDB.DB
+	rsk     connectors.RSKConnector
 }
 
-func NewLPRepository(db DBConnector, rsk connectors.RSKConnector) *LPRepository {
-	return &LPRepository{db, rsk}
+func NewLPRepository(db DBConnector, dbMongo *mongoDB.DB, rsk connectors.RSKConnector) *LPRepository {
+	return &LPRepository{db, dbMongo, rsk}
 }
 
 func (r *LPRepository) RetainQuote(rq *types.RetainedQuote) error {
-	return r.db.RetainQuote(rq)
+	return r.dbMongo.RetainQuote(rq)
 }
 
 func (r *LPRepository) HasRetainedQuote(hash string) (bool, error) {
-	rq, err := r.db.GetRetainedQuote(hash)
+	rq, err := r.dbMongo.GetRetainedQuote(hash)
 	if err != nil {
 		return false, err
 	}
@@ -33,7 +35,7 @@ func (r *LPRepository) HasLiquidity(lp providers.LiquidityProvider, wei *types.W
 	if err != nil {
 		return false, err
 	}
-	lockedLiq, err := r.db.GetLockedLiquidity()
+	lockedLiq, err := r.dbMongo.GetLockedLiquidity()
 	if err != nil {
 		return false, err
 	}
