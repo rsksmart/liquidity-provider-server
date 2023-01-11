@@ -3,11 +3,13 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -25,6 +27,7 @@ type BTCAddressWatcher struct {
 	rsk          connectors.RSKConnector
 	lp           providers.LiquidityProvider
 	db           storage.DBConnector
+	dbMongo      mongoDB.DB
 	state        types.RQState
 	quote        *types.Quote
 	done         chan struct{}
@@ -40,6 +43,7 @@ type BTCAddressPegOutWatcher struct {
 	rsk               connectors.RSKConnector
 	lp                pegout.LiquidityProvider
 	db                storage.DBConnector
+	dbMongo           mongoDB.DB
 	state             types.RQState
 	quote             *pegout.Quote
 	done              chan struct{}
@@ -54,6 +58,7 @@ type RegisterPegoutWatcher struct {
 	rsk               connectors.RSKConnector
 	lp                pegout.LiquidityProvider
 	db                storage.DBConnector
+	dbMongo           mongoDB.DB
 	state             types.RQState
 	quote             *pegout.Quote
 	done              chan struct{}
@@ -74,13 +79,14 @@ const (
 
 func NewBTCAddressWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, db storage.DBConnector,
-	q *types.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
+	dbMongo mongoDB.DB, q *types.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
 		hash:         hash,
 		btc:          btc,
 		rsk:          rsk,
 		lp:           provider,
 		db:           db,
+		dbMongo:      dbMongo,
 		quote:        q,
 		state:        state,
 		signature:    signature,
@@ -259,7 +265,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 }
 
 func (w *BTCAddressWatcher) updateQuoteState(newState types.RQState) error {
-	err := w.db.UpdateRetainedQuoteState(w.hash, w.state, newState)
+	err := w.dbMongo.UpdateRetainedQuoteState(w.hash, w.state, newState)
 	if err != nil {
 		log.Errorf(UpdateQuoteStateError, w.hash, err)
 		return err

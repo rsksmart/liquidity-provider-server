@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"io"
 	"math"
 	"math/big"
@@ -13,6 +12,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcutil"
 
@@ -63,6 +65,7 @@ type Server struct {
 	rsk             connectors.RSKConnector
 	btc             connectors.BTCConnector
 	db              storage.DBConnector
+	dbMongo         *mongoDB.DB
 	now             func() time.Time
 	watchers        map[string]*BTCAddressWatcher
 	pegOutWatchers  map[string]*BTCAddressPegOutWatcher
@@ -134,15 +137,16 @@ type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, cfgData ConfigData) Server {
-	return newServer(rsk, btc, db, time.Now, cfgData)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, dbMongo *mongoDB.DB, cfgData ConfigData) Server {
+	return newServer(rsk, btc, db, dbMongo, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, now func() time.Time, cfgData ConfigData) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, dbMongo *mongoDB.DB, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:             rsk,
 		btc:             btc,
 		db:              db,
+		dbMongo:         dbMongo,
 		providers:       make([]providers.LiquidityProvider, 0),
 		pegoutProviders: make([]pegout.LiquidityProvider, 0),
 		now:             now,
@@ -266,13 +270,13 @@ func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) initBtcWatchers() error {
 	quoteStatesToWatch := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}
-	retainedQuotes, err := s.db.GetRetainedQuotes(quoteStatesToWatch)
+	retainedQuotes, err := s.dbMongo.GetRetainedQuotes(quoteStatesToWatch)
 	if err != nil {
 		return err
 	}
 
 	for _, entry := range retainedQuotes {
-		quote, err := s.db.GetQuote(entry.QuoteHash)
+		quote, err := s.dbMongo.GetQuote(entry.QuoteHash)
 		if err != nil {
 			return err
 		}
@@ -311,7 +315,7 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
-	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, quote, signB, state, &s.sharedWatcherMu)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, *s.dbMongo, quote, signB, state, &s.sharedWatcherMu)
 	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
@@ -401,7 +405,7 @@ func (s *Server) initExpiredQuotesCleaner() {
 		for {
 			select {
 			case <-ticker.C:
-				err := s.db.DeleteExpiredQuotes(time.Now().Add(-1 * quoteExpTimeThreshold).Unix())
+				err := s.dbMongo.DeleteExpiredQuotes(time.Now().Add(-1 * quoteExpTimeThreshold).Unix())
 				if err != nil {
 					log.Error("error deleting expired quites: ", err)
 				}
@@ -440,8 +444,8 @@ func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	rskSvcStatus := svcStatusOk
 	btcSvcStatus := svcStatusOk
 
-	if err := s.db.CheckConnection(); err != nil {
-		log.Error("error checking db connection status: ", err.Error())
+	if err := s.dbMongo.CheckConnection(); err != nil {
+		log.Error("error checking mongo DB connection status: ", err.Error())
 		dbSvcStatus = svcStatusUnreachable
 		lpsSvcStatus = svcStatusDegraded
 	}
@@ -670,7 +674,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quote, err := s.db.GetQuote(req.QuoteHash)
+	quote, err := s.dbMongo.GetQuote(req.QuoteHash)
 	if err != nil {
 		log.Error("error retrieving quote from db: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -689,7 +693,8 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rq, err := s.db.GetRetainedQuote(req.QuoteHash)
+	rq, err := s.dbMongo.GetRetainedQuote(req.QuoteHash)
+	log.Debug("RetainedQuote Test: ", rq.ReqLiq.String())
 	if err != nil {
 		log.Error("error fetching retained quote: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -810,10 +815,11 @@ func (s *Server) storeQuote(q *types.Quote) (string, error) {
 		return "", err
 	}
 
-	err = s.db.InsertQuote(h, q)
+	err = s.dbMongo.InsertQuote(h, q)
 	if err != nil {
 		log.Fatalf("error inserting quote: %v", err)
 	}
+
 	return h, nil
 }
 
