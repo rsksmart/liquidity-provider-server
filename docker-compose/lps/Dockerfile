@@ -17,6 +17,7 @@ COPY connectors ./connectors
 COPY http ./http
 COPY storage ./storage
 COPY pegout ./pegout
+COPY mongo ./mongo
 
 RUN go build -o /usr/local/bin/liquidity-provider-server
 
