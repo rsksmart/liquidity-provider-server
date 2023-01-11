@@ -3,6 +3,7 @@ package mongoDB
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/pegout"
@@ -37,19 +38,35 @@ type DB struct {
 }
 
 type PeginQuote struct {
-	Hash       string       `bson:"hash,omitempty"`
-	Expiration uint32       `bson:"expiration,omitempty"`
-	Quote      *types.Quote `bson:"quote,omitempty"`
+	Hash       string `bson:"hash,omitempty"`
+	Expiration uint32 `bson:"expiration,omitempty"`
+
+	FedBTCAddr         string `bson:"fedBTCAddr,omitempty"`
+	LBCAddr            string `bson:"lbcAddr,omitempty"`
+	LPRSKAddr          string `bson:"lpRSKAddr,omitempty"`
+	BTCRefundAddr      string `bson:"btcRefundAddr,omitempty"`
+	RSKRefundAddr      string `bson:"rskRefundAddr,omitempty"`
+	LPBTCAddr          string `bson:"lpBTCAddr,omitempty"`
+	CallFee            string `bson:"callFee,omitempty"`
+	PenaltyFee         string `bson:"penaltyFee,omitempty"`
+	ContractAddr       string `bson:"contractAddr,omitempty"`
+	Data               string `bson:"data,omitempty"`
+	GasLimit           uint32 `bson:"gasLimit,omitempty"`
+	Nonce              int64  `bson:"nonce,omitempty"`
+	Value              string `bson:"value,omitempty"`
+	AgreementTimestamp uint32 `bson:"agreementTimestamp,omitempty"`
+	TimeForDeposit     uint32 `bson:"timeForDeposit,omitempty"`
+	CallTime           uint32 `bson:"callTime,omitempty"`
+	Confirmations      uint16 `bson:"confirmations,omitempty"`
+	CallOnRegister     bool   `bson:"callOnRegister,omitempty"`
 }
 
-type QuoteHash struct {
-	QuoteHash string `db:"quote_hash"`
-}
-
-type UpdateQuoteState struct {
-	QuoteHash string        `db:"quote_hash"`
-	OldState  types.RQState `db:"old_state"`
-	NewState  types.RQState `db:"new_state"`
+type RetainedPeginQuote struct {
+	QuoteHash   string        `bson:"quoteHash,omitempty"`
+	DepositAddr string        `bson:"depositAddr,omitempty"`
+	Signature   string        `bson:"signature,omitempty"`
+	ReqLiq      string        `bson:"reqLiq,omitempty"`
+	State       types.RQState `bson:"state,omitempty"`
 }
 
 func Connect() (*DB, error) {
@@ -87,9 +104,26 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	coll := db.db.Database("flyover").Collection("peginQuote")
 
 	quoteToinsert := &PeginQuote{
-		id,
-		q.AgreementTimestamp + q.TimeForDeposit,
-		q,
+		Hash:               id,
+		Expiration:         q.AgreementTimestamp + q.TimeForDeposit,
+		FedBTCAddr:         q.FedBTCAddr,
+		LBCAddr:            q.LBCAddr,
+		LPRSKAddr:          q.LPRSKAddr,
+		BTCRefundAddr:      q.BTCRefundAddr,
+		RSKRefundAddr:      q.RSKRefundAddr,
+		LPBTCAddr:          q.LPBTCAddr,
+		CallFee:            q.CallFee.String(),
+		PenaltyFee:         q.PenaltyFee.String(),
+		ContractAddr:       q.ContractAddr,
+		Data:               q.Data,
+		GasLimit:           q.GasLimit,
+		Nonce:              q.Nonce,
+		Value:              q.Value.String(),
+		AgreementTimestamp: q.AgreementTimestamp,
+		TimeForDeposit:     q.TimeForDeposit,
+		CallTime:           q.CallTime,
+		Confirmations:      q.Confirmations,
+		CallOnRegister:     q.CallOnRegister,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToinsert)
@@ -108,22 +142,61 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 	var result PeginQuote
 	err := coll.FindOne(context.TODO(), filter).Decode(&result)
 
-	quote := result.Quote
-	switch err {
-	case nil:
-		return quote, nil
-	case mongo.ErrNoDocuments:
-		return nil, nil
-	default:
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
+
+	var quote *types.Quote
+	callFee, err := strconv.ParseInt(result.CallFee, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	penaltyFee, err := strconv.ParseInt(result.PenaltyFee, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	value, err := strconv.ParseInt(result.Value, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	quote.AgreementTimestamp = result.AgreementTimestamp
+	quote.BTCRefundAddr = result.BTCRefundAddr
+	quote.CallFee = types.NewWei(callFee)
+	quote.CallOnRegister = result.CallOnRegister
+	quote.CallTime = result.CallTime
+	quote.Confirmations = result.Confirmations
+	quote.ContractAddr = result.ContractAddr
+	quote.Data = result.Data
+	quote.FedBTCAddr = result.FedBTCAddr
+	quote.GasLimit = result.GasLimit
+	quote.LBCAddr = result.LBCAddr
+	quote.LPBTCAddr = result.LPBTCAddr
+	quote.LPRSKAddr = result.LPRSKAddr
+	quote.Nonce = result.Nonce
+	quote.PenaltyFee = types.NewWei(penaltyFee)
+	quote.RSKRefundAddr = result.RSKRefundAddr
+	quote.TimeForDeposit = result.TimeForDeposit
+	quote.Value = types.NewWei(value)
+
+	return quote, nil
 }
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	log.Debug("inserting retained quote mongo DB:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
 
-	_, err := coll.InsertOne(context.TODO(), entry)
+	var quoteToRetain RetainedPeginQuote
+	quoteToRetain.DepositAddr = entry.DepositAddr
+	quoteToRetain.QuoteHash = entry.QuoteHash
+	quoteToRetain.ReqLiq = entry.ReqLiq.String()
+	quoteToRetain.Signature = entry.Signature
+	quoteToRetain.State = entry.State
+
+	_, err := coll.InsertOne(context.TODO(), quoteToRetain)
 
 	if err != nil {
 		return err
@@ -142,6 +215,28 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 	var retainedQuotes []*types.RetainedQuote
 	err = rows.All(context.TODO(), &retainedQuotes)
 
+	defer rows.Close(context.TODO())
+	for rows.Next(context.TODO()) {
+		var rq RetainedPeginQuote
+		var rqToReturn *types.RetainedQuote
+		if err = rows.Decode(&rq); err != nil {
+			return nil, err
+		}
+
+		reqLiq, err := strconv.ParseInt(rq.ReqLiq, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		rqToReturn.DepositAddr = rq.DepositAddr
+		rqToReturn.QuoteHash = rq.QuoteHash
+		rqToReturn.ReqLiq = types.NewWei(reqLiq)
+		rqToReturn.Signature = rq.Signature
+		rqToReturn.State = rq.State
+
+		retainedQuotes = append(retainedQuotes, rqToReturn)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -154,17 +249,31 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
 	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}}
 
-	var result *types.RetainedQuote
+	var result RetainedPeginQuote
 	err := coll.FindOne(context.TODO(), filter).Decode(&result)
 
-	switch err {
-	case nil:
-		return result, nil
-	case mongo.ErrNoDocuments:
-		return nil, nil
-	default:
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
+
+	var rqToReturn *types.RetainedQuote
+
+	reqLiq, err := strconv.ParseInt(result.ReqLiq, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	rqToReturn.DepositAddr = result.DepositAddr
+	rqToReturn.QuoteHash = result.QuoteHash
+	rqToReturn.ReqLiq = types.NewWei(reqLiq)
+	rqToReturn.Signature = result.Signature
+	rqToReturn.State = result.State
+
+	return rqToReturn, nil
+
 }
 
 func (db *DB) DeleteExpiredQuotes(expTimestamp int64) error {
@@ -214,14 +323,20 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 		return nil, err
 	}
 
-	lockedLiq := types.NewWei(0)
+	var lockedLiq = types.NewWei(0)
 	for rows.Next(context.TODO()) {
-		reqLiq := new(types.Wei)
-
-		err = rows.Decode(&reqLiq)
+		var reqLiqString string
+		err = rows.Decode(&reqLiqString)
 		if err != nil {
 			return nil, err
 		}
+		reqLiqInt, err := strconv.ParseInt(reqLiqString, 10, 64)
+
+		if err != nil {
+			return nil, err
+		}
+
+		reqLiq := types.NewWei(reqLiqInt)
 
 		lockedLiq.Add(lockedLiq, reqLiq)
 	}
