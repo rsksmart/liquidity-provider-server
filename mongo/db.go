@@ -62,11 +62,11 @@ type PeginQuote struct {
 }
 
 type RetainedPeginQuote struct {
-	QuoteHash   string        `bson:"quoteHash,omitempty"`
-	DepositAddr string        `bson:"depositAddr,omitempty"`
-	Signature   string        `bson:"signature,omitempty"`
-	ReqLiq      string        `bson:"reqLiq,omitempty"`
-	State       types.RQState `bson:"state,omitempty"`
+	QuoteHash   string        `json:"quoteHash" db:"quote_hash"`
+	DepositAddr string        `json:"depositAddr" db:"deposit_addr"`
+	Signature   string        `json:"signature" db:"signature"`
+	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
+	State       types.RQState `json:"state" db:"state"`
 }
 
 func Connect() (*DB, error) {
@@ -149,7 +149,6 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 		return nil, err
 	}
 
-	var quote *types.Quote
 	callFee, err := strconv.ParseInt(result.CallFee, 10, 64)
 	if err != nil {
 		return nil, err
@@ -163,38 +162,41 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 		return nil, err
 	}
 
-	quote.AgreementTimestamp = result.AgreementTimestamp
-	quote.BTCRefundAddr = result.BTCRefundAddr
-	quote.CallFee = types.NewWei(callFee)
-	quote.CallOnRegister = result.CallOnRegister
-	quote.CallTime = result.CallTime
-	quote.Confirmations = result.Confirmations
-	quote.ContractAddr = result.ContractAddr
-	quote.Data = result.Data
-	quote.FedBTCAddr = result.FedBTCAddr
-	quote.GasLimit = result.GasLimit
-	quote.LBCAddr = result.LBCAddr
-	quote.LPBTCAddr = result.LPBTCAddr
-	quote.LPRSKAddr = result.LPRSKAddr
-	quote.Nonce = result.Nonce
-	quote.PenaltyFee = types.NewWei(penaltyFee)
-	quote.RSKRefundAddr = result.RSKRefundAddr
-	quote.TimeForDeposit = result.TimeForDeposit
-	quote.Value = types.NewWei(value)
+	quote := types.Quote{
+		AgreementTimestamp: result.AgreementTimestamp,
+		BTCRefundAddr:      result.BTCRefundAddr,
+		CallFee:            types.NewWei(callFee),
+		CallOnRegister:     result.CallOnRegister,
+		CallTime:           result.CallTime,
+		Confirmations:      result.Confirmations,
+		ContractAddr:       result.ContractAddr,
+		Data:               result.Data,
+		FedBTCAddr:         result.FedBTCAddr,
+		GasLimit:           result.GasLimit,
+		LBCAddr:            result.LBCAddr,
+		LPBTCAddr:          result.LPBTCAddr,
+		LPRSKAddr:          result.LPRSKAddr,
+		Nonce:              result.Nonce,
+		PenaltyFee:         types.NewWei(penaltyFee),
+		RSKRefundAddr:      result.RSKRefundAddr,
+		TimeForDeposit:     result.TimeForDeposit,
+		Value:              types.NewWei(value),
+	}
 
-	return quote, nil
+	return &quote, nil
 }
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	log.Debug("inserting retained quote mongo DB:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
 
-	var quoteToRetain RetainedPeginQuote
-	quoteToRetain.DepositAddr = entry.DepositAddr
-	quoteToRetain.QuoteHash = entry.QuoteHash
-	quoteToRetain.ReqLiq = entry.ReqLiq.String()
-	quoteToRetain.Signature = entry.Signature
-	quoteToRetain.State = entry.State
+	quoteToRetain := RetainedPeginQuote{
+		DepositAddr: entry.DepositAddr,
+		QuoteHash:   entry.QuoteHash,
+		ReqLiq:      entry.ReqLiq.String(),
+		Signature:   entry.Signature,
+		State:       entry.State,
+	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToRetain)
 
@@ -213,12 +215,11 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		return nil, err
 	}
 	var retainedQuotes []*types.RetainedQuote
-	err = rows.All(context.TODO(), &retainedQuotes)
+	rows.All(context.TODO(), &retainedQuotes)
 
 	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
 		var rq RetainedPeginQuote
-		var rqToReturn *types.RetainedQuote
 		if err = rows.Decode(&rq); err != nil {
 			return nil, err
 		}
@@ -227,19 +228,18 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		if err != nil {
 			return nil, err
 		}
+		rqToReturn := types.RetainedQuote{
+			DepositAddr: rq.DepositAddr,
+			QuoteHash:   rq.QuoteHash,
+			ReqLiq:      types.NewWei(reqLiq),
+			Signature:   rq.Signature,
+			State:       rq.State,
+		}
 
-		rqToReturn.DepositAddr = rq.DepositAddr
-		rqToReturn.QuoteHash = rq.QuoteHash
-		rqToReturn.ReqLiq = types.NewWei(reqLiq)
-		rqToReturn.Signature = rq.Signature
-		rqToReturn.State = rq.State
-
-		retainedQuotes = append(retainedQuotes, rqToReturn)
+		retainedQuotes = append(retainedQuotes, &rqToReturn)
 	}
 
-	if err != nil {
-		return nil, err
-	}
+	log.Debug("Retained Quotes: ", retainedQuotes)
 
 	return retainedQuotes, nil
 }
@@ -259,20 +259,20 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 		return nil, err
 	}
 
-	var rqToReturn *types.RetainedQuote
-
 	reqLiq, err := strconv.ParseInt(result.ReqLiq, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	rqToReturn.DepositAddr = result.DepositAddr
-	rqToReturn.QuoteHash = result.QuoteHash
-	rqToReturn.ReqLiq = types.NewWei(reqLiq)
-	rqToReturn.Signature = result.Signature
-	rqToReturn.State = result.State
+	rqToReturn := types.RetainedQuote{
+		DepositAddr: result.DepositAddr,
+		QuoteHash:   result.QuoteHash,
+		ReqLiq:      types.NewWei(reqLiq),
+		Signature:   result.Signature,
+		State:       result.State,
+	}
 
-	return rqToReturn, nil
+	return &rqToReturn, nil
 
 }
 
