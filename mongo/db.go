@@ -386,3 +386,35 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 
 	return result.quote, nil
 }
+
+func (db *DB) RetainPegOutQuote(entry *pegout.RetainedQuote) error {
+	log.Debug("inserting retained quote:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
+
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+
+	_, err := coll.InsertOne(context.TODO(), entry)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error) {
+	log.Debug("getting retained quote: ", hash)
+
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := bson.D{primitive.E{Key: "quoteHash", Value: hash}}
+
+	var result *pegout.RetainedQuote
+	err := coll.FindOne(context.TODO(), filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return result, nil
+}
