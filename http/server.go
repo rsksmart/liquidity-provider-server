@@ -694,7 +694,6 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rq, err := s.dbMongo.GetRetainedQuote(req.QuoteHash)
-	log.Debug("RetainedQuote Test: ", rq.ReqLiq.String())
 	if err != nil {
 		log.Error("error fetching retained quote: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)

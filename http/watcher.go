@@ -103,6 +103,8 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 	}
 	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
 
+	log.Debug("Watcher state: \n", w)
+
 	if w.state == types.RQStateWaitingForDeposit && confirmations >= int64(w.quote.Confirmations) {
 		err := w.performCallForUser()
 		if err != nil {
