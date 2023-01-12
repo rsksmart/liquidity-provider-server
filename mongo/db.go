@@ -61,6 +61,12 @@ type PeginQuote struct {
 	CallOnRegister     bool   `bson:"callOnRegister,omitempty"`
 }
 
+type PegoutQuote struct {
+	hash              string        `bson:"hash,omitempty"`
+	derivationAddress string        `bson:"hash,omitempty"`
+	quote             *pegout.Quote `bson:"quote,omitempty"`
+}
+
 type RetainedPeginQuote struct {
 	QuoteHash   string        `json:"quoteHash" db:"quote_hash"`
 	DepositAddr string        `json:"depositAddr" db:"deposit_addr"`
@@ -344,4 +350,39 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	log.Debug("Loked Liquidity: ", lockedLiq.String())
 
 	return lockedLiq, nil
+}
+
+func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
+	coll := db.db.Database("flyover").Collection("pegoutQuote")
+
+	quoteToInsert := PegoutQuote{
+		hash:              id,
+		derivationAddress: derivationAddress,
+		quote:             q,
+	}
+
+	_, err := coll.InsertOne(context.TODO(), quoteToInsert)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
+	log.Debug("retrieving pegout quote: ", quoteHash)
+	coll := db.db.Database("flyover").Collection("pegoutQuote")
+	filter := bson.D{primitive.E{Key: "hash", Value: quoteHash}}
+	var result PegoutQuote
+	err := coll.FindOne(context.TODO(), filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return result.quote, nil
 }
