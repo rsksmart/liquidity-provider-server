@@ -25,7 +25,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
-	"github.com/rsksmart/liquidity-provider-server/storage"
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
@@ -64,7 +63,6 @@ type Server struct {
 	pegoutProviders []pegout.LiquidityProvider
 	rsk             connectors.RSKConnector
 	btc             connectors.BTCConnector
-	db              storage.DBConnector
 	dbMongo         *mongoDB.DB
 	now             func() time.Time
 	watchers        map[string]*BTCAddressWatcher
@@ -137,15 +135,14 @@ type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, dbMongo *mongoDB.DB, cfgData ConfigData) Server {
-	return newServer(rsk, btc, db, dbMongo, time.Now, cfgData)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo *mongoDB.DB, cfgData ConfigData) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, db storage.DBConnector, dbMongo *mongoDB.DB, now func() time.Time, cfgData ConfigData) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo *mongoDB.DB, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:             rsk,
 		btc:             btc,
-		db:              db,
 		dbMongo:         dbMongo,
 		providers:       make([]providers.LiquidityProvider, 0),
 		pegoutProviders: make([]pegout.LiquidityProvider, 0),
@@ -315,7 +312,7 @@ func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr 
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
-	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.db, *s.dbMongo, quote, signB, state, &s.sharedWatcherMu)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, *s.dbMongo, quote, signB, state, &s.sharedWatcherMu)
 	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
@@ -343,7 +340,6 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 		btc:          s.btc,
 		rsk:          s.rsk,
 		lp:           provider,
-		db:           s.db,
 		quote:        quote,
 		state:        state,
 		signature:    signB,
@@ -379,7 +375,6 @@ func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, ha
 		btc:               s.btc,
 		rsk:               s.rsk,
 		lp:                provider,
-		db:                s.db,
 		quote:             quote,
 		state:             state,
 		signature:         signB,
@@ -828,7 +823,7 @@ func (s *Server) storePegoutQuote(q *pegout.Quote, derivationAddress string) err
 		return err
 	}
 
-	err = s.db.InsertPegOutQuote(h, q, derivationAddress)
+	err = s.dbMongo.InsertPegOutQuote(h, q, derivationAddress)
 	if err != nil {
 		log.Fatalf("error inserting quote: %v", err)
 	}
@@ -995,7 +990,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	quote, err := s.db.GetPegOutQuote(req.QuoteHash)
+	quote, err := s.dbMongo.GetPegOutQuote(req.QuoteHash)
 
 	if err != nil {
 		buildErrorDecodingRequest(w, err)
@@ -1108,7 +1103,7 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("payload ::: %v", payload)
 
-	quote, err := s.db.GetPegOutQuote(payload.QuoteHash)
+	quote, err := s.dbMongo.GetPegOutQuote(payload.QuoteHash)
 
 	if err != nil {
 		log.Errorf("Quote not found: %v", err)
