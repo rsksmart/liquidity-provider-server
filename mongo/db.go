@@ -418,3 +418,21 @@ func (db *DB) GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 
 	return result, nil
 }
+
+func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error {
+	log.Debugf("updating state from %v to %v for retained quote: %v", oldState, newState, hash)
+
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := bson.D{primitive.E{Key: "quoteHash", Value: hash}, primitive.E{Key: "state", Value: oldState}}
+	update := bson.D{primitive.E{Key: "$set", Value: bson.D{primitive.E{Key: "state", Value: newState}}}}
+	result, err := coll.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount != 1 {
+		return fmt.Errorf("error updating retained quote mongoBD: %v; oldState: %v; newState: %v", hash, oldState, newState)
+	}
+
+	return nil
+}
