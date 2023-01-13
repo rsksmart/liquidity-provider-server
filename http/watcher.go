@@ -13,7 +13,6 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/rsksmart/liquidity-provider-server/storage"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/providers"
@@ -26,7 +25,6 @@ type BTCAddressWatcher struct {
 	btc          connectors.BTCConnector
 	rsk          connectors.RSKConnector
 	lp           providers.LiquidityProvider
-	db           storage.DBConnector
 	dbMongo      mongoDB.DB
 	state        types.RQState
 	quote        *types.Quote
@@ -42,7 +40,6 @@ type BTCAddressPegOutWatcher struct {
 	btc               connectors.BTCConnector
 	rsk               connectors.RSKConnector
 	lp                pegout.LiquidityProvider
-	db                storage.DBConnector
 	dbMongo           mongoDB.DB
 	state             types.RQState
 	quote             *pegout.Quote
@@ -57,7 +54,6 @@ type RegisterPegoutWatcher struct {
 	btc               connectors.BTCConnector
 	rsk               connectors.RSKConnector
 	lp                pegout.LiquidityProvider
-	db                storage.DBConnector
 	dbMongo           mongoDB.DB
 	state             types.RQState
 	quote             *pegout.Quote
@@ -78,14 +74,13 @@ const (
 )
 
 func NewBTCAddressWatcher(hash string,
-	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider, db storage.DBConnector,
+	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider providers.LiquidityProvider,
 	dbMongo mongoDB.DB, q *types.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
 		hash:         hash,
 		btc:          btc,
 		rsk:          rsk,
 		lp:           provider,
-		db:           db,
 		dbMongo:      dbMongo,
 		quote:        q,
 		state:        state,
@@ -102,8 +97,6 @@ func (w *BTCAddressWatcher) OnNewConfirmation(txHash string, confirmations int64
 		return
 	}
 	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
-
-	log.Debug("Watcher state: \n", w)
 
 	if w.state == types.RQStateWaitingForDeposit && confirmations >= int64(w.quote.Confirmations) {
 		err := w.performCallForUser()
@@ -352,7 +345,7 @@ func (b *BTCAddressPegOutWatcher) close() {
 }
 
 func (r *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
-	err := r.db.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
+	err := r.dbMongo.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
 	if err != nil {
 		log.Errorf(UpdateQuoteStateError, r.hash, err)
 		return err
@@ -363,7 +356,7 @@ func (r *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
 }
 
 func (r *BTCAddressPegOutWatcher) updateQuoteState(newState types.RQState) error {
-	err := r.db.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
+	err := r.dbMongo.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
 	if err != nil {
 		log.Errorf(UpdateQuoteStateError, r.hash, err)
 		return err

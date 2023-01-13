@@ -49,8 +49,8 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(db, dbMongo, rsk)
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
+	lpRepository := storage.NewLPRepository(dbMongo, rsk)
 	lp, err := providers.NewLocalProvider(cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
@@ -63,7 +63,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, db *storage.DB, dbMon
 
 	initCfgData()
 
-	srv = http.New(rsk, btc, db, dbMongo, cfgData)
+	srv = http.New(rsk, btc, dbMongo, cfgData)
 	log.Debug("registering local provider (this might take a while)")
 	err = srv.AddProvider(lp)
 	if err != nil {
@@ -97,8 +97,7 @@ func main() {
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
-	db, err := storage.Connect(cfg.DB.Path)
-	dbMongo, _ := mongoDB.Connect()
+	dbMongo, err := mongoDB.Connect()
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
 	}
@@ -126,7 +125,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, db, dbMongo)
+	startServer(rsk, btc, dbMongo)
 
 	<-done
 
@@ -134,13 +133,9 @@ func main() {
 	rsk.Close()
 	btc.Close()
 
-	err = db.Close()
-	err2 := dbMongo.Close()
+	err = dbMongo.Close()
 	if err != nil {
 		log.Fatal("error closing DB connection: ", err)
-	}
-	if err2 != nil {
-		log.Fatal("error closing MongoDB connection: ", err)
 	}
 }
 

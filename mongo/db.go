@@ -62,9 +62,9 @@ type PeginQuote struct {
 }
 
 type PegoutQuote struct {
-	hash              string        `bson:"hash,omitempty"`
-	derivationAddress string        `bson:"hash,omitempty"`
-	quote             *pegout.Quote `bson:"quote,omitempty"`
+	Hash              string        `bson:"quotehash,omitempty"`
+	DerivationAddress string        `bson:"derivationAddress,omitempty"`
+	Quote             *pegout.Quote `bson:"quote,omitempty"`
 }
 
 type RetainedPeginQuote struct {
@@ -356,10 +356,10 @@ func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress st
 	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")
 
-	quoteToInsert := PegoutQuote{
-		hash:              id,
-		derivationAddress: derivationAddress,
-		quote:             q,
+	quoteToInsert := &PegoutQuote{
+		Hash:              id,
+		DerivationAddress: derivationAddress,
+		Quote:             q,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToInsert)
@@ -384,7 +384,7 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 		return nil, err
 	}
 
-	return result.quote, nil
+	return result.Quote, nil
 }
 
 func (db *DB) RetainPegOutQuote(entry *pegout.RetainedQuote) error {
