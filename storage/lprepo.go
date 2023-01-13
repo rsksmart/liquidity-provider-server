@@ -9,13 +9,12 @@ import (
 )
 
 type LPRepository struct {
-	db      DBConnector
 	dbMongo *mongoDB.DB
 	rsk     connectors.RSKConnector
 }
 
-func NewLPRepository(db DBConnector, dbMongo *mongoDB.DB, rsk connectors.RSKConnector) *LPRepository {
-	return &LPRepository{db, dbMongo, rsk}
+func NewLPRepository(dbMongo *mongoDB.DB, rsk connectors.RSKConnector) *LPRepository {
+	return &LPRepository{dbMongo, rsk}
 }
 
 func (r *LPRepository) RetainQuote(rq *types.RetainedQuote) error {
@@ -43,11 +42,11 @@ func (r *LPRepository) HasLiquidity(lp providers.LiquidityProvider, wei *types.W
 }
 
 func (r *LPRepository) RetainPegOutQuote(rq *pegout.RetainedQuote) error {
-	return r.db.RetainPegOutQuote(rq)
+	return r.dbMongo.RetainPegOutQuote(rq)
 }
 
 func (r *LPRepository) HasRetainedPegOutQuote(hash string) (bool, error) {
-	rq, err := r.db.GetRetainedPegOutQuote(hash)
+	rq, err := r.dbMongo.GetRetainedPegOutQuote(hash)
 	if err != nil {
 		return false, err
 	}
