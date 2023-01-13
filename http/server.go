@@ -232,6 +232,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
+	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -1174,6 +1175,97 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 
 	response := &SenBTCResponse{
 		TxHash: txHash,
+	}
+
+	encoder := json.NewEncoder(w)
+
+	err = encoder.Encode(&response)
+
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+}
+
+type AddCollateralRequest struct {
+	Amount       uint64 `json:"amount" validate:"required"`
+	LpRskAddress string `json:"lpRskAddress" validate:"required"`
+}
+
+type AddCollateralResponse struct {
+	NewCollateralBalance uint64 `json:"newCollateralBalance"`
+}
+
+func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := AddCollateralRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+
+	if err != nil {
+		log.Errorf(UnableToDeserializePayloadError, err)
+		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		return
+	}
+
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	var lp pegout.LiquidityProvider
+	for _, provider := range s.pegoutProviders {
+		if provider.Address() == payload.LpRskAddress {
+			lp = provider
+		}
+	}
+
+	addrStr := lp.Address()
+
+	c, min, err := s.rsk.GetCollateral(addrStr)
+
+	if err != nil {
+		log.Error(err)
+		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		return
+	}
+
+	if min.Uint64()+payload.Amount < min.Uint64() {
+		http.Error(w, "Amount is lower than min collateral", http.StatusBadRequest)
+		return
+	}
+
+	addr := common.HexToAddress(addrStr)
+
+	cmp := c.Cmp(big.NewInt(0))
+
+	if cmp == 0 {
+		http.Error(w, "LP not registered", http.StatusBadRequest)
+		return
+	}
+
+	opts := &bind.TransactOpts{
+		Value:  big.NewInt(int64(payload.Amount)),
+		From:   addr,
+		Signer: lp.SignTx,
+	}
+
+	err = s.rsk.AddCollateral(opts)
+	if err != nil {
+		log.Error(err)
+		http.Error(w, "Unable to add collateral", http.StatusInternalServerError)
+		return
+	}
+
+	collateral, _, err := s.rsk.GetCollateral(addrStr)
+	if err != nil {
+		log.Error(err)
+		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		return
+	}
+
+	response := &AddCollateralResponse{
+		NewCollateralBalance: collateral.Uint64(),
 	}
 
 	encoder := json.NewEncoder(w)
