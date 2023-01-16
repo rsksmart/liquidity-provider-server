@@ -70,12 +70,14 @@ fi
 BTCD_HOME="${BTCD_HOME:-./volumes/bitcoind}"
 RSKJ_HOME="${RSKJ_HOME:-./volumes/rskj}"
 LPS_HOME="${LPS_HOME:-./volumes/lps}"
+MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
 
 [ -d "$BTCD_HOME" ] || mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
 [ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/db" && mkdir -p "$LPS_HOME/logs" && chown -R "$LPS_UID" "$LPS_HOME"
+[ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
 
-echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'"
+echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'"
 
 # start bitcoind and RSKJ dependant services
 docker-compose --env-file "$ENV_FILE" up -d
