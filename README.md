@@ -55,7 +55,7 @@ The server's functionality is provided through a JSON HTTP interface. In additio
 
 ## API
 
-### getQuote
+### /pegin/getQuote
 
 Computes and returns a quote for the service.
 
@@ -91,7 +91,7 @@ Computes and returns a quote for the service.
         confirmations;                    // the number of confirmations that the LP requires before making the call
         callOnRegister:                   // a boolean value indicating whether the callForUser can be called on registerPegIn.
     
-### acceptQuote
+### /pegin/acceptQuote
 
 Accepts one of the LPs quotes.
 
