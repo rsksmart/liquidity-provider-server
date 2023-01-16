@@ -25,7 +25,7 @@ services:
     image: powpeg:latest
     container_name: powpeg-node-instance
     ports:
-      - "127.0.0.1:4444:4444"
+      - "4444:4444"
     volumes:
       - ${RSKJ_HOME:-./volumes/powpeg}/db:/home/powpeg/.powpeg
       - ${RSKJ_HOME:-./volumes/powpeg}/logs:/home/powpeg/logs

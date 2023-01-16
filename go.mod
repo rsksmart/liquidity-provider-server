@@ -15,6 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.1
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
+	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	modernc.org/sqlite v1.12.0
 )
