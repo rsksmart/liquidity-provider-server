@@ -44,7 +44,6 @@ services:
     ports:
       - 27017:27017
     volumes:
-      - ./init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh
       - ${MONGO_HOME:-./volumes/mongo}/logs:/data/db
     expose:
       - 27017

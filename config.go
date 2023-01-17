@@ -17,6 +17,13 @@ type config struct {
 		Port uint
 	}
 	DB struct {
+		Regtest struct {
+			Host     string
+			Database string
+			User     string
+			Password string
+			Port     uint
+		}
 		Path string
 	}
 	RSK http.LiquidityProviderList
