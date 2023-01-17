@@ -127,6 +127,12 @@ if [ "$LPS_STAGE" = "regtest" ]; then
    fi
 fi
 
+export MONGO_HOST="${MONGODB_LOCAL_HOST}"
+export MONGO_PORT="${MONGODB_LOCAL_PORT}"
+export MONGO_DATABASE"${MONGODB_DATABASE}"
+export MONGO_USER"${MONGODB_USER}"
+export MONGO_PASSWORD"${MONGODB_PASSWORD}"
+
 if [ -z "${LBC_ADDR}" ]; then
   docker-compose down
   echo "LBC_ADDR is not set up. Exit"
