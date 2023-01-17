@@ -125,12 +125,6 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     LBC_ADDR_LINE=$(docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
     export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
    fi
-
-   export MONGO_HOST="${MONGODB_LOCAL_HOST}"
-   export MONGO_PORT="${MONGODB_LOCAL_PORT}"
-   export MONGO_DATABASE="${MONGODB_DATABASE}"
-   export MONGO_USER="${MONGODB_USER}"
-   export MONGO_PASSWORD="${MONGODB_PASSWORD}"
 fi
 
 if [ -z "${LBC_ADDR}" ]; then

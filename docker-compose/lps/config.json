@@ -12,6 +12,13 @@
         "port": 8080
     },
     "db": {
+        "regtest": {
+            "host": "172.17.0.1",
+            "database": "flyover",
+            "user": "root",
+            "password": "root",
+            "port": 27017
+        },
         "path": "./db/server.db"
     },
     "rsk": {

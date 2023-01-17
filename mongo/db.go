@@ -3,7 +3,6 @@ package mongoDB
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -37,7 +36,6 @@ type DBConnector interface {
 type DB struct {
 	db *mongo.Client
 }
-
 type PeginQuote struct {
 	Hash       string `bson:"hash,omitempty"`
 	Expiration uint32 `bson:"expiration,omitempty"`
@@ -76,22 +74,11 @@ type RetainedPeginQuote struct {
 	State       types.RQState `json:"state" db:"state"`
 }
 
-func Connect() (*DB, error) {
+func Connect(host string, user string, password string) (*DB, error) {
 	log.Debug("Connecting to MongoDB")
-	log.Debug("Environment: ", os.Getenv("LBC_ADDR"))
-
-	MONGO_HOST := os.Getenv("MONGO_HOST")
-	MONGO_PORT := os.Getenv("MONGO_PORT")
-	MONGO_USER := os.Getenv("MONGO_USER")
-	MONGO_PASSWORD := os.Getenv("MONGO_PASSWORD")
-
-	log.Debug("Mongo Host: ", MONGO_HOST)
-	log.Debug("Mongo Port: ", MONGO_PORT)
-	log.Debug("Mongo User: ", MONGO_USER)
-	log.Debug("Mongo Password: ", MONGO_PASSWORD)
 
 	clientOptions := options.Client().
-		ApplyURI("mongodb://root:root@172.17.0.1:27017/admin")
+		ApplyURI("mongodb://" + user + ":" + password + "@" + host + ":27017/admin")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, clientOptions)
