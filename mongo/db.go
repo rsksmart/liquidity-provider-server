@@ -90,10 +90,8 @@ func Connect() (*DB, error) {
 	log.Debug("Mongo User: ", MONGO_USER)
 	log.Debug("Mongo Password: ", MONGO_PASSWORD)
 
-	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().
-		ApplyURI("**REMOVED**").
-		SetServerAPIOptions(serverAPIOptions)
+		ApplyURI("mongodb://root:root@172.17.0.1:27017/admin")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, clientOptions)

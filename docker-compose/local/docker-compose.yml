@@ -38,14 +38,13 @@ services:
     restart: on-failure
     container_name: mongo01
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=root
-      - DB_NAME=flyover
-      - DB_USER=root
-      - DB_PASSWORD=root
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
     ports:
       - 27017:27017
     volumes:
+      - ./init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh
       - ${MONGO_HOME:-./volumes/mongo}/logs:/data/db
     expose:
       - 27017
