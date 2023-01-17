@@ -3,6 +3,7 @@ package mongoDB
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -77,9 +78,21 @@ type RetainedPeginQuote struct {
 
 func Connect() (*DB, error) {
 	log.Debug("Connecting to MongoDB")
+	log.Debug("Environment: ", os.Getenv("LBC_ADDR"))
+
+	MONGO_HOST := os.Getenv("MONGO_HOST")
+	MONGO_PORT := os.Getenv("MONGO_PORT")
+	MONGO_USER := os.Getenv("MONGO_USER")
+	MONGO_PASSWORD := os.Getenv("MONGO_PASSWORD")
+
+	log.Debug("Mongo Host: ", MONGO_HOST)
+	log.Debug("Mongo Port: ", MONGO_PORT)
+	log.Debug("Mongo User: ", MONGO_USER)
+	log.Debug("Mongo Password: ", MONGO_PASSWORD)
+
 	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().
-		ApplyURI("**REMOVED**/?retryWrites=true&w=majority").
+		ApplyURI("**REMOVED**").
 		SetServerAPIOptions(serverAPIOptions)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
