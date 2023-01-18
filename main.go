@@ -61,8 +61,6 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	initCfgData()
-
 	srv = http.New(rsk, btc, dbMongo, cfgData)
 	log.Debug("registering local provider (this might take a while)")
 	err = srv.AddProvider(lp)
@@ -91,13 +89,14 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 
 func main() {
 	loadConfig()
+	initCfgData()
 	initLogger()
 	rand.Seed(time.Now().UnixNano())
 
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
-	dbMongo, err := mongoDB.Connect()
+	dbMongo, err := mongoDB.Connect(cfg.DB.Regtest.Host, cfg.DB.Regtest.User, cfg.DB.Regtest.Password)
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
 	}
@@ -141,6 +140,5 @@ func main() {
 
 func initCfgData() {
 	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
-
 	cfgData.RSK = cfg.RSK
 }
