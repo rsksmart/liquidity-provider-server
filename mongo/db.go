@@ -36,7 +36,6 @@ type DBConnector interface {
 type DB struct {
 	db *mongo.Client
 }
-
 type PeginQuote struct {
 	Hash       string `bson:"hash,omitempty"`
 	Expiration uint32 `bson:"expiration,omitempty"`
@@ -75,12 +74,11 @@ type RetainedPeginQuote struct {
 	State       types.RQState `json:"state" db:"state"`
 }
 
-func Connect() (*DB, error) {
+func Connect(host string, user string, password string) (*DB, error) {
 	log.Debug("Connecting to MongoDB")
-	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
+
 	clientOptions := options.Client().
-		ApplyURI("**REMOVED**/?retryWrites=true&w=majority").
-		SetServerAPIOptions(serverAPIOptions)
+		ApplyURI("mongodb://" + user + ":" + password + "@" + host + ":27017/admin")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, clientOptions)
