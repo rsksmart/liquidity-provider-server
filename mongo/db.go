@@ -371,7 +371,7 @@ func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress st
 func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 	log.Debug("retrieving pegout quote: ", quoteHash)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")
-	filter := bson.D{primitive.E{Key: "hash", Value: quoteHash}}
+	filter := bson.D{primitive.E{Key: "quotehash", Value: quoteHash}}
 	var result PegoutQuote
 	err := coll.FindOne(context.TODO(), filter).Decode(&result)
 
