@@ -97,6 +97,7 @@ type QuotePegOutRequest struct {
 type QuotePegOutResponse struct {
 	Quote             *pegout.Quote `json:"quote"`
 	DerivationAddress string        `json:"derivationAddress"`
+	QuoteHash         string        `json:"quoteHash"`
 }
 
 type acceptReq struct {
@@ -230,7 +231,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getQuotesPegOutHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	r.Path("/pegout/hashQuote").Methods(http.MethodPost).HandlerFunc(s.hashPegOutQuote)
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
@@ -818,17 +818,18 @@ func (s *Server) storeQuote(q *types.Quote) (string, error) {
 	return h, nil
 }
 
-func (s *Server) storePegoutQuote(q *pegout.Quote, derivationAddress string) error {
+func (s *Server) storePegoutQuote(q *pegout.Quote, derivationAddress string) (string, error) {
 	h, err := s.rsk.HashPegOutQuote(q)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.dbMongo.InsertPegOutQuote(h, q, derivationAddress)
 	if err != nil {
 		log.Fatalf("error inserting quote: %v", err)
+		return "", err
 	}
-	return nil
+	return h, nil
 }
 
 func getQuoteExpTime(q *types.Quote) time.Time {
@@ -897,7 +898,7 @@ func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint6
 				return nil, false
 			}
 
-			err = s.storePegoutQuote(pq, derivationAddress)
+			quoteHash, err := s.storePegoutQuote(pq, derivationAddress)
 
 			if err != nil {
 				log.Error(err)
@@ -907,6 +908,7 @@ func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint6
 			quote := &QuotePegOutResponse{
 				Quote:             pq,
 				DerivationAddress: derivationAddress,
+				QuoteHash:         quoteHash,
 			}
 			quotes = append(quotes, *quote)
 
@@ -1030,42 +1032,6 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	signature := hex.EncodeToString(signB)
 	returnQuotePegOutSignFunc(w, signature)
-}
-
-func (s *Server) hashPegOutQuote(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	payload := pegOutQuoteReq{}
-
-	dec := json.NewDecoder(r.Body)
-
-	err := dec.Decode(&payload)
-
-	if err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
-		return
-	}
-
-	quote := payload.Quote
-
-	hash, err := s.rsk.HashPegOutQuote(quote)
-	if err != nil {
-		log.Error("error :: %v", err)
-		http.Error(w, "Unable to hash quote", http.StatusInternalServerError)
-		return
-	}
-
-	response := &pegOutQuoteResponse{
-		QuoteHash: hash,
-	}
-
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
 }
 
 type SendBTCReq struct {
