@@ -5,11 +5,12 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 type Data = interface{}
 type Meta = interface{}
-type Details = interface{}
+type Details = map[string]any
 
 type Response struct {
 	Success bool `json:"success"`
@@ -35,20 +36,20 @@ type ErrorBody struct {
 	//Code        string  `json:"code"`
 	Message     string  `json:"message"`
 	Details     Details `json:"details"`
-	Timestamp   string  `json:"timestamp"`
+	Timestamp   int64   `json:"timestamp"`
 	Recoverable bool    `json:"recoverable"`
 }
 
-func newError(m string, d Details, t string, r bool) ErrorBody {
+func NewError(m string, d Details, r bool) ErrorBody {
 	return ErrorBody{
 		Message:     m,
 		Details:     d,
-		Timestamp:   t,
 		Recoverable: r,
+		Timestamp:   time.Now().Unix(),
 	}
 }
 
-func httpError(w http.ResponseWriter, er ErrorBody, code int) {
+func HttpError(w http.ResponseWriter, er ErrorBody, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
