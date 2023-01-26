@@ -495,6 +495,16 @@ func (a *QuoteRequest) validateQuoteRequest() string {
 	return err
 }
 
+func (a *QuotePegOutRequest) validateQuoteRequest() string {
+	err := ""
+
+	if a.ValueToTransfer == 0 {
+		err += "Value to Transfer cannot be empty or zero!"
+	}
+
+	return err
+}
+
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
@@ -855,6 +865,13 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 	quotes := make([]QuotePegOutResponse, 0)
 
 	rskBlockNumber, err := s.rsk.GetRskHeight()
+
+	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
+		log.Error("[pegout] [getquote] - error validating body params: ", errval)
+		toRestAPI(w)
+		http.Error(w, "bad request body: "+errval, http.StatusBadRequest)
+		return
+	}
 
 	if err != nil {
 		log.Error(ErrorRetrievingFederationAddress, err.Error())
