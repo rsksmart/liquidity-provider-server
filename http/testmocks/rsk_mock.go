@@ -9,7 +9,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -163,6 +162,10 @@ func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, er
 
 func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
 	return nil, nil
+}
+
+func (m *RskMock) GetRskHeight() (uint64, error) {
+	return 0, nil
 }
 
 func (b *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
