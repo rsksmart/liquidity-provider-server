@@ -19,18 +19,18 @@ type DBConnector interface {
 	CheckConnection() error
 	Close() error
 	InsertQuote(id string, q *types.Quote) error
-	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
 	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
-	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
-	DeleteExpiredQuotes(expTimestamp int64) error
 	RetainQuote(entry *types.RetainedQuote) error
-	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
 	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
-	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
+	DeleteExpiredQuotes(expTimestamp int64) error
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
-	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
+	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
+	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
+	RetainPegOutQuote(entry *pegout.RetainedQuote) error
+	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
+	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 }
 
 type DB struct {
