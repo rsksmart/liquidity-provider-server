@@ -23,11 +23,10 @@ RUN wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
         && cd / \
         && rm -Rfv bitcoin-* *.asc
 
-ARG UID=1000
 ARG HOME="/home/bitcoin"
-RUN useradd -m -u "$UID" --home="$HOME" bitcoin
+RUN useradd -m -u 1000 --home="$HOME" bitcoin
 
-RUN mkdir -p "$HOME/.bitcoin"; chown "$UID" "$HOME/.bitcoin"
+RUN mkdir -p "$HOME/.bitcoin"; chown 1000 "$HOME/.bitcoin"
 
 WORKDIR "$HOME"
 
