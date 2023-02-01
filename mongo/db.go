@@ -3,6 +3,7 @@ package mongoDB
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -74,11 +75,14 @@ type RetainedPeginQuote struct {
 	State       types.RQState `json:"state" db:"state"`
 }
 
-func Connect(host string, user string, password string) (*DB, error) {
+func Connect() (*DB, error) {
 	log.Debug("Connecting to MongoDB")
+	username := os.Getenv("MONGODB_USER")
+	password := os.Getenv("MONGODB_PASSWORD")
+	host := os.Getenv("MONGODB_LOCAL_HOST")
 
 	clientOptions := options.Client().
-		ApplyURI("mongodb://" + user + ":" + password + "@" + host + ":27017/admin")
+		ApplyURI("mongodb://" + username + ":" + password + "@" + host + ":27017/admin")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, clientOptions)

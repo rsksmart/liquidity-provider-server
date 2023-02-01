@@ -96,7 +96,7 @@ func main() {
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
-	dbMongo, err := mongoDB.Connect(cfg.DB.Regtest.Host, cfg.DB.Regtest.User, cfg.DB.Regtest.Password)
+	dbMongo, err := mongoDB.Connect()
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
 	}
@@ -106,7 +106,7 @@ func main() {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(cfg.RSK.Endpoint, cfg.Provider.ChainId)
+	err = rsk.Connect(os.Getenv("POWPEG_CONNECTION_STRING"), cfg.Provider.ChainId)
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
