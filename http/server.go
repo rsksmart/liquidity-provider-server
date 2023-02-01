@@ -13,12 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btcsuite/btcutil"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
-	"github.com/rsksmart/liquidity-provider-server/response"
-
-	"github.com/btcsuite/btcutil"
 
 	"context"
 
@@ -552,13 +550,23 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if qr.LpAddress == "" || !common.IsHexAddress(qr.LpAddress) {
-		log.Debug("Liquidity Provider Address lpAddress not sent")
+		log.Error("Liquidity Provider Address lpAddress not sent", err.Error())
+
+		//customError := response.NewError("Liquidity Provider Address lpAddress not sent", map[string]any{}, true)
+		//response.HttpError(w, customError, http.StatusBadRequest)
+
+		//log.Debug("Liquidity Provider Address lpAddress not sent")
 		http.Error(w, "Validation error: lpAddress not sent or is not valid", http.StatusBadRequest)
 		return
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
-		log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
+		//log.Error(ErrorRetrievingFederationAddress, err.Error())
+
+		//customError := response.NewError("value to transfer too high", map[string]any{}, true)
+		//response.HttpError(w, customError, http.StatusBadRequest)
+
+		//log.Error("error on quote value, cannot be greater than: ", s.cfgData.MaxQuoteValue)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -589,18 +597,18 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	fedAddress, err := s.rsk.GetFedAddress()
 	if err != nil {
 		log.Error(ErrorRetrievingFederationAddress, err.Error())
-		customError := response.NewError(ErrorRetrievingFederationAddress, nil, true)
-		response.HttpError(w, customError, http.StatusInternalServerError)
-		//http.Error(w, "internal server error", http.StatusInternalServerError)
+		//customError := response.NewError(ErrorRetrievingFederationAddress, map[string]any{}, true)
+		//response.HttpError(w, customError, http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	minLockTxValueInSatoshi, err := s.rsk.GetMinimumLockTxValue()
 	if err != nil {
 		log.Error(ErrorRetrievingMinimumLockValue, err.Error())
-		customError := response.NewError(ErrorRetrievingMinimumLockValue, nil, true)
-		response.HttpError(w, customError, http.StatusInternalServerError)
-		//http.Error(w, "internal server error", http.StatusInternalServerError)
+		//customError := response.NewError(ErrorRetrievingMinimumLockValue, map[string]any{}, true)
+		//response.HttpError(w, customError, http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
@@ -637,23 +645,25 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if len(quotes) == 0 {
 		if amountBelowMinLockTxValue {
 			// TODO: improve how we set this
-			details := make(map[string]any)
-			details["value"] = q.Value
-			details["callFee"] = q.CallFee
-			details["minLockTxValueInWei"] = minLockTxValueInWei
-
-			customError := response.NewError(ErrorRequestedAmountBelowBridgeMin, details, true)
-			response.HttpError(w, customError, http.StatusBadRequest)
-			//http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
+			//details := make(map[string]any)
+			//details := map[string]any{}
+			//details["value"] = q.Value
+			//details["callFee"] = q.CallFee
+			//details["minLockTxValueInWei"] = minLockTxValueInWei
+			//
+			//customError := response.NewError(ErrorRequestedAmountBelowBridgeMin, details, true)
+			//response.HttpError(w, customError, http.StatusBadRequest)
+			http.Error(w, "bad request; requested amount below bridge's min pegin tx value", http.StatusBadRequest)
 			return
 		}
 		if getQuoteFailed {
-			details := make(map[string]any)
-			details["quote"] = q
-			details["gas"] = gas
-			customError := response.NewError(ErrorGetQuoteFailed, details, true)
-			response.HttpError(w, customError, http.StatusNotFound) // StatusBadRequest or StatusInternalServerError?
-			//http.Error(w, "internal server error", http.StatusInternalServerError)
+			//details := make(map[string]any)
+			//details := map[string]any{}
+			//details["quote"] = q
+			//details["gas"] = gas
+			//customError := response.NewError(ErrorGetQuoteFailed, details, true)
+			//response.HttpError(w, customError, http.StatusNotFound) // StatusBadRequest or StatusInternalServerError?
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -663,11 +673,13 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	err = enc.Encode(&quotes)
 	if err != nil {
 		log.Error("error encoding quote list: ", err.Error())
-		details := make(map[string]any)
-		details["quotes"] = quotes
-		customError := response.NewError(ErrorEncodingQuotesList, details, true)
-		response.HttpError(w, customError, http.StatusInternalServerError)
-		//http.Error(w, "internal server error", http.StatusInternalServerError)
+		//details := make(map[string]any)
+		//details := map[string]any{}
+		//
+		//details["quotes"] = quotes
+		//customError := response.NewError(ErrorEncodingQuotesList, details, true)
+		//response.HttpError(w, customError, http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }
