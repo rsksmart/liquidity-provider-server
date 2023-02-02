@@ -106,7 +106,7 @@ func main() {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(os.Getenv("POWPEG_CONNECTION_STRING"), cfg.Provider.ChainId)
+	err = rsk.Connect(os.Getenv("RSKJ_CONNECTION_STRING"), cfg.Provider.ChainId)
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
