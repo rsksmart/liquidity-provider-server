@@ -12,10 +12,17 @@
         "port": 8080
     },
     "db": {
+        "regtest": {
+            "host": "172.17.0.1",
+            "database": "flyover",
+            "user": "root",
+            "password": "root",
+            "port": 27017
+        },
         "path": "./db/server.db"
     },
     "rsk": {
-        "endpoint": "http://powpeg:4444",
+        "endpoint": "http://rskj:4444",
         "lbcAddr": "0x1Af2844A588759D0DE58abD568ADD96BB8B3B6D8",
         "bridgeAddr": "0x0000000000000000000000000000000001000006",
         "requiredBridgeConfirmations": 10,

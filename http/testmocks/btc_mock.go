@@ -71,3 +71,15 @@ func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcR
 	b.Called(fedInfo, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return "", nil
 }
+
+func (b *BtcMock) BuildMerkleBranch(txHash string) (*connectors.MerkleBranch, error) {
+	return nil, nil
+}
+
+func (b *BtcMock) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*connectors.MerkleBranch, error) {
+	return nil, nil
+}
+
+func (b *BtcMock) SendBTC(address string, amount uint) (string, error) {
+	return "", nil
+}
