@@ -1081,7 +1081,7 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
 
@@ -1144,7 +1144,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
 
@@ -1188,7 +1188,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to deserialize payload", http.StatusBadRequest)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
 
