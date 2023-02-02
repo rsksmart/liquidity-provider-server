@@ -22,7 +22,7 @@ services:
       - MONGODB_DATABASE
       - MONGODB_LOCAL_PORT
       - MONGODB_LOCAL_HOST
-      - POWPEG_CONNECTION_STRING
+      - RSKJ_CONNECTION_STRING
     ports:
       - "8080:8080"
     volumes:
