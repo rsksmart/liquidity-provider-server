@@ -2,7 +2,7 @@ version: "3"
 services:
   bitcoind:
     build:
-      context: bitcoind
+      context: ./bitcoind
       args:
         UID: "${LPS_UID}"
     image: bitcond:latest
@@ -16,10 +16,9 @@ services:
     command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
               "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
               "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
-
   rskj:
     build:
-      context: rskj
+      context: ./rskj
       args:
         UID: "${LPS_UID}"
     image: rskj:latest
@@ -27,11 +26,29 @@ services:
     ports:
       - "4444:4444"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
+      - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
     networks:
       - net_lps
     command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
+  
+  mongodb:
+    image: mongo:4
+    restart: on-failure
+    container_name: mongo01
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
+    ports:
+      - 27017:27017
+    volumes:
+      - ${MONGO_HOME:-./volumes/mongo}/logs:/data/db
+    expose:
+      - 27017
+    networks:
+      - net_lps
+
   lps:
     build:
       context: ../
@@ -50,19 +67,29 @@ services:
       - LBC_ADDR
       - LPS_STAGE
       - ERP_KEYS
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_DATABASE
+      - MONGODB_LOCAL_PORT
+      - MONGODB_LOCAL_HOST
+      - RSKJ_CONNECTION_STRING 
     ports:
       - "8080:8080"
     volumes:
-      - ${LPS_HOME:-/mnt/lps/db}:/home/lps/db
-      - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
+      - /mnt/lps/db:/home/lps/db
+      - /mnt/lps/logs:/home/lps/logs
+    depends_on:
+      - mongodb 
+
     networks:
       - net_lps
     command: ["sh", "start.sh"]
+  
   lbc-deployer:
     build:
       context: lbc-deployer
       args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
+        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-master}
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:
@@ -73,4 +100,3 @@ services:
 networks:
   net_lps:
     driver: "bridge"
-
