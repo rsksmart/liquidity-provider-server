@@ -49,6 +49,7 @@ services:
       - RSK_CHAIN_ID
       - LBC_ADDR
       - LPS_STAGE
+      - ERP_KEYS
     ports:
       - "8080:8080"
     volumes:
