@@ -23,6 +23,7 @@ services:
       - MONGODB_LOCAL_PORT
       - MONGODB_LOCAL_HOST
       - RSKJ_CONNECTION_STRING
+      - ERP_KEYS
     ports:
       - "8080:8080"
     volumes:
