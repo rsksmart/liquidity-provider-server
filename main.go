@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -101,7 +102,11 @@ func main() {
 		log.Fatal("error connecting to DB: ", err)
 	}
 
-	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations, cfg.IrisActivationHeight, cfg.ErpKeys)
+	erpKeys := strings.Split(os.Getenv("ERP_KEYS"), ",")
+
+	log.Debug("ERP Keys: ", erpKeys)
+
+	rsk, err := connectors.NewRSK(cfg.RSK.LBCAddr, cfg.RSK.BridgeAddr, cfg.RSK.RequiredBridgeConfirmations, cfg.IrisActivationHeight, erpKeys)
 	if err != nil {
 		log.Fatal("RSK error: ", err)
 	}
