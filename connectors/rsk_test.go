@@ -40,7 +40,7 @@ var quotes = []*pegin.Quote{
 		Value:              types.NewWei(250),
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
-		CallTime:           3600,
+		LpCallTime:         3600,
 		Confirmations:      10,
 	},
 }

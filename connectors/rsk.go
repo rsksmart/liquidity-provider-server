@@ -777,7 +777,7 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 	pq.Nonce = q.Nonce
 	pq.Value = q.Value.Copy().AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
-	pq.CallTime = q.CallTime
+	pq.CallTime = q.LpCallTime
 	pq.DepositConfirmations = q.Confirmations
 	pq.TimeForDeposit = q.TimeForDeposit
 	return pq, nil

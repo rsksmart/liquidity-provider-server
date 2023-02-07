@@ -109,7 +109,7 @@ var testQuotes = []*pegin.Quote{
 		Value:              types.NewWei(250),
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
-		CallTime:           3600,
+		LpCallTime:         3600,
 		Confirmations:      10,
 	},
 }
@@ -261,7 +261,7 @@ func testGetQuoteComplete(t *testing.T) {
 			Value:              value.Copy(),
 			AgreementTimestamp: 0,
 			TimeForDeposit:     0,
-			CallTime:           0,
+			LpCallTime:         0,
 			Confirmations:      0,
 		}
 		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))

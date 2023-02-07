@@ -106,7 +106,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Q
 	res.AgreementTimestamp = uint32(time.Now().Unix())
 	res.Nonce = int64(rand.Int())
 	res.TimeForDeposit = lp.cfg.TimeForDeposit
-	res.CallTime = lp.cfg.CallTime
+	res.LpCallTime = lp.cfg.CallTime
 	res.PenaltyFee = lp.cfg.PenaltyFee.Copy()
 
 	res.Confirmations = lp.cfg.MaxConf
