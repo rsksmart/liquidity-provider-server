@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
-	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"net/http"
 	"net/url"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -55,9 +57,9 @@ type RSKConnector interface {
 	GetChainId() (*big.Int, error)
 	EstimateGas(addr string, value *big.Int, data []byte) (uint64, error)
 	GasPrice() (*big.Int, error)
-	HashQuote(q *types.Quote) (string, error)
+	HashQuote(q *pegin.Quote) (string, error)
 	HashPegOutQuote(q *pegout.Quote) (string, error)
-	ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error)
+	ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error)
 	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
@@ -429,7 +431,7 @@ func (rsk *RSK) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return hex.EncodeToString(results[:]), nil
 }
 
-func (rsk *RSK) HashQuote(q *types.Quote) (string, error) {
+func (rsk *RSK) HashQuote(q *pegin.Quote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
 
@@ -741,7 +743,7 @@ func DecodeRSKAddress(address string) ([]byte, error) {
 	return common.HexToAddress(trim).Bytes(), nil
 }
 
-func (rsk *RSK) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	pq := bindings.LiquidityBridgeContractQuote{}
 	var err error
 

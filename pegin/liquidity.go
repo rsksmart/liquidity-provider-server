@@ -1,11 +1,11 @@
-package pegout
+package pegin
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -14,16 +14,30 @@ import (
 	"syscall"
 	"time"
 
+	"bytes"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
+
+type LiquidityProvider interface {
+	Address() string
+	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
+	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
+	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
+}
+
+type LocalProviderRepository interface {
+	RetainQuote(rq *types.RetainedQuote) error
+	HasRetainedQuote(hash string) (bool, error)
+	HasLiquidity(lp LiquidityProvider, wei *types.Wei) (bool, error)
+}
 
 type LocalProvider struct {
 	mu         sync.Mutex
@@ -34,28 +48,17 @@ type LocalProvider struct {
 }
 
 type ProviderConfig struct {
-	pegin.ProviderConfig
-	DepositConfirmations  uint16
-	DepositDateLimit      uint32
-	TransferConfirmations uint16
-	TransferTime          uint32
-	ExpireDate            uint32
-	ExpireBlocks          uint32
-	CallFee               uint64
-	PenaltyFee            uint64
-}
-
-type LocalProviderRepository interface {
-	RetainPegOutQuote(rq *RetainedQuote) error
-	HasRetainedPegOutQuote(hash string) (bool, error)
-	HasLiquidityPegOut(lp LiquidityProvider, satoshis uint64) (bool, error)
-}
-
-type LiquidityProvider interface {
-	Address() string
-	GetQuote(*Quote, uint64) (*Quote, error)
-	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
-	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
+	Keydir         string
+	BtcAddr        string
+	AccountNum     int
+	PwdFile        string
+	ChainId        *big.Int
+	MaxConf        uint16
+	Confirmations  map[int]uint16
+	TimeForDeposit uint32
+	CallTime       uint32
+	CallFee        *types.Wei
+	PenaltyFee     *types.Wei
 }
 
 func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
@@ -92,55 +95,41 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository)
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, error) {
-	res := *q
-	res.LPRSKAddr = lp.account.Address.String()
-	res.AgreementTimestamp = uint32(time.Now().Unix())
-	res.Nonce = int64(rand.Int())
-	res.DepositDateLimit = lp.cfg.DepositDateLimit
-	res.TransferConfirmations = lp.cfg.TransferConfirmations
-	res.TransferTime = lp.cfg.TransferTime
-	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
-	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
-	res.PenaltyFee = lp.cfg.PenaltyFee
-
-	res.DepositConfirmations = lp.cfg.MaxConf
-	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
-		v := lp.cfg.Confirmations[k]
-
-		if res.Value < uint64(k) {
-			res.DepositConfirmations = v
-			break
-		}
-	}
-
-	res.Fee = lp.cfg.CallFee
-	return &res, nil
-}
-
-func sortedConfirmations(m map[int]uint16) []int {
-	keys := make([]int, len(m))
-	i := 0
-	for k := range m {
-		keys[i] = k
-		i++
-	}
-	sort.Ints(keys)
-	return keys
-}
-
 func (lp *LocalProvider) Address() string {
 	return lp.account.Address.String()
 }
 
-func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Quote, error) {
+	res := *q
+	res.LPBTCAddr = lp.cfg.BtcAddr
+	res.LPRSKAddr = lp.account.Address.String()
+	res.AgreementTimestamp = uint32(time.Now().Unix())
+	res.Nonce = int64(rand.Int())
+	res.TimeForDeposit = lp.cfg.TimeForDeposit
+	res.CallTime = lp.cfg.CallTime
+	res.PenaltyFee = lp.cfg.PenaltyFee.Copy()
+
+	res.Confirmations = lp.cfg.MaxConf
+	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
+		v := lp.cfg.Confirmations[k]
+
+		if res.Value.AsBigInt().Uint64() < uint64(k) {
+			res.Confirmations = v
+			break
+		}
+	}
+	callCost := new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
+	res.CallFee = new(types.Wei).Add(callCost, lp.cfg.CallFee)
+	return &res, nil
+}
+
+func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error) {
 	quoteHash := hex.EncodeToString(hash)
 
 	var buf bytes.Buffer
 	buf.WriteString("\x19Ethereum Signed Message:\n32")
 	buf.Write(hash)
-	fmt.Println("Liquidity provider")
-	fmt.Println(lp.account)
+
 	signB, err := lp.ks.SignHash(*lp.account, crypto.Keccak256(buf.Bytes()))
 	if err != nil {
 		return nil, err
@@ -150,28 +139,28 @@ func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, satoshis uin
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 
-	hasRq, err := lp.repository.HasRetainedPegOutQuote(quoteHash)
+	hasRq, err := lp.repository.HasRetainedQuote(quoteHash)
 	if err != nil {
 		return nil, err
 	}
 	if !hasRq {
-		hasLiquidity, err := lp.repository.HasLiquidityPegOut(lp, satoshis)
+		hasLiquidity, err := lp.repository.HasLiquidity(lp, reqLiq)
 		if err != nil {
 			return nil, err
 		}
 		if !hasLiquidity {
-			return nil, fmt.Errorf("not enough liquidity. required: %v", satoshis)
+			return nil, fmt.Errorf("not enough liquidity. required: %v", reqLiq)
 		}
 
 		signature := hex.EncodeToString(signB)
-		rq := RetainedQuote{
+		rq := types.RetainedQuote{
 			QuoteHash:   quoteHash,
 			DepositAddr: depositAddr,
 			Signature:   signature,
-			ReqLiq:      satoshis,
+			ReqLiq:      reqLiq.Copy(),
 			State:       types.RQStateWaitingForDeposit,
 		}
-		err = lp.repository.RetainPegOutQuote(&rq)
+		err = lp.repository.RetainQuote(&rq)
 		if err != nil {
 			return nil, err
 		}
@@ -185,6 +174,60 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
 	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+}
+
+func retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File) (*accounts.Account, error) {
+	if cap(ks.Accounts()) == 0 {
+		log.Info("no RSK account found")
+		acc, err := createAccount(ks, in)
+		return acc, err
+	} else {
+		if cap(ks.Accounts()) <= accountNum {
+			return nil, fmt.Errorf("account number %v not found", accountNum)
+		}
+		acc := ks.Accounts()[accountNum]
+		passwd, err := enterPasswd(in)
+
+		if err != nil {
+			return nil, err
+		}
+		err = ks.Unlock(acc, passwd)
+		return &acc, err
+	}
+}
+
+func createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error) {
+	passwd, err := createPasswd(in)
+
+	if err != nil {
+		return nil, err
+	}
+	acc, err := ks.NewAccount(passwd)
+
+	if err != nil {
+		return &acc, err
+	}
+	err = ks.Unlock(acc, passwd)
+
+	if err != nil {
+		return &acc, err
+	}
+	log.Info("new account created: ", acc.Address)
+	return &acc, err
+}
+
+func enterPasswd(in *os.File) (string, error) {
+	fmt.Println("enter password for RSK account")
+	fmt.Print("password: ")
+	var pwd string
+	var err error
+	if in == nil {
+		pwd, err = readPasswdCons(nil)
+	} else {
+		pwd, err = readPasswdReader(bufio.NewReader(in))
+	}
+	fmt.Println()
+	return pwd, err
 }
 
 func createPasswd(in *os.File) (string, error) {
@@ -224,26 +267,6 @@ func createPasswd(in *os.File) (string, error) {
 	return pwd1, nil
 }
 
-func createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error) {
-	passwd, err := createPasswd(in)
-
-	if err != nil {
-		return nil, err
-	}
-	acc, err := ks.NewAccount(passwd)
-
-	if err != nil {
-		return &acc, err
-	}
-	err = ks.Unlock(acc, passwd)
-
-	if err != nil {
-		return &acc, err
-	}
-	log.Info("new account created: ", acc.Address)
-	return &acc, err
-}
-
 func readPasswdCons(_ *bufio.Reader) (string, error) {
 	pass, err := term.ReadPassword(syscall.Stdin)
 	return string(pass), err
@@ -257,36 +280,13 @@ func readPasswdReader(r *bufio.Reader) (string, error) {
 	return strings.Trim(str, "\n"), nil
 }
 
-func enterPasswd(in *os.File) (string, error) {
-	fmt.Println("enter password for RSK account")
-	fmt.Print("password: ")
-	var pwd string
-	var err error
-	if in == nil {
-		pwd, err = readPasswdCons(nil)
-	} else {
-		pwd, err = readPasswdReader(bufio.NewReader(in))
+func sortedConfirmations(m map[int]uint16) []int {
+	keys := make([]int, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
 	}
-	fmt.Println()
-	return pwd, err
-}
-
-func retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File) (*accounts.Account, error) {
-	if cap(ks.Accounts()) == 0 {
-		log.Info("no RSK account found")
-		acc, err := createAccount(ks, in)
-		return acc, err
-	} else {
-		if cap(ks.Accounts()) <= accountNum {
-			return nil, fmt.Errorf("account number %v not found", accountNum)
-		}
-		acc := ks.Accounts()[accountNum]
-		passwd, err := enterPasswd(in)
-
-		if err != nil {
-			return nil, err
-		}
-		err = ks.Unlock(acc, passwd)
-		return &acc, err
-	}
+	sort.Ints(keys)
+	return keys
 }

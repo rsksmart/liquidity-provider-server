@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
-	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -62,7 +62,7 @@ func (m *RskMock) GetChainId() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (m *RskMock) ParseQuote(q *types.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error) {
 	m.Called(q)
 	return bindings.LiquidityBridgeContractQuote{}, nil
 }
@@ -105,7 +105,7 @@ func (m *RskMock) GasPrice() (*big.Int, error) {
 	m.Called()
 	return big.NewInt(100000), nil
 }
-func (m *RskMock) HashQuote(q *types.Quote) (string, error) {
+func (m *RskMock) HashQuote(q *pegin.Quote) (string, error) {
 	m.Called(q)
 	return "", nil
 }
