@@ -130,7 +130,7 @@ func (db *DB) InsertQuote(id string, q *pegin.Quote) error {
 		Value:              q.Value.String(),
 		AgreementTimestamp: q.AgreementTimestamp,
 		TimeForDeposit:     q.TimeForDeposit,
-		CallTime:           q.CallTime,
+		CallTime:           q.LpCallTime,
 		Confirmations:      q.Confirmations,
 		CallOnRegister:     q.CallOnRegister,
 	}
@@ -176,7 +176,7 @@ func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 		BTCRefundAddr:      result.BTCRefundAddr,
 		CallFee:            types.NewWei(callFee),
 		CallOnRegister:     result.CallOnRegister,
-		CallTime:           result.CallTime,
+		LpCallTime:         result.CallTime,
 		Confirmations:      result.Confirmations,
 		ContractAddr:       result.ContractAddr,
 		Data:               result.Data,
