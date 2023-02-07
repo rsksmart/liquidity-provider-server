@@ -10,12 +10,12 @@ import (
 	"time"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/storage"
-	"github.com/rsksmart/liquidity-provider/providers"
 	log "github.com/sirupsen/logrus"
 	"github.com/tkanos/gonfig"
 )
@@ -52,7 +52,7 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := providers.NewLocalProvider(cfg.Provider, lpRepository)
+	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}

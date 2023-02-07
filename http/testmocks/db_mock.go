@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/mock"
@@ -10,11 +11,11 @@ import (
 type DbMock struct {
 	mock.Mock
 	hash        string
-	quote       *types.Quote
+	quote       *pegin.Quote
 	pegoutQuote *pegout.Quote
 }
 
-func NewDbMock(h string, q *types.Quote, pq *pegout.Quote) (*mongoDB.DB, error) {
+func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*mongoDB.DB, error) {
 	return nil, nil
 	// return &DbMock{
 	// 	hash:        h,
@@ -23,7 +24,7 @@ func NewDbMock(h string, q *types.Quote, pq *pegout.Quote) (*mongoDB.DB, error) 
 	// }
 }
 
-func NewDbMockData(h string, q *types.Quote, pq *pegout.Quote) *DbMock {
+func NewDbMockData(h string, q *pegin.Quote, pq *pegout.Quote) *DbMock {
 	return &DbMock{
 		hash:        h,
 		quote:       q,
@@ -41,12 +42,12 @@ func (d *DbMock) Close() error {
 	return nil
 }
 
-func (d *DbMock) InsertQuote(id string, q *types.Quote) error {
+func (d *DbMock) InsertQuote(id string, q *pegin.Quote) error {
 	d.Called(id, q)
 	return nil
 }
 
-func (d *DbMock) GetQuote(quoteHash string) (*types.Quote, error) {
+func (d *DbMock) GetQuote(quoteHash string) (*pegin.Quote, error) {
 	d.Called(quoteHash)
 	return d.quote, nil
 }
