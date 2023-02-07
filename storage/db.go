@@ -3,7 +3,9 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
@@ -17,9 +19,9 @@ const (
 type DBConnector interface {
 	CheckConnection() error
 	Close() error
-	InsertQuote(id string, q *types.Quote) error
+	InsertQuote(id string, q *pegin.Quote) error
 	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
-	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
+	GetQuote(quoteHash string) (*pegin.Quote, error) // returns nil if not found
 	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
 	DeleteExpiredQuotes(expTimestamp int64) error
 	RetainQuote(entry *types.RetainedQuote) error
@@ -93,7 +95,7 @@ func (db *DB) Close() error {
 	return nil
 }
 
-func (db *DB) InsertQuote(id string, q *types.Quote) error {
+func (db *DB) InsertQuote(id string, q *pegin.Quote) error {
 	log.Debug("inserting quote{", id, "}", ": ", q)
 	query, args, _ := sqlx.Named(insertQuote, q)
 	args = append(args, 0)
@@ -120,9 +122,9 @@ func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress st
 	return nil
 }
 
-func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
+func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
-	quote := types.Quote{}
+	quote := pegin.Quote{}
 	err := db.db.Get(&quote, selectQuoteByHash, quoteHash)
 	switch err {
 	case nil:

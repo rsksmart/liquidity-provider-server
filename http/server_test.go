@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcutil"
@@ -21,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/http/testmocks"
-	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 	http2 "github.com/stretchr/testify/http"
@@ -52,7 +52,7 @@ func (lp LiquidityProviderMock) Address() string {
 	return lp.address
 }
 
-func (lp LiquidityProviderMock) GetQuote(quote *types.Quote, _ uint64, _ *types.Wei) (*types.Quote, error) {
+func (lp LiquidityProviderMock) GetQuote(quote *pegin.Quote, _ uint64, _ *types.Wei) (*pegin.Quote, error) {
 	res := *quote
 	res.CallFee = types.NewWei(0)
 	res.PenaltyFee = types.NewWei(0)
@@ -92,7 +92,7 @@ var cfgData = ConfigData{
 	},
 }
 
-var testQuotes = []*types.Quote{
+var testQuotes = []*pegin.Quote{
 	{
 		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		LBCAddr:            "2ff74F841b95E000625b3A77fed03714874C4fEa",
@@ -134,7 +134,7 @@ var testPegOutQuotes = []*pegout.Quote{
 }
 
 func testGetProviderByAddress(t *testing.T) {
-	var liquidityProviders []providers.LiquidityProvider
+	var liquidityProviders []pegin.LiquidityProvider
 	for _, providerMock := range providerMocks {
 		liquidityProviders = append(liquidityProviders, providerMock)
 	}
@@ -146,7 +146,7 @@ func testGetProviderByAddress(t *testing.T) {
 }
 
 func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
-	var liquidityProviders []providers.LiquidityProvider
+	var liquidityProviders []pegin.LiquidityProvider
 	for _, providerMock := range providerMocks {
 		liquidityProviders = append(liquidityProviders, providerMock)
 	}
@@ -245,7 +245,7 @@ func testGetQuoteComplete(t *testing.T) {
 				"\"bitcoinRefundAddress\":\"%v\"}",
 			destAddr, callArgs, value, rskRefAddr, rskRefAddr, btcRefAddr)
 
-		tq := types.Quote{
+		tq := pegin.Quote{
 			FedBTCAddr:         "",
 			LBCAddr:            "",
 			LPRSKAddr:          "",
@@ -388,7 +388,7 @@ func testInitBtcWatchers(t *testing.T) {
 }
 
 func testGetQuoteExpTime(t *testing.T) {
-	quote := types.Quote{AgreementTimestamp: 2, TimeForDeposit: 3}
+	quote := pegin.Quote{AgreementTimestamp: 2, TimeForDeposit: 3}
 	expTime := getQuoteExpTime(&quote)
 	assert.Equal(t, time.Unix(5, 0), expTime)
 }

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
@@ -19,8 +20,8 @@ import (
 type DBConnector interface {
 	CheckConnection() error
 	Close() error
-	InsertQuote(id string, q *types.Quote) error
-	GetQuote(quoteHash string) (*types.Quote, error) // returns nil if not found
+	InsertQuote(id string, q *pegin.Quote) error
+	GetQuote(quoteHash string) (*pegin.Quote, error) // returns nil if not found
 	RetainQuote(entry *types.RetainedQuote) error
 	GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error)
 	GetRetainedQuote(hash string) (*types.RetainedQuote, error) // returns nil if not found
@@ -107,7 +108,7 @@ func (db *DB) Close() error {
 	return nil
 }
 
-func (db *DB) InsertQuote(id string, q *types.Quote) error {
+func (db *DB) InsertQuote(id string, q *pegin.Quote) error {
 	log.Debug("inserting quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("peginQuote")
 
@@ -142,7 +143,7 @@ func (db *DB) InsertQuote(id string, q *types.Quote) error {
 	return nil
 }
 
-func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
+func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 	log.Debug("retrieving quote: ", quoteHash)
 
 	coll := db.db.Database("flyover").Collection("peginQuote")
@@ -170,7 +171,7 @@ func (db *DB) GetQuote(quoteHash string) (*types.Quote, error) {
 		return nil, err
 	}
 
-	quote := types.Quote{
+	quote := pegin.Quote{
 		AgreementTimestamp: result.AgreementTimestamp,
 		BTCRefundAddr:      result.BTCRefundAddr,
 		CallFee:            types.NewWei(callFee),
