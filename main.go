@@ -124,12 +124,12 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	btc, err := connectors.NewBTC(cfg.BTC.Network)
+	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"))
 	if err != nil {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password)
+	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
