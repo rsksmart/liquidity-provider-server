@@ -72,7 +72,11 @@ services:
       - MONGODB_DATABASE
       - MONGODB_LOCAL_PORT
       - MONGODB_LOCAL_HOST
-      - RSKJ_CONNECTION_STRING 
+      - RSKJ_CONNECTION_STRING
+      - BTC_NETWORK
+      - BTC_ENDPOINT
+      - BTC_USERNAME
+      - BTC_PASSWORD
     ports:
       - "8080:8080"
     volumes:
