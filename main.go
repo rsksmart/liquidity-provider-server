@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -111,17 +113,23 @@ func main() {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(os.Getenv("RSKJ_CONNECTION_STRING"), cfg.Provider.ChainId)
+	chainId, err := strconv.ParseInt(os.Getenv("RSK_CHAIN_ID"), 10, 64)
+
+	if err != nil {
+		log.Fatal("Error getting the chain ID: ", err)
+	}
+
+	err = rsk.Connect(os.Getenv("RSKJ_CONNECTION_STRING"), big.NewInt(chainId))
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	btc, err := connectors.NewBTC(cfg.BTC.Network)
+	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"))
 	if err != nil {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password)
+	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
