@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +23,7 @@ var invalidAddresses = []struct {
 	{"b3ba3b6e05821b456e04d95", "invalid contract address"},
 }
 
-var quotes = []*types.Quote{
+var quotes = []*pegin.Quote{
 	{
 		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
 		LBCAddr:            "2ff74F841b95E000625b3A77fed03714874C4fEa",
@@ -39,7 +40,7 @@ var quotes = []*types.Quote{
 		Value:              types.NewWei(250),
 		AgreementTimestamp: 0,
 		TimeForDeposit:     3600,
-		CallTime:           3600,
+		LpCallTime:         3600,
 		Confirmations:      10,
 	},
 }
