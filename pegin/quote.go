@@ -18,7 +18,7 @@ type Quote struct {
 	Value              *types.Wei `json:"value" db:"value"`
 	AgreementTimestamp uint32     `json:"agreementTimestamp" db:"agreement_timestamp"`
 	TimeForDeposit     uint32     `json:"timeForDeposit" db:"time_for_deposit"`
-	LpCallTime         uint32     `json:"callTime" db:"call_time"`
+	LpCallTime         uint32     `json:"lpCallTime" db:"call_time"`
 	Confirmations      uint16     `json:"confirmations" db:"confirmations"`
 	CallOnRegister     bool       `json:"callOnRegister" db:"call_on_register"`
 }
