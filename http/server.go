@@ -14,6 +14,7 @@ import (
 	"time"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcutil"
@@ -25,7 +26,8 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
-	"github.com/rsksmart/liquidity-provider/providers"
+
+	// "github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,7 +61,7 @@ type ConfigData struct {
 
 type Server struct {
 	srv             http.Server
-	providers       []providers.LiquidityProvider
+	providers       []pegin.LiquidityProvider
 	pegoutProviders []pegout.LiquidityProvider
 	rsk             connectors.RSKConnector
 	btc             connectors.BTCConnector
@@ -83,7 +85,7 @@ type QuoteRequest struct {
 }
 
 type QuoteReturn struct {
-	Quote     *types.Quote `json:"quote"`
+	Quote     *pegin.Quote `json:"quote"`
 	QuoteHash string       `json:"quoteHash"`
 }
 
@@ -145,7 +147,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		rsk:             rsk,
 		btc:             btc,
 		dbMongo:         dbMongo,
-		providers:       make([]providers.LiquidityProvider, 0),
+		providers:       make([]pegin.LiquidityProvider, 0),
 		pegoutProviders: make([]pegout.LiquidityProvider, 0),
 		now:             now,
 		watchers:        make(map[string]*BTCAddressWatcher),
@@ -155,7 +157,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 	}
 }
 
-func (s *Server) AddProvider(lp providers.LiquidityProvider) error {
+func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 	s.providers = append(s.providers, lp)
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
@@ -301,7 +303,7 @@ func (s *Server) initBtcWatchers() error {
 	return nil
 }
 
-func (s *Server) addAddressWatcher(quote *types.Quote, hash string, depositAddr string, signB []byte, provider providers.LiquidityProvider, state types.RQState) error {
+func (s *Server) addAddressWatcher(quote *pegin.Quote, hash string, depositAddr string, signB []byte, provider pegin.LiquidityProvider, state types.RQState) error {
 	s.addWatcherMu.Lock()
 	defer s.addWatcherMu.Unlock()
 
@@ -760,8 +762,8 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *types.Quote {
-	return &types.Quote{
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *pegin.Quote {
+	return &pegin.Quote{
 		LBCAddr:       lbcAddr,
 		FedBTCAddr:    fedAddr,
 		BTCRefundAddr: qr.BitcoinRefundAddress,
@@ -796,7 +798,7 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
 }
 
-func getProviderByAddress(liquidityProviders []providers.LiquidityProvider, addr string) (ret providers.LiquidityProvider) {
+func getProviderByAddress(liquidityProviders []pegin.LiquidityProvider, addr string) (ret pegin.LiquidityProvider) {
 	for _, p := range liquidityProviders {
 		if p.Address() == addr {
 			return p
@@ -814,7 +816,7 @@ func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, a
 	return nil
 }
 
-func (s *Server) storeQuote(q *types.Quote) (string, error) {
+func (s *Server) storeQuote(q *pegin.Quote) (string, error) {
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
 		return "", err
@@ -842,7 +844,7 @@ func (s *Server) storePegoutQuote(q *pegout.Quote, derivationAddress string) (st
 	return h, nil
 }
 
-func getQuoteExpTime(q *types.Quote) time.Time {
+func getQuoteExpTime(q *pegin.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
 }
 
