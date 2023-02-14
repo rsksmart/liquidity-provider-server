@@ -3,7 +3,7 @@ name: liquidity provider server CI
 on:
   push:
     branches:
-      - testnet
+      - stable-test
       - features/devops
 
 jobs:
