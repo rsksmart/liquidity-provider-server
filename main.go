@@ -2,20 +2,22 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/storage"
-	"github.com/rsksmart/liquidity-provider/providers"
 	log "github.com/sirupsen/logrus"
 	"github.com/tkanos/gonfig"
 )
@@ -52,7 +54,7 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := providers.NewLocalProvider(cfg.Provider, lpRepository)
+	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
@@ -111,17 +113,23 @@ func main() {
 		log.Fatal("RSK error: ", err)
 	}
 
-	err = rsk.Connect(os.Getenv("RSKJ_CONNECTION_STRING"), cfg.Provider.ChainId)
+	chainId, err := strconv.ParseInt(os.Getenv("RSK_CHAIN_ID"), 10, 64)
+
+	if err != nil {
+		log.Fatal("Error getting the chain ID: ", err)
+	}
+
+	err = rsk.Connect(os.Getenv("RSKJ_CONNECTION_STRING"), big.NewInt(chainId))
 	if err != nil {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	btc, err := connectors.NewBTC(cfg.BTC.Network)
+	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"))
 	if err != nil {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(cfg.BTC.Endpoint, cfg.BTC.Username, cfg.BTC.Password)
+	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
