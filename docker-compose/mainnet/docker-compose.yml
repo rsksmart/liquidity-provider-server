@@ -1,0 +1,69 @@
+version: "3"
+services:
+  mongodb:
+    image: mongo:4
+    restart: on-failure
+    container_name: mongo01
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
+    ports:
+      - 27017:27017
+    volumes:
+      - ${MONGO_HOME:-/mnt/mongo}/logs:/data/db
+    expose:
+      - 27017
+    networks:
+      - net_lps
+  lps:
+    build:
+      context: ../
+      dockerfile: docker-compose/lps/Dockerfile
+      args:
+        UID: "${LPS_UID}"
+    image: lps:latest
+    container_name: lps01
+    environment:
+      - LIQUIDITY_PROVIDER_RSK_ADDR
+      - LIQUIDITY_PROVIDER_RSK_KEY
+      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
+      - BTCD_RPC_USER
+      - BTCD_RPC_PASS
+      - RSK_CHAIN_ID
+      - LBC_ADDR
+      - LPS_STAGE
+      - ERP_KEYS
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_DATABASE
+      - MONGODB_LOCAL_PORT
+      - MONGODB_LOCAL_HOST
+      - RSKJ_CONNECTION_STRING
+      - BTC_NETWORK
+      - BTC_ENDPOINT
+      - BTC_USERNAME
+      - BTC_PASSWORD
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${LPS_HOME:-/mnt/lps/db}:/home/lps/db
+      - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
+    networks:
+      - net_lps
+    command: ["sh", "-x", "start.sh"]
+  lbc-deployer:
+    build:
+      context: lbc-deployer
+      args:
+        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
+    image: lbc-deployer:latest
+    container_name: lbc-deployer01
+    environment:
+      - LPS_STAGE
+    networks:
+      - net_lps
+
+networks:
+  net_lps:
+    driver: "bridge"
