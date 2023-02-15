@@ -17,6 +17,17 @@ services:
       - RSK_CHAIN_ID
       - LBC_ADDR
       - LPS_STAGE
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_DATABASE
+      - MONGODB_LOCAL_PORT
+      - MONGODB_LOCAL_HOST
+      - RSKJ_CONNECTION_STRING
+      - ERP_KEYS
+      - BTC_NETWORK
+      - BTC_ENDPOINT
+      - BTC_USERNAME
+      - BTC_PASSWORD
     ports:
       - "8080:8080"
     volumes:

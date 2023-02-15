@@ -2,7 +2,7 @@ version: "3"
 services:
   bitcoind:
     build:
-      context: bitcoind
+      context: ./bitcoind
       args:
         UID: "${LPS_UID}"
     image: bitcond:latest
@@ -16,23 +16,38 @@ services:
     command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
               "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
               "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
-
-  powpeg:
+  rskj:
     build:
-      context: powpeg
+      context: ./rskj
       args:
         UID: "${LPS_UID}"
-    image: powpeg:latest
-    container_name: powpeg-node-instance
+    image: rskj:latest
+    container_name: rskj01
     ports:
-      - "127.0.0.1:4444:4444"
+      - "4444:4444"
     volumes:
-      - ${RSKJ_HOME:-/var/lib/powpeg}/db:/home/powpeg/.powpeg
-      - ${RSKJ_HOME:-/var/log/powpeg}/logs:/home/powpeg/logs
+      - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
+      - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
     networks:
       - net_lps
-    #    command: tail -f /dev/null
-    command: java -cp powpeg.jar -Drsk.conf.file=regtest-fed.conf -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.cors=* -Drpc.providers.web.ws.enabled=true -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=powpeg co.rsk.federate.FederateRunner --regtest --reset
+    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
+  
+  mongodb:
+    image: mongo:4
+    restart: on-failure
+    container_name: mongo01
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
+    ports:
+      - 27017:27017
+    volumes:
+      - ${MONGO_HOME:-./volumes/mongo}/logs:/data/db
+    expose:
+      - 27017
+    networks:
+      - net_lps
 
   lps:
     build:
@@ -51,20 +66,34 @@ services:
       - RSK_CHAIN_ID
       - LBC_ADDR
       - LPS_STAGE
+      - ERP_KEYS
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_DATABASE
+      - MONGODB_LOCAL_PORT
+      - MONGODB_LOCAL_HOST
+      - RSKJ_CONNECTION_STRING
+      - BTC_NETWORK
+      - BTC_ENDPOINT
+      - BTC_USERNAME
+      - BTC_PASSWORD
     ports:
       - "8080:8080"
     volumes:
-      - ${LPS_HOME:-/mnt/lps/db}:/home/lps/db
-      - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
+      - /mnt/lps/db:/home/lps/db
+      - /mnt/lps/logs:/home/lps/logs
+    depends_on:
+      - mongodb 
+
     networks:
       - net_lps
     command: ["sh", "start.sh"]
-
+  
   lbc-deployer:
     build:
       context: lbc-deployer
       args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
+        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-master}
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:
@@ -75,4 +104,3 @@ services:
 networks:
   net_lps:
     driver: "bridge"
-

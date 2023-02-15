@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/http"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
-	"github.com/rsksmart/liquidity-provider/providers"
 )
 
 type config struct {
@@ -17,6 +17,13 @@ type config struct {
 		Port uint
 	}
 	DB struct {
+		Regtest struct {
+			Host     string
+			Database string
+			User     string
+			Password string
+			Port     uint
+		}
 		Path string
 	}
 	RSK http.LiquidityProviderList
@@ -26,6 +33,6 @@ type config struct {
 		Password string
 		Network  string
 	}
-	Provider      providers.ProviderConfig
+	Provider      pegin.ProviderConfig
 	PegoutProvier pegout.ProviderConfig
 }
