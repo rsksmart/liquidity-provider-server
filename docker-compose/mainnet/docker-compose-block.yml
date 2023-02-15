@@ -1,0 +1,39 @@
+version: "3"
+services:
+  bitcoind:
+    build:
+      context: bitcoind
+      args:
+        UID: "${LPS_UID}"
+    image: bitcond:latest
+    container_name: bitcoind01
+    ports:
+      - "5555:5555"
+    volumes:
+      - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoind/.bitcoind
+    networks:
+      - net_lps
+    command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
+              "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
+              "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
+
+  rskj:
+    build:
+        context: ./rskj
+        args:
+            UID: "${LPS_UID}"
+        image: rskj:latest
+        container_name: rskj01
+          ports:
+                  - "4444:4444"
+                volumes:
+                  - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
+                  - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
+                networks:
+                  - net_lps
+                command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
+
+networks:
+  net_lps:
+    driver: "bridge"
+
