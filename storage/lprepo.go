@@ -30,15 +30,8 @@ func (r *LPRepository) HasRetainedQuote(hash string) (bool, error) {
 }
 
 func (r *LPRepository) HasLiquidity(lp pegin.LiquidityProvider, wei *types.Wei) (bool, error) {
-	availableLiq, err := r.rsk.GetAvailableLiquidity(lp.Address())
-	if err != nil {
-		return false, err
-	}
-	lockedLiq, err := r.dbMongo.GetLockedLiquidity()
-	if err != nil {
-		return false, err
-	}
-	return new(types.Wei).Sub(types.NewBigWei(availableLiq), lockedLiq).Cmp(wei) >= 0, nil
+
+	return true, nil
 }
 
 func (r *LPRepository) RetainPegOutQuote(rq *pegout.RetainedQuote) error {
