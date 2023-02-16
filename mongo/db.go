@@ -325,29 +325,35 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	log.Debug("retrieving locked liquidity")
 
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
-	stateFilter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
-	filter := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: stateFilter}}}}
-	rows, err := coll.Find(context.TODO(), filter)
+	//stateFilter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	//filter := bson.D{}
+	rows, err := coll.Find(context.TODO(), bson.D{})
 	if err != nil {
 		return nil, err
 	}
 
+	var retainedQuotes []*types.RetainedQuote
+	rows.All(context.TODO(), &retainedQuotes)
+
 	var lockedLiq = types.NewWei(0)
+	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
-		var reqLiqString string
-		err = rows.Decode(&reqLiqString)
-		if err != nil {
+		log.Debug("Geting quote locked")
+		var rq RetainedPeginQuote
+		if err = rows.Decode(&rq); err != nil {
 			return nil, err
 		}
-		reqLiqInt, err := strconv.ParseInt(reqLiqString, 10, 64)
+		if rq.State == types.RQStateWaitingForDeposit || rq.State == types.RQStateCallForUserFailed {
+			reqLiqInt, err := strconv.ParseInt(rq.ReqLiq, 10, 64)
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+
+			reqLiq := types.NewWei(reqLiqInt)
+
+			lockedLiq.Add(lockedLiq, reqLiq)
 		}
-
-		reqLiq := types.NewWei(reqLiqInt)
-
-		lockedLiq.Add(lockedLiq, reqLiq)
 	}
 
 	log.Debug("Loked Liquidity: ", lockedLiq.String())
