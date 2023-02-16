@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
+	log "github.com/sirupsen/logrus"
 )
 
 type LPRepository struct {
@@ -30,8 +31,18 @@ func (r *LPRepository) HasRetainedQuote(hash string) (bool, error) {
 }
 
 func (r *LPRepository) HasLiquidity(lp pegin.LiquidityProvider, wei *types.Wei) (bool, error) {
-
-	return true, nil
+	log.Debug("Verifying if has liquidity")
+	lpBalance, err := r.rsk.GetAvailableLiquidity(lp.Address())
+	log.Debug("LP balance ", lpBalance.Text(10))
+	if err != nil {
+		return false, err
+	}
+	lockedLiquidity, err := r.dbMongo.GetLockedLiquidity()
+	log.Debug("Locked Liquidity ", lockedLiquidity.String())
+	if err != nil {
+		return false, err
+	}
+	return new(types.Wei).Sub(types.NewBigWei(lpBalance), lockedLiquidity).Cmp(wei) >= 0, nil
 }
 
 func (r *LPRepository) RetainPegOutQuote(rq *pegout.RetainedQuote) error {
