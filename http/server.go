@@ -183,10 +183,12 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		err := s.rsk.RegisterProvider(opts)
+		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		log.Debug(providerID)
 		if err != nil {
 			return err
 		}
+
 	} else if cmp < 0 { // not enough collateral
 		opts := &bind.TransactOpts{
 			Value:  m.Sub(m, c),
@@ -217,7 +219,8 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		err := s.rsk.RegisterProvider(opts)
+		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		log.Debug(providerID);
 		if err != nil {
 			return err
 		}
