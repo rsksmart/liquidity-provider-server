@@ -80,7 +80,7 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	GetProviders() ([]bindings.LiquidityBridgeContractProvider, error)
+	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActivePowpegRedeemScript() ([]byte, error)
 }
@@ -971,15 +971,13 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-func (rsk *RSK) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
 	opts := bind.CallOpts{}
-	var err error
-	var providers []bindings.LiquidityBridgeContractProvider
-	providersList := []*big.Int{
-		big.NewInt(1),
+	providerIds := make([]*big.Int, len(providerList))
+	for i, p := range providerList {
+		providerIds[i] = big.NewInt(p)
 	}
-	providers, err = rsk.lbc.GetProviders(&opts,providersList)
-
+	providers, err := rsk.lbc.GetProviders(&opts,providerIds)
 	if err != nil {
 		log.Debug("Error RSK.go", err)
 	}
