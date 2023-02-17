@@ -33,6 +33,8 @@ type DBConnector interface {
 	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	GetProviders() ([]int64, error) 
+	InsertProvider(id int64) error
 }
 
 type DB struct {
@@ -350,7 +352,42 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 
 	return lockedLiq, nil
 }
+func (db *DB) InsertProvider(id int64) error {
+    log.Debug("inserting provider: ", id)
+    coll := db.db.Database("flyover").Collection("providers")
+    filter := bson.M{"id": id}
+    update := bson.M{"$set": bson.M{"id": id}}
+    opts := options.Update().SetUpsert(true)
+    _, err := coll.UpdateOne(context.Background(), filter, update, opts)
 
+    if err != nil {
+        return err
+    }
+    return nil
+}
+func (db *DB) GetProviders() ([]int64, error) {
+    coll := db.db.Database("flyover").Collection("providers")
+    var results []int64
+    cur, err := coll.Find(context.TODO(), bson.D{{}})
+    if err != nil {
+        return nil, err
+    }
+    defer cur.Close(context.TODO())
+    for cur.Next(context.TODO()) {
+        var result struct {
+            ID int64 `bson:"id"`
+        }
+        err := cur.Decode(&result)
+        if err != nil {
+            return nil, err
+        }
+        results = append(results, result.ID)
+    }
+    if err := cur.Err(); err != nil {
+        return nil, err
+    }
+    return results, nil
+}
 func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
 	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")

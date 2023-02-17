@@ -93,7 +93,7 @@ services:
     build:
       context: lbc-deployer
       args:
-        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-master}
+        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-QA-Test}
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:

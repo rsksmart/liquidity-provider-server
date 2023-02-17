@@ -71,7 +71,7 @@ type RSKConnector interface {
 	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
 	RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int) error
 	GetCollateral(addr string) (*big.Int, *big.Int, error)
-	RegisterProvider(opts *bind.TransactOpts) error
+	RegisterProvider(opts *bind.TransactOpts,_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64,error)
 	AddCollateral(opts *bind.TransactOpts) error
 	GetLbcBalance(addr string) (*big.Int, error)
 	GetAvailableLiquidity(addr string) (*big.Int, error)
@@ -80,7 +80,7 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	GetProviders() ([]bindings.LiquidityBridgeContractProvider, error)
+	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActivePowpegRedeemScript() ([]byte, error)
 }
@@ -281,27 +281,31 @@ func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	return col, min, nil
 }
 
-func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts) error {
+func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts,_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64,error) {
 	var err error
 	var tx *gethTypes.Transaction
 	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.Register(opts)
+		tx, err = rsk.lbc.Register(opts,_name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
 		if err == nil && tx != nil {
 			break
 		}
 		time.Sleep(rpcSleep)
 	}
 	if tx == nil || err != nil {
-		return fmt.Errorf("error registering provider: %v", err)
+		return 0, fmt.Errorf("error registering provider: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
-	s, err := rsk.GetTxStatus(ctx, tx)
-	if err != nil || !s {
-		return fmt.Errorf("error getting tx status while registering provider: %v", err)
+	s, err := rsk.GetTxReceipt(ctx, tx)
+	if err != nil || s == nil {
+		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
 	}
-	return nil
+    registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
+    if(err != nil){
+		return 0, err
+    }
+	return registerEvent.Id.Int64(), err
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
@@ -606,7 +610,21 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, 
 	}
 	return nil
 }
-
+func (rsk *RSK) GetTxReceipt(ctx context.Context, tx *gethTypes.Transaction) (*gethTypes.Receipt, error) {
+	ticker := time.NewTicker(ethSleep)
+	for {
+		select {
+		case <-ticker.C:
+			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
+			defer cancel()
+			r, _ := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			return r, nil
+		case <-ctx.Done():
+			ticker.Stop()
+			return nil, fmt.Errorf("operation cancelled")
+		}
+	}
+}
 func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
 	ticker := time.NewTicker(ethSleep)
 
@@ -953,13 +971,13 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-func (rsk *RSK) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
 	opts := bind.CallOpts{}
-	var err error
-	var providers []bindings.LiquidityBridgeContractProvider
-
-	providers, err = rsk.lbc.GetProviders(&opts)
-
+	providerIds := make([]*big.Int, len(providerList))
+	for i, p := range providerList {
+		providerIds[i] = big.NewInt(p)
+	}
+	providers, err := rsk.lbc.GetProviders(&opts,providerIds)
 	if err != nil {
 		log.Debug("Error RSK.go", err)
 	}
