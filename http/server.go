@@ -56,6 +56,7 @@ const ErrorBadBodyRequest = "Body of the request is wrong: "
 const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
 const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
+const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -183,10 +184,15 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		err := s.rsk.RegisterProvider(opts)
+		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
 		if err != nil {
 			return err
 		}
+		err2 := s.dbMongo.InsertProvider(providerID)
+		if(err2 != nil){
+			return err2
+		}
+
 	} else if cmp < 0 { // not enough collateral
 		opts := &bind.TransactOpts{
 			Value:  m.Sub(m, c),
@@ -217,9 +223,13 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		err := s.rsk.RegisterProvider(opts)
+		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
 		if err != nil {
 			return err
+		}
+		err2 := s.dbMongo.InsertProvider(providerID)
+		if(err2 != nil){
+			return err2
 		}
 	} else if cmp < 0 { // not enough collateral
 		opts := &bind.TransactOpts{
@@ -521,7 +531,15 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
-	rp, error := s.rsk.GetProviders()
+	
+	providerList, error := s.dbMongo.GetProviders()
+	if(error != nil){
+		log.Error("Error fetching providers. Error: ", error)
+		customError := NewServerError(ErrorFetchingMongoDBProviders + error.Error(), make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
+	rp, error := s.rsk.GetProviders(providerList)
 
 	if error != nil {
 		log.Error("GetProviders - error encoding response: ", error)
