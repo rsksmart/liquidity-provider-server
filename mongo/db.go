@@ -325,21 +325,21 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	log.Debug("retrieving locked liquidity")
 
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
-	stateFilter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
-	filter := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: stateFilter}}}}
-	rows, err := coll.Find(context.TODO(), filter)
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	rows, err := coll.Find(context.TODO(), query)
 	if err != nil {
 		return nil, err
 	}
-
 	var lockedLiq = types.NewWei(0)
+
 	for rows.Next(context.TODO()) {
-		var reqLiqString string
-		err = rows.Decode(&reqLiqString)
-		if err != nil {
+		log.Debug("Geting quote locked")
+		var rq RetainedPeginQuote
+		if err = rows.Decode(&rq); err != nil {
 			return nil, err
 		}
-		reqLiqInt, err := strconv.ParseInt(reqLiqString, 10, 64)
+		reqLiqInt, err := strconv.ParseInt(rq.ReqLiq, 10, 64)
 
 		if err != nil {
 			return nil, err
