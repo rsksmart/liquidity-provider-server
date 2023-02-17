@@ -224,7 +224,6 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		return nil, err
 	}
 	var retainedQuotes []*types.RetainedQuote
-	rows.All(context.TODO(), &retainedQuotes)
 
 	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
