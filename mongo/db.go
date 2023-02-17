@@ -224,7 +224,6 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		return nil, err
 	}
 	var retainedQuotes []*types.RetainedQuote
-	rows.All(context.TODO(), &retainedQuotes)
 
 	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
@@ -334,7 +333,6 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	var lockedLiq = types.NewWei(0)
 
 	for rows.Next(context.TODO()) {
-		log.Debug("Geting quote locked")
 		var rq RetainedPeginQuote
 		if err = rows.Decode(&rq); err != nil {
 			return nil, err
@@ -349,8 +347,6 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 
 		lockedLiq.Add(lockedLiq, reqLiq)
 	}
-
-	log.Debug("Loked Liquidity: ", lockedLiq.String())
 
 	return lockedLiq, nil
 }
