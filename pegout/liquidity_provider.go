@@ -29,20 +29,18 @@ type LocalProvider struct {
 	mu         sync.Mutex
 	account    *accounts.Account
 	ks         *keystore.KeyStore
-	cfg        ProviderConfig
+	cfg        *ProviderConfig
 	repository LocalProviderRepository
 }
 
 type ProviderConfig struct {
 	pegin.ProviderConfig
-	DepositConfirmations  uint16
-	DepositDateLimit      uint32
-	TransferConfirmations uint16
-	TransferTime          uint32
-	ExpireDate            uint32
-	ExpireBlocks          uint32
-	CallFee               uint64
-	PenaltyFee            uint64
+	DepositConfirmations  uint16 `env:"DEPOSIT_CONFIRMATIONS"`
+	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
+	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
+	TransferTime          uint32 `env:"TRANSFER_TIME"`
+	ExpireDate            uint32 `env:"EXPIRED_DATE"`
+	ExpireBlocks          uint32 `env:"EXPIRED_BLOCKS"`
 }
 
 type LocalProviderRepository interface {
@@ -58,7 +56,7 @@ type LiquidityProvider interface {
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
 
-func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
+func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
 	if config.Keydir == "" {
 		config.Keydir = "keystore"
 	}
@@ -102,7 +100,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, 
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
 	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
-	res.PenaltyFee = lp.cfg.PenaltyFee
+	res.PenaltyFee = lp.cfg.PenaltyFee.Uint64()
 
 	res.DepositConfirmations = lp.cfg.MaxConf
 	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
@@ -114,7 +112,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, 
 		}
 	}
 
-	res.Fee = lp.cfg.CallFee
+	res.Fee = lp.cfg.CallFee.Uint64()
 	return &res, nil
 }
 
