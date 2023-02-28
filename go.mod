@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/rsksmart/liquidity-provider v0.0.0-20220407085629-6b03864a1079
+	github.com/sethvargo/go-envconfig v0.9.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.1
 	github.com/sv-tools/mongoifc v1.10.2 // indirect

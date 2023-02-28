@@ -7,10 +7,8 @@
 /.secret
 /logs/
 /docker-compose/local/volumes/
-/config.json
 /liquidity-provider-server
 /server.db
-/it/config.json
 
 .DS_Store
 
