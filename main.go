@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/sethvargo/go-envconfig"
 	"math/big"
 	"math/rand"
 	"os"
@@ -19,7 +21,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/tkanos/gonfig"
 )
 
 var (
@@ -29,9 +30,7 @@ var (
 )
 
 func loadConfig() {
-	err := gonfig.GetConf("config.json", &cfg)
-
-	if err != nil {
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatalf("error loading config file: %v", err)
 	}
 }
@@ -54,7 +53,7 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
