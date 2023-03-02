@@ -57,6 +57,7 @@ const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
 const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
+const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorSigningQuote = "error signing quote: "
 const ErrorAddingAddressWatcher = "error signing quote: "
 
@@ -654,8 +655,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
-				customError := NewServerError(ErrorStoringProviderQuote, make(map[string]interface{}), false)
-				ResponseError(w, customError, http.StatusInternalServerError)
+				errmsg := ErrorStoringProviderQuote
+				status := http.StatusInternalServerError
+				if strings.HasPrefix(err.Error(), "bech32") {
+					status = http.StatusBadRequest
+					errmsg = ErrorBech32AddressNotSupported
+				}
+				customError := NewServerError(errmsg, make(map[string]interface{}), false)
+				ResponseError(w, customError, status)
 				return
 			} else {
 				quotes = append(quotes, &QuoteReturn{pq, hash})
