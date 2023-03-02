@@ -57,6 +57,7 @@ const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
 const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
+const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -184,12 +185,12 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 
@@ -223,12 +224,12 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 	} else if cmp < 0 { // not enough collateral
@@ -531,11 +532,11 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	providerList, error := s.dbMongo.GetProviders()
-	if(error != nil){
+	if error != nil {
 		log.Error("Error fetching providers. Error: ", error)
-		customError := NewServerError(ErrorFetchingMongoDBProviders + error.Error(), make(map[string]interface{}), true)
+		customError := NewServerError(ErrorFetchingMongoDBProviders+error.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -652,8 +653,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
-				customError := NewServerError(ErrorStoringProviderQuote, make(map[string]interface{}), false)
-				ResponseError(w, customError, http.StatusInternalServerError)
+				errmsg := ErrorStoringProviderQuote
+				status := http.StatusInternalServerError
+				if strings.HasPrefix(err.Error(), "bech32") {
+					status = http.StatusBadRequest
+					errmsg = ErrorBech32AddressNotSupported
+				}
+				customError := NewServerError(errmsg, make(map[string]interface{}), false)
+				ResponseError(w, customError, status)
 				return
 			} else {
 				quotes = append(quotes, &QuoteReturn{pq, hash})
