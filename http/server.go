@@ -959,10 +959,18 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint64, qr QuotePegOutRequest, quotes []QuotePegOutResponse) ([]QuotePegOutResponse, bool) {
 	for _, p := range s.pegoutProviders {
-
+		price, err := s.rsk.GasPrice()
+		if err != nil {
+			log.Debug("Error getting RSK gas ", err)
+			return nil, false
+		}
 		gas, err := s.rsk.EstimateGas(qr.RskRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.RskRefundAddress))
+		if err != nil {
+			log.Debug("Error getting gas estimation ", err)
+			return nil, false
+		}
 
-		pq, err := p.GetQuote(q, rskBlockNumber, gas)
+		pq, err := p.GetQuote(q, rskBlockNumber, gas, price)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)
