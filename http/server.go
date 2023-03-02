@@ -959,14 +959,9 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint64, qr QuotePegOutRequest, quotes []QuotePegOutResponse) ([]QuotePegOutResponse, bool) {
 	for _, p := range s.pegoutProviders {
-		price, err := s.rsk.GasPrice()
+		gas, price, err := s.getCalculatedPegoutGas(qr)
+
 		if err != nil {
-			log.Debug("Error getting RSK gas ", err)
-			return nil, false
-		}
-		gas, err := s.rsk.EstimateGas(qr.RskRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.RskRefundAddress))
-		if err != nil {
-			log.Debug("Error getting gas estimation ", err)
 			return nil, false
 		}
 
@@ -1032,6 +1027,21 @@ func (s *Server) buildDerivationAddress(qr QuotePegOutRequest, h string) (string
 
 	derivationAddress, err := s.btc.ComputeDerivationAddresss(pubKey, decodedQuoteHash)
 	return derivationAddress, true
+}
+
+func (s *Server) getCalculatedPegoutGas(qr QuotePegOutRequest) (uint64, *big.Int, error) {
+	price, err := s.rsk.GasPrice()
+	if err != nil {
+		log.Debug("Error getting RSK gas ", err)
+		return 0, nil, err
+	}
+	gas, err := s.rsk.EstimateGas(qr.RskRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.RskRefundAddress))
+	if err != nil {
+		log.Debug("Error getting gas estimation ", err)
+		return 0, nil, err
+	}
+
+	return gas, price, nil
 }
 
 func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResponse) {
