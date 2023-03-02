@@ -976,23 +976,10 @@ func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint6
 
 			pq.LBCAddr = s.rsk.GetLBCAddress()
 
-			h, err := s.rsk.HashPegOutQuote(pq)
+			quoteHash, derivationAddress, err := s.getPegoutQuoteHashAndDerivationAddress(qr, pq)
 
 			if err != nil {
-				log.Error("error getting quote: unable to hash quote", err)
-				return nil, false
-			}
-
-			derivationAddress, ok := s.buildDerivationAddress(qr, h)
-
-			if !ok {
-				return nil, false
-			}
-
-			quoteHash, err := s.storePegoutQuote(pq, derivationAddress)
-
-			if err != nil {
-				log.Error(err)
+				log.Error("error getting hash and derivation address: ", err)
 				return nil, false
 			}
 
@@ -1042,6 +1029,30 @@ func (s *Server) getCalculatedPegoutGas(qr QuotePegOutRequest) (uint64, *big.Int
 	}
 
 	return gas, price, nil
+}
+
+func (s *Server) getPegoutQuoteHashAndDerivationAddress(qr QuotePegOutRequest, pq *pegout.Quote) (string, string, error) {
+	h, err := s.rsk.HashPegOutQuote(pq)
+
+	if err != nil {
+		log.Error("error getting quote: unable to hash quote", err)
+		return "", "", err
+	}
+
+	derivationAddress, ok := s.buildDerivationAddress(qr, h)
+
+	if !ok {
+		return "", "", errors.New("Error getting derivation address")
+	}
+
+	quoteHash, err := s.storePegoutQuote(pq, derivationAddress)
+
+	if err != nil {
+		log.Error(err)
+		return "", "", err
+	}
+
+	return quoteHash, derivationAddress, nil
 }
 
 func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResponse) {
