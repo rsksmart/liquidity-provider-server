@@ -58,6 +58,8 @@ const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
+const ErrorSigningQuote = "error signing quote: "
+const ErrorAddingAddressWatcher = "error signing quote: "
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -818,16 +820,16 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
 	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
-		customError := NewServerError("error signing quote: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorSigningQuote, err.Error())
+		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
 	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, types.RQStateWaitingForDeposit)
 	if err != nil {
-		log.Error("error adding address watcher: ", err.Error())
-		customError := NewServerError("error adding address watcher: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorAddingAddressWatcher, err.Error())
+		customError := NewServerError(ErrorAddingAddressWatcher+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -1111,7 +1113,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, quote.Value)
 
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
+		log.Error(ErrorSigningQuote, err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
