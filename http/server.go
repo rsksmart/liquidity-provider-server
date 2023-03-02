@@ -57,6 +57,8 @@ const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
 const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
+const ErrorSigningQuote = "error signing quote: "
+const ErrorAddingAddressWatcher = "error signing quote: "
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -184,12 +186,12 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 
@@ -223,12 +225,12 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 	} else if cmp < 0 { // not enough collateral
@@ -531,11 +533,11 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	providerList, error := s.dbMongo.GetProviders()
-	if(error != nil){
+	if error != nil {
 		log.Error("Error fetching providers. Error: ", error)
-		customError := NewServerError(ErrorFetchingMongoDBProviders + error.Error(), make(map[string]interface{}), true)
+		customError := NewServerError(ErrorFetchingMongoDBProviders+error.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -811,16 +813,16 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
 	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
-		customError := NewServerError("error signing quote: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorSigningQuote, err.Error())
+		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
 	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, types.RQStateWaitingForDeposit)
 	if err != nil {
-		log.Error("error adding address watcher: ", err.Error())
-		customError := NewServerError("error adding address watcher: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorAddingAddressWatcher, err.Error())
+		customError := NewServerError(ErrorAddingAddressWatcher+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -1104,7 +1106,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, quote.Value)
 
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
+		log.Error(ErrorSigningQuote, err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
