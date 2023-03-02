@@ -184,12 +184,12 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 
@@ -223,12 +223,12 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID,err := s.rsk.RegisterProvider(opts,"Provider Name",big.NewInt(10),big.NewInt(7200),big.NewInt(3600),big.NewInt(10),big.NewInt(100),"http://localhost/api",true)
+		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
 		if err != nil {
 			return err
 		}
 		err2 := s.dbMongo.InsertProvider(providerID)
-		if(err2 != nil){
+		if err2 != nil {
 			return err2
 		}
 	} else if cmp < 0 { // not enough collateral
@@ -531,11 +531,11 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	providerList, error := s.dbMongo.GetProviders()
-	if(error != nil){
+	if error != nil {
 		log.Error("Error fetching providers. Error: ", error)
-		customError := NewServerError(ErrorFetchingMongoDBProviders + error.Error(), make(map[string]interface{}), true)
+		customError := NewServerError(ErrorFetchingMongoDBProviders+error.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -960,7 +960,9 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint64, qr QuotePegOutRequest, quotes []QuotePegOutResponse) ([]QuotePegOutResponse, bool) {
 	for _, p := range s.pegoutProviders {
 
-		pq, err := p.GetQuote(q, rskBlockNumber)
+		gas, err := s.rsk.EstimateGas(qr.RskRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.RskRefundAddress))
+
+		pq, err := p.GetQuote(q, rskBlockNumber, gas)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)

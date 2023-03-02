@@ -36,7 +36,7 @@ type LiquidityPegOutProviderMock struct {
 	address string
 }
 
-func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64) (*pegout.Quote, error) {
+func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64) (*pegout.Quote, error) {
 	return quote, nil
 }
 
@@ -119,7 +119,7 @@ var testPegOutQuotes = []*pegout.Quote{
 		LBCAddr:               "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		LPRSKAddr:             "0xa554d96413FF72E93437C4072438302C38350EE3",
 		RSKRefundAddr:         "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
-		Fee:                   250,
+		CallFee:               250,
 		PenaltyFee:            5000,
 		Nonce:                 int64(rand.Int()),
 		Value:                 250,
@@ -484,7 +484,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 		mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 		db := testmocks.NewDbMockData(hash, nil, quote)
-		minAmount := quote.Value + quote.Fee
+		minAmount := quote.Value + quote.CallFee
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.DepositDateLimit), 0)
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
