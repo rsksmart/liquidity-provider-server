@@ -825,7 +825,7 @@ func isP2PKH(address string) bool {
 }
 
 func isP2SH(address string) bool {
-	pattern := regexp.MustCompile(`^3[a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	pattern := regexp.MustCompile(`^[32][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
 	return pattern.MatchString(address)
 }
 
