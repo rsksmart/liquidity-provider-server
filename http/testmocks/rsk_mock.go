@@ -42,9 +42,9 @@ func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	return big.NewInt(10), big.NewInt(10), nil
 }
 
-func (m *RskMock) RegisterProvider(opts *bind.TransactOpts) error {
+func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
 	m.Called(opts)
-	return nil
+	return 1, nil
 }
 
 func (m *RskMock) AddCollateral(opts *bind.TransactOpts) error {
@@ -154,13 +154,13 @@ func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
 	m.Called()
 
 	return nil, nil
 }
 
-func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
+func (m *RskMock) GetActiveRedeemScript() ([]byte, error) {
 	return nil, nil
 }
 
