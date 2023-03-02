@@ -814,7 +814,7 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 
-	pq.Fee = q.Fee
+	pq.Fee = q.CallFee
 	pq.PenaltyFee = q.PenaltyFee
 	pq.Nonce = q.Nonce
 	pq.ValueToTransfer = q.Value
