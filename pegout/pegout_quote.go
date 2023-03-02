@@ -4,7 +4,7 @@ type Quote struct {
 	LBCAddr               string `json:"lbcAddress" db:"lbc_addr" validate:"required"`
 	LPRSKAddr             string `json:"liquidityProviderRskAddress" db:"lp_rsk_addr" validate:"required"`
 	RSKRefundAddr         string `json:"rskRefundAddress" db:"rsk_refund_addr" validate:"required"`
-	Fee                   uint64 `json:"fee" db:"fee" validate:"required"`
+	CallFee               uint64 `json:"callFee" db:"callFee" validate:"required"`
 	PenaltyFee            uint64 `json:"penaltyFee" db:"penalty_fee" validate:"required"`
 	Nonce                 int64  `json:"nonce" db:"nonce" validate:"required"`
 	Value                 uint64 `json:"value" db:"value" validate:"required"`
