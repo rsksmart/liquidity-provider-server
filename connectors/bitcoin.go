@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
@@ -816,4 +817,19 @@ func getOpCodeFromInt(val int) byte {
 	default:
 		return txscript.OP_16
 	}
+}
+
+func isP2PKH(address string) bool {
+	pattern := regexp.MustCompile(`^[13][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isP2SH(address string) bool {
+	pattern := regexp.MustCompile(`^3[a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isBech32(address string) bool {
+	pattern := regexp.MustCompile(`^(bc1|tb1)[a-zA-HJ-NP-Z0-9]{8,87}$`)
+	return pattern.MatchString(address)
 }
