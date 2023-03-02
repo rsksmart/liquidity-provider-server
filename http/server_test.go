@@ -36,7 +36,7 @@ type LiquidityPegOutProviderMock struct {
 	address string
 }
 
-func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64) (*pegout.Quote, error) {
+func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64, gasPrice *big.Int) (*pegout.Quote, error) {
 	return quote, nil
 }
 
