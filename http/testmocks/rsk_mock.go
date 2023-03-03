@@ -169,10 +169,6 @@ func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridge
 	return args.Get(0).([]bindings.LiquidityBridgeContractProvider), args.Error(1)
 }
 
-func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
-	return nil, nil
-}
-
 func (m *RskMock) GetRskHeight() (uint64, error) {
 	return 0, nil
 }

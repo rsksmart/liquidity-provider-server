@@ -57,6 +57,9 @@ const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
 const ErrorValueTooHigh = "value to transfer too high"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
+const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
+const ErrorSigningQuote = "error signing quote: "
+const ErrorAddingAddressWatcher = "error signing quote: "
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -658,8 +661,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
-				customError := NewServerError(ErrorStoringProviderQuote, make(map[string]interface{}), false)
-				ResponseError(w, customError, http.StatusInternalServerError)
+				errmsg := ErrorStoringProviderQuote
+				status := http.StatusInternalServerError
+				if strings.HasPrefix(err.Error(), "bech32") {
+					status = http.StatusBadRequest
+					errmsg = ErrorBech32AddressNotSupported
+				}
+				customError := NewServerError(errmsg, make(map[string]interface{}), false)
+				ResponseError(w, customError, status)
 				return
 			} else {
 				quotes = append(quotes, &QuoteReturn{pq, hash})
@@ -817,16 +826,16 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
 	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
-		customError := NewServerError("error signing quote: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorSigningQuote, err.Error())
+		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
 	err = s.addAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, types.RQStateWaitingForDeposit)
 	if err != nil {
-		log.Error("error adding address watcher: ", err.Error())
-		customError := NewServerError("error adding address watcher: "+err.Error(), make(map[string]interface{}), true)
+		log.Error(ErrorAddingAddressWatcher, err.Error())
+		customError := NewServerError(ErrorAddingAddressWatcher+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -965,8 +974,13 @@ func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint64, qr QuotePegOutRequest, quotes []QuotePegOutResponse) ([]QuotePegOutResponse, bool) {
 	for _, p := range s.pegoutProviders {
+		gas, price, err := s.getCalculatedPegoutGas(qr)
 
-		pq, err := p.GetQuote(q, rskBlockNumber)
+		if err != nil {
+			return nil, false
+		}
+
+		pq, err := p.GetQuote(q, rskBlockNumber, gas, price)
 
 		if err != nil {
 			log.Error("error getting quote: ", err)
@@ -977,23 +991,10 @@ func (s *Server) generateQuotesByProviders(q *pegout.Quote, rskBlockNumber uint6
 
 			pq.LBCAddr = s.rsk.GetLBCAddress()
 
-			h, err := s.rsk.HashPegOutQuote(pq)
+			quoteHash, derivationAddress, err := s.getPegoutQuoteHashAndDerivationAddress(qr, pq)
 
 			if err != nil {
-				log.Error("error getting quote: unable to hash quote", err)
-				return nil, false
-			}
-
-			derivationAddress, ok := s.buildDerivationAddress(qr, h)
-
-			if !ok {
-				return nil, false
-			}
-
-			quoteHash, err := s.storePegoutQuote(pq, derivationAddress)
-
-			if err != nil {
-				log.Error(err)
+				log.Error("error getting hash and derivation address: ", err)
 				return nil, false
 			}
 
@@ -1028,6 +1029,45 @@ func (s *Server) buildDerivationAddress(qr QuotePegOutRequest, h string) (string
 
 	derivationAddress, err := s.btc.ComputeDerivationAddresss(pubKey, decodedQuoteHash)
 	return derivationAddress, true
+}
+
+func (s *Server) getCalculatedPegoutGas(qr QuotePegOutRequest) (uint64, *big.Int, error) {
+	price, err := s.rsk.GasPrice()
+	if err != nil {
+		log.Debug("Error getting RSK gas ", err)
+		return 0, nil, err
+	}
+	gas, err := s.rsk.EstimateGas(qr.RskRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.RskRefundAddress))
+	if err != nil {
+		log.Debug("Error getting gas estimation ", err)
+		return 0, nil, err
+	}
+
+	return gas, price, nil
+}
+
+func (s *Server) getPegoutQuoteHashAndDerivationAddress(qr QuotePegOutRequest, pq *pegout.Quote) (string, string, error) {
+	h, err := s.rsk.HashPegOutQuote(pq)
+
+	if err != nil {
+		log.Error("error getting quote: unable to hash quote", err)
+		return "", "", err
+	}
+
+	derivationAddress, ok := s.buildDerivationAddress(qr, h)
+
+	if !ok {
+		return "", "", errors.New("Error getting derivation address")
+	}
+
+	quoteHash, err := s.storePegoutQuote(pq, derivationAddress)
+
+	if err != nil {
+		log.Error(err)
+		return "", "", err
+	}
+
+	return quoteHash, derivationAddress, nil
 }
 
 func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResponse) {
@@ -1110,7 +1150,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	signB, err := p.SignQuote(quoteHashInBytes, req.DerivationAddress, quote.Value)
 
 	if err != nil {
-		log.Error("error signing quote: ", err.Error())
+		log.Error(ErrorSigningQuote, err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
