@@ -14,8 +14,8 @@ type RSKClientMock struct {
 }
 
 func (mock *RSKClientMock) ChainID(ctx context.Context) (*big.Int, error) {
-	args := mock.Called(ctx)
-	return args.Get(0).(*big.Int), args.Error(1)
+	arg := mock.Called(ctx)
+	return arg.Get(0).(*big.Int), arg.Error(1)
 }
 
 func (mock *RSKClientMock) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
@@ -48,7 +48,9 @@ func (mock *RSKClientMock) BlockNumber(ctx context.Context) (uint64, error) {
 	return uint64(args.Int(0)), args.Error(1)
 }
 
-func (mock *RSKClientMock) Close() {}
+func (mock *RSKClientMock) Close() {
+	//dummy implementation for mock
+}
 
 func (mock *RSKClientMock) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	args := mock.Called(ctx, account, blockNumber)
