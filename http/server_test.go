@@ -215,293 +215,240 @@ func testCheckHealth(t *testing.T) {
 }
 
 func testGetQuoteComplete(t *testing.T) {
-	for _, quote := range testQuotes {
-		rsk := new(testmocks.RskMock)
-		btc := new(testmocks.BtcMock)
-		mongoDb, _ := testmocks.NewDbMock("", quote, nil)
+	quote := testQuotes[0]
+	callContractAddressField := "\"callContractAddress\":\"%v\","
+	callContractArgumentsField := "\"callContractArguments\":\"%v\","
+	basicQuoteFields := "\"valueToTransfer\":%v, \"rskRefundAddress\":\"%v\"," +
+		"\"lpAddress\":\"%v\", \"bitcoinRefundAddress\":\"%v\""
 
-		srv := New(rsk, btc, mongoDb, cfgData)
+	rsk := new(testmocks.RskMock)
+	btc := new(testmocks.BtcMock)
+	mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 
-		for _, lp := range providerMocks {
-			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddProvider(lp)
-			if err != nil {
-				t.Fatalf("couldn't add provider. error: %v", err)
-			}
+	srv := New(rsk, btc, mongoDb, cfgData)
+
+	for _, lp := range providerMocks {
+		rsk.On("GetCollateral", lp.address).Return(nil)
+		err := srv.AddProvider(lp)
+		if err != nil {
+			t.Fatalf("couldn't add provider. error: %v", err)
 		}
-
-		destAddrEOA := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
-		destAddrSC := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc04F"
-		callArgs := "0x"
-		value := quote.Value
-		rskRefAddrEOA := "0x9d93929a9099be4355fc2389fbf253982f9df47c"
-		rskRefAddrSC := "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4"
-		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
-
-		eoaQuote := pegin.Quote{
-			FedBTCAddr:         "",
-			LBCAddr:            "",
-			LPRSKAddr:          "",
-			BTCRefundAddr:      btcRefAddr,
-			RSKRefundAddr:      rskRefAddrEOA,
-			LPBTCAddr:          "",
-			CallFee:            types.NewWei(0),
-			PenaltyFee:         types.NewWei(0),
-			Nonce:              0,
-			Value:              value.Copy(),
-			AgreementTimestamp: 0,
-			TimeForDeposit:     0,
-			LpCallTime:         0,
-			Confirmations:      0,
-		}
-
-		scQuoteCallContractEoa := eoaQuote
-		scQuoteCallContractEoa.RSKRefundAddr = rskRefAddrSC
-		scQuoteCallContractEoa.ContractAddr = destAddrEOA
-		scQuoteCallContractEoa.GasLimit = 10000
-
-		scQuoteCallContractSc := eoaQuote
-		scQuoteCallContractSc.RSKRefundAddr = rskRefAddrSC
-		scQuoteCallContractSc.ContractAddr = destAddrSC
-		scQuoteCallContractSc.Data = callArgs
-		scQuoteCallContractSc.GasLimit = 10000
-
-		defaultMocks := func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
-			rskMock.On("EstimateGas", mock.Anything, value.AsBigInt(), mock.Anything).Times(1)
-			rskMock.On("GasPrice").Times(1)
-			rskMock.On("GetFedAddress").Times(1)
-			rskMock.On("GetLBCAddress").Times(1)
-			rskMock.On("IsEOA", "").Return(false, errors.New("invalid address"))
-			rskMock.On("IsEOA", rskRefAddrEOA).Return(true, nil)
-			rskMock.On("IsEOA", destAddrEOA).Return(true, nil)
-			rskMock.On("IsEOA", destAddrSC).Return(false, nil)
-			rskMock.On("IsEOA", rskRefAddrSC).Return(false, nil)
-			rskMock.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
-			rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
-			rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
-			dbMock.On("InsertQuote", "", mock.Anything).Times(len(providerMocks)).Return(quote)
-		}
-
-		testCases := []*struct {
-			caseName    string
-			requestBody string
-			assertions  func(res *http.Response)
-			customMocks func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock)
-		}{
-			{
-				caseName: "Return error when requested amount below bridge's min pegin tx value",
-				requestBody: fmt.Sprintf("{"+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
-				),
-				customMocks: func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
-					rsk.On("GetMinimumLockTxValue").Return(new(big.Int).Add(big.NewInt(-1), new(big.Int).Add(quote.Value.AsBigInt(), quote.CallFee.AsBigInt())), nil).Times(1)
-				},
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 400, res.StatusCode)
-					assert.EqualValues(t, "requested amount below bridge's min pegin tx value", response.Message)
-				},
-			},
-			{
-				caseName: "Return quote successfully for EOA origin",
-				requestBody: fmt.Sprintf("{"+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					var response []*QuoteReturn
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 200, res.StatusCode)
-					assert.EqualValues(t, eoaQuote, *response[0].Quote)
-				},
-			},
-			{
-				caseName: "Return quote successfully for SC origin and SC call contract address",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractAddress\":\"%v\","+
-					"\"callContractArguments\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					destAddrSC, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					var response []*QuoteReturn
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 200, res.StatusCode)
-					assert.EqualValues(t, scQuoteCallContractSc, *response[0].Quote)
-				},
-			},
-			{
-				caseName: "Return quote successfully for SC origin and EOA call contract address",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractAddress\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					destAddrEOA, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					var response []*QuoteReturn
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 200, res.StatusCode)
-					assert.EqualValues(t, scQuoteCallContractEoa, *response[0].Quote)
-				},
-			},
-			{
-				caseName: "Return error when transfer value is too high",
-				requestBody: fmt.Sprintf("{"+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\"}",
-					600000000000000001, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 400, res.StatusCode)
-					assert.EqualValues(t, "value to transfer too high", response.Message)
-				},
-			},
-			{
-				caseName: "Return error when origin is EOA and callContractAddress is provided",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractAddress\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					destAddrEOA, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 422, res.StatusCode)
-					assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
-				},
-			},
-			{
-				caseName: "Return error when origin is EOA and callContractArguments is provided",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractArguments\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					callArgs, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 422, res.StatusCode)
-					assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
-				},
-			},
-			{
-				caseName: "Return error when origin is SC address and callContractAddress is empty",
-				requestBody: fmt.Sprintf("{"+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 422, res.StatusCode)
-					assert.EqualValues(t, "error parsing callContractAddress: invalid address", response.Message)
-				},
-			},
-			{
-				caseName: "Return error when origin is SC address, callContractAddress is not EOA and callContractArguments is empty",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractAddress\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					destAddrSC, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 422, res.StatusCode)
-					assert.EqualValues(t, "callContractArguments should not be empty if callContractAddress is a Smart Contract address", response.Message)
-				},
-			},
-			{
-				caseName: "Return error when origin is SC address, callContractAddress is EOA and callContractArguments is not empty",
-				requestBody: fmt.Sprintf("{"+
-					"\"callContractAddress\":\"%v\","+
-					"\"callContractArguments\":\"%v\","+
-					"\"valueToTransfer\":%v,"+
-					"\"rskRefundAddress\":\"%v\","+
-					"\"lpAddress\":\"%v\","+
-					"\"bitcoinRefundAddress\":\"%v\""+
-					"}",
-					destAddrEOA, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
-				),
-				assertions: func(res *http.Response) {
-					response := &ErrorBody{}
-					json.NewDecoder(res.Body).Decode(&response)
-					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
-					assert.EqualValues(t, 422, res.StatusCode)
-					assert.EqualValues(t, "callContractArguments should be empty if callContractAddress is EOA", response.Message)
-				},
-			},
-		}
-
-		for _, test := range testCases {
-			t.Run(test.caseName, func(t *testing.T) {
-				req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(test.requestBody)))
-				if err != nil {
-					t.Fatalf("couldn't instantiate request. error: %v", err)
-				}
-				if test.customMocks != nil {
-					test.customMocks(rsk, btc, mongoDb)
-				}
-				defaultMocks(rsk, btc, mongoDb)
-				rr := httptest.NewRecorder()
-
-				srv.getQuoteHandler(rr, req)
-				test.assertions(rr.Result())
-
-				rsk.Calls = []mock.Call{}
-				btc.Calls = []mock.Call{}
-				mongoDb.Calls = []mock.Call{}
-			})
-		}
-
 	}
+
+	destAddrEOA := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
+	destAddrSC := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc04F"
+	callArgs := "0x"
+	value := quote.Value
+	rskRefAddrEOA := "0x9d93929a9099be4355fc2389fbf253982f9df47c"
+	rskRefAddrSC := "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4"
+	btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
+
+	eoaQuote := pegin.Quote{
+		FedBTCAddr:         "",
+		LBCAddr:            "",
+		LPRSKAddr:          "",
+		BTCRefundAddr:      btcRefAddr,
+		RSKRefundAddr:      rskRefAddrEOA,
+		LPBTCAddr:          "",
+		CallFee:            types.NewWei(0),
+		PenaltyFee:         types.NewWei(0),
+		Nonce:              0,
+		Value:              value.Copy(),
+		AgreementTimestamp: 0,
+		TimeForDeposit:     0,
+		LpCallTime:         0,
+		Confirmations:      0,
+	}
+
+	scQuoteCallContractEoa := eoaQuote
+	scQuoteCallContractEoa.RSKRefundAddr = rskRefAddrSC
+	scQuoteCallContractEoa.ContractAddr = destAddrEOA
+	scQuoteCallContractEoa.GasLimit = 10000
+
+	scQuoteCallContractSc := eoaQuote
+	scQuoteCallContractSc.RSKRefundAddr = rskRefAddrSC
+	scQuoteCallContractSc.ContractAddr = destAddrSC
+	scQuoteCallContractSc.Data = callArgs
+	scQuoteCallContractSc.GasLimit = 10000
+
+	defaultMocks := func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
+		rskMock.On("EstimateGas", mock.Anything, value.AsBigInt(), mock.Anything).Times(1)
+		rskMock.On("GasPrice").Times(1)
+		rskMock.On("GetFedAddress").Times(1)
+		rskMock.On("GetLBCAddress").Times(1)
+		rskMock.On("IsEOA", "").Return(false, errors.New("invalid address"))
+		rskMock.On("IsEOA", rskRefAddrEOA).Return(true, nil)
+		rskMock.On("IsEOA", destAddrEOA).Return(true, nil)
+		rskMock.On("IsEOA", destAddrSC).Return(false, nil)
+		rskMock.On("IsEOA", rskRefAddrSC).Return(false, nil)
+		rskMock.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
+		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
+		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
+		dbMock.On("InsertQuote", "", mock.Anything).Times(len(providerMocks)).Return(quote)
+	}
+
+	testCases := []*struct {
+		caseName    string
+		requestBody string
+		assertions  func(res *http.Response)
+		customMocks func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock)
+	}{
+		{
+			caseName: "Return error when requested amount below bridge's min pegin tx value",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			customMocks: func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
+				rsk.On("GetMinimumLockTxValue").Return(new(big.Int).Add(big.NewInt(-1), new(big.Int).Add(quote.Value.AsBigInt(), quote.CallFee.AsBigInt())), nil).Times(1)
+			},
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 400, res.StatusCode)
+				assert.EqualValues(t, "requested amount below bridge's min pegin tx value", response.Message)
+			},
+		},
+		{
+			caseName: "Return quote successfully for EOA origin",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, eoaQuote, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return quote successfully for SC origin and SC call contract address",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+callContractArgumentsField+basicQuoteFields+"}",
+				destAddrSC, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, scQuoteCallContractSc, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return quote successfully for SC origin and EOA call contract address",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrEOA, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, scQuoteCallContractEoa, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return error when transfer value is too high",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				600000000000000001, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 400, res.StatusCode)
+				assert.EqualValues(t, "value to transfer too high", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is EOA and callContractAddress is provided",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrEOA, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is EOA and callContractArguments is provided",
+			requestBody: fmt.Sprintf("{"+callContractArgumentsField+basicQuoteFields+"}",
+				callArgs, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address and callContractAddress is empty",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "error parsing callContractAddress: invalid address", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address, callContractAddress is not EOA and callContractArguments is empty",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrSC, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "callContractArguments should not be empty if callContractAddress is a Smart Contract address", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address, callContractAddress is EOA and callContractArguments is not empty",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+callContractArgumentsField+basicQuoteFields+"}",
+				destAddrEOA, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "callContractArguments should be empty if callContractAddress is EOA", response.Message)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(test.requestBody)))
+			if err != nil {
+				t.Fatalf("couldn't instantiate request. error: %v", err)
+			}
+			if test.customMocks != nil {
+				test.customMocks(rsk, btc, mongoDb)
+			}
+			defaultMocks(rsk, btc, mongoDb)
+			rr := httptest.NewRecorder()
+
+			srv.getQuoteHandler(rr, req)
+			test.assertions(rr.Result())
+
+			rsk.Calls = []mock.Call{}
+			btc.Calls = []mock.Call{}
+			mongoDb.Calls = []mock.Call{}
+		})
+	}
+
 }
 
 func testAcceptQuoteComplete(t *testing.T) {
