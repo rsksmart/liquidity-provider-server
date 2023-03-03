@@ -13,7 +13,7 @@ type Quote struct {
 	PenaltyFee         *types.Wei `json:"penaltyFee" db:"penalty_fee"`
 	ContractAddr       string     `json:"contractAddr" db:"contract_addr"`
 	Data               string     `json:"data" db:"data"`
-	GasLimit           uint32     `json:"gasLimit,omitempty" db:"gas_limit"`
+	GasLimit           uint32     `json:"gasLimit" db:"gas_limit"`
 	Nonce              int64      `json:"nonce" db:"nonce"`
 	Value              *types.Wei `json:"value" db:"value"`
 	AgreementTimestamp uint32     `json:"agreementTimestamp" db:"agreement_timestamp"`
