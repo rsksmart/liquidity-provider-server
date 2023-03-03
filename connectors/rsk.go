@@ -83,6 +83,7 @@ type RSKConnector interface {
 	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActiveRedeemScript() ([]byte, error)
+	IsEOA(address string) (bool, error)
 }
 
 type RSKClient interface {
@@ -93,6 +94,7 @@ type RSKClient interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*gethTypes.Receipt, error)
+	BlockNumber(ctx context.Context) (uint64, error)
 	Close()
 }
 
@@ -107,7 +109,7 @@ type RSKBridge interface {
 }
 
 type RSK struct {
-	c                           *ethclient.Client
+	c                           RSKClient
 	lbc                         *bindings.LiquidityBridgeContract
 	lbcAddress                  common.Address
 	bridge                      *bindings.RskBridge
@@ -180,11 +182,11 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	}
 
 	log.Debug("initializing RSK contracts")
-	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
+	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, ethC)
 	if err != nil {
 		return err
 	}
-	rsk.lbc, err = bindings.NewLiquidityBridgeContract(rsk.lbcAddress, rsk.c)
+	rsk.lbc, err = bindings.NewLiquidityBridgeContract(rsk.lbcAddress, ethC)
 	if err != nil {
 		return err
 	}
@@ -697,6 +699,22 @@ func (rsk *RSK) GetActiveRedeemScript() ([]byte, error) {
 		return nil, fmt.Errorf("error calling GetActivePowpegRedeemScript: %v", err)
 	}
 	return value, nil
+}
+
+func (rsk *RSK) IsEOA(address string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	if !common.IsHexAddress(address) {
+		return false, errors.New("invalid address")
+	}
+
+	bytecode, err := rsk.c.CodeAt(ctx, common.HexToAddress(address), nil)
+	if err != nil {
+		return false, err
+	}
+
+	return bytecode == nil || len(bytecode) == 0, nil
 }
 
 func (rsk *RSK) isNewAccount(addr common.Address) bool {
