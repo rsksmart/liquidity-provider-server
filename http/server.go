@@ -17,21 +17,20 @@ import (
 	"sync"
 	"time"
 
+	"context"
+
 	"github.com/btcsuite/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider-server/storage"
-
-	"context"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
-
-	// "github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -251,7 +250,14 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider,ProviderDetails t
 
 	return nil
 }
-
+type RegistrationStatus struct{
+	Status string
+}
+// @Title Register Provider
+// @Description Registers New Provider
+// @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
+// @Success  200 object RegistrationStatus
+// @Route /provider/register [post]
 func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
@@ -275,7 +281,7 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
-	response := "Provider Created Successfully";
+	response := RegistrationStatus{"Provider Created Successfully"};
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 	if err != nil {
@@ -283,6 +289,10 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
+type UserS struct {
+	ID   uint64 `json:"id" example:"100" description:"User identity"`
+	Name string `json:"name" example:"Parvez"` 
+  }
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
@@ -483,19 +493,21 @@ func (s *Server) Shutdown() {
 	}
 	log.Info("server stopped")
 }
-
+type services struct {
+	Db  string `json:"db"`
+	Rsk string `json:"rsk"`
+	Btc string `json:"btc"`
+}
+type healthRes struct {
+	Status   string   `json:"status"`
+	Services services `json:"services"`
+}
+// @Title Health
+// @Description Returns server health.
+// @Success  200  object healthRes
+// @Route /health [get]
 func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
 	enableCors(&w)
-	type services struct {
-		Db  string `json:"db"`
-		Rsk string `json:"rsk"`
-		Btc string `json:"btc"`
-	}
-	type healthRes struct {
-		Status   string   `json:"status"`
-		Services services `json:"services"`
-	}
-
 	lpsSvcStatus := svcStatusOk
 	dbSvcStatus := svcStatusOk
 	rskSvcStatus := svcStatusOk
@@ -566,10 +578,14 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 	return err
 }
 
+type providerList =[]bindings.LiquidityBridgeContractProvider;
+// @Title Get Providers
+// @Description Returns a list of providers.
+// @Success  200  object providerList 
+// @Route /getProviders [get]
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
-	
 	providerList, error := s.dbMongo.GetProviders()
 	if(error != nil){
 		log.Error("Error fetching providers. Error: ", error)
@@ -595,7 +611,11 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
+// @Title Pegin GetQuote
+// @Description Gets Pegin Quote
+// @Param  PeginQuoteRequest  body QuoteRequest true "Pegin Quote Request"
+// @Success  200  object QuoteReturn
+// @Route /pegin/getQuote [post]
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	qr := QuoteRequest{}
@@ -737,13 +757,13 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
+// @Title Accept Quote
+// @Description Accepts Quote
+// @Param  QuoteHash  body acceptReq true "Quote Hash"
+// @Success  200  object acceptRes
+// @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	type acceptRes struct {
-		Signature                 string `json:"signature"`
-		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
-	}
 	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
 		enc := json.NewEncoder(w)
 		response := acceptRes{
@@ -956,7 +976,11 @@ func getQuoteExpTime(q *pegin.Quote) time.Time {
 func getPegOutQuoteExpTime(q *pegout.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
 }
-
+// @Title Pegout GetQuote
+// @Description Gets Pegout Quote
+// @Param  PegoutQuoteRequest  body QuotePegOutRequest true "Quote Request Pegout"
+// @Success  200  object QuotePegOutResponse
+// @Route /pegout/getQuotes [post]
 func (s *Server) getQuotesPegOutHandler(w http.ResponseWriter, r *http.Request) {
 	qr := QuotePegOutRequest{}
 	dec := json.NewDecoder(r.Body)
@@ -1105,7 +1129,11 @@ func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
-
+// @Title Accept Quote Pegout
+// @Description Accepts Quote Pegout
+// @Param  QuoteHash  body acceptReqPegout true "Quote Hash"
+// @Success  200  object AcceptResPegOut
+// @Route /pegout/acceptQuote [post]
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
 	req := acceptReqPegout{}
 	toRestAPI(w)
@@ -1179,7 +1207,11 @@ type BuildRefundPegOutPayloadResponse struct {
 	MerkleBranchPath   int           `json:"merkleBranchPath"`
 	MerkleBranchHashes []string      `json:"merkleBranchHashes"`
 }
-
+// @Title Refund Pegout
+// @Description Refunds Pegout
+// @Param  RefundPegout  body BuildRefundPegOutPayloadRequest true "Pegout Refund Details"
+// @Success  200  object BuildRefundPegOutPayloadResponse
+// @Route /pegout/refundPegOut [post]
 func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	payload := BuildRefundPegOutPayloadRequest{}
@@ -1242,6 +1274,11 @@ type SenBTCResponse struct {
 	TxHash string `json:"txHash"`
 }
 
+// @Title Send BTC
+// @Description Sends BTC
+// @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
+// @Success  200  object SenBTCResponse
+// @Route /pegout/sendBTC [post]
 func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
@@ -1285,7 +1322,11 @@ type AddCollateralRequest struct {
 type AddCollateralResponse struct {
 	NewCollateralBalance uint64 `json:"newCollateralBalance"`
 }
-
+// @Title Add Collateral
+// @Description Adds Collateral
+// @Param  AddCollateralRequest  body AddCollateralRequest true "Add Collateral Request"
+// @Success  200  object SenBTCResponse
+// @Route /addCollateral [post]
 func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)

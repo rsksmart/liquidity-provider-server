@@ -24,6 +24,9 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+echo "Compiling LPS with OpenAPI Specifications"
+go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
+
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
   echo "Command is not provided"
@@ -148,6 +151,7 @@ CURRENT_JSON=$(cat ../../it/config.json)
 rm -rf ../../it/config.json
 
 echo $CURRENT_JSON $DEPLOY_DATA | jq --slurp 'reduce .[] as $item ({}; . * $item)' >> ../../it/config.json
+
 
 # start LPS
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
