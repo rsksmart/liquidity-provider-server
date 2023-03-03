@@ -4,6 +4,7 @@
 
 # Project-specific content
 /.geth_keystore/
+/geth_keystore/
 /.secret
 /logs/
 /docker-compose/local/volumes/
@@ -11,6 +12,7 @@
 /liquidity-provider-server
 /server.db
 /it/config.json
+pwd.txt
 
 .DS_Store
 
