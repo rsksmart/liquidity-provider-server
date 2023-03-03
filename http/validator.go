@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"net/http"
@@ -18,13 +17,10 @@ func Validate(schema interface{}) func(w http.ResponseWriter) bool {
 				}
 				message += fmt.Sprintf("%s is %s", err.Field(), err.Tag())
 			}
-			BuildErrorResponse(w, http.StatusUnprocessableEntity, message)
+			customError := NewServerError(message, make(Details), true)
+			ResponseError(w, customError, http.StatusBadRequest)
 			return false
 		}
 		return true
 	}
-}
-func BuildErrorResponse(w http.ResponseWriter, status int, message string) {
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"message": message})
 }
