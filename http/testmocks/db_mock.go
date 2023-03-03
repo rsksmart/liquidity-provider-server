@@ -1,6 +1,7 @@
 package testmocks
 
 import (
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
@@ -14,22 +15,21 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
-func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*DbMock, error) {
+func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*mongoDB.DB, error) {
+	return nil, nil
+	// return &DbMock{
+	// 	hash:        h,
+	// 	quote:       q,
+	// 	pegoutQuote: pq,
+	// }
+}
+
+func NewDbMockData(h string, q *pegin.Quote, pq *pegout.Quote) *DbMock {
 	return &DbMock{
 		hash:        h,
 		quote:       q,
 		pegoutQuote: pq,
-	}, nil
-}
-
-func (d *DbMock) GetProviders() ([]int64, error) {
-	args := d.Called()
-	return args.Get(0).([]int64), args.Error(1)
-}
-
-func (d *DbMock) InsertProvider(id int64) error {
-	args := d.Called(id)
-	return args.Error(0)
+	}
 }
 
 func (d *DbMock) CheckConnection() error {
