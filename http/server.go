@@ -80,7 +80,7 @@ type Server struct {
 	pegoutProviders []pegout.LiquidityProvider
 	rsk             connectors.RSKConnector
 	btc             connectors.BTCConnector
-	dbMongo         *mongoDB.DB
+	dbMongo         mongoDB.DBConnector
 	now             func() time.Time
 	watchers        map[string]*BTCAddressWatcher
 	pegOutWatchers  map[string]*BTCAddressPegOutWatcher
@@ -94,9 +94,9 @@ type QuoteRequest struct {
 	CallContractAddress   string     `json:"callContractAddress"`
 	CallContractArguments string     `json:"callContractArguments"`
 	ValueToTransfer       *types.Wei `json:"valueToTransfer"`
-	RskRefundAddress      string     `json:"rskRefundAddress"`
-	LpAddress             string     `json:"lpAddress"`
-	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress"`
+	RskRefundAddress      string     `json:"rskRefundAddress" validate:"required"`
+	LpAddress             string     `json:"lpAddress" validate:"required,eth_addr"`
+	BitcoinRefundAddress  string     `json:"bitcoinRefundAddress" validate:"required"`
 }
 
 type QuoteReturn struct {
@@ -153,11 +153,11 @@ type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo *mongoDB.DB, cfgData ConfigData) Server {
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData) Server {
 	return newServer(rsk, btc, dbMongo, time.Now, cfgData)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo *mongoDB.DB, now func() time.Time, cfgData ConfigData) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time, cfgData ConfigData) Server {
 	return Server{
 		rsk:             rsk,
 		btc:             btc,
@@ -339,7 +339,7 @@ func (s *Server) addAddressWatcher(quote *pegin.Quote, hash string, depositAddr 
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
-	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, *s.dbMongo, quote, signB, state, &s.sharedWatcherMu)
+	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.dbMongo, quote, signB, state, &s.sharedWatcherMu)
 	err := s.btc.AddAddressWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
@@ -505,20 +505,26 @@ func toRestAPI(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 }
 
-func (a *QuoteRequest) validateQuoteRequest() string {
-	err := ""
-
-	if len(a.RskRefundAddress) == 0 {
-		err += "RskRefundAddress is empty; "
-	}
-	if len(a.BitcoinRefundAddress) == 0 {
-		err += "BitcoinRefundAddress is empty; "
-	}
-	if len(a.CallContractAddress) == 0 {
-		err += "CallContractAddress is empty; "
+func validateQuoteRequest(request *QuoteRequest, rsk connectors.RSKConnector) error {
+	originIsEOA, err := rsk.IsEOA(request.RskRefundAddress)
+	if err != nil {
+		return fmt.Errorf("error parsing rskRefundAddress: %v", err)
+	} else if originIsEOA && (request.CallContractAddress != "" || request.CallContractArguments != "") {
+		return errors.New("fields callContractAddress and callContractArguments should not be provided when calling from EOA")
+	} else if originIsEOA {
+		return nil
 	}
 
-	return err
+	callContractIsEOA, err := rsk.IsEOA(request.CallContractAddress)
+
+	if err != nil {
+		return fmt.Errorf("error parsing callContractAddress: %v", err)
+	} else if callContractIsEOA && request.CallContractArguments != "" {
+		return errors.New("callContractArguments should be empty if callContractAddress is EOA")
+	} else if !callContractIsEOA && request.CallContractArguments == "" {
+		return errors.New("callContractArguments should not be empty if callContractAddress is a Smart Contract address")
+	}
+	return nil
 }
 
 func (a *QuotePegOutRequest) validateQuoteRequest() string {
@@ -573,6 +579,16 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
+	if isValid := Validate(qr)(w); !isValid {
+		return
+	}
+
+	if err = validateQuoteRequest(&qr, s.rsk); err != nil {
+		log.Error("Error validating QuoteRequest: ", err.Error())
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusUnprocessableEntity)
+		return
+	}
 
 	maxValueTotransfer := s.cfgData.MaxQuoteValue
 
@@ -580,30 +596,20 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
-	if qr.LpAddress == "" || !common.IsHexAddress(qr.LpAddress) {
-		log.Error("Liquidity Provider Address lpAddress not sent")
-		customError := NewServerError("Liquidity Provider Address lpAddress not sent", createEmptyInterfaceMap(), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
-
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
-		log.Error(ErrorRetrievingFederationAddress, err.Error())
-		customError := NewServerError(ErrorValueTooHigh, make(map[string]interface{}), true)
+		customError := NewServerError(ErrorValueTooHigh, make(Details), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
-	if errval := qr.validateQuoteRequest(); len(errval) > 0 {
-		customError := NewServerError(ErrorBadBodyRequest+errval, make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
+	var gas uint64
+	originIsEOA, err := s.rsk.IsEOA(qr.RskRefundAddress)
+	if !originIsEOA {
+		gas, err = s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	}
-
-	gas, err := s.rsk.EstimateGas(qr.CallContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
-		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
