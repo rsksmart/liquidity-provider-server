@@ -325,7 +325,7 @@ func testDerivationComplete(t *testing.T) {
 		} else {
 			fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 		}
-		scriptBuf, err := btc.getRedeemScriptBuf(fedInfo, true)
+		scriptBuf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
 		if err != nil {
 			t.Errorf("Unexpected error in getPowPegRedeemScriptBuf. error: %v", err)
 			continue
@@ -351,7 +351,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 	}
 
 	fedInfo := getFakeFedInfo()
-	buf, err := btc.getRedeemScriptBuf(fedInfo, true)
+	buf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
@@ -369,7 +369,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 		return fedInfo.PubKeys[i] < fedInfo.PubKeys[j]
 	})
 
-	buf2, err := btc.getRedeemScriptBuf(fedInfo, true)
+	buf2, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Errorf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
@@ -474,7 +474,7 @@ func testBuildPowPegAddressHash(t *testing.T) {
 	fedInfo := getFakeFedInfo()
 	fedInfo.IrisActivationHeight = 1
 
-	buf, err := btc.getRedeemScriptBuf(fedInfo, true)
+	buf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}

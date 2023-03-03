@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.4
-	github.com/rsksmart/liquidity-provider v0.0.0-20220407085629-6b03864a1079
+	github.com/rsksmart/liquidity-provider v0.0.0-20230224151210-f81c1c6517ff
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.1
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f
