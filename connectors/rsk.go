@@ -786,6 +786,11 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
+
+	if isBech32(q.BTCRefundAddr) || isBech32(q.LPBTCAddr) {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("bech32 BTC address is not supported yet")
+	}
+
 	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
 	}
@@ -832,7 +837,7 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 
-	pq.Fee = q.Fee
+	pq.Fee = q.CallFee
 	pq.PenaltyFee = q.PenaltyFee
 	pq.Nonce = q.Nonce
 	pq.ValueToTransfer = q.Value
