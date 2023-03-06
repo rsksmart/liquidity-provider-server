@@ -21,6 +21,7 @@ import (
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
+	"github.com/rsksmart/liquidity-provider-server/storage"
 
 	"context"
 
@@ -60,6 +61,8 @@ const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
 const ErrorSigningQuote = "error signing quote: "
 const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
+const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
+const ErrorAddingProvider = "Error Adding New provider"
 
 type LiquidityProviderList struct {
 	Endpoint                    string
@@ -75,19 +78,21 @@ type ConfigData struct {
 }
 
 type Server struct {
-	srv             http.Server
-	providers       []pegin.LiquidityProvider
-	pegoutProviders []pegout.LiquidityProvider
-	rsk             connectors.RSKConnector
-	btc             connectors.BTCConnector
-	dbMongo         mongoDB.DBConnector
-	now             func() time.Time
-	watchers        map[string]*BTCAddressWatcher
-	pegOutWatchers  map[string]*BTCAddressPegOutWatcher
-	rskWatchers     map[string]*RegisterPegoutWatcher
-	addWatcherMu    sync.Mutex
-	sharedWatcherMu sync.Mutex
-	cfgData         ConfigData
+	srv                 http.Server
+	providers           []pegin.LiquidityProvider
+	pegoutProviders     []pegout.LiquidityProvider
+	rsk                 connectors.RSKConnector
+	btc                 connectors.BTCConnector
+	dbMongo             mongoDB.DBConnector
+	now                 func() time.Time
+	watchers            map[string]*BTCAddressWatcher
+	pegOutWatchers      map[string]*BTCAddressPegOutWatcher
+	rskWatchers         map[string]*RegisterPegoutWatcher
+	addWatcherMu        sync.Mutex
+	sharedWatcherMu     sync.Mutex
+	cfgData             ConfigData
+	ProviderRespository *storage.LPRepository
+	ProviderConfig      pegin.ProviderConfig
 }
 
 type QuoteRequest struct {
@@ -153,26 +158,28 @@ type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData) Server {
-	return newServer(rsk, btc, dbMongo, time.Now, cfgData)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time, cfgData ConfigData) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time, cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig) Server {
 	return Server{
-		rsk:             rsk,
-		btc:             btc,
-		dbMongo:         dbMongo,
-		providers:       make([]pegin.LiquidityProvider, 0),
-		pegoutProviders: make([]pegout.LiquidityProvider, 0),
-		now:             now,
-		watchers:        make(map[string]*BTCAddressWatcher),
-		pegOutWatchers:  make(map[string]*BTCAddressPegOutWatcher),
-		rskWatchers:     make(map[string]*RegisterPegoutWatcher),
-		cfgData:         cfgData,
+		rsk:                 rsk,
+		btc:                 btc,
+		dbMongo:             dbMongo,
+		providers:           make([]pegin.LiquidityProvider, 0),
+		pegoutProviders:     make([]pegout.LiquidityProvider, 0),
+		now:                 now,
+		watchers:            make(map[string]*BTCAddressWatcher),
+		pegOutWatchers:      make(map[string]*BTCAddressPegOutWatcher),
+		rskWatchers:         make(map[string]*RegisterPegoutWatcher),
+		cfgData:             cfgData,
+		ProviderRespository: LPRep,
+		ProviderConfig:      ProviderConfig,
 	}
 }
 
-func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
+func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
 	s.providers = append(s.providers, lp)
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
@@ -181,13 +188,13 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp == 0 { // provider not registered
+	if cmp >= 0 {
 		opts := &bind.TransactOpts{
 			Value:  m,
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
 		if err != nil {
 			return err
 		}
@@ -211,7 +218,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider) error {
 	return nil
 }
 
-func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
+func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
 	s.pegoutProviders = append(s.pegoutProviders, lp)
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
@@ -220,13 +227,13 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp == 0 { // provider not registered
+	if cmp >= 0 {
 		opts := &bind.TransactOpts{
 			Value:  m,
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, "Provider Name", big.NewInt(10), big.NewInt(7200), big.NewInt(3600), big.NewInt(10), big.NewInt(100), "http://localhost/api", true)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
 		if err != nil {
 			return err
 		}
@@ -249,6 +256,37 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider) error {
 	return nil
 }
 
+func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := types.ProviderRegisterRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		log.Errorf(UnableToDeserializePayloadError, err)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		return
+	}
+	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository)
+	if err != nil {
+		log.Error(ErrorCreatingLocalProvider, err)
+		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
+		return
+	}
+	err = s.AddProvider(lp, payload)
+	if err != nil {
+		log.Error(ErrorAddingProvider, err)
+		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
+		return
+	}
+	response := "Provider Created Successfully"
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+}
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
@@ -260,6 +298,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
+	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -597,6 +636,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+		log.Error(ErrorRetrievingFederationAddress, ErrorValueTooHigh)
 		customError := NewServerError(ErrorValueTooHigh, make(Details), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
