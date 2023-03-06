@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.16-alpine
+FROM --platform=linux/amd64 golang:1.19-alpine
 
 RUN apk add git
 RUN apk add gcc
