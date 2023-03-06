@@ -12,7 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 
 	"fmt"
 

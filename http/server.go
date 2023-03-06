@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"

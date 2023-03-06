@@ -9,19 +9,19 @@ import (
 
 	"github.com/btcsuite/btcd/btcjson"
 
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/bloom"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/bloom"
 	log "github.com/sirupsen/logrus"
 
 	"encoding/hex"
 
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 

@@ -1,7 +1,7 @@
 package testmocks
 
 import (
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/stretchr/testify/mock"
 )
 
