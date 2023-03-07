@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -53,7 +54,7 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *big.Int) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
@@ -92,7 +93,7 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository)
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *big.Int) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -113,8 +114,8 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, 
 			break
 		}
 	}
-
-	res.Fee = lp.cfg.CallFee
+	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
+	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee)).Uint64()
 	return &res, nil
 }
 
