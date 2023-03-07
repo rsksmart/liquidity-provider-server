@@ -743,6 +743,25 @@ func testComputeDerivationAddress(t *testing.T) {
 	}
 }
 
+func testBtcAddressTypeFunc(t *testing.T) {
+	bech32 := "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+	test_p2sh := "2NCsrCdLtVuWSShAvFbmZwoYymQkYuPTHy1"
+	p2sh := "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+	p2pkh := "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2"
+	whatever := "15689207gsjhb"
+
+	TBECH32 := btcAddressType(bech32)
+	assert.Equal(t, TBECH32, "BECH32")
+	TtestP2SH := btcAddressType(test_p2sh)
+	assert.Equal(t, TtestP2SH, "P2SH")
+	TP2SH := btcAddressType(p2sh)
+	assert.Equal(t, TP2SH, "P2SH")
+	TP2PKH := btcAddressType(p2pkh)
+	assert.Equal(t, TP2PKH, "P2PKH")
+	Twhatever := btcAddressType(whatever)
+	assert.Equal(t, Twhatever, "unknown")
+}
+
 func TestBitcoinConnector(t *testing.T) {
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
@@ -759,4 +778,5 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
 	t.Run("test check btc addr", testCheckBtcAddr)
 	t.Run("test compute derivation address", testComputeDerivationAddress)
+	t.Run("determine BTC Address type", testBtcAddressTypeFunc)
 }
