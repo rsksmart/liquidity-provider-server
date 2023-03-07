@@ -22,16 +22,6 @@ type RskMock struct {
 	QuoteHash string
 }
 
-func (m *RskMock) GetActiveRedeemScript() ([]byte, error) {
-	args := m.Called()
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *RskMock) IsEOA(address string) (bool, error) {
-	args := m.Called(address)
-	return args.Bool(0), args.Error(1)
-}
-
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
 	args := m.Called()
 	return args.Get(0).(*big.Int), args.Error(1)
@@ -52,9 +42,9 @@ func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	return big.NewInt(10), big.NewInt(10), nil
 }
 
-func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
-	args := m.Called(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
-	return int64(args.Int(0)), args.Error(1)
+func (m *RskMock) RegisterProvider(opts *bind.TransactOpts) error {
+	m.Called(opts)
+	return nil
 }
 
 func (m *RskMock) AddCollateral(opts *bind.TransactOpts) error {
@@ -164,16 +154,21 @@ func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
-	args := m.Called(providerList)
-	return args.Get(0).([]bindings.LiquidityBridgeContractProvider), args.Error(1)
+func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
+	m.Called()
+
+	return nil, nil
+}
+
+func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
+	return nil, nil
 }
 
 func (m *RskMock) GetRskHeight() (uint64, error) {
 	return 0, nil
 }
 
-func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
-	m.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+func (b *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	b.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return "", nil
 }
