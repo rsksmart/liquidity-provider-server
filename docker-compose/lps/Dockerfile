@@ -26,7 +26,6 @@ ARG UID=1000
 ARG HOME="/home/lps"
 RUN adduser -u "$UID" --home="$HOME" lps -D lps
 
-COPY --chown=lps "docker-compose/lps/config.json" "$HOME/"
 COPY --chown=lps "docker-compose/lps/start.sh" "$HOME/"
 
 RUN mkdir -p "$HOME/db"; chown "$UID" "$HOME/db"
