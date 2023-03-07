@@ -55,7 +55,7 @@ const ErrorGetQuoteFailed = "error getting specified quote"
 const ErrorEncodingQuotesList = "error encoding quote list for response"
 const ErrorBadBodyRequest = "Body of the request is wrong: "
 const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
-const ErrorValueTooHigh = "value to transfer too high"
+const ErrorValueHigherThanMaxAllowed = "value to transfer is higher than max allowed"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
 const ErrorSigningQuote = "error signing quote: "
@@ -636,8 +636,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
-		log.Error(ErrorRetrievingFederationAddress, ErrorValueTooHigh)
-		customError := NewServerError(ErrorValueTooHigh, make(Details), true)
+		log.Error(ErrorValueHigherThanMaxAllowed)
+		details := map[string]interface{}{
+			"maxValueTotransfer": maxValueTotransfer,
+			"valueToTransfer":    qr.ValueToTransfer.Uint64(),
+		}
+		customError := NewServerError(ErrorValueHigherThanMaxAllowed, details, true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
