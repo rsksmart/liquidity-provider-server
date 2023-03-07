@@ -16,9 +16,11 @@ import (
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
+	"github.com/rsksmart/liquidity-provider/types"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
+
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
 )
@@ -63,14 +65,24 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, dbMongo, cfgData)
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository,cfg.Provider)
 	log.Debug("registering local provider (this might take a while)")
-	err = srv.AddProvider(lp)
+	req := types.ProviderRegisterRequest{
+        Name: "Default Provider",
+        Fee:  10,
+		QuoteExpiration: 10,
+		AcceptedQuoteExpiration: 100,
+		MinTransactionValue: 100,
+		MaxTransactionValue: 120,
+		ApiBaseUrl: "http://localhost:8080",
+		Status: true,
+    }
+	err = srv.AddProvider(lp,req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
 
-	err = srv.AddPegOutProvider(lpPegOut)
+	err = srv.AddPegOutProvider(lpPegOut,req)
 
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)

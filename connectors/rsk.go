@@ -83,6 +83,7 @@ type RSKConnector interface {
 	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActiveRedeemScript() ([]byte, error)
+	IsEOA(address string) (bool, error)
 }
 
 type RSKClient interface {
@@ -93,6 +94,7 @@ type RSKClient interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*gethTypes.Receipt, error)
+	BlockNumber(ctx context.Context) (uint64, error)
 	Close()
 }
 
@@ -107,7 +109,7 @@ type RSKBridge interface {
 }
 
 type RSK struct {
-	c                           *ethclient.Client
+	c                           RSKClient
 	lbc                         *bindings.LiquidityBridgeContract
 	lbcAddress                  common.Address
 	bridge                      *bindings.RskBridge
@@ -180,11 +182,11 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 	}
 
 	log.Debug("initializing RSK contracts")
-	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, rsk.c)
+	rsk.bridge, err = bindings.NewRskBridge(rsk.bridgeAddress, ethC)
 	if err != nil {
 		return err
 	}
-	rsk.lbc, err = bindings.NewLiquidityBridgeContract(rsk.lbcAddress, rsk.c)
+	rsk.lbc, err = bindings.NewLiquidityBridgeContract(rsk.lbcAddress, ethC)
 	if err != nil {
 		return err
 	}
@@ -699,6 +701,22 @@ func (rsk *RSK) GetActiveRedeemScript() ([]byte, error) {
 	return value, nil
 }
 
+func (rsk *RSK) IsEOA(address string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	if !common.IsHexAddress(address) {
+		return false, errors.New("invalid address")
+	}
+
+	bytecode, err := rsk.c.CodeAt(ctx, common.HexToAddress(address), nil)
+	if err != nil {
+		return false, err
+	}
+
+	return bytecode == nil || len(bytecode) == 0, nil
+}
+
 func (rsk *RSK) isNewAccount(addr common.Address) bool {
 	var (
 		err  error
@@ -768,6 +786,11 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 	if err := copyBtcAddr(q.FedBTCAddr, pq.FedBtcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
+
+	if isBech32(q.BTCRefundAddr) || isBech32(q.LPBTCAddr) {
+		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("bech32 BTC address is not supported yet")
+	}
+
 	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
 	}
@@ -814,7 +837,7 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 
-	pq.Fee = q.Fee
+	pq.Fee = q.CallFee
 	pq.PenaltyFee = q.PenaltyFee
 	pq.Nonce = q.Nonce
 	pq.ValueToTransfer = q.Value
