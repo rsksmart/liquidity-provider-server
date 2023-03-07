@@ -72,7 +72,7 @@ Computes and returns a quote for the service.
 
     quotes - a list of quotes for the service, where each quote consists of:
 
-        fedBtcAddress;                    // the BTC address
+        fedBtcAddress;                    // the BTC address of the Powpeg
         lbcAddress;                       // the address of the LBC
         lpRSKAddr;                        // the RSK address of the LP
         btcRefundAddress;                 // a user BTC refund address

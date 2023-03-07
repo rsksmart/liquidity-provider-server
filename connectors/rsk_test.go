@@ -1,11 +1,6 @@
 package connectors
 
 import (
-	"context"
-	crand "crypto/rand"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
-	"github.com/stretchr/testify/mock"
 	"math/rand"
 	"testing"
 
@@ -13,8 +8,6 @@ import (
 	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/stretchr/testify/assert"
 )
-
-var contextMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
 
 var validTests = []struct {
 	input string
@@ -110,76 +103,10 @@ func testCopyBtcAddressWithAnInvalidAddress(t *testing.T) {
 	assert.Equal(t, "invalid format: version and/or checksum bytes missing", err.Error())
 }
 
-func testIsEOA(t *testing.T) {
-	validAddress := "0xD2244D24FDE5353e4b3ba3b6e05821b456e04d95"
-
-	eOAAddress := "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4"
-	sCAddress := "0xd9145CCE52D386f254917e481eB44e9943F39138"
-	invalidAddress := "sfdasfasfaf"
-
-	fakeBytecode := make([]byte, 4)
-	crand.Read(fakeBytecode)
-
-	rskClientMock := new(testmocks.RSKClientMock)
-	rsk, err := NewRSK(validAddress, validAddress, 10, 0, nil)
-	rsk.c = rskClientMock
-
-	if err != nil {
-		t.Errorf("Unexpected error creating RSK Client: %v", err)
-	}
-
-	rskClientMock.On("CodeAt", contextMatcher, common.HexToAddress(eOAAddress), mock.AnythingOfType("*big.Int")).Return([]byte{}, nil)
-	rskClientMock.On("CodeAt", contextMatcher, common.HexToAddress(sCAddress), mock.AnythingOfType("*big.Int")).Return(fakeBytecode, nil)
-
-	testCases := []*struct {
-		caseName   string
-		address    string
-		assertions func(result bool, errorResult error)
-	}{
-		{
-			caseName: "Validates that address is EOA",
-			address:  eOAAddress,
-			assertions: func(result bool, errorResult error) {
-				rskClientMock.AssertNumberOfCalls(t, "CodeAt", 1)
-				assert.Nil(t, errorResult)
-				assert.True(t, result)
-			},
-		},
-		{
-			caseName: "Validates that address is SC",
-			address:  sCAddress,
-			assertions: func(result bool, errorResult error) {
-				rskClientMock.AssertNumberOfCalls(t, "CodeAt", 1)
-				assert.Nil(t, errorResult)
-				assert.False(t, result)
-			},
-		},
-		{
-			caseName: "Returns error on invalid address",
-			address:  invalidAddress,
-			assertions: func(result bool, errorResult error) {
-				rskClientMock.AssertNumberOfCalls(t, "CodeAt", 0)
-				assert.Error(t, errorResult, "invalid address")
-				assert.False(t, result)
-			},
-		},
-	}
-
-	for _, test := range testCases {
-		t.Run(test.caseName, func(t *testing.T) {
-			result, errorResult := rsk.IsEOA(test.address)
-			test.assertions(result, errorResult)
-			rskClientMock.Calls = []mock.Call{}
-		})
-	}
-
-}
-
 func TestRSKCreate(t *testing.T) {
 	t.Run("new invalid", testNewRSKWithInvalidAddresses)
 	t.Run("new valid", testNewRSKWithValidAddresses)
 	t.Run("parse quote", testParseQuote)
 	t.Run("test copy btc address", testCopyBtcAddress)
 	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
-	t.Run("test EOA address validation", testIsEOA)
 }

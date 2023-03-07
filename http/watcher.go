@@ -25,7 +25,7 @@ type BTCAddressWatcher struct {
 	btc          connectors.BTCConnector
 	rsk          connectors.RSKConnector
 	lp           pegin.LiquidityProvider
-	dbMongo      mongoDB.DBConnector
+	dbMongo      mongoDB.DB
 	state        types.RQState
 	quote        *pegin.Quote
 	done         chan struct{}
@@ -75,7 +75,7 @@ const (
 
 func NewBTCAddressWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider pegin.LiquidityProvider,
-	dbMongo mongoDB.DBConnector, q *pegin.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
+	dbMongo mongoDB.DB, q *pegin.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
 		hash:         hash,
 		btc:          btc,
