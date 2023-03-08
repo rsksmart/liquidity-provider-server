@@ -83,6 +83,8 @@ type RSKConnector interface {
 	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActivePowpegRedeemScript() ([]byte, error)
+	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
+
 }
 
 type RSKClient interface {
@@ -280,7 +282,28 @@ func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	}
 	return col, min, nil
 }
+func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.SetProviderStatus(opts, _providerId, _status)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if tx == nil || err != nil {
+		return fmt.Errorf("error changing provider status: %v", err)
+	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+	s, err := rsk.GetTxStatus(ctx, tx)
+	if err != nil || !s {
+		return fmt.Errorf("error getting tx receipt while registering provider: %v", err)
+	}
+	return err
+}
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts,_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64,error) {
 	var err error
 	var tx *gethTypes.Transaction
