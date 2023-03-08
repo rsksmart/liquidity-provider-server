@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 
 	"github.com/ethereum/go-ethereum"
