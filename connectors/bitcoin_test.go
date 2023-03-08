@@ -3,7 +3,9 @@ package connectors
 import (
 	"encoding/hex"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"io"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -743,7 +745,68 @@ func testComputeDerivationAddress(t *testing.T) {
 	}
 }
 
+func testAvailableLiquidity(t *testing.T) {
+	btcClientMock := new(testmocks.BTCClientMock)
+	btc, err := NewBTC("regtest")
+	if err != nil {
+		log.Fatal("Error during test initialization: ", err.Error())
+	}
+
+	btc.c = btcClientMock
+
+	testCases := []*struct {
+		caseName    string
+		assertions  func(result *big.Int, err error)
+		preparation func()
+	}{
+		{
+			caseName: "Has liquidity",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(5), nil)
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.EqualValues(t, big.NewInt(5), result)
+				assert.Nil(t, err)
+			},
+		},
+		{
+			caseName: "Doesn't have liquidity",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(0), nil)
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.EqualValues(t, big.NewInt(0), result)
+				assert.Nil(t, err)
+			},
+		},
+		{
+			caseName: "Error getting balance",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(0), errors.New("some error"))
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.Nil(t, nil, result)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			test.preparation()
+			result, errorResult := btc.GetAvailableLiquidity()
+			test.assertions(result, errorResult)
+		})
+		btcClientMock.Calls = []mock.Call{}
+		btcClientMock.ExpectedCalls = []*mock.Call{}
+	}
+}
+
 func TestBitcoinConnector(t *testing.T) {
+	t.Run("test Get Available Liquidity", testAvailableLiquidity)
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)

@@ -16,8 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
-
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
