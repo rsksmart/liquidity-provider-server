@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math/big"
 	"regexp"
 	"time"
 
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/bloom"
-	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -49,6 +50,7 @@ type BTCConnector interface {
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
 	SendBTC(address string, amount uint) (string, error)
+	GetAvailableLiquidity() (*big.Int, error)
 }
 
 type BTCClient interface {
@@ -61,6 +63,7 @@ type BTCClient interface {
 	GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error)
 	Disconnect()
 	SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error)
+	GetBalance(address string) (btcutil.Amount, error)
 }
 
 type BTC struct {
@@ -454,6 +457,15 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 	}
 
 	return hash.String(), nil
+}
+
+func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
+	balance, err := btc.c.GetBalance("*") // dummy parameter, see explanation -> https://bitcoincore.org/en/doc/23.0.0/rpc/wallet/getbalance/
+	if err != nil {
+		return nil, err
+	} else {
+		return big.NewInt(int64(balance)), nil
+	}
 }
 
 type MerkleBranch struct {

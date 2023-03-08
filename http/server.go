@@ -1221,7 +1221,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 

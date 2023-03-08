@@ -47,7 +47,7 @@ type ProviderConfig struct {
 type LocalProviderRepository interface {
 	RetainPegOutQuote(rq *RetainedQuote) error
 	HasRetainedPegOutQuote(hash string) (bool, error)
-	HasLiquidityPegOut(lp LiquidityProvider, satoshis uint64) (bool, error)
+	HasLiquidityPegOut(satoshis uint64) (bool, error)
 }
 
 type LiquidityProvider interface {
@@ -154,7 +154,7 @@ func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, satoshis uin
 		return nil, err
 	}
 	if !hasRq {
-		hasLiquidity, err := lp.repository.HasLiquidityPegOut(lp, satoshis)
+		hasLiquidity, err := lp.repository.HasLiquidityPegOut(satoshis)
 		if err != nil {
 			return nil, err
 		}
