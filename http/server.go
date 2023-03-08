@@ -65,11 +65,11 @@ const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
 const ErrorAddingProvider = "Error Adding New provider"
 
 type LiquidityProviderList struct {
-	Endpoint                    string
-	LBCAddr                     string
-	BridgeAddr                  string
-	RequiredBridgeConfirmations int64
-	MaxQuoteValue               uint64
+	Endpoint                    string `env:"RSK_ENDPOINT"`
+	LBCAddr                     string `env:"LBC_ADDR"`
+	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
+	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
+	MaxQuoteValue               uint64 `env:"RSK_MAX_QUOTE_VALUE"`
 }
 
 type ConfigData struct {
