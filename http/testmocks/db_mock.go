@@ -14,6 +14,11 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
+func (d *DbMock) GetLockedLiquidityPegOut() (uint64, error) {
+	args := d.Called()
+	return uint64(args.Int(0)), args.Error(1)
+}
+
 func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*DbMock, error) {
 	return &DbMock{
 		hash:        h,
