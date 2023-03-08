@@ -1,9 +1,11 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/sethvargo/go-envconfig"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,7 +16,6 @@ import (
 	"github.com/rsksmart/liquidity-provider/providers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/tkanos/gonfig"
 )
 
 type ExampleTestSuite struct {
@@ -61,10 +62,8 @@ var (
 )
 
 func loadConfig() {
-	err := gonfig.GetConf("config.json", &cfg)
-
-	if err != nil {
-		panic("config file is missing")
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+		panic(fmt.Sprintf("error loading config file: %v", err))
 	}
 }
 
