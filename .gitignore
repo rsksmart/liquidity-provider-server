@@ -1,6 +1,7 @@
 # IDE
 .vscode/
 .idea/
+it/config.json
 
 # Project-specific content
 /.geth_keystore/
