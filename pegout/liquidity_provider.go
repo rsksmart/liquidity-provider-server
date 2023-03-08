@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -29,20 +30,18 @@ type LocalProvider struct {
 	mu         sync.Mutex
 	account    *accounts.Account
 	ks         *keystore.KeyStore
-	cfg        ProviderConfig
+	cfg        *ProviderConfig
 	repository LocalProviderRepository
 }
 
 type ProviderConfig struct {
 	pegin.ProviderConfig
-	DepositConfirmations  uint16
-	DepositDateLimit      uint32
-	TransferConfirmations uint16
-	TransferTime          uint32
-	ExpireDate            uint32
-	ExpireBlocks          uint32
-	CallFee               uint64
-	PenaltyFee            uint64
+	DepositConfirmations  uint16 `env:"DEPOSIT_CONFIRMATIONS"`
+	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
+	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
+	TransferTime          uint32 `env:"TRANSFER_TIME"`
+	ExpireDate            uint32 `env:"EXPIRED_DATE"`
+	ExpireBlocks          uint32 `env:"EXPIRED_BLOCKS"`
 }
 
 type LocalProviderRepository interface {
@@ -53,12 +52,12 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *big.Int) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
 
-func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
+func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
 	if config.Keydir == "" {
 		config.Keydir = "keystore"
 	}
@@ -92,7 +91,7 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository)
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *big.Int) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -102,7 +101,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, 
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
 	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
-	res.PenaltyFee = lp.cfg.PenaltyFee
+	res.PenaltyFee = lp.cfg.PenaltyFee.Uint64()
 
 	res.DepositConfirmations = lp.cfg.MaxConf
 	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
@@ -113,8 +112,8 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64) (*Quote, 
 			break
 		}
 	}
-
-	res.Fee = lp.cfg.CallFee
+	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
+	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64())).Uint64()
 	return &res, nil
 }
 
