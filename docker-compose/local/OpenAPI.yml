@@ -1,0 +1,441 @@
+components:
+  schemas:
+    "": {}
+    AcceptResPegOut:
+      properties:
+        signature:
+          type: string
+      type: object
+    AddCollateralRequest:
+      properties:
+        amount:
+          type: integer
+        lpRskAddress:
+          type: string
+      type: object
+    Address:
+      items: {}
+      type: array
+    BuildRefundPegOutPayloadRequest:
+      properties:
+        btcTxHash:
+          type: string
+        derivationAddress:
+          type: string
+        quoteHash:
+          type: string
+      type: object
+    BuildRefundPegOutPayloadResponse:
+      properties:
+        merkleBranchHashes:
+          items:
+            type: string
+          type: array
+        merkleBranchPath:
+          type: integer
+        quote:
+          $ref: '#/components/schemas/Quote'
+          type: object
+      type: object
+    LiquidityBridgeContractProvider:
+      properties:
+        AcceptedQuoteExpiration:
+          $ref: '#/components/schemas/'
+        ApiBaseUrl:
+          type: string
+        Fee:
+          $ref: '#/components/schemas/'
+        Id:
+          $ref: '#/components/schemas/'
+        MaxTransactionValue:
+          $ref: '#/components/schemas/'
+        MinTransactionValue:
+          $ref: '#/components/schemas/'
+        Name:
+          type: string
+        Provider:
+          $ref: '#/components/schemas/Address'
+          items: {}
+          type: array
+        QuoteExpiration:
+          $ref: '#/components/schemas/'
+        Status:
+          type: boolean
+      type: object
+    ProviderRegisterRequest:
+      properties:
+        acceptedQuoteExpiration:
+          type: integer
+        apiBaseUrl:
+          type: string
+        fee:
+          type: integer
+        maxTransactionValue:
+          type: integer
+        minTransactionValue:
+          type: integer
+        name:
+          type: string
+        quoteExpiration:
+          type: integer
+        status:
+          type: boolean
+      type: object
+    Quote:
+      properties:
+        agreementTimestamp:
+          type: integer
+        btcRefundAddr:
+          type: string
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        callOnRegister:
+          type: boolean
+        confirmations:
+          type: integer
+        contractAddr:
+          type: string
+        data:
+          type: string
+        fedBTCAddr:
+          type: string
+        gasLimit:
+          type: integer
+        lbcAddr:
+          type: string
+        lpBTCAddr:
+          type: string
+        lpCallTime:
+          type: integer
+        lpRSKAddr:
+          type: string
+        nonce:
+          type: integer
+        penaltyFee:
+          $ref: '#/components/schemas/Wei'
+        rskRefundAddr:
+          type: string
+        timeForDeposit:
+          type: integer
+        value:
+          $ref: '#/components/schemas/Wei'
+      type: object
+    QuotePegOutRequest:
+      properties:
+        bitcoinRefundAddress:
+          type: string
+        from:
+          type: string
+        rskRefundAddress:
+          type: string
+        valueToTransfer:
+          type: integer
+      type: object
+    QuotePegOutResponse:
+      properties:
+        derivationAddress:
+          type: string
+        quote:
+          $ref: '#/components/schemas/Quote'
+          type: object
+        quoteHash:
+          type: string
+      type: object
+    QuoteRequest:
+      properties:
+        bitcoinRefundAddress:
+          type: string
+        callContractAddress:
+          type: string
+        callContractArguments:
+          type: string
+        lpAddress:
+          type: string
+        rskRefundAddress:
+          type: string
+        valueToTransfer:
+          $ref: '#/components/schemas/Wei'
+      type: object
+    QuoteReturn:
+      properties:
+        quote:
+          $ref: '#/components/schemas/Quote'
+          type: object
+        quoteHash:
+          type: string
+      type: object
+    RegistrationStatus:
+      properties:
+        Status:
+          type: string
+      type: object
+    SenBTCRequest:
+      properties:
+        address:
+          type: string
+        amount:
+          type: integer
+      type: object
+    SenBTCResponse:
+      properties:
+        txHash:
+          type: string
+      type: object
+    Wei: {}
+    acceptReq:
+      properties:
+        QuoteHash:
+          type: string
+      type: object
+    acceptReqPegout:
+      properties:
+        derivationAddress:
+          type: string
+        quoteHash:
+          type: string
+      type: object
+    acceptRes:
+      properties:
+        bitcoinDepositAddressHash:
+          type: string
+        signature:
+          type: string
+      type: object
+    healthRes:
+      properties:
+        services:
+          $ref: '#/components/schemas/services'
+          type: object
+        status:
+          type: string
+      type: object
+    pegout.Quote:
+      properties:
+        agreementTimestamp:
+          type: integer
+        btcRefundAddr:
+          type: string
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        callOnRegister:
+          type: boolean
+        confirmations:
+          type: integer
+        contractAddr:
+          type: string
+        data:
+          type: string
+        fedBTCAddr:
+          type: string
+        gasLimit:
+          type: integer
+        lbcAddr:
+          type: string
+        lpBTCAddr:
+          type: string
+        lpCallTime:
+          type: integer
+        lpRSKAddr:
+          type: string
+        nonce:
+          type: integer
+        penaltyFee:
+          $ref: '#/components/schemas/Wei'
+        rskRefundAddr:
+          type: string
+        timeForDeposit:
+          type: integer
+        value:
+          $ref: '#/components/schemas/Wei'
+      type: object
+    providerList:
+      items:
+        $ref: '#/components/schemas/LiquidityBridgeContractProvider'
+      type: array
+    services:
+      properties:
+        btc:
+          type: string
+        db:
+          type: string
+        rsk:
+          type: string
+      type: object
+    types.Wei: {}
+  securitySchemes:
+    AuthorizationHeader:
+      description: Input your token
+      scheme: bearer
+      type: http
+info:
+  title: Liquidity Provider Server
+  version: "0.5"
+openapi: 3.0.0
+paths:
+  /addCollateral:
+    post:
+      description: ' Adds Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenBTCResponse'
+          description: ""
+      summary: Add Collateral
+  /getProviders:
+    get:
+      description: ' Returns a list of providers.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/providerList'
+          description: ""
+      summary: Get Providers
+  /health:
+    get:
+      description: ' Returns server health.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/healthRes'
+          description: ""
+      summary: Health
+  /pegin/acceptQuote:
+    post:
+      description: ' Accepts Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/acceptReq'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/acceptRes'
+          description: ""
+      summary: Accept Quote
+  /pegin/getQuote:
+    post:
+      description: ' Gets Pegin Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteReturn'
+          description: ""
+      summary: Pegin GetQuote
+  /pegout/acceptQuote:
+    post:
+      description: ' Accepts Quote Pegout'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/acceptReqPegout'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptResPegOut'
+          description: ""
+      summary: Accept Quote Pegout
+  /pegout/getQuotes:
+    post:
+      description: ' Gets Pegout Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuotePegOutRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotePegOutResponse'
+          description: ""
+      summary: Pegout GetQuote
+  /pegout/refundPegOut:
+    post:
+      description: ' Refunds Pegout'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildRefundPegOutPayloadRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildRefundPegOutPayloadResponse'
+          description: ""
+      summary: Refund Pegout
+  /pegout/sendBTC:
+    post:
+      description: ' Sends BTC'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SenBTCRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenBTCResponse'
+          description: ""
+      summary: Send BTC
+  /provider/register:
+    post:
+      description: ' Registers New Provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRegisterRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ""
+      summary: Register Provider
+security:
+- AuthorizationHeader:
+  - read
+  - write
+servers:
+- description: ' Testnet'
+  url: https://flyover-lps.testnet.rsk.co
+- description: ' Mainnet'
+  url: https://flyover-lps.mainnet.rifcomputing.net
