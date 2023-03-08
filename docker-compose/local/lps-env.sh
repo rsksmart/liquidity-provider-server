@@ -24,6 +24,13 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+go install github.com/parvez3019/go-swagger3@latest
+export PATH="$HOME/go/bin:$PATH"
+
+echo "Compiling LPS with OpenAPI Specifications"
+go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
+
+
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
   echo "Command is not provided"
