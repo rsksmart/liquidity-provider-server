@@ -64,6 +64,7 @@ const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
 const ErrorAddingProvider = "Error Adding New provider"
+const ErrorRetrivingProviderAddress= "Error Retrieving Provider Address from MongoDB"
 
 type LiquidityProviderList struct {
 	Endpoint                    string `env:"RSK_ENDPOINT"`
@@ -199,7 +200,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID)
+		err2 := s.dbMongo.InsertProvider(providerID,lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -238,7 +239,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID)
+		err2 := s.dbMongo.InsertProvider(providerID,lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -295,6 +296,54 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
+type ChangeStatusRequest struct {
+    ProviderId                uint64  `json:"providerId"`
+    Status                     bool   `json:"status"`
+}
+func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := ChangeStatusRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		log.Errorf(UnableToDeserializePayloadError, err)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		return
+	}
+	providerAddress, err := s.dbMongo.GetProvider(payload.ProviderId)
+	if err != nil {
+		log.Errorf(ErrorAddingProvider, err)
+		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
+		return
+	}
+	var lp pegin.LiquidityProvider
+	for _, provider := range s.providers {
+		if provider.Address() == providerAddress{
+			lp = provider
+		}
+	}
+	addrStr := lp.Address()
+	addr := common.HexToAddress(addrStr)
+	opts := &bind.TransactOpts{
+		From:   addr,
+		Signer: lp.SignTx,
+	}
+	err = s.rsk.ChangeStatus(opts,new(big.Int).SetUint64(payload.ProviderId),payload.Status)
+	log.Debug(err)
+	if err != nil {
+		log.Errorf(ErrorAddingProvider, err)
+		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
+		return
+	}
+	response := "Provider Updated Successfully";
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+}
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
@@ -307,6 +356,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
+	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
