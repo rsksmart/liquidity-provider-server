@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/sethvargo/go-envconfig"
 	"math/big"
 	"math/rand"
 	"os"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/sethvargo/go-envconfig"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"

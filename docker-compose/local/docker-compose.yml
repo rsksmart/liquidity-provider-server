@@ -7,6 +7,9 @@ services:
         UID: "${LPS_UID}"
     image: bitcond:latest
     container_name: bitcoind01
+    environment:
+      - BTCD_RPC_USER
+      - BTCD_RPC_PASS
     ports:
       - "5555:5555"
     volumes:
