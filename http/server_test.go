@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+	"github.com/rsksmart/liquidity-provider-server/storage"
 	"math"
 	"math/big"
 	"math/rand"
@@ -83,6 +85,8 @@ var providerPegOutMocks = []LiquidityPegOutProviderMock{
 	{address: "456"},
 	{address: "0xa554d96413FF72E93437C4072438302C38350EE3"},
 }
+
+var providerCfgData = pegin.ProviderConfig{}
 
 var cfgData = ConfigData{
 	MaxQuoteValue: 600000000000000000,
@@ -162,9 +166,10 @@ func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
 func testCheckHealth(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lp := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
@@ -224,13 +229,17 @@ func testGetQuoteComplete(t *testing.T) {
 
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lpRepo := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lpRepo, providerCfgData)
 
+	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Return(nil)
-		err := srv.AddProvider(lp)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
 			t.Fatalf("couldn't add provider. error: %v", err)
 		}
@@ -457,6 +466,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
+		lpRepo := new(storage.LPRepository)
 		mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
@@ -465,10 +475,15 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData)
+		}, cfgData, lpRepo, providerCfgData)
+
+		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-			err := srv.AddProvider(lp)
+			rsk.On("GetCollateral", lp.address).Return(nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+			err := srv.AddProvider(lp, detailMock)
 			if err != nil {
 				t.Errorf("couldn't add provider. error: %v", err)
 			}
@@ -509,6 +524,7 @@ func testInitBtcWatchers(t *testing.T) {
 	quote := testQuotes[0]
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lp := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock(hash, quote, nil)
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
@@ -516,10 +532,15 @@ func testInitBtcWatchers(t *testing.T) {
 
 	srv := newServer(rsk, btc, mongoDb, func() time.Time {
 		return time.Unix(0, 0)
-	}, cfgData)
+	}, cfgData, lp, providerCfgData)
+
+	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-		err := srv.AddProvider(lp)
+		rsk.On("GetCollateral", lp.address).Return(nil)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
 			t.Errorf("couldn't add provider. error: %v", err)
 		}
@@ -566,10 +587,11 @@ func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
 func testGetProviders(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lp := new(storage.LPRepository)
 
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
 	req, err := http.NewRequest("GET", "getProviders", bytes.NewReader([]byte("")))
 	w := http2.TestResponseWriter{}
 
@@ -591,6 +613,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 		derivationAddress := "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
+		lp := new(storage.LPRepository)
 
 		mongoDb, _ := testmocks.NewDbMock("", nil, quote)
 		minAmount := quote.Value + quote.CallFee
@@ -598,11 +621,15 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData)
+		}, cfgData, lp, providerCfgData)
 
+		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
 			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddPegOutProvider(lp)
+			rsk.On("GetCollateral", lp.address).Return(nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+			err := srv.AddPegOutProvider(lp, detailMock)
 			if err != nil {
 				t.Fatalf("couldn't add provider. error: %v", err)
 			}
