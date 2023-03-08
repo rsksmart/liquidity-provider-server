@@ -7,7 +7,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/sethvargo/go-envconfig"
 	"math/big"
 	"math/rand"
 	"os"
@@ -27,7 +29,6 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/tkanos/gonfig"
 )
 
 var (
@@ -37,9 +38,7 @@ var (
 )
 
 func loadConfig() {
-	err := gonfig.GetConf("config.json", &cfg)
-
-	if err != nil {
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatalf("error loading config file: %v", err)
 	}
 }
@@ -62,7 +61,7 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
@@ -72,24 +71,24 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository,cfg.Provider)
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
-        Name: "Default Provider",
-        Fee:  10,
-		QuoteExpiration: 10,
+		Name:                    "Default Provider",
+		Fee:                     10,
+		QuoteExpiration:         10,
 		AcceptedQuoteExpiration: 100,
-		MinTransactionValue: 100,
-		MaxTransactionValue: 120,
-		ApiBaseUrl: "http://localhost:8080",
-		Status: true,
-    }
-	err = srv.AddProvider(lp,req)
+		MinTransactionValue:     100,
+		MaxTransactionValue:     120,
+		ApiBaseUrl:              "http://localhost:8080",
+		Status:                  true,
+	}
+	err = srv.AddProvider(lp, req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
 
-	err = srv.AddPegOutProvider(lpPegOut,req)
+	err = srv.AddPegOutProvider(lpPegOut, req)
 
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
