@@ -1,3 +1,9 @@
+// @Version 0.5
+// @Title Liquidity Provider Server
+// @Server https://flyover-lps.testnet.rsk.co Testnet
+// @Server https://flyover-lps.mainnet.rifcomputing.net Mainnet
+// @Security AuthorizationHeader read write
+// @SecurityScheme AuthorizationHeader http bearer Input your token
 package main
 
 import (
