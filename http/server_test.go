@@ -16,10 +16,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/common"

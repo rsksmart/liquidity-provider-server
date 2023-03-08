@@ -3,8 +3,8 @@ package testmocks
 import (
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/stretchr/testify/mock"
 )
