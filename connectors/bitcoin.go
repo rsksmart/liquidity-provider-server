@@ -844,3 +844,16 @@ func isBech32(address string) bool {
 	pattern := regexp.MustCompile(`^(bc1|tb1)[a-zA-HJ-NP-Z0-9]{8,87}$`)
 	return pattern.MatchString(address)
 }
+
+func btcAddressType(address string) string {
+	if isBech32(address) {
+		return "BECH32"
+	}
+	if isP2SH(address) {
+		return "P2SH"
+	}
+	if isP2PKH(address) {
+		return "P2PKH"
+	}
+	return "unknown"
+}
