@@ -63,8 +63,8 @@ const ErrorSigningQuote = "error signing quote: "
 const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
-const ErrorAddingProvider = "Error Adding New provider"
 const GetCollateralError = "Unable to get collateral"
+const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 
 type LiquidityProviderList struct {
@@ -287,7 +287,7 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 	}
 	err = s.AddProvider(lp, payload)
 	if err != nil {
-		log.Error(ErrorAddingProvider, err)
+		log.Errorf(ErrorAddingProvider, err)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
@@ -1257,7 +1257,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 

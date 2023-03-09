@@ -7,15 +7,17 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
+	"math/big"
 )
 
 type LPRepository struct {
-	dbMongo *mongoDB.DB
+	dbMongo mongoDB.DBConnector
 	rsk     connectors.RSKConnector
+	btc     connectors.BTCConnector
 }
 
-func NewLPRepository(dbMongo *mongoDB.DB, rsk connectors.RSKConnector) *LPRepository {
-	return &LPRepository{dbMongo, rsk}
+func NewLPRepository(dbMongo mongoDB.DBConnector, rsk connectors.RSKConnector, btc connectors.BTCConnector) *LPRepository {
+	return &LPRepository{dbMongo, rsk, btc}
 }
 
 func (r *LPRepository) RetainQuote(rq *types.RetainedQuote) error {
@@ -57,6 +59,19 @@ func (r *LPRepository) HasRetainedPegOutQuote(hash string) (bool, error) {
 	return rq != nil, nil
 }
 
-func (r *LPRepository) HasLiquidityPegOut(lp pegout.LiquidityProvider, satoshis uint64) (bool, error) {
-	return true, nil
+func (r *LPRepository) HasLiquidityPegOut(satoshis uint64) (bool, error) {
+	log.Debug("Verifying if has liquidity")
+
+	lpBalance, err := r.btc.GetAvailableLiquidity()
+	log.Debugf("LP balance %v satoshis\n", lpBalance)
+	if err != nil {
+		return false, err
+	}
+	lockedLiquidity, err := r.dbMongo.GetLockedLiquidityPegOut()
+	log.Debugf("Locked Liquidity %d satoshis\n", lockedLiquidity)
+	if err != nil {
+		return false, err
+	}
+
+	return new(big.Int).Sub(lpBalance, big.NewInt(int64(lockedLiquidity))).Cmp(big.NewInt(int64(satoshis))) >= 0, nil
 }
