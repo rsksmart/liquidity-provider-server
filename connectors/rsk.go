@@ -581,6 +581,7 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 		}
 		time.Sleep(rpcSleep)
 	}
+
 	if tx == nil && err != nil {
 		return nil, fmt.Errorf("error calling callForUser: %v", err)
 	}
