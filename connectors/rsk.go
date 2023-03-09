@@ -810,15 +810,19 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
 
-	if isBech32(q.BTCRefundAddr) || isBech32(q.LPBTCAddr) {
-		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("bech32 BTC address is not supported yet")
+	if isBech32(q.BTCRefundAddr) {
+		if pq.BtcRefundAddress, err = DecodeBech32BTCAddress(q.BTCRefundAddr); err != nil {
+			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
+		}
+	} else {
+		if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
+			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
+		}
 	}
 
+	// TODO: later do the same validation for allowing LiquidityProviderBtcAddress to be BECH32
 	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin liquidity provider address: %v", err)
-	}
-	if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
-		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
 	}
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
