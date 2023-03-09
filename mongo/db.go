@@ -37,7 +37,8 @@ type DBConnector interface {
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]int64, error)
-	InsertProvider(id int64) error
+	GetProvider(uint64) (string, error)
+	InsertProvider(id int64, address string) error
 }
 
 type DB struct {
@@ -355,11 +356,12 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 
 	return lockedLiq, nil
 }
-func (db *DB) InsertProvider(id int64) error {
+
+func (db *DB) InsertProvider(id int64, address string) error {
 	log.Debug("inserting provider: ", id)
 	coll := db.db.Database("flyover").Collection("providers")
 	filter := bson.M{"id": id}
-	update := bson.M{"$set": bson.M{"id": id}}
+	update := bson.M{"$set": bson.M{"id": id, "address": address}}
 	opts := options.Update().SetUpsert(true)
 	_, err := coll.UpdateOne(context.Background(), filter, update, opts)
 
@@ -368,6 +370,19 @@ func (db *DB) InsertProvider(id int64) error {
 	}
 	return nil
 }
+func (db *DB) GetProvider(providerId uint64) (string, error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	var result struct {
+		ID      int64  `bson:"id"`
+		Address string `bson:"address"`
+	}
+	err := coll.FindOne(context.TODO(), bson.M{"id": providerId}).Decode(&result)
+	if err != nil {
+		return "", err
+	}
+	return result.Address, nil
+}
+
 func (db *DB) GetProviders() ([]int64, error) {
 	coll := db.db.Database("flyover").Collection("providers")
 	var results []int64
