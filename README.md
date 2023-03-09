@@ -129,3 +129,6 @@ Gets the registered providers List.
 
 #### Note: 
 It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.
+
+#### Technical Specifications:
+1. Minumum Golang version: 1.20.2
