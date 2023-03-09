@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
-	"github.com/rsksmart/liquidity-provider-server/storage"
 	"math"
 	"math/big"
 	"math/rand"
@@ -17,6 +15,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+	"github.com/rsksmart/liquidity-provider-server/storage"
 
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
