@@ -256,9 +256,11 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 
 	return nil
 }
-type RegistrationStatus struct{
+
+type RegistrationStatus struct {
 	Status string
 }
+
 // @Title Register Provider
 // @Description Registers New Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -495,6 +497,7 @@ func (s *Server) Shutdown() {
 	}
 	log.Info("server stopped")
 }
+
 type services struct {
 	Db  string `json:"db"`
 	Rsk string `json:"rsk"`
@@ -504,6 +507,7 @@ type healthRes struct {
 	Status   string   `json:"status"`
 	Services services `json:"services"`
 }
+
 // @Title Health
 // @Description Returns server health.
 // @Success  200  object healthRes
@@ -585,10 +589,12 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 
 	return err
 }
-type providerList =[]bindings.LiquidityBridgeContractProvider;
+
+type providerList = []bindings.LiquidityBridgeContractProvider
+
 // @Title Get Providers
 // @Description Returns a list of providers.
-// @Success  200  object providerList 
+// @Success  200  object providerList
 // @Route /getProviders [get]
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -619,6 +625,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 // @Title Pegin GetQuote
 // @Description Gets Pegin Quote
 // @Param  PeginQuoteRequest  body QuoteRequest true "Pegin Quote Request"
@@ -776,6 +783,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
@@ -999,6 +1007,7 @@ func getQuoteExpTime(q *pegin.Quote) time.Time {
 func getPegOutQuoteExpTime(q *pegout.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
 }
+
 // @Title Pegout GetQuote
 // @Description Gets Pegout Quote
 // @Param  PegoutQuoteRequest  body QuotePegOutRequest true "Quote Request Pegout"
@@ -1183,6 +1192,7 @@ func returnQuotePegOutSignFunc(w http.ResponseWriter, signature string) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
+
 // @Title Accept Quote Pegout
 // @Description Accepts Quote Pegout
 // @Param  QuoteHash  body acceptReqPegout true "Quote Hash"
@@ -1261,6 +1271,7 @@ type BuildRefundPegOutPayloadResponse struct {
 	MerkleBranchPath   int           `json:"merkleBranchPath"`
 	MerkleBranchHashes []string      `json:"merkleBranchHashes"`
 }
+
 // @Title Refund Pegout
 // @Description Refunds Pegout
 // @Param  RefundPegout  body BuildRefundPegOutPayloadRequest true "Pegout Refund Details"
@@ -1327,6 +1338,7 @@ type SenBTCRequest struct {
 type SenBTCResponse struct {
 	TxHash string `json:"txHash"`
 }
+
 // @Title Send BTC
 // @Description Sends BTC
 // @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
@@ -1369,12 +1381,13 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required"`
-	LpRskAddress string `json:"lpRskAddress" validate:"required"`
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
 }
 
 type AddCollateralResponse struct {
 	NewCollateralBalance uint64 `json:"newCollateralBalance"`
 }
+
 // @Title Add Collateral
 // @Description Adds Collateral
 // @Param  AddCollateralRequest  body AddCollateralRequest true "Add Collateral Request"
@@ -1388,8 +1401,8 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&payload)
 
 	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		customError := NewServerError(fmt.Sprintf(UnableToDeserializePayloadError, err.Error()), make(Details), true)
+		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
@@ -1397,54 +1410,52 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegout.LiquidityProvider
-	for _, provider := range s.pegoutProviders {
+	var lp pegin.LiquidityProvider
+	for _, provider := range s.providers {
 		if provider.Address() == payload.LpRskAddress {
 			lp = provider
 		}
 	}
+	if lp == nil {
+		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
 
 	addrStr := lp.Address()
 
-	c, min, err := s.rsk.GetCollateral(addrStr)
+	collateral, min, err := s.rsk.GetCollateral(addrStr)
 
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		customError := NewServerError("Unable to get collateral", make(Details), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
-	}
-
-	if min.Uint64()+payload.Amount < min.Uint64() {
-		http.Error(w, "Amount is lower than min collateral", http.StatusBadRequest)
-		return
-	}
-
-	addr := common.HexToAddress(addrStr)
-
-	cmp := c.Cmp(big.NewInt(0))
-
-	if cmp == 0 {
-		http.Error(w, "LP not registered", http.StatusBadRequest)
+	} else if collateral.Uint64()+payload.Amount < min.Uint64() {
+		customError := NewServerError("Amount is lower than min collateral", make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 
 	opts := &bind.TransactOpts{
 		Value:  big.NewInt(int64(payload.Amount)),
-		From:   addr,
+		From:   common.HexToAddress(addrStr),
 		Signer: lp.SignTx,
 	}
 
 	err = s.rsk.AddCollateral(opts)
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to add collateral", http.StatusInternalServerError)
+		customError := NewServerError("Unable to get collateral", make(Details), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
 
-	collateral, _, err := s.rsk.GetCollateral(addrStr)
+	collateral, _, err = s.rsk.GetCollateral(addrStr)
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		customError := NewServerError("Unable to get collateral", make(Details), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
 
@@ -1452,12 +1463,5 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		NewCollateralBalance: collateral.Uint64(),
 	}
 
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
+	JsonResponse(w, http.StatusOK, &response)
 }
