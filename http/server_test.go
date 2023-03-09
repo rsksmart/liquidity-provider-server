@@ -235,7 +235,7 @@ func testGetQuoteComplete(t *testing.T) {
 
 	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
-		rsk.On("GetCollateral", lp.address).Return(nil)
+		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
 		err := srv.AddProvider(lp, detailMock)
@@ -367,7 +367,7 @@ func testGetQuoteComplete(t *testing.T) {
 				json.NewDecoder(res.Body).Decode(&response)
 				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
 				assert.EqualValues(t, 400, res.StatusCode)
-				assert.EqualValues(t, "value to transfer too high", response.Message)
+				assert.EqualValues(t, "value to transfer is higher than max allowed", response.Message)
 			},
 		},
 		{
@@ -478,8 +478,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerMocks {
-			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-			rsk.On("GetCollateral", lp.address).Return(nil)
+			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
 			err := srv.AddProvider(lp, detailMock)
@@ -535,8 +535,8 @@ func testInitBtcWatchers(t *testing.T) {
 
 	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
-		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-		rsk.On("GetCollateral", lp.address).Return(nil)
+		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
+		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
 		err := srv.AddProvider(lp, detailMock)
@@ -624,8 +624,8 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
-			rsk.On("GetCollateral", lp.address).Return(nil)
-			rsk.On("GetCollateral", lp.address).Return(nil)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
 			err := srv.AddPegOutProvider(lp, detailMock)
@@ -653,6 +653,109 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 	}
 }
 
+func testAddCollateral(t *testing.T) {
+	rsk := new(testmocks.RskMock)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+
+	for _, provider := range providerMocks {
+		srv.providers = append(srv.providers, provider)
+	}
+
+	rsk.On("AddCollateral", mock.Anything).Return(nil).Once()
+	rsk.On("GetCollateral", mock.Anything).Return(big.NewInt(2), big.NewInt(4), nil).Once()
+	rsk.On("GetCollateral", providerMocks[1].address).Return(big.NewInt(7), big.NewInt(4), nil)
+
+	testCases := []*struct {
+		caseName   string
+		request    string
+		assertions func(res *http.Response)
+	}{
+		{
+			caseName: "Returns 400 on missing address",
+			request:  fmt.Sprintf(`{"amount": %v}`, 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "LpRskAddress is required", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 400 on missing amount",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v"}`, providerMocks[1].address),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "Amount is required", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 400 on decoding error",
+			request:  fmt.Sprint(""),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.Contains(t, body.Message, "Unable to deserialize payload")
+			},
+		},
+		{
+			caseName: "Returns 400 on invalid address",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[0].address, 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "LpRskAddress is eth_addr", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 409 on non registered provider",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, "0x9D93929A9099be4355fC2389FbF253982F9dF47c", 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
+				assert.EqualValues(t, "Liquidity Provider not registered", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 409 on when provided collateral is lower than minimal",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[1].address, 1),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
+				assert.EqualValues(t, "Amount is lower than min collateral", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 200 on successful add",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[1].address, 5),
+			assertions: func(res *http.Response) {
+				body := &AddCollateralResponse{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusOK, res.StatusCode)
+				assert.EqualValues(t, uint64(7), body.NewCollateralBalance)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "addCollateral", bytes.NewReader([]byte(test.request)))
+			if err != nil {
+				t.Fatalf("couldn't instantiate request. error: %v", err)
+			}
+			rr := httptest.NewRecorder()
+			srv.addCollateral(rr, req)
+			test.assertions(rr.Result())
+			rsk.Calls = []mock.Call{}
+		})
+	}
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -667,4 +770,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
 	t.Run("get registered providers", testGetProviders)
 	t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
+	t.Run("add collateral", testAddCollateral)
 }

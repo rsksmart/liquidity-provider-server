@@ -52,8 +52,8 @@ func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
 }
 
 func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
-	m.Called(addr)
-	return big.NewInt(10), big.NewInt(10), nil
+	arg := m.Called(addr)
+	return arg.Get(0).(*big.Int), arg.Get(1).(*big.Int), arg.Error(2)
 }
 
 func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {

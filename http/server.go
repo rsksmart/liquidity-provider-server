@@ -63,6 +63,7 @@ const ErrorSigningQuote = "error signing quote: "
 const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
+const GetCollateralError = "Unable to get collateral"
 const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 
@@ -1403,7 +1404,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required"`
-	LpRskAddress string `json:"lpRskAddress" validate:"required"`
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
 }
 
 type AddCollateralResponse struct {
@@ -1423,8 +1424,8 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&payload)
 
 	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		customError := NewServerError(fmt.Sprintf(UnableToDeserializePayloadError, err.Error()), make(Details), true)
+		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
 
@@ -1432,54 +1433,52 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegout.LiquidityProvider
-	for _, provider := range s.pegoutProviders {
+	var lp pegin.LiquidityProvider
+	for _, provider := range s.providers {
 		if provider.Address() == payload.LpRskAddress {
 			lp = provider
 		}
 	}
+	if lp == nil {
+		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
 
 	addrStr := lp.Address()
 
-	c, min, err := s.rsk.GetCollateral(addrStr)
+	collateral, min, err := s.rsk.GetCollateral(addrStr)
 
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
-	}
-
-	if min.Uint64()+payload.Amount < min.Uint64() {
-		http.Error(w, "Amount is lower than min collateral", http.StatusBadRequest)
-		return
-	}
-
-	addr := common.HexToAddress(addrStr)
-
-	cmp := c.Cmp(big.NewInt(0))
-
-	if cmp == 0 {
-		http.Error(w, "LP not registered", http.StatusBadRequest)
+	} else if collateral.Uint64()+payload.Amount < min.Uint64() {
+		customError := NewServerError("Amount is lower than min collateral", make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 
 	opts := &bind.TransactOpts{
 		Value:  big.NewInt(int64(payload.Amount)),
-		From:   addr,
+		From:   common.HexToAddress(addrStr),
 		Signer: lp.SignTx,
 	}
 
 	err = s.rsk.AddCollateral(opts)
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to add collateral", http.StatusInternalServerError)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
 
-	collateral, _, err := s.rsk.GetCollateral(addrStr)
+	collateral, _, err = s.rsk.GetCollateral(addrStr)
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Unable to get collateral", http.StatusInternalServerError)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
 
@@ -1487,12 +1486,5 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		NewCollateralBalance: collateral.Uint64(),
 	}
 
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
+	JsonResponse(w, http.StatusOK, &response)
 }
