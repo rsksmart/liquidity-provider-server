@@ -64,6 +64,7 @@ const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
 const ErrorAddingProvider = "Error Adding New provider"
+const GetCollateralError = "Unable to get collateral"
 
 type LiquidityProviderList struct {
 	Endpoint                    string `env:"RSK_ENDPOINT"`
@@ -1428,7 +1429,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Error(err)
-		customError := NewServerError("Unable to get collateral", make(Details), false)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	} else if collateral.Uint64()+payload.Amount < min.Uint64() {
@@ -1446,7 +1447,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	err = s.rsk.AddCollateral(opts)
 	if err != nil {
 		log.Error(err)
-		customError := NewServerError("Unable to get collateral", make(Details), false)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
@@ -1454,7 +1455,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	collateral, _, err = s.rsk.GetCollateral(addrStr)
 	if err != nil {
 		log.Error(err)
-		customError := NewServerError("Unable to get collateral", make(Details), false)
+		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}

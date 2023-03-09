@@ -35,6 +35,10 @@ type ErrorBody struct {
 	Recoverable bool    `json:"recoverable"`
 }
 
+func NewBasicDetail(err error) *Details {
+	return &Details{"reason": err.Error()}
+}
+
 func NewServerError(m string, d Details, r bool) *ErrorBody {
 	return &ErrorBody{
 		Message:     m,
