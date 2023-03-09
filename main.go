@@ -61,7 +61,7 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(dbMongo, rsk)
+	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
 	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
