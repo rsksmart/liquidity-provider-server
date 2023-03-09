@@ -54,3 +54,8 @@ func (B *BTCClientMock) GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, 
 func (B *BTCClientMock) Disconnect() {
 	B.Called()
 }
+
+func (B *BTCClientMock) GetBalance(address string) (btcutil.Amount, error) {
+	args := B.Called(address)
+	return args.Get(0).(btcutil.Amount), args.Error(1)
+}
