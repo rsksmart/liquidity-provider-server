@@ -56,6 +56,18 @@ func ResponseError(w http.ResponseWriter, er *ErrorBody, code int) {
 	}
 }
 
+func JsonResponse(w http.ResponseWriter, statusCode int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if body == nil {
+		return
+	} else if err := json.NewEncoder(w).Encode(body); err != nil {
+		customError := NewServerError(UnableToBuildResponse, make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+}
+
 func createEmptyInterfaceMap() map[string]interface{} {
 	return make(map[string]interface{})
 }
