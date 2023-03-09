@@ -35,6 +35,10 @@ type ErrorBody struct {
 	Recoverable bool    `json:"recoverable"`
 }
 
+func NewBasicDetail(err error) *Details {
+	return &Details{"reason": err.Error()}
+}
+
 func NewServerError(m string, d Details, r bool) *ErrorBody {
 	return &ErrorBody{
 		Message:     m,
@@ -53,6 +57,18 @@ func ResponseError(w http.ResponseWriter, er *ErrorBody, code int) {
 	if err != nil {
 		log.Fatal("[response package] error encoding response: ", err.Error())
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func JsonResponse(w http.ResponseWriter, statusCode int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if body == nil {
+		return
+	} else if err := json.NewEncoder(w).Encode(body); err != nil {
+		customError := NewServerError(UnableToBuildResponse, make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
 	}
 }
 
