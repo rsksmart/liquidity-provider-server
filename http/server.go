@@ -97,7 +97,7 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallEoaOrContractAddress string     `json:"callContractAddress" validate:"required"`
+	CallEoaOrContractAddress string     `json:"callEoaOrContractAddress" validate:"required"`
 	CallContractArguments    string     `json:"callContractArguments"`
 	ValueToTransfer          *types.Wei `json:"valueToTransfer"`
 	RskRefundAddress         string     `json:"rskRefundAddress" validate:"required"`
