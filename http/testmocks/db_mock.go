@@ -14,6 +14,16 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
+func (d *DbMock) GetProvider(u uint64) (string, error) {
+	arg := d.Called(u)
+	return arg.String(0), arg.Error(1)
+}
+
+func (d *DbMock) GetLockedLiquidityPegOut() (uint64, error) {
+	args := d.Called()
+	return uint64(args.Int(0)), args.Error(1)
+}
+
 func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*DbMock, error) {
 	return &DbMock{
 		hash:        h,
@@ -27,8 +37,8 @@ func (d *DbMock) GetProviders() ([]int64, error) {
 	return args.Get(0).([]int64), args.Error(1)
 }
 
-func (d *DbMock) InsertProvider(id int64) error {
-	args := d.Called(id)
+func (d *DbMock) InsertProvider(id int64, address string) error {
+	args := d.Called(id, address)
 	return args.Error(0)
 }
 

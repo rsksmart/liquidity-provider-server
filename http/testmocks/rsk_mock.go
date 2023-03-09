@@ -22,6 +22,10 @@ type RskMock struct {
 	QuoteHash string
 }
 
+func (m *RskMock) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
+	return m.Called(opts, _providerId, _status).Error(0)
+}
+
 func (m *RskMock) GetActiveRedeemScript() ([]byte, error) {
 	args := m.Called()
 	return args.Get(0).([]byte), args.Error(1)

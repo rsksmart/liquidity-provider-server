@@ -63,8 +63,8 @@ const ErrorSigningQuote = "error signing quote: "
 const ErrorAddingAddressWatcher = "error signing quote: "
 const ErrorBech32AddressNotSupported = "BECH32 address type is not supported yet"
 const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
-const ErrorAddingProvider = "Error Adding New provider"
-const ErrorRetrivingProviderAddress= "Error Retrieving Provider Address from MongoDB"
+const ErrorAddingProvider = "Error Adding New provider: %v"
+const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 
 type LiquidityProviderList struct {
 	Endpoint                    string `env:"RSK_ENDPOINT"`
@@ -200,7 +200,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -239,7 +239,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -286,7 +286,7 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 	}
 	err = s.AddProvider(lp, payload)
 	if err != nil {
-		log.Error(ErrorAddingProvider, err)
+		log.Errorf(ErrorAddingProvider, err)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
@@ -298,10 +298,12 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
+
 type ChangeStatusRequest struct {
-    ProviderId                uint64  `json:"providerId"`
-    Status                     bool   `json:"status"`
+	ProviderId uint64 `json:"providerId"`
+	Status     bool   `json:"status"`
 }
+
 func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
@@ -321,7 +323,7 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var lp pegin.LiquidityProvider
 	for _, provider := range s.providers {
-		if provider.Address() == providerAddress{
+		if provider.Address() == providerAddress {
 			lp = provider
 		}
 	}
@@ -331,14 +333,14 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 		From:   addr,
 		Signer: lp.SignTx,
 	}
-	err = s.rsk.ChangeStatus(opts,new(big.Int).SetUint64(payload.ProviderId),payload.Status)
+	err = s.rsk.ChangeStatus(opts, new(big.Int).SetUint64(payload.ProviderId), payload.Status)
 	log.Debug(err)
 	if err != nil {
 		log.Errorf(ErrorAddingProvider, err)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
-	response := "Provider Updated Successfully";
+	response := "Provider Updated Successfully"
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 	if err != nil {
@@ -1254,7 +1256,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 
