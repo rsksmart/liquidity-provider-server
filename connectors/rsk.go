@@ -476,7 +476,8 @@ func (rsk *RSK) HashQuote(q *pegin.Quote) (string, error) {
 		time.Sleep(rpcSleep)
 	}
 	if err != nil {
-		return "", fmt.Errorf("error calling HashQuote: %v", err)
+		log.Error("error calling HashQuote: ", err)
+		return "", err
 	}
 	return hex.EncodeToString(results[:]), nil
 }
