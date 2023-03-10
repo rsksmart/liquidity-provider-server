@@ -752,11 +752,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				log.Error(err)
-				errmsg := ErrorStoringProviderQuote
+				errmsg := ErrorStoringProviderQuote + ": " + err.Error()
 				status := http.StatusInternalServerError
-				if strings.HasPrefix(err.Error(), "bech32") {
+				if strings.HasPrefix(err.Error(), "VM Exception") {
+					_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
 					status = http.StatusBadRequest
-					errmsg = ErrorBech32AddressNotSupported
+					errmsg = "LBC error: " + vmString
 				}
 				customError := NewServerError(errmsg, make(map[string]interface{}), false)
 				ResponseError(w, customError, status)
