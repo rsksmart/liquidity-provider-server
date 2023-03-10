@@ -1183,8 +1183,9 @@ func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResp
 }
 
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
-	log.Error("error decoding request: ", err.Error())
-	http.Error(w, BadRequestError, http.StatusBadRequest)
+	log.Error("Error decoding request: ", err.Error())
+	customError := NewServerError(fmt.Sprintf("Error decoding request: ", err.Error()), make(Details), true)
+	ResponseError(w, customError, http.StatusBadRequest)
 	return
 }
 

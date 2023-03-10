@@ -2,8 +2,9 @@ package http
 
 import (
 	"fmt"
-	"github.com/go-playground/validator/v10"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
 )
 
 func Validate(schema interface{}) func(w http.ResponseWriter) bool {
