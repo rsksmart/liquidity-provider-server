@@ -198,3 +198,7 @@ func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParam
 func (m *RskMock) WithdrawCollateral(opts *bind.TransactOpts) error {
 	return m.Called(opts).Error(0)
 }
+
+func (m *RskMock) Resign(opt *bind.TransactOpts) error {
+	return m.Called(opt).Error(0)
+}

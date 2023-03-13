@@ -46,6 +46,7 @@ const (
 
 var (
 	WithdrawCollateralError = errors.New("withdraw collateral error")
+	ProviderResignError     = errors.New("provider has already resigned")
 )
 
 type AddressError struct {
@@ -102,6 +103,7 @@ type RSKConnector interface {
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
 	WithdrawCollateral(opts *bind.TransactOpts) error
+	Resign(opts *bind.TransactOpts) error
 }
 
 type RSKClient interface {
@@ -1063,6 +1065,25 @@ func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
 		return err
 	} else if !status {
 		return WithdrawCollateralError
+	} else {
+		return nil
+	}
+}
+
+func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.Resign(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+	if err != nil {
+		return err
+	} else if !status {
+		return ProviderResignError
 	} else {
 		return nil
 	}
