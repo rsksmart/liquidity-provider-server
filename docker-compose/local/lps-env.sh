@@ -24,6 +24,13 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+go install github.com/parvez3019/go-swagger3@latest
+export PATH="$HOME/go/bin:$PATH"
+
+echo "Compiling LPS with OpenAPI Specifications"
+go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
+
+
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
   echo "Command is not provided"
@@ -133,21 +140,6 @@ if [ -z "${LBC_ADDR}" ]; then
   exit 1
 fi
 echo "LBC deployed at $LBC_ADDR"
-
-DEPLOY_DATA=$(echo '{}' | jq \
-  --arg lbcAddr "$LBC_ADDR" \
-  --arg btcUser "$BTCD_RPC_USER" \
-  --arg btcPass "$BTCD_RPC_PASS" \
-  --arg btcNetwork "$LPS_STAGE" \
-  --arg chainId "$RSK_CHAIN_ID" \
-  '.rsk.lbcAddr=$lbcAddr | .btc.username=$btcUser | .btc.password=$btcPass | .btc.network=$btcNetwork | .provider.chainId=($chainId | tonumber)')
-
-
-CURRENT_JSON=$(cat ../../it/config.json)
-
-rm -rf ../../it/config.json
-
-echo $CURRENT_JSON $DEPLOY_DATA | jq --slurp 'reduce .[] as $item ({}; . * $item)' >> ../../it/config.json
 
 # start LPS
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps

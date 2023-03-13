@@ -10,13 +10,17 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+	"github.com/rsksmart/liquidity-provider-server/storage"
 
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,7 +40,7 @@ type LiquidityPegOutProviderMock struct {
 	address string
 }
 
-func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64) (*pegout.Quote, error) {
+func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64, gasPrice *big.Int) (*pegout.Quote, error) {
 	return quote, nil
 }
 
@@ -81,6 +85,8 @@ var providerPegOutMocks = []LiquidityPegOutProviderMock{
 	{address: "0xa554d96413FF72E93437C4072438302C38350EE3"},
 }
 
+var providerCfgData = pegin.ProviderConfig{}
+
 var cfgData = ConfigData{
 	MaxQuoteValue: 600000000000000000,
 	RSK: LiquidityProviderList{
@@ -119,7 +125,7 @@ var testPegOutQuotes = []*pegout.Quote{
 		LBCAddr:               "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		LPRSKAddr:             "0xa554d96413FF72E93437C4072438302C38350EE3",
 		RSKRefundAddr:         "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
-		Fee:                   250,
+		CallFee:               250,
 		PenaltyFee:            5000,
 		Nonce:                 int64(rand.Int()),
 		Value:                 250,
@@ -159,21 +165,21 @@ func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
 func testCheckHealth(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lp := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
-	db := testmocks.NewDbMockData("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
 	if err != nil {
 		t.Fatalf("couldn't instantiate request. error: %v", err)
 	}
-	db.On("CheckConnection").Return(nil).Times(1)
+	mongoDb.On("CheckConnection").Return(nil).Times(1)
 	rsk.On("CheckConnection").Return(nil).Times(1)
 	btc.On("CheckConnection").Return(nil).Times(1)
 	srv.checkHealthHandler(&w, req)
-	db.AssertExpectations(t)
+	mongoDb.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	assert.EqualValues(t, 200, w.StatusCode)
@@ -185,11 +191,11 @@ func testCheckHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't instantiate request. error: %v", err)
 	}
-	db.On("CheckConnection").Return(errors.New("db error")).Times(1)
+	mongoDb.On("CheckConnection").Return(errors.New("db error")).Times(1)
 	rsk.On("CheckConnection").Return(nil).Times(1)
 	btc.On("CheckConnection").Return(nil).Times(1)
 	srv.checkHealthHandler(&w, req)
-	db.AssertExpectations(t)
+	mongoDb.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	assert.EqualValues(t, 200, w.StatusCode)
@@ -201,11 +207,11 @@ func testCheckHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't instantiate request. error: %v", err)
 	}
-	db.On("CheckConnection").Return(errors.New("db error")).Times(1)
+	mongoDb.On("CheckConnection").Return(errors.New("db error")).Times(1)
 	rsk.On("CheckConnection").Return(errors.New("rsk error")).Times(1)
 	btc.On("CheckConnection").Return(errors.New("btc error")).Times(1)
 	srv.checkHealthHandler(&w, req)
-	db.AssertExpectations(t)
+	mongoDb.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	assert.EqualValues(t, 200, w.StatusCode)
@@ -214,90 +220,244 @@ func testCheckHealth(t *testing.T) {
 }
 
 func testGetQuoteComplete(t *testing.T) {
-	for _, quote := range testQuotes {
-		rsk := new(testmocks.RskMock)
-		btc := new(testmocks.BtcMock)
-		mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
-		db := testmocks.NewDbMockData("", quote, nil)
+	quote := testQuotes[0]
+	callContractAddressField := "\"callContractAddress\":\"%v\","
+	callContractArgumentsField := "\"callContractArguments\":\"%v\","
+	basicQuoteFields := "\"valueToTransfer\":%v, \"rskRefundAddress\":\"%v\"," +
+		"\"lpAddress\":\"%v\", \"bitcoinRefundAddress\":\"%v\""
 
-		srv := New(rsk, btc, mongoDb, cfgData)
+	rsk := new(testmocks.RskMock)
+	btc := new(testmocks.BtcMock)
+	lpRepo := new(storage.LPRepository)
+	mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 
-		for _, lp := range providerMocks {
-			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddProvider(lp)
-			if err != nil {
-				t.Fatalf("couldn't add provider. error: %v", err)
-			}
-		}
-		w := http2.TestResponseWriter{}
+	srv := New(rsk, btc, mongoDb, cfgData, lpRepo, providerCfgData)
 
-		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
-		callArgs := ""
-		value := quote.Value
-		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
-		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
-		body := fmt.Sprintf(
-			"{\"callContractAddress\":\"%v\","+
-				"\"callContractArguments\":\"%v\","+
-				"\"valueToTransfer\":%v,"+
-				"\"RskRefundAddress\":\"%v\","+
-				"\"lpAddress\":\"%v\","+
-				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, value, rskRefAddr, rskRefAddr, btcRefAddr)
-
-		tq := pegin.Quote{
-			FedBTCAddr:         "",
-			LBCAddr:            "",
-			LPRSKAddr:          "",
-			BTCRefundAddr:      btcRefAddr,
-			RSKRefundAddr:      rskRefAddr,
-			LPBTCAddr:          "",
-			CallFee:            types.NewWei(0),
-			PenaltyFee:         types.NewWei(0),
-			ContractAddr:       destAddr,
-			Data:               callArgs,
-			GasLimit:           10000,
-			Nonce:              0,
-			Value:              value.Copy(),
-			AgreementTimestamp: 0,
-			TimeForDeposit:     0,
-			LpCallTime:         0,
-			Confirmations:      0,
-		}
-		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
+	detailMock := types.ProviderRegisterRequest{}
+	for _, lp := range providerMocks {
+		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
-			t.Fatalf("couldn't instantiate request. error: %v", err)
+			t.Fatalf("couldn't add provider. error: %v", err)
 		}
-		rsk.On("EstimateGas", destAddr, value.AsBigInt(), []byte(callArgs)).Times(1)
-		rsk.On("GasPrice").Times(1)
-		rsk.On("GetFedAddress").Times(1)
-		rsk.On("GetLBCAddress").Times(1)
-		rsk.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
-		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
-		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
-
-		srv.getQuoteHandler(&w, req)
-		db.AssertExpectations(t)
-		rsk.AssertExpectations(t)
-		btc.AssertExpectations(t)
-		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
-
-		req, err = http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
-		if err != nil {
-			t.Fatalf("couldn't instantiate request. error: %v", err)
-		}
-		w = http2.TestResponseWriter{}
-		rsk.On("EstimateGas", destAddr, value.AsBigInt(), []byte(callArgs)).Times(1)
-		rsk.On("GasPrice").Times(1)
-		rsk.On("GetFedAddress").Times(1)
-		rsk.On("GetLBCAddress").Times(1)
-		rsk.On("GetMinimumLockTxValue").Return(new(big.Int).Add(big.NewInt(-1), new(big.Int).Add(quote.Value.AsBigInt(), quote.CallFee.AsBigInt())), nil).Times(1)
-		rsk.On("HashQuote", &tq).Times(len(providerMocks)).Return("", nil)
-		db.On("InsertQuote", "", &tq).Times(len(providerMocks)).Return(quote)
-		srv.getQuoteHandler(&w, req)
-		assert.EqualValues(t, "bad request; requested amount below bridge's min pegin tx value\n", w.Output)
-
 	}
+
+	destAddrEOA := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
+	destAddrSC := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc04F"
+	callArgs := "0x"
+	value := quote.Value
+	rskRefAddrEOA := "0x9d93929a9099be4355fc2389fbf253982f9df47c"
+	rskRefAddrSC := "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4"
+	btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
+
+	eoaQuote := pegin.Quote{
+		FedBTCAddr:         "",
+		LBCAddr:            "",
+		LPRSKAddr:          "",
+		BTCRefundAddr:      btcRefAddr,
+		RSKRefundAddr:      rskRefAddrEOA,
+		LPBTCAddr:          "",
+		CallFee:            types.NewWei(0),
+		PenaltyFee:         types.NewWei(0),
+		Nonce:              0,
+		Value:              value.Copy(),
+		AgreementTimestamp: 0,
+		TimeForDeposit:     0,
+		LpCallTime:         0,
+		Confirmations:      0,
+	}
+
+	scQuoteCallContractEoa := eoaQuote
+	scQuoteCallContractEoa.RSKRefundAddr = rskRefAddrSC
+	scQuoteCallContractEoa.ContractAddr = destAddrEOA
+	scQuoteCallContractEoa.GasLimit = 10000
+
+	scQuoteCallContractSc := eoaQuote
+	scQuoteCallContractSc.RSKRefundAddr = rskRefAddrSC
+	scQuoteCallContractSc.ContractAddr = destAddrSC
+	scQuoteCallContractSc.Data = callArgs
+	scQuoteCallContractSc.GasLimit = 10000
+
+	defaultMocks := func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
+		rskMock.On("EstimateGas", mock.Anything, value.AsBigInt(), mock.Anything).Times(1)
+		rskMock.On("GasPrice").Times(1)
+		rskMock.On("GetFedAddress").Times(1)
+		rskMock.On("GetLBCAddress").Times(1)
+		rskMock.On("IsEOA", "").Return(false, errors.New("invalid address"))
+		rskMock.On("IsEOA", rskRefAddrEOA).Return(true, nil)
+		rskMock.On("IsEOA", destAddrEOA).Return(true, nil)
+		rskMock.On("IsEOA", destAddrSC).Return(false, nil)
+		rskMock.On("IsEOA", rskRefAddrSC).Return(false, nil)
+		rskMock.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
+		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
+		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
+		dbMock.On("InsertQuote", "", mock.Anything).Times(len(providerMocks)).Return(quote)
+	}
+
+	testCases := []*struct {
+		caseName    string
+		requestBody string
+		assertions  func(res *http.Response)
+		customMocks func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock)
+	}{
+		{
+			caseName: "Return error when requested amount below bridge's min pegin tx value",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			customMocks: func(rskMock *testmocks.RskMock, btcMock *testmocks.BtcMock, dbMock *testmocks.DbMock) {
+				rsk.On("GetMinimumLockTxValue").Return(new(big.Int).Add(big.NewInt(-1), new(big.Int).Add(quote.Value.AsBigInt(), quote.CallFee.AsBigInt())), nil).Times(1)
+			},
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 400, res.StatusCode)
+				assert.EqualValues(t, "requested amount below bridge's min pegin tx value", response.Message)
+			},
+		},
+		{
+			caseName: "Return quote successfully for EOA origin",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, eoaQuote, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return quote successfully for SC origin and SC call contract address",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+callContractArgumentsField+basicQuoteFields+"}",
+				destAddrSC, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, scQuoteCallContractSc, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return quote successfully for SC origin and EOA call contract address",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrEOA, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				var response []*QuoteReturn
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 200, res.StatusCode)
+				assert.EqualValues(t, scQuoteCallContractEoa, *response[0].Quote)
+			},
+		},
+		{
+			caseName: "Return error when transfer value is too high",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				600000000000000001, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 400, res.StatusCode)
+				assert.EqualValues(t, "value to transfer is higher than max allowed", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is EOA and callContractAddress is provided",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrEOA, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is EOA and callContractArguments is provided",
+			requestBody: fmt.Sprintf("{"+callContractArgumentsField+basicQuoteFields+"}",
+				callArgs, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "fields callContractAddress and callContractArguments should not be provided when calling from EOA", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address and callContractAddress is empty",
+			requestBody: fmt.Sprintf("{"+basicQuoteFields+"}",
+				value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "error parsing callContractAddress: invalid address", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address, callContractAddress is not EOA and callContractArguments is empty",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+basicQuoteFields+"}",
+				destAddrSC, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "callContractArguments should not be empty if callContractAddress is a Smart Contract address", response.Message)
+			},
+		},
+		{
+			caseName: "Return error when origin is SC address, callContractAddress is EOA and callContractArguments is not empty",
+			requestBody: fmt.Sprintf("{"+callContractAddressField+callContractArgumentsField+basicQuoteFields+"}",
+				destAddrEOA, callArgs, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+			),
+			assertions: func(res *http.Response) {
+				response := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&response)
+				assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
+				assert.EqualValues(t, 422, res.StatusCode)
+				assert.EqualValues(t, "callContractArguments should be empty if callContractAddress is EOA", response.Message)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(test.requestBody)))
+			if err != nil {
+				t.Fatalf("couldn't instantiate request. error: %v", err)
+			}
+			if test.customMocks != nil {
+				test.customMocks(rsk, btc, mongoDb)
+			}
+			defaultMocks(rsk, btc, mongoDb)
+			rr := httptest.NewRecorder()
+
+			srv.getQuoteHandler(rr, req)
+			test.assertions(rr.Result())
+
+			rsk.Calls = []mock.Call{}
+			btc.Calls = []mock.Call{}
+			mongoDb.Calls = []mock.Call{}
+		})
+	}
+
 }
 
 func testAcceptQuoteComplete(t *testing.T) {
@@ -305,8 +465,8 @@ func testAcceptQuoteComplete(t *testing.T) {
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
-		mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
-		db := testmocks.NewDbMockData(hash, quote, nil)
+		lpRepo := new(storage.LPRepository)
+		mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 		sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 		minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
@@ -314,10 +474,15 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData)
+		}, cfgData, lpRepo, providerCfgData)
+
+		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerMocks {
-			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-			err := srv.AddProvider(lp)
+			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+			err := srv.AddProvider(lp, detailMock)
 			if err != nil {
 				t.Errorf("couldn't add provider. error: %v", err)
 			}
@@ -338,15 +503,15 @@ func testAcceptQuoteComplete(t *testing.T) {
 			t.Errorf("couldn't decode hash. error: %v", err)
 		}
 
-		db.On("GetQuote", hash).Times(1).Return(quote, nil)
-		db.On("GetRetainedQuote", hash).Times(1).Return(nil, nil)
+		mongoDb.On("GetQuote", hash).Times(1).Return(quote, nil)
+		mongoDb.On("GetRetainedQuote", hash).Times(1).Return(nil, nil)
 		rsk.On("GasPrice").Times(1)
 		rsk.On("FetchFederationInfo").Times(1).Return(fedInfo, nil)
 		btc.On("GetParams")
 		rsk.On("GetDerivedBitcoinAddress", fedInfo, nil, btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 		btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)"))
 		srv.acceptQuoteHandler(&w, req)
-		db.AssertExpectations(t)
+		mongoDb.AssertExpectations(t)
 		btc.AssertExpectations(t)
 		rsk.AssertExpectations(t)
 		assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
@@ -358,31 +523,36 @@ func testInitBtcWatchers(t *testing.T) {
 	quote := testQuotes[0]
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
-	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
-	db := testmocks.NewDbMockData(hash, quote, nil)
+	lp := new(storage.LPRepository)
+	mongoDb, _ := testmocks.NewDbMock(hash, quote, nil)
 	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
 	minAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := time.Unix(int64(quote.AgreementTimestamp+quote.TimeForDeposit), 0)
 
 	srv := newServer(rsk, btc, mongoDb, func() time.Time {
 		return time.Unix(0, 0)
-	}, cfgData)
+	}, cfgData, lp, providerCfgData)
+
+	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
-		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10))
-		err := srv.AddProvider(lp)
+		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
+		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
 			t.Errorf("couldn't add provider. error: %v", err)
 		}
 	}
 
-	db.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
-	db.On("GetQuote", hash).Times(1).Return(quote)
+	mongoDb.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
+	mongoDb.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
 	err := srv.initBtcWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
 	}
-	db.AssertExpectations(t)
+	mongoDb.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 }
@@ -413,54 +583,14 @@ func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
 	assert.Equal(t, "invalid address: 1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", err.Error())
 }
 
-func testInvalidQuoteValue(t *testing.T) {
-	for _, quote := range testQuotes {
-		rsk := new(testmocks.RskMock)
-		btc := new(testmocks.BtcMock)
-		mongoDb, _ := testmocks.NewDbMock("", quote, nil)
-
-		srv := New(rsk, btc, mongoDb, cfgData)
-
-		for _, lp := range providerMocks {
-			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddProvider(lp)
-			if err != nil {
-				t.Fatalf("couldn't add provider. error: %v", err)
-			}
-		}
-		w := http2.TestResponseWriter{}
-		destAddr := "0x63C46fBf3183B0a230833a7076128bdf3D5Bc03F"
-		callArgs := ""
-		rskRefAddr := "0x2428E03389e9db669698E0Ffa16FD66DC8156b3c"
-		btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
-		body := fmt.Sprintf(
-			"{\"callContractAddress\":\"%v\","+
-				"\"callContractArguments\":\"%v\","+
-				"\"valueToTransfer\":%v,"+
-				"\"RskRefundAddress\":\"%v\","+
-				"\"lpAddress\":\"%v\","+
-				"\"bitcoinRefundAddress\":\"%v\"}",
-			destAddr, callArgs, 600000000000000001, rskRefAddr, rskRefAddr, btcRefAddr)
-
-		req, err := http.NewRequest("POST", "getQuote", bytes.NewReader([]byte(body)))
-		if err != nil {
-			t.Log("Tewst")
-			t.Fatalf("couldn't instantiate request. error: %v", err)
-		}
-
-		srv.getQuoteHandler(&w, req)
-		assert.EqualValues(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
-		assert.EqualValues(t, "internal server error\n", w.Output)
-	}
-}
-
 func testGetProviders(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
+	lp := new(storage.LPRepository)
 
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
 	req, err := http.NewRequest("GET", "getProviders", bytes.NewReader([]byte("")))
 	w := http2.TestResponseWriter{}
 
@@ -468,11 +598,12 @@ func testGetProviders(t *testing.T) {
 		t.Fatalf("couldn't instantiate request. error: %v", err)
 	}
 
-	rsk.On("GetProviders").Return(nil)
+	mongoDb.On("GetProviders").Return([]int64{}, nil)
+	rsk.On("GetProviders", mock.Anything).Return([]bindings.LiquidityBridgeContractProvider{}, nil)
 	srv.getProvidersHandler(&w, req)
 
 	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
-	assert.EqualValues(t, "null\n", w.Output)
+	assert.EqualValues(t, "[]\n", w.Output)
 }
 
 func testcAcceptQuotePegoutComplete(t *testing.T) {
@@ -481,19 +612,23 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 		derivationAddress := "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
+		lp := new(storage.LPRepository)
 
-		mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
-		db := testmocks.NewDbMockData(hash, nil, quote)
-		minAmount := quote.Value + quote.Fee
+		mongoDb, _ := testmocks.NewDbMock("", nil, quote)
+		minAmount := quote.Value + quote.CallFee
 		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.DepositDateLimit), 0)
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData)
+		}, cfgData, lp, providerCfgData)
 
+		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
-			rsk.On("GetCollateral", lp.address).Return(nil)
-			err := srv.AddPegOutProvider(lp)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			mongoDb.On("InsertProvider", mock.Anything).Return(nil)
+			err := srv.AddPegOutProvider(lp, detailMock)
 			if err != nil {
 				t.Fatalf("couldn't add provider. error: %v", err)
 			}
@@ -507,7 +642,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 			t.Errorf("couldn't instantiate request. error: %v", err)
 		}
 
-		db.On("GetPegOutQuote", hash).Times(1).Return(quote, nil)
+		mongoDb.On("GetPegOutQuote", hash).Times(1).Return(quote, nil)
 		rsk.On("AddQuoteToWatch", "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228", time.Minute, expTime, mock.AnythingOfType("*http.RegisterPegoutWatcher"), mock.AnythingOfType("func(connectors.QuotePegOutWatcher)")).Times(1).Return("")
 
 		btc.On("AddAddressWatcher", "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
@@ -518,12 +653,114 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 	}
 }
 
+func testAddCollateral(t *testing.T) {
+	rsk := new(testmocks.RskMock)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+
+	for _, provider := range providerMocks {
+		srv.providers = append(srv.providers, provider)
+	}
+
+	rsk.On("AddCollateral", mock.Anything).Return(nil).Once()
+	rsk.On("GetCollateral", mock.Anything).Return(big.NewInt(2), big.NewInt(4), nil).Once()
+	rsk.On("GetCollateral", providerMocks[1].address).Return(big.NewInt(7), big.NewInt(4), nil)
+
+	testCases := []*struct {
+		caseName   string
+		request    string
+		assertions func(res *http.Response)
+	}{
+		{
+			caseName: "Returns 400 on missing address",
+			request:  fmt.Sprintf(`{"amount": %v}`, 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "LpRskAddress is required", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 400 on missing amount",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v"}`, providerMocks[1].address),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "Amount is required", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 400 on decoding error",
+			request:  fmt.Sprint(""),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.Contains(t, body.Message, "Unable to deserialize payload")
+			},
+		},
+		{
+			caseName: "Returns 400 on invalid address",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[0].address, 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, "LpRskAddress is eth_addr", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 409 on non registered provider",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, "0x9D93929A9099be4355fC2389FbF253982F9dF47c", 5),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
+				assert.EqualValues(t, "Liquidity Provider not registered", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 409 on when provided collateral is lower than minimal",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[1].address, 1),
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
+				assert.EqualValues(t, "Amount is lower than min collateral", body.Message)
+			},
+		},
+		{
+			caseName: "Returns 200 on successful add",
+			request:  fmt.Sprintf(`{"lpRskAddress": "%v", "amount": %v}`, providerMocks[1].address, 5),
+			assertions: func(res *http.Response) {
+				body := &AddCollateralResponse{}
+				json.NewDecoder(res.Body).Decode(&body)
+				assert.EqualValues(t, http.StatusOK, res.StatusCode)
+				assert.EqualValues(t, uint64(7), body.NewCollateralBalance)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "addCollateral", bytes.NewReader([]byte(test.request)))
+			if err != nil {
+				t.Fatalf("couldn't instantiate request. error: %v", err)
+			}
+			rr := httptest.NewRecorder()
+			srv.addCollateral(rr, req)
+			test.assertions(rr.Result())
+			rsk.Calls = []mock.Call{}
+		})
+	}
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
 	t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
 	t.Run("get quote", testGetQuoteComplete)
-	t.Run("get quote invalid quote value", testInvalidQuoteValue)
 	t.Run("accept quote", testAcceptQuoteComplete)
 	t.Run("init BTC watchers", testInitBtcWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)
@@ -533,4 +770,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("decode address with an invalid lbcAddrB", testDecodeAddressWithAnInvalidLbcAddrB)
 	t.Run("get registered providers", testGetProviders)
 	t.Run("accept quote pegout", testcAcceptQuotePegoutComplete)
+	t.Run("add collateral", testAddCollateral)
 }

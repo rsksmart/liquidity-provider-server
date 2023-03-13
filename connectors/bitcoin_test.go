@@ -3,7 +3,9 @@ package connectors
 import (
 	"encoding/hex"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"io"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -12,7 +14,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 
 	"fmt"
 
@@ -325,7 +327,7 @@ func testDerivationComplete(t *testing.T) {
 		} else {
 			fedInfo.FedAddress = "3EDhHutH7XnsotnZaTfRr9CwnnGsNNrhCL"
 		}
-		scriptBuf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
+		scriptBuf, err := btc.getRedeemScriptBuf(fedInfo, true)
 		if err != nil {
 			t.Errorf("Unexpected error in getPowPegRedeemScriptBuf. error: %v", err)
 			continue
@@ -351,7 +353,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 	}
 
 	fedInfo := getFakeFedInfo()
-	buf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
+	buf, err := btc.getRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
@@ -369,7 +371,7 @@ func testBuildPowPegRedeemScript(t *testing.T) {
 		return fedInfo.PubKeys[i] < fedInfo.PubKeys[j]
 	})
 
-	buf2, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
+	buf2, err := btc.getRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Errorf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
@@ -474,7 +476,7 @@ func testBuildPowPegAddressHash(t *testing.T) {
 	fedInfo := getFakeFedInfo()
 	fedInfo.IrisActivationHeight = 1
 
-	buf, err := btc.getPowPegRedeemScriptBuf(fedInfo, true)
+	buf, err := btc.getRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		t.Fatalf("error in getPowPegRedeemScriptBuf: %v", err)
 	}
@@ -743,7 +745,87 @@ func testComputeDerivationAddress(t *testing.T) {
 	}
 }
 
+func testAvailableLiquidity(t *testing.T) {
+	btcClientMock := new(testmocks.BTCClientMock)
+	btc, err := NewBTC("regtest")
+	if err != nil {
+		log.Fatal("Error during test initialization: ", err.Error())
+	}
+
+	btc.c = btcClientMock
+
+	testCases := []*struct {
+		caseName    string
+		assertions  func(result *big.Int, err error)
+		preparation func()
+	}{
+		{
+			caseName: "Has liquidity",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(5), nil)
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.EqualValues(t, big.NewInt(5), result)
+				assert.Nil(t, err)
+			},
+		},
+		{
+			caseName: "Doesn't have liquidity",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(0), nil)
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.EqualValues(t, big.NewInt(0), result)
+				assert.Nil(t, err)
+			},
+		},
+		{
+			caseName: "Error getting balance",
+			preparation: func() {
+				btcClientMock.On("GetBalance", "*").Return(btcutil.Amount(0), errors.New("some error"))
+			},
+			assertions: func(result *big.Int, err error) {
+				btcClientMock.AssertExpectations(t)
+				assert.Nil(t, nil, result)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			test.preparation()
+			result, errorResult := btc.GetAvailableLiquidity()
+			test.assertions(result, errorResult)
+		})
+		btcClientMock.Calls = []mock.Call{}
+		btcClientMock.ExpectedCalls = []*mock.Call{}
+	}
+}
+
+func testBtcAddressTypeFunc(t *testing.T) {
+	bech32 := "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+	test_p2sh := "2NCsrCdLtVuWSShAvFbmZwoYymQkYuPTHy1"
+	p2sh := "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+	p2pkh := "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2"
+	whatever := "15689207gsjhb"
+
+	TBECH32 := btcAddressType(bech32)
+	assert.Equal(t, TBECH32, "BECH32")
+	TtestP2SH := btcAddressType(test_p2sh)
+	assert.Equal(t, TtestP2SH, "P2SH")
+	TP2SH := btcAddressType(p2sh)
+	assert.Equal(t, TP2SH, "P2SH")
+	TP2PKH := btcAddressType(p2pkh)
+	assert.Equal(t, TP2PKH, "P2PKH")
+	Twhatever := btcAddressType(whatever)
+	assert.Equal(t, Twhatever, "unknown")
+}
+
 func TestBitcoinConnector(t *testing.T) {
+	t.Run("test Get Available Liquidity", testAvailableLiquidity)
 	t.Run("test derivation complete", testDerivationComplete)
 	t.Run("test get powpeg redeem script", testBuildPowPegRedeemScript)
 	t.Run("test get erp redeem script", testBuildErpRedeemScript)
@@ -759,4 +841,5 @@ func TestBitcoinConnector(t *testing.T) {
 	t.Run("test get derived bitcoin address", testGetDerivedBitcoinAddress)
 	t.Run("test check btc addr", testCheckBtcAddr)
 	t.Run("test compute derivation address", testComputeDerivationAddress)
+	t.Run("determine BTC Address type", testBtcAddressTypeFunc)
 }
