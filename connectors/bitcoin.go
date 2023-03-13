@@ -4,22 +4,24 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
+	"math/big"
+	"regexp"
 	"time"
 
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/bloom"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/bloom"
 	log "github.com/sirupsen/logrus"
 
 	"encoding/hex"
 
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -48,6 +50,7 @@ type BTCConnector interface {
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
 	SendBTC(address string, amount uint) (string, error)
+	GetAvailableLiquidity() (*big.Int, error)
 }
 
 type BTCClient interface {
@@ -60,6 +63,7 @@ type BTCClient interface {
 	GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error)
 	Disconnect()
 	SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error)
+	GetBalance(address string) (btcutil.Amount, error)
 }
 
 type BTC struct {
@@ -230,7 +234,6 @@ func (btc *BTC) Close() {
 // - uint256[]  hashes in depth-first order (<= 32*N bytes)
 // - varint     number of bytes of flag bits (1-3 bytes)
 // - byte[]     flag bits, packed per 8 in a byte, least significant bit first (<= 2*N-1 bits)
-//
 func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	blockHash, err := btc.getBlockHash(txHash)
 	if err != nil {
@@ -456,6 +459,15 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 	return hash.String(), nil
 }
 
+func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
+	balance, err := btc.c.GetBalance("*") // dummy parameter, see explanation -> https://bitcoincore.org/en/doc/23.0.0/rpc/wallet/getbalance/
+	if err != nil {
+		return nil, err
+	} else {
+		return big.NewInt(int64(balance)), nil
+	}
+}
+
 type MerkleBranch struct {
 	Hashes []*chainhash.Hash
 	Path   int
@@ -594,7 +606,7 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
-		err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
+		err := btc.buildRedeemScriptBuf(fedInfo, hashBuf, err)
 		if err != nil {
 			return nil, err
 		}
@@ -605,8 +617,8 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 		}
 
 		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
-		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
-			err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
+		if err != nil { // ok, it could be that ERP is not yet activated, falling back to Redeem Script
+			err := btc.buildRedeemScriptBuf(fedInfo, hashBuf, err)
 			if err != nil {
 				return nil, err
 			}
@@ -617,8 +629,8 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 	return buf.Bytes(), nil
 }
 
-func (btc *BTC) buildPowPegRedeemScriptBuf(fedInfo *FedInfo, hashBuf *bytes.Buffer, err error) error {
-	hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
+func (btc *BTC) buildRedeemScriptBuf(fedInfo *FedInfo, hashBuf *bytes.Buffer, err error) error {
+	hashBuf, err = btc.getRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		return err
 	}
@@ -644,7 +656,7 @@ func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-func (btc *BTC) getPowPegRedeemScriptBuf(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
+func (btc *BTC) getRedeemScriptBuf(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
 	err := btc.addStdNToMScriptPart(fedInfo, sb)
@@ -668,7 +680,7 @@ func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-	powPegRedeemScriptBuf, err := btc.getPowPegRedeemScriptBuf(fedInfo, false)
+	redeemScriptBuf, err := btc.getRedeemScriptBuf(fedInfo, false)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +692,7 @@ func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
 		return nil, err
 	}
 	erpRedeemScriptBuffer.Write(scrA)
-	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.Write(redeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
 	byteArr, err := hex.DecodeString("02")
 	if err != nil {
@@ -816,4 +828,32 @@ func getOpCodeFromInt(val int) byte {
 	default:
 		return txscript.OP_16
 	}
+}
+
+func isP2PKH(address string) bool {
+	pattern := regexp.MustCompile(`^[13][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isP2SH(address string) bool {
+	pattern := regexp.MustCompile(`^[32][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isBech32(address string) bool {
+	pattern := regexp.MustCompile(`^(bc1|tb1)[a-zA-HJ-NP-Z0-9]{8,87}$`)
+	return pattern.MatchString(address)
+}
+
+func btcAddressType(address string) string {
+	if isBech32(address) {
+		return "BECH32"
+	}
+	if isP2SH(address) {
+		return "P2SH"
+	}
+	if isP2PKH(address) {
+		return "P2PKH"
+	}
+	return "unknown"
 }

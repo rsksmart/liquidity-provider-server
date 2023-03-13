@@ -1,16 +1,22 @@
 package testmocks
 
 import (
+	"math/big"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/stretchr/testify/mock"
 )
 
 type BtcMock struct {
 	mock.Mock
+}
+
+func (b *BtcMock) GetAvailableLiquidity() (*big.Int, error) {
+	args := b.Called()
+	return args.Get(0).(*big.Int), args.Error(1)
 }
 
 func (b *BtcMock) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w connectors.AddressWatcher, cb connectors.AddressWatcherCompleteCallback) error {

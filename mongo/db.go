@@ -17,6 +17,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const queryTimeout = 3 * time.Second
+
 type DBConnector interface {
 	CheckConnection() error
 	Close() error
@@ -33,6 +35,10 @@ type DBConnector interface {
 	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	GetLockedLiquidityPegOut() (uint64, error)
+	GetProviders() ([]int64, error)
+	GetProvider(uint64) (string, error)
+	InsertProvider(id int64, address string) error
 }
 
 type DB struct {
@@ -224,7 +230,6 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		return nil, err
 	}
 	var retainedQuotes []*types.RetainedQuote
-	rows.All(context.TODO(), &retainedQuotes)
 
 	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
@@ -325,21 +330,20 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	log.Debug("retrieving locked liquidity")
 
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
-	stateFilter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
-	filter := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: stateFilter}}}}
-	rows, err := coll.Find(context.TODO(), filter)
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	rows, err := coll.Find(context.TODO(), query)
 	if err != nil {
 		return nil, err
 	}
-
 	var lockedLiq = types.NewWei(0)
+
 	for rows.Next(context.TODO()) {
-		var reqLiqString string
-		err = rows.Decode(&reqLiqString)
-		if err != nil {
+		var rq RetainedPeginQuote
+		if err = rows.Decode(&rq); err != nil {
 			return nil, err
 		}
-		reqLiqInt, err := strconv.ParseInt(reqLiqString, 10, 64)
+		reqLiqInt, err := strconv.ParseInt(rq.ReqLiq, 10, 64)
 
 		if err != nil {
 			return nil, err
@@ -350,11 +354,58 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 		lockedLiq.Add(lockedLiq, reqLiq)
 	}
 
-	log.Debug("Loked Liquidity: ", lockedLiq.String())
-
 	return lockedLiq, nil
 }
 
+func (db *DB) InsertProvider(id int64, address string) error {
+	log.Debug("inserting provider: ", id)
+	coll := db.db.Database("flyover").Collection("providers")
+	filter := bson.M{"id": id}
+	update := bson.M{"$set": bson.M{"id": id, "address": address}}
+	opts := options.Update().SetUpsert(true)
+	_, err := coll.UpdateOne(context.Background(), filter, update, opts)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (db *DB) GetProvider(providerId uint64) (string, error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	var result struct {
+		ID      int64  `bson:"id"`
+		Address string `bson:"address"`
+	}
+	err := coll.FindOne(context.TODO(), bson.M{"id": providerId}).Decode(&result)
+	if err != nil {
+		return "", err
+	}
+	return result.Address, nil
+}
+
+func (db *DB) GetProviders() ([]int64, error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	var results []int64
+	cur, err := coll.Find(context.TODO(), bson.D{{}})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.TODO())
+	for cur.Next(context.TODO()) {
+		var result struct {
+			ID int64 `bson:"id"`
+		}
+		err := cur.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result.ID)
+	}
+	if err := cur.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
 func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
 	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")
@@ -438,4 +489,30 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	}
 
 	return nil
+}
+
+func (db *DB) GetLockedLiquidityPegOut() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	rows, err := coll.Find(ctx, query)
+
+	var quotes []pegout.RetainedQuote
+	if err != nil {
+		return 0, err
+	}
+
+	if err = rows.All(ctx, &quotes); err != nil {
+		return 0, err
+	}
+
+	var lockedLiquidity uint64 = 0
+	for _, quote := range quotes {
+		lockedLiquidity += quote.ReqLiq
+	}
+
+	return lockedLiquidity, nil
 }

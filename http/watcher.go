@@ -12,7 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
@@ -25,7 +25,7 @@ type BTCAddressWatcher struct {
 	btc          connectors.BTCConnector
 	rsk          connectors.RSKConnector
 	lp           pegin.LiquidityProvider
-	dbMongo      mongoDB.DB
+	dbMongo      mongoDB.DBConnector
 	state        types.RQState
 	quote        *pegin.Quote
 	done         chan struct{}
@@ -75,7 +75,7 @@ const (
 
 func NewBTCAddressWatcher(hash string,
 	btc connectors.BTCConnector, rsk connectors.RSKConnector, provider pegin.LiquidityProvider,
-	dbMongo mongoDB.DB, q *pegin.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
+	dbMongo mongoDB.DBConnector, q *pegin.Quote, signature []byte, state types.RQState, sharedLocker sync.Locker) *BTCAddressWatcher {
 	watcher := BTCAddressWatcher{
 		hash:         hash,
 		btc:          btc,
