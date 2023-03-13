@@ -37,6 +37,11 @@ components:
           $ref: '#/components/schemas/Quote'
           type: object
       type: object
+    GetCollateralResponse:
+      properties:
+        collateral:
+          type: integer
+      type: object
     LiquidityBridgeContractProvider:
       properties:
         AcceptedQuoteExpiration:
@@ -145,9 +150,9 @@ components:
       properties:
         bitcoinRefundAddress:
           type: string
-        callContractAddress:
-          type: string
         callContractArguments:
+          type: string
+        callEoaOrContractAddress:
           type: string
         lpAddress:
           type: string
@@ -182,6 +187,11 @@ components:
           type: string
       type: object
     Wei: {}
+    WithdrawCollateralRequest:
+      properties:
+        lpRskAddress:
+          type: string
+      type: object
     acceptReq:
       properties:
         QuoteHash:
@@ -289,6 +299,26 @@ paths:
                 $ref: '#/components/schemas/SenBTCResponse'
           description: ""
       summary: Add Collateral
+  /collateral:
+    get:
+      description: ' Get Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: groupID
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get Collateral
   /getProviders:
     get:
       description: ' Returns a list of providers.'
@@ -430,6 +460,17 @@ paths:
                 $ref: '#/components/schemas/RegistrationStatus'
           description: ""
       summary: Register Provider
+  /withdrawCollateral:
+    post:
+      description: ' Withdraw Collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses: {}
+      summary: Withdraw Collateral
 security:
 - AuthorizationHeader:
   - read
