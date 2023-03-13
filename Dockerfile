@@ -1,15 +1,13 @@
 # To run issue this commands:
-# In your working directory: mv sample-config-ENV.json config.json
 # docker build --tag liquidity-provider-server .
 # docker run docker run liquidity-provider-server
 
-FROM golang:1.16-alpine
+FROM golang:1.19-alpine
 RUN apk add git
 RUN apk add gcc
 RUN apk add musl-dev
 WORKDIR /app
 
-COPY config.json ./
 COPY pwd.txt ./
 COPY geth_keystore/ ./geth_keystore
 COPY go.mod ./
@@ -22,6 +20,7 @@ RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provid
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/http
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/storage
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/pegout
+RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/mongoDB
 
 RUN cd liquidity-provider-server && go build -o /liquidity-provider-server
 

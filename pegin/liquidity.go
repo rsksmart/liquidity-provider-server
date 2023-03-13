@@ -48,17 +48,17 @@ type LocalProvider struct {
 }
 
 type ProviderConfig struct {
-	Keydir         string
-	BtcAddr        string
-	AccountNum     int
-	PwdFile        string
-	ChainId        *big.Int
-	MaxConf        uint16
-	Confirmations  map[int]uint16
-	TimeForDeposit uint32
-	CallTime       uint32
-	CallFee        *types.Wei
-	PenaltyFee     *types.Wei
+	Keydir         string         `env:"KEY_DIR"`
+	BtcAddr        string         `env:"BTC_ADDR"`
+	AccountNum     int            `env:"ACCOUNT_NUM"`
+	PwdFile        string         `env:"PWD_FILE"`
+	ChainId        *big.Int       `env:"CHAIN_ID"`
+	MaxConf        uint16         `env:"MAX_CONF"`
+	Confirmations  map[int]uint16 `env:"CONFIRMATIONS,delimiter=|"`
+	TimeForDeposit uint32         `env:"TIME_FOR_DEPOSIT"`
+	CallTime       uint32         `env:"CALL_TIME"`
+	CallFee        *types.Wei     `env:"CALL_FEE"`
+	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
 }
 
 func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {

@@ -1,6 +1,13 @@
+// @Version 0.5
+// @Title Liquidity Provider Server
+// @Server https://flyover-lps.testnet.rsk.co Testnet
+// @Server https://flyover-lps.mainnet.rifcomputing.net Mainnet
+// @Security AuthorizationHeader read write
+// @SecurityScheme AuthorizationHeader http bearer Input your token
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -11,15 +18,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sethvargo/go-envconfig"
+
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
+	"github.com/rsksmart/liquidity-provider/types"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
+
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/tkanos/gonfig"
 )
 
 var (
@@ -29,9 +39,7 @@ var (
 )
 
 func loadConfig() {
-	err := gonfig.GetConf("config.json", &cfg)
-
-	if err != nil {
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatalf("error loading config file: %v", err)
 	}
 }
@@ -53,8 +61,8 @@ func initLogger() {
 }
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
+	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
@@ -64,14 +72,24 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, dbMongo, cfgData)
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider)
 	log.Debug("registering local provider (this might take a while)")
-	err = srv.AddProvider(lp)
+	req := types.ProviderRegisterRequest{
+		Name:                    "Default Provider",
+		Fee:                     10,
+		QuoteExpiration:         10,
+		AcceptedQuoteExpiration: 100,
+		MinTransactionValue:     100,
+		MaxTransactionValue:     120,
+		ApiBaseUrl:              "http://localhost:8080",
+		Status:                  true,
+	}
+	err = srv.AddProvider(lp, req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
 
-	err = srv.AddPegOutProvider(lpPegOut)
+	err = srv.AddPegOutProvider(lpPegOut, req)
 
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
