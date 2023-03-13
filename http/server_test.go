@@ -152,7 +152,7 @@ func testGetProviderByAddress(t *testing.T) {
 	}
 
 	for _, tt := range liquidityProviders {
-		result := getProviderByAddress(liquidityProviders, tt.Address())
+		result := pegin.GetPeginProviderByAddress(liquidityProviders, tt.Address())
 		assert.EqualValues(t, tt.Address(), result.Address())
 	}
 }
@@ -164,7 +164,7 @@ func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
 	}
 
 	var nonLiquidityProviderAddress = "0xa554d96413FF72E93437C4072438302C38350EE3"
-	result := getProviderByAddress(liquidityProviders, nonLiquidityProviderAddress)
+	result := pegin.GetPeginProviderByAddress(liquidityProviders, nonLiquidityProviderAddress)
 	assert.Empty(t, result)
 }
 
@@ -660,8 +660,8 @@ func testAddCollateral(t *testing.T) {
 			assertions: func(res *http.Response) {
 				body := &ErrorBody{}
 				json.NewDecoder(res.Body).Decode(&body)
-				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
-				assert.EqualValues(t, "Liquidity Provider not registered", body.Message)
+				assert.EqualValues(t, http.StatusNotFound, res.StatusCode)
+				assert.EqualValues(t, "missing liquidity provider", body.Message)
 			},
 		},
 		{
@@ -798,8 +798,8 @@ func testWithdrawCollateral(t *testing.T) {
 			assertions: func(res *http.Response) {
 				body := &ErrorBody{}
 				json.NewDecoder(res.Body).Decode(body)
-				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
-				assert.EqualValues(t, body.Message, "Liquidity Provider not registered")
+				assert.EqualValues(t, http.StatusNotFound, res.StatusCode)
+				assert.EqualValues(t, body.Message, "missing liquidity provider")
 			},
 		},
 		{
@@ -843,6 +843,81 @@ func testWithdrawCollateral(t *testing.T) {
 	}
 }
 
+func testProviderResign(t *testing.T) {
+	request := fmt.Sprintf(`{ "lpRskAddress": "%s" }`, providerMocks[1].address)
+
+	rsk := new(testmocks.RskMock)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+	for _, provider := range providerMocks {
+		srv.providers = append(srv.providers, provider)
+	}
+
+	rsk.On("Resign", mock.Anything).Return(connectors.ProviderResignError).Once()
+	rsk.On("Resign", mock.Anything).Return(errors.New("some error")).Once()
+	rsk.On("Resign", mock.Anything).Return(nil).Once()
+
+	testCases := []*basicTestCase{
+		{
+			caseName: "Fail on invalid address",
+			request:  `{ "lpRskAddress": "dsadasda" }`,
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(body)
+				assert.EqualValues(t, http.StatusBadRequest, res.StatusCode)
+				assert.EqualValues(t, body.Message, "LpRskAddress is eth_addr")
+			},
+		},
+		{
+			caseName: "Fail on non registered provider",
+			request:  `{ "lpRskAddress": "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4" }`,
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(body)
+				assert.EqualValues(t, http.StatusNotFound, res.StatusCode)
+				assert.EqualValues(t, body.Message, "missing liquidity provider")
+			},
+		},
+		{
+			caseName: "Fail when provider has resigned before",
+			request:  request,
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(body)
+				assert.EqualValues(t, http.StatusConflict, res.StatusCode)
+				assert.Contains(t, body.Message, "provider has already resigned")
+			},
+		},
+		{
+			caseName: "Fail on transaction error",
+			request:  request,
+			assertions: func(res *http.Response) {
+				body := &ErrorBody{}
+				json.NewDecoder(res.Body).Decode(body)
+				assert.EqualValues(t, http.StatusInternalServerError, res.StatusCode)
+			},
+		},
+		{
+			caseName: "Return 204 on successful resign",
+			request:  request,
+			assertions: func(res *http.Response) {
+				assert.EqualValues(t, http.StatusNoContent, res.StatusCode)
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.caseName, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "provider/resignation", bytes.NewReader([]byte(test.request)))
+			if err != nil {
+				t.Fatalf("Error creating request: %v", err)
+			}
+			rr := httptest.NewRecorder()
+			srv.providerResignHandler(rr, req)
+			test.assertions(rr.Result())
+		})
+	}
+}
+
 func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider by address", testGetProviderByAddress)
 	t.Run("check health", testCheckHealth)
@@ -860,4 +935,5 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("add collateral", testAddCollateral)
 	t.Run("get collateral", testGetCollateral)
 	t.Run("withdraw collateral", testWithdrawCollateral)
+	t.Run("test provider resign", testProviderResign)
 }

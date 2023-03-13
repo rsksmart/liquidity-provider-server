@@ -363,6 +363,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
 	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
+	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -411,7 +412,7 @@ func (s *Server) initBtcWatchers() error {
 			return errors.New(fmt.Sprintf("initBtcWatchers: quote not found for hash: %s", entry.QuoteHash))
 		}
 
-		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+		p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 		if p == nil {
 			return errors.New(fmt.Sprintf("initBtcWatchers: provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
 		}
@@ -909,7 +910,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -975,15 +976,6 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 		return nil, nil, nil, err
 	}
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
-}
-
-func getProviderByAddress(liquidityProviders []pegin.LiquidityProvider, addr string) (ret pegin.LiquidityProvider) {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
-	}
-	return nil
 }
 
 func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, addr string) (ret pegout.LiquidityProvider) {
@@ -1435,15 +1427,10 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == payload.LpRskAddress {
-			lp = provider
-		}
-	}
+	lp := pegin.GetPeginProviderByAddress(s.providers, payload.LpRskAddress)
 	if lp == nil {
-		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
-		ResponseError(w, customError, http.StatusConflict)
+		customError := NewServerError("missing liquidity provider", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
 		return
 	}
 
@@ -1511,21 +1498,11 @@ func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == payload.LpRskAddress {
-			lp = provider
-		}
-	}
-	if lp == nil {
-		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
-		ResponseError(w, customError, http.StatusConflict)
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
 		return
-	}
-
-	opts := &bind.TransactOpts{
-		From:   common.HexToAddress(payload.LpRskAddress),
-		Signer: lp.SignTx,
 	}
 
 	if err := s.rsk.WithdrawCollateral(opts); err != nil && errors.Is(err, connectors.WithdrawCollateralError) {
@@ -1565,5 +1542,44 @@ func (s *Server) getCollateralHandler(w http.ResponseWriter, request *http.Reque
 	} else {
 		response := &GetCollateralResponse{Collateral: collateral.Uint64()}
 		JsonResponse(w, http.StatusOK, response)
+	}
+}
+
+type ProviderResignRequest struct {
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+}
+
+// @Title Provider resignation
+// @Description Provider stops being a liquidity provider
+// @Param  ProviderResignRequest  body ProviderResignRequest true "Provider Resignation Request"
+// @Route /provider/resignation [post]
+func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	payload := ProviderResignRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	err = s.rsk.Resign(opts)
+	if err != nil && errors.Is(err, connectors.ProviderResignError) {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

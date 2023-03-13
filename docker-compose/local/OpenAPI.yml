@@ -86,6 +86,11 @@ components:
         status:
           type: boolean
       type: object
+    ProviderResignRequest:
+      properties:
+        lpRskAddress:
+          type: string
+      type: object
     Quote:
       properties:
         agreementTimestamp:
@@ -460,6 +465,17 @@ paths:
                 $ref: '#/components/schemas/RegistrationStatus'
           description: ""
       summary: Register Provider
+  /provider/resignation:
+    post:
+      description: ' Provider stops being a liquidity provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderResignRequest'
+        required: true
+      responses: {}
+      summary: Provider resignation
   /withdrawCollateral:
     post:
       description: ' Withdraw Collateral of a resigned LP'
