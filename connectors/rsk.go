@@ -44,6 +44,22 @@ const (
 	newAccountGasCost = uint64(25000)
 )
 
+var (
+	WithdrawCollateralError = errors.New("withdraw collateral error")
+)
+
+type AddressError struct {
+	address string
+}
+
+func (e *AddressError) Error() string {
+	return fmt.Sprintf("invalid address: %s", e.address)
+}
+
+func NewInvalidAddressError(address string) error {
+	return &AddressError{address: address}
+}
+
 type QuotePegOutWatcher interface {
 	OnRegisterPegOut(newState types.RQState)
 	OnExpire()
@@ -85,6 +101,7 @@ type RSKConnector interface {
 	GetActiveRedeemScript() ([]byte, error)
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
+	WithdrawCollateral(opts *bind.TransactOpts) error
 }
 
 type RSKClient interface {
@@ -253,7 +270,7 @@ func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
 
 func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	if !common.IsHexAddress(addr) {
-		return nil, nil, fmt.Errorf("invalid address: %v", addr)
+		return nil, nil, NewInvalidAddressError(addr)
 	}
 	a := common.HexToAddress(addr)
 	var (
@@ -1029,4 +1046,24 @@ func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeCo
 	}
 
 	return providers, err
+}
+
+func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.WithdrawCollateral(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+
+	if err != nil {
+		return err
+	} else if !status {
+		return WithdrawCollateralError
+	} else {
+		return nil
+	}
 }
