@@ -4,13 +4,18 @@ components:
     AcceptResPegOut:
       properties:
         signature:
+          example: '0x0 description:'
           type: string
       type: object
     AddCollateralRequest:
       properties:
         amount:
+          description: Amount to add to the collateral
+          example: 100000000000
           type: integer
         lpRskAddress:
+          description: Liquidity Provider RSK Address
+          example: "0x0"
           type: string
       type: object
     Address:
@@ -19,47 +24,78 @@ components:
     BuildRefundPegOutPayloadRequest:
       properties:
         btcTxHash:
+          description: BtcTxHash
+          example: "0x0"
           type: string
         derivationAddress:
+          description: DerivationAddress
+          example: "0x0"
           type: string
         quoteHash:
+          description: QuoteHash
+          example: "0x0"
           type: string
       type: object
     BuildRefundPegOutPayloadResponse:
       properties:
         merkleBranchHashes:
+          description: MerkleBranchHashes
+          example: invalid example
           items:
             type: string
           type: array
         merkleBranchPath:
+          description: MerkleBranchPath
+          example: 0
           type: integer
         quote:
-          $ref: '#/components/schemas/Quote'
+          description: Quote
+          example: invalid example
           type: object
+      type: object
+    ChangeStatusRequest:
+      properties:
+        providerId:
+          type: integer
+        status:
+          type: boolean
       type: object
     LiquidityBridgeContractProvider:
       properties:
-        AcceptedQuoteExpiration:
-          $ref: '#/components/schemas/'
-        ApiBaseUrl:
+        acceptedQuoteExpiration:
+          description: Accepted quote expiration time in seconds
+          example: "3600"
+        apiBaseUrl:
+          description: Provider API base URL
+          example: https://api.example.com
           type: string
-        Fee:
-          $ref: '#/components/schemas/'
-        Id:
-          $ref: '#/components/schemas/'
-        MaxTransactionValue:
-          $ref: '#/components/schemas/'
-        MinTransactionValue:
-          $ref: '#/components/schemas/'
-        Name:
+        fee:
+          description: Provider fee
+          example: "100000000000000000"
+        id:
+          description: Provider id
+          example: "1"
+        maxTransactionValue:
+          description: Maximum transaction value
+          example: "1000000000000000000"
+        minTransactionValue:
+          description: Minimum transaction value
+          example: "100000000"
+        name:
+          description: Provider name
+          example: Default Pegin Provider
           type: string
-        Provider:
-          $ref: '#/components/schemas/Address'
+        provider:
+          description: Provider address
+          example: invalid example
           items: {}
           type: array
-        QuoteExpiration:
-          $ref: '#/components/schemas/'
-        Status:
+        quoteExpiration:
+          description: Quote expiration time in seconds
+          example: "3600"
+        status:
+          description: Provider status
+          example: true
           type: boolean
       type: object
     ProviderRegisterRequest:
@@ -80,6 +116,13 @@ components:
           type: integer
         status:
           type: boolean
+      type: object
+    ProviderStatusChangeStatus:
+      properties:
+        Status:
+          description: Returned Status
+          example: Provider Updated Successfully
+          type: string
       type: object
     Quote:
       properties:
@@ -123,38 +166,50 @@ components:
     QuotePegOutRequest:
       properties:
         bitcoinRefundAddress:
+          example: '0x0 description:'
           type: string
         from:
+          example: '0x0 description:'
           type: string
         rskRefundAddress:
+          example: '0x0 description:'
           type: string
         valueToTransfer:
+          description: ValueToTransfer
+          example: 10000000000000
           type: integer
       type: object
     QuotePegOutResponse:
       properties:
         derivationAddress:
+          example: '0x0 description:'
           type: string
         quote:
-          $ref: '#/components/schemas/Quote'
+          example: invalid example
           type: object
         quoteHash:
+          example: '0x0 description:'
           type: string
       type: object
     QuoteRequest:
       properties:
         bitcoinRefundAddress:
-          type: string
-        callContractAddress:
+          example: '0x0 description:'
           type: string
         callContractArguments:
+          example: '0x0 description:'
+          type: string
+        callEoaOrContractAddress:
+          example: '0x0 description:'
           type: string
         lpAddress:
+          example: '0x0 description:'
           type: string
         rskRefundAddress:
+          example: '0x0 description:'
           type: string
         valueToTransfer:
-          $ref: '#/components/schemas/Wei'
+          example: '0x0 description:'
       type: object
     QuoteReturn:
       properties:
@@ -167,46 +222,65 @@ components:
     RegistrationStatus:
       properties:
         Status:
+          description: Returned Status
+          example: Provider Created Successfully
           type: string
       type: object
     SenBTCRequest:
       properties:
         address:
+          description: Address to send BTC to
+          example: "0x0"
           type: string
         amount:
+          description: Amount to send BTC to address
+          example: 100000000000
           type: integer
       type: object
     SenBTCResponse:
       properties:
         txHash:
+          description: TxHash of the BTC transaction sent to the address
+          example: "0x0"
           type: string
       type: object
     Wei: {}
     acceptReq:
       properties:
-        QuoteHash:
+        quoteHash:
+          example: '0x0 description:'
           type: string
       type: object
     acceptReqPegout:
       properties:
         derivationAddress:
+          example: '0x0 description:'
           type: string
         quoteHash:
+          example: '0x0 description:'
           type: string
       type: object
     acceptRes:
       properties:
         bitcoinDepositAddressHash:
+          example: '0x0 description:'
           type: string
         signature:
+          example: '0x0 description:'
           type: string
       type: object
     healthRes:
       properties:
         services:
-          $ref: '#/components/schemas/services'
+          description: LPS Services Status
+          example:
+            btc: ok
+            db: ok
+            rsk: ok
           type: object
         status:
+          description: Overall LPS Health Status
+          example: ok
           type: string
       type: object
     pegout.Quote:
@@ -413,6 +487,23 @@ paths:
                 $ref: '#/components/schemas/SenBTCResponse'
           description: ""
       summary: Send BTC
+  /provider/changeStatus:
+    post:
+      description: ' Changes the status of the provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeStatusRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStatusChangeStatus'
+          description: ""
+      summary: Change Provider Status
   /provider/register:
     post:
       description: ' Registers New Provider'
