@@ -99,12 +99,12 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallEoaOrContractAddress string     `json:"callEoaOrContractAddress" validate:"required"`
-	CallContractArguments    string     `json:"callContractArguments"`
-	ValueToTransfer          *types.Wei `json:"valueToTransfer"`
-	RskRefundAddress         string     `json:"rskRefundAddress" validate:"required"`
-	LpAddress                string     `json:"lpAddress" validate:"required,eth_addr"`
-	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress" validate:"required"`
+	CallEoaOrContractAddress string     `json:"callEoaOrContractAddress" validate:"required" example:"0x0 description:"CallEoaOrContractAddress"`
+	CallContractArguments    string     `json:"callContractArguments" example:"0x0 description:"CallContractArguments"`
+	ValueToTransfer          *types.Wei `json:"valueToTransfer" example:"0x0 description:"ValueToTransfer"`
+	RskRefundAddress         string     `json:"rskRefundAddress" validate:"required" example:"0x0 description:"RskRefundAddress"`
+	LpAddress                string     `json:"lpAddress" validate:"required,eth_addr" example:"0x0 description:"LpAddress"`
+	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress" validate:"required" example:"0x0 description:"BitcoinRefundAddress"`
 }
 
 type QuoteReturn struct {
@@ -113,20 +113,20 @@ type QuoteReturn struct {
 }
 
 type QuotePegOutRequest struct {
-	From                 string `json:"from"`
-	ValueToTransfer      uint64 `json:"valueToTransfer"`
-	RskRefundAddress     string `json:"rskRefundAddress"`
-	BitcoinRefundAddress string `json:"bitcoinRefundAddress"`
+	From                 string `json:"from" example:"0x0 description:"From"`
+	ValueToTransfer      uint64 `json:"valueToTransfer" example:"10000000000000" description:"ValueToTransfer"`
+	RskRefundAddress     string `json:"rskRefundAddress" example:"0x0 description:"RskRefundAddress"`
+	BitcoinRefundAddress string `json:"bitcoinRefundAddress" example:"0x0 description:"BitcoinRefundAddress"`
 }
 
 type QuotePegOutResponse struct {
-	Quote             *pegout.Quote `json:"quote"`
-	DerivationAddress string        `json:"derivationAddress"`
-	QuoteHash         string        `json:"quoteHash"`
+	Quote             *pegout.Quote `json:"quote" example:"0x0 description:"Quote"`
+	DerivationAddress string        `json:"derivationAddress" example:"0x0 description:"DerivationAddress"`
+	QuoteHash         string        `json:"quoteHash" example:"0x0 description:"QuoteHash"`
 }
 
 type acceptReq struct {
-	QuoteHash string
+	QuoteHash string `json:"quoteHash" example:"0x0 description:"QuoteHash"`
 }
 
 func enableCors(res *http.ResponseWriter) {
@@ -140,17 +140,17 @@ func enableCors(res *http.ResponseWriter) {
 }
 
 type acceptRes struct {
-	Signature                 string `json:"signature"`
-	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
+	Signature                 string `json:"signature" example:"0x0 description:"Signature"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" example:"0x0 description:"BitcoinDepositAddressHash"`
 }
 
 type AcceptResPegOut struct {
-	Signature string `json:"signature"`
+	Signature string `json:"signature" example:"0x0 description:"Signature"`
 }
 
 type acceptReqPegout struct {
-	QuoteHash         string `json:"quoteHash"`
-	DerivationAddress string `json:"derivationAddress"`
+	QuoteHash         string `json:"quoteHash" example:"0x0 description:"QuoteHash"`
+	DerivationAddress string `json:"derivationAddress" example:"0x0 description:"DerivationAddress"`
 }
 
 type pegOutQuoteReq struct {
@@ -259,10 +259,9 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	return nil
 }
 
-type RegistrationStatus struct {
-	Status string
+type RegistrationStatus struct{
+	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
-
 // @Title Register Provider
 // @Description Registers New Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -291,7 +290,7 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
-	response := "Provider Created Successfully"
+	response := RegistrationStatus{Status: "Provider Created Successfully"}
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 	if err != nil {
@@ -304,7 +303,14 @@ type ChangeStatusRequest struct {
 	ProviderId uint64 `json:"providerId"`
 	Status     bool   `json:"status"`
 }
-
+type ProviderStatusChangeStatus struct{
+	Status string `json:"Status" example:"Provider Updated Successfully" description:"Returned Status"`
+}
+// @Title Change Provider Status
+// @Description Changes the status of the provider
+// @Param  ChangeStatusRequest  body ChangeStatusRequest true "Change Provider Status Request"
+// @Success  200 object ProviderStatusChangeStatus
+// @Route /provider/changeStatus [post]
 func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
@@ -557,8 +563,8 @@ type services struct {
 	Btc string `json:"btc"`
 }
 type healthRes struct {
-	Status   string   `json:"status"`
-	Services services `json:"services"`
+	Status   string   `json:"status" example:"ok" description:"Overall LPS Health Status"`
+	Services services `json:"services" example:"{\"db\":\"ok\",\"rsk\":\"ok\",\"btc\":\"ok\"}" description:"LPS Services Status"`
 }
 
 // @Title Health
@@ -806,7 +812,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
@@ -814,10 +819,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	type acceptRes struct {
-		Signature                 string `json:"signature"`
-		BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash"`
-	}
 	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
 		enc := json.NewEncoder(w)
 		response := acceptRes{
@@ -1286,15 +1287,15 @@ type RegisterPegOutReg struct {
 }
 
 type BuildRefundPegOutPayloadRequest struct {
-	QuoteHash         string `json:"quoteHash"`
-	BtcTxHash         string `json:"btcTxHash"`
-	DerivationAddress string `json:"derivationAddress"`
+	QuoteHash         string `json:"quoteHash" example:"0x0" description:"QuoteHash"`
+	BtcTxHash         string `json:"btcTxHash" example:"0x0" description:"BtcTxHash"`
+	DerivationAddress string `json:"derivationAddress" example:"0x0" description:"DerivationAddress"`
 }
 
 type BuildRefundPegOutPayloadResponse struct {
-	Quote              *pegout.Quote `json:"quote"`
-	MerkleBranchPath   int           `json:"merkleBranchPath"`
-	MerkleBranchHashes []string      `json:"merkleBranchHashes"`
+	Quote              *pegout.Quote `json:"quote" example:"0x0" description:"Quote"`
+	MerkleBranchPath   int           `json:"merkleBranchPath" example:"0x0" description:"MerkleBranchPath"`
+	MerkleBranchHashes []string      `json:"merkleBranchHashes" example:"0x0" description:"MerkleBranchHashes"`
 }
 
 // @Title Refund Pegout
@@ -1356,12 +1357,12 @@ func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type SenBTCRequest struct {
-	Address string `json:"address"`
-	Amount  uint   `json:"amount"`
+	Address string `json:"address" example:"0x0" description:"Address to send BTC to"`
+	Amount  uint   `json:"amount" example:"100000000000" description:"Amount to send BTC to address"`
 }
 
 type SenBTCResponse struct {
-	TxHash string `json:"txHash"`
+	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
 }
 
 // @Title Send BTC
@@ -1405,12 +1406,12 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 }
 
 type AddCollateralRequest struct {
-	Amount       uint64 `json:"amount" validate:"required"`
-	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+	Amount       uint64 `json:"amount" validate:"required" example:"100000000000" description:"Amount to add to the collateral"`
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr" example:"0x0" description:"Liquidity Provider RSK Address"`
 }
 
 type AddCollateralResponse struct {
-	NewCollateralBalance uint64 `json:"newCollateralBalance"`
+	NewCollateralBalance uint64 `json:"newCollateralBalance" example:"100000000000" description:"New Collateral Balance`
 }
 
 // @Title Add Collateral
