@@ -36,10 +36,10 @@ import (
 
 const (
 	retries    int = 3
-	rpcSleep       = 2 * time.Second
-	rpcTimeout     = 5 * time.Second
-	ethSleep       = 5 * time.Second
-	ethTimeout     = 5 * time.Minute
+	rpcSleep       = 5 * time.Second
+	rpcTimeout     = 10 * time.Second
+	ethSleep       = 10 * time.Second
+	ethTimeout     = 10 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
