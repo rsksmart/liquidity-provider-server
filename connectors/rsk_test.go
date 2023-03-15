@@ -3,6 +3,7 @@ package connectors
 import (
 	"context"
 	crand "crypto/rand"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/connectors/testmocks"
 	"github.com/stretchr/testify/mock"
@@ -52,6 +53,68 @@ var quotes = []*pegin.Quote{
 	},
 }
 
+var bech32Quotes = []*pegin.Quote{
+	{
+		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:            "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		LPRSKAddr:          "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+		LPBTCAddr:          "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		BTCRefundAddr:      "bc1qlhy39rp00e6qjpnypf6rq3dv5y7c76ue42rqwz",
+		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
+		CallFee:            types.NewWei(250),
+		PenaltyFee:         types.NewWei(5000),
+		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
+		Data:               "",
+		GasLimit:           6000000,
+		Nonce:              int64(rand.Int()),
+		Value:              types.NewWei(250),
+		AgreementTimestamp: 0,
+		TimeForDeposit:     3600,
+		LpCallTime:         3600,
+		Confirmations:      10,
+	},
+	{
+		FedBTCAddr:         "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:            "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		LPRSKAddr:          "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+		LPBTCAddr:          "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		BTCRefundAddr:      "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
+		CallFee:            types.NewWei(250),
+		PenaltyFee:         types.NewWei(5000),
+		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
+		Data:               "",
+		GasLimit:           6000000,
+		Nonce:              int64(rand.Int()),
+		Value:              types.NewWei(250),
+		AgreementTimestamp: 0,
+		TimeForDeposit:     3600,
+		LpCallTime:         3600,
+		Confirmations:      10,
+	},
+	{
+		FedBTCAddr: "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
+		LBCAddr:    "2ff74F841b95E000625b3A77fed03714874C4fEa",
+		LPRSKAddr:  "0x00d80aA033fb51F191563B08Dc035fA128e942C5",
+		LPBTCAddr:  "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
+		//BTCRefundAddr:      "bc1q7p5u4nfzkpmwy7yzu90zsd4fe7l2yv5am6l85x6x5uwz96jr3qms5m6p5k",
+		BTCRefundAddr:      "bc1qa5wkgaew2dkv56kfvj49j0av5nml45x9ek9hz6",
+		RSKRefundAddr:      "0x5F3b836CA64DA03e613887B46f71D168FC8B5Bdf",
+		CallFee:            types.NewWei(250),
+		PenaltyFee:         types.NewWei(5000),
+		ContractAddr:       "0x87136cf829edaF7c46Eb943063369a1C8D4f9085",
+		Data:               "",
+		GasLimit:           6000000,
+		Nonce:              int64(rand.Int()),
+		Value:              types.NewWei(250),
+		AgreementTimestamp: 0,
+		TimeForDeposit:     3600,
+		LpCallTime:         3600,
+		Confirmations:      10,
+	},
+	//TODO: later, provide a quote with a LPBTCAddr in bech32
+}
+
 func testNewRSKWithInvalidAddresses(t *testing.T) {
 
 	for _, tt := range invalidAddresses {
@@ -95,6 +158,28 @@ func testParseQuote(t *testing.T) {
 
 			assert.EqualValues(t, len(result.BtcRefundAddress), 21, "BtcRefundAddress should not be empty")
 			assert.EqualValues(t, len(result.LiquidityProviderBtcAddress), 21, "LiquidityProviderBtcAddress should not be empty")
+			assert.NotEmpty(t, len(result.FedBtcAddress), 20, "FedBtcAddress should not be empty")
+		}
+	}
+}
+
+func testParseQuoteBech32(t *testing.T) {
+	for _, tt := range validTests {
+		rsk, err := NewRSK(tt.input, tt.input, 10, 0, nil)
+		if err != nil {
+			t.Errorf("Unexpected error for input %v: %v", tt.input, err)
+		}
+		for _, quote := range bech32Quotes {
+			result, err := rsk.ParseQuote(quote)
+			if err != nil {
+				t.Errorf("Unexpected error parsing quote %v: %v", quote, err)
+			}
+
+			fmt.Printf("btc refund address %s", quote.BTCRefundAddr)
+			fmt.Printf("decoded array data SIZE %d\n", len(result.BtcRefundAddress))
+
+			//assert.EqualValues(t, 21, len(result.BtcRefundAddress), "BtcRefundAddress doesnt have required length")
+			assert.EqualValues(t, 21, len(result.LiquidityProviderBtcAddress), "LiquidityProviderBtcAddress doesnt have required length")
 			assert.NotEmpty(t, len(result.FedBtcAddress), 20, "FedBtcAddress should not be empty")
 		}
 	}
@@ -182,4 +267,5 @@ func TestRSKCreate(t *testing.T) {
 	t.Run("test copy btc address", testCopyBtcAddress)
 	t.Run("test copy btc address with an invalid address", testCopyBtcAddressWithAnInvalidAddress)
 	t.Run("test EOA address validation", testIsEOA)
+	t.Run("test BECH32 parse quote", testParseQuoteBech32)
 }
