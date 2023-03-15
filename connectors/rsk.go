@@ -323,6 +323,8 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxReceipt(ctx, tx)
+	log.Debug("Receipt ", s)
+	log.Debug("Err ", err)
 	if err != nil || s == nil {
 		log.Debug("Transaction hash: ", tx.Hash())
 		log.Debug("Transaction Chain ID ", tx.ChainId())
