@@ -301,6 +301,7 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
+		log.Debug("Transaction hash: ", tx.Hash())
 		return fmt.Errorf("error getting tx receipt while registering provider: %v", err)
 	}
 	return err
