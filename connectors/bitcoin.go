@@ -22,6 +22,7 @@ import (
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcutil/bech32"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -328,9 +329,21 @@ func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
 	}
 	var bts bytes.Buffer
+	log.Debug("decoded btc address data", addressBts)
+	log.Debug("decoded version address data", ver)
 	bts.WriteByte(ver)
 	bts.Write(addressBts)
 	return bts.Bytes(), nil
+}
+
+func DecodeBech32BTCAddress(address string) ([]byte, error) {
+	_, dec, err := bech32.Decode(address) // omit first argument because its always "bc"
+	if err != nil {
+		log.Error()
+		return nil, fmt.Errorf("provided BTC address is not valid and couldn't be decoded: %v", address)
+	}
+
+	return dec, err
 }
 
 func serializeTx(tx *btcutil.Tx) ([]byte, error) {
