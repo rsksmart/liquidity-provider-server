@@ -37,9 +37,9 @@ import (
 const (
 	retries    int = 3
 	rpcSleep       = 5 * time.Second
-	rpcTimeout     = 10 * time.Second
-	ethSleep       = 10 * time.Second
-	ethTimeout     = 10 * time.Minute
+	rpcTimeout     = 30 * time.Second
+	ethSleep       = 30 * time.Second
+	ethTimeout     = 30 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -644,6 +644,7 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, 
 }
 func (rsk *RSK) GetTxReceipt(ctx context.Context, tx *gethTypes.Transaction) (*gethTypes.Receipt, error) {
 	ticker := time.NewTicker(ethSleep)
+
 	for {
 		select {
 		case <-ticker.C:
