@@ -324,6 +324,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 	defer cancel()
 	s, err := rsk.GetTxReceipt(ctx, tx)
 	if err != nil || s == nil {
+		log.Debug("Transaction hash: ", tx.Hash())
 		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
 	}
 	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
