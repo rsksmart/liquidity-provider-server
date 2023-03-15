@@ -649,7 +649,8 @@ func (rsk *RSK) GetTxReceipt(ctx context.Context, tx *gethTypes.Transaction) (*g
 		case <-ticker.C:
 			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 			defer cancel()
-			r, _ := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			r, err := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			log.Debug("Geting receipt error ", err)
 			return r, nil
 		case <-ctx.Done():
 			ticker.Stop()

@@ -7,7 +7,7 @@ require (
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
-	github.com/ethereum/go-ethereum v1.11.2
+	github.com/ethereum/go-ethereum v1.11.4
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
