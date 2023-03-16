@@ -1,10 +1,12 @@
 package connectors
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
 
@@ -12,8 +14,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -307,8 +307,16 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 	return err
 }
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
-	var err error
 	var tx *gethTypes.Transaction
+
+	eventChannel := make(chan *bindings.LiquidityBridgeContractRegister)
+	subscription, err := rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel)
+	defer func() { close(eventChannel); subscription.Unsubscribe() }()
+
+	if err != nil {
+		return 0, err
+	}
+
 	for i := 0; i < retries; i++ {
 		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
 		if err == nil && tx != nil {
@@ -320,17 +328,17 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 		return 0, fmt.Errorf("error registering provider: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	s, err := rsk.GetTxReceipt(ctx, tx)
-	if err != nil || s == nil {
-		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
+	for {
+		select {
+		case event := <-eventChannel:
+			if bytes.Equal(event.From.Bytes(), opts.From.Bytes()) {
+				log.Debugf("Detected provider registration for %s", event.From.String())
+				return event.Id.Int64(), nil
+			}
+		case err = <-subscription.Err():
+			return 0, err
+		}
 	}
-	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
-	if err != nil {
-		return 0, err
-	}
-	return registerEvent.Id.Int64(), err
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
