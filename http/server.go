@@ -411,10 +411,7 @@ func (s *Server) initBtcWatchers() error {
 
 	for _, entry := range retainedQuotes {
 		quote, err := s.dbMongo.GetQuote(entry.QuoteHash)
-		if err != nil {
-			return err
-		}
-		if quote == nil {
+		if err != nil || quote == nil {
 			log.Errorf("initBtcWatchers: quote not found for hash: %s. Watcher not initialized for address %s", entry.QuoteHash, entry.DepositAddr)
 			continue
 		}
@@ -427,12 +424,13 @@ func (s *Server) initBtcWatchers() error {
 
 		signB, err := hex.DecodeString(entry.Signature)
 		if err != nil {
-			return err
+			log.Errorf("initBtcWatchers: couldn't decode signature %s for quote %s. Watcher not initialized for address %s", entry.Signature, entry.QuoteHash, entry.DepositAddr)
+			continue
 		}
 
 		err = s.addAddressWatcher(quote, entry.QuoteHash, entry.DepositAddr, signB, p, entry.State)
 		if err != nil {
-			return err
+			log.Errorf("initBtcWatchers: error initializing watcher for quote hash %s: %v", entry.QuoteHash, err)
 		}
 	}
 
