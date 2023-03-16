@@ -259,9 +259,10 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	return nil
 }
 
-type RegistrationStatus struct{
+type RegistrationStatus struct {
 	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
+
 // @Title Register Provider
 // @Description Registers New Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -303,9 +304,10 @@ type ChangeStatusRequest struct {
 	ProviderId uint64 `json:"providerId"`
 	Status     bool   `json:"status"`
 }
-type ProviderStatusChangeStatus struct{
+type ProviderStatusChangeStatus struct {
 	Status string `json:"Status" example:"Provider Updated Successfully" description:"Returned Status"`
 }
+
 // @Title Change Provider Status
 // @Description Changes the status of the provider
 // @Param  ChangeStatusRequest  body ChangeStatusRequest true "Change Provider Status Request"
@@ -413,12 +415,14 @@ func (s *Server) initBtcWatchers() error {
 			return err
 		}
 		if quote == nil {
-			return errors.New(fmt.Sprintf("initBtcWatchers: quote not found for hash: %s", entry.QuoteHash))
+			log.Errorf("initBtcWatchers: quote not found for hash: %s. Watcher not initialized for address %s", entry.QuoteHash, entry.DepositAddr)
+			continue
 		}
 
 		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
 		if p == nil {
-			return errors.New(fmt.Sprintf("initBtcWatchers: provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
+			log.Errorf("initBtcWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
+			continue
 		}
 
 		signB, err := hex.DecodeString(entry.Signature)
@@ -812,6 +816,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
