@@ -323,12 +323,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
 	defer cancel()
 	s, err := rsk.GetTxReceipt(ctx, tx)
-	log.Debug("Receipt ", s)
-	log.Debug("Err ", err)
 	if err != nil || s == nil {
-		log.Debug("Transaction hash: ", tx.Hash())
-		log.Debug("Transaction Chain ID ", tx.ChainId())
-		log.Debug("Transaction TO ", tx.To())
 		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
 	}
 	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
