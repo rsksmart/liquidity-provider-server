@@ -98,17 +98,17 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallEoaOrContractAddress string `json:"callEoaOrContractAddress" required:"" validate:"required" example:"0x0" description:"CallEoaOrContractAddress"`
-	CallContractArguments    string `json:"callContractArguments" required:"" example:"0x0" description:"CallContractArguments"`
-	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" example:"0x0" description:"ValueToTransfer"`
-	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required" example:"0x0" description:"RskRefundAddress"`
-	LpAddress                string `json:"lpAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"LpAddress"`
-	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"BitcoinRefundAddress"`
+	CallEoaOrContractAddress string `json:"callEoaOrContractAddress" required:"" validate:"required" example:"0x0" description:"Contract address or EOA address"`
+	CallContractArguments    string `json:"callContractArguments" required:"" example:"0x0" description:"Contract data"`
+	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" example:"0x0" description:"Value to send in the call"`
+	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required" example:"0x0" description:"User RSK refund address"`
+	LpAddress                string `json:"lpAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Liquidity provider RSK address"`
+	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"User Bitcoin refund address. Note: Must be a legacy address, segwit addresses are not accepted"`
 }
 
 type QuoteReturn struct {
-	Quote     *PeginQuoteDTO `json:"quote" required:""`
-	QuoteHash string         `json:"quoteHash" required:""`
+	Quote     *PeginQuoteDTO `json:"quote" required:"" description:"Detail of the quote"`
+	QuoteHash string         `json:"quoteHash" required:"" description:"This is a 64 digit number that derives from a quote object"`
 }
 
 type QuotePegOutRequest struct {
@@ -139,8 +139,8 @@ func enableCors(res *http.ResponseWriter) {
 }
 
 type acceptRes struct {
-	Signature                 string `json:"signature" required:"" example:"0x0"description:"Signature"`
-	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0"description:"BitcoinDepositAddressHash"`
+	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 
 type AcceptResPegOut struct {
@@ -669,8 +669,8 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title Pegin GetQuote
 // @Description Gets Pegin Quote
-// @Param  PeginQuoteRequest  body QuoteRequest true "Pegin Quote Request"
-// @Success  200  array QuoteReturn
+// @Param  PeginQuoteRequest  body QuoteRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success  200  array QuoteReturn The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegin/getQuote [post]
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -820,7 +820,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
-// @Success  200  object acceptRes
+// @Success  200  object acceptRes Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)

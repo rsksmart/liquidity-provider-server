@@ -14,7 +14,7 @@ type ProviderDTO struct {
 	AcceptedQuoteExpiration uint64 `json:"acceptedQuoteExpiration" required:"" example:"3600" description:"Accepted quote expiration time in seconds"`
 	MinTransactionValue     uint64 `json:"minTransactionValue" required:"" example:"100000000" description:"Minimum transaction value"`
 	MaxTransactionValue     uint64 `json:"maxTransactionValue" required:"" example:"1000000000000000000" description:"Maximum transaction value"`
-	ApiBaseUrl              string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider API base URL"`
+	ApiBaseUrl              string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider's LPS instance URL"`
 	Status                  bool   `json:"status" required:"" example:"true" description:"Provider status"`
 }
 
@@ -34,24 +34,24 @@ func toProviderDTO(provider *bindings.LiquidityBridgeContractProvider) *Provider
 }
 
 type PeginQuoteDTO struct {
-	FedBTCAddr         string `json:"fedBTCAddr" required:""`
-	LBCAddr            string `json:"lbcAddr" required:""`
-	LPRSKAddr          string `json:"lpRSKAddr" required:""`
-	BTCRefundAddr      string `json:"btcRefundAddr" required:""`
-	RSKRefundAddr      string `json:"rskRefundAddr" required:""`
-	LPBTCAddr          string `json:"lpBTCAddr" required:""`
-	CallFee            uint64 `json:"callFee" required:""`
-	PenaltyFee         uint64 `json:"penaltyFee" required:""`
-	ContractAddr       string `json:"contractAddr" required:""`
-	Data               string `json:"data" required:""`
-	GasLimit           uint32 `json:"gasLimit,omitempty" required:""`
-	Nonce              int64  `json:"nonce" required:""`
-	Value              uint64 `json:"value" required:""`
-	AgreementTimestamp uint32 `json:"agreementTimestamp" required:""`
-	TimeForDeposit     uint32 `json:"timeForDeposit" required:""`
-	LpCallTime         uint32 `json:"lpCallTime" required:""`
-	Confirmations      uint16 `json:"confirmations" required:""`
-	CallOnRegister     bool   `json:"callOnRegister" required:""`
+	FedBTCAddr         string `json:"fedBTCAddr" required:"" description:"The BTC address of the PowPeg"`
+	LBCAddr            string `json:"lbcAddr" required:"" description:"The address of the LBC"`
+	LPRSKAddr          string `json:"lpRSKAddr" required:"" description:"The RSK address of the LP"`
+	BTCRefundAddr      string `json:"btcRefundAddr" required:"" description:"A User BTC refund address"`
+	RSKRefundAddr      string `json:"rskRefundAddr" required:"" description:"A User RSK refund address"`
+	LPBTCAddr          string `json:"lpBTCAddr" required:"" description:"The BTC address of the LP"`
+	CallFee            uint64 `json:"callFee" required:"" description:"The fee charged by the LP"`
+	PenaltyFee         uint64 `json:"penaltyFee" required:"" description:"The penalty fee that the LP pays if it fails to deliver the service"`
+	ContractAddr       string `json:"contractAddr" required:"" description:"The destination address of the peg-in"`
+	Data               string `json:"data" required:"" description:"The arguments to send in the call"`
+	GasLimit           uint32 `json:"gasLimit,omitempty" required:"" description:"The gas limit"`
+	Nonce              int64  `json:"nonce" required:"" description:"A nonce that uniquely identifies this quote"`
+	Value              uint64 `json:"value" required:"" description:"The value to transfer in the call"`
+	AgreementTimestamp uint32 `json:"agreementTimestamp" required:"" description:"The timestamp of the agreement"`
+	TimeForDeposit     uint32 `json:"timeForDeposit" required:"" description:"The time (in seconds) that the user has to achieve one confirmation on the BTC deposit"`
+	LpCallTime         uint32 `json:"lpCallTime" required:"" description:"The time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations"`
+	Confirmations      uint16 `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
+	CallOnRegister     bool   `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
 }
 
 func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
