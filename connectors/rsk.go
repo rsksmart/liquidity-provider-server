@@ -36,10 +36,10 @@ import (
 
 const (
 	retries    int = 3
-	rpcSleep       = 2 * time.Second
-	rpcTimeout     = 5 * time.Second
-	ethSleep       = 5 * time.Second
-	ethTimeout     = 5 * time.Minute
+	rpcSleep       = 5 * time.Second
+	rpcTimeout     = 60 * time.Second
+	ethSleep       = 60 * time.Second
+	ethTimeout     = 60 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -301,6 +301,7 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 	defer cancel()
 	s, err := rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
+		log.Debug("Transaction hash: ", tx.Hash())
 		return fmt.Errorf("error getting tx receipt while registering provider: %v", err)
 	}
 	return err
@@ -638,12 +639,14 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, 
 }
 func (rsk *RSK) GetTxReceipt(ctx context.Context, tx *gethTypes.Transaction) (*gethTypes.Receipt, error) {
 	ticker := time.NewTicker(ethSleep)
+
 	for {
 		select {
 		case <-ticker.C:
 			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
 			defer cancel()
-			r, _ := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			r, err := rsk.c.TransactionReceipt(cctx, tx.Hash())
+			log.Debug("Geting receipt error ", err)
 			return r, nil
 		case <-ctx.Done():
 			ticker.Stop()
