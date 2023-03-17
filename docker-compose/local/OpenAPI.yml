@@ -59,40 +59,63 @@ components:
     PeginQuoteDTO:
       properties:
         agreementTimestamp:
+          description: The timestamp of the agreement
           type: integer
         btcRefundAddr:
+          description: A User BTC refund address
           type: string
         callFee:
+          description: The fee charged by the LP
           type: integer
         callOnRegister:
+          description: A boolean value indicating whether the callForUser can be called
+            on registerPegIn
           type: boolean
         confirmations:
+          description: The number of confirmations that the LP requires before making
+            the call
           type: integer
         contractAddr:
+          description: The destination address of the peg-in
           type: string
         data:
+          description: The arguments to send in the call
           type: string
         fedBTCAddr:
+          description: The BTC address of the PowPeg
           type: string
         gasLimit:
+          description: The gas limit
           type: integer
         lbcAddr:
+          description: The address of the LBC
           type: string
         lpBTCAddr:
+          description: The BTC address of the LP
           type: string
         lpCallTime:
+          description: The time (in seconds) that the LP has to perform the call on
+            behalf of the user after the deposit achieves the number of confirmations
           type: integer
         lpRSKAddr:
+          description: The RSK address of the LP
           type: string
         nonce:
+          description: A nonce that uniquely identifies this quote
           type: integer
         penaltyFee:
+          description: The penalty fee that the LP pays if it fails to deliver the
+            service
           type: integer
         rskRefundAddr:
+          description: A User RSK refund address
           type: string
         timeForDeposit:
+          description: The time (in seconds) that the user has to achieve one confirmation
+            on the BTC deposit
           type: integer
         value:
+          description: The value to transfer in the call
           type: integer
       required:
       - fedBTCAddr
@@ -121,7 +144,7 @@ components:
           example: 3600
           type: integer
         apiBaseUrl:
-          description: Provider API base URL
+          description: Provider's LPS instance URL
           example: https://api.example.com
           type: string
         fee:
@@ -256,27 +279,28 @@ components:
     QuoteRequest:
       properties:
         bitcoinRefundAddress:
-          description: BitcoinRefundAddress
+          description: 'User Bitcoin refund address. Note: Must be a legacy address,
+            segwit addresses are not accepted'
           example: "0x0"
           type: string
         callContractArguments:
-          description: CallContractArguments
+          description: Contract data
           example: "0x0"
           type: string
         callEoaOrContractAddress:
-          description: CallEoaOrContractAddress
+          description: Contract address or EOA address
           example: "0x0"
           type: string
         lpAddress:
-          description: LpAddress
+          description: Liquidity provider RSK address
           example: "0x0"
           type: string
         rskRefundAddress:
-          description: RskRefundAddress
+          description: User RSK refund address
           example: "0x0"
           type: string
         valueToTransfer:
-          description: ValueToTransfer
+          description: Value to send in the call
           example: 0
           type: integer
       required:
@@ -291,8 +315,10 @@ components:
       properties:
         quote:
           $ref: '#/components/schemas/PeginQuoteDTO'
+          description: Detail of the quote
           type: object
         quoteHash:
+          description: This is a 64 digit number that derives from a quote object
           type: string
       required:
       - quote
@@ -341,11 +367,11 @@ components:
     acceptRes:
       properties:
         bitcoinDepositAddressHash:
-          description: BitcoinDepositAddressHash
+          description: Hash of the deposit BTC address
           example: "0x0"
           type: string
         signature:
-          description: Signature
+          description: Signature of the quote
           example: "0x0"
           type: string
       required:
