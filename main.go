@@ -81,7 +81,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		AcceptedQuoteExpiration: cfg.PeginAcceptedQuoteExp,
 		MinTransactionValue:     cfg.PeginMinTransactValue,
 		MaxTransactionValue:     cfg.PeginMaxTransactValue,
-		ApiBaseUrl:              "http://localhost:8080",
+		ApiBaseUrl:              cfg.BaseURL,
 		Status:                  true,
 	}
 	err = srv.AddProvider(lp, req)
@@ -95,7 +95,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 		AcceptedQuoteExpiration: cfg.PegoutAcceptedQuoteExp,
 		MinTransactionValue:     cfg.PegoutMinTransactValue,
 		MaxTransactionValue:     cfg.PegoutMaxTransactValue,
-		ApiBaseUrl:              "http://localhost:8080",
+		ApiBaseUrl:              cfg.BaseURL,
 		Status:                  true,
 	}
 	err = srv.AddPegOutProvider(lpPegOut, req2)
