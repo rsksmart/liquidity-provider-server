@@ -24,7 +24,7 @@ type config struct {
 	PegoutAcceptedQuoteExp uint   `env:"PEGOUT_ACCEPTED_QUOTE_EXPIRATION"`
 	PegoutMinTransactValue uint   `env:"PEGOUT_MIN_TRANSACTION_VALUE"`
 	PegoutMaxTransactValue uint   `env:"PEGOUT_MAX_TRANSACTION_VALUE"`
-
+	BaseURL string   `env:"BASE_URL"`
 
 	Server struct {
 		Port uint `env:"SERVER_PORT"`
