@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
@@ -99,17 +98,17 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallEoaOrContractAddress string     `json:"callEoaOrContractAddress" validate:"required" example:"0x0 description:"CallEoaOrContractAddress"`
-	CallContractArguments    string     `json:"callContractArguments" example:"0x0 description:"CallContractArguments"`
-	ValueToTransfer          *types.Wei `json:"valueToTransfer" example:"0x0 description:"ValueToTransfer"`
-	RskRefundAddress         string     `json:"rskRefundAddress" validate:"required" example:"0x0 description:"RskRefundAddress"`
-	LpAddress                string     `json:"lpAddress" validate:"required,eth_addr" example:"0x0 description:"LpAddress"`
-	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress" validate:"required" example:"0x0 description:"BitcoinRefundAddress"`
+	CallEoaOrContractAddress string `json:"callEoaOrContractAddress" required:"" validate:"required" example:"0x0" description:"CallEoaOrContractAddress"`
+	CallContractArguments    string `json:"callContractArguments" required:"" example:"0x0" description:"CallContractArguments"`
+	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" example:"0x0" description:"ValueToTransfer"`
+	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required" example:"0x0" description:"RskRefundAddress"`
+	LpAddress                string `json:"lpAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"LpAddress"`
+	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"BitcoinRefundAddress"`
 }
 
 type QuoteReturn struct {
-	Quote     *pegin.Quote `json:"quote"`
-	QuoteHash string       `json:"quoteHash"`
+	Quote     *PeginQuoteDTO `json:"quote" required:""`
+	QuoteHash string         `json:"quoteHash" required:""`
 }
 
 type QuotePegOutRequest struct {
@@ -140,8 +139,8 @@ func enableCors(res *http.ResponseWriter) {
 }
 
 type acceptRes struct {
-	Signature                 string `json:"signature" example:"0x0 description:"Signature"`
-	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" example:"0x0 description:"BitcoinDepositAddressHash"`
+	Signature                 string `json:"signature" required:"" example:"0x0"description:"Signature"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0"description:"BitcoinDepositAddressHash"`
 }
 
 type AcceptResPegOut struct {
@@ -259,9 +258,10 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	return nil
 }
 
-type RegistrationStatus struct{
+type RegistrationStatus struct {
 	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
+
 // @Title Register Provider
 // @Description Registers New Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -303,9 +303,10 @@ type ChangeStatusRequest struct {
 	ProviderId uint64 `json:"providerId"`
 	Status     bool   `json:"status"`
 }
-type ProviderStatusChangeStatus struct{
+type ProviderStatusChangeStatus struct {
 	Status string `json:"Status" example:"Provider Updated Successfully" description:"Returned Status"`
 }
+
 // @Title Change Provider Status
 // @Description Changes the status of the provider
 // @Param  ChangeStatusRequest  body ChangeStatusRequest true "Change Provider Status Request"
@@ -627,11 +628,9 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 	return err
 }
 
-type providerList = []bindings.LiquidityBridgeContractProvider
-
 // @Title Get Providers
 // @Description Returns a list of providers.
-// @Success  200  object providerList
+// @Success  200  array ProviderDTO
 // @Route /getProviders [get]
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -644,7 +643,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
-	rp, error := s.rsk.GetProviders(providerList)
+	providers, error := s.rsk.GetProviders(providerList)
 
 	if error != nil {
 		log.Error("GetProviders - error encoding response: ", error)
@@ -653,8 +652,13 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response := make([]*ProviderDTO, 0)
+	for _, provider := range providers {
+		response = append(response, toProviderDTO(&provider))
+	}
+
 	enc := json.NewEncoder(w)
-	err := enc.Encode(&rp)
+	err := enc.Encode(&response)
 	if err != nil {
 		log.Error("error encoding registered providers list: ", err.Error())
 		customError := NewServerError("error encoding registered providers list: "+err.Error(), make(map[string]interface{}), true)
@@ -666,7 +670,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 // @Title Pegin GetQuote
 // @Description Gets Pegin Quote
 // @Param  PeginQuoteRequest  body QuoteRequest true "Pegin Quote Request"
-// @Success  200  object QuoteReturn
+// @Success  200  array QuoteReturn
 // @Route /pegin/getQuote [post]
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -690,11 +694,11 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
-	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+	if qr.ValueToTransfer > maxValueTotransfer {
 		log.Error(ErrorValueHigherThanMaxAllowed)
 		details := map[string]interface{}{
 			"maxValueTotransfer": maxValueTotransfer,
-			"valueToTransfer":    qr.ValueToTransfer.Uint64(),
+			"valueToTransfer":    qr.ValueToTransfer,
 		}
 		customError := NewServerError(ErrorValueHigherThanMaxAllowed, details, true)
 		ResponseError(w, customError, http.StatusBadRequest)
@@ -702,7 +706,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var gas uint64
-	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
+	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.CallContractArguments))
 
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
@@ -769,7 +773,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				ResponseError(w, customError, status)
 				return
 			} else {
-				quotes = append(quotes, &QuoteReturn{pq, hash})
+				quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
 			}
 		}
 	}
@@ -812,6 +816,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
@@ -950,7 +955,7 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas u
 		RSKRefundAddr: qr.RskRefundAddress,
 		ContractAddr:  qr.CallEoaOrContractAddress,
 		Data:          qr.CallContractArguments,
-		Value:         qr.ValueToTransfer.Copy(),
+		Value:         types.NewWei(int64(qr.ValueToTransfer)),
 		GasLimit:      uint32(limitGas),
 	}
 }
@@ -1186,7 +1191,7 @@ func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResp
 
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
-	customError := NewServerError(fmt.Sprintf("Error decoding request: ", err.Error()), make(Details), true)
+	customError := NewServerError(fmt.Sprintf("Error decoding request: %v", err.Error()), make(Details), true)
 	ResponseError(w, customError, http.StatusBadRequest)
 	return
 }
