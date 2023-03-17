@@ -1,6 +1,5 @@
 components:
   schemas:
-    "": {}
     AcceptResPegOut:
       properties:
         signature:
@@ -18,9 +17,6 @@ components:
           example: "0x0"
           type: string
       type: object
-    Address:
-      items: {}
-      type: array
     BuildRefundPegOutPayloadRequest:
       properties:
         btcTxHash:
@@ -60,43 +56,117 @@ components:
         status:
           type: boolean
       type: object
-    LiquidityBridgeContractProvider:
+    PeginQuoteDTO:
+      properties:
+        agreementTimestamp:
+          type: integer
+        btcRefundAddr:
+          type: string
+        callFee:
+          type: integer
+        callOnRegister:
+          type: boolean
+        confirmations:
+          type: integer
+        contractAddr:
+          type: string
+        data:
+          type: string
+        fedBTCAddr:
+          type: string
+        gasLimit:
+          type: integer
+        lbcAddr:
+          type: string
+        lpBTCAddr:
+          type: string
+        lpCallTime:
+          type: integer
+        lpRSKAddr:
+          type: string
+        nonce:
+          type: integer
+        penaltyFee:
+          type: integer
+        rskRefundAddr:
+          type: string
+        timeForDeposit:
+          type: integer
+        value:
+          type: integer
+      required:
+      - fedBTCAddr
+      - lbcAddr
+      - lpRSKAddr
+      - btcRefundAddr
+      - rskRefundAddr
+      - lpBTCAddr
+      - callFee
+      - penaltyFee
+      - contractAddr
+      - data
+      - gasLimit
+      - nonce
+      - value
+      - agreementTimestamp
+      - timeForDeposit
+      - lpCallTime
+      - confirmations
+      - callOnRegister
+      type: object
+    ProviderDTO:
       properties:
         acceptedQuoteExpiration:
           description: Accepted quote expiration time in seconds
-          example: "3600"
+          example: 3600
+          type: integer
         apiBaseUrl:
           description: Provider API base URL
           example: https://api.example.com
           type: string
         fee:
           description: Provider fee
-          example: "100000000000000000"
+          example: 100000000000000000
+          type: integer
         id:
           description: Provider id
-          example: "1"
+          example: 1
+          type: integer
         maxTransactionValue:
           description: Maximum transaction value
-          example: "1000000000000000000"
+          example: 1000000000000000000
+          type: integer
         minTransactionValue:
           description: Minimum transaction value
-          example: "100000000"
+          example: 100000000
+          type: integer
         name:
           description: Provider name
           example: Default Pegin Provider
           type: string
         provider:
           description: Provider address
-          example: invalid example
-          items: {}
-          type: array
+          example: "0x0000000000000000000000000000000000000000"
+          type: string
         quoteExpiration:
           description: Quote expiration time in seconds
-          example: "3600"
+          example: 3600
+          type: integer
         status:
           description: Provider status
           example: true
           type: boolean
+      required:
+      - id
+      - provider
+      - name
+      - fee
+      - quoteExpiration
+      - acceptedQuoteExpiration
+      - minTransactionValue
+      - maxTransactionValue
+      - apiBaseUrl
+      - status
       type: object
     ProviderRegisterRequest:
       properties:
@@ -128,40 +198,32 @@ components:
       properties:
         agreementTimestamp:
           type: integer
-        btcRefundAddr:
-          type: string
         callFee:
-          $ref: '#/components/schemas/Wei'
-        callOnRegister:
-          type: boolean
-        confirmations:
           type: integer
-        contractAddr:
-          type: string
-        data:
-          type: string
-        fedBTCAddr:
-          type: string
-        gasLimit:
+        depositConfirmations:
           type: integer
-        lbcAddr:
-          type: string
-        lpBTCAddr:
-          type: string
-        lpCallTime:
+        depositDateLimit:
           type: integer
-        lpRSKAddr:
+        expireBlocks:
+          type: integer
+        expireDate:
+          type: integer
+        lbcAddress:
+          type: string
+        liquidityProviderRskAddress:
           type: string
         nonce:
           type: integer
         penaltyFee:
-          $ref: '#/components/schemas/Wei'
-        rskRefundAddr:
+          type: integer
+        rskRefundAddress:
           type: string
-        timeForDeposit:
+        transferConfirmations:
+          type: integer
+        transferTime:
           type: integer
         value:
-          $ref: '#/components/schemas/Wei'
+          type: integer
       type: object
     QuotePegOutRequest:
       properties:
@@ -194,30 +256,47 @@ components:
     QuoteRequest:
       properties:
         bitcoinRefundAddress:
-          example: '0x0 description:'
+          description: BitcoinRefundAddress
+          example: "0x0"
           type: string
         callContractArguments:
-          example: '0x0 description:'
+          description: CallContractArguments
+          example: "0x0"
           type: string
         callEoaOrContractAddress:
-          example: '0x0 description:'
+          description: CallEoaOrContractAddress
+          example: "0x0"
           type: string
         lpAddress:
-          example: '0x0 description:'
+          description: LpAddress
+          example: "0x0"
           type: string
         rskRefundAddress:
-          example: '0x0 description:'
+          description: RskRefundAddress
+          example: "0x0"
           type: string
         valueToTransfer:
-          example: '0x0 description:'
+          description: ValueToTransfer
+          example: 0
+          type: integer
+      required:
+      - callEoaOrContractAddress
+      - callContractArguments
+      - valueToTransfer
+      - rskRefundAddress
+      - lpAddress
+      - bitcoinRefundAddress
       type: object
     QuoteReturn:
       properties:
         quote:
-          $ref: '#/components/schemas/Quote'
+          $ref: '#/components/schemas/PeginQuoteDTO'
           type: object
         quoteHash:
           type: string
+      required:
+      - quote
+      - quoteHash
       type: object
     RegistrationStatus:
       properties:
@@ -244,7 +323,6 @@ components:
           example: "0x0"
           type: string
       type: object
-    Wei: {}
     acceptReq:
       properties:
         quoteHash:
@@ -263,11 +341,16 @@ components:
     acceptRes:
       properties:
         bitcoinDepositAddressHash:
-          example: '0x0 description:'
+          description: BitcoinDepositAddressHash
+          example: "0x0"
           type: string
         signature:
-          example: '0x0 description:'
+          description: Signature
+          example: "0x0"
           type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
       type: object
     healthRes:
       properties:
@@ -287,45 +370,33 @@ components:
       properties:
         agreementTimestamp:
           type: integer
-        btcRefundAddr:
-          type: string
         callFee:
-          $ref: '#/components/schemas/Wei'
-        callOnRegister:
-          type: boolean
-        confirmations:
           type: integer
-        contractAddr:
-          type: string
-        data:
-          type: string
-        fedBTCAddr:
-          type: string
-        gasLimit:
+        depositConfirmations:
           type: integer
-        lbcAddr:
-          type: string
-        lpBTCAddr:
-          type: string
-        lpCallTime:
+        depositDateLimit:
           type: integer
-        lpRSKAddr:
+        expireBlocks:
+          type: integer
+        expireDate:
+          type: integer
+        lbcAddress:
+          type: string
+        liquidityProviderRskAddress:
           type: string
         nonce:
           type: integer
         penaltyFee:
-          $ref: '#/components/schemas/Wei'
-        rskRefundAddr:
+          type: integer
+        rskRefundAddress:
           type: string
-        timeForDeposit:
+        transferConfirmations:
+          type: integer
+        transferTime:
           type: integer
         value:
-          $ref: '#/components/schemas/Wei'
+          type: integer
       type: object
-    providerList:
-      items:
-        $ref: '#/components/schemas/LiquidityBridgeContractProvider'
-      type: array
     services:
       properties:
         btc:
@@ -335,7 +406,6 @@ components:
         rsk:
           type: string
       type: object
-    types.Wei: {}
   securitySchemes:
     AuthorizationHeader:
       description: Input your token
@@ -371,7 +441,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/providerList'
+                $ref: '#/components/schemas/ProviderDTO'
           description: ""
       summary: Get Providers
   /health:
