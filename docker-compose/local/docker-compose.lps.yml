@@ -9,6 +9,7 @@ services:
     image: lps:latest
     container_name: lps01
     environment:
+      - BASE_URL
       - PEGIN_PROVIDER_NAME
       - PEGIN_FEE
       - PEGIN_QUOTE_EXPIRATION
