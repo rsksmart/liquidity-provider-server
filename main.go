@@ -60,7 +60,7 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
 	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
@@ -75,21 +75,30 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
-		Name:                    "Default Provider",
-		Fee:                     10,
-		QuoteExpiration:         10,
-		AcceptedQuoteExpiration: 100,
-		MinTransactionValue:     100,
-		MaxTransactionValue:     120,
-		ApiBaseUrl:              "http://localhost:8080",
+		Name:                    cfg.PeginProviderName,
+		Fee:                     cfg.PeginFee,
+		QuoteExpiration:         cfg.PeginQuoteExp,
+		AcceptedQuoteExpiration: cfg.PeginAcceptedQuoteExp,
+		MinTransactionValue:     cfg.PeginMinTransactValue,
+		MaxTransactionValue:     cfg.PeginMaxTransactValue,
+		ApiBaseUrl:              cfg.BaseURL,
 		Status:                  true,
 	}
 	err = srv.AddProvider(lp, req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
-
-	err = srv.AddPegOutProvider(lpPegOut, req)
+	req2 := types.ProviderRegisterRequest{
+		Name:                    cfg.PegoutProviderName,
+		Fee:                     cfg.PegoutFee,
+		QuoteExpiration:         cfg.PegoutQuoteExp,
+		AcceptedQuoteExpiration: cfg.PegoutAcceptedQuoteExp,
+		MinTransactionValue:     cfg.PegoutMinTransactValue,
+		MaxTransactionValue:     cfg.PegoutMaxTransactValue,
+		ApiBaseUrl:              cfg.BaseURL,
+		Status:                  true,
+	}
+	err = srv.AddPegOutProvider(lpPegOut, req2)
 
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
@@ -104,6 +113,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 
 		if err != nil {
 			log.Error("server error: ", err.Error())
+			endChannel <- syscall.SIGTERM
 		}
 	}()
 }
@@ -155,7 +165,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, dbMongo)
+	startServer(rsk, btc, dbMongo, done)
 
 	<-done
 
