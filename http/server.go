@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	//"github.com/rsksmart/liquidity-provider-server/response"
 
 	//"github.com/rsksmart/liquidity-provider-server/response"
@@ -367,9 +366,12 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
+	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
+	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
 	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
+	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -416,7 +418,7 @@ func (s *Server) initBtcWatchers() error {
 			continue
 		}
 
-		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+		p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 		if p == nil {
 			log.Errorf("initBtcWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
 			continue
@@ -913,7 +915,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -979,15 +981,6 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 		return nil, nil, nil, err
 	}
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
-}
-
-func getProviderByAddress(liquidityProviders []pegin.LiquidityProvider, addr string) (ret pegin.LiquidityProvider) {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
-	}
-	return nil
 }
 
 func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, addr string) (ret pegout.LiquidityProvider) {
@@ -1189,7 +1182,7 @@ func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResp
 
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
-	customError := NewServerError(fmt.Sprintf("Error decoding request: ", err.Error()), make(Details), true)
+	customError := NewServerError(fmt.Sprintf("Error decoding request: %s", err.Error()), make(Details), true)
 	ResponseError(w, customError, http.StatusBadRequest)
 	return
 }
@@ -1439,15 +1432,10 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == payload.LpRskAddress {
-			lp = provider
-		}
-	}
+	lp := pegin.GetPeginProviderByAddress(s.providers, payload.LpRskAddress)
 	if lp == nil {
-		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
-		ResponseError(w, customError, http.StatusConflict)
+		customError := NewServerError("missing liquidity provider", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
 		return
 	}
 
@@ -1493,4 +1481,112 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JsonResponse(w, http.StatusOK, &response)
+}
+
+type WithdrawCollateralRequest struct {
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+}
+
+// @Title Withdraw Collateral
+// @Description Withdraw Collateral of a resigned LP
+// @Param  WithdrawCollateralRequest  body WithdrawCollateralRequest true "Withdraw Collateral Request"
+// @Route /withdrawCollateral [post]
+// @Success 204 object
+func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	payload := WithdrawCollateralRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	if err := s.rsk.WithdrawCollateral(opts); err != nil && errors.Is(err, connectors.WithdrawCollateralError) {
+		customError := NewServerError(fmt.Sprintf("%s, please complete resign proccess first", err.Error()), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type GetCollateralResponse struct {
+	Collateral uint64 `json:"collateral"`
+}
+
+// @Title Get Collateral
+// @Description Get Collateral
+// @Param address path  string  true  "Liquidity provider address"
+// @Success  200  object GetCollateralResponse
+// @Route /collateral/{address} [get]
+func (s *Server) getCollateralHandler(w http.ResponseWriter, request *http.Request) {
+	address := request.URL.Query().Get("address")
+	collateral, _, err := s.rsk.GetCollateral(address)
+
+	var e *connectors.AddressError
+	if err != nil && errors.As(err, &e) {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else if collateral.Uint64() == 0 {
+		customError := NewServerError("no collateral found", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+	} else {
+		response := &GetCollateralResponse{Collateral: collateral.Uint64()}
+		JsonResponse(w, http.StatusOK, response)
+	}
+}
+
+type ProviderResignRequest struct {
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+}
+
+// @Title Provider resignation
+// @Description Provider stops being a liquidity provider
+// @Param  ProviderResignRequest  body ProviderResignRequest true "Provider Resignation Request"
+// @Route /provider/resignation [post]
+// @Success 204 object
+func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	payload := ProviderResignRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	err = s.rsk.Resign(opts)
+	if err != nil && errors.Is(err, connectors.ProviderResignError) {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
