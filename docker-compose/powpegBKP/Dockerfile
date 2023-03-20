@@ -23,19 +23,18 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys A6DBEAC640
 
 FROM --platform=linux/amd64 openjdk:8-jdk as runner
 
-ARG UID=1000
 ARG HOME="/home/powpeg"
-RUN useradd -m -u "$UID" --home="$HOME" powpeg
+RUN useradd -m -u 1000 --home="$HOME" powpeg
 
-COPY --from=builder --chown="$UID" "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
+COPY --from=builder --chown=1000 "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
 
-COPY --chown="$UID" reg1.key "$HOME/reg1.key"
-COPY --chown="$UID" regtest-fed.conf "$HOME/regtest-fed.conf"
+COPY --chown=1000 reg1.key "$HOME/reg1.key"
+COPY --chown=1000 regtest-fed.conf "$HOME/regtest-fed.conf"
 
 RUN chmod 400 "$HOME/reg1.key"
 
-RUN mkdir -p "$HOME/.powpeg"; chown "$UID" "$HOME/.powpeg"
-RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+RUN mkdir -p "$HOME/.powpeg"; chown 1000 "$HOME/.powpeg"
+RUN mkdir -p "$HOME/logs"; chown 1000 "$HOME/logs"
 
 WORKDIR "$HOME"
 

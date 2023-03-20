@@ -22,14 +22,13 @@ COPY mongo ./mongo
 
 RUN go build -o /usr/local/bin/liquidity-provider-server
 
-ARG UID=1000
 ARG HOME="/home/lps"
-RUN adduser -u "$UID" --home="$HOME" lps -D lps
+RUN adduser -u 1000 --home="$HOME" lps -D lps
 
 COPY --chown=lps "docker-compose/lps/start.sh" "$HOME/"
 
-RUN mkdir -p "$HOME/db"; chown "$UID" "$HOME/db"
-RUN mkdir -p "$HOME/logs"; chown "$UID" "$HOME/logs"
+RUN mkdir -p "$HOME/db"; chown 1000 "$HOME/db"
+RUN mkdir -p "$HOME/logs"; chown 1000 "$HOME/logs"
 
 WORKDIR "$HOME"
 
