@@ -60,8 +60,8 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(dbMongo, rsk,btc)
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
+	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
 	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
@@ -113,6 +113,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 
 		if err != nil {
 			log.Error("server error: ", err.Error())
+			endChannel <- syscall.SIGTERM
 		}
 	}()
 }
@@ -164,7 +165,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, dbMongo)
+	startServer(rsk, btc, dbMongo, done)
 
 	<-done
 
