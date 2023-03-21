@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	//"github.com/rsksmart/liquidity-provider-server/response"
 
 	//"github.com/rsksmart/liquidity-provider-server/response"
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
@@ -99,17 +97,17 @@ type Server struct {
 }
 
 type QuoteRequest struct {
-	CallEoaOrContractAddress string     `json:"callEoaOrContractAddress" validate:"required" example:"0x0 description:"CallEoaOrContractAddress"`
-	CallContractArguments    string     `json:"callContractArguments" example:"0x0 description:"CallContractArguments"`
-	ValueToTransfer          *types.Wei `json:"valueToTransfer" example:"0x0 description:"ValueToTransfer"`
-	RskRefundAddress         string     `json:"rskRefundAddress" validate:"required" example:"0x0 description:"RskRefundAddress"`
-	LpAddress                string     `json:"lpAddress" validate:"required,eth_addr" example:"0x0 description:"LpAddress"`
-	BitcoinRefundAddress     string     `json:"bitcoinRefundAddress" validate:"required" example:"0x0 description:"BitcoinRefundAddress"`
+	CallEoaOrContractAddress string `json:"callEoaOrContractAddress" required:"" validate:"required" example:"0x0" description:"Contract address or EOA address"`
+	CallContractArguments    string `json:"callContractArguments" required:"" example:"0x0" description:"Contract data"`
+	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" example:"0x0" description:"Value to send in the call"`
+	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required" example:"0x0" description:"User RSK refund address"`
+	LpAddress                string `json:"lpAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Liquidity provider RSK address"`
+	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"User Bitcoin refund address. Note: Must be a legacy address, segwit addresses are not accepted"`
 }
 
 type QuoteReturn struct {
-	Quote     *pegin.Quote `json:"quote"`
-	QuoteHash string       `json:"quoteHash"`
+	Quote     *PeginQuoteDTO `json:"quote" required:"" description:"Detail of the quote"`
+	QuoteHash string         `json:"quoteHash" required:"" description:"This is a 64 digit number that derives from a quote object"`
 }
 
 type QuotePegOutRequest struct {
@@ -140,8 +138,8 @@ func enableCors(res *http.ResponseWriter) {
 }
 
 type acceptRes struct {
-	Signature                 string `json:"signature" example:"0x0 description:"Signature"`
-	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" example:"0x0 description:"BitcoinDepositAddressHash"`
+	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 
 type AcceptResPegOut struct {
@@ -259,9 +257,10 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	return nil
 }
 
-type RegistrationStatus struct{
+type RegistrationStatus struct {
 	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
+
 // @Title Register Provider
 // @Description Registers New Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -303,9 +302,10 @@ type ChangeStatusRequest struct {
 	ProviderId uint64 `json:"providerId"`
 	Status     bool   `json:"status"`
 }
-type ProviderStatusChangeStatus struct{
+type ProviderStatusChangeStatus struct {
 	Status string `json:"Status" example:"Provider Updated Successfully" description:"Returned Status"`
 }
+
 // @Title Change Provider Status
 // @Description Changes the status of the provider
 // @Param  ChangeStatusRequest  body ChangeStatusRequest true "Change Provider Status Request"
@@ -365,9 +365,12 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
 	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
+	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
+	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
 	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
+	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -409,26 +412,26 @@ func (s *Server) initBtcWatchers() error {
 
 	for _, entry := range retainedQuotes {
 		quote, err := s.dbMongo.GetQuote(entry.QuoteHash)
-		if err != nil {
-			return err
-		}
-		if quote == nil {
-			return errors.New(fmt.Sprintf("initBtcWatchers: quote not found for hash: %s", entry.QuoteHash))
+		if err != nil || quote == nil {
+			log.Errorf("initBtcWatchers: quote not found for hash: %s. Watcher not initialized for address %s", entry.QuoteHash, entry.DepositAddr)
+			continue
 		}
 
-		p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+		p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 		if p == nil {
-			return errors.New(fmt.Sprintf("initBtcWatchers: provider not found for LPRSKAddr: %s", quote.LPRSKAddr))
+			log.Errorf("initBtcWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
+			continue
 		}
 
 		signB, err := hex.DecodeString(entry.Signature)
 		if err != nil {
-			return err
+			log.Errorf("initBtcWatchers: couldn't decode signature %s for quote %s. Watcher not initialized for address %s", entry.Signature, entry.QuoteHash, entry.DepositAddr)
+			continue
 		}
 
 		err = s.addAddressWatcher(quote, entry.QuoteHash, entry.DepositAddr, signB, p, entry.State)
 		if err != nil {
-			return err
+			log.Errorf("initBtcWatchers: error initializing watcher for quote hash %s: %v", entry.QuoteHash, err)
 		}
 	}
 
@@ -627,11 +630,9 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 	return err
 }
 
-type providerList = []bindings.LiquidityBridgeContractProvider
-
 // @Title Get Providers
 // @Description Returns a list of providers.
-// @Success  200  object providerList
+// @Success  200  array ProviderDTO
 // @Route /getProviders [get]
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -644,7 +645,7 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
-	rp, error := s.rsk.GetProviders(providerList)
+	providers, error := s.rsk.GetProviders(providerList)
 
 	if error != nil {
 		log.Error("GetProviders - error encoding response: ", error)
@@ -653,8 +654,13 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response := make([]*ProviderDTO, 0)
+	for _, provider := range providers {
+		response = append(response, toProviderDTO(&provider))
+	}
+
 	enc := json.NewEncoder(w)
-	err := enc.Encode(&rp)
+	err := enc.Encode(&response)
 	if err != nil {
 		log.Error("error encoding registered providers list: ", err.Error())
 		customError := NewServerError("error encoding registered providers list: "+err.Error(), make(map[string]interface{}), true)
@@ -665,8 +671,8 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title Pegin GetQuote
 // @Description Gets Pegin Quote
-// @Param  PeginQuoteRequest  body QuoteRequest true "Pegin Quote Request"
-// @Success  200  object QuoteReturn
+// @Param  PeginQuoteRequest  body QuoteRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success  200  array QuoteReturn The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegin/getQuote [post]
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -690,11 +696,11 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
 	}
 
-	if qr.ValueToTransfer.Uint64() > maxValueTotransfer {
+	if qr.ValueToTransfer > maxValueTotransfer {
 		log.Error(ErrorValueHigherThanMaxAllowed)
 		details := map[string]interface{}{
 			"maxValueTotransfer": maxValueTotransfer,
-			"valueToTransfer":    qr.ValueToTransfer.Uint64(),
+			"valueToTransfer":    qr.ValueToTransfer,
 		}
 		customError := NewServerError(ErrorValueHigherThanMaxAllowed, details, true)
 		ResponseError(w, customError, http.StatusBadRequest)
@@ -702,7 +708,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var gas uint64
-	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, qr.ValueToTransfer.Copy().AsBigInt(), []byte(qr.CallContractArguments))
+	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.CallContractArguments))
 
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
@@ -769,7 +775,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				ResponseError(w, customError, status)
 				return
 			} else {
-				quotes = append(quotes, &QuoteReturn{pq, hash})
+				quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
 			}
 		}
 	}
@@ -812,10 +818,11 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 // @Title Accept Quote
 // @Description Accepts Quote
 // @Param  QuoteHash  body acceptReq true "Quote Hash"
-// @Success  200  object acceptRes
+// @Success  200  object acceptRes Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -910,7 +917,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := getProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -950,7 +957,7 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas u
 		RSKRefundAddr: qr.RskRefundAddress,
 		ContractAddr:  qr.CallEoaOrContractAddress,
 		Data:          qr.CallContractArguments,
-		Value:         qr.ValueToTransfer.Copy(),
+		Value:         types.NewWei(int64(qr.ValueToTransfer)),
 		GasLimit:      uint32(limitGas),
 	}
 }
@@ -976,15 +983,6 @@ func decodeAddresses(btcRefundAddr string, lpBTCAddr string, lbcAddr string) ([]
 		return nil, nil, nil, err
 	}
 	return btcRefAddrB, lpBTCAddrB, lbcAddrB, nil
-}
-
-func getProviderByAddress(liquidityProviders []pegin.LiquidityProvider, addr string) (ret pegin.LiquidityProvider) {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
-	}
-	return nil
 }
 
 func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, addr string) (ret pegout.LiquidityProvider) {
@@ -1186,7 +1184,7 @@ func buildResponseGetQuotePegOut(w http.ResponseWriter, quotes []QuotePegOutResp
 
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
-	customError := NewServerError(fmt.Sprintf("Error decoding request: ", err.Error()), make(Details), true)
+	customError := NewServerError(fmt.Sprintf("Error decoding request: %s", err.Error()), make(Details), true)
 	ResponseError(w, customError, http.StatusBadRequest)
 	return
 }
@@ -1436,15 +1434,10 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == payload.LpRskAddress {
-			lp = provider
-		}
-	}
+	lp := pegin.GetPeginProviderByAddress(s.providers, payload.LpRskAddress)
 	if lp == nil {
-		customError := NewServerError("Liquidity Provider not registered", make(Details), true)
-		ResponseError(w, customError, http.StatusConflict)
+		customError := NewServerError("missing liquidity provider", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
 		return
 	}
 
@@ -1490,4 +1483,112 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JsonResponse(w, http.StatusOK, &response)
+}
+
+type WithdrawCollateralRequest struct {
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+}
+
+// @Title Withdraw Collateral
+// @Description Withdraw Collateral of a resigned LP
+// @Param  WithdrawCollateralRequest  body WithdrawCollateralRequest true "Withdraw Collateral Request"
+// @Route /withdrawCollateral [post]
+// @Success 204 object
+func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	payload := WithdrawCollateralRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	if err := s.rsk.WithdrawCollateral(opts); err != nil && errors.Is(err, connectors.WithdrawCollateralError) {
+		customError := NewServerError(fmt.Sprintf("%s, please complete resign proccess first", err.Error()), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type GetCollateralResponse struct {
+	Collateral uint64 `json:"collateral"`
+}
+
+// @Title Get Collateral
+// @Description Get Collateral
+// @Param address path  string  true  "Liquidity provider address"
+// @Success  200  object GetCollateralResponse
+// @Route /collateral/{address} [get]
+func (s *Server) getCollateralHandler(w http.ResponseWriter, request *http.Request) {
+	address := request.URL.Query().Get("address")
+	collateral, _, err := s.rsk.GetCollateral(address)
+
+	var e *connectors.AddressError
+	if err != nil && errors.As(err, &e) {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else if collateral.Uint64() == 0 {
+		customError := NewServerError("no collateral found", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+	} else {
+		response := &GetCollateralResponse{Collateral: collateral.Uint64()}
+		JsonResponse(w, http.StatusOK, response)
+	}
+}
+
+type ProviderResignRequest struct {
+	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
+}
+
+// @Title Provider resignation
+// @Description Provider stops being a liquidity provider
+// @Param  ProviderResignRequest  body ProviderResignRequest true "Provider Resignation Request"
+// @Route /provider/resignation [post]
+// @Success 204 object
+func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	payload := ProviderResignRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	err = s.rsk.Resign(opts)
+	if err != nil && errors.Is(err, connectors.ProviderResignError) {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusConflict)
+	} else if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
 }

@@ -49,16 +49,16 @@ type LiquidityBridgeContractPegOutQuote struct {
 
 // LiquidityBridgeContractProvider is an auto generated low-level Go binding around an user-defined struct.
 type LiquidityBridgeContractProvider struct {
-	Id                      *big.Int `json:"id" example:"1" description:"Provider id"`
-	Provider                common.Address `json:"provider" example:"0x0000000000000000000000000000000000000000" description:"Provider address"`
-	Name                    string `json:"name" example:"Default Pegin Provider" description:"Provider name"`
-	Fee                     *big.Int `json:"fee" example:"100000000000000000" description:"Provider fee"`
-	QuoteExpiration         *big.Int `json:"quoteExpiration" example:"3600" description:"Quote expiration time in seconds"`
-	AcceptedQuoteExpiration *big.Int `json:"acceptedQuoteExpiration" example:"3600" description:"Accepted quote expiration time in seconds"`
-	MinTransactionValue     *big.Int `json:"minTransactionValue" example:"100000000" description:"Minimum transaction value"`
-	MaxTransactionValue     *big.Int `json:"maxTransactionValue" example:"1000000000000000000" description:"Maximum transaction value"`
-	ApiBaseUrl              string `json:"apiBaseUrl" example:"https://api.example.com" description:"Provider API base URL"`
-	Status                  bool `json:"status" example:"true" description:"Provider status"`
+	Id                      *big.Int
+	Provider                common.Address
+	Name                    string
+	Fee                     *big.Int
+	QuoteExpiration         *big.Int
+	AcceptedQuoteExpiration *big.Int
+	MinTransactionValue     *big.Int
+	MaxTransactionValue     *big.Int
+	ApiBaseUrl              string
+	Status                  bool
 }
 
 // LiquidityBridgeContractQuote is an auto generated low-level Go binding around an user-defined struct.

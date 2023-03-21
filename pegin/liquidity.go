@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"math/rand"
 	"os"
@@ -289,4 +290,24 @@ func sortedConfirmations(m map[int]uint16) []int {
 	}
 	sort.Ints(keys)
 	return keys
+}
+
+func GetPeginProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
+	for _, p := range liquidityProviders {
+		if p.Address() == addr {
+			return p
+		}
+	}
+	return nil
+}
+
+func GetPeginProviderTransactOpts(liquidityProviders []LiquidityProvider, address string) (*bind.TransactOpts, error) {
+	lp := GetPeginProviderByAddress(liquidityProviders, address)
+	if lp == nil {
+		return nil, errors.New("missing liquidity provider")
+	}
+	return &bind.TransactOpts{
+		From:   common.HexToAddress(address),
+		Signer: lp.SignTx,
+	}, nil
 }
