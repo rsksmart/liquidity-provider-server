@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -52,7 +51,7 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, uint64, *big.Int) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
@@ -91,7 +90,7 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *big.Int) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -100,20 +99,21 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 	res.TransferConfirmations = lp.cfg.TransferConfirmations
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
-	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
+	res.ExpireBlock = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
 	res.PenaltyFee = lp.cfg.PenaltyFee.Uint64()
+	res.LpBTCAddr = lp.cfg.BtcAddr
 
 	res.DepositConfirmations = lp.cfg.MaxConf
 	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
 		v := lp.cfg.Confirmations[k]
 
-		if res.Value < uint64(k) {
+		if res.Value.Uint64() < uint64(k) {
 			res.DepositConfirmations = v
 			break
 		}
 	}
 	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
-	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64())).Uint64()
+	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64()))
 	return &res, nil
 }
 

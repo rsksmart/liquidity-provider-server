@@ -296,7 +296,7 @@ func (r *RegisterPegoutWatcher) OnRegisterPegOut(newState types.RQState) {
 
 	if newState == types.RQStateCallForUserSucceeded {
 		if newState != r.state {
-			txHash, err := r.btc.SendBTC(r.derivationAddress, uint(r.quote.Value))
+			txHash, err := r.btc.SendBTC(r.derivationAddress, uint(r.quote.Value.Uint64()))
 			if err != nil {
 				log.Errorf("Error to send %v BTC to %v of quote hash %v", r.derivationAddress, r.quote.Value, r.hash)
 				log.Errorf("Error: %v", err)
