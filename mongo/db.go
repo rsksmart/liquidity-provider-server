@@ -30,7 +30,7 @@ type DBConnector interface {
 	DeleteExpiredQuotes(expTimestamp int64) error
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
-	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
+	InsertPegOutQuote(id string, q *pegout.Quote) error
 	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
 	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
@@ -69,9 +69,8 @@ type PeginQuote struct {
 }
 
 type PegoutQuote struct {
-	Hash              string        `bson:"quotehash,omitempty"`
-	DerivationAddress string        `bson:"derivationAddress,omitempty"`
-	Quote             *pegout.Quote `bson:"quote,omitempty"`
+	Hash  string        `bson:"quotehash,omitempty"`
+	Quote *pegout.Quote `bson:"quote,omitempty"`
 }
 
 type RetainedPeginQuote struct {
@@ -406,14 +405,13 @@ func (db *DB) GetProviders() ([]int64, error) {
 	}
 	return results, nil
 }
-func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote) error {
 	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")
 
 	quoteToInsert := &PegoutQuote{
-		Hash:              id,
-		DerivationAddress: derivationAddress,
-		Quote:             q,
+		Hash:  id,
+		Quote: q,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToInsert)
