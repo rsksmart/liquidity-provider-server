@@ -547,7 +547,7 @@ func testGetProviders(t *testing.T) {
 	}
 
 	mongoDb.On("GetProviders").Return([]int64{}, nil)
-	rsk.On("GetProviders", mock.Anything).Return([]bindings.LiquidityBridgeContractProvider{}, nil)
+	rsk.On("GetProviders", mock.Anything).Return([]bindings.LiquidityBridgeContractLiquidityProvider{}, nil)
 	srv.getProvidersHandler(&w, req)
 
 	assert.EqualValues(t, "application/json", w.Header().Get("Content-Type"))
