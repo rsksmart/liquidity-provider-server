@@ -18,7 +18,7 @@ type ProviderDTO struct {
 	Status                  bool   `json:"status" required:"" example:"true" description:"Provider status"`
 }
 
-func toProviderDTO(provider *bindings.LiquidityBridgeContractProvider) *ProviderDTO {
+func toProviderDTO(provider *bindings.LiquidityBridgeContractLiquidityProvider) *ProviderDTO {
 	return &ProviderDTO{
 		Id:                      provider.Id.Uint64(),
 		Provider:                provider.Provider.Hex(),
