@@ -54,7 +54,7 @@ const ErrorRequestedAmountBelowBridgeMin = "requested amount below bridge's min 
 const ErrorGetQuoteFailed = "error getting specified quote"
 const ErrorEncodingQuotesList = "error encoding quote list for response"
 const ErrorBadBodyRequest = "Body of the request is wrong: "
-const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas"
+const ErrorEstimatingGas = "Error on RSK Network, couldnt estimate gas price"
 const ErrorValueHigherThanMaxAllowed = "value to transfer is higher than max allowed"
 const ErrorStoringProviderQuote = "Error storing the quote on server"
 const ErrorFetchingMongoDBProviders = "Error Fetching Providers from MongoDB: "
@@ -719,8 +719,8 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	price, err := s.rsk.GasPrice()
 	if err != nil {
-		log.Error(ErrorEstimatingGas+" price", err.Error())
-		customError := NewServerError(ErrorEstimatingGas+" price", make(map[string]interface{}), true)
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
