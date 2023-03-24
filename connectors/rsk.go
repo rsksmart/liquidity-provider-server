@@ -97,7 +97,7 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
+	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActiveRedeemScript() ([]byte, error)
 	IsEOA(address string) (bool, error)
@@ -880,24 +880,24 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
-	if err := copyHex(q.LPRSKAddr, pq.LiquidityProviderRskAddress[:]); err != nil {
+	if err := copyHex(q.LPRSKAddr, pq.LpRskAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
 	}
 	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 
-	pq.Fee = q.CallFee
-	pq.PenaltyFee = q.PenaltyFee
+	pq.CallFee = q.CallFee.AsBigInt()
+	pq.PenaltyFee = types.NewWei(int64(q.PenaltyFee)).AsBigInt()
 	pq.Nonce = q.Nonce
-	pq.ValueToTransfer = q.Value
+	pq.Value = q.Value.AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
 	pq.DepositDateLimit = q.DepositDateLimit
 	pq.DepositConfirmations = q.DepositConfirmations
 	pq.TransferConfirmations = q.TransferConfirmations
 	pq.TransferTime = q.TransferTime
 	pq.ExpireDate = q.ExpireDate
-	pq.ExpireBlocks = q.ExpireBlocks
+	pq.ExpireBlock = q.ExpireBlock
 
 	return pq, nil
 }
@@ -1044,7 +1044,7 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
+func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))
 	for i, p := range providerList {
