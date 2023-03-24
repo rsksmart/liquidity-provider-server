@@ -181,9 +181,9 @@ func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
+func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	args := m.Called(providerList)
-	return args.Get(0).([]bindings.LiquidityBridgeContractProvider), args.Error(1)
+	return args.Get(0).([]bindings.LiquidityBridgeContractLiquidityProvider), args.Error(1)
 }
 
 func (m *RskMock) GetRskHeight() (uint64, error) {
