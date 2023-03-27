@@ -6,7 +6,7 @@ RUN apt-get update -y && \
 WORKDIR /code/powpeg
 
 ARG POWPEG_RELEASE="HOP"
-ARG POWPEG_VERSION="4.0.0.0"
+ARG POWPEG_VERSION="4.3.0.1"
 
 RUN gitrev="${POWPEG_RELEASE}-${POWPEG_VERSION}" && \
     git init && \
@@ -30,6 +30,7 @@ COPY --from=builder --chown=1000 "/code/powpeg/build/libs/federate-node-*-all.ja
 
 COPY --chown=1000 reg1.key "$HOME/reg1.key"
 COPY --chown=1000 regtest-fed.conf "$HOME/regtest-fed.conf"
+COPY --chown=1000 regtest-fed.conf "/etc/rsk/node.conf"
 
 RUN chmod 400 "$HOME/reg1.key"
 

@@ -1,5 +1,26 @@
 version: "3"
 services:
+  powpeg:
+    build:
+      context: ../powpeg
+      args:
+        UID: "${LPS_UID}"
+    image: powpeg:latest
+    container_name: powpeg01
+    ports:
+      - "4450:4450"
+    volumes:
+      - ${POWPEG_HOME:-./volumes/powpeg}/db:/home/powpeg/.rsk
+      - ${POWPEG_HOME:-./volumes/powpeg}/logs:/home/powpeg/logs
+    networks:
+      - net_lps
+    depends_on:
+      rskj:
+        condition: service_healthy
+      bitcoind:
+        condition: service_healthy
+    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.http.hosts.0=localhost",
+               "-Drpc.providers.web.http.hosts.1=powpeg", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest"]
   bitcoind:
     build:
       context: ../bitcoind
@@ -33,8 +54,8 @@ services:
       - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
-    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
-  
+    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true",
+               "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar","-Drsk.conf.file=rsk.conf", "co.rsk.Start", "--${LPS_STAGE}" ]
   mongodb:
     image: mongo:4
     restart: on-failure
