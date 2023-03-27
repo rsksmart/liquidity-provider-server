@@ -6,7 +6,7 @@ ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
 ENV BITCOIN_VERSION=$BITCOIN_VERSION
 ENV BITCOIN_DOWNLOAD_FILENAME=$BITCOIN_DOWNLOAD_FILENAME
 
-RUN apt-get update && apt-get install -y wget gnupg2
+RUN apt-get update && apt-get install -y wget gnupg2 curl
 
 RUN wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
     && wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME \
@@ -24,3 +24,7 @@ RUN mkdir -p "$HOME/.bitcoin"; chown 1000 "$HOME/.bitcoin"
 WORKDIR "$HOME"
 
 USER bitcoin
+
+HEALTHCHECK --start-period=15s --retries=5 --interval=20s \
+    CMD curl -s "http://127.0.0.1:5555" -X POST --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" \
+        -d '{"jsonrpc": "1.0", "method": "getnetworkinfo", "params": [], "id":"1"}' | grep "\"result\":{" || exit 1
