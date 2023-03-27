@@ -55,6 +55,8 @@ type ProviderConfig struct {
 	CallTime       uint32         `env:"CALL_TIME"`
 	CallFee        *types.Wei     `env:"CALL_FEE"`
 	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
+	KeySecret      string         `env:"KEY_SECRET"`
+	PasswordSecret string         `env:"PASSWORD_SECRET"`
 }
 
 func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {

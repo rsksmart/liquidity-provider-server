@@ -43,7 +43,7 @@ func (provider *localAccountProvider) GetAccount() (*RSKAccount, error) {
 	}
 
 	ks := keystore.NewKeyStore(provider.keyDir, keystore.StandardScryptN, keystore.StandardScryptP)
-	if account, err := retrieveOrCreateAccount(ks, provider.accountNum, f); err != nil {
+	if account, err := provider.retrieveOrCreateAccount(ks, provider.accountNum, f); err != nil {
 		return nil, err
 	} else {
 		return &RSKAccount{
@@ -53,17 +53,17 @@ func (provider *localAccountProvider) GetAccount() (*RSKAccount, error) {
 	}
 }
 
-func retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File) (*accounts.Account, error) {
+func (provider *localAccountProvider) retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File) (*accounts.Account, error) {
 	if cap(ks.Accounts()) == 0 {
 		log.Info("no RSK account found")
-		acc, err := createAccount(ks, in)
+		acc, err := provider.createAccount(ks, in)
 		return acc, err
 	} else {
 		if cap(ks.Accounts()) <= accountNum {
 			return nil, fmt.Errorf("account number %v not found", accountNum)
 		}
 		acc := ks.Accounts()[accountNum]
-		passwd, err := enterPasswd(in)
+		passwd, err := provider.enterPasswd(in)
 
 		if err != nil {
 			return nil, err
@@ -73,8 +73,8 @@ func retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File)
 	}
 }
 
-func createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error) {
-	passwd, err := createPasswd(in)
+func (provider *localAccountProvider) createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error) {
+	passwd, err := provider.createPasswd(in)
 
 	if err != nil {
 		return nil, err
@@ -93,21 +93,21 @@ func createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error
 	return &acc, err
 }
 
-func enterPasswd(in *os.File) (string, error) {
+func (provider *localAccountProvider) enterPasswd(in *os.File) (string, error) {
 	fmt.Println("enter password for RSK account")
 	fmt.Print("password: ")
 	var pwd string
 	var err error
 	if in == nil {
-		pwd, err = readPasswdCons(nil)
+		pwd, err = provider.readPasswdCons(nil)
 	} else {
-		pwd, err = readPasswdReader(bufio.NewReader(in))
+		pwd, err = provider.readPasswdReader(bufio.NewReader(in))
 	}
 	fmt.Println()
 	return pwd, err
 }
 
-func createPasswd(in *os.File) (string, error) {
+func (provider *localAccountProvider) createPasswd(in *os.File) (string, error) {
 	fmt.Println("creating password for new RSK account")
 	fmt.Println("WARNING: the account will be lost forever if you forget this password!!! Do you understand? (yes/[no])")
 
@@ -115,10 +115,10 @@ func createPasswd(in *os.File) (string, error) {
 	var readPasswd func(*bufio.Reader) (string, error)
 	if in == nil {
 		r = bufio.NewReader(os.Stdin)
-		readPasswd = readPasswdCons
+		readPasswd = provider.readPasswdCons
 	} else {
 		r = bufio.NewReader(in)
-		readPasswd = readPasswdReader
+		readPasswd = provider.readPasswdReader
 	}
 
 	str, _ := r.ReadString('\n')
@@ -144,12 +144,12 @@ func createPasswd(in *os.File) (string, error) {
 	return pwd1, nil
 }
 
-func readPasswdCons(_ *bufio.Reader) (string, error) {
+func (provider *localAccountProvider) readPasswdCons(_ *bufio.Reader) (string, error) {
 	pass, err := term.ReadPassword(syscall.Stdin)
 	return string(pass), err
 }
 
-func readPasswdReader(r *bufio.Reader) (string, error) {
+func (provider *localAccountProvider) readPasswdReader(r *bufio.Reader) (string, error) {
 	str, err := r.ReadString('\n')
 	if err != nil {
 		return "", err
