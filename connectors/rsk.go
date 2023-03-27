@@ -641,7 +641,7 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 		}
 		time.Sleep(rpcSleep)
 	}
-	if tx == nil && err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
 	}
 	return t, nil
