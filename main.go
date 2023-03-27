@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/account"
 	"math/big"
 	"math/rand"
 	"os"
@@ -62,7 +63,8 @@ func initLogger() {
 
 func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
-	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
+	accountProvider := account.NewLocalAccountProvider(cfg.Provider.Keydir, cfg.Provider.PwdFile, cfg.Provider.AccountNum)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository, accountProvider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
