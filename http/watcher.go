@@ -65,7 +65,7 @@ type RegisterPegoutWatcher struct {
 }
 
 const (
-	pegInGasLim           = 250000
+	pegInGasLim           = 1500000
 	CFUExtraGas           = 150000
 	WatcherClosedError    = "watcher is closed; cannot handle OnNewConfirmation; hash: %v"
 	WatcherOnExpireError  = "watcher is closed; cannot handle OnExpire; hash: %v"
@@ -226,6 +226,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
 	}
+
 	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
 		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
