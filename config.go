@@ -16,14 +16,14 @@ type config struct {
 	PeginFee		     uint  	  `env:"PEGIN_FEE"`
 	PeginQuoteExp	     uint  	  `env:"PEGIN_QUOTE_EXPIRATION"`
 	PeginAcceptedQuoteExp uint    `env:"PEGIN_ACCEPTED_QUOTE_EXPIRATION"`
-	PeginMinTransactValue uint    `env:"PEGIN_MIN_TRANSACTION_VALUE"`
-	PeginMaxTransactValue uint    `env:"PEGIN_MAX_TRANSACTION_VALUE"`
+	PeginMinTransactValue uint64    `env:"PEGIN_MIN_TRANSACTION_VALUE"`
+	PeginMaxTransactValue uint64   `env:"PEGIN_MAX_TRANSACTION_VALUE"`
 	PegoutProviderName    string  `env:"PEGOUT_PROVIDER_NAME"`
 	PegoutFee		      uint    `env:"PEGOUT_FEE"`
 	PegoutQuoteExp	      uint    `env:"PEGOUT_QUOTE_EXPIRATION"`
 	PegoutAcceptedQuoteExp uint   `env:"PEGOUT_ACCEPTED_QUOTE_EXPIRATION"`
-	PegoutMinTransactValue uint   `env:"PEGOUT_MIN_TRANSACTION_VALUE"`
-	PegoutMaxTransactValue uint   `env:"PEGOUT_MAX_TRANSACTION_VALUE"`
+	PegoutMinTransactValue uint64   `env:"PEGOUT_MIN_TRANSACTION_VALUE"`
+	PegoutMaxTransactValue uint64   `env:"PEGOUT_MAX_TRANSACTION_VALUE"`
 	BaseURL string   `env:"BASE_URL"`
 
 	Server struct {
