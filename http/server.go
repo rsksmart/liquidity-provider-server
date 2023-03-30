@@ -1352,7 +1352,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -1363,7 +1363,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
 	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
-	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
+	reqLiq := gasCost.Uint64() + quote.Value.Uint64()
 	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
