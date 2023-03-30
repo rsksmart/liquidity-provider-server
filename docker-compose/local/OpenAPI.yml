@@ -360,8 +360,8 @@ components:
     QuotePegOutResponse:
       properties:
         quote:
+          $ref: '#/components/schemas/PegoutQuoteDTO'
           description: Quote
-          example: invalid example
           type: object
         quoteHash:
           description: QuoteHash
