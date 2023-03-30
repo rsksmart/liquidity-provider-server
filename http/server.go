@@ -115,19 +115,19 @@ type QuoteReturn struct {
 }
 
 type QuotePegOutRequest struct {
-	To                   string `json:"to" Bitcoin address that will receive the BTC amount`
-	ValueToTransfer      uint64 `json:"valueToTransfer" example:"10000000000000" description:"ValueToTransfer"`
-	RskRefundAddress     string `json:"rskRefundAddress" example:"0x0 description:"RskRefundAddress"`
-	BitcoinRefundAddress string `json:"bitcoinRefundAddress" example:"0x0 description:"BitcoinRefundAddress"`
+	To                   string `json:"to" required:"" description:"Bitcoin address that will receive the BTC amount"`
+	ValueToTransfer      uint64 `json:"valueToTransfer" required:"" example:"10000000000000" description:"ValueToTransfer"`
+	RskRefundAddress     string `json:"rskRefundAddress" required:"" example:"0x0" description:"RskRefundAddress"`
+	BitcoinRefundAddress string `json:"bitcoinRefundAddress" required:"" example:"0x0" description:"BitcoinRefundAddress"`
 }
 
 type QuotePegOutResponse struct {
-	Quote     *pegout.Quote `json:"quote" example:"0x0 description:"Quote"`
-	QuoteHash string        `json:"quoteHash" example:"0x0 description:"QuoteHash"`
+	Quote     *pegout.Quote `json:"quote" required:"" example:"0x0" description:"Quote"`
+	QuoteHash string        `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
 type acceptReq struct {
-	QuoteHash string `json:"quoteHash" example:"0x0 description:"QuoteHash"`
+	QuoteHash string `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
 func enableCors(res *http.ResponseWriter) {
@@ -150,20 +150,7 @@ type acceptResPegOut struct {
 }
 
 type AcceptResPegOut struct {
-	Signature string `json:"signature" example:"0x0 description:"Signature"`
-}
-
-type acceptReqPegout struct {
-	QuoteHash         string `json:"quoteHash" example:"0x0 description:"QuoteHash"`
-	DerivationAddress string `json:"derivationAddress" example:"0x0 description:"DerivationAddress"`
-}
-
-type pegOutQuoteReq struct {
-	Quote *pegout.Quote `json:"quote"`
-}
-
-type pegOutQuoteResponse struct {
-	QuoteHash string `json:"quoteHash"`
+	Signature string `json:"signature" required:"" example:"0x0" description:"Signature"`
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig) Server {
@@ -826,11 +813,11 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// @Title Pegin GetQuote
-// @Description Gets Pegin Quote
-// @Param  PeginQuoteRequest  body QuoteRequest true "Interface with parameters for computing possible quotes for the service"
-// @Success  200  array QuoteReturn The quote structure defines the conditions of a service, and acts as a contract between users and LPs
-// @Route /pegin/getQuote [post]
+// @Title Pegout GetQuote
+// @Description Gets Pegout Quote
+// @Param PegoutQuoteRequest body QuotePegOutRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success 200 array QuotePegOutResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
+// @Route /pegout/getQuotes [post]
 func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	qr := QuotePegOutRequest{}
@@ -1270,8 +1257,8 @@ func generateRskEthereumAddress() ([]byte, []byte, string, error) {
 
 // @Title Accept Quote Pegout
 // @Description Accepts Quote Pegout
-// @Param  QuoteHash  body acceptReqPegout true "Quote Hash"
-// @Success  200  object AcceptResPegOut
+// @Param  QuoteHash  body acceptReq true "Quote Hash"
+// @Success 200 object acceptResPegOut
 // @Route /pegout/acceptQuote [post]
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
