@@ -122,7 +122,7 @@ type QuotePegOutRequest struct {
 }
 
 type QuotePegOutResponse struct {
-	Quote     *PegoutQuoteDTO `json:"quote" required:"" example:"0x0" description:"Quote"`
+	Quote     *PegoutQuoteDTO `json:"quote" required:"" description:"Quote"`
 	QuoteHash string          `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
