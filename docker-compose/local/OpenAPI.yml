@@ -1,11 +1,5 @@
 components:
   schemas:
-    AcceptResPegOut:
-      properties:
-        signature:
-          example: '0x0 description:'
-          type: string
-      type: object
     AddCollateralRequest:
       properties:
         amount:
@@ -199,20 +193,36 @@ components:
     ProviderRegisterRequest:
       properties:
         acceptedQuoteExpiration:
+          description: Accepted quote expiration in seconds
+          example: 100
           type: integer
         apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
           type: string
         fee:
+          description: Fee in wei
+          example: 100
           type: integer
         maxTransactionValue:
+          description: Maximum transaction value in wei
+          example: 100
           type: integer
         minTransactionValue:
+          description: Minimum transaction value in wei
+          example: 100
           type: integer
         name:
+          description: Provider Name
+          example: New Provider
           type: string
         quoteExpiration:
+          description: Quote expiration in seconds
+          example: 100
           type: integer
         status:
+          description: Provider status
+          example: true
           type: boolean
       type: object
     ProviderResignRequest:
@@ -231,8 +241,12 @@ components:
       properties:
         agreementTimestamp:
           type: integer
+        btcRefundAddress:
+          type: string
         callFee:
-          type: integer
+          $ref: '#/components/schemas/Wei'
+        depositAddr:
+          type: string
         depositConfirmations:
           type: integer
         depositDateLimit:
@@ -241,9 +255,13 @@ components:
           type: integer
         expireDate:
           type: integer
+        gasLimit:
+          type: integer
         lbcAddress:
           type: string
         liquidityProviderRskAddress:
+          type: string
+        lpBtcAddr:
           type: string
         nonce:
           type: integer
@@ -256,35 +274,44 @@ components:
         transferTime:
           type: integer
         value:
-          type: integer
+          $ref: '#/components/schemas/Wei'
       type: object
     QuotePegOutRequest:
       properties:
         bitcoinRefundAddress:
-          example: '0x0 description:'
-          type: string
-        from:
-          example: '0x0 description:'
+          description: BitcoinRefundAddress
+          example: "0x0"
           type: string
         rskRefundAddress:
-          example: '0x0 description:'
+          description: RskRefundAddress
+          example: "0x0"
+          type: string
+        to:
+          description: Bitcoin address that will receive the BTC amount
           type: string
         valueToTransfer:
           description: ValueToTransfer
           example: 10000000000000
           type: integer
+      required:
+      - to
+      - valueToTransfer
+      - rskRefundAddress
+      - bitcoinRefundAddress
       type: object
     QuotePegOutResponse:
       properties:
-        derivationAddress:
-          example: '0x0 description:'
-          type: string
         quote:
+          description: Quote
           example: invalid example
           type: object
         quoteHash:
-          example: '0x0 description:'
+          description: QuoteHash
+          example: "0x0"
           type: string
+      required:
+      - quote
+      - quoteHash
       type: object
     QuoteRequest:
       properties:
@@ -359,6 +386,7 @@ components:
           example: "0x0"
           type: string
       type: object
+    Wei: {}
     WithdrawCollateralRequest:
       properties:
         lpRskAddress:
@@ -367,17 +395,11 @@ components:
     acceptReq:
       properties:
         quoteHash:
-          example: '0x0 description:'
+          description: QuoteHash
+          example: "0x0"
           type: string
-      type: object
-    acceptReqPegout:
-      properties:
-        derivationAddress:
-          example: '0x0 description:'
-          type: string
-        quoteHash:
-          example: '0x0 description:'
-          type: string
+      required:
+      - quoteHash
       type: object
     acceptRes:
       properties:
@@ -392,6 +414,20 @@ components:
       required:
       - signature
       - bitcoinDepositAddressHash
+      type: object
+    acceptResPegOut:
+      properties:
+        rskDepositAddress:
+          description: Hash of the deposit RSK address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - rskDepositAddress
       type: object
     healthRes:
       properties:
@@ -411,8 +447,12 @@ components:
       properties:
         agreementTimestamp:
           type: integer
+        btcRefundAddress:
+          type: string
         callFee:
-          type: integer
+          $ref: '#/components/schemas/Wei'
+        depositAddr:
+          type: string
         depositConfirmations:
           type: integer
         depositDateLimit:
@@ -421,9 +461,13 @@ components:
           type: integer
         expireDate:
           type: integer
+        gasLimit:
+          type: integer
         lbcAddress:
           type: string
         liquidityProviderRskAddress:
+          type: string
+        lpBtcAddr:
           type: string
         nonce:
           type: integer
@@ -436,7 +480,7 @@ components:
         transferTime:
           type: integer
         value:
-          type: integer
+          $ref: '#/components/schemas/Wei'
       type: object
     services:
       properties:
@@ -447,6 +491,7 @@ components:
         rsk:
           type: string
       type: object
+    types.Wei: {}
   securitySchemes:
     AuthorizationHeader:
       description: Input your token
@@ -557,14 +602,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/acceptReqPegout'
+              $ref: '#/components/schemas/acceptReq'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AcceptResPegOut'
+                $ref: '#/components/schemas/acceptResPegOut'
           description: ""
       summary: Accept Quote Pegout
   /pegout/getQuotes:
