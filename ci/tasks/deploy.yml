@@ -24,7 +24,7 @@ run:
   - |
     out_message_file=$(pwd)/out/message.txt
 
-    cd liquidity-provider-server
+    cd repo-liquidity-provider-server
     git checkout master
     cd ..
 
@@ -44,4 +44,3 @@ run:
     cd repo-iac-ng/ansible
 
     ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
-
