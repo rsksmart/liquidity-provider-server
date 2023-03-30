@@ -24,7 +24,7 @@ run:
   - |
     out_message_file=$(pwd)/out/message.txt
     apk add -q --no-progress openssh ansible gnupg git
-    
+
     cd repo-liquidity-provider-server
     git checkout master
     cd ..
@@ -41,5 +41,6 @@ run:
     ssh-add $ssh_deploy_keyfile
 
     cd repo-iac-ng/ansible
+    git checkout main
 
     ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
