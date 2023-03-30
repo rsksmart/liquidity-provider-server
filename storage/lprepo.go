@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 )
 
 type LPRepository struct {
@@ -73,5 +74,5 @@ func (r *LPRepository) HasLiquidityPegOut(satoshis uint64) (bool, error) {
 		return false, err
 	}
 
-	return new(big.Int).Sub(lpBalance, big.NewInt(int64(lockedLiquidity))).Cmp(big.NewInt(int64(satoshis))) >= 0, nil
+	return new(big.Int).Sub(lpBalance.Mul(big.NewInt(int64(10000000000)), lpBalance), big.NewInt(int64(lockedLiquidity))).Cmp(big.NewInt(int64(satoshis))) >= 0, nil
 }

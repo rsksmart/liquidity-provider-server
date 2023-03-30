@@ -90,6 +90,15 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 	return &lp, nil
 }
 
+func GetPegoutProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
+	for _, p := range liquidityProviders {
+		if p.Address() == addr {
+			return p
+		}
+	}
+	return nil
+}
+
 func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
