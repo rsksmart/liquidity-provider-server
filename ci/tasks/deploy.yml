@@ -27,6 +27,7 @@ run:
 
     cd repo-liquidity-provider-server
     git checkout master
+    git pull origin master
     cd ..
 
     echo "Liquidity-provider-server deployment to mainnet" > $out_message_file
@@ -42,5 +43,6 @@ run:
 
     cd repo-iac-ng/ansible
     git checkout main
+    git pull origin main
 
     ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
