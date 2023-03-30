@@ -122,8 +122,8 @@ type QuotePegOutRequest struct {
 }
 
 type QuotePegOutResponse struct {
-	Quote     *pegout.Quote `json:"quote" required:"" example:"0x0" description:"Quote"`
-	QuoteHash string        `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
+	Quote     *PegoutQuoteDTO `json:"quote" required:"" example:"0x0" description:"Quote"`
+	QuoteHash string          `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
 type acceptReq struct {
@@ -918,7 +918,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 				ResponseError(w, customError, status)
 				return
 			} else {
-				quotes = append(quotes, &QuotePegOutResponse{pq, hash})
+				quotes = append(quotes, &QuotePegOutResponse{toPegoutQuote(pq), hash})
 			}
 		}
 	}

@@ -136,6 +136,64 @@ components:
       - confirmations
       - callOnRegister
       type: object
+    PegoutQuoteDTO:
+      properties:
+        agreementTimestamp:
+          type: integer
+        btcRefundAddress:
+          type: string
+        callFee:
+          type: integer
+        depositAddr:
+          type: string
+        depositConfirmations:
+          type: integer
+        depositDateLimit:
+          type: integer
+        expireBlocks:
+          type: integer
+        expireDate:
+          type: integer
+        gasLimit:
+          type: integer
+        lbcAddress:
+          type: string
+        liquidityProviderRskAddress:
+          type: string
+        lpBtcAddr:
+          type: string
+        nonce:
+          type: integer
+        penaltyFee:
+          type: integer
+        rskRefundAddress:
+          type: string
+        transferConfirmations:
+          type: integer
+        transferTime:
+          type: integer
+        value:
+          type: integer
+      required:
+      - lbcAddress
+      - liquidityProviderRskAddress
+      - btcRefundAddress
+      - rskRefundAddress
+      - lpBtcAddr
+      - callFee
+      - penaltyFee
+      - nonce
+      - depositAddr
+      - gasLimit
+      - value
+      - agreementTimestamp
+      - depositDateLimit
+      - depositConfirmations
+      - transferConfirmations
+      - transferTime
+      - expireDate
+      - expireBlocks
+      type: object
     ProviderDTO:
       properties:
         acceptedQuoteExpiration:
@@ -442,45 +500,6 @@ components:
           description: Overall LPS Health Status
           example: ok
           type: string
-      type: object
-    pegout.Quote:
-      properties:
-        agreementTimestamp:
-          type: integer
-        btcRefundAddress:
-          type: string
-        callFee:
-          $ref: '#/components/schemas/Wei'
-        depositAddr:
-          type: string
-        depositConfirmations:
-          type: integer
-        depositDateLimit:
-          type: integer
-        expireBlocks:
-          type: integer
-        expireDate:
-          type: integer
-        gasLimit:
-          type: integer
-        lbcAddress:
-          type: string
-        liquidityProviderRskAddress:
-          type: string
-        lpBtcAddr:
-          type: string
-        nonce:
-          type: integer
-        penaltyFee:
-          type: integer
-        rskRefundAddress:
-          type: string
-        transferConfirmations:
-          type: integer
-        transferTime:
-          type: integer
-        value:
-          $ref: '#/components/schemas/Wei'
       type: object
     services:
       properties:
