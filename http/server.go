@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/account"
 
 	//"github.com/rsksmart/liquidity-provider-server/response"
 
@@ -98,6 +99,7 @@ type Server struct {
 	cfgData             ConfigData
 	ProviderRespository *storage.LPRepository
 	ProviderConfig      pegin.ProviderConfig
+	AccountProvider     account.AccountProvider
 }
 
 type QuoteRequest struct {
@@ -166,11 +168,13 @@ type pegOutQuoteResponse struct {
 	QuoteHash string `json:"quoteHash"`
 }
 
-func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig) Server {
-	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig)
+func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData,
+	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider)
 }
 
-func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time, cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig) Server {
+func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time,
+	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
 	return Server{
 		rsk:                 rsk,
 		btc:                 btc,
@@ -184,6 +188,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		cfgData:             cfgData,
 		ProviderRespository: LPRep,
 		ProviderConfig:      ProviderConfig,
+		AccountProvider:     accountProvider,
 	}
 }
 
@@ -284,7 +289,7 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
-	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository)
+	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository, s.AccountProvider)
 	if err != nil {
 		log.Error(ErrorCreatingLocalProvider, err)
 		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
