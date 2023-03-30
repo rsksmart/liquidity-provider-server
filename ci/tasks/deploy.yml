@@ -23,7 +23,8 @@ run:
   - -ceux
   - |
     out_message_file=$(pwd)/out/message.txt
-
+    apk add -q --no-progress openssh ansible gnupg git
+    
     cd repo-liquidity-provider-server
     git checkout master
     cd ..
@@ -35,8 +36,6 @@ run:
     umask 077
     echo "$SSH_DEPLOY_KEY" > $ssh_deploy_keyfile
     umask 022
-
-    apk add -q --no-progress openssh ansible gnupg git
     
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile
