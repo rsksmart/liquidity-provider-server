@@ -852,7 +852,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var gas uint64
-	gas, err = s.rsk.EstimateGas(qr.BitcoinRefundAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(nil))
+	gas, err = s.rsk.EstimateGas(qr.To, big.NewInt(int64(qr.ValueToTransfer)), []byte(nil))
 
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
