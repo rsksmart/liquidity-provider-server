@@ -21,7 +21,7 @@ jobs:
         run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh build
 
       - name: Setting LPS environment up...
-        run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh up && sleep 15
+        run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh up && sleep 300
 
       - name: Checking LPS health...
         run: docker ps && curl -X GET http://localhost:8080/health

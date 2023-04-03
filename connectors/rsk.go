@@ -44,6 +44,23 @@ const (
 	newAccountGasCost = uint64(25000)
 )
 
+var (
+	WithdrawCollateralError = errors.New("withdraw collateral error")
+	ProviderResignError     = errors.New("provider has already resigned")
+)
+
+type AddressError struct {
+	address string
+}
+
+func (e *AddressError) Error() string {
+	return fmt.Sprintf("invalid address: %s", e.address)
+}
+
+func NewInvalidAddressError(address string) error {
+	return &AddressError{address: address}
+}
+
 type QuotePegOutWatcher interface {
 	OnRegisterPegOut(newState types.RQState)
 	OnExpire()
@@ -80,11 +97,13 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
+	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActiveRedeemScript() ([]byte, error)
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
+	WithdrawCollateral(opts *bind.TransactOpts) error
+	Resign(opts *bind.TransactOpts) error
 }
 
 type RSKClient interface {
@@ -253,7 +272,7 @@ func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
 
 func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	if !common.IsHexAddress(addr) {
-		return nil, nil, fmt.Errorf("invalid address: %v", addr)
+		return nil, nil, NewInvalidAddressError(addr)
 	}
 	a := common.HexToAddress(addr)
 	var (
@@ -630,7 +649,7 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 		}
 		time.Sleep(rpcSleep)
 	}
-	if tx == nil && err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
 	}
 	return t, nil
@@ -869,24 +888,24 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
-	if err := copyHex(q.LPRSKAddr, pq.LiquidityProviderRskAddress[:]); err != nil {
+	if err := copyHex(q.LPRSKAddr, pq.LpRskAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
 	}
 	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
 
-	pq.Fee = q.CallFee
-	pq.PenaltyFee = q.PenaltyFee
+	pq.CallFee = q.CallFee.AsBigInt()
+	pq.PenaltyFee = types.NewWei(int64(q.PenaltyFee)).AsBigInt()
 	pq.Nonce = q.Nonce
-	pq.ValueToTransfer = q.Value
+	pq.Value = q.Value.AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
 	pq.DepositDateLimit = q.DepositDateLimit
 	pq.DepositConfirmations = q.DepositConfirmations
 	pq.TransferConfirmations = q.TransferConfirmations
 	pq.TransferTime = q.TransferTime
 	pq.ExpireDate = q.ExpireDate
-	pq.ExpireBlocks = q.ExpireBlocks
+	pq.ExpireBlock = q.ExpireBlock
 
 	return pq, nil
 }
@@ -1033,7 +1052,7 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
+func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))
 	for i, p := range providerList {
@@ -1045,4 +1064,43 @@ func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeCo
 	}
 
 	return providers, err
+}
+
+func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.WithdrawCollateral(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+
+	if err != nil {
+		return err
+	} else if !status {
+		return WithdrawCollateralError
+	} else {
+		return nil
+	}
+}
+
+func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.Resign(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+	if err != nil {
+		return err
+	} else if !status {
+		return ProviderResignError
+	} else {
+		return nil
+	}
 }
