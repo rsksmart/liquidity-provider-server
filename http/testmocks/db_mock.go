@@ -92,7 +92,7 @@ func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
 	return new(types.Wei), nil
 }
 
-func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote) error {
 	return nil
 }
 
