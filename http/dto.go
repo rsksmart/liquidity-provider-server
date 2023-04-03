@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 )
 
 type ProviderDTO struct {
@@ -74,5 +75,49 @@ func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
 		LpCallTime:         quote.LpCallTime,
 		Confirmations:      quote.Confirmations,
 		CallOnRegister:     quote.CallOnRegister,
+	}
+}
+
+type PegoutQuoteDTO struct {
+	LBCAddr               string `json:"lbcAddress" required:"" validate:"required"`
+	LPRSKAddr             string `json:"liquidityProviderRskAddress" required:"" validate:"required"`
+	BtcRefundAddr         string `json:"btcRefundAddress" required:"" validate:"required"`
+	RSKRefundAddr         string `json:"rskRefundAddress" required:"" validate:"required"`
+	LpBTCAddr             string `json:"lpBtcAddr" required:"" validate:"required"`
+	CallFee               uint64 `json:"callFee" required:"" validate:"required"`
+	PenaltyFee            uint64 `json:"penaltyFee" required:"" validate:"required"`
+	Nonce                 int64  `json:"nonce" required:"" validate:"required"`
+	DepositAddr           string `json:"depositAddr" required:"" validate:"required"`
+	GasLimit              uint32 `json:"gasLimit" required:"" validate:"required"`
+	Value                 uint64 `json:"value" required:"" validate:"required"`
+	AgreementTimestamp    uint32 `json:"agreementTimestamp" required:"" validate:"required"`
+	DepositDateLimit      uint32 `json:"depositDateLimit" required:"" validate:"required"`
+	DepositConfirmations  uint16 `json:"depositConfirmations" required:"" validate:"required"`
+	TransferConfirmations uint16 `json:"transferConfirmations" required:"" validate:"required"`
+	TransferTime          uint32 `json:"transferTime" required:"" validate:"required"`
+	ExpireDate            uint32 `json:"expireDate" required:"" validate:"required"`
+	ExpireBlock           uint32 `json:"expireBlocks" required:"" validate:"required"`
+}
+
+func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
+	return &PegoutQuoteDTO{
+		LBCAddr:               quote.LBCAddr,
+		LPRSKAddr:             quote.LPRSKAddr,
+		BtcRefundAddr:         quote.BtcRefundAddr,
+		RSKRefundAddr:         quote.RSKRefundAddr,
+		LpBTCAddr:             quote.LpBTCAddr,
+		CallFee:               quote.CallFee.Uint64(),
+		PenaltyFee:            quote.PenaltyFee,
+		Nonce:                 quote.Nonce,
+		DepositAddr:           quote.DepositAddr,
+		GasLimit:              quote.GasLimit,
+		Value:                 quote.Value.Uint64(),
+		AgreementTimestamp:    quote.AgreementTimestamp,
+		DepositDateLimit:      quote.DepositDateLimit,
+		DepositConfirmations:  quote.DepositConfirmations,
+		TransferConfirmations: quote.TransferConfirmations,
+		TransferTime:          quote.TransferTime,
+		ExpireDate:            quote.ExpireDate,
+		ExpireBlock:           quote.ExpireBlock,
 	}
 }

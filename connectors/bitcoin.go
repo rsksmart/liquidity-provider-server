@@ -325,10 +325,20 @@ func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte
 
 func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
-	if err != nil {
-		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
-	}
 	var bts bytes.Buffer
+	if err != nil {
+		hrp, data, err := bech32.Decode(address)
+		if err != nil{
+			return nil, fmt.Errorf("the provider address is not a valid Bech32 or base58 encoded address. address: %v", address)
+		}
+		if hrp != "tb" && hrp != "bc" {
+			return nil, fmt.Errorf("the provider address is not a valid Bitcoin address. address: %v", address)
+		}
+		log.Debug("decoded btc address data", addressBts)
+		log.Debug("decoded version address data", data)
+		bts.Write(addressBts)
+		return bts.Bytes(), nil
+	}
 	log.Debug("decoded btc address data", addressBts)
 	log.Debug("decoded version address data", ver)
 	bts.WriteByte(ver)
