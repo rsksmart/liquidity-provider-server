@@ -23,7 +23,7 @@ run:
   - -ceux
   - |
     out_message_file=$(pwd)/out/message.txt
-    apk add -q --no-progress openssh ansible gnupg git jq
+    apk add -q --no-progress openssh ansible gnupg git jq curl
 
     cd repo-liquidity-provider-server
     mkdir -p ~/.ssh/
