@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/rsksmart/liquidity-provider-server/account"
 
 	//"github.com/rsksmart/liquidity-provider-server/response"
@@ -528,6 +529,7 @@ func (s *Server) addAddressWatcherToVerifyRegisterPegOut(quote *pegout.Quote, ha
 		quote:             quote,
 		state:             state,
 		signature:         signB,
+		dbMongo:           s.dbMongo,
 		done:              make(chan struct{}),
 		sharedLocker:      &s.sharedWatcherMu,
 		derivationAddress: derivationAddress,
