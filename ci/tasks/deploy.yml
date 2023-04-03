@@ -24,14 +24,13 @@ run:
   - |
     out_message_file=$(pwd)/out/message.txt
     apk add -q --no-progress openssh ansible gnupg git jq curl
-
-    cd repo-liquidity-provider-server
     mkdir -p ~/.ssh/
     touch ~/.ssh/known_hosts
     ssh-keygen -R github.com
     curl -L https://api.github.com/meta | jq -r '.ssh_keys | .[]' | sed -e 's/^/github.com /' >> ~/.ssh/known_hosts
+
+    cd repo-liquidity-provider-server
     git checkout master
-    git pull origin master
     cd ..
 
     echo "Liquidity-provider-server deployment to mainnet" > $out_message_file
@@ -47,6 +46,5 @@ run:
 
     cd repo-iac-ng/ansible
     git checkout main
-    git pull origin main
 
     ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
