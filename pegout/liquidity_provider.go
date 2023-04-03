@@ -1,18 +1,13 @@
 package pegout
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
-	"math/big"
+	"github.com/rsksmart/liquidity-provider-server/account"
 	"math/rand"
-	"os"
 	"sort"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -22,8 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider/types"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/term"
 )
 
 type LocalProvider struct {
@@ -52,46 +45,36 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, uint64, *big.Int) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 }
 
-func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository) (*LocalProvider, error) {
-	if config.Keydir == "" {
-		config.Keydir = "keystore"
-	}
-	if err := os.MkdirAll(config.Keydir, 0700); err != nil {
-		return nil, err
-	}
-	var f *os.File
-	if config.PwdFile != "" {
-		var err error
-		f, err = os.Open(config.PwdFile)
-		if err != nil {
-			return nil, fmt.Errorf("error opening file: %v", config.PwdFile)
-		}
-		defer func(f *os.File) {
-			_ = f.Close()
-		}(f)
-	}
-
-	ks := keystore.NewKeyStore(config.Keydir, keystore.StandardScryptN, keystore.StandardScryptP)
-	acc, err := retrieveOrCreateAccount(ks, config.AccountNum, f)
+func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
+	acc, err := accountProvider.GetAccount()
 
 	if err != nil {
 		return nil, err
 	}
 	lp := LocalProvider{
-		account:    acc,
-		ks:         ks,
+		account:    acc.Account,
+		ks:         acc.Keystore,
 		cfg:        config,
 		repository: repository,
 	}
 	return &lp, nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *big.Int) (*Quote, error) {
+func GetPegoutProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
+	for _, p := range liquidityProviders {
+		if p.Address() == addr {
+			return p
+		}
+	}
+	return nil
+}
+
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -100,20 +83,21 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 	res.TransferConfirmations = lp.cfg.TransferConfirmations
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
-	res.ExpireBlocks = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
+	res.ExpireBlock = lp.cfg.ExpireBlocks + uint32(rskLastBlockNumber)
 	res.PenaltyFee = lp.cfg.PenaltyFee.Uint64()
+	res.LpBTCAddr = lp.cfg.BtcAddr
 
 	res.DepositConfirmations = lp.cfg.MaxConf
 	for _, k := range sortedConfirmations(lp.cfg.Confirmations) {
 		v := lp.cfg.Confirmations[k]
 
-		if res.Value < uint64(k) {
+		if res.Value.Uint64() < uint64(k) {
 			res.DepositConfirmations = v
 			break
 		}
 	}
 	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
-	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64())).Uint64()
+	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64()))
 	return &res, nil
 }
 
@@ -184,108 +168,4 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
 	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
-}
-
-func createPasswd(in *os.File) (string, error) {
-	fmt.Println("creating password for new RSK account")
-	fmt.Println("WARNING: the account will be lost forever if you forget this password!!! Do you understand? (yes/[no])")
-
-	var r *bufio.Reader
-	var readPasswd func(*bufio.Reader) (string, error)
-	if in == nil {
-		r = bufio.NewReader(os.Stdin)
-		readPasswd = readPasswdCons
-	} else {
-		r = bufio.NewReader(in)
-		readPasswd = readPasswdReader
-	}
-
-	str, _ := r.ReadString('\n')
-	if str != "yes\n" {
-		return "", errors.New("must say yes")
-	}
-	fmt.Print("password: ")
-	pwd1, err := readPasswd(r)
-	fmt.Println()
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Print("repeat password: ")
-	pwd2, err := readPasswd(r)
-	fmt.Println()
-	if err != nil {
-		return "", err
-	}
-	if pwd1 != pwd2 {
-		return "", errors.New("passwords do not match")
-	}
-	return pwd1, nil
-}
-
-func createAccount(ks *keystore.KeyStore, in *os.File) (*accounts.Account, error) {
-	passwd, err := createPasswd(in)
-
-	if err != nil {
-		return nil, err
-	}
-	acc, err := ks.NewAccount(passwd)
-
-	if err != nil {
-		return &acc, err
-	}
-	err = ks.Unlock(acc, passwd)
-
-	if err != nil {
-		return &acc, err
-	}
-	log.Info("new account created: ", acc.Address)
-	return &acc, err
-}
-
-func readPasswdCons(_ *bufio.Reader) (string, error) {
-	pass, err := term.ReadPassword(syscall.Stdin)
-	return string(pass), err
-}
-
-func readPasswdReader(r *bufio.Reader) (string, error) {
-	str, err := r.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	return strings.Trim(str, "\n"), nil
-}
-
-func enterPasswd(in *os.File) (string, error) {
-	fmt.Println("enter password for RSK account")
-	fmt.Print("password: ")
-	var pwd string
-	var err error
-	if in == nil {
-		pwd, err = readPasswdCons(nil)
-	} else {
-		pwd, err = readPasswdReader(bufio.NewReader(in))
-	}
-	fmt.Println()
-	return pwd, err
-}
-
-func retrieveOrCreateAccount(ks *keystore.KeyStore, accountNum int, in *os.File) (*accounts.Account, error) {
-	if cap(ks.Accounts()) == 0 {
-		log.Info("no RSK account found")
-		acc, err := createAccount(ks, in)
-		return acc, err
-	} else {
-		if cap(ks.Accounts()) <= accountNum {
-			return nil, fmt.Errorf("account number %v not found", accountNum)
-		}
-		acc := ks.Accounts()[accountNum]
-		passwd, err := enterPasswd(in)
-
-		if err != nil {
-			return nil, err
-		}
-		err = ks.Unlock(acc, passwd)
-		return &acc, err
-	}
 }

@@ -24,11 +24,11 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
-go install github.com/parvez3019/go-swagger3@latest
-export PATH="$HOME/go/bin:$PATH"
+# go install github.com/parvez3019/go-swagger3@latest
+# export PATH="$HOME/go/bin:$PATH"
 
-echo "Compiling LPS with OpenAPI Specifications"
-go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
+# echo "Compiling LPS with OpenAPI Specifications"
+# go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
 
 
 SCRIPT_CMD=$1
@@ -75,6 +75,7 @@ else
 fi
 
 BTCD_HOME="${BTCD_HOME:-./volumes/bitcoind}"
+POWPEG_HOME="${POWPEG_HOME:-./volumes/powpeg}"
 RSKJ_HOME="${RSKJ_HOME:-./volumes/rskj}"
 LPS_HOME="${LPS_HOME:-./volumes/lps}"
 MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
@@ -87,7 +88,7 @@ MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'"
 
 # start bitcoind and RSKJ dependant services
-docker-compose --env-file "$ENV_FILE" up -d
+docker-compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb
 
 # read env vars
 . ./"$ENV_FILE"
@@ -109,6 +110,14 @@ do
     && echo "Bitcoind is up and running" \
     && break
 done
+
+curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getwalletinfo", "params": [], "id":"getwallet"}' | grep "{\"result\":null,\"error\":{\"code\":-18" \
+  && echo "No default wallet" \
+  && echo "Creating wallet" \
+  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "createwallet", "params": ["main", false, false, "", true, false, true], "id":"createwallet"}' \
+  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
+  | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [500, "ADDRESS"], "id":"generatetoaddress"}' \
+  && echo "Wallet created and generated 500 blocks"
 
 if [ "$LPS_STAGE" = "regtest" ]; then
   # pre-fund provider in regtest, if needed
@@ -141,5 +150,6 @@ if [ -z "${LBC_ADDR}" ]; then
 fi
 echo "LBC deployed at $LBC_ADDR"
 
+docker-compose --env-file "$ENV_FILE" up -d powpeg
 # start LPS
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
