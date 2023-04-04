@@ -54,7 +54,7 @@ type RegisterPegoutWatcher struct {
 	btc               connectors.BTCConnector
 	rsk               connectors.RSKConnector
 	lp                pegout.LiquidityProvider
-	dbMongo           mongoDB.DB
+	dbMongo           mongoDB.DBConnector
 	state             types.RQState
 	quote             *pegout.Quote
 	done              chan struct{}
