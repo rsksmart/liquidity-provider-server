@@ -9,8 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/account"
-	"github.com/rsksmart/liquidity-provider-server/secrets"
 	"math/big"
 	"math/rand"
 	"os"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/secrets"
 
 	"github.com/sethvargo/go-envconfig"
 
@@ -87,6 +88,14 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
+
+	key, err := pegoutSecretsStorage.GetTextSecret(os.Getenv("ENCRYPT_APP_KEY"))
+	if err != nil {
+		key = generateRandomKey(32)
+		pegoutSecretsStorage.SaveTextSecret(os.Getenv("ENCRYPT_APP_KEY"), key)
+	}
+
+	cfgData.EncryptKey = key
 
 	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider, peginAccountProvider)
 	log.Debug("registering local provider (this might take a while)")
@@ -198,4 +207,13 @@ func main() {
 func initCfgData() {
 	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 	cfgData.RSK = cfg.RSK
+}
+
+func generateRandomKey(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,!#@&")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
