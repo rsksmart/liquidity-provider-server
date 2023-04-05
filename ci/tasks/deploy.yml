@@ -45,7 +45,6 @@ run:
     ssh-add $ssh_deploy_keyfile
     
     cd repo-iac-ng/ansible
-    git fetch --all
     git checkout main
 
     ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
