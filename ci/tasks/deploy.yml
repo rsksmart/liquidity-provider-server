@@ -47,4 +47,4 @@ run:
     cd repo-iac-ng/ansible
     git checkout main
 
-    ansible-playbook -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net deploy-flyover.yml
+    ansible-playbook -vvv -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net deploy-flyover.yml
