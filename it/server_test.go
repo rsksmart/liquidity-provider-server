@@ -113,7 +113,7 @@ func (suite *ExampleTestSuite) SetupTest() {
 
 func (suite *ExampleTestSuite) TestGetQuotePegOut() {
 	quote := getQuote(suite)
-	assert.Equal(suite.T(), strconv.FormatUint(quote.Quote.Value.Uint64(), 10), "600000000000000000")
+	assert.Equal(suite.T(), strconv.FormatUint(quote.Quote.Value, 10), "600000000000000000")
 	assert.Equal(suite.T(), quote.Quote.RSKRefundAddr, "0xa554d96413FF72E93437C4072438302C38350EE3")
 }
 
