@@ -1,7 +1,10 @@
 package http
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -81,6 +84,7 @@ type LiquidityProviderList struct {
 
 type ConfigData struct {
 	MaxQuoteValue uint64
+	EncryptKey    string
 	RSK           LiquidityProviderList
 }
 
@@ -1337,11 +1341,35 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, _, depositAddress, err := generateRskEthereumAddress()
+	privateKey, publicKey, depositAddress, err := generateRskEthereumAddress()
 
 	if err != nil {
 		log.Error("error getting derived rsk address: ", err.Error())
 		customError := NewServerError("error getting derived rsk address: "+err.Error(), make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
+
+	encPubKey, err := encrypt(publicKey, []byte(s.cfgData.EncryptKey))
+	if err != nil {
+		log.Error("error encrypting public key: ", err.Error())
+		customError := NewServerError("error encrypting public key: "+err.Error(), make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
+
+	encPrivKey, err := encrypt(privateKey, []byte(s.cfgData.EncryptKey))
+	if err != nil {
+		log.Error("error encrypting private key: ", err.Error())
+		customError := NewServerError("error encrypting private key: "+err.Error(), make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
+
+	err = s.dbMongo.SaveAddressKeys(req.QuoteHash, depositAddress, encPubKey, encPrivKey)
+	if err != nil {
+		log.Error("error saving keys: ", err.Error())
+		customError := NewServerError("error saving keys: "+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -1695,4 +1723,43 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func encrypt(plaintext []byte, key []byte) ([]byte, error) {
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
 }
