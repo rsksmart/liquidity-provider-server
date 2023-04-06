@@ -39,6 +39,7 @@ type DBConnector interface {
 	GetProviders() ([]int64, error)
 	GetProvider(uint64) (string, error)
 	InsertProvider(id int64, address string) error
+	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 }
 
 type DB struct {
@@ -97,6 +98,13 @@ type RetainedPeginQuote struct {
 	Signature   string        `json:"signature" db:"signature"`
 	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
 	State       types.RQState `json:"state" db:"state"`
+}
+
+type PegoutKeys struct {
+	QuoteHash  string `bson:"quoteHash,omitempty"`
+	Addr       string `bson:"addr,omitempty"`
+	PublicKey  []byte `bson:"publicKey,omitempty"`
+	PrivateKey []byte `bson:"privateKey,omitempty"`
 }
 
 func Connect() (*DB, error) {
@@ -552,6 +560,43 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	}
 
 	return nil
+}
+
+func (db *DB) SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error {
+	log.Debug("inserting deposit address keys{", addr, "}")
+	coll := db.db.Database("flyover").Collection("pegoutKeys")
+
+	depositAddressKeys := &PegoutKeys{
+		QuoteHash:  quoteHash,
+		Addr:       addr,
+		PublicKey:  pubKey,
+		PrivateKey: privateKey,
+	}
+
+	_, err := coll.InsertOne(context.TODO(), depositAddressKeys)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetAddressKeys(quoteHash string) (*PegoutKeys, error) {
+	log.Debug("retrieving keys: ", quoteHash)
+
+	coll := db.db.Database("flyover").Collection("pegoutKeys")
+	filter := bson.D{primitive.E{Key: "quoteHash", Value: quoteHash}}
+	var result PegoutKeys
+	err := coll.FindOne(context.TODO(), filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 func (db *DB) GetLockedLiquidityPegOut() (uint64, error) {
