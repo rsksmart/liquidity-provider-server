@@ -75,7 +75,8 @@ else
 fi
 
 BTCD_HOME="${BTCD_HOME:-./volumes/bitcoind}"
-POWPEG_HOME="${POWPEG_HOME:-./volumes/powpeg}"
+POWPEG_PEGIN_HOME="${POWPEG_PEGIN_HOME_:-./volumes/powpeg/pegin}"
+POWPEG_PEGOUT_HOME="${POWPEG_PEGOUT_HOME_:-./volumes/powpeg/pegout}"
 RSKJ_HOME="${RSKJ_HOME:-./volumes/rskj}"
 LPS_HOME="${LPS_HOME:-./volumes/lps}"
 MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
@@ -150,6 +151,6 @@ if [ -z "${LBC_ADDR}" ]; then
 fi
 echo "LBC deployed at $LBC_ADDR"
 
-docker-compose --env-file "$ENV_FILE" up -d powpeg
+docker-compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps

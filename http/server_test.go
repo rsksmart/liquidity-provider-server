@@ -496,7 +496,7 @@ func testInitBtcWatchers(t *testing.T) {
 	mongoDb.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	mongoDb.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
-	err := srv.initBtcWatchers()
+	err := srv.initPeginBtcWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
 	}
