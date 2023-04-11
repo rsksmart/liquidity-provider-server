@@ -1450,8 +1450,9 @@ func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAd
 
 	err := enc.Encode(response)
 	if err != nil {
-		log.Error("AcceptQuote - error encoding response: ", err.Error())
-		customError := NewServerError("AcceptQuote - error encoding response: "+err.Error(), make(map[string]interface{}), true)
+		const errorMsg = "AcceptQuote - error encoding response: "
+		log.Error(errorMsg, err.Error())
+		customError := NewServerError(errorMsg+err.Error(), make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
