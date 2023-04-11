@@ -12,6 +12,26 @@ type BTCClientMock struct {
 	mock.Mock
 }
 
+func (B *BTCClientMock) LockUnspent(shouldUnlock bool, txToUnlock []*wire.OutPoint) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (B *BTCClientMock) ListUnspent() ([]btcjson.ListUnspentResult, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (B *BTCClientMock) ListLockUnspent() ([]*wire.OutPoint, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (B *BTCClientMock) GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (B *BTCClientMock) SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error) {
 	panic("implement me")
 }

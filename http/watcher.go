@@ -3,6 +3,9 @@ package http
 import (
 	"context"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/ethereum/go-ethereum/common"
+	"math"
 	"math/big"
 	"strings"
 	"sync"
@@ -35,18 +38,19 @@ type BTCAddressWatcher struct {
 }
 
 type BTCAddressPegOutWatcher struct {
-	hash              string
-	derivationAddress string
-	btc               connectors.BTCConnector
-	rsk               connectors.RSKConnector
-	lp                pegout.LiquidityProvider
-	dbMongo           mongoDB.DB
-	state             types.RQState
-	quote             *pegout.Quote
-	done              chan struct{}
-	closed            bool
-	signature         []byte
-	sharedLocker      sync.Locker
+	hash                 string
+	derivationAddress    string
+	addressDecryptionKey string
+	btc                  connectors.BTCConnector
+	rsk                  connectors.RSKConnector
+	lp                   pegout.LiquidityProvider
+	dbMongo              mongoDB.DBConnector
+	state                types.RQState
+	quote                *pegout.Quote
+	done                 chan struct{}
+	closed               bool
+	signature            []byte
+	sharedLocker         sync.Locker
 }
 
 type RegisterPegoutWatcher struct {
@@ -61,7 +65,7 @@ type RegisterPegoutWatcher struct {
 	closed            bool
 	signature         []byte
 	sharedLocker      sync.Locker
-	derivationAddress string
+	derivationAddress common.Address
 }
 
 const (
@@ -134,7 +138,87 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 		return
 	}
 	log.Debugf("processing OnNewConfirmation event for tx %v; confirmations: %v; received amount: %v", txHash, confirmations, amount)
-	w.closeAndUpdateQuoteState(types.RQStateRegisterPegInSucceeded)
+
+	if !(w.state == types.RQStateCallForUserSucceeded && confirmations >= int64(w.quote.TransferConfirmations)) {
+		return
+	}
+
+	quote, err := w.rsk.ParsePegOutQuote(w.quote)
+	if err != nil {
+		log.Error("Error parsing pegout quote: ", err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+	}
+	opt := &bind.TransactOpts{
+		GasLimit: pegInGasLim,
+		Value:    nil,
+		From:     common.HexToAddress(w.quote.LPRSKAddr),
+		Signer:   w.lp.SignTx,
+	}
+
+	mb, err := w.btc.BuildMerkleBranch(txHash)
+	if err != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+	}
+	bhh, err := w.btc.GetBlockHeaderHashByTx(txHash)
+	if err != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+	}
+
+	btcTxHash, err := chainhash.NewHashFromStr(txHash)
+	if err != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+	}
+
+	var btcTxHashBytes [32]byte
+	copy(btcTxHashBytes[:], btcTxHash[:])
+
+	var mbHashes [][32]byte
+	var mbHash [32]byte
+	for _, hash := range mb.Hashes {
+		copy(mbHash[:], hash[:])
+		mbHashes = append(mbHashes, mbHash)
+	}
+
+	w.sharedLocker.Lock()
+	defer w.sharedLocker.Unlock()
+
+	tx, err := w.rsk.RefundPegOut(opt, quote, btcTxHashBytes, bhh, big.NewInt(int64(mb.Path)), mbHashes)
+	if err != nil && strings.Contains(err.Error(), "LBC: Don't have required confirmations") {
+		log.Errorf("Error calling RefundPegout: %v. Retrying on next confirmation", err)
+		return
+	} else if err != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+		return
+	}
+	s, err := w.rsk.GetTxStatus(context.Background(), tx)
+	if err != nil || !s {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+	}
+
+	keys, err := w.dbMongo.GetAddressKeys(w.hash)
+	if err != nil {
+		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return
+	}
+	privateKey, err := decrypt(keys.PrivateKey, []byte(w.addressDecryptionKey))
+	if err != nil {
+		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return
+	}
+	err = w.rsk.SendRbtc(string(privateKey), w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
+	if err != nil {
+		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return
+	}
+	_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInSucceeded)
 }
 
 func (w *BTCAddressPegOutWatcher) OnExpire() {
@@ -281,53 +365,96 @@ func (w *BTCAddressWatcher) close() {
 	close(w.done)
 }
 
-func (r *RegisterPegoutWatcher) OnRegisterPegOut(newState types.RQState) {
-	if r.closed {
-		log.Errorf(WatcherClosedError, r.hash)
+func (watcher *RegisterPegoutWatcher) GetQuote() *pegout.Quote {
+	return watcher.quote
+}
+
+func (watcher *RegisterPegoutWatcher) GetState() types.RQState {
+	return watcher.state
+}
+
+func (watcher *RegisterPegoutWatcher) GetWatchedAddress() common.Address {
+	return watcher.derivationAddress
+}
+
+func (watcher *RegisterPegoutWatcher) OnDepositConfirmationsReached() bool {
+	if watcher.state != types.RQStateWaitingForDeposit {
+		return false
+	}
+
+	quote, err := watcher.rsk.ParsePegOutQuote(watcher.quote)
+	if err != nil {
+		log.Error("Error parsing pegout quote: ", err)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return false
+	}
+
+	satoshi, _ := watcher.quote.Value.ToSatoshi().Float64()
+	watcher.sharedLocker.Lock()
+	defer watcher.sharedLocker.Unlock()
+	err = watcher.btc.LockBtc(satoshi)
+	if err != nil {
+		log.Error("Error locking btc: ", err)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return false
+	}
+
+	opt := &bind.TransactOpts{
+		From:   quote.LpRskAddress,
+		Signer: watcher.lp.SignTx,
+	}
+	tx, err := watcher.rsk.RegisterPegOut(opt, quote, watcher.signature)
+	if err != nil {
+		log.Error("Error registering pegout: ", err)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return false
+	}
+
+	if status, err := watcher.rsk.GetTxStatus(context.Background(), tx); err != nil || !status {
+		_ = watcher.btc.UnlockBtc(satoshi)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		log.Errorf("transaction failed. hash: %v", tx.Hash())
+		return false
+	}
+	err = watcher.btc.UnlockBtc(satoshi)
+	if err != nil {
+		log.Error("Error unlocking BTC before sending to destination: ", err)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return false
+	}
+
+	_, err = watcher.btc.SendBTC(watcher.quote.DepositAddr, uint64(math.Ceil(satoshi)))
+	if err != nil {
+		log.Errorf("Error sending BTC to address %s on pegout quote %s: %s", watcher.quote.DepositAddr, watcher.hash, err)
+		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return false
+	}
+
+	err = watcher.updateQuoteState(types.RQStateCallForUserSucceeded)
+	watcher.close()
+	if err != nil {
+		log.Debugf("error updating quote state for quote %s", watcher.hash)
+	}
+	log.Debugf("registered pegout for tx %v", tx.Hash())
+	return true
+}
+
+func (watcher *RegisterPegoutWatcher) OnExpire() {
+	if watcher.closed {
+		log.Errorf(WatcherOnExpireError, watcher.hash)
 		return
 	}
-
-	if newState == types.RQStateRegisterPegInFailed {
-		err := r.closeAndUpdateQuoteState(newState)
-		if err != nil {
-			log.Errorf("error calling registerPegOut. value: %v. error: %v", r.hash, err)
-			return
-		}
-	}
-
-	if newState == types.RQStateCallForUserSucceeded {
-		if newState != r.state {
-			txHash, err := r.btc.SendBTC(r.derivationAddress, uint(r.quote.Value.Uint64()))
-			if err != nil {
-				log.Errorf("Error to send %v BTC to %v of quote hash %v", r.derivationAddress, r.quote.Value, r.hash)
-				log.Errorf("Error: %v", err)
-				return
-			}
-
-			log.Infof("it was sent %v BTC to %v of quote hash %v (transaction hash: %v)", r.derivationAddress, r.quote.Value, r.hash, txHash)
-
-			r.updateQuoteState(newState)
-			r.close()
-		}
-	}
+	log.Debugf(TimeExpiredError, watcher.hash)
+	_ = watcher.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
 }
 
-func (r *RegisterPegoutWatcher) OnExpire() {
-	if r.closed {
-		log.Errorf(WatcherOnExpireError, r.hash)
-		return
-	}
-	log.Debugf(TimeExpiredError, r.hash)
-	_ = r.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
+func (watcher *RegisterPegoutWatcher) Done() <-chan struct{} {
+	return watcher.done
 }
 
-func (r *RegisterPegoutWatcher) Done() <-chan struct{} {
-	return r.done
-}
-
-func (r *RegisterPegoutWatcher) closeAndUpdateQuoteState(newState types.RQState) error {
-	r.close()
-	return r.updateQuoteState(newState)
+func (watcher *RegisterPegoutWatcher) closeAndUpdateQuoteState(newState types.RQState) error {
+	watcher.close()
+	return watcher.updateQuoteState(newState)
 }
 
 func (b *BTCAddressPegOutWatcher) closeAndUpdateQuoteState(newState types.RQState) error {
@@ -335,9 +462,9 @@ func (b *BTCAddressPegOutWatcher) closeAndUpdateQuoteState(newState types.RQStat
 	return b.updateQuoteState(newState)
 }
 
-func (r *RegisterPegoutWatcher) close() {
-	r.closed = true
-	close(r.done)
+func (watcher *RegisterPegoutWatcher) close() {
+	watcher.closed = true
+	close(watcher.done)
 }
 
 func (b *BTCAddressPegOutWatcher) close() {
@@ -345,14 +472,14 @@ func (b *BTCAddressPegOutWatcher) close() {
 	close(b.done)
 }
 
-func (r *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
-	err := r.dbMongo.UpdateRetainedPegOutQuoteState(r.hash, r.state, newState)
+func (watcher *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
+	err := watcher.dbMongo.UpdateRetainedPegOutQuoteState(watcher.hash, watcher.state, newState)
 	if err != nil {
-		log.Errorf(UpdateQuoteStateError, r.hash, err)
+		log.Errorf(UpdateQuoteStateError, watcher.hash, err)
 		return err
 	}
 
-	r.state = newState
+	watcher.state = newState
 	return nil
 }
 

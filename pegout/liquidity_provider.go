@@ -33,8 +33,8 @@ type ProviderConfig struct {
 	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
 	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
 	TransferTime          uint32 `env:"TRANSFER_TIME"`
-	ExpireDate            uint32 `env:"EXPIRED_DATE"`
-	ExpireBlocks          uint32 `env:"EXPIRED_BLOCKS"`
+	ExpireDate            uint32 `env:"EXPIRE_DATE"`
+	ExpireBlocks          uint32 `env:"EXPIRE_BLOCKS"`
 }
 
 type LocalProviderRepository interface {

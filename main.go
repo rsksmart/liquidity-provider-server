@@ -181,7 +181,7 @@ func main() {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
+	err = btc.Connect(cfg.BTC)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
