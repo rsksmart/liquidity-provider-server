@@ -75,6 +75,7 @@ services:
       - RSKJ_CONNECTION_STRING
       - ERP_KEYS
       - BTC_NETWORK
+      - BTC_TX_FEE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
