@@ -1324,22 +1324,6 @@ func generateRskEthereumAddress() ([]byte, []byte, common.Address, error) {
 // @Route /pegout/acceptQuote [post]
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
-		enc := json.NewEncoder(w)
-		response := acceptResPegOut{
-			Signature:         signature,
-			RskDepositAddress: depositAddr,
-		}
-
-		err := enc.Encode(response)
-		if err != nil {
-			log.Error("AcceptQuote - error encoding response: ", err.Error())
-			customError := NewServerError("AcceptQuote - error encoding response: "+err.Error(), make(map[string]interface{}), true)
-			ResponseError(w, customError, http.StatusBadRequest)
-			return
-		}
-	}
-
 	req := acceptReq{}
 	toRestAPI(w)
 	dec := json.NewDecoder(r.Body)
@@ -1388,7 +1372,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if rq != nil { // if the quote has already been accepted, just return signature and deposit addr
-		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr)
+		signAndReturnPegoutQuote(w, rq.Signature, rq.DepositAddr)
 		return
 	}
 
@@ -1454,7 +1438,23 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	signature := hex.EncodeToString(signB)
-	returnQuoteSignFunc(w, signature, depositAddress.Hex())
+	signAndReturnPegoutQuote(w, signature, depositAddress.Hex())
+}
+
+func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAddr string) {
+	enc := json.NewEncoder(w)
+	response := acceptResPegOut{
+		Signature:         signature,
+		RskDepositAddress: depositAddr,
+	}
+
+	err := enc.Encode(response)
+	if err != nil {
+		log.Error("AcceptQuote - error encoding response: ", err.Error())
+		customError := NewServerError("AcceptQuote - error encoding response: "+err.Error(), make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
 }
 
 type SendBTCReq struct {
@@ -1564,7 +1564,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txHash, err := s.btc.SendBTC(payload.Address, uint64(payload.Amount))
+	txHash, err := s.btc.SendBtc(payload.Address, uint64(payload.Amount))
 
 	if err != nil {
 		log.Errorf(UnableToDeserializePayloadError, err)

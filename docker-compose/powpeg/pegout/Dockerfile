@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-slim-buster as builder
+FROM openjdk:8-jdk-slim-buster AS builder
 
 RUN apt-get update -y && \
     apt-get install -qq --no-install-recommends git curl gnupg
@@ -21,12 +21,13 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys A6DBEAC640
     ./configure.sh && \
     ./gradlew --no-daemon clean build -x test
 
-FROM --platform=linux/amd64 openjdk:8-jdk as runner
+FROM --platform=linux/amd64 openjdk:8-jdk AS runner
 
 ARG HOME="/home/powpeg"
 RUN useradd -m -u 1000 --home="$HOME" powpeg
 
 COPY --from=builder --chown=1000 "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
+RUN chmod 555 "$HOME/powpeg.jar"
 
 COPY --chown=1000 reg2.key "$HOME/reg2.key"
 COPY --chown=1000 regtest-fed.conf "$HOME/regtest-fed.conf"
