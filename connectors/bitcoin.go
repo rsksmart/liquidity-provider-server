@@ -62,7 +62,7 @@ type BTCConnector interface {
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
-	SendBTC(address string, amount uint64) (string, error)
+	SendBtc(address string, amount uint64) (string, error)
 	GetAvailableLiquidity() (*big.Int, error)
 	LockBtc(amount float64) error
 	UnlockBtc(amount float64) error
@@ -485,7 +485,7 @@ func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
 	return -1
 }
 
-func (btc *BTC) SendBTC(address string, amount uint64) (string, error) {
+func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 
 	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
@@ -966,4 +966,18 @@ func (btc *BTC) GetBlockHeaderHashByTx(txHash string) ([32]byte, error) {
 	}
 	blockHeaderBytes := buf.Bytes()
 	return chainhash.DoubleHashH(blockHeaderBytes), nil
+}
+
+func DecodeBTCAddress(address string) ([]byte, error) {
+	var decoded []byte
+	var err error
+	if isBech32(address) {
+		decoded, err = DecodeBech32BTCAddress(address)
+	} else {
+		decoded, err = DecodeBTCAddressWithVersion(address)
+	}
+	if err != nil {
+		err = fmt.Errorf("error decoding BTC address: %v", err)
+	}
+	return decoded, err
 }

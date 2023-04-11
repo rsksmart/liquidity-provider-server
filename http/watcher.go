@@ -143,10 +143,47 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 		return
 	}
 
+	unrecoverableError, err := w.performRefundPegout(txHash)
+	if err != nil && unrecoverableError {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		log.Error("Error refunding pegout: ", err)
+		return
+	} else if err != nil {
+		log.Errorf("Error calling RefundPegout: %v. Retrying on next confirmation", err)
+		return
+	}
+
+	privateKey, err := w.getPrivateKey()
+	if err != nil {
+		log.Errorf("Error getting private key on pegout quote %s: %s", w.hash, err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return
+	}
+	err = w.rsk.SendRbtc(privateKey, w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
+	if err != nil {
+		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return
+	}
+	_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInSucceeded)
+}
+
+func (w *BTCAddressPegOutWatcher) getPrivateKey() (string, error) {
+	keys, err := w.dbMongo.GetAddressKeys(w.hash)
+	if err != nil {
+		return "", err
+	}
+	privateKey, err := decrypt(keys.PrivateKey, []byte(w.addressDecryptionKey))
+	if err != nil {
+		return "", err
+	}
+	return string(privateKey), nil
+}
+
+func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, error) {
 	quote, err := w.rsk.ParsePegOutQuote(w.quote)
 	if err != nil {
-		log.Error("Error parsing pegout quote: ", err)
-		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return true, err
 	}
 	opt := &bind.TransactOpts{
 		GasLimit: pegInGasLim,
@@ -157,19 +194,16 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 
 	mb, err := w.btc.BuildMerkleBranch(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		log.Error("Error refunding pegout: ", err)
+		return true, err
 	}
 	bhh, err := w.btc.GetBlockHeaderHashByTx(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		log.Error("Error refunding pegout: ", err)
+		return true, err
 	}
 
 	btcTxHash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		log.Error("Error refunding pegout: ", err)
+		return true, err
 	}
 
 	var btcTxHashBytes [32]byte
@@ -187,38 +221,15 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 
 	tx, err := w.rsk.RefundPegOut(opt, quote, btcTxHashBytes, bhh, big.NewInt(int64(mb.Path)), mbHashes)
 	if err != nil && strings.Contains(err.Error(), "LBC: Don't have required confirmations") {
-		log.Errorf("Error calling RefundPegout: %v. Retrying on next confirmation", err)
-		return
+		return false, err
 	} else if err != nil {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		log.Error("Error refunding pegout: ", err)
-		return
+		return true, err
 	}
 	s, err := w.rsk.GetTxStatus(context.Background(), tx)
 	if err != nil || !s {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		log.Error("Error refunding pegout: ", err)
+		return true, err
 	}
-
-	keys, err := w.dbMongo.GetAddressKeys(w.hash)
-	if err != nil {
-		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return
-	}
-	privateKey, err := decrypt(keys.PrivateKey, []byte(w.addressDecryptionKey))
-	if err != nil {
-		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return
-	}
-	err = w.rsk.SendRbtc(string(privateKey), w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
-	if err != nil {
-		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return
-	}
-	_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInSucceeded)
+	return false, err
 }
 
 func (w *BTCAddressPegOutWatcher) OnExpire() {
@@ -272,7 +283,7 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 	s, err := w.rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
+		return fmt.Errorf("CallForUser transaction failed. hash: %v", tx.Hash())
 	}
 
 	err = w.updateQuoteState(types.RQStateCallForUserSucceeded)
@@ -330,7 +341,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	s, err := w.rsk.GetTxStatus(ctx, tx)
 	if err != nil || !s {
 		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return fmt.Errorf("transaction failed. hash: %v", tx.Hash())
+		return fmt.Errorf("RegisterPegin transaction failed. hash: %v", tx.Hash())
 	}
 
 	err = w.updateQuoteState(types.RQStateRegisterPegInSucceeded)
@@ -413,7 +424,7 @@ func (watcher *RegisterPegoutWatcher) OnDepositConfirmationsReached() bool {
 	if status, err := watcher.rsk.GetTxStatus(context.Background(), tx); err != nil || !status {
 		_ = watcher.btc.UnlockBtc(satoshi)
 		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		log.Errorf("transaction failed. hash: %v", tx.Hash())
+		log.Errorf("RegisterPegout transaction failed. hash: %v", tx.Hash())
 		return false
 	}
 	err = watcher.btc.UnlockBtc(satoshi)
@@ -423,7 +434,7 @@ func (watcher *RegisterPegoutWatcher) OnDepositConfirmationsReached() bool {
 		return false
 	}
 
-	_, err = watcher.btc.SendBTC(watcher.quote.DepositAddr, uint64(math.Ceil(satoshi)))
+	_, err = watcher.btc.SendBtc(watcher.quote.DepositAddr, uint64(math.Ceil(satoshi)))
 	if err != nil {
 		log.Errorf("Error sending BTC to address %s on pegout quote %s: %s", watcher.quote.DepositAddr, watcher.hash, err)
 		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)

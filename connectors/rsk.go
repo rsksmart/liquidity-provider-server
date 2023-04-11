@@ -892,15 +892,11 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
 
-	if isBech32(q.BTCRefundAddr) {
-		if pq.BtcRefundAddress, err = DecodeBech32BTCAddress(q.BTCRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
-		}
-	} else {
-		if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
-		}
+	decodedRefundAddress, err := DecodeBTCAddress(q.BTCRefundAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, err
 	}
+	pq.BtcRefundAddress = decodedRefundAddress
 
 	// TODO: later do the same validation for allowing LiquidityProviderBtcAddress to be BECH32
 	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
@@ -946,33 +942,23 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContr
 	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
-	if isBech32(q.BtcRefundAddr) {
-		if pq.BtcRefundAddress, err = DecodeBech32BTCAddress(q.BtcRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
-		}
-	} else {
-		if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BtcRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
-		}
+	decodedBTCRefundAddress, err := DecodeBTCAddress(q.BtcRefundAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
 	}
-	if isBech32(q.LpBTCAddr) {
-		if pq.LpBtcAddress, err = DecodeBech32BTCAddress(q.LpBTCAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
-		}
-	} else {
-		if pq.LpBtcAddress, err = DecodeBTCAddressWithVersion(q.LpBTCAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
-		}
+	pq.BtcRefundAddress = decodedBTCRefundAddress
+
+	decodedLpBTCAddress, err := DecodeBTCAddress(q.LpBTCAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
 	}
-	if isBech32(q.DepositAddr) {
-		if pq.DeposityAddress, err = DecodeBech32BTCAddress(q.DepositAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
-		}
-	} else {
-		if pq.DeposityAddress, err = DecodeBTCAddressWithVersion(q.DepositAddr); err != nil {
-			return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
-		}
+	pq.LpBtcAddress = decodedLpBTCAddress
+
+	decodedDepositAddress, err := DecodeBTCAddress(q.DepositAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
 	}
+	pq.DeposityAddress = decodedDepositAddress
 
 	pq.CallFee = q.CallFee.AsBigInt()
 	pq.PenaltyFee = types.NewWei(int64(q.PenaltyFee)).AsBigInt()
