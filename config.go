@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
@@ -39,13 +40,8 @@ type config struct {
 		}
 		Path string `env:"DB_PATH"`
 	}
-	RSK http.LiquidityProviderList
-	BTC struct {
-		Endpoint string `env:"BTC_ENDPOINT"`
-		Username string `env:"BTC_USERNAME"`
-		Password string `env:"BTC_PASSWORD"`
-		Network  string `env:"BTC_NETWORK"`
-	}
+	RSK           http.LiquidityProviderList
+	BTC           connectors.BtcConfig
 	Provider      *pegin.ProviderConfig  `env:",prefix=PEGIN_PROVIDER_"`
 	PegoutProvier *pegout.ProviderConfig `env:",prefix=PEGOUT_PROVIDER_"`
 }

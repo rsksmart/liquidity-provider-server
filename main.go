@@ -9,6 +9,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/secrets"
 	"math/big"
 	"math/rand"
 	"os"
@@ -17,9 +19,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/rsksmart/liquidity-provider-server/account"
-	"github.com/rsksmart/liquidity-provider-server/secrets"
 
 	"github.com/sethvargo/go-envconfig"
 
@@ -182,7 +181,7 @@ func main() {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
+	err = btc.Connect(cfg.BTC)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
