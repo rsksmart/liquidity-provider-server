@@ -26,7 +26,7 @@ FROM --platform=linux/amd64 openjdk:8-jdk AS runner
 ARG HOME="/home/powpeg"
 RUN useradd -m -u 1000 --home="$HOME" powpeg
 
-COPY --from=builder --chown=1000 --chmod=powpeg:powpeg "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
+COPY --from=builder --chown=1000 --chmod=555 "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
 
 COPY --chown=1000 reg2.key "$HOME/reg2.key"
 COPY --chown=1000 regtest-fed.conf "$HOME/regtest-fed.conf"
