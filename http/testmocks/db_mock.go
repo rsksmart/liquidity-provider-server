@@ -14,6 +14,14 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
+func (d *DbMock) SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error {
+	return nil
+}
+
+func (d *DbMock) GetAddressKeys(quoteHash string) (*DbMock, error) {
+	return nil, nil
+}
+
 func (d *DbMock) GetProvider(u uint64) (string, error) {
 	arg := d.Called(u)
 	return arg.String(0), arg.Error(1)
@@ -92,7 +100,7 @@ func (d *DbMock) GetLockedLiquidity() (*types.Wei, error) {
 	return new(types.Wei), nil
 }
 
-func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+func (d *DbMock) InsertPegOutQuote(id string, q *pegout.Quote) error {
 	return nil
 }
 

@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/sethvargo/go-envconfig"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sethvargo/go-envconfig"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	server "github.com/rsksmart/liquidity-provider-server/http"
@@ -112,7 +113,6 @@ func (suite *ExampleTestSuite) SetupTest() {
 
 func (suite *ExampleTestSuite) TestGetQuotePegOut() {
 	quote := getQuote(suite)
-	assert.NotNil(suite.T(), quote.DerivationAddress)
 	assert.Equal(suite.T(), strconv.FormatUint(quote.Quote.Value, 10), "600000000000000000")
 	assert.Equal(suite.T(), quote.Quote.RSKRefundAddr, "0xa554d96413FF72E93437C4072438302C38350EE3")
 }
@@ -141,43 +141,6 @@ func getQuote(suite *ExampleTestSuite) server.QuotePegOutResponse {
 
 	quote := quotes[0]
 	return quote
-}
-
-func (suite *ExampleTestSuite) TestAcceptQuotePegOut() {
-	suite.SetupTest()
-	quote := getQuote(suite)
-
-	h, err := suite.rsk.HashPegOutQuote(quote.Quote)
-
-	if err != nil {
-		fmt.Println(err)
-		assert.Fail(suite.T(), "response error")
-	}
-
-	acceptQuote := acceptQuote(suite, h, quote.DerivationAddress)
-
-	assert.NotEmpty(suite.T(), acceptQuote.Signature)
-}
-
-func acceptQuote(suite *ExampleTestSuite, hash string, derivationAddress string) server.AcceptResPegOut {
-	jsonStr := fmt.Sprintf(`{
-		"derivationAddress": "%v",
-		"quoteHash": "%v"
-	}`, derivationAddress, hash)
-
-	acceptQuote := server.AcceptResPegOut{}
-	err := execute(&Execution{
-		Body:     jsonStr,
-		URL:      "http://localhost:8080/pegout/acceptQuote",
-		Method:   "POST",
-		Response: &acceptQuote,
-	})
-
-	if err != nil {
-		fmt.Println(err)
-		assert.Fail(suite.T(), "response error")
-	}
-	return acceptQuote
 }
 
 var runIntegration = flag.Bool("integration", false, "Run the integration testsuite (in addition to the unit tests)")
