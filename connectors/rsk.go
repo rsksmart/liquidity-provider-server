@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
@@ -151,6 +152,7 @@ type RSK struct {
 	requiredBridgeConfirmations int64
 	irisActivationHeight        int
 	erpKeys                     []string
+	twoWayConnection            bool
 }
 
 type RegisterPegOutQuoteWatcherCompleteCallback = func(w QuotePegOutWatcher)
@@ -195,11 +197,15 @@ func (rsk *RSK) Connect(endpoint string, chainId *big.Int) error {
 		}
 
 		ethC = ethclient.NewClient(c)
-	default:
+		rsk.twoWayConnection = false
+	case "ws":
 		ethC, err = ethclient.Dial(endpoint)
+		rsk.twoWayConnection = true
 		if err != nil {
 			return err
 		}
+	default:
+		return errors.New("unknown scheme for rsk connection string")
 	}
 
 	rsk.c = ethC
@@ -341,10 +347,15 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 }
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
 	var tx *gethTypes.Transaction
+	var eventChannel chan *bindings.LiquidityBridgeContractRegister
+	var subscription event.Subscription
+	var err error
 
-	eventChannel := make(chan *bindings.LiquidityBridgeContractRegister)
-	subscription, err := rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel)
-	defer func() { close(eventChannel); subscription.Unsubscribe() }()
+	if rsk.twoWayConnection {
+		eventChannel = make(chan *bindings.LiquidityBridgeContractRegister)
+		subscription, err = rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel)
+		defer func() { close(eventChannel); subscription.Unsubscribe() }()
+	}
 
 	if err != nil {
 		return 0, err
@@ -361,17 +372,39 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 		return 0, fmt.Errorf("error registering provider: %v", err)
 	}
 
+	if rsk.twoWayConnection {
+		return rsk.waitForRegistration(eventChannel, subscription, opts)
+	} else {
+		return rsk.registrationPolling(tx)
+	}
+}
+
+func (rsk *RSK) waitForRegistration(eventChannel <-chan *bindings.LiquidityBridgeContractRegister, eventSubscription event.Subscription, operationOpts *bind.TransactOpts) (int64, error) {
 	for {
 		select {
 		case event := <-eventChannel:
-			if bytes.Equal(event.From.Bytes(), opts.From.Bytes()) {
+			if bytes.Equal(event.From.Bytes(), operationOpts.From.Bytes()) {
 				log.Debugf("Detected provider registration for %s", event.From.String())
 				return event.Id.Int64(), nil
 			}
-		case err = <-subscription.Err():
+		case err := <-eventSubscription.Err():
 			return 0, err
 		}
 	}
+}
+
+func (rsk *RSK) registrationPolling(tx *gethTypes.Transaction) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+	s, err := rsk.GetTxReceipt(ctx, tx)
+	if err != nil || s == nil || s.Logs == nil || len(s.Logs) == 0 {
+		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
+	}
+	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
+	if err != nil {
+		return 0, err
+	}
+	return registerEvent.Id.Int64(), err
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
