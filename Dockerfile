@@ -21,6 +21,8 @@ RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provid
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/storage
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/pegout
 RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/mongoDB
+RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/storage
+RUN cd liquidity-provider-server  && go get github.com/rsksmart/liquidity-provider-server/account
 
 RUN cd liquidity-provider-server && go build -o /liquidity-provider-server
 

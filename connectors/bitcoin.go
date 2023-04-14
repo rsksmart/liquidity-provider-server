@@ -3,6 +3,7 @@ package connectors
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
@@ -26,7 +27,18 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const unknownBtcdVersion = -1
+const (
+	unknownBtcdVersion = -1
+	BTC_TO_SATOSHI     = 100000000
+)
+
+type BtcConfig struct {
+	Endpoint string `env:"BTC_ENDPOINT"`
+	Username string `env:"BTC_USERNAME"`
+	Password string `env:"BTC_PASSWORD"`
+	Network  string `env:"BTC_NETWORK"`
+	TxFee    int64  `env:"BTC_TX_FEE"`
+}
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
 
@@ -37,7 +49,7 @@ type AddressWatcher interface {
 }
 
 type BTCConnector interface {
-	Connect(endpoint string, username string, password string) error
+	Connect(config BtcConfig) error
 	CheckConnection() error
 	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
@@ -50,8 +62,11 @@ type BTCConnector interface {
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
-	SendBTC(address string, amount uint) (string, error)
+	SendBtc(address string, amount uint64) (string, error)
 	GetAvailableLiquidity() (*big.Int, error)
+	LockBtc(amount float64) error
+	UnlockBtc(amount float64) error
+	GetBlockHeaderHashByTx(txHash string) ([32]byte, error)
 }
 
 type BTCClient interface {
@@ -65,6 +80,10 @@ type BTCClient interface {
 	Disconnect()
 	SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error)
 	GetBalance(address string) (btcutil.Amount, error)
+	LockUnspent(shouldUnlock bool, txToUnlock []*wire.OutPoint) error
+	ListUnspent() ([]btcjson.ListUnspentResult, error)
+	ListLockUnspent() ([]*wire.OutPoint, error)
+	GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error)
 }
 
 type BTC struct {
@@ -88,17 +107,22 @@ func NewBTC(network string) (*BTC, error) {
 	return &btc, nil
 }
 
-func (btc *BTC) Connect(endpoint string, username string, password string) error {
+func (btc *BTC) Connect(btcConfig BtcConfig) error {
 	log.Debug("connecting to BTC node")
 	config := rpcclient.ConnConfig{
-		Host:         endpoint,
-		User:         username,
-		Pass:         password,
+		Host:         btcConfig.Endpoint,
+		User:         btcConfig.Username,
+		Pass:         btcConfig.Password,
 		Params:       btc.params.Name,
 		DisableTLS:   true,
 		HTTPPostMode: true,
 	}
 	c, err := rpcclient.New(&config, nil)
+	if err != nil {
+		return fmt.Errorf("RPC client error: %v", err)
+	}
+
+	err = c.SetTxFee(btcutil.Amount(btcConfig.TxFee)) // could be part of the pegout quote instead of env var
 	if err != nil {
 		return fmt.Errorf("RPC client error: %v", err)
 	}
@@ -325,10 +349,20 @@ func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte
 
 func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
-	if err != nil {
-		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
-	}
 	var bts bytes.Buffer
+	if err != nil {
+		hrp, data, err := bech32.Decode(address)
+		if err != nil {
+			return nil, fmt.Errorf("the provider address is not a valid Bech32 or base58 encoded address. address: %v", address)
+		}
+		if hrp != "tb" && hrp != "bc" {
+			return nil, fmt.Errorf("the provider address is not a valid Bitcoin address. address: %v", address)
+		}
+		log.Debug("decoded btc address data", addressBts)
+		log.Debug("decoded version address data", data)
+		bts.Write(addressBts)
+		return bts.Bytes(), nil
+	}
 	log.Debug("decoded btc address data", addressBts)
 	log.Debug("decoded version address data", ver)
 	bts.WriteByte(ver)
@@ -451,7 +485,7 @@ func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
 	return -1
 }
 
-func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
+func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 
 	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
@@ -463,7 +497,7 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 		return "", err
 	}
 
-	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(btcutil.Amount(amount).ToBTC()))
+	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(amount))
 
 	if err != nil {
 		return "", err
@@ -869,4 +903,81 @@ func btcAddressType(address string) string {
 		return "P2PKH"
 	}
 	return "unknown"
+}
+
+func (btc *BTC) LockBtc(amount float64) error {
+	utxos, err := btc.c.ListUnspent()
+	if err != nil {
+		return err
+	}
+
+	var txInputs []*wire.OutPoint
+	var totalAmount float64
+	for _, utxo := range utxos {
+		if totalAmount >= amount {
+			break
+		}
+		txIdHash, err := chainhash.NewHashFromStr(utxo.TxID)
+		if err != nil {
+			return err
+		}
+		txInputs = append(txInputs, wire.NewOutPoint(txIdHash, utxo.Vout))
+		totalAmount += utxo.Amount * BTC_TO_SATOSHI
+	}
+	if totalAmount < amount {
+		return errors.New("not enough balance")
+	}
+	return btc.c.LockUnspent(false, txInputs)
+}
+
+func (btc *BTC) UnlockBtc(amount float64) error {
+	utxos, err := btc.c.ListLockUnspent()
+	if err != nil {
+		return err
+	}
+
+	var transactionsToUnlock []*wire.OutPoint
+	var totalAmount float64
+	var txOut *btcjson.GetTxOutResult
+	for _, utxo := range utxos {
+		txOut, err = btc.c.GetTxOut(&utxo.Hash, utxo.Index, true)
+		if totalAmount >= amount {
+			break
+		}
+		transactionsToUnlock = append(transactionsToUnlock, utxo)
+		totalAmount += txOut.Value * BTC_TO_SATOSHI
+	}
+	return btc.c.LockUnspent(true, transactionsToUnlock)
+}
+
+func (btc *BTC) GetBlockHeaderHashByTx(txHash string) ([32]byte, error) {
+	blockHash, err := btc.getBlockHash(txHash)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	block, err := btc.c.GetBlock(blockHash)
+	if err != nil {
+		return [32]byte{}, buildErrorRetrievingBlock(blockHash, err)
+	}
+	var buf bytes.Buffer
+	err = block.Header.Serialize(&buf)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	blockHeaderBytes := buf.Bytes()
+	return chainhash.DoubleHashH(blockHeaderBytes), nil
+}
+
+func DecodeBTCAddress(address string) ([]byte, error) {
+	var decoded []byte
+	var err error
+	if isBech32(address) {
+		decoded, err = DecodeBech32BTCAddress(address)
+	} else {
+		decoded, err = DecodeBTCAddressWithVersion(address)
+	}
+	if err != nil {
+		err = fmt.Errorf("error decoding BTC address: %v", err)
+	}
+	return decoded, err
 }

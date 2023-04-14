@@ -38,6 +38,7 @@ services:
     container_name: rskj01
     ports:
       - "4444:4444"
+      - "4445:4445"
     volumes:
       - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
       - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
@@ -46,6 +47,7 @@ services:
     command:
       [
         "java",
+        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
         "-Drpc.providers.web.http.bind_address=0.0.0.0",
         "-Drpc.providers.web.cors=*",
         "-Drpc.providers.web.ws.enabled=true",
@@ -56,7 +58,6 @@ services:
         "co.rsk.Start",
         "--${LPS_STAGE}",
       ]
-
   mongodb:
     image: mongo:4
     restart: on-failure
@@ -132,8 +133,6 @@ services:
       - PEGOUT_PROVIDER_EXPIRE_DATE
       - PEGOUT_PROVIDER_EXPIRE_BLOCKS
       - LIQUIDITY_PROVIDER_RSK_ADDR
-      - LIQUIDITY_PROVIDER_RSK_KEY
-      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
       - BTCD_RPC_USER
       - BTCD_RPC_PASS
       - RSK_CHAIN_ID
@@ -147,9 +146,11 @@ services:
       - MONGODB_LOCAL_HOST
       - RSKJ_CONNECTION_STRING
       - BTC_NETWORK
+      - BTC_TX_FEE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
+      - ENCRYPT_APP_KEY
     ports:
       - "8080:8080"
     volumes:

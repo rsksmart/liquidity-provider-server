@@ -9,6 +9,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/secrets"
 	"math/big"
 	"math/rand"
 	"os"
@@ -30,6 +32,8 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
+
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 )
 
 var (
@@ -60,19 +64,39 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(dbMongo, rsk,btc)
-	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository)
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
+	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
+
+	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal("error loading configuration: ", err.Error())
+	}
+
+	peginSecretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+	peginSecretNames := &account.AccountSecretNames{KeySecretName: cfg.Provider.KeySecret, PasswordSecretName: cfg.Provider.PasswordSecret}
+	peginAccountProvider := account.NewRemoteAccountProvider(cfg.Provider.Keydir, cfg.Provider.AccountNum, peginSecretNames, peginSecretsStorage)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository, peginAccountProvider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	lpPegOut, err := pegout.NewLocalProvider(cfg.PegoutProvier, lpRepository)
+	pegoutSecretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+	pegoutSecretNames := &account.AccountSecretNames{KeySecretName: cfg.PegoutProvier.KeySecret, PasswordSecretName: cfg.PegoutProvier.PasswordSecret}
+	pegoutAccountProvider := account.NewRemoteAccountProvider(cfg.Provider.Keydir, cfg.Provider.AccountNum, pegoutSecretNames, pegoutSecretsStorage)
+	lpPegOut, err := pegout.NewLocalProvider(cfg.PegoutProvier, lpRepository, pegoutAccountProvider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider)
+	key, err := pegoutSecretsStorage.GetTextSecret(os.Getenv("ENCRYPT_APP_KEY"))
+	if err != nil {
+		key = generateRandomKey(32)
+		pegoutSecretsStorage.SaveTextSecret(os.Getenv("ENCRYPT_APP_KEY"), key)
+	}
+
+	cfgData.EncryptKey = key
+
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider, peginAccountProvider)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
 		Name:                    cfg.PeginProviderName,
@@ -113,6 +137,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 
 		if err != nil {
 			log.Error("server error: ", err.Error())
+			endChannel <- syscall.SIGTERM
 		}
 	}()
 }
@@ -156,7 +181,7 @@ func main() {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
+	err = btc.Connect(cfg.BTC)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
@@ -164,7 +189,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, dbMongo)
+	startServer(rsk, btc, dbMongo, done)
 
 	<-done
 
@@ -181,4 +206,13 @@ func main() {
 func initCfgData() {
 	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 	cfgData.RSK = cfg.RSK
+}
+
+func generateRandomKey(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,!#@&")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

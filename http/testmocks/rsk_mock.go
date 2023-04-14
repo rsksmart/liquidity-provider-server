@@ -53,7 +53,20 @@ func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
 
 func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	arg := m.Called(addr)
-	return arg.Get(0).(*big.Int), arg.Get(1).(*big.Int), arg.Error(2)
+
+	var (
+		collateral *big.Int
+		minimum    *big.Int
+	)
+
+	if arg.Get(0) != nil {
+		collateral = arg.Get(0).(*big.Int)
+	}
+	if arg.Get(1) != nil {
+		minimum = arg.Get(1).(*big.Int)
+	}
+
+	return collateral, minimum, arg.Error(2)
 }
 
 func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
@@ -168,9 +181,9 @@ func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
+func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	args := m.Called(providerList)
-	return args.Get(0).([]bindings.LiquidityBridgeContractProvider), args.Error(1)
+	return args.Get(0).([]bindings.LiquidityBridgeContractLiquidityProvider), args.Error(1)
 }
 
 func (m *RskMock) GetRskHeight() (uint64, error) {
@@ -180,4 +193,12 @@ func (m *RskMock) GetRskHeight() (uint64, error) {
 func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
 	m.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return "", nil
+}
+
+func (m *RskMock) WithdrawCollateral(opts *bind.TransactOpts) error {
+	return m.Called(opts).Error(0)
+}
+
+func (m *RskMock) Resign(opt *bind.TransactOpts) error {
+	return m.Called(opt).Error(0)
 }

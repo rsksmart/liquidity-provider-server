@@ -1,10 +1,16 @@
 package connectors
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
 
@@ -12,8 +18,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -44,8 +48,28 @@ const (
 	newAccountGasCost = uint64(25000)
 )
 
+var (
+	WithdrawCollateralError = errors.New("withdraw collateral error")
+	ProviderResignError     = errors.New("provider has already resigned")
+)
+
+type AddressError struct {
+	address string
+}
+
+func (e *AddressError) Error() string {
+	return fmt.Sprintf("invalid address: %s", e.address)
+}
+
+func NewInvalidAddressError(address string) error {
+	return &AddressError{address: address}
+}
+
 type QuotePegOutWatcher interface {
-	OnRegisterPegOut(newState types.RQState)
+	GetQuote() *pegout.Quote
+	GetState() types.RQState
+	GetWatchedAddress() common.Address
+	OnDepositConfirmationsReached() bool
 	OnExpire()
 	Done() <-chan struct{}
 }
@@ -60,7 +84,10 @@ type RSKConnector interface {
 	HashQuote(q *pegin.Quote) (string, error)
 	HashPegOutQuote(q *pegout.Quote) (string, error)
 	ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error)
+	ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error)
 	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
+	RegisterPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, signature []byte) (*gethTypes.Transaction, error)
+	GetBridgeAddress() common.Address
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
 	GetFedPublicKey(index int) (string, error)
@@ -80,11 +107,15 @@ type RSKConnector interface {
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
-	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error)
+	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	GetActiveRedeemScript() ([]byte, error)
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
+	WithdrawCollateral(opts *bind.TransactOpts) error
+	Resign(opts *bind.TransactOpts) error
+	SendRbtc(privateKey, to string, amount uint64) error
+	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 }
 
 type RSKClient interface {
@@ -96,6 +127,8 @@ type RSKClient interface {
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*gethTypes.Receipt, error)
 	BlockNumber(ctx context.Context) (uint64, error)
+	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+	SendTransaction(ctx context.Context, tx *gethTypes.Transaction) error
 	Close()
 }
 
@@ -253,7 +286,7 @@ func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
 
 func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	if !common.IsHexAddress(addr) {
-		return nil, nil, fmt.Errorf("invalid address: %v", addr)
+		return nil, nil, NewInvalidAddressError(addr)
 	}
 	a := common.HexToAddress(addr)
 	var (
@@ -307,8 +340,16 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 	return err
 }
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
-	var err error
 	var tx *gethTypes.Transaction
+
+	eventChannel := make(chan *bindings.LiquidityBridgeContractRegister)
+	subscription, err := rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel)
+	defer func() { close(eventChannel); subscription.Unsubscribe() }()
+
+	if err != nil {
+		return 0, err
+	}
+
 	for i := 0; i < retries; i++ {
 		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
 		if err == nil && tx != nil {
@@ -320,17 +361,17 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 		return 0, fmt.Errorf("error registering provider: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	s, err := rsk.GetTxReceipt(ctx, tx)
-	if err != nil || s == nil {
-		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
+	for {
+		select {
+		case event := <-eventChannel:
+			if bytes.Equal(event.From.Bytes(), opts.From.Bytes()) {
+				log.Debugf("Detected provider registration for %s", event.From.String())
+				return event.Id.Int64(), nil
+			}
+		case err = <-subscription.Err():
+			return 0, err
+		}
 	}
-	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
-	if err != nil {
-		return 0, err
-	}
-	return registerEvent.Id.Int64(), err
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
@@ -567,6 +608,10 @@ func (rsk *RSK) GetFedAddress() (string, error) {
 	return results, nil
 }
 
+func (rsk *RSK) GetBridgeAddress() common.Address {
+	return rsk.bridgeAddress
+}
+
 func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 	var err error
 	opts := bind.CallOpts{}
@@ -612,6 +657,23 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeCo
 	return tx, nil
 }
 
+func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.RefundPegOut(opts, quote, btcTxHash, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+
+	if tx == nil && err != nil {
+		return nil, fmt.Errorf("error calling RefundPegOut: %v", err)
+	}
+	return tx, nil
+}
+
 func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
 	var err error
 	var t *gethTypes.Transaction
@@ -622,10 +684,26 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 		}
 		time.Sleep(rpcSleep)
 	}
-	if tx == nil && err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
 	}
 	return t, nil
+}
+
+func (rsk *RSK) RegisterPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, signature []byte) (*gethTypes.Transaction, error) {
+	var err error
+	var tx *gethTypes.Transaction
+	for i := 0; i < retries; i++ {
+		tx, err = rsk.lbc.RegisterPegOut(opts, quote, signature)
+		if err == nil && tx != nil {
+			break
+		}
+		time.Sleep(rpcSleep)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error calling registerPegOut: %v", err)
+	}
+	return tx, nil
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
@@ -814,15 +892,11 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 		return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing federation address: %v", err)
 	}
 
-	if isBech32(q.BTCRefundAddr) {
-		if pq.BtcRefundAddress, err = DecodeBech32BTCAddress(q.BTCRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error Decoding BECH32 refund address: %v", err)
-		}
-	} else {
-		if pq.BtcRefundAddress, err = DecodeBTCAddressWithVersion(q.BTCRefundAddr); err != nil {
-			return bindings.LiquidityBridgeContractQuote{}, fmt.Errorf("error parsing bitcoin refund address: %v", err)
-		}
+	decodedRefundAddress, err := DecodeBTCAddress(q.BTCRefundAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractQuote{}, err
 	}
+	pq.BtcRefundAddress = decodedRefundAddress
 
 	// TODO: later do the same validation for allowing LiquidityProviderBtcAddress to be BECH32
 	if pq.LiquidityProviderBtcAddress, err = DecodeBTCAddressWithVersion(q.LPBTCAddr); err != nil {
@@ -857,28 +931,47 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuot
 
 func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error) {
 	pq := bindings.LiquidityBridgeContractPegOutQuote{}
+	var err error
 
 	if err := copyHex(q.LBCAddr, pq.LbcAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing LBC address: %v", err)
 	}
-	if err := copyHex(q.LPRSKAddr, pq.LiquidityProviderRskAddress[:]); err != nil {
+	if err := copyHex(q.LPRSKAddr, pq.LpRskAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing provider RSK address: %v", err)
 	}
 	if err := copyHex(q.RSKRefundAddr, pq.RskRefundAddress[:]); err != nil {
 		return bindings.LiquidityBridgeContractPegOutQuote{}, fmt.Errorf("error parsing RSK refund address: %v", err)
 	}
+	decodedBTCRefundAddress, err := DecodeBTCAddress(q.BtcRefundAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
+	}
+	pq.BtcRefundAddress = decodedBTCRefundAddress
 
-	pq.Fee = q.CallFee
-	pq.PenaltyFee = q.PenaltyFee
+	decodedLpBTCAddress, err := DecodeBTCAddress(q.LpBTCAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
+	}
+	pq.LpBtcAddress = decodedLpBTCAddress
+
+	decodedDepositAddress, err := DecodeBTCAddress(q.DepositAddr)
+	if err != nil {
+		return bindings.LiquidityBridgeContractPegOutQuote{}, err
+	}
+	pq.DeposityAddress = decodedDepositAddress
+
+	pq.CallFee = q.CallFee.AsBigInt()
+	pq.PenaltyFee = types.NewWei(int64(q.PenaltyFee)).AsBigInt()
 	pq.Nonce = q.Nonce
-	pq.ValueToTransfer = q.Value
+	pq.GasLimit = q.GasLimit
+	pq.Value = q.Value.AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
 	pq.DepositDateLimit = q.DepositDateLimit
 	pq.DepositConfirmations = q.DepositConfirmations
 	pq.TransferConfirmations = q.TransferConfirmations
 	pq.TransferTime = q.TransferTime
 	pq.ExpireDate = q.ExpireDate
-	pq.ExpireBlocks = q.ExpireBlocks
+	pq.ExpireBlock = q.ExpireBlock
 
 	return pq, nil
 }
@@ -934,7 +1027,7 @@ func (rsk *RSK) AddQuoteToWatch(hash string, interval time.Duration, exp time.Ti
 		for {
 			select {
 			case <-ticker.C:
-				rsk.checkPegoutRegister(hash, w, exp, time.Now)
+				rsk.checkRskAddress(hash, w, exp, time.Now)
 			case <-w.Done():
 				ticker.Stop()
 				cb(w)
@@ -957,8 +1050,11 @@ func (rsk *RSK) GetRskHeight() (uint64, error) {
 	return number, nil
 }
 
-func (rsk *RSK) checkPegoutRegister(quoteHash string, w QuotePegOutWatcher, expTime time.Time, now func() time.Time) {
-	log.Debugf("checkPegoutRegister was started %v", quoteHash)
+func (rsk *RSK) checkRskAddress(quoteHash string, w QuotePegOutWatcher, expTime time.Time, now func() time.Time) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	log.Debugf("checkRskAddress was started %v", quoteHash)
 
 	log.Debugf("Exp:: time %v\n", expTime)
 	log.Debugf("Exp:: now %v\n", now())
@@ -970,28 +1066,28 @@ func (rsk *RSK) checkPegoutRegister(quoteHash string, w QuotePegOutWatcher, expT
 		return
 	}
 
-	b, err := hex.DecodeString(quoteHash)
-
+	currentBalance, err := rsk.c.BalanceAt(ctx, w.GetWatchedAddress(), nil)
+	minimumBalance := new(types.Wei).Add(w.GetQuote().Value, w.GetQuote().CallFee)
 	if err != nil {
-		log.Errorln(err.Error())
+		log.Debugf("Error getting balance from watched address %s: %s", w.GetWatchedAddress(), err)
+	} else if currentBalance.Cmp(minimumBalance.AsBigInt()) < 0 {
 		return
 	}
 
-	var b32 [32]byte
-
-	copy(b32[:], b)
-
-	status, err := rsk.GetProcessedPegOutQuotes(b32)
-
+	// if account had enough balance N confirmations ago means that confirmations have passed
+	height, err := rsk.GetRskHeight()
 	if err != nil {
-		w.OnRegisterPegOut(types.RQStateCallForUserFailed)
+		log.Debug("Error getting RSK height: ", err)
+	}
+	checkHeight := new(big.Int).Sub(new(big.Int).SetUint64(height), new(big.Int).SetUint64(uint64(w.GetQuote().DepositConfirmations)))
+	checkBalance, err := rsk.c.BalanceAt(ctx, w.GetWatchedAddress(), checkHeight)
+	if checkBalance.Cmp(minimumBalance.AsBigInt()) < 0 {
 		return
 	}
 
-	log.Debugf("Exp:: status %v\n", status)
-
-	if status == 2 {
-		w.OnRegisterPegOut(types.RQStateCallForUserSucceeded)
+	madePegout := w.OnDepositConfirmationsReached()
+	if madePegout {
+		log.Debug("Successful pegout done for quote ", quoteHash)
 	}
 }
 
@@ -1025,7 +1121,7 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractProvider, error) {
+func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))
 	for i, p := range providerList {
@@ -1037,4 +1133,89 @@ func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeCo
 	}
 
 	return providers, err
+}
+
+func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.WithdrawCollateral(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+
+	if err != nil {
+		return err
+	} else if !status {
+		return WithdrawCollateralError
+	} else {
+		return nil
+	}
+}
+
+func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+	defer cancel()
+
+	tx, err := rsk.lbc.Resign(opts)
+	if err != nil {
+		return err
+	}
+
+	status, err := rsk.GetTxStatus(ctx, tx)
+	if err != nil {
+		return err
+	} else if !status {
+		return ProviderResignError
+	} else {
+		return nil
+	}
+}
+
+func (rsk *RSK) SendRbtc(privateKey, to string, amount uint64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	decodedPrivateKey, err := decodePrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	fromAddress := crypto.PubkeyToAddress(decodedPrivateKey.PublicKey)
+	nonce, err := rsk.c.PendingNonceAt(ctx, fromAddress)
+	if err != nil {
+		return err
+	}
+
+	chainId, err := rsk.GetChainId()
+	if err != nil {
+		return err
+	}
+
+	toAddress := common.HexToAddress(to)
+	tx := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		ChainID: chainId,
+		Nonce:   nonce,
+		To:      &toAddress,
+		Value:   new(big.Int).SetUint64(amount),
+	})
+
+	signedTx, err := gethTypes.SignTx(tx, gethTypes.LatestSignerForChainID(chainId), decodedPrivateKey)
+	if err != nil {
+		return err
+	}
+	return rsk.c.SendTransaction(ctx, signedTx)
+}
+
+func decodePrivateKey(privateKeyString string) (*ecdsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(privateKeyString))
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block containing private key")
+	}
+	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
 }
