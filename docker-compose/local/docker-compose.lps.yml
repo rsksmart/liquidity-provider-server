@@ -75,12 +75,14 @@ services:
       - RSKJ_CONNECTION_STRING
       - ERP_KEYS
       - BTC_NETWORK
+      - BTC_TX_FEE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
       - AWS_REGION
+      - ENCRYPT_APP_KEY
     ports:
       - "8080:8080"
     volumes:

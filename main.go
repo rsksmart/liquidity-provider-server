@@ -88,6 +88,14 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 		log.Fatal("cannot create local provider: ", err)
 	}
 
+	key, err := pegoutSecretsStorage.GetTextSecret(os.Getenv("ENCRYPT_APP_KEY"))
+	if err != nil {
+		key = generateRandomKey(32)
+		pegoutSecretsStorage.SaveTextSecret(os.Getenv("ENCRYPT_APP_KEY"), key)
+	}
+
+	cfgData.EncryptKey = key
+
 	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider, peginAccountProvider)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
@@ -173,7 +181,7 @@ func main() {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
+	err = btc.Connect(cfg.BTC)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
@@ -198,4 +206,13 @@ func main() {
 func initCfgData() {
 	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 	cfgData.RSK = cfg.RSK
+}
+
+func generateRandomKey(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,!#@&")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
