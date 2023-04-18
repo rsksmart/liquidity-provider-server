@@ -1,17 +1,17 @@
 version: "3"
 services:
-  powpeg:
+  powpeg-pegin:
     build:
-      context: ../powpeg
+      context: ../powpeg/pegin
       args:
         UID: "${LPS_UID}"
-    image: powpeg:latest
-    container_name: powpeg01
+    image: powpeg-pegin:latest
+    container_name: powpeg-pegin
     ports:
       - "4450:4450"
     volumes:
-      - ${POWPEG_HOME:-./volumes/powpeg}/db:/home/powpeg/.rsk
-      - ${POWPEG_HOME:-./volumes/powpeg}/logs:/home/powpeg/logs
+      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/db:/home/powpeg/.rsk
+      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/logs:/home/powpeg/logs
     networks:
       - net_lps
     depends_on:
@@ -20,7 +20,24 @@ services:
       bitcoind:
         condition: service_healthy
     command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.http.hosts.0=localhost",
-               "-Drpc.providers.web.http.hosts.1=powpeg", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest"]
+               "-Drpc.providers.web.http.hosts.1=powpeg-pegin", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest"]
+  powpeg-pegout:
+    build:
+      context: ../powpeg/pegout
+      args:
+        UID: "${LPS_UID}"
+    image: powpeg-pegout:latest
+    container_name: powpeg-pegout
+    ports:
+      - "4451:4450"
+    volumes:
+      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/db:/home/powpeg/.rsk
+      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/logs:/home/powpeg/logs
+    networks:
+      - net_lps
+    depends_on: [ powpeg-pegin ]
+    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.http.hosts.0=localhost",
+               "-Drpc.providers.web.http.hosts.1=powpeg-pegout", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest" ]
   bitcoind:
     build:
       context: ../bitcoind

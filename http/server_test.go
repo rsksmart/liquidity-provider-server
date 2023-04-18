@@ -174,7 +174,7 @@ func testCheckHealth(t *testing.T) {
 	lp := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData, nil)
 
 	w := http2.TestResponseWriter{}
 	req, err := http.NewRequest("GET", "health", bytes.NewReader([]byte{}))
@@ -236,7 +236,7 @@ func testGetQuoteComplete(t *testing.T) {
 	lpRepo := new(storage.LPRepository)
 	mongoDb, _ := testmocks.NewDbMock("", quote, nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData, lpRepo, providerCfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lpRepo, providerCfgData, nil)
 
 	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
@@ -422,7 +422,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData, lpRepo, providerCfgData)
+		}, cfgData, lpRepo, providerCfgData, nil)
 
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerMocks {
@@ -479,7 +479,7 @@ func testInitBtcWatchers(t *testing.T) {
 
 	srv := newServer(rsk, btc, mongoDb, func() time.Time {
 		return time.Unix(0, 0)
-	}, cfgData, lp, providerCfgData)
+	}, cfgData, lp, providerCfgData, nil)
 
 	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
@@ -496,7 +496,7 @@ func testInitBtcWatchers(t *testing.T) {
 	mongoDb.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	mongoDb.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
-	err := srv.initBtcWatchers()
+	err := srv.initPeginBtcWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
 	}
@@ -538,7 +538,7 @@ func testGetProviders(t *testing.T) {
 
 	mongoDb, _ := testmocks.NewDbMock("", testQuotes[0], nil)
 
-	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData)
+	srv := New(rsk, btc, mongoDb, cfgData, lp, providerCfgData, nil)
 	req, err := http.NewRequest("GET", "getProviders", bytes.NewReader([]byte("")))
 	w := http2.TestResponseWriter{}
 
@@ -568,7 +568,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
-		}, cfgData, lp, providerCfgData)
+		}, cfgData, lp, providerCfgData, nil)
 
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
@@ -603,7 +603,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 
 func testAddCollateral(t *testing.T) {
 	rsk := new(testmocks.RskMock)
-	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 
 	for _, provider := range providerMocks {
 		srv.providers = append(srv.providers, provider)
@@ -702,7 +702,7 @@ func testAddCollateral(t *testing.T) {
 
 func testGetCollateral(t *testing.T) {
 	rsk := new(testmocks.RskMock)
-	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 
 	for _, provider := range providerMocks {
 		srv.providers = append(srv.providers, provider)
@@ -772,7 +772,7 @@ func testWithdrawCollateral(t *testing.T) {
 	request := fmt.Sprintf(`{ "lpRskAddress": "%s" }`, providerMocks[1].address)
 
 	rsk := new(testmocks.RskMock)
-	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 	for _, provider := range providerMocks {
 		srv.providers = append(srv.providers, provider)
 	}
@@ -847,7 +847,7 @@ func testProviderResign(t *testing.T) {
 	request := fmt.Sprintf(`{ "lpRskAddress": "%s" }`, providerMocks[1].address)
 
 	rsk := new(testmocks.RskMock)
-	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData)
+	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 	for _, provider := range providerMocks {
 		srv.providers = append(srv.providers, provider)
 	}
