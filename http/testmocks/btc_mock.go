@@ -29,9 +29,24 @@ func (b *BtcMock) AddAddressWatcher(address string, minBtcAmount btcutil.Amount,
 	return nil
 }
 
-func (b *BtcMock) Connect(endpoint string, username string, password string) error {
-	b.Called(endpoint, username, password)
+func (b *BtcMock) Connect(con connectors.BtcConfig) error {
+	b.Called(con)
 	return nil
+}
+
+func (b *BtcMock) LockBtc(number float64) error {
+	b.Called(number)
+	return nil
+}
+
+func (b *BtcMock) UnlockBtc(number float64) error {
+	b.Called(number)
+	return nil
+}
+
+func (b *BtcMock) GetBlockHeaderHashByTx(string) ([32]byte, error) {
+	byteArray := [32]byte{97, 98, 99, 100, 101, 102}
+	return byteArray, nil
 }
 
 func (b *BtcMock) CheckConnection() error {
@@ -86,6 +101,6 @@ func (b *BtcMock) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) 
 	return nil, nil
 }
 
-func (b *BtcMock) SendBTC(address string, amount uint) (string, error) {
+func (b *BtcMock) SendBtc(address string, amount uint64) (string, error) {
 	return "", nil
 }

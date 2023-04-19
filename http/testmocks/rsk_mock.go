@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/stretchr/testify/mock"
@@ -177,8 +178,28 @@ func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.
 	return nil
 }
 
+func (m *RskMock) GetBridgeAddress() common.Address {
+	return common.Address{}
+}
+
+func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error) {
+	return bindings.LiquidityBridgeContractPegOutQuote{}, nil
+}
+
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
+	return nil, nil
+}
+
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
+}
+
+func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.LiquidityBridgeContractPegOutQuote, []byte) (*gethTypes.Transaction, error) {
+	return nil, nil
+}
+
+func (m *RskMock) SendRbtc(string, string, uint64) error {
+	return nil
 }
 
 func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {

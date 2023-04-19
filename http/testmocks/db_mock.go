@@ -1,6 +1,7 @@
 package testmocks
 
 import (
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"github.com/rsksmart/liquidity-provider/types"
@@ -18,7 +19,7 @@ func (d *DbMock) SaveAddressKeys(quoteHash string, addr string, pubKey []byte, p
 	return nil
 }
 
-func (d *DbMock) GetAddressKeys(quoteHash string) (*DbMock, error) {
+func (d *DbMock) GetAddressKeys(quoteHash string) (*mongoDB.PegoutKeys, error) {
 	return nil, nil
 }
 
