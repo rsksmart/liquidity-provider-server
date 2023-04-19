@@ -113,7 +113,6 @@ type QuoteRequest struct {
 	CallContractArguments    string `json:"callContractArguments" required:"" example:"0x0" description:"Contract data"`
 	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" example:"0x0" description:"Value to send in the call"`
 	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required" example:"0x0" description:"User RSK refund address"`
-	LpAddress                string `json:"lpAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Liquidity provider RSK address"`
 	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"User Bitcoin refund address. Note: Must be a legacy address, segwit addresses are not accepted"`
 }
 
