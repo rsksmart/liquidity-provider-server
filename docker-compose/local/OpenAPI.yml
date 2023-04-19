@@ -386,10 +386,6 @@ components:
           description: Contract address or EOA address
           example: "0x0"
           type: string
-        lpAddress:
-          description: Liquidity provider RSK address
-          example: "0x0"
-          type: string
         rskRefundAddress:
           description: User RSK refund address
           example: "0x0"
@@ -403,7 +399,6 @@ components:
       - callContractArguments
       - valueToTransfer
       - rskRefundAddress
-      - lpAddress
       - bitcoinRefundAddress
       type: object
     QuoteReturn:
