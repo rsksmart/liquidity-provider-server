@@ -195,7 +195,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 	cmp := c.Cmp(big.NewInt(0))
 	if cmp >= 0 {
 		opts := &bind.TransactOpts{
-			Value:  m,
+			Value:  new(big.Int).Mul(m, big.NewInt(2)),
 			From:   addr,
 			Signer: lp.SignTx,
 		}
@@ -234,7 +234,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	cmp := c.Cmp(big.NewInt(0))
 	if cmp >= 0 {
 		opts := &bind.TransactOpts{
-			Value:  m,
+			Value:  new(big.Int).Mul(m, big.NewInt(2)),
 			From:   addr,
 			Signer: lp.SignTx,
 		}
