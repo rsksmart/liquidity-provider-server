@@ -98,7 +98,7 @@ type Server struct {
 	now                  func() time.Time
 	watchers             map[string]*BTCAddressWatcher
 	pegOutWatchers       map[string]*BTCAddressPegOutWatcher
-	pegOutDepositWatcher *DepositEventWatcher
+	pegOutDepositWatcher DepositEventWatcher
 	addWatcherMu         sync.Mutex
 	sharedPeginMutex     sync.Mutex
 	sharedPegoutMutex    sync.Mutex
@@ -417,10 +417,10 @@ func (s *Server) Start(port uint) error {
 
 	err = s.srv.ListenAndServe()
 	if err != http.ErrServerClosed {
-		s.pegOutDepositWatcher.endChannel <- true
+		s.pegOutDepositWatcher.EndChannel() <- true
 		return err
 	}
-	s.pegOutDepositWatcher.endChannel <- true
+	s.pegOutDepositWatcher.EndChannel() <- true
 	return nil
 }
 

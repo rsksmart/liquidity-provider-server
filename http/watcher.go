@@ -366,7 +366,13 @@ func (r *BTCAddressPegOutWatcher) updateQuoteState(newState types.RQState) error
 	return nil
 }
 
-type DepositEventWatcher struct {
+type DepositEventWatcher interface {
+	Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote)
+	WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error
+	EndChannel() chan<- bool
+}
+
+type DepositEventWatcherImpl struct {
 	lastCheckedBlock     uint64
 	nonDepositedQuotes   map[string]*WatchedQuote
 	depositedQuotes      map[string]*WatchedQuote
@@ -384,8 +390,8 @@ type DepositEventWatcher struct {
 func NewDepositEventWatcher(checkInterval time.Duration, liquidityProvider pegout.LiquidityProvider,
 	addLocker sync.Locker, pegoutLocker sync.Locker, endChannel chan bool,
 	rsk connectors.RSKConnector, btc connectors.BTCConnector, db mongoDB.DBConnector,
-	finalizationCallback func(hash string, quote *WatchedQuote, endState types.RQState)) *DepositEventWatcher {
-	return &DepositEventWatcher{
+	finalizationCallback func(hash string, quote *WatchedQuote, endState types.RQState)) DepositEventWatcher {
+	return &DepositEventWatcherImpl{
 		checkInterval:        checkInterval,
 		endChannel:           endChannel,
 		addLocker:            addLocker,
@@ -404,7 +410,7 @@ type WatchedQuote struct {
 	DepositBlock uint64
 }
 
-func (watcher *DepositEventWatcher) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
+func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
 	if waitingForDepositQuotes == nil || waitingForConfirmationQuotes == nil {
 		log.Fatal("invalid initial pegout quote map")
 	}
@@ -421,14 +427,14 @@ func (watcher *DepositEventWatcher) Init(waitingForDepositQuotes, waitingForConf
 	watcher.watchDepositEvent()
 }
 
-func (watcher *DepositEventWatcher) updateOldestBlock(quote *WatchedQuote, oldestBlock *uint32) {
+func (watcher *DepositEventWatcherImpl) updateOldestBlock(quote *WatchedQuote, oldestBlock *uint32) {
 	creationBlock := watcher.liquidityProvider.GetCreationBlock(quote.Data)
 	if *oldestBlock == 0 || *oldestBlock > creationBlock {
 		*oldestBlock = creationBlock
 	}
 }
 
-func (watcher *DepositEventWatcher) WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error {
+func (watcher *DepositEventWatcherImpl) WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error {
 	if watcher.nonDepositedQuotes == nil {
 		return errors.New("not initialized")
 	}
@@ -444,7 +450,7 @@ func (watcher *DepositEventWatcher) WatchNewQuote(quoteHash, signature string, q
 	}
 }
 
-func (watcher *DepositEventWatcher) watchDepositEvent() {
+func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
 	ticker := time.NewTicker(watcher.checkInterval)
 	for {
 		select {
@@ -469,7 +475,7 @@ func (watcher *DepositEventWatcher) watchDepositEvent() {
 	}
 }
 
-func (watcher *DepositEventWatcher) checkDeposits(height uint64) error {
+func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 	if height == watcher.lastCheckedBlock {
 		return nil
 	}
@@ -490,7 +496,7 @@ func (watcher *DepositEventWatcher) checkDeposits(height uint64) error {
 	return nil
 }
 
-func (watcher *DepositEventWatcher) getConfirmedQuotes(height uint64) map[string]*WatchedQuote {
+func (watcher *DepositEventWatcherImpl) getConfirmedQuotes(height uint64) map[string]*WatchedQuote {
 	confirmedQuotes := make(map[string]*WatchedQuote, 0)
 	for hash, quote := range watcher.depositedQuotes {
 		if uint64(quote.Data.DepositConfirmations)+quote.DepositBlock < height {
@@ -501,7 +507,7 @@ func (watcher *DepositEventWatcher) getConfirmedQuotes(height uint64) map[string
 	return confirmedQuotes
 }
 
-func (watcher *DepositEventWatcher) cleanExpiredQuotes() {
+func (watcher *DepositEventWatcherImpl) cleanExpiredQuotes() {
 	now := time.Now()
 	for hash, quote := range watcher.nonDepositedQuotes {
 		if now.After(quote.Data.GetExpirationTime()) {
@@ -513,7 +519,7 @@ func (watcher *DepositEventWatcher) cleanExpiredQuotes() {
 	}
 }
 
-func (watcher *DepositEventWatcher) updateQuoteState(hash string, oldState, newState types.RQState) error {
+func (watcher *DepositEventWatcherImpl) updateQuoteState(hash string, oldState, newState types.RQState) error {
 	err := watcher.db.UpdateRetainedPegOutQuoteState(hash, oldState, newState)
 	if err != nil {
 		log.Errorf(UpdateQuoteStateError, hash, err)
@@ -522,7 +528,7 @@ func (watcher *DepositEventWatcher) updateQuoteState(hash string, oldState, newS
 	return nil
 }
 
-func (watcher *DepositEventWatcher) handleDepositedQuotes(quotes map[string]*WatchedQuote) {
+func (watcher *DepositEventWatcherImpl) handleDepositedQuotes(quotes map[string]*WatchedQuote) {
 	var newState types.RQState
 	for hash, quote := range quotes {
 		err := watcher.handleDepositedQuote(quote)
@@ -540,7 +546,7 @@ func (watcher *DepositEventWatcher) handleDepositedQuotes(quotes map[string]*Wat
 	}
 }
 
-func (watcher *DepositEventWatcher) handleDepositedQuote(quote *WatchedQuote) error {
+func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote) error {
 	paredQuote, err := watcher.rsk.ParsePegOutQuote(quote.Data)
 	if err != nil {
 		return err
@@ -584,4 +590,8 @@ func (watcher *DepositEventWatcher) handleDepositedQuote(quote *WatchedQuote) er
 	}
 
 	return nil
+}
+
+func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
+	return watcher.endChannel
 }

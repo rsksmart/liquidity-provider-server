@@ -23,6 +23,11 @@ type RskMock struct {
 	QuoteHash string
 }
 
+func (m *RskMock) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error) {
+	args := m.Called(fromBlock, toBlock)
+	return args.Get(0).([]*pegout.DepositEvent), args.Error(1)
+}
+
 func (m *RskMock) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
 	return m.Called(opts, _providerId, _status).Error(0)
 }
@@ -175,7 +180,8 @@ func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 }
 
 func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w connectors.QuotePegOutWatcher, cb func(w connectors.QuotePegOutWatcher)) error {
-	return nil
+	args := m.Called(hash, interval, exp, w, cb)
+	return args.Error(0)
 }
 
 func (m *RskMock) GetBridgeAddress() common.Address {
