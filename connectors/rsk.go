@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
@@ -115,8 +114,9 @@ type RSKConnector interface {
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
 	WithdrawCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
-	SendRbtc(privateKey, to string, amount uint64) error
+	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
+	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 }
 
 type RSKClient interface {
@@ -153,6 +153,41 @@ type RSK struct {
 	irisActivationHeight        int
 	erpKeys                     []string
 	twoWayConnection            bool
+}
+
+func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	iterator, err := rsk.lbc.FilterPegOutDeposit(&bind.FilterOpts{
+		Start:   fromBlock,
+		End:     &toBlock,
+		Context: ctx,
+	})
+	defer iterator.Close()
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("first event is nil ->", iterator.Event)
+
+	var deposits []*pegout.DepositEvent
+	var deposit *pegout.DepositEvent
+	var lbcEvent *bindings.LiquidityBridgeContractPegOutDeposit
+	for iterator.Next() {
+		lbcEvent = iterator.Event
+		deposit = &pegout.DepositEvent{
+			QuoteHash:         string(iterator.Event.QuoteHash[:]),
+			AccumulatedAmount: lbcEvent.AccumulatedAmount,
+			Timestamp:         time.Unix(lbcEvent.Timestamp.Int64(), 0),
+			BlockNumber:       iterator.Event.Raw.BlockNumber,
+		}
+		deposits = append(deposits, deposit)
+	}
+	if iterator.Error() != nil {
+		return nil, err
+	}
+
+	return deposits, err
 }
 
 type RegisterPegOutQuoteWatcherCompleteCallback = func(w QuotePegOutWatcher)
@@ -445,24 +480,27 @@ func (rsk *RSK) GetChainId() (*big.Int, error) {
 	return nil, fmt.Errorf("error retrieving chain id: %v", err)
 }
 
-func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (uint8, error) {
+func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (*pegout.QuoteState, error) {
 	var err error
 	for i := 0; i < retries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 		defer cancel()
-		var status uint8
-		status, err = rsk.lbc.GetPegOutProcessedQuote(&bind.CallOpts{
+		var state bindings.LiquidityBridgeContractPegOutQuoteState
+		state, err = rsk.lbc.GetPegOutProcessedQuote(&bind.CallOpts{
 			Context: ctx,
 		}, quoteHash)
 		if err == nil {
-			return status, nil
+			return &pegout.QuoteState{
+				StatusCode:     state.StatusCode,
+				ReceivedAmount: state.ReceivedAmount,
+			}, nil
 		}
 
 		log.Debugf("Exp:: GetProcessedPegOutQuotes error ::: %v", err)
 		time.Sleep(rpcSleep)
 	}
 
-	return 0, fmt.Errorf("error retrieving processed pegout status: %v", err)
+	return nil, fmt.Errorf("error retrieving processed pegout status: %v", err)
 }
 
 func (rsk *RSK) EstimateGas(addr string, value *big.Int, data []byte) (uint64, error) {
@@ -1207,15 +1245,15 @@ func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
 	}
 }
 
-func (rsk *RSK) SendRbtc(privateKey, to string, amount uint64) error {
+func (rsk *RSK) SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 	defer cancel()
 
-	decodedPrivateKey, err := decodePrivateKey(privateKey)
-	if err != nil {
-		return err
+	if common.IsHexAddress(from) {
+		return errors.New("invalid address")
 	}
-	fromAddress := crypto.PubkeyToAddress(decodedPrivateKey.PublicKey)
+
+	fromAddress := common.HexToAddress(from)
 	nonce, err := rsk.c.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		return err
@@ -1234,7 +1272,7 @@ func (rsk *RSK) SendRbtc(privateKey, to string, amount uint64) error {
 		Value:   new(big.Int).SetUint64(amount),
 	})
 
-	signedTx, err := gethTypes.SignTx(tx, gethTypes.LatestSignerForChainID(chainId), decodedPrivateKey)
+	signedTx, err := signFunc(fromAddress, tx)
 	if err != nil {
 		return err
 	}
