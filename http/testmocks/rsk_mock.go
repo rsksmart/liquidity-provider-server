@@ -198,7 +198,7 @@ func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.LiquidityBridgeCon
 	return nil, nil
 }
 
-func (m *RskMock) SendRbtc(string, string, uint64) error {
+func (m *RskMock) SendRbtc(bind.SignerFn, string, string, uint64) error {
 	return nil
 }
 
