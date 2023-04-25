@@ -13,6 +13,16 @@ type RSKClientMock struct {
 	mock.Mock
 }
 
+func (mock *RSKClientMock) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
+	args := mock.Called(ctx, account)
+	return uint64(args.Int(0)), args.Error(1)
+}
+
+func (mock *RSKClientMock) SendTransaction(ctx context.Context, tx *gethTypes.Transaction) error {
+	args := mock.Called(ctx, tx)
+	return args.Error(0)
+}
+
 func (mock *RSKClientMock) ChainID(ctx context.Context) (*big.Int, error) {
 	arg := mock.Called(ctx)
 	return arg.Get(0).(*big.Int), arg.Error(1)
