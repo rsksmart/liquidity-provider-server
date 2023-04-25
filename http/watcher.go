@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/ethereum/go-ethereum/common"
@@ -51,21 +53,6 @@ type BTCAddressPegOutWatcher struct {
 	closed               bool
 	signature            []byte
 	sharedLocker         sync.Locker
-}
-
-type RegisterPegoutWatcher struct {
-	hash              string
-	btc               connectors.BTCConnector
-	rsk               connectors.RSKConnector
-	lp                pegout.LiquidityProvider
-	dbMongo           mongoDB.DBConnector
-	state             types.RQState
-	quote             *pegout.Quote
-	done              chan struct{}
-	closed            bool
-	signature         []byte
-	sharedLocker      sync.Locker
-	derivationAddress common.Address
 }
 
 const (
@@ -153,31 +140,13 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 		return
 	}
 
-	privateKey, err := w.getPrivateKey()
-	if err != nil {
-		log.Errorf("Error getting private key on pegout quote %s: %s", w.hash, err)
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return
-	}
-	err = w.rsk.SendRbtc(privateKey, w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
+	err = w.rsk.SendRbtc(w.lp.SignTx, w.lp.Address(), w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
 	if err != nil {
 		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
 		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return
 	}
 	_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInSucceeded)
-}
-
-func (w *BTCAddressPegOutWatcher) getPrivateKey() (string, error) {
-	keys, err := w.dbMongo.GetAddressKeys(w.hash)
-	if err != nil {
-		return "", err
-	}
-	privateKey, err := decrypt(keys.PrivateKey, []byte(w.addressDecryptionKey))
-	if err != nil {
-		return "", err
-	}
-	return string(privateKey), nil
 }
 
 func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, error) {
@@ -376,122 +345,14 @@ func (w *BTCAddressWatcher) close() {
 	close(w.done)
 }
 
-func (watcher *RegisterPegoutWatcher) GetQuote() *pegout.Quote {
-	return watcher.quote
-}
-
-func (watcher *RegisterPegoutWatcher) GetState() types.RQState {
-	return watcher.state
-}
-
-func (watcher *RegisterPegoutWatcher) GetWatchedAddress() common.Address {
-	return watcher.derivationAddress
-}
-
-func (watcher *RegisterPegoutWatcher) OnDepositConfirmationsReached() bool {
-	if watcher.state != types.RQStateWaitingForDeposit {
-		return false
-	}
-
-	quote, err := watcher.rsk.ParsePegOutQuote(watcher.quote)
-	if err != nil {
-		log.Error("Error parsing pegout quote: ", err)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return false
-	}
-
-	satoshi, _ := watcher.quote.Value.ToSatoshi().Float64()
-	watcher.sharedLocker.Lock()
-	defer watcher.sharedLocker.Unlock()
-	err = watcher.btc.LockBtc(satoshi)
-	if err != nil {
-		log.Error("Error locking btc: ", err)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return false
-	}
-
-	opt := &bind.TransactOpts{
-		From:   quote.LpRskAddress,
-		Signer: watcher.lp.SignTx,
-	}
-	tx, err := watcher.rsk.RegisterPegOut(opt, quote, watcher.signature)
-	if err != nil {
-		log.Error("Error registering pegout: ", err)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return false
-	}
-
-	if status, err := watcher.rsk.GetTxStatus(context.Background(), tx); err != nil || !status {
-		_ = watcher.btc.UnlockBtc(satoshi)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		log.Errorf("RegisterPegout transaction failed. hash: %v", tx.Hash())
-		return false
-	}
-	err = watcher.btc.UnlockBtc(satoshi)
-	if err != nil {
-		log.Error("Error unlocking BTC before sending to destination: ", err)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return false
-	}
-
-	_, err = watcher.btc.SendBtc(watcher.quote.DepositAddr, uint64(math.Ceil(satoshi)))
-	if err != nil {
-		log.Errorf("Error sending BTC to address %s on pegout quote %s: %s", watcher.quote.DepositAddr, watcher.hash, err)
-		_ = watcher.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return false
-	}
-
-	err = watcher.updateQuoteState(types.RQStateCallForUserSucceeded)
-	watcher.close()
-	if err != nil {
-		log.Debugf("error updating quote state for quote %s", watcher.hash)
-	}
-	log.Debugf("registered pegout for tx %v", tx.Hash())
-	return true
-}
-
-func (watcher *RegisterPegoutWatcher) OnExpire() {
-	if watcher.closed {
-		log.Errorf(WatcherOnExpireError, watcher.hash)
-		return
-	}
-	log.Debugf(TimeExpiredError, watcher.hash)
-	_ = watcher.closeAndUpdateQuoteState(types.RQStateTimeForDepositElapsed)
-}
-
-func (watcher *RegisterPegoutWatcher) Done() <-chan struct{} {
-	return watcher.done
-}
-
-func (watcher *RegisterPegoutWatcher) closeAndUpdateQuoteState(newState types.RQState) error {
-	watcher.close()
-	return watcher.updateQuoteState(newState)
-}
-
 func (b *BTCAddressPegOutWatcher) closeAndUpdateQuoteState(newState types.RQState) error {
 	b.close()
 	return b.updateQuoteState(newState)
 }
 
-func (watcher *RegisterPegoutWatcher) close() {
-	watcher.closed = true
-	close(watcher.done)
-}
-
 func (b *BTCAddressPegOutWatcher) close() {
 	b.closed = true
 	close(b.done)
-}
-
-func (watcher *RegisterPegoutWatcher) updateQuoteState(newState types.RQState) error {
-	err := watcher.dbMongo.UpdateRetainedPegOutQuoteState(watcher.hash, watcher.state, newState)
-	if err != nil {
-		log.Errorf(UpdateQuoteStateError, watcher.hash, err)
-		return err
-	}
-
-	watcher.state = newState
-	return nil
 }
 
 func (r *BTCAddressPegOutWatcher) updateQuoteState(newState types.RQState) error {
@@ -503,4 +364,235 @@ func (r *BTCAddressPegOutWatcher) updateQuoteState(newState types.RQState) error
 
 	r.state = newState
 	return nil
+}
+
+type DepositEventWatcher interface {
+	Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote)
+	WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error
+	EndChannel() chan<- bool
+}
+
+type DepositEventWatcherImpl struct {
+	lastCheckedBlock     uint64
+	nonDepositedQuotes   map[string]*WatchedQuote
+	depositedQuotes      map[string]*WatchedQuote
+	checkInterval        time.Duration
+	endChannel           chan bool
+	addLocker            sync.Locker
+	rsk                  connectors.RSKConnector
+	btc                  connectors.BTCConnector
+	db                   mongoDB.DBConnector
+	pegoutLocker         sync.Locker
+	liquidityProvider    pegout.LiquidityProvider
+	finalizationCallback func(hash string, quote *WatchedQuote, endState types.RQState)
+}
+
+func NewDepositEventWatcher(checkInterval time.Duration, liquidityProvider pegout.LiquidityProvider,
+	addLocker sync.Locker, pegoutLocker sync.Locker, endChannel chan bool,
+	rsk connectors.RSKConnector, btc connectors.BTCConnector, db mongoDB.DBConnector,
+	finalizationCallback func(hash string, quote *WatchedQuote, endState types.RQState)) DepositEventWatcher {
+	return &DepositEventWatcherImpl{
+		checkInterval:        checkInterval,
+		endChannel:           endChannel,
+		addLocker:            addLocker,
+		rsk:                  rsk,
+		btc:                  btc,
+		db:                   db,
+		pegoutLocker:         pegoutLocker,
+		liquidityProvider:    liquidityProvider,
+		finalizationCallback: finalizationCallback,
+	}
+}
+
+type WatchedQuote struct {
+	Data         *pegout.Quote
+	Signature    string
+	DepositBlock uint64
+}
+
+func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
+	if waitingForDepositQuotes == nil || waitingForConfirmationQuotes == nil {
+		log.Fatal("invalid initial pegout quote map")
+	}
+	var oldestBlock uint32
+	for _, quote := range waitingForDepositQuotes {
+		watcher.updateOldestBlock(quote, &oldestBlock)
+	}
+	for _, quote := range waitingForConfirmationQuotes {
+		watcher.updateOldestBlock(quote, &oldestBlock)
+	}
+	watcher.lastCheckedBlock = uint64(oldestBlock)
+	watcher.nonDepositedQuotes = waitingForDepositQuotes
+	watcher.depositedQuotes = waitingForConfirmationQuotes
+	watcher.watchDepositEvent()
+}
+
+func (watcher *DepositEventWatcherImpl) updateOldestBlock(quote *WatchedQuote, oldestBlock *uint32) {
+	creationBlock := watcher.liquidityProvider.GetCreationBlock(quote.Data)
+	if *oldestBlock == 0 || *oldestBlock > creationBlock {
+		*oldestBlock = creationBlock
+	}
+}
+
+func (watcher *DepositEventWatcherImpl) WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error {
+	if watcher.nonDepositedQuotes == nil {
+		return errors.New("not initialized")
+	}
+	watcher.addLocker.Lock()
+	defer watcher.addLocker.Unlock()
+	_, existsOnNonDeposited := watcher.nonDepositedQuotes[quoteHash]
+	_, existsOnDeposited := watcher.depositedQuotes[quoteHash]
+	if !existsOnNonDeposited && !existsOnDeposited {
+		watcher.nonDepositedQuotes[quoteHash] = &WatchedQuote{Data: quote, Signature: signature}
+		return nil
+	} else {
+		return errors.New("already watched")
+	}
+}
+
+func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
+	ticker := time.NewTicker(watcher.checkInterval)
+	for {
+		select {
+		case <-watcher.endChannel:
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			height, err := watcher.rsk.GetRskHeight()
+			if err != nil {
+				log.Error("Error getting rsk height: ", err)
+				break
+			}
+			err = watcher.checkDeposits(height)
+			if err != nil {
+				log.Error("Error getting pegout deposit events: ", err)
+				break
+			}
+			quotes := watcher.getConfirmedQuotes(height)
+			watcher.cleanExpiredQuotes()
+			watcher.handleDepositedQuotes(quotes)
+			watcher.lastCheckedBlock = height
+		}
+	}
+}
+
+func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
+	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
+		return nil
+	}
+	events, err := watcher.rsk.GetDepositEvents(watcher.lastCheckedBlock-1, height)
+	if err != nil {
+		return err
+	}
+	log.Debugf("Checking block interval %d-%d for deposits", watcher.lastCheckedBlock-1, height)
+	for _, event := range events {
+		quote, exists := watcher.nonDepositedQuotes[event.QuoteHash]
+		if exists && event.IsValidForQuote(quote.Data) {
+			quote.DepositBlock = event.BlockNumber
+			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositBlock)
+			watcher.depositedQuotes[event.QuoteHash] = quote
+			delete(watcher.nonDepositedQuotes, event.QuoteHash)
+		}
+	}
+	return nil
+}
+
+func (watcher *DepositEventWatcherImpl) getConfirmedQuotes(height uint64) map[string]*WatchedQuote {
+	confirmedQuotes := make(map[string]*WatchedQuote, 0)
+	for hash, quote := range watcher.depositedQuotes {
+		if uint64(quote.Data.DepositConfirmations)+quote.DepositBlock < height {
+			confirmedQuotes[hash] = quote
+			delete(watcher.depositedQuotes, hash)
+		}
+	}
+	return confirmedQuotes
+}
+
+func (watcher *DepositEventWatcherImpl) cleanExpiredQuotes() {
+	now := time.Now()
+	for hash, quote := range watcher.nonDepositedQuotes {
+		if now.After(quote.Data.GetExpirationTime()) {
+			log.Debugf(TimeExpiredError, hash)
+			if err := watcher.updateQuoteState(hash, types.RQStateWaitingForDeposit, types.RQStateTimeForDepositElapsed); err == nil {
+				delete(watcher.nonDepositedQuotes, hash)
+			}
+		}
+	}
+}
+
+func (watcher *DepositEventWatcherImpl) updateQuoteState(hash string, oldState, newState types.RQState) error {
+	err := watcher.db.UpdateRetainedPegOutQuoteState(hash, oldState, newState)
+	if err != nil {
+		log.Errorf(UpdateQuoteStateError, hash, err)
+		return err
+	}
+	return nil
+}
+
+func (watcher *DepositEventWatcherImpl) handleDepositedQuotes(quotes map[string]*WatchedQuote) {
+	var newState types.RQState
+	for hash, quote := range quotes {
+		err := watcher.handleDepositedQuote(quote)
+		if err == nil {
+			newState = types.RQStateCallForUserSucceeded
+		} else {
+			newState = types.RQStateCallForUserFailed
+		}
+		if err = watcher.updateQuoteState(hash, types.RQStateWaitingForDepositConfirmations, newState); err != nil {
+			log.Errorf("Error updating quote %s: %v", hash, err)
+		} else {
+			log.Debug("registered pegout quote: ", hash)
+			watcher.finalizationCallback(hash, quote, newState)
+		}
+	}
+}
+
+func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote) error {
+	paredQuote, err := watcher.rsk.ParsePegOutQuote(quote.Data)
+	if err != nil {
+		return err
+	}
+
+	satoshi, _ := quote.Data.Value.ToSatoshi().Float64()
+	watcher.pegoutLocker.Lock()
+	defer watcher.pegoutLocker.Unlock()
+	err = watcher.btc.LockBtc(satoshi)
+	if err != nil {
+		return err
+	}
+
+	opt := &bind.TransactOpts{
+		From:   paredQuote.LpRskAddress,
+		Signer: watcher.liquidityProvider.SignTx,
+	}
+
+	signatureBytes, err := hex.DecodeString(quote.Signature)
+	if err != nil {
+		return err
+	}
+	tx, err := watcher.rsk.RegisterPegOut(opt, paredQuote, signatureBytes)
+	if err != nil {
+		return err
+	}
+
+	if status, err := watcher.rsk.GetTxStatus(context.Background(), tx); err != nil || !status {
+		_ = watcher.btc.UnlockBtc(satoshi)
+		return err
+	}
+
+	err = watcher.btc.UnlockBtc(satoshi)
+	if err != nil {
+		return err
+	}
+
+	_, err = watcher.btc.SendBtc(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
+	return watcher.endChannel
 }
