@@ -52,6 +52,7 @@ const (
 
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
+const PegoutDepositCheckInterval = 2 * time.Minute
 
 const BadRequestError = "bad request"
 const UnableToBuildResponse = "Unable to build response"
@@ -387,7 +388,7 @@ func (s *Server) Start(port uint) error {
 	}
 
 	provider := s.pegoutProviders[0] // TODO convert providers array into normal variable since its going to be only 1 LP per LPS instance
-	s.pegOutDepositWatcher = NewDepositEventWatcher(time.Minute*2, provider, &s.addWatcherMu, &s.sharedPegoutMutex, make(chan bool), s.rsk, s.btc, s.dbMongo,
+	s.pegOutDepositWatcher = NewDepositEventWatcher(PegoutDepositCheckInterval, provider, &s.addWatcherMu, &s.sharedPegoutMutex, make(chan bool), s.rsk, s.btc, s.dbMongo,
 		func(hash string, quote *WatchedQuote, endState types.RQState) {
 			if endState != types.RQStateCallForUserSucceeded {
 				return
@@ -430,12 +431,13 @@ func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) initPegoutWatchers() error {
-	quoteStatesToWatch := []types.RQState{types.RQStateCallForUserSucceeded, types.RQStateWaitingForDeposit}
+	quoteStatesToWatch := []types.RQState{types.RQStateCallForUserSucceeded, types.RQStateWaitingForDeposit, types.RQStateWaitingForDepositConfirmations}
 	quotes, err := s.dbMongo.GetRetainedPegOutQuoteByState(quoteStatesToWatch)
 	if err != nil {
 		return err
 	}
-	var waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote
+	waitingForDepositQuotes := make(map[string]*WatchedQuote, 0)
+	waitingForConfirmationQuotes := make(map[string]*WatchedQuote, 0)
 	for _, entry := range quotes {
 		quote, err := s.dbMongo.GetPegOutQuote(entry.QuoteHash)
 		if err != nil || quote == nil {

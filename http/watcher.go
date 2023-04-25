@@ -471,12 +471,13 @@ func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
 			quotes := watcher.getConfirmedQuotes(height)
 			watcher.cleanExpiredQuotes()
 			watcher.handleDepositedQuotes(quotes)
+			watcher.lastCheckedBlock = height
 		}
 	}
 }
 
 func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
-	if height == watcher.lastCheckedBlock {
+	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
 		return nil
 	}
 	events, err := watcher.rsk.GetDepositEvents(watcher.lastCheckedBlock-1, height)
