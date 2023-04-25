@@ -15,12 +15,24 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
+func (d *DbMock) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
+	args := d.Called(hash, depositBlockNumber)
+	return args.Error(0)
+}
+
+func (d *DbMock) GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error) {
+	args := d.Called(filter)
+	return args.Get(0).([]*pegout.RetainedQuote), args.Error(1)
+}
+
 func (d *DbMock) SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error {
-	return nil
+	args := d.Called(quoteHash, addr, pubKey, privateKey)
+	return args.Error(0)
 }
 
 func (d *DbMock) GetAddressKeys(quoteHash string) (*mongoDB.PegoutKeys, error) {
-	return nil, nil
+	args := d.Called(quoteHash)
+	return args.Get(0).(*mongoDB.PegoutKeys), args.Error(1)
 }
 
 func (d *DbMock) GetProvider(u uint64) (string, error) {

@@ -52,6 +52,7 @@ const (
 
 const quoteCleaningInterval = 1 * time.Hour
 const quoteExpTimeThreshold = 5 * time.Minute
+const PegoutDepositCheckInterval = 2 * time.Minute
 
 const BadRequestError = "bad request"
 const UnableToBuildResponse = "Unable to build response"
@@ -89,23 +90,23 @@ type ConfigData struct {
 }
 
 type Server struct {
-	srv                 http.Server
-	providers           []pegin.LiquidityProvider
-	pegoutProviders     []pegout.LiquidityProvider
-	rsk                 connectors.RSKConnector
-	btc                 connectors.BTCConnector
-	dbMongo             mongoDB.DBConnector
-	now                 func() time.Time
-	watchers            map[string]*BTCAddressWatcher
-	pegOutWatchers      map[string]*BTCAddressPegOutWatcher
-	rskWatchers         map[string]*RegisterPegoutWatcher
-	addWatcherMu        sync.Mutex
-	sharedPeginMutex    sync.Mutex
-	sharedPegoutMutex   sync.Mutex
-	cfgData             ConfigData
-	ProviderRespository *storage.LPRepository
-	ProviderConfig      pegin.ProviderConfig
-	AccountProvider     account.AccountProvider
+	srv                  http.Server
+	providers            []pegin.LiquidityProvider
+	pegoutProviders      []pegout.LiquidityProvider
+	rsk                  connectors.RSKConnector
+	btc                  connectors.BTCConnector
+	dbMongo              mongoDB.DBConnector
+	now                  func() time.Time
+	watchers             map[string]*BTCAddressWatcher
+	pegOutWatchers       map[string]*BTCAddressPegOutWatcher
+	pegOutDepositWatcher DepositEventWatcher
+	addWatcherMu         sync.Mutex
+	sharedPeginMutex     sync.Mutex
+	sharedPegoutMutex    sync.Mutex
+	cfgData              ConfigData
+	ProviderRespository  *storage.LPRepository
+	ProviderConfig       pegin.ProviderConfig
+	AccountProvider      account.AccountProvider
 }
 
 type QuoteRequest struct {
@@ -176,7 +177,6 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		now:                 now,
 		watchers:            make(map[string]*BTCAddressWatcher),
 		pegOutWatchers:      make(map[string]*BTCAddressPegOutWatcher),
-		rskWatchers:         make(map[string]*RegisterPegoutWatcher),
 		cfgData:             cfgData,
 		ProviderRespository: LPRep,
 		ProviderConfig:      ProviderConfig,
@@ -387,6 +387,22 @@ func (s *Server) Start(port uint) error {
 		return err
 	}
 
+	provider := s.pegoutProviders[0] // TODO convert providers array into normal variable since its going to be only 1 LP per LPS instance
+	s.pegOutDepositWatcher = NewDepositEventWatcher(PegoutDepositCheckInterval, provider, &s.addWatcherMu, &s.sharedPegoutMutex, make(chan bool), s.rsk, s.btc, s.dbMongo,
+		func(hash string, quote *WatchedQuote, endState types.RQState) {
+			if endState != types.RQStateCallForUserSucceeded {
+				return
+			}
+			signB, err := hex.DecodeString(quote.Signature)
+			if err != nil {
+				log.Error("Error decoding pegout quote signature: ", err)
+			}
+			err = s.addAddressPegOutWatcher(quote.Data, hash, quote.Data.DepositAddr, signB, provider, types.RQStateCallForUserSucceeded)
+			if err != nil {
+				log.Error("Error starting BTC pegout watcher: ", err)
+			}
+		})
+
 	err = s.initPegoutWatchers()
 	if err != nil {
 		return err
@@ -402,8 +418,10 @@ func (s *Server) Start(port uint) error {
 
 	err = s.srv.ListenAndServe()
 	if err != http.ErrServerClosed {
+		s.pegOutDepositWatcher.EndChannel() <- true
 		return err
 	}
+	s.pegOutDepositWatcher.EndChannel() <- true
 	return nil
 }
 
@@ -413,12 +431,13 @@ func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) initPegoutWatchers() error {
-	quoteStatesToWatch := []types.RQState{types.RQStateCallForUserSucceeded, types.RQStateWaitingForDeposit}
+	quoteStatesToWatch := []types.RQState{types.RQStateCallForUserSucceeded, types.RQStateWaitingForDeposit, types.RQStateWaitingForDepositConfirmations}
 	quotes, err := s.dbMongo.GetRetainedPegOutQuoteByState(quoteStatesToWatch)
 	if err != nil {
 		return err
 	}
-
+	waitingForDepositQuotes := make(map[string]*WatchedQuote, 0)
+	waitingForConfirmationQuotes := make(map[string]*WatchedQuote, 0)
 	for _, entry := range quotes {
 		quote, err := s.dbMongo.GetPegOutQuote(entry.QuoteHash)
 		if err != nil || quote == nil {
@@ -440,14 +459,17 @@ func (s *Server) initPegoutWatchers() error {
 
 		if entry.State == types.RQStateCallForUserSucceeded {
 			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, quote.DepositAddr, signB, p, entry.State)
+		} else if entry.State == types.RQStateWaitingForDepositConfirmations {
+			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote, DepositBlock: entry.DepositBlockNumber}
 		} else {
-			err = s.addRskAddressWatcher(quote, entry.QuoteHash, common.HexToAddress(entry.DepositAddr), signB, p, entry.State)
+			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote}
 		}
 
 		if err != nil {
 			log.Errorf("initPegoutWatchers: error initializing watcher for quote hash %s: %v", entry.QuoteHash, err)
 		}
 	}
+	go s.pegOutDepositWatcher.Init(waitingForDepositQuotes, waitingForConfirmationQuotes)
 	return nil
 }
 
@@ -521,7 +543,7 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 
 	satoshis, _ := quote.Value.ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(satoshis)))
-	expTime := getPegOutQuoteExpTime(quote)
+	expTime := quote.GetExpirationTime()
 	watcher := &BTCAddressPegOutWatcher{
 		hash:                 hash,
 		btc:                  s.btc,
@@ -544,44 +566,6 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 		s.addWatcherMu.Lock()
 		s.pegOutWatchers[hash] = watcher
 		s.addWatcherMu.Unlock()
-	}
-	return err
-}
-
-func (s *Server) addRskAddressWatcher(quote *pegout.Quote, hash string, derivationAddress common.Address, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
-	s.addWatcherMu.Lock()
-	defer s.addWatcherMu.Unlock()
-
-	_, ok := s.watchers[hash]
-	if ok {
-		return nil
-	}
-
-	expTime := getPegOutQuoteExpTime(quote)
-	watcher := &RegisterPegoutWatcher{
-		hash:              hash,
-		btc:               s.btc,
-		rsk:               s.rsk,
-		lp:                provider,
-		quote:             quote,
-		state:             state,
-		signature:         signB,
-		dbMongo:           s.dbMongo,
-		done:              make(chan struct{}),
-		sharedLocker:      &s.sharedPegoutMutex,
-		derivationAddress: derivationAddress,
-	}
-	err := s.rsk.AddQuoteToWatch(hash, time.Minute, expTime, watcher, func(w connectors.QuotePegOutWatcher) {
-		if w.GetState() == types.RQStateCallForUserSucceeded {
-			s.addAddressPegOutWatcher(quote, hash, quote.DepositAddr, signB, provider, types.RQStateCallForUserSucceeded)
-		}
-		s.addWatcherMu.Lock()
-		defer s.addWatcherMu.Unlock()
-		delete(s.rskWatchers, hash)
-
-	})
-	if err == nil {
-		s.rskWatchers[hash] = watcher
 	}
 	return err
 }
@@ -997,7 +981,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if getQuoteFailed {
-			details := map[string]interface{}{
+			details := Details{
 				"quote": q,
 				"gas":   gas,
 			}
@@ -1255,10 +1239,6 @@ func getQuoteExpTimePegOut(q *pegout.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
 }
 
-func getPegOutQuoteExpTime(q *pegout.Quote) time.Time {
-	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
-}
-
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
 	customError := NewServerError(fmt.Sprintf("Error decoding request: %s", err.Error()), make(Details), true)
@@ -1376,39 +1356,6 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	privateKey, publicKey, depositAddress, err := generateRskEthereumAddress()
-
-	if err != nil {
-		log.Error("error getting derived rsk address: ", err.Error())
-		customError := NewServerError("error getting derived rsk address: "+err.Error(), make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
-
-	encPubKey, err := encrypt(publicKey, []byte(s.cfgData.EncryptKey))
-	if err != nil {
-		log.Error("error encrypting public key: ", err.Error())
-		customError := NewServerError("error encrypting public key: "+err.Error(), make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
-
-	encPrivKey, err := encrypt(privateKey, []byte(s.cfgData.EncryptKey))
-	if err != nil {
-		log.Error("error encrypting private key: ", err.Error())
-		customError := NewServerError("error encrypting private key: "+err.Error(), make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
-
-	err = s.dbMongo.SaveAddressKeys(req.QuoteHash, depositAddress.Hex(), encPubKey, encPrivKey)
-	if err != nil {
-		log.Error("error saving keys: ", err.Error())
-		customError := NewServerError("error saving keys: "+err.Error(), make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
-
 	p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
@@ -1421,7 +1368,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
 	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
 	reqLiq := gasCost.Uint64() + quote.Value.Uint64()
-	signB, err := p.SignQuote(hashBytes, depositAddress.Hex(), reqLiq)
+	signB, err := p.SignQuote(hashBytes, s.rsk.GetLBCAddress(), reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
 		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
@@ -1429,16 +1376,16 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = s.addRskAddressWatcher(quote, req.QuoteHash, depositAddress, signB, p, types.RQStateWaitingForDeposit)
+	signature := hex.EncodeToString(signB)
+
+	err = s.pegOutDepositWatcher.WatchNewQuote(req.QuoteHash, signature, quote)
 	if err != nil {
 		log.Error(ErrorAddingAddressWatcher, err.Error())
-		customError := NewServerError(ErrorAddingAddressWatcher+err.Error(), make(map[string]interface{}), true)
+		customError := NewServerError(ErrorAddingAddressWatcher+err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
-
-	signature := hex.EncodeToString(signB)
-	signAndReturnPegoutQuote(w, signature, depositAddress.Hex())
+	signAndReturnPegoutQuote(w, signature, s.rsk.GetLBCAddress())
 }
 
 func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAddr string) {

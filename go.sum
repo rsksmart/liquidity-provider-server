@@ -105,7 +105,6 @@ github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 h1:q0rUy8C/TYNBQS1+CGKw68tLOF
 github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1/go.mod h1:7SFka0XMvUgj3hfZtydOrQY2mwhPclbT2snogU7SQQc=
 github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f h1:bAs4lUbRJpnnkd9VhRV3jjAVU7DJVjMaK+IsvSeZvFo=
 github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f/go.mod h1:TdznJufoqS23FtqVCzL0ZqgP5MqXbb4fg/WgDys70nA=
-github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d h1:yJzD/yFppdVCf6ApMkVy8cUxV0XrxdP9rVf6D87/Mng=
 github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
 github.com/btcsuite/btcutil v1.0.2 h1:9iZ1Terx9fMIOtq1VrwdqfsATL9MC2l8ZrUY6YZ2uts=
 github.com/btcsuite/btcutil v1.0.2/go.mod h1:j9HUFwoQRsZL3V4n+qG+CUnEGHOarIxfC3Le2Yhbcts=
@@ -444,10 +443,8 @@ github.com/rogpeppe/go-internal v1.8.0/go.mod h1:WmiCO8CzOY8rg0OYDC4/i/2WRWAB6po
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rs/cors v1.7.0 h1:+88SsELBHx5r+hZ8TCkggzSstaWNbDvThkVK8H6f9ik=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
-github.com/rsksmart/liquidity-provider v0.0.0-20230224151210-f81c1c6517ff h1:BCRsBr4Ue6U3Ty+irIO89HGr+SyuUMp/hXjJLh9XdHQ=
-github.com/rsksmart/liquidity-provider v0.0.0-20230224151210-f81c1c6517ff/go.mod h1:xZgVfirTQcPjJuB/J/lo21QarRYsPoI/NOpPdbzdhtw=
-github.com/rsksmart/liquidity-provider v0.0.0-20230329121344-522a83cc775b h1:k+3sHhJfvE+AcOZB2XTMJbn0TL1o1X5F1t3QCok/lys=
-github.com/rsksmart/liquidity-provider v0.0.0-20230329121344-522a83cc775b/go.mod h1:xZgVfirTQcPjJuB/J/lo21QarRYsPoI/NOpPdbzdhtw=
+github.com/rsksmart/liquidity-provider v0.0.0-20230424152222-0e5b843514e3 h1:DqNstDQTuCHgutLCK4eVQGbtCsDyiiYYfEZnAPTI+og=
+github.com/rsksmart/liquidity-provider v0.0.0-20230424152222-0e5b843514e3/go.mod h1:xZgVfirTQcPjJuB/J/lo21QarRYsPoI/NOpPdbzdhtw=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
