@@ -168,7 +168,6 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("first event is nil ->", iterator.Event)
 
 	var deposits []*pegout.DepositEvent
 	var deposit *pegout.DepositEvent
@@ -176,7 +175,7 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 	for iterator.Next() {
 		lbcEvent = iterator.Event
 		deposit = &pegout.DepositEvent{
-			QuoteHash:         string(iterator.Event.QuoteHash[:]),
+			QuoteHash:         hex.EncodeToString(iterator.Event.QuoteHash[:]),
 			AccumulatedAmount: lbcEvent.AccumulatedAmount,
 			Timestamp:         time.Unix(lbcEvent.Timestamp.Int64(), 0),
 			BlockNumber:       iterator.Event.Raw.BlockNumber,
