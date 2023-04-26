@@ -470,8 +470,8 @@ components:
       type: object
     acceptResPegOut:
       properties:
-        rskDepositAddress:
-          description: Hash of the deposit RSK address
+        lbcAddress:
+          description: LBC address to execute depositPegout function
           example: "0x0"
           type: string
         signature:
@@ -480,7 +480,7 @@ components:
           type: string
       required:
       - signature
-      - rskDepositAddress
+      - lbcAddress
       type: object
     healthRes:
       properties:
