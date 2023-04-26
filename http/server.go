@@ -153,8 +153,8 @@ type acceptRes struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 type acceptResPegOut struct {
-	Signature         string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
-	RskDepositAddress string `json:"rskDepositAddress" required:"" example:"0x0" description:"Hash of the deposit RSK address"`
+	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
+	LbcAddress string `json:"lbcAddress" required:"" example:"0x0" description:"LBC address to execute depositPegout function"`
 }
 
 type AcceptResPegOut struct {
@@ -1391,8 +1391,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAddr string) {
 	enc := json.NewEncoder(w)
 	response := acceptResPegOut{
-		Signature:         signature,
-		RskDepositAddress: depositAddr,
+		Signature:  signature,
+		LbcAddress: depositAddr,
 	}
 
 	err := enc.Encode(response)
