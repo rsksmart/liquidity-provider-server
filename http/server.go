@@ -106,6 +106,7 @@ type Server struct {
 	cfgData              ConfigData
 	ProviderRespository  *storage.LPRepository
 	ProviderConfig       pegin.ProviderConfig
+	PegoutConfig         pegout.ProviderConfig
 	AccountProvider      account.AccountProvider
 }
 
@@ -199,7 +200,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegin")
 		if err != nil {
 			return err
 		}
@@ -238,7 +239,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegout")
 		if err != nil {
 			return err
 		}
@@ -265,12 +266,12 @@ type RegistrationStatus struct {
 	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
 
-// @Title Register Provider
-// @Description Registers New Provider
+// @Title Register Pegin Provider
+// @Description Registers New Pegin Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
 // @Success  200 object RegistrationStatus
-// @Route /provider/register [post]
-func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request) {
+// @Route /provider/pegin/register [post]
+func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
 	payload := types.ProviderRegisterRequest{}
@@ -293,7 +294,44 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
-	response := RegistrationStatus{Status: "Provider Created Successfully"}
+	response := RegistrationStatus{Status: "Pegin Provider Created Successfully"}
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+}
+// @Title Register Pegout Provider
+// @Description Registers New Pegout Provider
+// @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
+// @Success  200 object RegistrationStatus
+// @Route /provider/pegout/register [post]
+func (s *Server) registerPegoutProviderHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := types.ProviderRegisterRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		log.Errorf(UnableToDeserializePayloadError, err)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		return
+	}
+	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider)
+	if err != nil {
+		log.Error(ErrorCreatingLocalProvider, err)
+		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
+		return
+	}
+	err = s.AddPegOutProvider(lp, payload)
+	if err != nil {
+		log.Errorf(ErrorAddingProvider, err)
+		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
+		return
+	}
+
+	response := RegistrationStatus{Status: "Pegout Provider Created Successfully"}
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 	if err != nil {
@@ -372,7 +410,8 @@ func (s *Server) Start(port uint) error {
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
-	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
+	r.Path("/provider/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
+	r.Path("/provider/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)

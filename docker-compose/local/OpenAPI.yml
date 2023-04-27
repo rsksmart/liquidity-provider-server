@@ -505,6 +505,41 @@ components:
         rsk:
           type: string
       type: object
+    types.ProviderRegisterRequest:
+      properties:
+        acceptedQuoteExpiration:
+          description: Accepted quote expiration in seconds
+          example: 100
+          type: integer
+        apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
+          type: string
+        fee:
+          description: Fee in wei
+          example: 100
+          type: integer
+        maxTransactionValue:
+          description: Maximum transaction value in wei
+          example: 100
+          type: integer
+        minTransactionValue:
+          description: Minimum transaction value in wei
+          example: 100
+          type: integer
+        name:
+          description: Provider Name
+          example: New Provider
+          type: string
+        quoteExpiration:
+          description: Quote expiration in seconds
+          example: 100
+          type: integer
+        status:
+          description: Provider status
+          example: true
+          type: boolean
+      type: object
     types.Wei: {}
   securitySchemes:
     AuthorizationHeader:
@@ -694,9 +729,9 @@ paths:
                 $ref: '#/components/schemas/ProviderStatusChangeStatus'
           description: ""
       summary: Change Provider Status
-  /provider/register:
+  /provider/pegin/register:
     post:
-      description: ' Registers New Provider'
+      description: ' Registers New Pegin Provider'
       requestBody:
         content:
           application/json:
@@ -710,7 +745,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegistrationStatus'
           description: ""
-      summary: Register Provider
+      summary: Register Pegin Provider
+  /provider/pegout/register:
+    post:
+      description: ' Registers New Pegout Provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRegisterRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ""
+      summary: Register Pegout Provider
   /provider/resignation:
     post:
       description: ' Provider stops being a liquidity provider'
