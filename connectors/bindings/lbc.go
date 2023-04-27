@@ -952,22 +952,22 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Refund
 // Register is a paid mutator transaction binding the contract method 0xfdc505a2.
 //
 // Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _acceptedQuoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status) payable returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Register(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "register", _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Register(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "register", _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _providerType)
 }
 
 // Register is a paid mutator transaction binding the contract method 0xfdc505a2.
 //
 // Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _acceptedQuoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status) payable returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool,_providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status,_providerType)
 }
 
 // Register is a paid mutator transaction binding the contract method 0xfdc505a2.
 //
 // Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _acceptedQuoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status) payable returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status,_providerType)
 }
 
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x6e2e8c70.
