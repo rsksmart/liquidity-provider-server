@@ -1,6 +1,10 @@
 package pegout
 
-import "github.com/rsksmart/liquidity-provider/types"
+import (
+	"github.com/rsksmart/liquidity-provider/types"
+	"math/big"
+	"time"
+)
 
 type Quote struct {
 	LBCAddr               string     `json:"lbcAddress" db:"lbc_addr" validate:"required"`
@@ -21,4 +25,26 @@ type Quote struct {
 	TransferTime          uint32     `json:"transferTime" db:"transfer_time" validate:"required"`
 	ExpireDate            uint32     `json:"expireDate" db:"expire_date" validate:"required"`
 	ExpireBlock           uint32     `json:"expireBlocks" db:"expire_blocks" validate:"required"`
+}
+
+func (q *Quote) GetExpirationTime() time.Time {
+	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
+}
+
+type QuoteState struct {
+	StatusCode     uint8
+	ReceivedAmount *big.Int
+}
+
+type DepositEvent struct {
+	QuoteHash         string
+	AccumulatedAmount *big.Int
+	Timestamp         time.Time
+	BlockNumber       uint64
+}
+
+func (event *DepositEvent) IsValidForQuote(quote *Quote) bool {
+	enoughAmount := event.AccumulatedAmount.Cmp(new(types.Wei).Add(quote.Value, quote.CallFee).AsBigInt()) >= 0
+	nonExpired := event.Timestamp.Before(quote.GetExpirationTime())
+	return enoughAmount && nonExpired
 }

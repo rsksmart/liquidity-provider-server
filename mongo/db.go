@@ -36,6 +36,7 @@ type DBConnector interface {
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]int64, error)
 	GetProvider(uint64) (string, error)
@@ -577,6 +578,30 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 
 	if result.ModifiedCount != 1 {
 		return fmt.Errorf("error updating retained quote mongoBD: %v; oldState: %v; newState: %v", hash, oldState, newState)
+	}
+
+	return nil
+}
+
+func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}, primitive.E{Key: "state", Value: types.RQStateWaitingForDeposit}}
+	update := bson.D{
+		primitive.E{Key: "$set", Value: bson.D{
+			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
+			primitive.E{Key: "depositBlockNumber", Value: depositBlockNumber},
+		}},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount != 1 {
+		return fmt.Errorf("error updating confirmed quote %v on mongoBD", hash)
 	}
 
 	return nil

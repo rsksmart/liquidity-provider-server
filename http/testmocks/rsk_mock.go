@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +21,11 @@ import (
 type RskMock struct {
 	mock.Mock
 	QuoteHash string
+}
+
+func (m *RskMock) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error) {
+	args := m.Called(fromBlock, toBlock)
+	return args.Get(0).([]*pegout.DepositEvent), args.Error(1)
 }
 
 func (m *RskMock) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
@@ -174,11 +180,32 @@ func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 }
 
 func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w connectors.QuotePegOutWatcher, cb func(w connectors.QuotePegOutWatcher)) error {
-	return nil
+	args := m.Called(hash, interval, exp, w, cb)
+	return args.Error(0)
+}
+
+func (m *RskMock) GetBridgeAddress() common.Address {
+	return common.Address{}
+}
+
+func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error) {
+	return bindings.LiquidityBridgeContractPegOutQuote{}, nil
+}
+
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
+	return nil, nil
 }
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
+}
+
+func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.LiquidityBridgeContractPegOutQuote, []byte) (*gethTypes.Transaction, error) {
+	return nil, nil
+}
+
+func (m *RskMock) SendRbtc(bind.SignerFn, string, string, uint64) error {
+	return nil
 }
 
 func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
