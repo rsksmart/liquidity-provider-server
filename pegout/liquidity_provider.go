@@ -48,6 +48,7 @@ type LiquidityProvider interface {
 	GetQuote(*Quote, uint64, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
+	GetCreationBlock(quote *Quote) uint32
 }
 
 func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
@@ -96,6 +97,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 			break
 		}
 	}
+
 	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
 	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64()))
 	return &res, nil
@@ -168,4 +170,8 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
 	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+}
+
+func (lp *LocalProvider) GetCreationBlock(quote *Quote) uint32 {
+	return quote.ExpireBlock - lp.cfg.ExpireBlocks
 }

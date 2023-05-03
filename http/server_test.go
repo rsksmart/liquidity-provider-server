@@ -46,6 +46,27 @@ type LiquidityPegOutProviderMock struct {
 	address string
 }
 
+type depositEventWatcherMock struct {
+	mock.Mock
+}
+
+func (d depositEventWatcherMock) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
+	// mock impl
+}
+
+func (d depositEventWatcherMock) WatchNewQuote(quoteHash, signature string, quote *pegout.Quote) error {
+	args := d.Called(quoteHash, signature, quote)
+	return args.Error(0)
+}
+
+func (d depositEventWatcherMock) EndChannel() chan<- bool {
+	return nil
+}
+
+func (lp LiquidityPegOutProviderMock) GetCreationBlock(quote *pegout.Quote) uint32 {
+	return 0
+}
+
 func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64, gasPrice *types.Wei) (*pegout.Quote, error) {
 	return quote, nil
 }
@@ -95,6 +116,7 @@ var providerCfgData = pegin.ProviderConfig{}
 
 var cfgData = ConfigData{
 	MaxQuoteValue: 600000000000000000,
+	EncryptKey:    "abcdefghijklpmop",
 	RSK: LiquidityProviderList{
 		Endpoint:                    "",
 		LBCAddr:                     "",
@@ -229,7 +251,7 @@ func testGetQuoteComplete(t *testing.T) {
 	quote := testQuotes[0]
 	callContractArgumentsField := `"callContractArguments":"%v",`
 	basicQuoteFields := `"callEoaOrContractAddress":"%v","valueToTransfer":%v,` +
-		`"rskRefundAddress":"%v","lpAddress":"%v", "bitcoinRefundAddress":"%v"`
+		`"rskRefundAddress":"%v", "bitcoinRefundAddress":"%v"`
 
 	rsk := new(testmocks.RskMock)
 	btc := new(testmocks.BtcMock)
@@ -257,17 +279,17 @@ func testGetQuoteComplete(t *testing.T) {
 	rskRefAddrSC := "0x1eD614cd3443EFd9c70F04b6d777aed947A4b0c4"
 	btcRefAddr := "myCqdohiF3cvopyoPMB2rGTrJZx9jJ2ihT"
 
-	eoaQuote := pegin.Quote{
+	eoaQuote := PeginQuoteDTO{
 		FedBTCAddr:         "",
 		LBCAddr:            "",
 		LPRSKAddr:          "",
 		BTCRefundAddr:      btcRefAddr,
 		RSKRefundAddr:      rskRefAddrEOA,
 		LPBTCAddr:          "",
-		CallFee:            types.NewWei(0),
-		PenaltyFee:         types.NewWei(0),
+		CallFee:            0,
+		PenaltyFee:         0,
 		Nonce:              0,
-		Value:              value.Copy(),
+		Value:              value.Uint64(),
 		AgreementTimestamp: 0,
 		TimeForDeposit:     0,
 		LpCallTime:         0,
@@ -309,7 +331,7 @@ func testGetQuoteComplete(t *testing.T) {
 			basicTestCase: basicTestCase{
 				caseName: "Return error when requested amount below bridge's min pegin tx value",
 				request: fmt.Sprintf("{"+basicQuoteFields+"}",
-					destAddrEOA, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+					destAddrEOA, value, rskRefAddrEOA, btcRefAddr,
 				),
 				assertions: func(res *http.Response) {
 					response := &ErrorBody{}
@@ -327,7 +349,7 @@ func testGetQuoteComplete(t *testing.T) {
 			basicTestCase: basicTestCase{
 				caseName: "Return quote successfully for EOA origin",
 				request: fmt.Sprintf("{"+basicQuoteFields+"}",
-					rskRefAddrEOA, value, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+					rskRefAddrEOA, value, rskRefAddrEOA, btcRefAddr,
 				),
 				assertions: func(res *http.Response) {
 					var response []*QuoteReturn
@@ -342,7 +364,7 @@ func testGetQuoteComplete(t *testing.T) {
 			basicTestCase: basicTestCase{
 				caseName: "Return quote successfully for SC origin and SC call contract address",
 				request: fmt.Sprintf("{"+callContractArgumentsField+basicQuoteFields+"}",
-					callArgs, destAddrSC, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+					callArgs, destAddrSC, value, rskRefAddrSC, btcRefAddr,
 				),
 				assertions: func(res *http.Response) {
 					var response []*QuoteReturn
@@ -357,7 +379,7 @@ func testGetQuoteComplete(t *testing.T) {
 			basicTestCase: basicTestCase{
 				caseName: "Return quote successfully for SC origin and EOA call contract address",
 				request: fmt.Sprintf("{"+basicQuoteFields+"}",
-					destAddrEOA, value, rskRefAddrSC, rskRefAddrSC, btcRefAddr,
+					destAddrEOA, value, rskRefAddrSC, btcRefAddr,
 				),
 				assertions: func(res *http.Response) {
 					var response []*QuoteReturn
@@ -372,7 +394,7 @@ func testGetQuoteComplete(t *testing.T) {
 			basicTestCase: basicTestCase{
 				caseName: "Return error when transfer value is too high",
 				request: fmt.Sprintf("{"+basicQuoteFields+"}",
-					destAddrEOA, 600000000000000001, rskRefAddrEOA, rskRefAddrEOA, btcRefAddr,
+					destAddrEOA, 600000000000000001, rskRefAddrEOA, btcRefAddr,
 				),
 				assertions: func(res *http.Response) {
 					response := &ErrorBody{}
@@ -466,7 +488,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 	}
 }
 
-func testInitBtcWatchers(t *testing.T) {
+func testInitPeginWatchers(t *testing.T) {
 	hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
 	quote := testQuotes[0]
 	rsk := new(testmocks.RskMock)
@@ -496,7 +518,7 @@ func testInitBtcWatchers(t *testing.T) {
 	mongoDb.On("GetRetainedQuotes", []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserSucceeded}).Times(1).Return([]*types.RetainedQuote{{QuoteHash: hash}})
 	mongoDb.On("GetQuote", hash).Times(1).Return(quote)
 	btc.On("AddAddressWatcher", "", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
-	err := srv.initPeginBtcWatchers()
+	err := srv.initPeginWatchers()
 	if err != nil {
 		t.Errorf("couldn't init BTC watchers. error: %v", err)
 	}
@@ -518,12 +540,12 @@ func testDecodeAddress(t *testing.T) {
 
 func testDecodeAddressWithAnInvalidBtcRefundAddr(t *testing.T) {
 	_, _, _, err := decodeAddresses("0xa554d96413FF72E93437C4072438302C38350EE3", "1JRRmhqTc87SmLjSHaiJjHyuJfDUc8AQDF", "0xa554d96413FF72E93437C4072438302C38350EE3")
-	assert.Equal(t, "the provider address is not a valid base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
+	assert.Equal(t, "the provider address is not a valid Bech32 or base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
 }
 
 func testDecodeAddressWithAnInvalidLpBTCAddrB(t *testing.T) {
 	_, _, _, err := decodeAddresses("1PRTTaJesdNovgne6Ehcdu1fpEdX7913CK", "0xa554d96413FF72E93437C4072438302C38350EE3", "0xa554d96413FF72E93437C4072438302C38350EE3")
-	assert.Equal(t, "the provider address is not a valid base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
+	assert.Equal(t, "the provider address is not a valid Bech32 or base58 encoded address. address: 0xa554d96413FF72E93437C4072438302C38350EE3", err.Error())
 }
 
 func testDecodeAddressWithAnInvalidLbcAddrB(t *testing.T) {
@@ -557,22 +579,20 @@ func testGetProviders(t *testing.T) {
 func testcAcceptQuotePegoutComplete(t *testing.T) {
 	for _, quote := range testPegOutQuotes {
 		hash := "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228"
-		derivationAddress := "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D"
 		rsk := new(testmocks.RskMock)
 		btc := new(testmocks.BtcMock)
 		lp := new(storage.LPRepository)
 
 		mongoDb, _ := testmocks.NewDbMock("", nil, quote)
-		minAmount := quote.Value.Uint64() + quote.CallFee.Uint64()
-		expTime := time.Unix(int64(quote.AgreementTimestamp+quote.DepositDateLimit), 0)
-
 		srv := newServer(rsk, btc, mongoDb, func() time.Time {
 			return time.Unix(0, 0)
 		}, cfgData, lp, providerCfgData, nil)
 
+		watcher := &depositEventWatcherMock{}
+		srv.pegOutDepositWatcher = watcher
+
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
-			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
 			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			mongoDb.On("InsertProvider", mock.Anything, mock.Anything).Return(nil)
@@ -583,21 +603,26 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 		}
 
 		w := http2.TestResponseWriter{}
-		body := fmt.Sprintf("{\"quoteHash\":\"%v\", \"derivationAddress\":\"%v\"}", hash, derivationAddress)
+		body := fmt.Sprintf("{\"quoteHash\":\"%v\"}", hash)
 
 		req, err := http.NewRequest("POST", "pegout/acceptQuote", bytes.NewReader([]byte(body)))
 		if err != nil {
 			t.Errorf("couldn't instantiate request. error: %v", err)
 		}
 
-		mongoDb.On("GetPegOutQuote", hash).Times(1).Return(quote, nil)
-		rsk.On("AddQuoteToWatch", "555c9cfba7638a40a71a17a34fef0c3e192c1fbf4b311ad6e2ae288e97794228", time.Minute, expTime, mock.AnythingOfType("*http.RegisterPegoutWatcher"), mock.AnythingOfType("func(connectors.QuotePegOutWatcher)")).Times(1).Return("")
-
-		btc.On("AddAddressWatcher", "2NFwPDdXtAmGijQPbpK7s1z9bRGRx2SkB6D", minAmount, time.Minute, expTime, mock.AnythingOfType("*http.BTCAddressWatcher"), mock.AnythingOfType("func(connectors.AddressWatcher)")).Times(1).Return("")
+		mongoDb.On("GetPegOutQuote", hash).Times(1).Return(quote, nil).Once()
+		mongoDb.On("GetRetainedPegOutQuote", hash).Times(1).Return(nil, nil).Once()
+		rsk.On("GasPrice").Return(big.NewInt(5), nil).Once()
+		rsk.On("GetLBCAddress").Return("0x2ff74F841b95E000625b3A77fed03714874C4fEa")
+		watcher.On("WatchNewQuote", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		srv.acceptQuotePegOutHandler(&w, req)
-		response := AcceptResPegOut{}
+		response := acceptResPegOut{}
 		json.Unmarshal([]byte(w.Output), &response)
 		assert.Equal(t, "fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c", response.Signature)
+		assert.NotEmpty(t, response.LbcAddress)
+		mongoDb.AssertExpectations(t)
+		rsk.AssertExpectations(t)
+		btc.AssertExpectations(t)
 	}
 }
 
@@ -924,7 +949,7 @@ func TestLiquidityProviderServer(t *testing.T) {
 	t.Run("get provider should return null when provider not found", testGetProviderByAddressWhenNotFoundShouldReturnNull)
 	t.Run("get quote", testGetQuoteComplete)
 	t.Run("accept quote", testAcceptQuoteComplete)
-	t.Run("init BTC watchers", testInitBtcWatchers)
+	t.Run("init BTC watchers", testInitPeginWatchers)
 	t.Run("get quote exp time", testGetQuoteExpTime)
 	t.Run("decode address", testDecodeAddress)
 	t.Run("decode address with an invalid btcRefundAddr", testDecodeAddressWithAnInvalidBtcRefundAddr)
