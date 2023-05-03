@@ -19,8 +19,19 @@ services:
         condition: service_healthy
       bitcoind:
         condition: service_healthy
-    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.http.hosts.0=localhost",
-               "-Drpc.providers.web.http.hosts.1=powpeg-pegin", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest"]
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=powpeg-pegin",
+        "-cp",
+        "powpeg.jar",
+        "-Drsk.conf.file=regtest-fed.conf",
+        "co.rsk.federate.FederateRunner",
+        "--regtest",
+      ]
   powpeg-pegout:
     build:
       context: ../powpeg/pegout
@@ -35,9 +46,20 @@ services:
       - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/logs:/home/powpeg/logs
     networks:
       - net_lps
-    depends_on: [ powpeg-pegin ]
-    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.http.hosts.0=localhost",
-               "-Drpc.providers.web.http.hosts.1=powpeg-pegout", "-cp", "powpeg.jar", "-Drsk.conf.file=regtest-fed.conf", "co.rsk.federate.FederateRunner", "--regtest" ]
+    depends_on: [powpeg-pegin]
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=powpeg-pegout",
+        "-cp",
+        "powpeg.jar",
+        "-Drsk.conf.file=regtest-fed.conf",
+        "co.rsk.federate.FederateRunner",
+        "--regtest",
+      ]
   bitcoind:
     build:
       context: ../bitcoind
@@ -54,9 +76,22 @@ services:
       - ${BTCD_HOME:-./volumes/bitcoind}:/home/bitcoind/.bitcoind
     networks:
       - net_lps
-    command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
-              "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
-              "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
+    command:
+      [
+        "bitcoind",
+        "-rpcuser=${BTCD_RPC_USER}",
+        "-rpcpassword=${BTCD_RPC_PASS}",
+        "-addresstype=legacy",
+        "-${LPS_STAGE}",
+        "-printtoconsole",
+        "-server",
+        "-txindex",
+        "-deprecatedrpc=signrawtransaction",
+        "-deprecatedrpc=accounts",
+        "-rpcbind=0.0.0.0",
+        "-rpcallowip=0.0.0.0/0",
+        "-rpcport=5555",
+      ]
   rskj:
     build:
       context: ../rskj
@@ -72,8 +107,21 @@ services:
       - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
-    command: [ "java", "-Drpc.providers.web.ws.bind_address=0.0.0.0", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true",
-               "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar","-Drsk.conf.file=rsk.conf", "co.rsk.Start", "--${LPS_STAGE}" ]
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.ws.enabled=true",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=rskj",
+        "-cp",
+        "rskj-core.jar",
+        "-Drsk.conf.file=rsk.conf",
+        "co.rsk.Start",
+        "--${LPS_STAGE}",
+      ]
   mongodb:
     image: mongo:4
     restart: on-failure
@@ -90,7 +138,6 @@ services:
       - 27017
     networks:
       - net_lps
-
 
 networks:
   net_lps:
