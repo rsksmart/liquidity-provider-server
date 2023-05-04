@@ -9,16 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/account"
 
-	//"github.com/rsksmart/liquidity-provider-server/response"
-
-	//"github.com/rsksmart/liquidity-provider-server/response"
 	"io"
 	"math"
 	"math/big"
-	"net/http"
+
 	"strings"
 	"sync"
 	"time"
@@ -38,8 +36,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
-
-	// "github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -81,6 +77,7 @@ type LiquidityProviderList struct {
 	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
 	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
 	MaxQuoteValue               uint64 `env:"RSK_MAX_QUOTE_VALUE"`
+	LpsAddress 	  				string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
 }
 
 type ConfigData struct {
@@ -414,6 +411,8 @@ func (s *Server) Start(port uint) error {
 	r.Path("/provider/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
+	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
+
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -732,9 +731,9 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]*ProviderDTO, 0)
+	response := make([]*types.GlobalProvider, 0)
 	for _, provider := range providers {
-		response = append(response, toProviderDTO(&provider))
+		response = append(response, toGlobalProvider(&provider))
 	}
 
 	enc := json.NewEncoder(w)
@@ -1763,6 +1762,64 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Title Provider Synchronization
+// @Description Synchronizes providers with MongoDB
+// @Route /provider/sync [post]
+// @Success 204 object
+func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	providerIds, err := s.rsk.GetProviderIds();
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+	providersIdList, err := createArrayFromOneToN(providerIds)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+	providers, err := s.rsk.GetProviders(providersIdList)
+	var providerDTOs []*types.GlobalProvider
+	for _, provider := range providers {
+		providerDTOs = append(providerDTOs, toGlobalProvider(&provider))
+	}
+	filteredProviders := filterProvidersByAddress(s.cfgData.RSK.LpsAddress, providerDTOs)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+	err = s.dbMongo.ResetProviders(filteredProviders)
+	response := filteredProviders
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+}
+func filterProvidersByAddress(address string, providers []*types.GlobalProvider) []*types.GlobalProvider {
+	filteredProviders := make([]*types.GlobalProvider, 0)
+	lowercaseAddress := strings.ToLower(address)
+
+	for _, provider := range providers {
+		if strings.ToLower(provider.Provider) == lowercaseAddress {
+			filteredProviders = append(filteredProviders, provider)
+		}
+	}
+
+	return filteredProviders
+}
+func createArrayFromOneToN(providerIds *big.Int) ([]int64, error) {
+	n := providerIds.Int64()
+	if n < 1 {
+		return nil, fmt.Errorf("The input number should be greater than 0")
+	}
+
+	array := make([]int64, n)
+	for i := int64(1); i <= n; i++ {
+		array[i-1] = i
+	}
+
+	return array, nil
+}
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {
 	c, err := aes.NewCipher(key)
 	if err != nil {
