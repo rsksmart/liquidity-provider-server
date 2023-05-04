@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/account"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/account"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"

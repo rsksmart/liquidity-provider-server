@@ -9,16 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/account"
 
-	//"github.com/rsksmart/liquidity-provider-server/response"
-
-	//"github.com/rsksmart/liquidity-provider-server/response"
 	"io"
 	"math"
 	"math/big"
-	"net/http"
+
 	"strings"
 	"sync"
 	"time"
@@ -38,8 +36,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
-
-	// "github.com/rsksmart/liquidity-provider/providers"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -81,6 +77,7 @@ type LiquidityProviderList struct {
 	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
 	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
 	MaxQuoteValue               uint64 `env:"RSK_MAX_QUOTE_VALUE"`
+	LpsAddress 	  				string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
 }
 
 type ConfigData struct {
@@ -106,6 +103,7 @@ type Server struct {
 	cfgData              ConfigData
 	ProviderRespository  *storage.LPRepository
 	ProviderConfig       pegin.ProviderConfig
+	PegoutConfig         pegout.ProviderConfig
 	AccountProvider      account.AccountProvider
 }
 
@@ -153,8 +151,8 @@ type acceptRes struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 type acceptResPegOut struct {
-	Signature         string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
-	RskDepositAddress string `json:"rskDepositAddress" required:"" example:"0x0" description:"Hash of the deposit RSK address"`
+	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
+	LbcAddress string `json:"lbcAddress" required:"" example:"0x0" description:"LBC address to execute depositPegout function"`
 }
 
 type AcceptResPegOut struct {
@@ -199,7 +197,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegin")
 		if err != nil {
 			return err
 		}
@@ -238,7 +236,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status)
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegout")
 		if err != nil {
 			return err
 		}
@@ -265,12 +263,12 @@ type RegistrationStatus struct {
 	Status string `json:"Status" example:"Provider Created Successfully" description:"Returned Status"`
 }
 
-// @Title Register Provider
-// @Description Registers New Provider
+// @Title Register Pegin Provider
+// @Description Registers New Pegin Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
 // @Success  200 object RegistrationStatus
-// @Route /provider/register [post]
-func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request) {
+// @Route /provider/pegin/register [post]
+func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	enableCors(&w)
 	payload := types.ProviderRegisterRequest{}
@@ -293,7 +291,44 @@ func (s *Server) registerProviderHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
 		return
 	}
-	response := RegistrationStatus{Status: "Provider Created Successfully"}
+	response := RegistrationStatus{Status: "Pegin Provider Created Successfully"}
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+}
+// @Title Register Pegout Provider
+// @Description Registers New Pegout Provider
+// @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
+// @Success  200 object RegistrationStatus
+// @Route /provider/pegout/register [post]
+func (s *Server) registerPegoutProviderHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := types.ProviderRegisterRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	if err != nil {
+		log.Errorf(UnableToDeserializePayloadError, err)
+		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
+		return
+	}
+	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider)
+	if err != nil {
+		log.Error(ErrorCreatingLocalProvider, err)
+		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
+		return
+	}
+	err = s.AddPegOutProvider(lp, payload)
+	if err != nil {
+		log.Errorf(ErrorAddingProvider, err)
+		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
+		return
+	}
+
+	response := RegistrationStatus{Status: "Pegout Provider Created Successfully"}
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 	if err != nil {
@@ -372,9 +407,12 @@ func (s *Server) Start(port uint) error {
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
-	r.Path("/provider/register").Methods(http.MethodPost).HandlerFunc(s.registerProviderHandler)
+	r.Path("/provider/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
+	r.Path("/provider/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
+	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
+
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -693,9 +731,9 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]*ProviderDTO, 0)
+	response := make([]*types.GlobalProvider, 0)
 	for _, provider := range providers {
-		response = append(response, toProviderDTO(&provider))
+		response = append(response, toGlobalProvider(&provider))
 	}
 
 	enc := json.NewEncoder(w)
@@ -1391,8 +1429,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAddr string) {
 	enc := json.NewEncoder(w)
 	response := acceptResPegOut{
-		Signature:         signature,
-		RskDepositAddress: depositAddr,
+		Signature:  signature,
+		LbcAddress: depositAddr,
 	}
 
 	err := enc.Encode(response)
@@ -1724,6 +1762,64 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Title Provider Synchronization
+// @Description Synchronizes providers with MongoDB
+// @Route /provider/sync [post]
+// @Success 204 object
+func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	providerIds, err := s.rsk.GetProviderIds();
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+	providersIdList, err := createArrayFromOneToN(providerIds)
+	if err != nil {
+		customError := NewServerError(err.Error(), make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+	providers, err := s.rsk.GetProviders(providersIdList)
+	var providerDTOs []*types.GlobalProvider
+	for _, provider := range providers {
+		providerDTOs = append(providerDTOs, toGlobalProvider(&provider))
+	}
+	filteredProviders := filterProvidersByAddress(s.cfgData.RSK.LpsAddress, providerDTOs)
+	if err != nil {
+		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
+		return
+	}
+	err = s.dbMongo.ResetProviders(filteredProviders)
+	response := filteredProviders
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(&response)
+}
+func filterProvidersByAddress(address string, providers []*types.GlobalProvider) []*types.GlobalProvider {
+	filteredProviders := make([]*types.GlobalProvider, 0)
+	lowercaseAddress := strings.ToLower(address)
+
+	for _, provider := range providers {
+		if strings.ToLower(provider.Provider) == lowercaseAddress {
+			filteredProviders = append(filteredProviders, provider)
+		}
+	}
+
+	return filteredProviders
+}
+func createArrayFromOneToN(providerIds *big.Int) ([]int64, error) {
+	n := providerIds.Int64()
+	if n < 1 {
+		return nil, fmt.Errorf("The input number should be greater than 0")
+	}
+
+	array := make([]int64, n)
+	for i := int64(1); i <= n; i++ {
+		array[i-1] = i
+	}
+
+	return array, nil
+}
 func encrypt(plaintext []byte, key []byte) ([]byte, error) {
 	c, err := aes.NewCipher(key)
 	if err != nil {
