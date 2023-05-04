@@ -18,7 +18,7 @@ type ProviderDTO struct {
 	MaxTransactionValue     uint64 `json:"maxTransactionValue" required:"" example:"1000000000000000000" description:"Maximum transaction value"`
 	ApiBaseUrl              string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider's LPS instance URL"`
 	Status                  bool   `json:"status" required:"" example:"true" description:"Provider status"`
-	providerType			string `json:"providerType" required:"" example:"pegin" description:"Provider Type"`
+	ProviderType			string `json:"providerType" required:"" example:"pegin" description:"Provider Type"`
 }
 
 func toProviderDTO(provider *bindings.LiquidityBridgeContractLiquidityProvider) *ProviderDTO {
@@ -33,7 +33,7 @@ func toProviderDTO(provider *bindings.LiquidityBridgeContractLiquidityProvider) 
 		MaxTransactionValue:     provider.MaxTransactionValue.Uint64(),
 		ApiBaseUrl:              provider.ApiBaseUrl,
 		Status:                  provider.Status,
-		providerType: 			 provider.ProviderType,
+		ProviderType: 			 provider.ProviderType,
 	}
 }
 func toGlobalProvider(provider *bindings.LiquidityBridgeContractLiquidityProvider) *types.GlobalProvider {
