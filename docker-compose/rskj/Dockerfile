@@ -6,7 +6,7 @@ RUN apt-get update -y && \
 WORKDIR /code/rskj
 
 ARG RSKJ_RELEASE="HOP"
-ARG RSKJ_VERSION="4.3.0"
+ARG RSKJ_VERSION="4.4.0"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
