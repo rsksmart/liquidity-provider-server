@@ -118,6 +118,8 @@ type RSKConnector interface {
 	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
+	GetProviderIds() (providerList *big.Int, err error)
+
 }
 
 type RSKClient interface {
@@ -1191,7 +1193,15 @@ func parseHex(str string) ([]byte, error) {
 func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
+func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
+	opts := bind.CallOpts{}
+	providers, err := rsk.lbc.GetProviderIds(&opts)
+	if err != nil {
+		log.Debug("Error RSK.go", err)
+	}
 
+	return providers, err
+}
 func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))
