@@ -41,6 +41,7 @@ type DBConnector interface {
 	GetProviders() ([]int64, error)
 	GetProvider(uint64) (string, error)
 	InsertProvider(id int64, address string) error
+	ResetProviders([]*types.GlobalProvider)error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
 }
@@ -402,7 +403,24 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 
 	return lockedLiq, nil
 }
+func (db *DB) ResetProviders(providers []*types.GlobalProvider)(error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	_, err := coll.DeleteMany(context.Background(), bson.M{})
+	if err != nil {
+		return fmt.Errorf("failed to delete existing providers: %w", err)
+	}
 
+	// Insert the new providers
+	for _, provider := range providers {
+		_, err := coll.InsertOne(context.Background(), provider)
+		if err != nil {
+			return fmt.Errorf("failed to insert provider %s: %w", provider.Name, err)
+		}
+	}
+
+	log.Debug("Providers reset and updated successfully")
+	return nil
+}
 func (db *DB) InsertProvider(id int64, address string) error {
 	log.Debug("inserting provider: ", id)
 	coll := db.db.Database("flyover").Collection("providers")

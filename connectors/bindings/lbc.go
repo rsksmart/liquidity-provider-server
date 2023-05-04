@@ -562,7 +562,6 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetProvide
 func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetProviders(opts *bind.CallOpts, providerIds []*big.Int) ([]LiquidityBridgeContractLiquidityProvider, error) {
 	var out []interface{}
 	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getProviders", providerIds)
-
 	if err != nil {
 		return *new([]LiquidityBridgeContractLiquidityProvider), err
 	}
