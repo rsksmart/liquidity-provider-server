@@ -596,3 +596,59 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote
 func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
 	return watcher.endChannel
 }
+
+type LpFundsEventWatcher interface {
+	Init()
+	WatchLpFunds() error
+	EndChannel() chan<- bool
+}
+
+type LpFundsEventWatcherImpl struct {
+	checkInterval time.Duration
+	endChannel    chan bool
+	// rsk                     connectors.RSKConnector
+	// btc                     connectors.BTCConnector
+	// liquidityPeginProvider  pegin.LiquidityProvider
+	// liquidityPegoutProvider pegout.LiquidityProvider
+}
+
+func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool) LpFundsEventWatcher {
+	return &LpFundsEventWatcherImpl{
+		checkInterval: checkInterval,
+		endChannel:    endChannel,
+	}
+}
+
+func (watcher *LpFundsEventWatcherImpl) Init() {
+	go func() {
+		ticker := time.NewTicker(watcher.checkInterval)
+		for {
+			select {
+			case <-ticker.C:
+				log.Debug("Initializing Lp Funds Watcher")
+			case <-watcher.endChannel:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (watcher *LpFundsEventWatcherImpl) WatchLpFunds() error {
+	ticker := time.NewTicker(watcher.checkInterval)
+	for {
+		select {
+		case <-watcher.endChannel:
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			log.Debug("Watching LP Funds")
+			return nil
+		}
+	}
+	return nil
+}
+
+func (watcher *LpFundsEventWatcherImpl) EndChannel() chan<- bool {
+	return watcher.endChannel
+}
