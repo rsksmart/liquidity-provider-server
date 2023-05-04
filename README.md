@@ -1,8 +1,7 @@
 # Liquidity Provider Server
 
 This is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users 
-as part of the Flyover protocol. The server runs a local [Liquidity Provider (LP)](https://github.com/rsksmart/liquidity-provider), and also allows connections
-from remote LPs.
+as part of the Flyover protocol. The server runs a local [Liquidity Provider (LP)](https://github.com/rsksmart/liquidity-provider).
 
 The server's functionality is provided through a JSON HTTP interface. In addition, the server needs access to a Bitcoin and an RSK node.
 
@@ -55,45 +54,100 @@ The server's functionality is provided through a JSON HTTP interface. In additio
 
 ## API
 
-### /pegin/getQuote
+### Pegout
+You can see the detail of the pegout process [here](./diagrams/PegOut.md)
 
-Computes and returns a quote for the service.
+### /pegout/getQuotes
+
+Computes and returns a quote for the pegout service.
 
 #### Parameters
-
-    contractAddr (string) - Hex-encoded contract address.
-    data (string) - Hex-encoded contract data.
-    value (int) - Value to send in the call.
-    rskRefundAddr (string) - Hex-encoded user RSK refund address.
-    lpAddress (string) - The address of the liquidity provider that will do the cross chain conversion
-    btcRefundAddr (string) - Base58-encoded user Bitcoin refund address.
+    
+    to (string) - BTC destination address
+    valueToTransfer (int) - value to transfer to BTC address
+    rskRefundAddress (string) - Hex-encoded user RSK refund address.
+    bitcoinRefundAddress (string) - Base58-encoded user Bitcoin refund address.
 
 #### Returns
 
-    quotes - a list of quotes for the service, where each quote consists of:
+    quotes - a list of pegout quotes for the service, where each quote consists of:
+        quote - a pegout quote
+            lbcAddress;                                 // the address of the LBC
+            liquidityProviderRskAddress;                // the RSK address of the LP
+            btcRefundAddress;                           // a user BTC refund address
+            rskRefundAddress;                           // a user RSK refund address 
+            lpBtcAddr;                                  // the BTC address of the LP
+            callFee;                                    // the fee charged by the LP
+            penaltyFee;                                 // the penalty that the LP pays if it fails to deliver the service
+            nonce;                                      // a nonce that uniquely identifies this quote
+            depositAddr;                                // the destination address of the peg-out
+            gasLimit;                                   // the gas limit -> Calculated based on the estimated gas in the network
+            value;                                      // the value to transfer in the call
+            agreementTimestamp;                         // the timestamp of the agreement
+            depositDateLimit;                           // time in seconds to do the deposit
+            depositConfirmations;                       // number of confirmations to do the pegout
+            transferConfirmations;                      // number of pegout confirmations to do the refund
+            transferTime;                               // time in seconds to do the pegout without punishing the LP
+            expireDate;                                 // the timestamp of the expiration
+            expireBlocks;                               // amount of blocks for the quote to be expired
 
-        fedBtcAddress;                    // the BTC address
-        lbcAddress;                       // the address of the LBC
-        lpRSKAddr;                        // the RSK address of the LP
-        btcRefundAddress;                 // a user BTC refund address
-        rskRefundAddress;                 // a user RSK refund address 
-        lpBTCAddr;                        // the BTC address of the LP
-        callFee;                          // the fee charged by the LP
-        penaltyFee;                       // the penalty that the LP pays if it fails to deliver the service
-        contractAddr;                     // the destination address of the peg-in
-        data;                             // the arguments to send in the call
-        gasLimit;                         // the gas limit -> Calculated based on the estimated gas in the network
-        nonce;                            // a nonce that uniquely identifies this quote
-        value;                            // the value to transfer in the call
-        agreementTimestamp;               // the timestamp of the agreement
-        timeForDeposit;                   // the time (in seconds) that the user has to achieve one confirmation on the BTC deposit
-        callTime;                         // the time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations
-        confirmations;                    // the number of confirmations that the LP requires before making the call
-        callOnRegister:                   // a boolean value indicating whether the callForUser can be called on registerPegIn.
+        quoteHash - the corresponding quote hash
+
+### /pegout/acceptQuote
+
+Accepts one of the LPs pegout quotes.
+
+#### Parameters
+
+    quoteHash (string) - Hex-encoded quote hash as computed by LBC.hashQuote
+
+#### Returns
+
+    signature - Signature of the quote
+    lbcAddress - Address of the contract to execute the depositPegout function
+
+### Pegin
+You can see the detail of the pegin process [here](./diagrams/PegIn.md)
+
+### /pegin/getQuote
+
+Computes and returns a quote for the pegin service.
+
+#### Parameters
+
+    callEoaOrContractAddress (string) - Hex-encoded contract address.
+    data (string) - Hex-encoded contract data.
+    valueToTransfer (int) - Value to send in the call.
+    rskRefundAddress (string) - Hex-encoded user RSK refund address.
+    bitcoinRefundAddress (string) - Base58-encoded user Bitcoin refund address.
+
+#### Returns
+
+    quotes - a list of pegin quotes for the service, where each quote consists of:
+        quote - a pegin quote
+            fedBtcAddress;                    // the BTC address
+            lbcAddress;                       // the address of the LBC
+            lpRSKAddr;                        // the RSK address of the LP
+            btcRefundAddress;                 // a user BTC refund address
+            rskRefundAddress;                 // a user RSK refund address 
+            lpBTCAddr;                        // the BTC address of the LP
+            callFee;                          // the fee charged by the LP
+            penaltyFee;                       // the penalty that the LP pays if it fails to deliver the service
+            contractAddr;                     // the destination address of the peg-in
+            data;                             // the arguments to send in the call
+            gasLimit;                         // the gas limit -> Calculated based on the estimated gas in the network
+            nonce;                            // a nonce that uniquely identifies this quote
+            value;                            // the value to transfer in the call
+            agreementTimestamp;               // the timestamp of the agreement
+            timeForDeposit;                   // the time (in seconds) that the user has to achieve one confirmation on the BTC deposit
+            callTime;                         // the time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations
+            confirmations;                    // the number of confirmations that the LP requires before making the call
+            callOnRegister:                   // a boolean value indicating whether the callForUser can be called on registerPegIn.
+        quoteHash - the corresponding quote hash
     
 ### /pegin/acceptQuote
 
-Accepts one of the LPs quotes.
+Accepts one of the LPs pegin quotes.
 
 #### Parameters
 

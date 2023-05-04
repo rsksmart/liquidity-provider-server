@@ -9,10 +9,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
 	"net/http"
 	"net/url"
+
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -98,7 +99,7 @@ type RSKConnector interface {
 	CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error)
 	RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int) error
 	GetCollateral(addr string) (*big.Int, *big.Int, error)
-	RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error)
+	RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (int64, error)
 	AddCollateral(opts *bind.TransactOpts) error
 	GetLbcBalance(addr string) (*big.Int, error)
 	GetAvailableLiquidity(addr string) (*big.Int, error)
@@ -117,6 +118,8 @@ type RSKConnector interface {
 	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
+	GetProviderIds() (providerList *big.Int, err error)
+
 }
 
 type RSKClient interface {
@@ -379,7 +382,7 @@ func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _sta
 	}
 	return err
 }
-func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
+func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, providerType string) (int64, error) {
 	var tx *gethTypes.Transaction
 	var eventChannel chan *bindings.LiquidityBridgeContractRegister
 	var subscription event.Subscription
@@ -396,7 +399,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 	}
 
 	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
+		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status,providerType)
 		if err == nil && tx != nil {
 			break
 		}
@@ -1190,7 +1193,15 @@ func parseHex(str string) ([]byte, error) {
 func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
+func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
+	opts := bind.CallOpts{}
+	providers, err := rsk.lbc.GetProviderIds(&opts)
+	if err != nil {
+		log.Debug("Error RSK.go", err)
+	}
 
+	return providers, err
+}
 func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))

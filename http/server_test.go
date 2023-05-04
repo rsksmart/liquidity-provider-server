@@ -619,7 +619,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 		response := acceptResPegOut{}
 		json.Unmarshal([]byte(w.Output), &response)
 		assert.Equal(t, "fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c", response.Signature)
-		assert.NotEmpty(t, response.RskDepositAddress)
+		assert.NotEmpty(t, response.LbcAddress)
 		mongoDb.AssertExpectations(t)
 		rsk.AssertExpectations(t)
 		btc.AssertExpectations(t)

@@ -228,6 +228,10 @@ components:
           description: Provider address
           example: "0x0000000000000000000000000000000000000000"
           type: string
+        providerType:
+          description: Provider Type
+          example: pegin
+          type: string
         quoteExpiration:
           description: Quote expiration time in seconds
           example: 3600
@@ -247,6 +251,7 @@ components:
       - maxTransactionValue
       - apiBaseUrl
       - status
+      - providerType
       type: object
     ProviderRegisterRequest:
       properties:
@@ -470,8 +475,8 @@ components:
       type: object
     acceptResPegOut:
       properties:
-        rskDepositAddress:
-          description: Hash of the deposit RSK address
+        lbcAddress:
+          description: LBC address to execute depositPegout function
           example: "0x0"
           type: string
         signature:
@@ -480,7 +485,7 @@ components:
           type: string
       required:
       - signature
-      - rskDepositAddress
+      - lbcAddress
       type: object
     healthRes:
       properties:
@@ -504,6 +509,41 @@ components:
           type: string
         rsk:
           type: string
+      type: object
+    types.ProviderRegisterRequest:
+      properties:
+        acceptedQuoteExpiration:
+          description: Accepted quote expiration in seconds
+          example: 100
+          type: integer
+        apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
+          type: string
+        fee:
+          description: Fee in wei
+          example: 100
+          type: integer
+        maxTransactionValue:
+          description: Maximum transaction value in wei
+          example: 100
+          type: integer
+        minTransactionValue:
+          description: Minimum transaction value in wei
+          example: 100
+          type: integer
+        name:
+          description: Provider Name
+          example: New Provider
+          type: string
+        quoteExpiration:
+          description: Quote expiration in seconds
+          example: 100
+          type: integer
+        status:
+          description: Provider status
+          example: true
+          type: boolean
       type: object
     types.Wei: {}
   securitySchemes:
@@ -694,9 +734,9 @@ paths:
                 $ref: '#/components/schemas/ProviderStatusChangeStatus'
           description: ""
       summary: Change Provider Status
-  /provider/register:
+  /provider/pegin/register:
     post:
-      description: ' Registers New Provider'
+      description: ' Registers New Pegin Provider'
       requestBody:
         content:
           application/json:
@@ -710,7 +750,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegistrationStatus'
           description: ""
-      summary: Register Provider
+      summary: Register Pegin Provider
+  /provider/pegout/register:
+    post:
+      description: ' Registers New Pegout Provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRegisterRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ""
+      summary: Register Pegout Provider
   /provider/resignation:
     post:
       description: ' Provider stops being a liquidity provider'
@@ -724,6 +781,13 @@ paths:
         "204":
           description: ""
       summary: Provider resignation
+  /provider/sync:
+    post:
+      description: ' Synchronizes providers with MongoDB'
+      responses:
+        "204":
+          description: ""
+      summary: Provider Synchronization
   /withdrawCollateral:
     post:
       description: ' Withdraw Collateral of a resigned LP'
