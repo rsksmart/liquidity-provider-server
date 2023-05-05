@@ -173,7 +173,7 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		}
 	}()
 
-	if err != nil {
+	if err != nil || iterator == nil {
 		return nil, err
 	}
 
