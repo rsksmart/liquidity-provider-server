@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2909,7 +2910,15 @@ func (it *LiquidityBridgeContractPegOutDepositIterator) Error() error {
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
 func (it *LiquidityBridgeContractPegOutDepositIterator) Close() error {
-	it.sub.Unsubscribe()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Debug("Recovered from panic while closing iterator: %v", r)
+		}
+	}()
+
+	if it.sub != nil {
+		it.sub.Unsubscribe()
+	}
 	return nil
 }
 
