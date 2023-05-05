@@ -41,7 +41,7 @@ type DBConnector interface {
 	GetProviders() ([]int64, error)
 	GetProvider(uint64) (string, error)
 	InsertProvider(id int64, address string) error
-	ResetProviders([]*types.GlobalProvider)error
+	ResetProviders([]*types.GlobalProvider) error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
 }
@@ -403,7 +403,7 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 
 	return lockedLiq, nil
 }
-func (db *DB) ResetProviders(providers []*types.GlobalProvider)(error) {
+func (db *DB) ResetProviders(providers []*types.GlobalProvider) error {
 	coll := db.db.Database("flyover").Collection("providers")
 	_, err := coll.DeleteMany(context.Background(), bson.M{})
 	if err != nil {
@@ -609,7 +609,7 @@ func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64)
 	update := bson.D{
 		primitive.E{Key: "$set", Value: bson.D{
 			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
-			primitive.E{Key: "depositBlockNumber", Value: depositBlockNumber},
+			primitive.E{Key: "deposit_block_number", Value: depositBlockNumber},
 		}},
 	}
 
