@@ -167,7 +167,9 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		End:     &toBlock,
 		Context: ctx,
 	})
-	defer iterator.Close()
+	if iterator != nil {
+		defer iterator.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
