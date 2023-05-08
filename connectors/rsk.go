@@ -42,9 +42,9 @@ import (
 const (
 	retries    int = 3
 	rpcSleep       = 5 * time.Second
-	rpcTimeout     = 60 * time.Second
-	ethSleep       = 60 * time.Second
-	ethTimeout     = 60 * time.Minute
+	rpcTimeout     = 300 * time.Second
+	ethSleep       = 300 * time.Second
+	ethTimeout     = 300 * time.Minute
 
 	newAccountGasCost = uint64(25000)
 )
@@ -119,7 +119,6 @@ type RSKConnector interface {
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
-
 }
 
 type RSKClient interface {
@@ -167,8 +166,14 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		End:     &toBlock,
 		Context: ctx,
 	})
-	defer iterator.Close()
-	if err != nil {
+
+	defer func() {
+		if iterator != nil {
+			iterator.Close()
+		}
+	}()
+
+	if err != nil || iterator == nil {
 		return nil, err
 	}
 
@@ -399,7 +404,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 	}
 
 	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status,providerType)
+		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, providerType)
 		if err == nil && tx != nil {
 			break
 		}
