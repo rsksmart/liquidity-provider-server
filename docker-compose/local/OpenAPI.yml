@@ -228,6 +228,10 @@ components:
           description: Provider address
           example: "0x0000000000000000000000000000000000000000"
           type: string
+        providerType:
+          description: Provider Type
+          example: pegin
+          type: string
         quoteExpiration:
           description: Quote expiration time in seconds
           example: 3600
@@ -247,6 +251,7 @@ components:
       - maxTransactionValue
       - apiBaseUrl
       - status
+      - providerType
       type: object
     ProviderRegisterRequest:
       properties:
@@ -776,6 +781,13 @@ paths:
         "204":
           description: ""
       summary: Provider resignation
+  /provider/sync:
+    post:
+      description: ' Synchronizes providers with MongoDB'
+      responses:
+        "204":
+          description: ""
+      summary: Provider Synchronization
   /withdrawCollateral:
     post:
       description: ' Withdraw Collateral of a resigned LP'
