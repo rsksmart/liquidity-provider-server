@@ -443,7 +443,9 @@ func (s *Server) Start(port uint) error {
 			}
 		})
 	
-	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(30 * time.Second, make(chan bool))
+	peginProvider := s.providers[0]
+	pegoutProvider := s.pegoutProviders[0] 
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1 * time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
 	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
