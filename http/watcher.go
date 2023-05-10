@@ -618,6 +618,7 @@ type LpFundsEventWatcherImpl struct {
 	liquidityPeginProvider  pegin.LiquidityProvider
 	liquidityPegoutProvider pegout.LiquidityProvider
 	minTxValue              *types.Wei
+	recipient               string
 }
 
 func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, rsk connectors.RSKConnector, peginLiquidityProvider pegin.LiquidityProvider, pegoutLiquidityProvider pegout.LiquidityProvider) LpFundsEventWatcher {
@@ -632,13 +633,14 @@ func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, r
 		height:                  height,
 		liquidityPeginProvider:  peginLiquidityProvider,
 		liquidityPegoutProvider: pegoutLiquidityProvider,
+		recipient:               "test@iovlabs.org"
 	}
 }
 
 func (watcher *LpFundsEventWatcherImpl) Init() {
 	height, err := watcher.rsk.GetRskHeight()
 	if err != nil {
-		log.Error("Error getting rsk height: ", err)
+		log.Error("Error getting rsk height on LP Alerts Watcher: ", err)
 	}
 	watcher.lastCheckedBlock = height - 1
 
@@ -676,8 +678,7 @@ func (watcher *LpFundsEventWatcherImpl) GetLpPeginPunishment(height uint64) erro
 	log.Debugf("Checking block interval %d-%d for punishment", watcher.lastCheckedBlock-1, height)
 	for _, event := range events {
 		body := "You was punished in " + event.Penalty.Text(10) + " rBTC for the quoteHash " + event.QuoteHash
-		recipient := "test@iovlabs.org"
-		watcher.SendAlert("Pegin Punishment", body, recipient)
+		watcher.SendAlert("Pegin Punishment", body, watcher.recipient)
 	}
 	return nil
 }
@@ -690,8 +691,7 @@ func (watcher *LpFundsEventWatcherImpl) GetLpPeginOutOfLiquidity() error {
 
 	if !hasLiquidity {
 		body := "You are out of liquidity to perform a pegin. Please, do a deposit"
-		recipient := "test@iovlabs.org"
-		watcher.SendAlert("Pegin: Out of liquidity", body, recipient)
+		watcher.SendAlert("Pegin: Out of liquidity", body, watcher.recipient)
 	}
 
 	return nil
@@ -705,8 +705,7 @@ func (watcher *LpFundsEventWatcherImpl) GetLpPegoutOutOfLiquidity() error {
 
 	if !hasLiquidity {
 		body := "You are out of liquidity to perform a pegout. Please, do a deposit"
-		recipient := "test@iovlabs.org"
-		watcher.SendAlert("Pegout: Out of liquidity", body, recipient)
+		watcher.SendAlert("Pegout: Out of liquidity", body, watcher.recipient)
 	}
 
 	return nil
