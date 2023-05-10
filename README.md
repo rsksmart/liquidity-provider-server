@@ -12,7 +12,6 @@ The server's functionality is provided through a JSON HTTP interface. In additio
     - logfile (string): the path where the logs are saved to. If empty, it prints logs to the console.
     - debug (bool): the value that indicates whether the server is run in debug mode.
     - irisActivationHeight: the block height at where Iris was activated, so the federation goes into ERP.
-    - maxQuoteValue: The maximum allowed value to a quote globaly.
     - erpKeys (array[string]): the public keys of the erp pegnatories to be used in p2sh scripts.
     - server (object): object that holds settings for the http server.
         - port (int): port where the api is served.
@@ -23,7 +22,6 @@ The server's functionality is provided through a JSON HTTP interface. In additio
         - lbcAddr (string): address of the Liquidity Bridge Contract.
         - bridgeAddr (string): address of the Bridge Contract.
         - requiredBridgeConfirmations (int): amount of confirmations required by the Bridge Contract.
-        - maxQuoteValue: The maximum allowed value to a quote to the liquidity provider, will be overrided by global value if that value where greater than 0.
     - btc (object): object that holds settings for the bitcoin connector.
         - endpoint (string): Url where the Bitcoin node is hosted (in the format IP:PORT).
         - username (string): username to be used in the connection to the bitcoin node.
