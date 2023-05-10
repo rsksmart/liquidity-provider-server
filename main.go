@@ -9,8 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/account"
-	"github.com/rsksmart/liquidity-provider-server/secrets"
 	"math/big"
 	"math/rand"
 	"os"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/secrets"
 
 	"github.com/sethvargo/go-envconfig"
 
