@@ -97,6 +97,7 @@ type Server struct {
 	watchers             map[string]*BTCAddressWatcher
 	pegOutWatchers       map[string]*BTCAddressPegOutWatcher
 	pegOutDepositWatcher DepositEventWatcher
+	lpFundsEventtWatcher LpFundsEventWatcher
 	addWatcherMu         sync.Mutex
 	sharedPeginMutex     sync.Mutex
 	sharedPegoutMutex    sync.Mutex
@@ -440,6 +441,11 @@ func (s *Server) Start(port uint) error {
 				log.Error("Error starting BTC pegout watcher: ", err)
 			}
 		})
+	
+	peginProvider := s.providers[0]
+	pegoutProvider := s.pegoutProviders[0] 
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1 * time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
 	if err != nil {

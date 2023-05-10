@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
@@ -23,6 +24,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
+	"github.com/mailgun/mailgun-go/v4"
 )
 
 type BTCAddressWatcher struct {
@@ -594,5 +596,159 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote
 }
 
 func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
+	return watcher.endChannel
+}
+
+type LpFundsEventWatcher interface {
+	Init()
+	WatchLpFunds() error
+	GetLpPeginPunishment(height uint64) error
+	GetLpPeginOutOfLiquidity() error
+	GetLpPegoutOutOfLiquidity() error
+	SendAlert(subject string, body string, recipient string)
+	EndChannel() chan<- bool
+}
+
+type LpFundsEventWatcherImpl struct {
+	checkInterval           time.Duration
+	endChannel              chan bool
+	rsk                     connectors.RSKConnector
+	height                  uint64
+	lastCheckedBlock        uint64
+	liquidityPeginProvider  pegin.LiquidityProvider
+	liquidityPegoutProvider pegout.LiquidityProvider
+	minTxValue              *types.Wei
+	recipient               string
+}
+
+func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, rsk connectors.RSKConnector, peginLiquidityProvider pegin.LiquidityProvider, pegoutLiquidityProvider pegout.LiquidityProvider) LpFundsEventWatcher {
+	height, err := rsk.GetRskHeight()
+	if err != nil {
+		log.Error("Error getting rsk height: ", err)
+	}
+	return &LpFundsEventWatcherImpl{
+		checkInterval:           checkInterval,
+		endChannel:              endChannel,
+		rsk:                     rsk,
+		height:                  height,
+		liquidityPeginProvider:  peginLiquidityProvider,
+		liquidityPegoutProvider: pegoutLiquidityProvider,
+		recipient:               "test@iovlabs.org"
+	}
+}
+
+func (watcher *LpFundsEventWatcherImpl) Init() {
+	height, err := watcher.rsk.GetRskHeight()
+	if err != nil {
+		log.Error("Error getting rsk height on LP Alerts Watcher: ", err)
+	}
+	watcher.lastCheckedBlock = height - 1
+
+	minLockTxValueInSatoshi, err := watcher.rsk.GetMinimumLockTxValue()
+	if err != nil {
+		log.Error(ErrorRetrievingMinimumLockValue, err.Error())
+	}
+	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
+	watcher.minTxValue = minLockTxValueInWei
+
+	go func() {
+		ticker := time.NewTicker(watcher.checkInterval)
+		for {
+			select {
+			case <-ticker.C:
+				watcher.GetLpPeginPunishment(height)
+				watcher.GetLpPeginOutOfLiquidity()
+				watcher.GetLpPegoutOutOfLiquidity()
+			case <-watcher.endChannel:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (watcher *LpFundsEventWatcherImpl) GetLpPeginPunishment(height uint64) error {
+	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
+		return nil
+	}
+	events, err := watcher.rsk.GetPeginPunishmentEvents(watcher.lastCheckedBlock-1, height)
+	if err != nil {
+		return err
+	}
+	log.Debugf("Checking block interval %d-%d for punishment", watcher.lastCheckedBlock-1, height)
+	for _, event := range events {
+		body := "You was punished in " + event.Penalty.Text(10) + " rBTC for the quoteHash " + event.QuoteHash
+		watcher.SendAlert("Pegin Punishment", body, watcher.recipient)
+	}
+	return nil
+}
+
+func (watcher *LpFundsEventWatcherImpl) GetLpPeginOutOfLiquidity() error {
+	hasLiquidity, err := watcher.liquidityPeginProvider.HasLiquidity(watcher.minTxValue)
+	if err != nil {
+		return err
+	}
+
+	if !hasLiquidity {
+		body := "You are out of liquidity to perform a pegin. Please, do a deposit"
+		watcher.SendAlert("Pegin: Out of liquidity", body, watcher.recipient)
+	}
+
+	return nil
+}
+
+func (watcher *LpFundsEventWatcherImpl) GetLpPegoutOutOfLiquidity() error {
+	hasLiquidity, err := watcher.liquidityPegoutProvider.HasLiquidity(watcher.minTxValue)
+	if err != nil {
+		return err
+	}
+
+	if !hasLiquidity {
+		body := "You are out of liquidity to perform a pegout. Please, do a deposit"
+		watcher.SendAlert("Pegout: Out of liquidity", body, watcher.recipient)
+	}
+
+	return nil
+}
+
+func (watcher *LpFundsEventWatcherImpl) SendAlert(subject string, body string, recipient string) {
+	log.Debug("Sending alert to LP")
+	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
+	
+	//When you have an EU-domain, you must specify the endpoint:
+	//mg.SetAPIBase("https://api.eu.mailgun.net/v3")
+
+	sender := "no-reply@mail.flyover.rifcomputing.net"
+
+	message := mg.NewMessage(sender, subject, body, recipient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	resp, id, err := mg.Send(ctx, message)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Debug("ID: %s Resp: %s\n", id, resp)
+}
+
+func (watcher *LpFundsEventWatcherImpl) WatchLpFunds() error {
+	ticker := time.NewTicker(watcher.checkInterval)
+	for {
+		select {
+		case <-watcher.endChannel:
+			ticker.Stop()
+			return nil
+		case <-ticker.C:
+			log.Debug("Watching LP Funds")
+			return nil
+		}
+	}
+	return nil
+}
+
+func (watcher *LpFundsEventWatcherImpl) EndChannel() chan<- bool {
 	return watcher.endChannel
 }
