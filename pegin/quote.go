@@ -1,6 +1,10 @@
 package pegin
 
-import "github.com/rsksmart/liquidity-provider/types"
+import (
+	"github.com/rsksmart/liquidity-provider/types"
+	"github.com/ethereum/go-ethereum/common"
+	"math/big"
+)
 
 type Quote struct {
 	FedBTCAddr         string     `json:"fedBTCAddr" db:"fed_addr"`
@@ -21,4 +25,10 @@ type Quote struct {
 	LpCallTime         uint32     `json:"lpCallTime" db:"call_time"`
 	Confirmations      uint16     `json:"confirmations" db:"confirmations"`
 	CallOnRegister     bool       `json:"callOnRegister" db:"call_on_register"`
+}
+
+type PunishmentEvent struct {
+	LiquidityProvider common.Address
+	Penalty           *big.Int
+	QuoteHash         string
 }
