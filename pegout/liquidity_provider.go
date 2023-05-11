@@ -50,6 +50,7 @@ type LiquidityProvider interface {
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	GetCreationBlock(quote *Quote) uint32
+	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
 
 func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
@@ -175,4 +176,13 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 
 func (lp *LocalProvider) GetCreationBlock(quote *Quote) uint32 {
 	return quote.ExpireBlock - lp.cfg.ExpireBlocks
+}
+
+func (lp *LocalProvider) HasLiquidity(reqLiq *types.Wei) (bool, error) {
+	hasLiquidity, err := lp.repository.HasLiquidityPegOut(reqLiq.Uint64())
+	if err != nil {
+		return false, err
+	}
+
+	return hasLiquidity, err
 }

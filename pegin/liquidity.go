@@ -27,6 +27,7 @@ type LiquidityProvider interface {
 	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
+	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
 
 type LocalProviderRepository interface {
@@ -153,6 +154,15 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
 	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+}
+
+func (lp *LocalProvider) HasLiquidity(reqLiq *types.Wei) (bool, error) {
+	hasLiquidity, err := lp.repository.HasLiquidity(lp, reqLiq)
+	if err != nil {
+		return false, err
+	}
+
+	return hasLiquidity, err
 }
 
 func sortedConfirmations(m map[int]uint16) []int {

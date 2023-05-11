@@ -38,8 +38,8 @@ type DBConnector interface {
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error
 	GetLockedLiquidityPegOut() (uint64, error)
-	GetProviders() ([]int64, error)
-	GetProvider(uint64) (string, error)
+	GetProviders() ([]*ProviderAddress, error)
+	GetProvider(uint64) (*ProviderAddress, error)
 	InsertProvider(id int64, address string) error
 	ResetProviders([]*types.GlobalProvider) error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
@@ -102,6 +102,11 @@ type RetainedPeginQuote struct {
 	Signature   string        `json:"signature" db:"signature"`
 	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
 	State       types.RQState `json:"state" db:"state"`
+}
+
+type ProviderAddress struct {
+	Id      int64  `bson:"id"`
+	Address string `bson:"address"`
 }
 
 type PegoutKeys struct {
@@ -434,36 +439,31 @@ func (db *DB) InsertProvider(id int64, address string) error {
 	}
 	return nil
 }
-func (db *DB) GetProvider(providerId uint64) (string, error) {
+func (db *DB) GetProvider(providerId uint64) (*ProviderAddress, error) {
 	coll := db.db.Database("flyover").Collection("providers")
-	var result struct {
-		ID      int64  `bson:"id"`
-		Address string `bson:"address"`
-	}
+	var result ProviderAddress
 	err := coll.FindOne(context.TODO(), bson.M{"id": providerId}).Decode(&result)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return result.Address, nil
+	return &result, nil
 }
 
-func (db *DB) GetProviders() ([]int64, error) {
+func (db *DB) GetProviders() ([]*ProviderAddress, error) {
 	coll := db.db.Database("flyover").Collection("providers")
-	var results []int64
+	var results []*ProviderAddress
 	cur, err := coll.Find(context.TODO(), bson.D{{}})
 	if err != nil {
 		return nil, err
 	}
 	defer cur.Close(context.TODO())
 	for cur.Next(context.TODO()) {
-		var result struct {
-			ID int64 `bson:"id"`
-		}
+		var result ProviderAddress
 		err := cur.Decode(&result)
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, result.ID)
+		results = append(results, &result)
 	}
 	if err := cur.Err(); err != nil {
 		return nil, err

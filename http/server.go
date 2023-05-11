@@ -76,14 +76,12 @@ type LiquidityProviderList struct {
 	LBCAddr                     string `env:"LBC_ADDR"`
 	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
 	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
-	MaxQuoteValue               uint64 `env:"RSK_MAX_QUOTE_VALUE"`
-	LpsAddress 	  				string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddress                  string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
 }
 
 type ConfigData struct {
-	MaxQuoteValue uint64
-	EncryptKey    string
-	RSK           LiquidityProviderList
+	EncryptKey string
+	RSK        LiquidityProviderList
 }
 
 type Server struct {
@@ -97,6 +95,7 @@ type Server struct {
 	watchers             map[string]*BTCAddressWatcher
 	pegOutWatchers       map[string]*BTCAddressPegOutWatcher
 	pegOutDepositWatcher DepositEventWatcher
+	lpFundsEventtWatcher LpFundsEventWatcher
 	addWatcherMu         sync.Mutex
 	sharedPeginMutex     sync.Mutex
 	sharedPegoutMutex    sync.Mutex
@@ -197,7 +196,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegin")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
 		if err != nil {
 			return err
 		}
@@ -236,7 +235,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status,"pegout")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
 		if err != nil {
 			return err
 		}
@@ -299,6 +298,7 @@ func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 }
+
 // @Title Register Pegout Provider
 // @Description Registers New Pegout Provider
 // @Param  RegisterRequest  body types.ProviderRegisterRequest true "Provider Register Request"
@@ -369,7 +369,7 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var lp pegin.LiquidityProvider
 	for _, provider := range s.providers {
-		if provider.Address() == providerAddress {
+		if provider.Address() == providerAddress.Address {
 			lp = provider
 		}
 	}
@@ -440,6 +440,11 @@ func (s *Server) Start(port uint) error {
 				log.Error("Error starting BTC pegout watcher: ", err)
 			}
 		})
+	
+	peginProvider := s.providers[0]
+	pegoutProvider := s.pegoutProviders[0] 
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1 * time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
 	if err != nil {
@@ -722,7 +727,11 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
-	providers, error := s.rsk.GetProviders(providerList)
+	var ids []int64
+	for _, address := range providerList {
+		ids = append(ids, address.Id)
+	}
+	providers, error := s.rsk.GetProviders(ids)
 
 	if error != nil {
 		log.Error("GetProviders - error encoding response: ", error)
@@ -767,19 +776,10 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxValueTotransfer := s.cfgData.MaxQuoteValue
-
-	if maxValueTotransfer <= 0 {
-		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
-	}
-
-	if qr.ValueToTransfer > maxValueTotransfer {
-		log.Error(ErrorValueHigherThanMaxAllowed)
-		details := map[string]interface{}{
-			"maxValueTotransfer": maxValueTotransfer,
-			"valueToTransfer":    qr.ValueToTransfer,
-		}
-		customError := NewServerError(ErrorValueHigherThanMaxAllowed, details, true)
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.providers[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -917,19 +917,10 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxValueTotransfer := s.cfgData.MaxQuoteValue
-
-	if maxValueTotransfer <= 0 {
-		maxValueTotransfer = uint64(s.cfgData.RSK.MaxQuoteValue)
-	}
-
-	if qr.ValueToTransfer > maxValueTotransfer {
-		log.Error(ErrorValueHigherThanMaxAllowed)
-		details := map[string]interface{}{
-			"maxValueTotransfer": maxValueTotransfer,
-			"valueToTransfer":    qr.ValueToTransfer,
-		}
-		customError := NewServerError(ErrorValueHigherThanMaxAllowed, details, true)
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.pegoutProviders[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
 		ResponseError(w, customError, http.StatusBadRequest)
 		return
 	}
@@ -1768,7 +1759,7 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 // @Success 204 object
 func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	providerIds, err := s.rsk.GetProviderIds();
+	providerIds, err := s.rsk.GetProviderIds()
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1795,6 +1786,34 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
 }
+
+func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress string) error {
+	storedAddresses, err := s.dbMongo.GetProviders()
+	if err != nil {
+		return err
+	}
+
+	var id int64
+	for _, address := range storedAddresses {
+		if address.Address == providerAddress {
+			id = address.Id
+		}
+	}
+
+	providers, err := s.rsk.GetProviders([]int64{id})
+	if err != nil {
+		return err
+	} else if len(providers) == 0 {
+		return errors.New("provider not found")
+	}
+
+	var min, max = providers[0].MinTransactionValue, providers[0].MaxTransactionValue
+	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
+		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)
+	}
+	return nil
+}
+
 func filterProvidersByAddress(address string, providers []*types.GlobalProvider) []*types.GlobalProvider {
 	filteredProviders := make([]*types.GlobalProvider, 0)
 	lowercaseAddress := strings.ToLower(address)

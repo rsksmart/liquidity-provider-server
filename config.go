@@ -12,7 +12,6 @@ type config struct {
 	Debug                  bool     `env:"DEBUG"`
 	IrisActivationHeight   int      `env:"IRIS_ACTIVATION_HEIGHT"`
 	ErpKeys                []string `env:"ERP_KEYS"`
-	MaxQuoteValue          uint64   `env:"MAX_QUOTE_VALUE"`
 	PeginProviderName      string   `env:"PEGIN_PROVIDER_NAME"`
 	PeginFee               uint     `env:"PEGIN_FEE"`
 	PeginQuoteExp          uint     `env:"PEGIN_QUOTE_EXPIRATION"`

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"math"
 	"math/big"
 	"math/rand"
@@ -39,10 +40,12 @@ type basicTestCase struct {
 }
 
 type LiquidityProviderMock struct {
+	mock.Mock
 	address string
 }
 
 type LiquidityPegOutProviderMock struct {
+	mock.Mock
 	address string
 }
 
@@ -75,6 +78,11 @@ func (lp LiquidityPegOutProviderMock) SignTx(address common.Address, transaction
 	return &gethTypes.Transaction{}, nil
 }
 
+func (lp LiquidityPegOutProviderMock) HasLiquidity(reqLiq *types.Wei) (bool, error) {
+	args := lp.Called(reqLiq)
+	return args.Bool(0), args.Error(1)
+}
+
 func (lp LiquidityProviderMock) SignTx(_ common.Address, _ *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
@@ -88,6 +96,11 @@ func (lp LiquidityProviderMock) GetQuote(quote *pegin.Quote, _ uint64, _ *types.
 	res.CallFee = types.NewWei(0)
 	res.PenaltyFee = types.NewWei(0)
 	return &res, nil
+}
+
+func (lp LiquidityProviderMock) HasLiquidity(reqLiq *types.Wei) (bool, error) {
+	arg := lp.Called(reqLiq)
+	return arg.Bool(0), arg.Error(1)
 }
 
 func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *types.Wei) ([]byte, error) {
@@ -115,14 +128,12 @@ var providerPegOutMocks = []LiquidityPegOutProviderMock{
 var providerCfgData = pegin.ProviderConfig{}
 
 var cfgData = ConfigData{
-	MaxQuoteValue: 600000000000000000,
-	EncryptKey:    "abcdefghijklpmop",
+	EncryptKey: "abcdefghijklpmop",
 	RSK: LiquidityProviderList{
 		Endpoint:                    "",
 		LBCAddr:                     "",
 		BridgeAddr:                  "",
 		RequiredBridgeConfirmations: 10,
-		MaxQuoteValue:               600000000000000000,
 	},
 }
 
@@ -263,7 +274,7 @@ func testGetQuoteComplete(t *testing.T) {
 	detailMock := types.ProviderRegisterRequest{}
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
-		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 		mongoDb.On("InsertProvider", mock.Anything, mock.Anything).Return(nil)
 		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
@@ -320,7 +331,11 @@ func testGetQuoteComplete(t *testing.T) {
 		rskMock.On("GetMinimumLockTxValue").Return(big.NewInt(0), nil).Times(1)
 		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
 		rskMock.On("HashQuote", mock.Anything).Times(len(providerMocks)).Return("", nil)
+		rskMock.On("GetProviders", mock.Anything).Return(
+			[]bindings.LiquidityBridgeContractLiquidityProvider{{MinTransactionValue: big.NewInt(1), MaxTransactionValue: big.NewInt(1000000000)}},
+			nil)
 		dbMock.On("InsertQuote", "", mock.Anything).Times(len(providerMocks)).Return(quote)
+		dbMock.On("GetProviders").Return([]*mongoDB.ProviderAddress{{Id: 1, Address: "0x123456789"}}, nil)
 	}
 
 	testCases := []*struct {
@@ -401,7 +416,7 @@ func testGetQuoteComplete(t *testing.T) {
 					json.NewDecoder(res.Body).Decode(&response)
 					assert.EqualValues(t, "application/json", res.Header.Get("Content-Type"))
 					assert.EqualValues(t, 400, res.StatusCode)
-					assert.EqualValues(t, "value to transfer is higher than max allowed", response.Message)
+					assert.EqualValues(t, "amount out of provider range which is [1, 1000000000]", response.Message)
 				},
 			},
 		},
@@ -450,7 +465,7 @@ func testAcceptQuoteComplete(t *testing.T) {
 		for _, lp := range providerMocks {
 			rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
 			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
-			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			mongoDb.On("InsertProvider", mock.Anything, mock.Anything).Return(nil)
 			err := srv.AddProvider(lp, detailMock)
 			if err != nil {
@@ -507,7 +522,7 @@ func testInitPeginWatchers(t *testing.T) {
 	for _, lp := range providerMocks {
 		rsk.On("GetCollateral", lp.address).Times(1).Return(big.NewInt(10), big.NewInt(10), nil)
 		rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
-		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+		rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 		mongoDb.On("InsertProvider", mock.Anything, mock.Anything).Return(nil)
 		err := srv.AddProvider(lp, detailMock)
 		if err != nil {
@@ -568,7 +583,7 @@ func testGetProviders(t *testing.T) {
 		t.Fatalf("couldn't instantiate request. error: %v", err)
 	}
 
-	mongoDb.On("GetProviders").Return([]int64{}, nil)
+	mongoDb.On("GetProviders").Return([]*mongoDB.ProviderAddress{}, nil)
 	rsk.On("GetProviders", mock.Anything).Return([]bindings.LiquidityBridgeContractLiquidityProvider{}, nil)
 	srv.getProvidersHandler(&w, req)
 
@@ -594,7 +609,7 @@ func testcAcceptQuotePegoutComplete(t *testing.T) {
 		detailMock := types.ProviderRegisterRequest{}
 		for _, lp := range providerPegOutMocks {
 			rsk.On("GetCollateral", lp.address).Return(big.NewInt(10), big.NewInt(10), nil)
-			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			rsk.On("RegisterProvider", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			mongoDb.On("InsertProvider", mock.Anything, mock.Anything).Return(nil)
 			err := srv.AddPegOutProvider(lp, detailMock)
 			if err != nil {

@@ -23,6 +23,16 @@ type RskMock struct {
 	QuoteHash string
 }
 
+func (m *RskMock) GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error) {
+	args := m.Called(fromBlock, toBlock)
+	return args.Get(0).([]*pegin.PunishmentEvent), args.Error(1)
+}
+
+func (m *RskMock) GetProviderIds() (providerList *big.Int, err error) {
+	args := m.Called()
+	return args.Get(0).(*big.Int), args.Error(1)
+}
+
 func (m *RskMock) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error) {
 	args := m.Called(fromBlock, toBlock)
 	return args.Get(0).([]*pegout.DepositEvent), args.Error(1)
@@ -75,8 +85,8 @@ func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	return collateral, minimum, arg.Error(2)
 }
 
-func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool) (int64, error) {
-	args := m.Called(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status)
+func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _acceptedQuoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _type string) (int64, error) {
+	args := m.Called(opts, _name, _fee, _quoteExpiration, _acceptedQuoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _type)
 	return int64(args.Int(0)), args.Error(1)
 }
 
