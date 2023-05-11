@@ -15,6 +15,10 @@ type DbMock struct {
 	pegoutQuote *pegout.Quote
 }
 
+func (d *DbMock) ResetProviders(providers []*types.GlobalProvider) error {
+	return d.Called(providers).Error(0)
+}
+
 func (d *DbMock) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
 	args := d.Called(hash, depositBlockNumber)
 	return args.Error(0)
@@ -35,9 +39,9 @@ func (d *DbMock) GetAddressKeys(quoteHash string) (*mongoDB.PegoutKeys, error) {
 	return args.Get(0).(*mongoDB.PegoutKeys), args.Error(1)
 }
 
-func (d *DbMock) GetProvider(u uint64) (string, error) {
+func (d *DbMock) GetProvider(u uint64) (*mongoDB.ProviderAddress, error) {
 	arg := d.Called(u)
-	return arg.String(0), arg.Error(1)
+	return arg.Get(0).(*mongoDB.ProviderAddress), arg.Error(1)
 }
 
 func (d *DbMock) GetLockedLiquidityPegOut() (uint64, error) {
@@ -53,9 +57,9 @@ func NewDbMock(h string, q *pegin.Quote, pq *pegout.Quote) (*DbMock, error) {
 	}, nil
 }
 
-func (d *DbMock) GetProviders() ([]int64, error) {
+func (d *DbMock) GetProviders() ([]*mongoDB.ProviderAddress, error) {
 	args := d.Called()
-	return args.Get(0).([]int64), args.Error(1)
+	return args.Get(0).([]*mongoDB.ProviderAddress), args.Error(1)
 }
 
 func (d *DbMock) InsertProvider(id int64, address string) error {

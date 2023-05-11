@@ -9,10 +9,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"math"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
-	"os"
 
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
@@ -21,10 +21,10 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
+	"github.com/mailgun/mailgun-go/v4"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
-	"github.com/mailgun/mailgun-go/v4"
 )
 
 type BTCAddressWatcher struct {
@@ -633,7 +633,7 @@ func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, r
 		height:                  height,
 		liquidityPeginProvider:  peginLiquidityProvider,
 		liquidityPegoutProvider: pegoutLiquidityProvider,
-		recipient:               "test@iovlabs.org"
+		recipient:               "test@iovlabs.org",
 	}
 }
 
@@ -714,7 +714,7 @@ func (watcher *LpFundsEventWatcherImpl) GetLpPegoutOutOfLiquidity() error {
 func (watcher *LpFundsEventWatcherImpl) SendAlert(subject string, body string, recipient string) {
 	log.Debug("Sending alert to LP")
 	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
-	
+
 	//When you have an EU-domain, you must specify the endpoint:
 	//mg.SetAPIBase("https://api.eu.mailgun.net/v3")
 
@@ -731,7 +731,7 @@ func (watcher *LpFundsEventWatcherImpl) SendAlert(subject string, body string, r
 		log.Fatal(err)
 	}
 
-	log.Debug("ID: %s Resp: %s\n", id, resp)
+	log.Debugf("ID: %s Resp: %s\n", id, resp)
 }
 
 func (watcher *LpFundsEventWatcherImpl) WatchLpFunds() error {
