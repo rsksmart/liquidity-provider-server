@@ -118,7 +118,7 @@ type RSKConnector interface {
 	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
-  GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
+	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
 }
 
@@ -527,7 +527,7 @@ func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (*pegout.QuoteState
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 		defer cancel()
 		var state bindings.LiquidityBridgeContractPegOutQuoteState
-		state, err = rsk.lbc.GetPegOutProcessedQuote(&bind.CallOpts{
+		state, err = rsk.lbc.GetPegOutQuoteState(&bind.CallOpts{
 			Context: ctx,
 		}, quoteHash)
 		if err == nil {
