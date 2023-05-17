@@ -444,6 +444,8 @@ components:
           example: "0x0"
           type: string
       type: object
+    UserEventsList: {}
+    UserQuoteRequest: {}
     Wei: {}
     WithdrawCollateralRequest:
       properties:
@@ -788,6 +790,23 @@ paths:
         "204":
           description: ""
       summary: Provider Synchronization
+  /userQuotes:
+    get:
+      description: ' Returns user quotes for address.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEventsList'
+          description: ""
+      summary: userQuotes
   /withdrawCollateral:
     post:
       description: ' Withdraw Collateral of a resigned LP'
