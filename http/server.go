@@ -1754,12 +1754,11 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
-type UserEventsList types.UserEvents
-type UserQuoteRequest types.UserQuoteRequest
+
 // @Title userQuotes
 // @Description Returns user quotes for address.
-// @Param UserQuoteRequest body UserQuoteRequest true "Event Request Details"
-// @Success 200 array UserEventsList
+// @Param UserQuoteRequest body types.UserQuoteRequest true "Event Request Details"
+// @Success 200 {array} types.UserEvents
 // @Route /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
