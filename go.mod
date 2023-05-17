@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mailgun/mailgun-go/v4 v4.8.2
-	github.com/rsksmart/liquidity-provider v0.0.0-20230517130735-30e90aeb3c1d
+	github.com/rsksmart/liquidity-provider v0.0.0-20230517145259-4a21c1518175
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sirupsen/logrus v1.9.1
 	github.com/stretchr/testify v1.8.2
@@ -26,7 +26,6 @@ require (
 )
 
 require (
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.24 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33 // indirect
