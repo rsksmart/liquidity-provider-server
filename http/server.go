@@ -1765,14 +1765,20 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	payload := types.UserQuoteRequest{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&payload)
-	s.rsk.GetUserQuotes(payload)
+	decoder.Decode(&payload)
 	events, err := s.rsk.GetUserQuotes(payload)
 	if(err != nil){
 		log.Error("error getting user quotes: ", err.Error())
 	}
+	if events == nil {
+		events = []types.UserEvents{}
+	}
 	enc := json.NewEncoder(w)
-	err = enc.Encode(events)
+	err = enc.Encode(&events)
+	if err != nil {
+		log.Error("error encoding user events")
+		return
+	}
 }
 // @Title Provider Synchronization
 // @Description Synchronizes providers with MongoDB
@@ -1827,7 +1833,6 @@ func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress stri
 	} else if len(providers) == 0 {
 		return errors.New("provider not found")
 	}
-
 	var min, max = providers[0].MinTransactionValue, providers[0].MaxTransactionValue
 	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
 		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)
