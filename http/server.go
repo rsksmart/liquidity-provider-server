@@ -412,6 +412,8 @@ func (s *Server) Start(port uint) error {
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
+	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
+
 
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -1752,7 +1754,27 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
-
+type UserEventsList types.UserEvents
+type UserQuoteRequest types.UserQuoteRequest
+// @Title userQuotes
+// @Description Returns user quotes for address.
+// @Param UserQuoteRequest body UserQuoteRequest true "Event Request Details"
+// @Success 200 array UserEventsList
+// @Route /userQuotes [get]
+func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	enableCors(&w)
+	payload := types.UserQuoteRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+	s.rsk.GetUserQuotes(payload)
+	events, err := s.rsk.GetUserQuotes(payload)
+	if(err != nil){
+		log.Error("error getting user quotes: ", err.Error())
+	}
+	enc := json.NewEncoder(w)
+	err = enc.Encode(events)
+}
 // @Title Provider Synchronization
 // @Description Synchronizes providers with MongoDB
 // @Route /provider/sync [post]
