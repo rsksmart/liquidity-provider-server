@@ -1259,7 +1259,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([] types.UserEven
 			Dest:      event.Dest,
 			GasLimit:  event.GasLimit,
 			Value:     event.Value,
-			Data:      event.Data,
+			Data:      string(event.Data),
 			Success:   event.Success,
 			QuoteHash: hex.EncodeToString(event.QuoteHash[:]),
 		})
