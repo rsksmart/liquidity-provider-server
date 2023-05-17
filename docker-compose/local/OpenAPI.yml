@@ -478,21 +478,6 @@ components:
           description: Event Value
           example: "10000"
       type: object
-    UserQuoteRequest:
-      properties:
-        address:
-          description: User Address
-          example: "0x0"
-          type: string
-        fromBlock:
-          description: optional fromBlock
-          example: 69
-          type: integer
-        toBlock:
-          description: optional toBlock
-          example: 0
-          type: integer
-      type: object
     Wei: {}
     WithdrawCollateralRequest:
       properties:
@@ -843,12 +828,6 @@ paths:
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserQuoteRequest'
-        required: true
       responses:
         "200":
           content:
