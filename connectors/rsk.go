@@ -120,6 +120,7 @@ type RSKConnector interface {
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
+	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents,err error)
 }
 
 type RSKClient interface {
@@ -1231,6 +1232,40 @@ func parseHex(str string) ([]byte, error) {
 
 func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
+}
+
+
+func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([] types.UserEvents,error) {
+	filterOpts := bind.FilterOpts{}
+
+	if request.FromBlock != nil {
+		filterOpts.Start = *request.FromBlock
+	}
+	
+	if request.ToBlock != nil {
+		filterOpts.End = request.ToBlock
+	}
+
+	events, err := rsk.lbc.FilterCallForUser(&filterOpts, nil, []common.Address{common.HexToAddress(request.Address)})
+	if err != nil {
+		return  nil,err
+	}
+
+	var eventInfos []types.UserEvents;
+	for events.Next() {
+		event := events.Event
+		eventInfos = append(eventInfos, types.UserEvents{
+			From:      event.From,
+			Dest:      event.Dest,
+			GasLimit:  event.GasLimit,
+			Value:     event.Value,
+			Data:      event.Data,
+			Success:   event.Success,
+			QuoteHash: hex.EncodeToString(event.QuoteHash[:]),
+		})
+	}
+
+	return eventInfos,nil
 }
 func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
 	opts := bind.CallOpts{}
