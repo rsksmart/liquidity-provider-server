@@ -1,5 +1,6 @@
 components:
   schemas:
+    "": {}
     AddCollateralRequest:
       properties:
         amount:
@@ -11,6 +12,9 @@ components:
           example: "0x0"
           type: string
       type: object
+    Address:
+      items: {}
+      type: array
     BuildRefundPegOutPayloadRequest:
       properties:
         btcTxHash:
@@ -444,6 +448,36 @@ components:
           example: "0x0"
           type: string
       type: object
+    UserEvents:
+      properties:
+        data:
+          description: Event Data
+          type: string
+        dest:
+          description: Destination Address
+          example: invalid example
+          items: {}
+          type: array
+        from:
+          description: From Address
+          example: invalid example
+          items: {}
+          type: array
+        gasLimit:
+          description: Gas Limit
+          example: "10000"
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        success:
+          description: Event Status
+          example: true
+          type: boolean
+        value:
+          description: Event Value
+          example: "10000"
+      type: object
     Wei: {}
     WithdrawCollateralRequest:
       properties:
@@ -487,6 +521,9 @@ components:
       - signature
       - lbcAddress
       type: object
+    common.Address:
+      items: {}
+      type: array
     healthRes:
       properties:
         services:
@@ -788,6 +825,17 @@ paths:
         "204":
           description: ""
       summary: Provider Synchronization
+  /userQuotes:
+    get:
+      description: ' Returns user quotes for address.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEvents'
+          description: ""
+      summary: userQuotes
   /withdrawCollateral:
     post:
       description: ' Withdraw Collateral of a resigned LP'

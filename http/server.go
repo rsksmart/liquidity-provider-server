@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/account"
 
@@ -412,6 +413,8 @@ func (s *Server) Start(port uint) error {
 	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
 	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
+	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
+
 
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -1753,6 +1756,59 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Title userQuotes
+// @Description Returns user quotes for address.
+// @Param UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 {array} types.UserEvents
+// @Route /userQuotes [get]
+func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
+    toRestAPI(w)
+    enableCors(&w)
+
+    address := r.URL.Query().Get("address")
+    if address == "" {
+        http.Error(w, "address parameter is required", http.StatusBadRequest)
+        return
+    }
+
+    var fromBlock, toBlock *uint64
+    fromBlockStr := r.URL.Query().Get("fromBlock")
+    toBlockStr := r.URL.Query().Get("toBlock")
+
+    if fromBlockStr != "" {
+        fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
+        if err != nil {
+            http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
+            return
+        }
+        fromBlock = &fb
+    }
+
+    if toBlockStr != "" {
+        tb, err := strconv.ParseUint(toBlockStr, 10, 64)
+        if err != nil {
+            http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
+            return
+        }
+        toBlock = &tb
+    }
+
+    payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
+    events, err := s.rsk.GetUserQuotes(payload)
+    if err != nil {
+        log.Error("error getting user quotes: ", err.Error())
+    }
+    if events == nil {
+        events = []types.UserEvents{}
+    }
+    enc := json.NewEncoder(w)
+    err = enc.Encode(&events)
+    if err != nil {
+        log.Error("error encoding user events")
+        return
+    }
+}
+
 // @Title Provider Synchronization
 // @Description Synchronizes providers with MongoDB
 // @Route /provider/sync [post]
@@ -1806,7 +1862,6 @@ func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress stri
 	} else if len(providers) == 0 {
 		return errors.New("provider not found")
 	}
-
 	var min, max = providers[0].MinTransactionValue, providers[0].MaxTransactionValue
 	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
 		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)

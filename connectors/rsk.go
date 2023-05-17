@@ -118,8 +118,9 @@ type RSKConnector interface {
 	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
 	RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
-  GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
+	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
+	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents,err error)
 }
 
 type RSKClient interface {
@@ -527,7 +528,7 @@ func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (*pegout.QuoteState
 		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 		defer cancel()
 		var state bindings.LiquidityBridgeContractPegOutQuoteState
-		state, err = rsk.lbc.GetPegOutProcessedQuote(&bind.CallOpts{
+		state, err = rsk.lbc.GetPegOutQuoteState(&bind.CallOpts{
 			Context: ctx,
 		}, quoteHash)
 		if err == nil {
@@ -1231,6 +1232,40 @@ func parseHex(str string) ([]byte, error) {
 
 func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
+}
+
+
+func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([] types.UserEvents,error) {
+	filterOpts := bind.FilterOpts{}
+
+	if request.FromBlock != nil {
+		filterOpts.Start = *request.FromBlock
+	}
+	
+	if request.ToBlock != nil {
+		filterOpts.End = request.ToBlock
+	}
+
+	events, err := rsk.lbc.FilterCallForUser(&filterOpts, nil, []common.Address{common.HexToAddress(request.Address)})
+	if err != nil {
+		return  nil,err
+	}
+
+	var eventInfos []types.UserEvents;
+	for events.Next() {
+		event := events.Event
+		eventInfos = append(eventInfos, types.UserEvents{
+			From:      event.From,
+			Dest:      event.Dest,
+			GasLimit:  event.GasLimit,
+			Value:     event.Value,
+			Data:      string(event.Data),
+			Success:   event.Success,
+			QuoteHash: hex.EncodeToString(event.QuoteHash[:]),
+		})
+	}
+
+	return eventInfos,nil
 }
 func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
 	opts := bind.CallOpts{}
