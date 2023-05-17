@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/account"
 
@@ -1757,29 +1758,57 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title userQuotes
 // @Description Returns user quotes for address.
-// @Param UserQuoteRequest body types.UserQuoteRequest true "Event Request Details"
+// @Param UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
 // @Success 200 {array} types.UserEvents
 // @Route /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	enableCors(&w)
-	payload := types.UserQuoteRequest{}
-	decoder := json.NewDecoder(r.Body)
-	decoder.Decode(&payload)
-	events, err := s.rsk.GetUserQuotes(payload)
-	if(err != nil){
-		log.Error("error getting user quotes: ", err.Error())
-	}
-	if events == nil {
-		events = []types.UserEvents{}
-	}
-	enc := json.NewEncoder(w)
-	err = enc.Encode(&events)
-	if err != nil {
-		log.Error("error encoding user events")
-		return
-	}
+    toRestAPI(w)
+    enableCors(&w)
+
+    address := r.URL.Query().Get("address")
+    if address == "" {
+        http.Error(w, "address parameter is required", http.StatusBadRequest)
+        return
+    }
+
+    var fromBlock, toBlock *uint64
+    fromBlockStr := r.URL.Query().Get("fromBlock")
+    toBlockStr := r.URL.Query().Get("toBlock")
+
+    if fromBlockStr != "" {
+        fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
+        if err != nil {
+            http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
+            return
+        }
+        fromBlock = &fb
+    }
+
+    if toBlockStr != "" {
+        tb, err := strconv.ParseUint(toBlockStr, 10, 64)
+        if err != nil {
+            http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
+            return
+        }
+        toBlock = &tb
+    }
+
+    payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
+    events, err := s.rsk.GetUserQuotes(payload)
+    if err != nil {
+        log.Error("error getting user quotes: ", err.Error())
+    }
+    if events == nil {
+        events = []types.UserEvents{}
+    }
+    enc := json.NewEncoder(w)
+    err = enc.Encode(&events)
+    if err != nil {
+        log.Error("error encoding user events")
+        return
+    }
 }
+
 // @Title Provider Synchronization
 // @Description Synchronizes providers with MongoDB
 // @Route /provider/sync [post]
