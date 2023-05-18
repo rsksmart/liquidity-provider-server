@@ -1756,11 +1756,11 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// @Title userQuotes
+// @Title GetUserQuotes
 // @Description Returns user quotes for address.
-// @Param UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
-// @Success 200 {array} types.UserEvents
-// @Route /userQuotes [get]
+// @Param   UserQuoteRequest body types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 {array} types.UserEvents "Successfully retrieved the user quotes"
+// @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
     toRestAPI(w)
     enableCors(&w)
