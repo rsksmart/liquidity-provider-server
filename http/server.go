@@ -201,7 +201,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -240,7 +240,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -370,7 +370,7 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var lp pegin.LiquidityProvider
 	for _, provider := range s.providers {
-		if provider.Address() == providerAddress.Address {
+		if provider.Address() == providerAddress.Provider {
 			lp = provider
 		}
 	}
@@ -1848,14 +1848,12 @@ func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress stri
 	if err != nil {
 		return err
 	}
-
 	var id int64
 	for _, address := range storedAddresses {
-		if address.Address == providerAddress {
+		if address.Provider == providerAddress {
 			id = address.Id
 		}
 	}
-
 	providers, err := s.rsk.GetProviders([]int64{id})
 	if err != nil {
 		return err
