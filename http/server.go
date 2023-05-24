@@ -415,7 +415,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
 	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
 
-
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -443,10 +442,10 @@ func (s *Server) Start(port uint) error {
 				log.Error("Error starting BTC pegout watcher: ", err)
 			}
 		})
-	
+
 	peginProvider := s.providers[0]
-	pegoutProvider := s.pegoutProviders[0] 
-	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1 * time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	pegoutProvider := s.pegoutProviders[0]
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
 	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
@@ -715,6 +714,15 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 	return err
 }
 
+func validatePeginQuoteRequest(request QuoteRequest) error {
+	log.Debug("Validating the BTC refund address")
+	btcChars := strings.Split(request.BitcoinRefundAddress, "")
+	if btcChars[1] != "x" || btcChars[3] != "1" {
+		return errors.New("Invalid BTC refund addr")
+	}
+	return nil
+}
+
 // @Title Get Providers
 // @Description Returns a list of providers.
 // @Success  200  array ProviderDTO
@@ -776,6 +784,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug("received quote request: ", fmt.Sprintf("%+v", qr))
 	if isValid := Validate(qr)(w); !isValid {
+		return
+	}
+
+	err = validatePeginQuoteRequest(qr)
+	if err != nil {
+		buildErrorDecodingRequest(w, err)
 		return
 	}
 
@@ -1762,51 +1776,51 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} types.UserEvents "Successfully retrieved the user quotes"
 // @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
-    toRestAPI(w)
-    enableCors(&w)
+	toRestAPI(w)
+	enableCors(&w)
 
-    address := r.URL.Query().Get("address")
-    if address == "" {
-        http.Error(w, "address parameter is required", http.StatusBadRequest)
-        return
-    }
+	address := r.URL.Query().Get("address")
+	if address == "" {
+		http.Error(w, "address parameter is required", http.StatusBadRequest)
+		return
+	}
 
-    var fromBlock, toBlock *uint64
-    fromBlockStr := r.URL.Query().Get("fromBlock")
-    toBlockStr := r.URL.Query().Get("toBlock")
+	var fromBlock, toBlock *uint64
+	fromBlockStr := r.URL.Query().Get("fromBlock")
+	toBlockStr := r.URL.Query().Get("toBlock")
 
-    if fromBlockStr != "" {
-        fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
-        if err != nil {
-            http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
-            return
-        }
-        fromBlock = &fb
-    }
+	if fromBlockStr != "" {
+		fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
+			return
+		}
+		fromBlock = &fb
+	}
 
-    if toBlockStr != "" {
-        tb, err := strconv.ParseUint(toBlockStr, 10, 64)
-        if err != nil {
-            http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
-            return
-        }
-        toBlock = &tb
-    }
+	if toBlockStr != "" {
+		tb, err := strconv.ParseUint(toBlockStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
+			return
+		}
+		toBlock = &tb
+	}
 
-    payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
-    events, err := s.rsk.GetUserQuotes(payload)
-    if err != nil {
-        log.Error("error getting user quotes: ", err.Error())
-    }
-    if events == nil {
-        events = []types.UserEvents{}
-    }
-    enc := json.NewEncoder(w)
-    err = enc.Encode(&events)
-    if err != nil {
-        log.Error("error encoding user events")
-        return
-    }
+	payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
+	events, err := s.rsk.GetUserQuotes(payload)
+	if err != nil {
+		log.Error("error getting user quotes: ", err.Error())
+	}
+	if events == nil {
+		events = []types.UserEvents{}
+	}
+	enc := json.NewEncoder(w)
+	err = enc.Encode(&events)
+	if err != nil {
+		log.Error("error encoding user events")
+		return
+	}
 }
 
 // @Title Provider Synchronization
