@@ -428,17 +428,21 @@ func (db *DB) ResetProviders(providers []*types.GlobalProvider) error {
 }
 type InsertProvider struct {
 	Id      int64  `bson:"id"`
-	ProviderDetails types.ProviderRegisterRequest
+	Provider string `bson: "provider"`
+	types.ProviderRegisterRequest `bson:",inline"`
 }
 
 func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string) error {
 	log.Debug("inserting provider: ", id)
 	coll := db.db.Database("flyover").Collection("providers")
 	filter := bson.M{"id": id}
+
 	newProvider := InsertProvider{
-		Id:              id,
-		ProviderDetails: details,
-	}
+		Id: id,
+		Provider: address,
+		ProviderRegisterRequest  : details,
+	} 
+
 	update := bson.M{"$set": newProvider}
 	opts := options.Update().SetUpsert(true)
 	_, err := coll.UpdateOne(context.Background(), filter, update, opts)
