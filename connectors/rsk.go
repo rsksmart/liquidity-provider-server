@@ -208,8 +208,13 @@ func (rsk *RSK) GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.Pu
 		End:     &toBlock,
 		Context: ctx,
 	})
-	defer iterator.Close()
-	if err != nil {
+	defer func() {
+		if iterator != nil {
+			iterator.Close()
+		}
+	}()
+
+	if err != nil || iterator == nil {
 		return nil, err
 	}
 
