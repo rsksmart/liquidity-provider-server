@@ -201,7 +201,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address(),"pegin")
 		if err2 != nil {
 			return err2
 		}
@@ -240,7 +240,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address(),"pegout")
 		if err2 != nil {
 			return err2
 		}
