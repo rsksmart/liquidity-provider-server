@@ -200,10 +200,6 @@ components:
       type: object
     ProviderDTO:
       properties:
-        acceptedQuoteExpiration:
-          description: Accepted quote expiration time in seconds
-          example: 3600
-          type: integer
         apiBaseUrl:
           description: Provider's LPS instance URL
           example: https://api.example.com
@@ -250,7 +246,6 @@ components:
       - name
       - fee
       - quoteExpiration
-      - acceptedQuoteExpiration
       - minTransactionValue
       - maxTransactionValue
       - apiBaseUrl

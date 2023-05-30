@@ -197,7 +197,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
 		if err != nil {
 			return err
 		}
@@ -236,7 +236,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
 		if err != nil {
 			return err
 		}
