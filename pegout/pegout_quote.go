@@ -37,14 +37,14 @@ type QuoteState struct {
 }
 
 type DepositEvent struct {
-	QuoteHash         string
-	AccumulatedAmount *big.Int
-	Timestamp         time.Time
-	BlockNumber       uint64
+	QuoteHash   string
+	Amount      *big.Int
+	Timestamp   time.Time
+	BlockNumber uint64
 }
 
 func (event *DepositEvent) IsValidForQuote(quote *Quote) bool {
-	enoughAmount := event.AccumulatedAmount.Cmp(new(types.Wei).Add(quote.Value, quote.CallFee).AsBigInt()) >= 0
+	enoughAmount := event.Amount.Cmp(new(types.Wei).Add(quote.Value, quote.CallFee).AsBigInt()) >= 0
 	nonExpired := event.Timestamp.Before(quote.GetExpirationTime())
 	return enoughAmount && nonExpired
 }
