@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -550,44 +549,11 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuotes(quotes map[string]
 }
 
 func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote) error {
-	paredQuote, err := watcher.rsk.ParsePegOutQuote(quote.Data)
-	if err != nil {
-		return err
-	}
-
 	satoshi, _ := quote.Data.Value.ToSatoshi().Float64()
 	watcher.pegoutLocker.Lock()
 	defer watcher.pegoutLocker.Unlock()
-	err = watcher.btc.LockBtc(satoshi)
-	if err != nil {
-		return err
-	}
 
-	opt := &bind.TransactOpts{
-		From:   paredQuote.LpRskAddress,
-		Signer: watcher.liquidityProvider.SignTx,
-	}
-
-	signatureBytes, err := hex.DecodeString(quote.Signature)
-	if err != nil {
-		return err
-	}
-	tx, err := watcher.rsk.RegisterPegOut(opt, paredQuote, signatureBytes)
-	if err != nil {
-		return err
-	}
-
-	if status, err := watcher.rsk.GetTxStatus(context.Background(), tx); err != nil || !status {
-		_ = watcher.btc.UnlockBtc(satoshi)
-		return err
-	}
-
-	err = watcher.btc.UnlockBtc(satoshi)
-	if err != nil {
-		return err
-	}
-
-	_, err = watcher.btc.SendBtc(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)))
+	_, err := watcher.btc.SendBtc(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)))
 	if err != nil {
 		return err
 	}
