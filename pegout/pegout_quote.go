@@ -28,7 +28,7 @@ type Quote struct {
 }
 
 func (q *Quote) GetExpirationTime() time.Time {
-	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
+	return time.Unix(int64(q.ExpireDate), 0)
 }
 
 type QuoteState struct {
