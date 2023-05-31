@@ -87,7 +87,6 @@ type RSKConnector interface {
 	ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error)
 	ParsePegOutQuote(q *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error)
 	RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
-	RegisterPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, signature []byte) (*gethTypes.Transaction, error)
 	GetBridgeAddress() common.Address
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
@@ -120,7 +119,7 @@ type RSKConnector interface {
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
-	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents,err error)
+	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents, err error)
 }
 
 type RSKClient interface {
@@ -185,10 +184,10 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 	for iterator.Next() {
 		lbcEvent = iterator.Event
 		deposit = &pegout.DepositEvent{
-			QuoteHash:         hex.EncodeToString(iterator.Event.QuoteHash[:]),
-			AccumulatedAmount: lbcEvent.AccumulatedAmount,
-			Timestamp:         time.Unix(lbcEvent.Timestamp.Int64(), 0),
-			BlockNumber:       iterator.Event.Raw.BlockNumber,
+			QuoteHash:   hex.EncodeToString(iterator.Event.QuoteHash[:]),
+			Amount:      lbcEvent.Amount,
+			Timestamp:   time.Unix(lbcEvent.Timestamp.Int64(), 0),
+			BlockNumber: iterator.Event.Raw.BlockNumber,
 		}
 		deposits = append(deposits, deposit)
 	}
@@ -527,29 +526,6 @@ func (rsk *RSK) GetChainId() (*big.Int, error) {
 	return nil, fmt.Errorf("error retrieving chain id: %v", err)
 }
 
-func (rsk *RSK) GetProcessedPegOutQuotes(quoteHash [32]byte) (*pegout.QuoteState, error) {
-	var err error
-	for i := 0; i < retries; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
-		defer cancel()
-		var state bindings.LiquidityBridgeContractPegOutQuoteState
-		state, err = rsk.lbc.GetPegOutQuoteState(&bind.CallOpts{
-			Context: ctx,
-		}, quoteHash)
-		if err == nil {
-			return &pegout.QuoteState{
-				StatusCode:     state.StatusCode,
-				ReceivedAmount: state.ReceivedAmount,
-			}, nil
-		}
-
-		log.Debugf("Exp:: GetProcessedPegOutQuotes error ::: %v", err)
-		time.Sleep(rpcSleep)
-	}
-
-	return nil, fmt.Errorf("error retrieving processed pegout status: %v", err)
-}
-
 func (rsk *RSK) EstimateGas(addr string, value *big.Int, data []byte) (uint64, error) {
 	if !common.IsHexAddress(addr) {
 		return 0, fmt.Errorf("invalid address: %v", addr)
@@ -806,22 +782,6 @@ func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridge
 		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
 	}
 	return t, nil
-}
-
-func (rsk *RSK) RegisterPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, signature []byte) (*gethTypes.Transaction, error) {
-	var err error
-	var tx *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.RegisterPegOut(opts, quote, signature)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error calling registerPegOut: %v", err)
-	}
-	return tx, nil
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
@@ -1239,24 +1199,23 @@ func isNoContractError(err error) bool {
 	return "no contract code at given address" == err.Error()
 }
 
-
-func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([] types.UserEvents,error) {
+func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([]types.UserEvents, error) {
 	filterOpts := bind.FilterOpts{}
 
 	if request.FromBlock != nil {
 		filterOpts.Start = *request.FromBlock
 	}
-	
+
 	if request.ToBlock != nil {
 		filterOpts.End = request.ToBlock
 	}
 
 	events, err := rsk.lbc.FilterCallForUser(&filterOpts, nil, []common.Address{common.HexToAddress(request.Address)})
 	if err != nil {
-		return  nil,err
+		return nil, err
 	}
 
-	var eventInfos []types.UserEvents;
+	var eventInfos []types.UserEvents
 	for events.Next() {
 		event := events.Event
 		eventInfos = append(eventInfos, types.UserEvents{
@@ -1270,7 +1229,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([] types.UserEven
 		})
 	}
 
-	return eventInfos,nil
+	return eventInfos, nil
 }
 func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
 	opts := bind.CallOpts{}
