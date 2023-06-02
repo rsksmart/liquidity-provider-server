@@ -7,7 +7,6 @@ image_resource:
     tag: 3
 
 inputs:
-- name: repo-iac-ng
 - name: repo-liquidity-provider-server
 
 outputs:
