@@ -22,6 +22,7 @@ run:
   - |
     ssh_deploy_keyfile=$(pwd)/ssh_deploy_key
     flyover_ssh_keyfile=$(pwd)/flyover_ssh_key
+    out_message_file=$(pwd)/out/message.txt
 
     echo "Liquidity-provider-server deployment to testnet" > $out_message_file
 
