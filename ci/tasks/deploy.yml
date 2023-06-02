@@ -31,6 +31,8 @@ run:
     echo "$FLYOVER_SSH_KEY" > $flyover_ssh_keyfile
     umask 022
     
+    apk add -q --no-progress openssh ansible gnupg git
+
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
     ssh -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
