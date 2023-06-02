@@ -15,7 +15,6 @@ outputs:
 
 params:
   SSH_DEPLOY_KEY: ((ssh-deploy))
-  ANSIBLE_HOST_KEY_CHECKING: false
 
 run:
   path: sh
@@ -24,18 +23,8 @@ run:
   - |
     ssh_deploy_keyfile=$(pwd)/ssh_deploy_key
     flyover_ssh_keyfile=$(pwd)/flyover_ssh_key
-        
-    apk add -q --no-progress openssh ansible gnupg git jq curl
-    mkdir -p ~/.ssh/
-    touch ~/.ssh/known_hosts
-    ssh-keygen -R github.com
-    curl -L https://api.github.com/meta | jq -r '.ssh_keys | .[]' | sed -e 's/^/github.com /' >> ~/.ssh/known_hosts
 
-    cd repo-liquidity-provider-server
-    git checkout master
-    cd ..
-
-    echo "Liquidity-provider-server deployment to mainnet" > $out_message_file
+    echo "Liquidity-provider-server deployment to testnet" > $out_message_file
 
     umask 077
     echo "$SSH_DEPLOY_KEY" > $ssh_deploy_keyfile
@@ -44,11 +33,10 @@ run:
     
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
-    
-    cd repo-iac-ng/ansible
-    git checkout main
-    deployment_commit=$(git rev-parse HEAD | sed s/\n//)
+    ssh -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
+    cd /home/ubuntu/liquidity-provider-server/docker-compose && docker-compose --env-file .env.testnet up -d --build 
 
-    ansible-playbook -vvv -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
+
+    EOF
 
     echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
