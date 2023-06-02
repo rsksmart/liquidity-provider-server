@@ -14,7 +14,7 @@ outputs:
 
 params:
   SSH_DEPLOY_KEY: ((ssh-deploy))
-
+  FLYOVER_SSH_KEY: ((ssh-ro-spoof-fling)) 
 run:
   path: sh
   args:
