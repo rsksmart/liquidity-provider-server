@@ -1,0 +1,42 @@
+---
+platform: linux
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+    tag: 3
+
+inputs:
+- name: repo-iac-ng
+- name: repo-liquidity-provider-server
+
+outputs:
+- name: out
+
+params:
+  SSH_DEPLOY_KEY: ((ssh-deploy))
+
+run:
+  path: sh
+  args:
+  - -ceux
+  - |
+    ssh_deploy_keyfile=$(pwd)/ssh_deploy_key
+    flyover_ssh_keyfile=$(pwd)/flyover_ssh_key
+
+    echo "Liquidity-provider-server deployment to testnet" > $out_message_file
+
+    umask 077
+    echo "$SSH_DEPLOY_KEY" > $ssh_deploy_keyfile
+    echo "$FLYOVER_SSH_KEY" > $flyover_ssh_keyfile
+    umask 022
+    
+    eval $(ssh-agent)
+    ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
+    ssh -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
+    cd /home/ubuntu/liquidity-provider-server/docker-compose && docker-compose --env-file .env.testnet up -d --build 
+
+
+    EOF
+
+    echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
