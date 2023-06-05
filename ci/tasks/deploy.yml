@@ -37,7 +37,7 @@ run:
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
     mkdir -p ~/.ssh/known_hosts
     ssh-keyscan flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
-    ssh -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
+    ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
     cd /home/ubuntu/liquidity-provider-server/docker-compose && docker-compose --env-file .env.testnet up -d --build 
 
 
