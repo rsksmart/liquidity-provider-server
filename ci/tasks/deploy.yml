@@ -42,7 +42,6 @@ run:
     cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin Stable-Test && docker-compose --env-file .env.testnet up -d --build 
     cd ..
     deployment_commit=$(git rev-parse HEAD | sed s/\n//)
-  
+    echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
     EOF
 
-    echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
