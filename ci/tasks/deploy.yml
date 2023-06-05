@@ -35,6 +35,7 @@ run:
 
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
+    mkdir ~/.ssh/
     touch ~/.ssh/known_hosts
     ssh-keyscan flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
     ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
