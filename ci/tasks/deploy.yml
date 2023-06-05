@@ -40,8 +40,8 @@ run:
     ssh-keyscan flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
     ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
     cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin Stable-Test && docker-compose --env-file .env.testnet up -d --build 
+    
+    EOF
     cd ..
     deployment_commit=$(git rev-parse HEAD | sed s/\n//)
     echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
-    EOF
-
