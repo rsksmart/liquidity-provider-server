@@ -505,9 +505,18 @@ func (s *Server) initPegoutWatchers() error {
 		if entry.State == types.RQStateCallForUserSucceeded {
 			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, quote.DepositAddr, signB, p, entry.State)
 		} else if entry.State == types.RQStateWaitingForDepositConfirmations {
-			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote, DepositBlock: entry.DepositBlockNumber}
+			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{
+				Signature:    entry.Signature,
+				Data:         quote,
+				DepositBlock: entry.DepositBlockNumber,
+				QuoteHash:    entry.QuoteHash,
+			}
 		} else {
-			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote}
+			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{
+				Signature: entry.Signature,
+				Data:      quote,
+				QuoteHash: entry.QuoteHash,
+			}
 		}
 
 		if err != nil {

@@ -2,9 +2,9 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/ethereum/go-ethereum/common"
 	"math"
 	"math/big"
@@ -171,13 +171,10 @@ func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, erro
 		return true, err
 	}
 
-	btcTxHash, err := chainhash.NewHashFromStr(txHash)
+	btcRawTx, err := w.btc.SerializeTx(txHash)
 	if err != nil {
 		return true, err
 	}
-
-	var btcTxHashBytes [32]byte
-	copy(btcTxHashBytes[:], btcTxHash[:])
 
 	var mbHashes [][32]byte
 	var mbHash [32]byte
@@ -189,7 +186,7 @@ func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, erro
 	w.sharedLocker.Lock()
 	defer w.sharedLocker.Unlock()
 
-	tx, err := w.rsk.RefundPegOut(opt, quote, btcTxHashBytes, bhh, big.NewInt(int64(mb.Path)), mbHashes)
+	tx, err := w.rsk.RefundPegOut(opt, quote, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mbHashes)
 	if err != nil && strings.Contains(err.Error(), "LBC: Don't have required confirmations") {
 		return false, err
 	} else if err != nil {
@@ -408,6 +405,7 @@ func NewDepositEventWatcher(checkInterval time.Duration, liquidityProvider pegou
 type WatchedQuote struct {
 	Data         *pegout.Quote
 	Signature    string
+	QuoteHash    string
 	DepositBlock uint64
 }
 
@@ -444,7 +442,7 @@ func (watcher *DepositEventWatcherImpl) WatchNewQuote(quoteHash, signature strin
 	_, existsOnNonDeposited := watcher.nonDepositedQuotes[quoteHash]
 	_, existsOnDeposited := watcher.depositedQuotes[quoteHash]
 	if !existsOnNonDeposited && !existsOnDeposited {
-		watcher.nonDepositedQuotes[quoteHash] = &WatchedQuote{Data: quote, Signature: signature}
+		watcher.nonDepositedQuotes[quoteHash] = &WatchedQuote{Data: quote, Signature: signature, QuoteHash: quoteHash}
 		return nil
 	} else {
 		return errors.New("already watched")
@@ -553,7 +551,11 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote
 	watcher.pegoutLocker.Lock()
 	defer watcher.pegoutLocker.Unlock()
 
-	_, err := watcher.btc.SendBtc(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)))
+	quoteBytes, err := hex.DecodeString(quote.QuoteHash)
+	if err != nil {
+		return err
+	}
+	_, err = watcher.btc.SendBtcWithOpReturn(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)), quoteBytes)
 	if err != nil {
 		return err
 	}
