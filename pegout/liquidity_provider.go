@@ -82,7 +82,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
 	res.Nonce = int64(rand.Int())
-	res.DepositDateLimit = lp.cfg.DepositDateLimit
+	res.DepositDateLimit = res.AgreementTimestamp + lp.cfg.DepositDateLimit
 	res.TransferConfirmations = lp.cfg.TransferConfirmations
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
