@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
 	"strconv"
 
@@ -787,7 +788,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.providers[0].Address())
+	lbcProvider, err := s.getProvider(s.providers[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -835,7 +843,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
 	for _, p := range s.providers {
-		pq, err := p.GetQuote(q, gas, types.NewBigWei(price))
+		pq, err := p.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
 		if err != nil {
 			log.Error("error getting quote: ", err)
 			getQuoteFailed = true
@@ -928,7 +936,14 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.pegoutProviders[0].Address())
+	lbcProvider, err := s.getProvider(s.pegoutProviders[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -975,7 +990,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, p := range s.pegoutProviders {
-		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price))
+		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
 		if err != nil {
 			log.Error("error getting quote: ", err)
 			getQuoteFailed = true
@@ -1847,10 +1862,10 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 }
 
-func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress string) error {
+func (s *Server) getProvider(providerAddress string) (*bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	storedAddresses, err := s.dbMongo.GetProviders()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var id int64
 	for _, address := range storedAddresses {
@@ -1859,16 +1874,21 @@ func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress stri
 		}
 	}
 	if id == 0 {
-		return errors.New("provider not found")
+		return nil, errors.New("provider not found")
 	}
 
 	providers, err := s.rsk.GetProviders([]int64{id})
 	if err != nil {
-		return err
+		return nil, err
 	} else if len(providers) == 0 {
-		return errors.New("provider not found")
+		return nil, errors.New("provider not found")
+	} else {
+		return &providers[0], nil
 	}
-	var min, max = providers[0].MinTransactionValue, providers[0].MaxTransactionValue
+}
+
+func (s *Server) validateAmountForProvider(amount *big.Int, provider *bindings.LiquidityBridgeContractLiquidityProvider) error {
+	var min, max = provider.MinTransactionValue, provider.MaxTransactionValue
 	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
 		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)
 	}

@@ -2,7 +2,7 @@ diff --git a/truffle-config.js b/truffle-config.js
 --- a/truffle-config.js
 +++ b/truffle-config.js
 @@ -16,7 +16,7 @@ module.exports = {
-   plugins: ["solidity-coverage"],
+   plugins: ["truffle-contract-size"],
    networks: {
      rskRegtest: {
 -      host: '127.0.0.1',
