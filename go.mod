@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mailgun/mailgun-go/v4 v4.8.2
-	github.com/rsksmart/liquidity-provider v0.0.0-20230517145259-4a21c1518175
+	github.com/rsksmart/liquidity-provider v0.0.0-20230608123854-e7e7c30a2902
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sirupsen/logrus v1.9.1
 	github.com/stretchr/testify v1.8.2

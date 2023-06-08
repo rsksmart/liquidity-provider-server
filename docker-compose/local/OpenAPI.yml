@@ -445,32 +445,20 @@ components:
       type: object
     UserEvents:
       properties:
-        data:
-          description: Event Data
-          type: string
-        dest:
-          description: Destination Address
-          example: invalid example
-          items: {}
-          type: array
+        amount:
+          description: Event Value
+          example: "10000"
         from:
           description: From Address
           example: invalid example
           items: {}
           type: array
-        gasLimit:
-          description: Gas Limit
-          example: "10000"
         quoteHash:
           description: QuoteHash
           example: "0x0"
           type: string
-        success:
-          description: Event Status
-          example: true
-          type: boolean
-        value:
-          description: Event Value
+        timestamp:
+          description: Event Timestamp
           example: "10000"
       type: object
     UserQuoteRequest:
@@ -531,9 +519,6 @@ components:
       - signature
       - lbcAddress
       type: object
-    common.Address:
-      items: {}
-      type: array
     healthRes:
       properties:
         services:
