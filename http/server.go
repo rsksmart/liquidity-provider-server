@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
 	"strconv"
 
@@ -197,11 +198,11 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -236,11 +237,11 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 			From:   addr,
 			Signer: lp.SignTx,
 		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.AcceptedQuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
+		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
 		if err != nil {
 			return err
 		}
-		err2 := s.dbMongo.InsertProvider(providerID,ProviderDetails, lp.Address())
+		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address())
 		if err2 != nil {
 			return err2
 		}
@@ -415,7 +416,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
 	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
 
-
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
 	h := handlers.LoggingHandler(w, r)
@@ -443,10 +443,10 @@ func (s *Server) Start(port uint) error {
 				log.Error("Error starting BTC pegout watcher: ", err)
 			}
 		})
-	
+
 	peginProvider := s.providers[0]
-	pegoutProvider := s.pegoutProviders[0] 
-	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1 * time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	pegoutProvider := s.pegoutProviders[0]
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
 	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
@@ -506,9 +506,18 @@ func (s *Server) initPegoutWatchers() error {
 		if entry.State == types.RQStateCallForUserSucceeded {
 			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, quote.DepositAddr, signB, p, entry.State)
 		} else if entry.State == types.RQStateWaitingForDepositConfirmations {
-			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote, DepositBlock: entry.DepositBlockNumber}
+			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{
+				Signature:    entry.Signature,
+				Data:         quote,
+				DepositBlock: entry.DepositBlockNumber,
+				QuoteHash:    entry.QuoteHash,
+			}
 		} else {
-			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{Signature: entry.Signature, Data: quote}
+			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{
+				Signature: entry.Signature,
+				Data:      quote,
+				QuoteHash: entry.QuoteHash,
+			}
 		}
 
 		if err != nil {
@@ -779,7 +788,14 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.providers[0].Address())
+	lbcProvider, err := s.getProvider(s.providers[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -827,7 +843,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
 	for _, p := range s.providers {
-		pq, err := p.GetQuote(q, gas, types.NewBigWei(price))
+		pq, err := p.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
 		if err != nil {
 			log.Error("error getting quote: ", err)
 			getQuoteFailed = true
@@ -920,7 +936,14 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), s.pegoutProviders[0].Address())
+	lbcProvider, err := s.getProvider(s.pegoutProviders[0].Address())
+	if err != nil {
+		log.Error(err)
+		customError := NewServerError(err.Error(), Details{}, true)
+		ResponseError(w, customError, http.StatusConflict)
+		return
+	}
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -967,7 +990,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, p := range s.pegoutProviders {
-		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price))
+		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
 		if err != nil {
 			log.Error("error getting quote: ", err)
 			getQuoteFailed = true
@@ -1267,10 +1290,6 @@ func getQuoteExpTime(q *pegin.Quote) time.Time {
 	return time.Unix(int64(q.AgreementTimestamp+q.TimeForDeposit), 0)
 }
 
-func getQuoteExpTimePegOut(q *pegout.Quote) time.Time {
-	return time.Unix(int64(q.AgreementTimestamp+q.DepositDateLimit), 0)
-}
-
 func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
 	customError := NewServerError(fmt.Sprintf("Error decoding request: %s", err.Error()), make(Details), true)
@@ -1367,7 +1386,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	expTime := getQuoteExpTimePegOut(quote)
+	expTime := quote.GetExpirationTime()
 	if s.now().After(expTime) {
 		log.Error("quote deposit time has elapsed; hash: ", req.QuoteHash)
 		customError := NewServerError("quote deposit time has elapsed; hash: "+err.Error(), make(map[string]interface{}), true)
@@ -1762,51 +1781,51 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} types.UserEvents "Successfully retrieved the user quotes"
 // @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
-    toRestAPI(w)
-    enableCors(&w)
+	toRestAPI(w)
+	enableCors(&w)
 
-    address := r.URL.Query().Get("address")
-    if address == "" {
-        http.Error(w, "address parameter is required", http.StatusBadRequest)
-        return
-    }
+	address := r.URL.Query().Get("address")
+	if address == "" {
+		http.Error(w, "address parameter is required", http.StatusBadRequest)
+		return
+	}
 
-    var fromBlock, toBlock *uint64
-    fromBlockStr := r.URL.Query().Get("fromBlock")
-    toBlockStr := r.URL.Query().Get("toBlock")
+	var fromBlock, toBlock *uint64
+	fromBlockStr := r.URL.Query().Get("fromBlock")
+	toBlockStr := r.URL.Query().Get("toBlock")
 
-    if fromBlockStr != "" {
-        fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
-        if err != nil {
-            http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
-            return
-        }
-        fromBlock = &fb
-    }
+	if fromBlockStr != "" {
+		fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
+			return
+		}
+		fromBlock = &fb
+	}
 
-    if toBlockStr != "" {
-        tb, err := strconv.ParseUint(toBlockStr, 10, 64)
-        if err != nil {
-            http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
-            return
-        }
-        toBlock = &tb
-    }
+	if toBlockStr != "" {
+		tb, err := strconv.ParseUint(toBlockStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
+			return
+		}
+		toBlock = &tb
+	}
 
-    payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
-    events, err := s.rsk.GetUserQuotes(payload)
-    if err != nil {
-        log.Error("error getting user quotes: ", err.Error())
-    }
-    if events == nil {
-        events = []types.UserEvents{}
-    }
-    enc := json.NewEncoder(w)
-    err = enc.Encode(&events)
-    if err != nil {
-        log.Error("error encoding user events")
-        return
-    }
+	payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
+	events, err := s.rsk.GetUserQuotes(payload)
+	if err != nil {
+		log.Error("error getting user quotes: ", err.Error())
+	}
+	if events == nil {
+		events = []types.UserEvents{}
+	}
+	enc := json.NewEncoder(w)
+	err = enc.Encode(&events)
+	if err != nil {
+		log.Error("error encoding user events")
+		return
+	}
 }
 
 // @Title Provider Synchronization
@@ -1843,10 +1862,10 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 }
 
-func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress string) error {
+func (s *Server) getProvider(providerAddress string) (*bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	storedAddresses, err := s.dbMongo.GetProviders()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var id int64
 	for _, address := range storedAddresses {
@@ -1854,13 +1873,22 @@ func (s *Server) validateAmountForProvider(amount *big.Int, providerAddress stri
 			id = address.Id
 		}
 	}
+	if id == 0 {
+		return nil, errors.New("provider not found")
+	}
+
 	providers, err := s.rsk.GetProviders([]int64{id})
 	if err != nil {
-		return err
+		return nil, err
 	} else if len(providers) == 0 {
-		return errors.New("provider not found")
+		return nil, errors.New("provider not found")
+	} else {
+		return &providers[0], nil
 	}
-	var min, max = providers[0].MinTransactionValue, providers[0].MaxTransactionValue
+}
+
+func (s *Server) validateAmountForProvider(amount *big.Int, provider *bindings.LiquidityBridgeContractLiquidityProvider) error {
+	var min, max = provider.MinTransactionValue, provider.MaxTransactionValue
 	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
 		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)
 	}

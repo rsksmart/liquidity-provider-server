@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/rand"
 	"sort"
 	"sync"
@@ -46,7 +47,7 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, uint64, *types.Wei) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	GetCreationBlock(quote *Quote) uint32
@@ -77,12 +78,12 @@ func GetPegoutProviderByAddress(liquidityProviders []LiquidityProvider, addr str
 	return nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei, lbcProvider *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
 	res.Nonce = int64(rand.Int())
-	res.DepositDateLimit = lp.cfg.DepositDateLimit
+	res.DepositDateLimit = res.AgreementTimestamp + lp.cfg.DepositDateLimit
 	res.TransferConfirmations = lp.cfg.TransferConfirmations
 	res.TransferTime = lp.cfg.TransferTime
 	res.ExpireDate = res.AgreementTimestamp + lp.cfg.ExpireDate
@@ -101,7 +102,8 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 	}
 
 	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
-	res.CallFee = new(types.Wei).Add(callCost, types.NewUWei(lp.cfg.CallFee.Uint64()))
+	fee := types.NewBigWei(lbcProvider.Fee)
+	res.CallFee = new(types.Wei).Add(callCost, fee)
 	return &res, nil
 }
 
