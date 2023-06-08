@@ -40,7 +40,7 @@ type DBConnector interface {
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]*ProviderAddress, error)
 	GetProvider(uint64) (*ProviderAddress, error)
-	InsertProvider(id int64,details types.ProviderRegisterRequest, address string) error
+	InsertProvider(id int64,details types.ProviderRegisterRequest, address string, providerType string) error
 	ResetProviders([]*types.GlobalProvider) error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
@@ -430,9 +430,10 @@ type InsertProvider struct {
 	Id      int64  `bson:"id"`
 	Provider string `bson: "provider"`
 	types.ProviderRegisterRequest `bson:",inline"`
+	ProviderType string `bson: "providerType"`
 }
 
-func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string) error {
+func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error {
 	log.Debug("inserting provider: ", id)
 	coll := db.db.Database("flyover").Collection("providers")
 	filter := bson.M{"id": id}
@@ -441,6 +442,7 @@ func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, ad
 		Id: id,
 		Provider: address,
 		ProviderRegisterRequest  : details,
+		ProviderType: providerType,
 	} 
 
 	update := bson.M{"$set": newProvider}

@@ -1,10 +1,6 @@
 FROM --platform=linux/amd64 golang:1.19-alpine
 
-RUN apk add git
-RUN apk add gcc
-RUN apk add musl-dev
-RUN apk add curl
-RUN apk add jq
+RUN apk add git gcc musl-dev curl jq
 
 WORKDIR /code
 
