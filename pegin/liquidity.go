@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -24,7 +25,7 @@ import (
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
+	GetQuote(*Quote, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
@@ -54,7 +55,6 @@ type ProviderConfig struct {
 	Confirmations  map[int]uint16 `env:"CONFIRMATIONS,delimiter=|"`
 	TimeForDeposit uint32         `env:"TIME_FOR_DEPOSIT"`
 	CallTime       uint32         `env:"CALL_TIME"`
-	CallFee        *types.Wei     `env:"CALL_FEE"`
 	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
 	KeySecret      string         `env:"KEY_SECRET"`
 	PasswordSecret string         `env:"PASSWORD_SECRET"`
@@ -79,7 +79,7 @@ func (lp *LocalProvider) Address() string {
 	return lp.account.Address.String()
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei, lbcProvider *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error) {
 	res := *q
 	res.LPBTCAddr = lp.cfg.BtcAddr
 	res.LPRSKAddr = lp.account.Address.String()
@@ -99,7 +99,8 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Q
 		}
 	}
 	callCost := new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
-	res.CallFee = new(types.Wei).Add(callCost, lp.cfg.CallFee)
+	fee := types.NewBigWei(lbcProvider.Fee)
+	res.CallFee = new(types.Wei).Add(callCost, fee)
 	return &res, nil
 }
 

@@ -13,7 +13,6 @@ type ProviderDTO struct {
 	Name                    string `json:"name" required:"" example:"Default Pegin Provider" description:"Provider name"`
 	Fee                     uint64 `json:"fee" required:"" example:"100000000000000000" description:"Provider fee"`
 	QuoteExpiration         uint64 `json:"quoteExpiration" required:"" example:"3600" description:"Quote expiration time in seconds"`
-	AcceptedQuoteExpiration uint64 `json:"acceptedQuoteExpiration" required:"" example:"3600" description:"Accepted quote expiration time in seconds"`
 	MinTransactionValue     uint64 `json:"minTransactionValue" required:"" example:"100000000" description:"Minimum transaction value"`
 	MaxTransactionValue     uint64 `json:"maxTransactionValue" required:"" example:"1000000000000000000" description:"Maximum transaction value"`
 	ApiBaseUrl              string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider's LPS instance URL"`
@@ -28,7 +27,6 @@ func toProviderDTO(provider *bindings.LiquidityBridgeContractLiquidityProvider) 
 		Name:                    provider.Name,
 		Fee:                     provider.Fee.Uint64(),
 		QuoteExpiration:         provider.QuoteExpiration.Uint64(),
-		AcceptedQuoteExpiration: provider.AcceptedQuoteExpiration.Uint64(),
 		MinTransactionValue:     provider.MinTransactionValue.Uint64(),
 		MaxTransactionValue:     provider.MaxTransactionValue.Uint64(),
 		ApiBaseUrl:              provider.ApiBaseUrl,
@@ -43,7 +41,6 @@ func toGlobalProvider(provider *bindings.LiquidityBridgeContractLiquidityProvide
 		Name:                    provider.Name,
 		Fee:                     provider.Fee.Uint64(),
 		QuoteExpiration:         provider.QuoteExpiration.Uint64(),
-		AcceptedQuoteExpiration: provider.AcceptedQuoteExpiration.Uint64(),
 		MinTransactionValue:     provider.MinTransactionValue.Uint64(),
 		MaxTransactionValue:     provider.MaxTransactionValue.Uint64(),
 		ApiBaseUrl:              provider.ApiBaseUrl,

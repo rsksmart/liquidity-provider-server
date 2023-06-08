@@ -63,6 +63,7 @@ type BTCConnector interface {
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
 	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
 	SendBtc(address string, amount uint64) (string, error)
+	SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error)
 	GetAvailableLiquidity() (*big.Int, error)
 	LockBtc(amount float64) error
 	UnlockBtc(amount float64) error
@@ -84,6 +85,9 @@ type BTCClient interface {
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	ListLockUnspent() ([]*wire.OutPoint, error)
 	GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error)
+	CreateRawTransaction(inputs []btcjson.TransactionInput, amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error)
+	SignRawTransactionWithWallet(tx *wire.MsgTx) (*wire.MsgTx, bool, error)
+	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
 }
 
 type BTC struct {
@@ -980,4 +984,71 @@ func DecodeBTCAddress(address string) ([]byte, error) {
 		err = fmt.Errorf("error decoding BTC address: %v", err)
 	}
 	return decoded, err
+}
+
+func (btc *BTC) getTxInputs(amount uint64) ([]*wire.TxIn, error) {
+	utxos, err := btc.c.ListUnspent()
+	if err != nil {
+		return nil, err
+	}
+
+	var txInputs []*wire.TxIn
+	var totalAmount float64
+	for _, utxo := range utxos {
+		if totalAmount >= float64(amount) {
+			break
+		}
+
+		txIdHash, err := chainhash.NewHashFromStr(utxo.TxID)
+		if err != nil {
+			return nil, err
+		}
+		outpoint := wire.NewOutPoint(txIdHash, utxo.Vout)
+		txInputs = append(txInputs, wire.NewTxIn(outpoint, nil, nil))
+
+		totalAmount += utxo.Amount * BTC_TO_SATOSHI
+	}
+	if totalAmount < float64(amount) {
+		return nil, errors.New("not enough balance")
+	}
+	return txInputs, nil
+}
+
+func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error) {
+	inputs, err := btc.getTxInputs(amount)
+	if err != nil {
+		return "", err
+	}
+
+	tx := wire.NewMsgTx(wire.TxVersion)
+	for _, input := range inputs {
+		tx.AddTxIn(input)
+	}
+
+	btcAddress, err := btcutil.DecodeAddress(address, &btc.params)
+	if err != nil {
+		return "", err
+	}
+	pkScript, err := txscript.PayToAddrScript(btcAddress)
+	if err != nil {
+		return "", err
+	}
+	tx.AddTxOut(wire.NewTxOut(int64(amount), pkScript)) // in satoshis
+
+	opReturnScript, err := txscript.NullDataScript(opReturnContent)
+	if err != nil {
+		return "", err
+	}
+	tx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+
+	signedTx, _, err := btc.c.SignRawTransactionWithWallet(tx)
+	if err != nil {
+		return "", err
+	}
+
+	txHash, err := btc.c.SendRawTransaction(signedTx, false)
+	if err != nil {
+		return "", err
+	}
+	return txHash.String(), nil
 }
