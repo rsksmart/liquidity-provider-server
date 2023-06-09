@@ -725,10 +725,25 @@ func (watcher *LpFundsEventWatcherImpl) SendAlert(subject string, body string, r
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	resp, id, err := mg.Send(ctx, message)
+	var resp string
+	var id string
+	var err error
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error("An error occurred while sending the email:", r)
+				err = fmt.Errorf("%v", r)
+			}
+		}()
+
+		resp, id, err = mg.Send(ctx, message)
+	}()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		// Handle the error gracefully, instead of crashing the application
+		return
 	}
 
 	log.Debugf("ID: %s Resp: %s\n", id, resp)
