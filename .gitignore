@@ -13,7 +13,8 @@ it/config.json
 /server.db
 /it/config.json
 pwd.txt
-
+/docker-compose/volumes
+/docker-compose/.env.testnet
 .DS_Store
 
 /docker-compose/lbc-deployer/liquidity-bridge-contract/
