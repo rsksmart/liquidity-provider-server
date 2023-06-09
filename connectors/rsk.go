@@ -166,7 +166,7 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		Start:   fromBlock,
 		End:     &toBlock,
 		Context: ctx,
-	},nil,nil,nil)
+	}, nil, nil, nil)
 
 	defer func() {
 		if iterator != nil {
@@ -434,7 +434,7 @@ func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *bi
 
 	if rsk.twoWayConnection {
 		eventChannel = make(chan *bindings.LiquidityBridgeContractRegister)
-		subscription, err = rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel)
+		subscription, err = rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel, []common.Address{opts.From})
 		defer func() { close(eventChannel); subscription.Unsubscribe() }()
 	}
 
@@ -1210,7 +1210,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([]types.UserEvent
 		filterOpts.End = request.ToBlock
 	}
 
-	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, []common.Address{common.HexToAddress(request.Address)},nil,nil)
+	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, []common.Address{common.HexToAddress(request.Address)}, nil, nil)
 	if err != nil {
 		return nil, err
 	}
