@@ -61,7 +61,6 @@ type BTCConnector interface {
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
-	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
 	SendBtc(address string, amount uint64) (string, error)
 	SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error)
 	GetAvailableLiquidity() (*big.Int, error)
@@ -416,31 +415,22 @@ func (btc *BTC) BuildMerkleBranch(txHash string) (*MerkleBranch, error) {
 		return nil, fmt.Errorf("error parsing hash: %v", err)
 	}
 
+	var cleanStore []*chainhash.Hash
 	store := blockchain.BuildMerkleTreeStore(txs, false)
+	for _, node := range store {
+		if node != nil {
+			cleanStore = append(cleanStore, node)
+		}
+	}
 
-	idx := FindInMerkleTreeStore(store, hash)
+	idx := FindInMerkleTreeStore(cleanStore, hash)
 	if idx == -1 {
 		return nil, fmt.Errorf("tx not found in merkle tree: %v", err)
 	}
 
-	branch := buildMerkleBranch(store, uint32(len(block.Transactions())), uint32(idx))
+	branch := buildMerkleBranch(cleanStore, uint32(len(block.Transactions())), uint32(idx))
 
 	return branch, nil
-}
-
-func (btc *BTC) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error) {
-
-	btcAdd, err := btcutil.DecodeAddress(btcAddress, &btc.params)
-	if err != nil {
-		return nil, err
-	}
-
-	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
-	if err != nil {
-		return nil, buildErrorImportAddress(btcAddress, err)
-	}
-
-	return btc.BuildMerkleBranch(txHash)
 }
 
 func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
@@ -482,7 +472,7 @@ func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
 
 func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
 	for i, h := range store {
-		if h.IsEqual(hash) {
+		if h != nil && h.IsEqual(hash) {
 			return i
 		}
 	}
@@ -520,12 +510,12 @@ func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
 }
 
 type MerkleBranch struct {
-	Hashes []*chainhash.Hash
+	Hashes [][32]byte
 	Path   int
 }
 
 func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uint32) *MerkleBranch {
-	hashes := make([]*chainhash.Hash, 0)
+	hashes := make([][32]byte, 0)
 	path := 0
 	pathIndex := 0
 	var levelOffset uint32 = 0
@@ -541,7 +531,7 @@ func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uin
 			targetOffset = currentNodeOffset - 1
 			path = path + (1 << pathIndex)
 		}
-		hashes = append(hashes, merkleTree[levelOffset+targetOffset])
+		hashes = append(hashes, toBytes32(merkleTree[levelOffset+targetOffset]))
 
 		levelOffset += levelSize
 		currentNodeOffset = currentNodeOffset / 2
@@ -959,17 +949,16 @@ func (btc *BTC) GetBlockHeaderHashByTx(txHash string) ([32]byte, error) {
 	if err != nil {
 		return [32]byte{}, err
 	}
-	block, err := btc.c.GetBlock(blockHash)
-	if err != nil {
-		return [32]byte{}, buildErrorRetrievingBlock(blockHash, err)
+	result := toBytes32(blockHash)
+	return result, nil
+}
+
+func toBytes32(hash *chainhash.Hash) [32]byte {
+	var result [32]byte
+	for i := 0; i < chainhash.HashSize/2; i++ {
+		result[i], result[chainhash.HashSize-1-i] = hash[chainhash.HashSize-1-i], hash[i]
 	}
-	var buf bytes.Buffer
-	err = block.Header.Serialize(&buf)
-	if err != nil {
-		return [32]byte{}, err
-	}
-	blockHeaderBytes := buf.Bytes()
-	return chainhash.DoubleHashH(blockHeaderBytes), nil
+	return result
 }
 
 func DecodeBTCAddress(address string) ([]byte, error) {
