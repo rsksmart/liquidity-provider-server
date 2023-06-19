@@ -404,7 +404,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	r.Path("/pegout/refundPegOut").Methods(http.MethodPost).HandlerFunc(s.refundPegOutHandler)
 	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
@@ -1464,76 +1463,6 @@ type SendBTCReq struct {
 type RegisterPegOutReg struct {
 	quote     *pegout.Quote
 	signature string
-}
-
-type BuildRefundPegOutPayloadRequest struct {
-	QuoteHash         string `json:"quoteHash" example:"0x0" description:"QuoteHash"`
-	BtcTxHash         string `json:"btcTxHash" example:"0x0" description:"BtcTxHash"`
-	DerivationAddress string `json:"derivationAddress" example:"0x0" description:"DerivationAddress"`
-}
-
-type BuildRefundPegOutPayloadResponse struct {
-	Quote              *pegout.Quote `json:"quote" example:"0x0" description:"Quote"`
-	MerkleBranchPath   int           `json:"merkleBranchPath" example:"0x0" description:"MerkleBranchPath"`
-	MerkleBranchHashes []string      `json:"merkleBranchHashes" example:"0x0" description:"MerkleBranchHashes"`
-}
-
-// @Title Refund Pegout
-// @Description Refunds Pegout
-// @Param  RefundPegout  body BuildRefundPegOutPayloadRequest true "Pegout Refund Details"
-// @Success  200  object BuildRefundPegOutPayloadResponse
-// @Route /pegout/refundPegOut [post]
-func (s *Server) refundPegOutHandler(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	payload := BuildRefundPegOutPayloadRequest{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&payload)
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("payload ::: %v", payload)
-
-	quote, err := s.dbMongo.GetPegOutQuote(payload.QuoteHash)
-
-	if err != nil {
-		log.Errorf("Quote not found: %v", err)
-		http.Error(w, "Quote not found", http.StatusBadRequest)
-		return
-	}
-
-	branch, err := s.btc.BuildMerkleBranchByEndpoint(payload.BtcTxHash, payload.DerivationAddress)
-
-	if err != nil {
-		log.Errorf("Unable to create merkle branch: %v", err)
-		http.Error(w, "Unable to create merkle branch", http.StatusBadRequest)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-
-	var hashes = make([]string, len(branch.Hashes))
-	for i, hash := range branch.Hashes {
-		hashes[i] = hash.String()
-	}
-
-	response := &BuildRefundPegOutPayloadResponse{
-		Quote:              quote,
-		MerkleBranchPath:   branch.Path,
-		MerkleBranchHashes: hashes,
-	}
-
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
 }
 
 type SenBTCRequest struct {

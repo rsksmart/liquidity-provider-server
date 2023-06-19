@@ -141,7 +141,15 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 		return
 	}
 
-	err = w.rsk.SendRbtc(w.lp.SignTx, w.lp.Address(), w.rsk.GetBridgeAddress().Hex(), new(types.Wei).Add(w.quote.Value, w.quote.CallFee).Uint64())
+	opts := &bind.TransactOpts{
+		Signer:   w.lp.SignTx,
+		From:     common.HexToAddress(w.lp.Address()),
+		Value:    new(types.Wei).Add(w.quote.Value, w.quote.CallFee).AsBigInt(),
+		GasPrice: big.NewInt(connectors.BridgeConversionGasPrice),
+		GasLimit: connectors.BridgeConversionGasLimit,
+	}
+
+	err = w.rsk.SendRbtc(opts, w.rsk.GetBridgeAddress())
 	if err != nil {
 		log.Errorf("Error sending RBTC to the bridge on pegout quote %s: %s", w.hash, err)
 		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
@@ -176,18 +184,11 @@ func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, erro
 		return true, err
 	}
 
-	var mbHashes [][32]byte
-	var mbHash [32]byte
-	for _, hash := range mb.Hashes {
-		copy(mbHash[:], hash[:])
-		mbHashes = append(mbHashes, mbHash)
-	}
-
 	w.sharedLocker.Lock()
 	defer w.sharedLocker.Unlock()
 
-	tx, err := w.rsk.RefundPegOut(opt, quote, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mbHashes)
-	if err != nil && strings.Contains(err.Error(), "LBC: Don't have required confirmations") {
+	tx, err := w.rsk.RefundPegOut(opt, quote, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mb.Hashes)
+	if err != nil && strings.Contains(err.Error(), "LBC049") {
 		return false, err
 	} else if err != nil {
 		return true, err

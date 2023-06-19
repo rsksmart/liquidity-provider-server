@@ -86,7 +86,7 @@ func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 }
 
 func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _type string) (int64, error) {
-	args := m.Called(opts, _name, _fee, _quoteExpiration,  _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _type)
+	args := m.Called(opts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _type)
 	return int64(args.Int(0)), args.Error(1)
 }
 
@@ -105,22 +105,22 @@ func (m *RskMock) GetChainId() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error) {
 	m.Called(q)
-	return bindings.LiquidityBridgeContractQuote{}, nil
+	return bindings.QuotesPeginQuote{}, nil
 }
 
-func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
 	m.Called(opt, q, signature, tx, pmt, height)
 	return nil, nil
 }
 
-func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+func (m *RskMock) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
 	m.Called(q, signature, tx, pmt, height)
 	return nil
 }
 
-func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
+func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Transaction, error) {
 	m.Called(opt, q)
 	return nil, nil
 }
@@ -198,11 +198,11 @@ func (m *RskMock) GetBridgeAddress() common.Address {
 	return common.Address{}
 }
 
-func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.LiquidityBridgeContractPegOutQuote, error) {
-	return bindings.LiquidityBridgeContractPegOutQuote{}, nil
+func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.QuotesPegOutQuote, error) {
+	return bindings.QuotesPegOutQuote{}, nil
 }
 
-func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.LiquidityBridgeContractPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
@@ -210,7 +210,7 @@ func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.LiquidityBridgeContractPegOutQuote, []byte) (*gethTypes.Transaction, error) {
+func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.QuotesPegOutQuote, []byte) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
