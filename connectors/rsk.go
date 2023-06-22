@@ -120,7 +120,7 @@ type RSKConnector interface {
 	WithdrawCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
 	SendRbtc(opts *bind.TransactOpts, to common.Address) error
-	RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
+	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
@@ -756,11 +756,11 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote)
 	return tx, nil
 }
 
-func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
+func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
 	var err error
 	var tx *gethTypes.Transaction
 	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.RefundPegOut(opts, quote, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
+		tx, err = rsk.lbc.RefundPegOut(opts, quoteHash, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
 		if err == nil && tx != nil {
 			break
 		}
