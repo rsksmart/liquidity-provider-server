@@ -159,10 +159,6 @@ func (w *BTCAddressPegOutWatcher) OnNewConfirmation(txHash string, confirmations
 }
 
 func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, error) {
-	quote, err := w.rsk.ParsePegOutQuote(w.quote)
-	if err != nil {
-		return true, err
-	}
 	opt := &bind.TransactOpts{
 		GasLimit: pegInGasLim,
 		Value:    nil,
@@ -187,7 +183,14 @@ func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, erro
 	w.sharedLocker.Lock()
 	defer w.sharedLocker.Unlock()
 
-	tx, err := w.rsk.RefundPegOut(opt, quote, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mb.Hashes)
+	var bytes32Hash [32]byte
+	quoteHash, err := hex.DecodeString(w.hash)
+	if err != nil {
+		return true, err
+	}
+	copy(bytes32Hash[:], quoteHash)
+
+	tx, err := w.rsk.RefundPegOut(opt, bytes32Hash, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mb.Hashes)
 	if err != nil && strings.Contains(err.Error(), "LBC049") {
 		return false, err
 	} else if err != nil {
