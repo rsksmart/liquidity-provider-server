@@ -46,6 +46,11 @@ const (
 	ethSleep       = 300 * time.Second
 	ethTimeout     = 300 * time.Minute
 
+	// BridgeConversionGasLimit see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
+	BridgeConversionGasLimit = 100000
+	// BridgeConversionGasPrice see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
+	BridgeConversionGasPrice = 6000000000
+
 	newAccountGasCost = uint64(25000)
 )
 
@@ -114,8 +119,8 @@ type RSKConnector interface {
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
 	WithdrawCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
-	SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error
-	RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
+	SendRbtc(opts *bind.TransactOpts, to common.Address) error
+	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
@@ -751,11 +756,11 @@ func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote)
 	return tx, nil
 }
 
-func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
+func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
 	var err error
 	var tx *gethTypes.Transaction
 	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.RefundPegOut(opts, quote, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
+		tx, err = rsk.lbc.RefundPegOut(opts, quoteHash, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
 		if err == nil && tx != nil {
 			break
 		}
@@ -1290,34 +1295,28 @@ func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
 	}
 }
 
-func (rsk *RSK) SendRbtc(signFunc bind.SignerFn, from, to string, amount uint64) error {
+func (rsk *RSK) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
 	defer cancel()
 
-	if common.IsHexAddress(from) {
-		return errors.New("invalid address")
+	if opts.Signer == nil || opts.From == [20]byte{} || opts.GasPrice == nil || opts.Value == nil || opts.GasLimit == 0 {
+		return errors.New("incomplete transaction arguments")
 	}
 
-	fromAddress := common.HexToAddress(from)
-	nonce, err := rsk.c.PendingNonceAt(ctx, fromAddress)
+	nonce, err := rsk.c.PendingNonceAt(ctx, opts.From)
 	if err != nil {
 		return err
 	}
 
-	chainId, err := rsk.GetChainId()
-	if err != nil {
-		return err
-	}
-
-	toAddress := common.HexToAddress(to)
-	tx := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
-		ChainID: chainId,
-		Nonce:   nonce,
-		To:      &toAddress,
-		Value:   new(big.Int).SetUint64(amount),
+	tx := gethTypes.NewTx(&gethTypes.LegacyTx{
+		To:       &to,
+		Nonce:    nonce,
+		GasPrice: opts.GasPrice,
+		Gas:      opts.GasLimit,
+		Value:    opts.Value,
 	})
 
-	signedTx, err := signFunc(fromAddress, tx)
+	signedTx, err := opts.Signer(opts.From, tx)
 	if err != nil {
 		return err
 	}
