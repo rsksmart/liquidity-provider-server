@@ -15,38 +15,6 @@ components:
     Address:
       items: {}
       type: array
-    BuildRefundPegOutPayloadRequest:
-      properties:
-        btcTxHash:
-          description: BtcTxHash
-          example: "0x0"
-          type: string
-        derivationAddress:
-          description: DerivationAddress
-          example: "0x0"
-          type: string
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      type: object
-    BuildRefundPegOutPayloadResponse:
-      properties:
-        merkleBranchHashes:
-          description: MerkleBranchHashes
-          example: invalid example
-          items:
-            type: string
-          type: array
-        merkleBranchPath:
-          description: MerkleBranchPath
-          example: 0
-          type: integer
-        quote:
-          description: Quote
-          example: invalid example
-          type: object
-      type: object
     ChangeStatusRequest:
       properties:
         providerId:
@@ -299,45 +267,6 @@ components:
           example: Provider Updated Successfully
           type: string
       type: object
-    Quote:
-      properties:
-        agreementTimestamp:
-          type: integer
-        btcRefundAddress:
-          type: string
-        callFee:
-          $ref: '#/components/schemas/Wei'
-        depositAddr:
-          type: string
-        depositConfirmations:
-          type: integer
-        depositDateLimit:
-          type: integer
-        expireBlocks:
-          type: integer
-        expireDate:
-          type: integer
-        gasLimit:
-          type: integer
-        lbcAddress:
-          type: string
-        liquidityProviderRskAddress:
-          type: string
-        lpBtcAddr:
-          type: string
-        nonce:
-          type: integer
-        penaltyFee:
-          type: integer
-        rskRefundAddress:
-          type: string
-        transferConfirmations:
-          type: integer
-        transferTime:
-          type: integer
-        value:
-          $ref: '#/components/schemas/Wei'
-      type: object
     QuotePegOutRequest:
       properties:
         bitcoinRefundAddress:
@@ -476,7 +405,6 @@ components:
           example: 0
           type: integer
       type: object
-    Wei: {}
     WithdrawCollateralRequest:
       properties:
         lpRskAddress:
@@ -577,7 +505,6 @@ components:
           example: true
           type: boolean
       type: object
-    types.Wei: {}
   securitySchemes:
     AuthorizationHeader:
       description: Input your token
@@ -715,23 +642,6 @@ paths:
                 $ref: '#/components/schemas/QuotePegOutResponse'
           description: ""
       summary: Pegout GetQuote
-  /pegout/refundPegOut:
-    post:
-      description: ' Refunds Pegout'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BuildRefundPegOutPayloadRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BuildRefundPegOutPayloadResponse'
-          description: ""
-      summary: Refund Pegout
   /pegout/sendBTC:
     post:
       description: ' Sends BTC'

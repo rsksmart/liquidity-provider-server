@@ -89,7 +89,7 @@ type QuotesPeginQuote struct {
 
 // LiquidityBridgeContractMetaData contains all meta data concerning the LiquidityBridgeContract contract.
 var LiquidityBridgeContractMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quotehash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"processed\",\"type\":\"uint256\"}],\"name\":\"PegOut\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"PegOutDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"PegOutRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"}],\"name\":\"PegOutUserRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutCollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutWithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\",\"payable\":true},{\"inputs\":[{\"internalType\":\"addresspayable\",\"name\":\"_bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_minimumCollateral\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minimumPegIn\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"_rewardPercentage\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_resignDelayBlocks\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"_dustThreshold\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxQuoteValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_btcBlockTime\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"_mainnet\",\"type\":\"bool\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_providerId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"setProviderStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxQuoteValue\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getProviderIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getResignDelayBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"getDustThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getRegisteredPegOutQuote\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"isPegOutQuoteCompleted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperationalForPegout\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"_status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"_providerType\",\"type\":\"string\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"providerIds\",\"type\":\"uint256[]\"}],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"provider\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"providerType\",\"type\":\"string\"}],\"internalType\":\"structLiquidityBridgeContract.LiquidityProvider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[],\"name\":\"addPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegoutCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"depositPegout\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\",\"payable\":true},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"refundUserPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"partialMerkleTree\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegoutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\",\"constant\":true},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"getBtcBlockTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\",\"constant\":true}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quotehash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"processed\",\"type\":\"uint256\"}],\"name\":\"PegOut\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"PegOutDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"PegOutRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"}],\"name\":\"PegOutUserRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutCollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutWithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"BRIDGE_GENERIC_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_REFUNDED_LP_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_REFUNDED_USER_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"CALL_DONE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_CALL_GAS_COST\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_INT32\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_REFUND_GAS_LIMIT\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_UINT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_UINT32\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"PAY_TO_ADDRESS_OUTPUT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"PROCESSED_QUOTE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"QUOTE_HASH_OUTPUT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"UNPROCESSED_QUOTE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"contractBridge\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"providerId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"},{\"inputs\":[{\"internalType\":\"addresspayable\",\"name\":\"_bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_minimumCollateral\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minimumPegIn\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"_rewardPercentage\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_resignDelayBlocks\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"_dustThreshold\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxQuoteValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_btcBlockTime\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"_mainnet\",\"type\":\"bool\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_providerId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"setProviderStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxQuoteValue\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProviderIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getDustThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getRegisteredPegOutQuote\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"isPegOutQuoteCompleted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperationalForPegout\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"_status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"_providerType\",\"type\":\"string\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"providerIds\",\"type\":\"uint256[]\"}],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"provider\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"providerType\",\"type\":\"string\"}],\"internalType\":\"structLiquidityBridgeContract.LiquidityProvider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegoutCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"depositPegout\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"refundUserPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"partialMerkleTree\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegoutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"getBtcBlockTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
 }
 
 // LiquidityBridgeContractABI is the input ABI used to generate the binding from.
@@ -236,6 +236,626 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorRaw) Transfer(o
 // Transact invokes the (paid) contract method with params as input values.
 func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.contract.Transact(opts, method, params...)
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEGENERICERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_GENERIC_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEGENERICERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEGENERICERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEGENERICERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEGENERICERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEREFUNDEDLPERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_REFUNDED_LP_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEREFUNDEDLPERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDLPERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEREFUNDEDLPERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDLPERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEREFUNDEDUSERERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_REFUNDED_USER_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEREFUNDEDUSERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDUSERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEREFUNDEDUSERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDUSERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXVALIDATIONSERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXVALIDATIONSERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALIDATIONSERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXVALIDATIONSERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALIDATIONSERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXVALUEZEROERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXVALUEZEROERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALUEZEROERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXVALUEZEROERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALUEZEROERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) CALLDONECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "CALL_DONE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) CALLDONECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.CALLDONECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) CALLDONECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.CALLDONECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXCALLGASCOST(opts *bind.CallOpts) (uint16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_CALL_GAS_COST")
+
+	if err != nil {
+		return *new(uint16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint16)).(*uint16)
+
+	return out0, err
+
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXCALLGASCOST() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXCALLGASCOST(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXCALLGASCOST() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXCALLGASCOST(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXINT32(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_INT32")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXREFUNDGASLIMIT(opts *bind.CallOpts) (uint16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_REFUND_GAS_LIMIT")
+
+	if err != nil {
+		return *new(uint16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint16)).(*uint16)
+
+	return out0, err
+
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXREFUNDGASLIMIT() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXREFUNDGASLIMIT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXREFUNDGASLIMIT() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXREFUNDGASLIMIT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXUINT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_UINT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXUINT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXUINT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXUINT32(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_UINT32")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXUINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXUINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) PAYTOADDRESSOUTPUT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "PAY_TO_ADDRESS_OUTPUT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) PAYTOADDRESSOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.PAYTOADDRESSOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) PAYTOADDRESSOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.PAYTOADDRESSOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) PROCESSEDQUOTECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "PROCESSED_QUOTE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) PROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.PROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) PROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.PROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) QUOTEHASHOUTPUT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "QUOTE_HASH_OUTPUT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) QUOTEHASHOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.QUOTEHASHOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) QUOTEHASHOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.QUOTEHASHOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) UNPROCESSEDQUOTECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "UNPROCESSED_QUOTE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) UNPROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.UNPROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) UNPROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.UNPROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "bridge")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Bridge() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Bridge(&_LiquidityBridgeContract.CallOpts)
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) Bridge() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Bridge(&_LiquidityBridgeContract.CallOpts)
 }
 
 // GetBalance is a free data retrieval call binding the contract method 0xf8b2cb4f.
@@ -858,6 +1478,37 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) Owner() (c
 	return _LiquidityBridgeContract.Contract.Owner(&_LiquidityBridgeContract.CallOpts)
 }
 
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) ProviderId(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "providerId")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) ProviderId() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.ProviderId(&_LiquidityBridgeContract.CallOpts)
+}
+
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) ProviderId() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.ProviderId(&_LiquidityBridgeContract.CallOpts)
+}
+
 // AddCollateral is a paid mutator transaction binding the contract method 0x9e816999.
 //
 // Solidity: function addCollateral() payable returns()
@@ -942,25 +1593,25 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Deposi
 	return _LiquidityBridgeContract.Contract.Deposit(&_LiquidityBridgeContract.TransactOpts)
 }
 
-// DepositPegout is a paid mutator transaction binding the contract method 0x2bb3d7c8.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) DepositPegout(opts *bind.TransactOpts, quote QuotesPegOutQuote) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "depositPegout", quote)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) DepositPegout(opts *bind.TransactOpts, quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "depositPegout", quote, signature)
 }
 
-// DepositPegout is a paid mutator transaction binding the contract method 0x2bb3d7c8.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) DepositPegout(quote QuotesPegOutQuote) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) DepositPegout(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote, signature)
 }
 
-// DepositPegout is a paid mutator transaction binding the contract method 0x2bb3d7c8.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) DepositPegout(quote QuotesPegOutQuote) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) DepositPegout(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote, signature)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x4bca2321.
@@ -984,46 +1635,46 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Initia
 	return _LiquidityBridgeContract.Contract.Initialize(&_LiquidityBridgeContract.TransactOpts, _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold, _maxQuoteValue, _btcBlockTime, _mainnet)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xccc337e1.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function refundPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundPegOut(opts *bind.TransactOpts, quote QuotesPegOutQuote, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "refundPegOut", quote, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "refundPegOut", quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xccc337e1.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function refundPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundPegOut(quote QuotesPegOutQuote, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quote, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundPegOut(quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xccc337e1.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function refundPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundPegOut(quote QuotesPegOutQuote, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quote, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundPegOut(quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
 }
 
-// RefundUserPegOut is a paid mutator transaction binding the contract method 0xabc8d2dc.
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
 //
-// Solidity: function refundUserPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundUserPegOut(opts *bind.TransactOpts, quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "refundUserPegOut", quote, signature)
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundUserPegOut(opts *bind.TransactOpts, quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "refundUserPegOut", quoteHash)
 }
 
-// RefundUserPegOut is a paid mutator transaction binding the contract method 0xabc8d2dc.
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
 //
-// Solidity: function refundUserPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundUserPegOut(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quote, signature)
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundUserPegOut(quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash)
 }
 
-// RefundUserPegOut is a paid mutator transaction binding the contract method 0xabc8d2dc.
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
 //
-// Solidity: function refundUserPegOut((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundUserPegOut(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quote, signature)
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundUserPegOut(quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash)
 }
 
 // Register is a paid mutator transaction binding the contract method 0x80a76e28.
