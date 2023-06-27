@@ -539,6 +539,7 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuotes(quotes map[string]
 		if err == nil {
 			newState = types.RQStateCallForUserSucceeded
 		} else {
+			log.Debug("error sending btc: ", err.Error())
 			newState = types.RQStateCallForUserFailed
 		}
 		if err = watcher.updateQuoteState(hash, types.RQStateWaitingForDepositConfirmations, newState); err != nil {

@@ -986,14 +986,21 @@ func (btc *BTC) getTxInputs(amount uint64) ([]*wire.TxIn, error) {
 	for _, utxo := range utxos {
 		if totalAmount >= float64(amount) {
 			break
+		} else if !utxo.Spendable {
+			continue
 		}
 
 		txIdHash, err := chainhash.NewHashFromStr(utxo.TxID)
 		if err != nil {
 			return nil, err
 		}
+		networkOutpoint, err := btc.c.GetTxOut(txIdHash, utxo.Vout, true)
+		scriptPk, err := hex.DecodeString(networkOutpoint.ScriptPubKey.Hex)
+		if err != nil {
+			return nil, err
+		}
 		outpoint := wire.NewOutPoint(txIdHash, utxo.Vout)
-		txInputs = append(txInputs, wire.NewTxIn(outpoint, nil, nil))
+		txInputs = append(txInputs, wire.NewTxIn(outpoint, scriptPk, nil))
 
 		totalAmount += utxo.Amount * BTC_TO_SATOSHI
 	}
