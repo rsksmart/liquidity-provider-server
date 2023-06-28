@@ -1,6 +1,13 @@
+// @Version 0.5
+// @Title Liquidity Provider Server
+// @Server https://flyover-lps.testnet.rsk.co Testnet
+// @Server https://flyover-lps.mainnet.rifcomputing.net Mainnet
+// @Security AuthorizationHeader read write
+// @SecurityScheme AuthorizationHeader http bearer Input your token
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -11,15 +18,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/secrets"
+
+	"github.com/sethvargo/go-envconfig"
+
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
 	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
+	"github.com/rsksmart/liquidity-provider/types"
 
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider-server/http"
+
 	"github.com/rsksmart/liquidity-provider-server/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/tkanos/gonfig"
+
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 )
 
 var (
@@ -29,9 +44,7 @@ var (
 )
 
 func loadConfig() {
-	err := gonfig.GetConf("config.json", &cfg)
-
-	if err != nil {
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatalf("error loading config file: %v", err)
 	}
 }
@@ -52,26 +65,63 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) {
-	lpRepository := storage.NewLPRepository(dbMongo, rsk)
-	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository)
+func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
+	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
+
+	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal("error loading configuration: ", err.Error())
+	}
+
+	peginSecretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+	peginSecretNames := &account.AccountSecretNames{KeySecretName: cfg.Provider.KeySecret, PasswordSecretName: cfg.Provider.PasswordSecret}
+	peginAccountProvider := account.NewRemoteAccountProvider(cfg.Provider.Keydir, cfg.Provider.AccountNum, peginSecretNames, peginSecretsStorage)
+	lp, err := pegin.NewLocalProvider(*cfg.Provider, lpRepository, peginAccountProvider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	lpPegOut, err := pegout.NewLocalProvider(cfg.PegoutProvier, lpRepository)
+	pegoutSecretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+	pegoutSecretNames := &account.AccountSecretNames{KeySecretName: cfg.PegoutProvier.KeySecret, PasswordSecretName: cfg.PegoutProvier.PasswordSecret}
+	pegoutAccountProvider := account.NewRemoteAccountProvider(cfg.Provider.Keydir, cfg.Provider.AccountNum, pegoutSecretNames, pegoutSecretsStorage)
+	lpPegOut, err := pegout.NewLocalProvider(cfg.PegoutProvier, lpRepository, pegoutAccountProvider)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
 
-	srv = http.New(rsk, btc, dbMongo, cfgData)
+	key, err := pegoutSecretsStorage.GetTextSecret(os.Getenv("ENCRYPT_APP_KEY"))
+	if err != nil {
+		key = generateRandomKey(32)
+		pegoutSecretsStorage.SaveTextSecret(os.Getenv("ENCRYPT_APP_KEY"), key)
+	}
+
+	cfgData.EncryptKey = key
+
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider, peginAccountProvider)
 	log.Debug("registering local provider (this might take a while)")
-	err = srv.AddProvider(lp)
+	req := types.ProviderRegisterRequest{
+		Name:                    cfg.PeginProviderName,
+		Fee:                     cfg.PeginFee,
+		QuoteExpiration:         cfg.PeginQuoteExp,
+		MinTransactionValue:     cfg.PeginMinTransactValue,
+		MaxTransactionValue:     cfg.PeginMaxTransactValue,
+		ApiBaseUrl:              cfg.BaseURL,
+		Status:                  true,
+	}
+	err = srv.AddProvider(lp, req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
-
-	err = srv.AddPegOutProvider(lpPegOut)
+	req2 := types.ProviderRegisterRequest{
+		Name:                    cfg.PegoutProviderName,
+		Fee:                     cfg.PegoutFee,
+		QuoteExpiration:         cfg.PegoutQuoteExp,
+		MinTransactionValue:     cfg.PegoutMinTransactValue,
+		MaxTransactionValue:     cfg.PegoutMaxTransactValue,
+		ApiBaseUrl:              cfg.BaseURL,
+		Status:                  true,
+	}
+	err = srv.AddPegOutProvider(lpPegOut, req2)
 
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
@@ -86,6 +136,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB) 
 
 		if err != nil {
 			log.Error("server error: ", err.Error())
+			endChannel <- syscall.SIGTERM
 		}
 	}()
 }
@@ -129,7 +180,7 @@ func main() {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
 
-	err = btc.Connect(os.Getenv("BTC_ENDPOINT"), os.Getenv("BTC_USERNAME"), os.Getenv("BTC_PASSWORD"))
+	err = btc.Connect(cfg.BTC)
 	if err != nil {
 		log.Fatal("error connecting to BTC: ", err)
 	}
@@ -137,7 +188,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, dbMongo)
+	startServer(rsk, btc, dbMongo, done)
 
 	<-done
 
@@ -152,6 +203,14 @@ func main() {
 }
 
 func initCfgData() {
-	cfgData.MaxQuoteValue = cfg.MaxQuoteValue
 	cfgData.RSK = cfg.RSK
+}
+
+func generateRandomKey(n int) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,!#@&")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

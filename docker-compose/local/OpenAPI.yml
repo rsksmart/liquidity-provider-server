@@ -1,0 +1,771 @@
+components:
+  schemas:
+    "": {}
+    AddCollateralRequest:
+      properties:
+        amount:
+          description: Amount to add to the collateral
+          example: 100000000000
+          type: integer
+        lpRskAddress:
+          description: Liquidity Provider RSK Address
+          example: "0x0"
+          type: string
+      type: object
+    Address:
+      items: {}
+      type: array
+    ChangeStatusRequest:
+      properties:
+        providerId:
+          type: integer
+        status:
+          type: boolean
+      type: object
+    GetCollateralResponse:
+      properties:
+        collateral:
+          type: integer
+      type: object
+    PeginQuoteDTO:
+      properties:
+        agreementTimestamp:
+          description: The timestamp of the agreement
+          type: integer
+        btcRefundAddr:
+          description: A User BTC refund address
+          type: string
+        callFee:
+          description: The fee charged by the LP
+          type: integer
+        callOnRegister:
+          description: A boolean value indicating whether the callForUser can be called
+            on registerPegIn
+          type: boolean
+        confirmations:
+          description: The number of confirmations that the LP requires before making
+            the call
+          type: integer
+        contractAddr:
+          description: The destination address of the peg-in
+          type: string
+        data:
+          description: The arguments to send in the call
+          type: string
+        fedBTCAddr:
+          description: The BTC address of the PowPeg
+          type: string
+        gasLimit:
+          description: The gas limit
+          type: integer
+        lbcAddr:
+          description: The address of the LBC
+          type: string
+        lpBTCAddr:
+          description: The BTC address of the LP
+          type: string
+        lpCallTime:
+          description: The time (in seconds) that the LP has to perform the call on
+            behalf of the user after the deposit achieves the number of confirmations
+          type: integer
+        lpRSKAddr:
+          description: The RSK address of the LP
+          type: string
+        nonce:
+          description: A nonce that uniquely identifies this quote
+          type: integer
+        penaltyFee:
+          description: The penalty fee that the LP pays if it fails to deliver the
+            service
+          type: integer
+        rskRefundAddr:
+          description: A User RSK refund address
+          type: string
+        timeForDeposit:
+          description: The time (in seconds) that the user has to achieve one confirmation
+            on the BTC deposit
+          type: integer
+        value:
+          description: The value to transfer in the call
+          type: integer
+      required:
+      - fedBTCAddr
+      - lbcAddr
+      - lpRSKAddr
+      - btcRefundAddr
+      - rskRefundAddr
+      - lpBTCAddr
+      - callFee
+      - penaltyFee
+      - contractAddr
+      - data
+      - gasLimit
+      - nonce
+      - value
+      - agreementTimestamp
+      - timeForDeposit
+      - lpCallTime
+      - confirmations
+      - callOnRegister
+      type: object
+    PegoutQuoteDTO:
+      properties:
+        agreementTimestamp:
+          type: integer
+        btcRefundAddress:
+          type: string
+        callFee:
+          type: integer
+        depositAddr:
+          type: string
+        depositConfirmations:
+          type: integer
+        depositDateLimit:
+          type: integer
+        expireBlocks:
+          type: integer
+        expireDate:
+          type: integer
+        gasLimit:
+          type: integer
+        lbcAddress:
+          type: string
+        liquidityProviderRskAddress:
+          type: string
+        lpBtcAddr:
+          type: string
+        nonce:
+          type: integer
+        penaltyFee:
+          type: integer
+        rskRefundAddress:
+          type: string
+        transferConfirmations:
+          type: integer
+        transferTime:
+          type: integer
+        value:
+          type: integer
+      required:
+      - lbcAddress
+      - liquidityProviderRskAddress
+      - btcRefundAddress
+      - rskRefundAddress
+      - lpBtcAddr
+      - callFee
+      - penaltyFee
+      - nonce
+      - depositAddr
+      - gasLimit
+      - value
+      - agreementTimestamp
+      - depositDateLimit
+      - depositConfirmations
+      - transferConfirmations
+      - transferTime
+      - expireDate
+      - expireBlocks
+      type: object
+    ProviderDTO:
+      properties:
+        apiBaseUrl:
+          description: Provider's LPS instance URL
+          example: https://api.example.com
+          type: string
+        fee:
+          description: Provider fee
+          example: 100000000000000000
+          type: integer
+        id:
+          description: Provider id
+          example: 1
+          type: integer
+        maxTransactionValue:
+          description: Maximum transaction value
+          example: 1000000000000000000
+          type: integer
+        minTransactionValue:
+          description: Minimum transaction value
+          example: 100000000
+          type: integer
+        name:
+          description: Provider name
+          example: Default Pegin Provider
+          type: string
+        provider:
+          description: Provider address
+          example: "0x0000000000000000000000000000000000000000"
+          type: string
+        providerType:
+          description: Provider Type
+          example: pegin
+          type: string
+        quoteExpiration:
+          description: Quote expiration time in seconds
+          example: 3600
+          type: integer
+        status:
+          description: Provider status
+          example: true
+          type: boolean
+      required:
+      - id
+      - provider
+      - name
+      - fee
+      - quoteExpiration
+      - minTransactionValue
+      - maxTransactionValue
+      - apiBaseUrl
+      - status
+      - providerType
+      type: object
+    ProviderRegisterRequest:
+      properties:
+        acceptedQuoteExpiration:
+          description: Accepted quote expiration in seconds
+          example: 100
+          type: integer
+        apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
+          type: string
+        fee:
+          description: Fee in wei
+          example: 100
+          type: integer
+        maxTransactionValue:
+          description: Maximum transaction value in wei
+          example: 100
+          type: integer
+        minTransactionValue:
+          description: Minimum transaction value in wei
+          example: 100
+          type: integer
+        name:
+          description: Provider Name
+          example: New Provider
+          type: string
+        quoteExpiration:
+          description: Quote expiration in seconds
+          example: 100
+          type: integer
+        status:
+          description: Provider status
+          example: true
+          type: boolean
+      type: object
+    ProviderResignRequest:
+      properties:
+        lpRskAddress:
+          type: string
+      type: object
+    ProviderStatusChangeStatus:
+      properties:
+        Status:
+          description: Returned Status
+          example: Provider Updated Successfully
+          type: string
+      type: object
+    QuotePegOutRequest:
+      properties:
+        bitcoinRefundAddress:
+          description: BitcoinRefundAddress
+          example: "0x0"
+          type: string
+        rskRefundAddress:
+          description: RskRefundAddress
+          example: "0x0"
+          type: string
+        to:
+          description: Bitcoin address that will receive the BTC amount
+          type: string
+        valueToTransfer:
+          description: ValueToTransfer
+          example: 10000000000000
+          type: integer
+      required:
+      - to
+      - valueToTransfer
+      - rskRefundAddress
+      - bitcoinRefundAddress
+      type: object
+    QuotePegOutResponse:
+      properties:
+        quote:
+          $ref: '#/components/schemas/PegoutQuoteDTO'
+          description: Quote
+          type: object
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+      required:
+      - quote
+      - quoteHash
+      type: object
+    QuoteRequest:
+      properties:
+        bitcoinRefundAddress:
+          description: 'User Bitcoin refund address. Note: Must be a legacy address,
+            segwit addresses are not accepted'
+          example: "0x0"
+          type: string
+        callContractArguments:
+          description: Contract data
+          example: "0x0"
+          type: string
+        callEoaOrContractAddress:
+          description: Contract address or EOA address
+          example: "0x0"
+          type: string
+        rskRefundAddress:
+          description: User RSK refund address
+          example: "0x0"
+          type: string
+        valueToTransfer:
+          description: Value to send in the call
+          example: 0
+          type: integer
+      required:
+      - callEoaOrContractAddress
+      - callContractArguments
+      - valueToTransfer
+      - rskRefundAddress
+      - bitcoinRefundAddress
+      type: object
+    QuoteReturn:
+      properties:
+        quote:
+          $ref: '#/components/schemas/PeginQuoteDTO'
+          description: Detail of the quote
+          type: object
+        quoteHash:
+          description: This is a 64 digit number that derives from a quote object
+          type: string
+      required:
+      - quote
+      - quoteHash
+      type: object
+    RegistrationStatus:
+      properties:
+        Status:
+          description: Returned Status
+          example: Provider Created Successfully
+          type: string
+      type: object
+    SenBTCRequest:
+      properties:
+        address:
+          description: Address to send BTC to
+          example: "0x0"
+          type: string
+        amount:
+          description: Amount to send BTC to address
+          example: 100000000000
+          type: integer
+      type: object
+    SenBTCResponse:
+      properties:
+        txHash:
+          description: TxHash of the BTC transaction sent to the address
+          example: "0x0"
+          type: string
+      type: object
+    UserEvents:
+      properties:
+        amount:
+          description: Event Value
+          example: "10000"
+        from:
+          description: From Address
+          example: invalid example
+          items: {}
+          type: array
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        timestamp:
+          description: Event Timestamp
+          example: "10000"
+      type: object
+    UserQuoteRequest:
+      properties:
+        address:
+          description: User Address
+          example: "0x0"
+          type: string
+        fromBlock:
+          description: optional fromBlock
+          example: 69
+          type: integer
+        toBlock:
+          description: optional toBlock
+          example: 0
+          type: integer
+      type: object
+    WithdrawCollateralRequest:
+      properties:
+        lpRskAddress:
+          type: string
+      type: object
+    acceptReq:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      type: object
+    acceptRes:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
+    acceptResPegOut:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
+    healthRes:
+      properties:
+        services:
+          description: LPS Services Status
+          example:
+            btc: ok
+            db: ok
+            rsk: ok
+          type: object
+        status:
+          description: Overall LPS Health Status
+          example: ok
+          type: string
+      type: object
+    services:
+      properties:
+        btc:
+          type: string
+        db:
+          type: string
+        rsk:
+          type: string
+      type: object
+    types.ProviderRegisterRequest:
+      properties:
+        acceptedQuoteExpiration:
+          description: Accepted quote expiration in seconds
+          example: 100
+          type: integer
+        apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
+          type: string
+        fee:
+          description: Fee in wei
+          example: 100
+          type: integer
+        maxTransactionValue:
+          description: Maximum transaction value in wei
+          example: 100
+          type: integer
+        minTransactionValue:
+          description: Minimum transaction value in wei
+          example: 100
+          type: integer
+        name:
+          description: Provider Name
+          example: New Provider
+          type: string
+        quoteExpiration:
+          description: Quote expiration in seconds
+          example: 100
+          type: integer
+        status:
+          description: Provider status
+          example: true
+          type: boolean
+      type: object
+  securitySchemes:
+    AuthorizationHeader:
+      description: Input your token
+      scheme: bearer
+      type: http
+info:
+  title: Liquidity Provider Server
+  version: "0.5"
+openapi: 3.0.0
+paths:
+  /addCollateral:
+    post:
+      description: ' Adds Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenBTCResponse'
+          description: ""
+      summary: Add Collateral
+  /collateral/{address}:
+    get:
+      description: ' Get Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: address
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get Collateral
+  /getProviders:
+    get:
+      description: ' Returns a list of providers.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderDTO'
+          description: ""
+      summary: Get Providers
+  /health:
+    get:
+      description: ' Returns server health.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/healthRes'
+          description: ""
+      summary: Health
+  /pegin/acceptQuote:
+    post:
+      description: ' Accepts Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/acceptReq'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/acceptRes'
+          description: ""
+      summary: Accept Quote
+  /pegin/getQuote:
+    post:
+      description: ' Gets Pegin Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteReturn'
+          description: ""
+      summary: Pegin GetQuote
+  /pegout/acceptQuote:
+    post:
+      description: ' Accepts Quote Pegout'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/acceptReq'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/acceptResPegOut'
+          description: ""
+      summary: Accept Quote Pegout
+  /pegout/getQuotes:
+    post:
+      description: ' Gets Pegout Quote'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuotePegOutRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotePegOutResponse'
+          description: ""
+      summary: Pegout GetQuote
+  /pegout/sendBTC:
+    post:
+      description: ' Sends BTC'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SenBTCRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenBTCResponse'
+          description: ""
+      summary: Send BTC
+  /provider/changeStatus:
+    post:
+      description: ' Changes the status of the provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeStatusRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStatusChangeStatus'
+          description: ""
+      summary: Change Provider Status
+  /provider/pegin/register:
+    post:
+      description: ' Registers New Pegin Provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRegisterRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ""
+      summary: Register Pegin Provider
+  /provider/pegout/register:
+    post:
+      description: ' Registers New Pegout Provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRegisterRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationStatus'
+          description: ""
+      summary: Register Pegout Provider
+  /provider/resignation:
+    post:
+      description: ' Provider stops being a liquidity provider'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderResignRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Provider resignation
+  /provider/sync:
+    post:
+      description: ' Synchronizes providers with MongoDB'
+      responses:
+        "204":
+          description: ""
+      summary: Provider Synchronization
+  /userQuotes:
+    get:
+      description: ' Returns user quotes for address.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserEvents'
+          description: Successfully retrieved the user quotes
+      summary: GetUserQuotes
+  /withdrawCollateral:
+    post:
+      description: ' Withdraw Collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw Collateral
+security:
+- AuthorizationHeader:
+  - read
+  - write
+servers:
+- description: ' Testnet'
+  url: https://flyover-lps.testnet.rsk.co
+- description: ' Mainnet'
+  url: https://flyover-lps.mainnet.rifcomputing.net

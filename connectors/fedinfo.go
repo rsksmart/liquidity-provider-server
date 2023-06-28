@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil"
 )
 
 type FedInfo struct {
@@ -26,7 +26,7 @@ func (fedInfo *FedInfo) getFedRedeemScript(btcParams chaincfg.Params) ([]byte, e
 
 	// All Federations activated AFTER Iris will be ERP, therefore we build redeem script.
 	if fedInfo.ActiveFedBlockHeight > fedInfo.IrisActivationHeight {
-		buf, err = fedInfo.getPowPegRedeemScriptBuf(true)
+		buf, err = fedInfo.getRedeemScriptBuf(true)
 		if err != nil {
 			return nil, err
 		}
@@ -42,8 +42,8 @@ func (fedInfo *FedInfo) getFedRedeemScript(btcParams chaincfg.Params) ([]byte, e
 		}
 
 		err = fedInfo.validateRedeemScript(btcParams, buf.Bytes())
-		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg redeem Script
-			buf, err = fedInfo.getPowPegRedeemScriptBuf(true)
+		if err != nil { // ok, it could be that ERP is not yet activated, falling back to redeem Script
+			buf, err = fedInfo.getRedeemScriptBuf(true)
 			if err != nil {
 				return nil, err
 			}
@@ -86,7 +86,7 @@ func (fedInfo *FedInfo) validateRedeemScript(btcParams chaincfg.Params, script [
 	return nil
 }
 
-func (fedInfo *FedInfo) getPowPegRedeemScriptBuf(addMultiSig bool) (*bytes.Buffer, error) {
+func (fedInfo *FedInfo) getRedeemScriptBuf(addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
 	err := fedInfo.addStdNToMScriptPart(sb)
@@ -112,7 +112,7 @@ func (fedInfo *FedInfo) getErpRedeemScriptBuf(btcParams chaincfg.Params) (*bytes
 		return nil, err
 	}
 
-	powpegRedeemScriptBuf, err := fedInfo.getPowPegRedeemScriptBuf(false)
+	redeemScriptBuf, err := fedInfo.getRedeemScriptBuf(false)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (fedInfo *FedInfo) getErpRedeemScriptBuf(btcParams chaincfg.Params) (*bytes
 		return nil, err
 	}
 	erpRedeemScriptBuffer.Write(scrA)
-	erpRedeemScriptBuffer.Write(powpegRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.Write(redeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
 	byteArr, err := hex.DecodeString("02")
 	if err != nil {
