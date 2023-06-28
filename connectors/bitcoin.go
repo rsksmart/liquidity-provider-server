@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"regexp"
 	"time"
@@ -34,12 +33,11 @@ const (
 )
 
 type BtcConfig struct {
-	Endpoint        string  `env:"BTC_ENDPOINT"`
-	Username        string  `env:"BTC_USERNAME"`
-	Password        string  `env:"BTC_PASSWORD"`
-	Network         string  `env:"BTC_NETWORK"`
-	TxFixedFee      int64   `env:"BTC_TX_FEE"`
-	TxFeePercentage float64 `env:"BTC_TX_FEE_PERCENTAGE"`
+	Endpoint string `env:"BTC_ENDPOINT"`
+	Username string `env:"BTC_USERNAME"`
+	Password string `env:"BTC_PASSWORD"`
+	Network  string `env:"BTC_NETWORK"`
+	TxFee    int64  `env:"BTC_TX_FEE"`
 }
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
@@ -69,7 +67,6 @@ type BTCConnector interface {
 	LockBtc(amount float64) error
 	UnlockBtc(amount float64) error
 	GetBlockHeaderHashByTx(txHash string) ([32]byte, error)
-	GetAmauntWithFeesIncluded(amount float64) float64
 }
 
 type BTCClient interface {
@@ -90,14 +87,12 @@ type BTCClient interface {
 	CreateRawTransaction(inputs []btcjson.TransactionInput, amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error)
 	SignRawTransactionWithWallet(tx *wire.MsgTx) (*wire.MsgTx, bool, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
-	SetTxFee(fee btcutil.Amount) error
 }
 
 type BTC struct {
-	c               BTCClient
-	params          chaincfg.Params
-	TxDefaultFee    int64
-	TxFeePercentage float64
+	c            BTCClient
+	params       chaincfg.Params
+	TxDefaultFee int64
 }
 
 func NewBTC(network string) (*BTC, error) {
@@ -131,6 +126,11 @@ func (btc *BTC) Connect(btcConfig BtcConfig) error {
 		return fmt.Errorf("RPC client error: %v", err)
 	}
 
+	err = c.SetTxFee(btcutil.Amount(btcConfig.TxFee)) // could be part of the pegout quote instead of env var
+	if err != nil {
+		return fmt.Errorf("RPC client error: %v", err)
+	}
+
 	ver, err := checkBtcdVersion(c)
 	if err != nil {
 		return err
@@ -142,8 +142,7 @@ func (btc *BTC) Connect(btcConfig BtcConfig) error {
 	}
 
 	btc.c = c
-	btc.TxDefaultFee = btcConfig.TxFixedFee
-	btc.TxFeePercentage = btcConfig.TxFeePercentage
+	btc.TxDefaultFee = btcConfig.TxFee
 	return nil
 }
 
@@ -492,11 +491,6 @@ func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
 	if err != nil {
 		return "", err
-	}
-
-	err = btc.c.SetTxFee(btcutil.Amount(btc.TxDefaultFee)) // could be part of the pegout quote instead of env var
-	if err != nil {
-		return "", fmt.Errorf("RPC client error: %v", err)
 	}
 
 	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(amount))
@@ -1019,8 +1013,7 @@ func (btc *BTC) getTxInputs(amount uint64) ([]*wire.TxIn, error) {
 }
 
 func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error) {
-	amountWithFees := btc.GetAmauntWithFeesIncluded(math.Ceil(float64(amount)))
-	inputs, err := btc.getTxInputs(uint64(amountWithFees))
+	inputs, err := btc.getTxInputs(amount)
 	if err != nil {
 		return "", err
 	}
@@ -1046,6 +1039,9 @@ func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnConte
 	}
 	tx.AddTxOut(wire.NewTxOut(0, opReturnScript))
 
+	fee := btc.TxDefaultFee * int64(tx.SerializeSize())
+	tx.TxOut[0].Value -= fee
+
 	signedTx, _, err := btc.c.SignRawTransactionWithWallet(tx)
 	if err != nil {
 		return "", err
@@ -1056,12 +1052,4 @@ func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnConte
 		return "", err
 	}
 	return txHash.String(), nil
-}
-
-func (btc *BTC) GetAmauntWithFeesIncluded(amount float64) float64 {
-	return btc.getAmountFee(amount) + amount
-}
-
-func (btc *BTC) getAmountFee(amount float64) float64 {
-	return btc.TxFeePercentage * amount
 }
