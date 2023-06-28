@@ -26,8 +26,6 @@ services:
     container_name: lps01
     environment:
       - LIQUIDITY_PROVIDER_RSK_ADDR
-      - LIQUIDITY_PROVIDER_RSK_KEY
-      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
       - BTCD_RPC_USER
       - BTCD_RPC_PASS
       - RSK_CHAIN_ID
@@ -41,9 +39,12 @@ services:
       - MONGODB_LOCAL_HOST
       - RSKJ_CONNECTION_STRING
       - BTC_NETWORK
+      - BTC_TX_FEE
+      - BTC_TX_FEE_PERCENTAGE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
+      - ENCRYPT_APP_KEY
     ports:
       - "8080:8080"
     volumes:
@@ -56,7 +57,7 @@ services:
     build:
       context: lbc-deployer
       args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
+        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-QA-Test}"
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:

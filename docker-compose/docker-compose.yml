@@ -13,25 +13,22 @@ services:
       - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoind/.bitcoind
     networks:
       - net_lps
-    command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
-              "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
-              "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
-  rskj:
-    build:
-      context: ./rskj
-      args:
-        UID: "${LPS_UID}"
-    image: rskj:latest
-    container_name: rskj01
-    ports:
-      - "4444:4444"
-    volumes:
-      - ${RSKJ_HOME:-/var/lib/rsk}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-/var/log/rsk}/logs:/home/rsk/logs
-    networks:
-      - net_lps
-    command: [ "java", "-Drpc.providers.web.http.bind_address=0.0.0.0", "-Drpc.providers.web.cors=*", "-Drpc.providers.web.ws.enabled=true", "-Drpc.providers.web.http.hosts.0=localhost", "-Drpc.providers.web.http.hosts.1=rskj", "-cp", "rskj-core.jar", "co.rsk.Start", "--${LPS_STAGE}" ]
-  
+    command:
+      [
+        "bitcoind",
+        "-rpcuser=${BTCD_RPC_USER}",
+        "-rpcpassword=${BTCD_RPC_PASS}",
+        "-addresstype=legacy",
+        "-${LPS_STAGE}",
+        "-printtoconsole",
+        "-server",
+        "-txindex",
+        "-deprecatedrpc=signrawtransaction",
+        "-deprecatedrpc=accounts",
+        "-rpcbind=0.0.0.0",
+        "-rpcallowip=0.0.0.0/0",
+        "-rpcport=5555",
+      ]
   mongodb:
     image: mongo:4
     restart: on-failure
@@ -58,9 +55,56 @@ services:
     image: lps:latest
     container_name: lps01
     environment:
+      - BASE_URL
+      - PEGIN_FEE
+      - PEGIN_QUOTE_EXPIRATION
+      - PEGIN_MIN_TRANSACTION_VALUE
+      - PEGIN_MAX_TRANSACTION_VALUE
+      - PEGOUT_PROVIDER_NAME
+      - PEGOUT_FEE
+      - PEGOUT_QUOTE_EXPIRATION
+      - PEGOUT_MIN_TRANSACTION_VALUE
+      - PEGOUT_MAX_TRANSACTION_VALUE
+      - PEGIN_PROVIDER_NAME
+      - LOG_FILE
+      - DEBUG
+      - IRIS_ACTIVATION_HEIGHT
+      - SERVER_PORT
+      - DB_PATH
+      - RSK_ENDPOINT
+      - RSK_BRIDGE_ADDR
+      - RSK_REQUIRED_BRIDE_CONFIRMATIONS
+      - PEGIN_PROVIDER_KEY_DIR
+      - PEGIN_PROVIDER_BTC_ADDR
+      - PEGIN_PROVIDER_ACCOUNT_NUM
+      - PEGIN_PROVIDER_PWD_FILE
+      - PEGIN_PROVIDER_CHAIN_ID
+      - PEGIN_PROVIDER_MAX_CONF
+      - PEGIN_PROVIDER_CONFIRMATIONS
+      - PEGIN_PROVIDER_TIME_FOR_DEPOSIT
+      - PEGIN_PROVIDER_CALL_TIME
+      - PEGIN_PROVIDER_PENALTY_FEE
+      - PEGIN_PROVIDER_KEY_SECRET
+      - PEGIN_PROVIDER_PASSWORD_SECRET
+      - PEGOUT_PROVIDER_KEY_DIR
+      - PEGOUT_PROVIDER_BTC_ADDR
+      - PEGOUT_PROVIDER_ACCOUNT_NUM
+      - PEGOUT_PROVIDER_PWD_FILE
+      - PEGOUT_PROVIDER_MAX_CONF
+      - PEGOUT_PROVIDER_CONFIRMATIONS
+      - PEGOUT_PROVIDER_TIME_FOR_DEPOSIT
+      - PEGOUT_PROVIDER_CALL_TIME
+      - PEGOUT_PROVIDER_PENALTY_FEE
+      - PEGOUT_PROVIDER_CHAIN_ID
+      - PEGOUT_PROVIDER_DEPOSIT_DATE_LIMIT
+      - PEGOUT_PROVIDER_EXPIRE_DATE
+      - PEGOUT_PROVIDER_EXPIRE_BLOCKS
+      - PEGOUT_PROVIDER_KEY_SECRET
+      - PEGOUT_PROVIDER_PASSWORD_SECRET
+      - PEGOUT_PROVIDER_TRANSFER_CONFIRMATIONS
+      - PEGOUT_PROVIDER_DEPOSIT_CONFIRMATIONS
+      - PEGOUT_PROVIDER_TRANSFER_TIME
       - LIQUIDITY_PROVIDER_RSK_ADDR
-      - LIQUIDITY_PROVIDER_RSK_KEY
-      - LIQUIDITY_PROVIDER_RSK_KEY_PASS
       - BTCD_RPC_USER
       - BTCD_RPC_PASS
       - RSK_CHAIN_ID
@@ -74,26 +118,32 @@ services:
       - MONGODB_LOCAL_HOST
       - RSKJ_CONNECTION_STRING
       - BTC_NETWORK
+      - BTC_TX_FEE
+      - BTC_TX_FEE_PERCENTAGE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
+      - ENCRYPT_APP_KEY
+      - AWS_REGION
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
     ports:
       - "8080:8080"
     volumes:
       - /mnt/lps/db:/home/lps/db
       - /mnt/lps/logs:/home/lps/logs
     depends_on:
-      - mongodb 
+      - mongodb
 
     networks:
       - net_lps
     command: ["sh", "start.sh"]
-  
+
   lbc-deployer:
     build:
       context: lbc-deployer
       args:
-        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-master}
+        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-QA-Test}
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:

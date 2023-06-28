@@ -1,10 +1,6 @@
-FROM --platform=linux/amd64 golang:1.16-alpine
+FROM --platform=linux/amd64 golang:1.19-alpine
 
-RUN apk add git
-RUN apk add gcc
-RUN apk add musl-dev
-RUN apk add curl
-RUN apk add jq
+RUN apk add git gcc musl-dev curl jq
 
 WORKDIR /code
 
@@ -19,13 +15,14 @@ COPY storage ./storage
 COPY pegout ./pegout
 COPY pegin ./pegin
 COPY mongo ./mongo
+COPY secrets ./secrets
+COPY account ./account
 
 RUN go build -o /usr/local/bin/liquidity-provider-server
 
 ARG HOME="/home/lps"
 RUN adduser -u 1000 --home="$HOME" lps -D lps
 
-COPY --chown=lps "docker-compose/lps/config.json" "$HOME/"
 COPY --chown=lps "docker-compose/lps/start.sh" "$HOME/"
 
 RUN mkdir -p "$HOME/db"; chown 1000 "$HOME/db"
