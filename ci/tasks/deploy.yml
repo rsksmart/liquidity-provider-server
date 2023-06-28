@@ -7,14 +7,15 @@ image_resource:
     tag: 3
 
 inputs:
-- name: repo-liquidity-provider-server
+- name: repo-iac-ng
 
 outputs:
 - name: out
 
 params:
   SSH_DEPLOY_KEY: ((ssh-deploy))
-  FLYOVER_SSH_KEY: ((ssh-ro-spoof-fling)) 
+  ANSIBLE_HOST_KEY_CHECKING: false
+
 run:
   path: sh
   args:
@@ -23,24 +24,29 @@ run:
     ssh_deploy_keyfile=$(pwd)/ssh_deploy_key
     flyover_ssh_keyfile=$(pwd)/flyover_ssh_key
     out_message_file=$(pwd)/out/message.txt
+    apk add -q --no-progress openssh ansible gnupg git jq curl
+    mkdir -p ~/.ssh/
+    touch ~/.ssh/known_hosts
+    ssh-keygen -R github.com
+    curl -L https://api.github.com/meta | jq -r '.ssh_keys | .[]' | sed -e 's/^/github.com /' >> ~/.ssh/known_hosts
 
-    echo "Liquidity-provider-server deployment to testnet" > $out_message_file
+    cd repo-liquidity-provider-server
+    git checkout master
+    cd ..
+
+    echo "Liquidity-provider-server deployment to mainnet" > $out_message_file
 
     umask 077
     echo "$SSH_DEPLOY_KEY" > $ssh_deploy_keyfile
     echo "$FLYOVER_SSH_KEY" > $flyover_ssh_keyfile
     umask 022
-    
-    apk add -q --no-progress openssh ansible gnupg git
-
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
-    mkdir ~/.ssh/
-    touch ~/.ssh/known_hosts
-    ssh-keyscan flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
-    ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.testnet.flyover.rifcomputing.net sh -s << EOF 
-    cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin Stable-Test && docker-compose --env-file .env.testnet up -d --build 
     
-    EOF
-        
-    echo "Flyover Testnet server: deployment complete" > $out_message_file
+    cd repo-iac-ng/ansible
+    git checkout main
+    deployment_commit=$(git rev-parse HEAD | sed s/\n//)
+
+    ansible-playbook -vvv -i inventory/ -l flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net -e ansible_ssh_extra_args=-oForwardAgent=yes deploy-flyover.yml
+
+    echo "Flyover server: CommitID: $deployment_commit deployment complete" > $out_message_file
