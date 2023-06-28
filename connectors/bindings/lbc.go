@@ -26,34 +26,47 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
-// LiquidityBridgeContractPegOutQuote is an auto generated low-level Go binding around an user-defined struct.
-type LiquidityBridgeContractPegOutQuote struct {
-	LbcAddress                  common.Address
-	LiquidityProviderRskAddress common.Address
-	RskRefundAddress            common.Address
-	Fee                         uint64
-	PenaltyFee                  uint64
-	Nonce                       int64
-	ValueToTransfer             uint64
-	AgreementTimestamp          uint32
-	DepositDateLimit            uint32
-	DepositConfirmations        uint16
-	TransferConfirmations       uint16
-	TransferTime                uint32
-	ExpireDate                  uint32
-	ExpireBlocks                uint32
+// LiquidityBridgeContractLiquidityProvider is an auto generated low-level Go binding around an user-defined struct.
+type LiquidityBridgeContractLiquidityProvider struct {
+	Id                  *big.Int
+	Provider            common.Address
+	Name                string
+	Fee                 *big.Int
+	QuoteExpiration     *big.Int
+	MinTransactionValue *big.Int
+	MaxTransactionValue *big.Int
+	ApiBaseUrl          string
+	Status              bool
+	ProviderType        string
 }
 
-// LiquidityBridgeContractProvider is an auto generated low-level Go binding around an user-defined struct.
-type LiquidityBridgeContractProvider struct {
-	Id       *big.Int
-	Provider common.Address
+// QuotesPegOutQuote is an auto generated low-level Go binding around an user-defined struct.
+type QuotesPegOutQuote struct {
+	LbcAddress            common.Address
+	LpRskAddress          common.Address
+	BtcRefundAddress      []byte
+	RskRefundAddress      common.Address
+	LpBtcAddress          []byte
+	CallFee               *big.Int
+	PenaltyFee            *big.Int
+	Nonce                 int64
+	DeposityAddress       []byte
+	GasLimit              uint32
+	Value                 *big.Int
+	AgreementTimestamp    uint32
+	DepositDateLimit      uint32
+	DepositConfirmations  uint16
+	TransferConfirmations uint16
+	TransferTime          uint32
+	ExpireDate            uint32
+	ExpireBlock           uint32
 }
 
-// LiquidityBridgeContractQuote is an auto generated low-level Go binding around an user-defined struct.
-type LiquidityBridgeContractQuote struct {
+// QuotesPeginQuote is an auto generated low-level Go binding around an user-defined struct.
+type QuotesPeginQuote struct {
 	FedBtcAddress               [20]byte
 	LbcAddress                  common.Address
 	LiquidityProviderRskAddress common.Address
@@ -76,7 +89,7 @@ type LiquidityBridgeContractQuote struct {
 
 // LiquidityBridgeContractMetaData contains all meta data concerning the LiquidityBridgeContract contract.
 var LiquidityBridgeContractMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quotehash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"processed\",\"type\":\"uint256\"}],\"name\":\"PegOut\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_minimumCollateral\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minimumPegIn\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"_rewardPercentage\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_resignDelayBlocks\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"_dustThreshold\",\"type\":\"uint256\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getDustThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getPegOutProcessedQuote\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"register\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"provider\",\"type\":\"address\"}],\"internalType\":\"structLiquidityBridgeContract.Provider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegOutBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"fee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"valueToTransfer\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlocks\",\"type\":\"uint32\"}],\"internalType\":\"structLiquidityBridgeContract.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"registerPegOut\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"fee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"valueToTransfer\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlocks\",\"type\":\"uint32\"}],\"internalType\":\"structLiquidityBridgeContract.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"btcTxHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"partialMerkleTree\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structLiquidityBridgeContract.Quote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"fee\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"penaltyFee\",\"type\":\"uint64\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"valueToTransfer\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlocks\",\"type\":\"uint32\"}],\"internalType\":\"structLiquidityBridgeContract.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegoutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"getBtcBlockTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"CollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quotehash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"processed\",\"type\":\"uint256\"}],\"name\":\"PegOut\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutBalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"name\":\"PegOutDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"PegOutRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"}],\"name\":\"PegOutUserRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutCollateralIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegoutWithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"BRIDGE_GENERIC_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_REFUNDED_LP_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_REFUNDED_USER_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR\",\"outputs\":[{\"internalType\":\"int16\",\"name\":\"\",\"type\":\"int16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"CALL_DONE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_CALL_GAS_COST\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_INT32\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_REFUND_GAS_LIMIT\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_UINT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_UINT32\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"PAY_TO_ADDRESS_OUTPUT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"PROCESSED_QUOTE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"QUOTE_HASH_OUTPUT\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"UNPROCESSED_QUOTE_CODE\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"contractBridge\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"providerId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"},{\"inputs\":[{\"internalType\":\"addresspayable\",\"name\":\"_bridgeAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_minimumCollateral\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minimumPegIn\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"_rewardPercentage\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_resignDelayBlocks\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"_dustThreshold\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxQuoteValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_btcBlockTime\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"_mainnet\",\"type\":\"bool\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_providerId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"setProviderStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxQuoteValue\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProviderIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBridgeAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getDustThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getRegisteredPegOutQuote\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"isPegOutQuoteCompleted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperationalForPegout\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"_status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"_providerType\",\"type\":\"string\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"providerIds\",\"type\":\"uint256[]\"}],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"provider\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"fee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"quoteExpiration\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"minTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxTransactionValue\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"providerType\",\"type\":\"string\"}],\"internalType\":\"structLiquidityBridgeContract.LiquidityProvider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawPegoutCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegoutCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"depositPegout\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"refundUserPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"partialMerkleTree\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"}],\"internalType\":\"structQuotes.PeginQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"bytes\",\"name\":\"deposityAddress\",\"type\":\"bytes\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegoutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"getBtcBlockTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
 }
 
 // LiquidityBridgeContractABI is the input ABI used to generate the binding from.
@@ -180,11 +193,11 @@ func NewLiquidityBridgeContractFilterer(address common.Address, filterer bind.Co
 
 // bindLiquidityBridgeContract binds a generic wrapper to an already deployed contract.
 func bindLiquidityBridgeContract(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(LiquidityBridgeContractABI))
+	parsed, err := LiquidityBridgeContractMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -223,6 +236,626 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorRaw) Transfer(o
 // Transact invokes the (paid) contract method with params as input values.
 func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.contract.Transact(opts, method, params...)
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEGENERICERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_GENERIC_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEGENERICERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEGENERICERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEGENERICERROR is a free data retrieval call binding the contract method 0xae93b67b.
+//
+// Solidity: function BRIDGE_GENERIC_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEGENERICERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEGENERICERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEREFUNDEDLPERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_REFUNDED_LP_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEREFUNDEDLPERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDLPERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDLPERRORCODE is a free data retrieval call binding the contract method 0xe30e6ea3.
+//
+// Solidity: function BRIDGE_REFUNDED_LP_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEREFUNDEDLPERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDLPERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEREFUNDEDUSERERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_REFUNDED_USER_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEREFUNDEDUSERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDUSERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEREFUNDEDUSERERRORCODE is a free data retrieval call binding the contract method 0xe8fcce71.
+//
+// Solidity: function BRIDGE_REFUNDED_USER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEREFUNDEDUSERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEREFUNDEDUSERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE is a free data retrieval call binding the contract method 0xa93bb247.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_ALREADY_PROCESSED_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXALREADYPROCESSEDERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE is a free data retrieval call binding the contract method 0x8d597939.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_INVALID_SENDER_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXINVALIDSENDERERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE is a free data retrieval call binding the contract method 0xae76ce86.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_NOT_CONTRACT_ERROR_CODE() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXNOTCONTRACTERRORCODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR is a free data retrieval call binding the contract method 0x418663a2.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_UTXO_AMOUNT_SENT_BELOW_MINIMUM_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXUTXOAMOUNTSENTBELOWMINIMUMERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXVALIDATIONSERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXVALIDATIONSERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALIDATIONSERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALIDATIONSERROR is a free data retrieval call binding the contract method 0xc525cdd8.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALIDATIONS_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXVALIDATIONSERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALIDATIONSERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) BRIDGEUNPROCESSABLETXVALUEZEROERROR(opts *bind.CallOpts) (int16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR")
+
+	if err != nil {
+		return *new(int16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(int16)).(*int16)
+
+	return out0, err
+
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) BRIDGEUNPROCESSABLETXVALUEZEROERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALUEZEROERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// BRIDGEUNPROCESSABLETXVALUEZEROERROR is a free data retrieval call binding the contract method 0xcfb92f0a.
+//
+// Solidity: function BRIDGE_UNPROCESSABLE_TX_VALUE_ZERO_ERROR() view returns(int16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) BRIDGEUNPROCESSABLETXVALUEZEROERROR() (int16, error) {
+	return _LiquidityBridgeContract.Contract.BRIDGEUNPROCESSABLETXVALUEZEROERROR(&_LiquidityBridgeContract.CallOpts)
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) CALLDONECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "CALL_DONE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) CALLDONECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.CALLDONECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// CALLDONECODE is a free data retrieval call binding the contract method 0x04ade855.
+//
+// Solidity: function CALL_DONE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) CALLDONECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.CALLDONECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXCALLGASCOST(opts *bind.CallOpts) (uint16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_CALL_GAS_COST")
+
+	if err != nil {
+		return *new(uint16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint16)).(*uint16)
+
+	return out0, err
+
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXCALLGASCOST() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXCALLGASCOST(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXCALLGASCOST is a free data retrieval call binding the contract method 0x9d79b59b.
+//
+// Solidity: function MAX_CALL_GAS_COST() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXCALLGASCOST() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXCALLGASCOST(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXINT32(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_INT32")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXINT32 is a free data retrieval call binding the contract method 0x54974d68.
+//
+// Solidity: function MAX_INT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXREFUNDGASLIMIT(opts *bind.CallOpts) (uint16, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_REFUND_GAS_LIMIT")
+
+	if err != nil {
+		return *new(uint16), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint16)).(*uint16)
+
+	return out0, err
+
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXREFUNDGASLIMIT() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXREFUNDGASLIMIT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXREFUNDGASLIMIT is a free data retrieval call binding the contract method 0xe1de16c6.
+//
+// Solidity: function MAX_REFUND_GAS_LIMIT() view returns(uint16)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXREFUNDGASLIMIT() (uint16, error) {
+	return _LiquidityBridgeContract.Contract.MAXREFUNDGASLIMIT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXUINT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_UINT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXUINT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT is a free data retrieval call binding the contract method 0xe5b5019a.
+//
+// Solidity: function MAX_UINT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXUINT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) MAXUINT32(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "MAX_UINT32")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) MAXUINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// MAXUINT32 is a free data retrieval call binding the contract method 0x04901b93.
+//
+// Solidity: function MAX_UINT32() view returns(uint32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) MAXUINT32() (uint32, error) {
+	return _LiquidityBridgeContract.Contract.MAXUINT32(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) PAYTOADDRESSOUTPUT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "PAY_TO_ADDRESS_OUTPUT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) PAYTOADDRESSOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.PAYTOADDRESSOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PAYTOADDRESSOUTPUT is a free data retrieval call binding the contract method 0xbe6de4eb.
+//
+// Solidity: function PAY_TO_ADDRESS_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) PAYTOADDRESSOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.PAYTOADDRESSOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) PROCESSEDQUOTECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "PROCESSED_QUOTE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) PROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.PROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// PROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x0a7bf57a.
+//
+// Solidity: function PROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) PROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.PROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) QUOTEHASHOUTPUT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "QUOTE_HASH_OUTPUT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) QUOTEHASHOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.QUOTEHASHOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// QUOTEHASHOUTPUT is a free data retrieval call binding the contract method 0xa4a5ba50.
+//
+// Solidity: function QUOTE_HASH_OUTPUT() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) QUOTEHASHOUTPUT() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.QUOTEHASHOUTPUT(&_LiquidityBridgeContract.CallOpts)
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) UNPROCESSEDQUOTECODE(opts *bind.CallOpts) (uint8, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "UNPROCESSED_QUOTE_CODE")
+
+	if err != nil {
+		return *new(uint8), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+
+	return out0, err
+
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) UNPROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.UNPROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// UNPROCESSEDQUOTECODE is a free data retrieval call binding the contract method 0x9cd6557f.
+//
+// Solidity: function UNPROCESSED_QUOTE_CODE() view returns(uint8)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) UNPROCESSEDQUOTECODE() (uint8, error) {
+	return _LiquidityBridgeContract.Contract.UNPROCESSEDQUOTECODE(&_LiquidityBridgeContract.CallOpts)
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "bridge")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Bridge() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Bridge(&_LiquidityBridgeContract.CallOpts)
+}
+
+// Bridge is a free data retrieval call binding the contract method 0xe78cea92.
+//
+// Solidity: function bridge() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) Bridge() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Bridge(&_LiquidityBridgeContract.CallOpts)
 }
 
 // GetBalance is a free data retrieval call binding the contract method 0xf8b2cb4f.
@@ -380,6 +1013,37 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetDustThr
 	return _LiquidityBridgeContract.Contract.GetDustThreshold(&_LiquidityBridgeContract.CallOpts)
 }
 
+// GetMaxQuoteValue is a free data retrieval call binding the contract method 0xa8828575.
+//
+// Solidity: function getMaxQuoteValue() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetMaxQuoteValue(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getMaxQuoteValue")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetMaxQuoteValue is a free data retrieval call binding the contract method 0xa8828575.
+//
+// Solidity: function getMaxQuoteValue() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetMaxQuoteValue() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetMaxQuoteValue(&_LiquidityBridgeContract.CallOpts)
+}
+
+// GetMaxQuoteValue is a free data retrieval call binding the contract method 0xa8828575.
+//
+// Solidity: function getMaxQuoteValue() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetMaxQuoteValue() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetMaxQuoteValue(&_LiquidityBridgeContract.CallOpts)
+}
+
 // GetMinCollateral is a free data retrieval call binding the contract method 0xe830b690.
 //
 // Solidity: function getMinCollateral() view returns(uint256)
@@ -442,12 +1106,12 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetMinPegI
 	return _LiquidityBridgeContract.Contract.GetMinPegIn(&_LiquidityBridgeContract.CallOpts)
 }
 
-// GetPegOutBalance is a free data retrieval call binding the contract method 0x644be07d.
+// GetPegoutCollateral is a free data retrieval call binding the contract method 0xbd519eff.
 //
-// Solidity: function getPegOutBalance(address addr) view returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetPegOutBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error) {
+// Solidity: function getPegoutCollateral(address addr) view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetPegoutCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getPegOutBalance", addr)
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getPegoutCollateral", addr)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -459,80 +1123,111 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetPegOutBalance(
 
 }
 
-// GetPegOutBalance is a free data retrieval call binding the contract method 0x644be07d.
+// GetPegoutCollateral is a free data retrieval call binding the contract method 0xbd519eff.
 //
-// Solidity: function getPegOutBalance(address addr) view returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetPegOutBalance(addr common.Address) (*big.Int, error) {
-	return _LiquidityBridgeContract.Contract.GetPegOutBalance(&_LiquidityBridgeContract.CallOpts, addr)
+// Solidity: function getPegoutCollateral(address addr) view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetPegoutCollateral(addr common.Address) (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetPegoutCollateral(&_LiquidityBridgeContract.CallOpts, addr)
 }
 
-// GetPegOutBalance is a free data retrieval call binding the contract method 0x644be07d.
+// GetPegoutCollateral is a free data retrieval call binding the contract method 0xbd519eff.
 //
-// Solidity: function getPegOutBalance(address addr) view returns(uint256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetPegOutBalance(addr common.Address) (*big.Int, error) {
-	return _LiquidityBridgeContract.Contract.GetPegOutBalance(&_LiquidityBridgeContract.CallOpts, addr)
+// Solidity: function getPegoutCollateral(address addr) view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetPegoutCollateral(addr common.Address) (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetPegoutCollateral(&_LiquidityBridgeContract.CallOpts, addr)
 }
 
-// GetPegOutProcessedQuote is a free data retrieval call binding the contract method 0x891f6055.
+// GetProviderIds is a free data retrieval call binding the contract method 0x0a9cb4a7.
 //
-// Solidity: function getPegOutProcessedQuote(bytes32 quoteHash) view returns(uint8)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetPegOutProcessedQuote(opts *bind.CallOpts, quoteHash [32]byte) (uint8, error) {
+// Solidity: function getProviderIds() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetProviderIds(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getPegOutProcessedQuote", quoteHash)
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getProviderIds")
 
 	if err != nil {
-		return *new(uint8), err
+		return *new(*big.Int), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
 }
 
-// GetPegOutProcessedQuote is a free data retrieval call binding the contract method 0x891f6055.
+// GetProviderIds is a free data retrieval call binding the contract method 0x0a9cb4a7.
 //
-// Solidity: function getPegOutProcessedQuote(bytes32 quoteHash) view returns(uint8)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetPegOutProcessedQuote(quoteHash [32]byte) (uint8, error) {
-	return _LiquidityBridgeContract.Contract.GetPegOutProcessedQuote(&_LiquidityBridgeContract.CallOpts, quoteHash)
+// Solidity: function getProviderIds() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetProviderIds() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetProviderIds(&_LiquidityBridgeContract.CallOpts)
 }
 
-// GetPegOutProcessedQuote is a free data retrieval call binding the contract method 0x891f6055.
+// GetProviderIds is a free data retrieval call binding the contract method 0x0a9cb4a7.
 //
-// Solidity: function getPegOutProcessedQuote(bytes32 quoteHash) view returns(uint8)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetPegOutProcessedQuote(quoteHash [32]byte) (uint8, error) {
-	return _LiquidityBridgeContract.Contract.GetPegOutProcessedQuote(&_LiquidityBridgeContract.CallOpts, quoteHash)
+// Solidity: function getProviderIds() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetProviderIds() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.GetProviderIds(&_LiquidityBridgeContract.CallOpts)
 }
 
-// GetProviders is a free data retrieval call binding the contract method 0xedc922a9.
+// GetProviders is a free data retrieval call binding the contract method 0x668dbd83.
 //
-// Solidity: function getProviders() view returns((uint256,address)[])
-func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetProviders(opts *bind.CallOpts) ([]LiquidityBridgeContractProvider, error) {
+// Solidity: function getProviders(uint256[] providerIds) view returns((uint256,address,string,uint256,uint256,uint256,uint256,string,bool,string)[])
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetProviders(opts *bind.CallOpts, providerIds []*big.Int) ([]LiquidityBridgeContractLiquidityProvider, error) {
 	var out []interface{}
-	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getProviders")
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getProviders", providerIds)
 
 	if err != nil {
-		return *new([]LiquidityBridgeContractProvider), err
+		return *new([]LiquidityBridgeContractLiquidityProvider), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new([]LiquidityBridgeContractProvider)).(*[]LiquidityBridgeContractProvider)
+	out0 := *abi.ConvertType(out[0], new([]LiquidityBridgeContractLiquidityProvider)).(*[]LiquidityBridgeContractLiquidityProvider)
 
 	return out0, err
 
 }
 
-// GetProviders is a free data retrieval call binding the contract method 0xedc922a9.
+// GetProviders is a free data retrieval call binding the contract method 0x668dbd83.
 //
-// Solidity: function getProviders() view returns((uint256,address)[])
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetProviders() ([]LiquidityBridgeContractProvider, error) {
-	return _LiquidityBridgeContract.Contract.GetProviders(&_LiquidityBridgeContract.CallOpts)
+// Solidity: function getProviders(uint256[] providerIds) view returns((uint256,address,string,uint256,uint256,uint256,uint256,string,bool,string)[])
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetProviders(providerIds []*big.Int) ([]LiquidityBridgeContractLiquidityProvider, error) {
+	return _LiquidityBridgeContract.Contract.GetProviders(&_LiquidityBridgeContract.CallOpts, providerIds)
 }
 
-// GetProviders is a free data retrieval call binding the contract method 0xedc922a9.
+// GetProviders is a free data retrieval call binding the contract method 0x668dbd83.
 //
-// Solidity: function getProviders() view returns((uint256,address)[])
-func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetProviders() ([]LiquidityBridgeContractProvider, error) {
-	return _LiquidityBridgeContract.Contract.GetProviders(&_LiquidityBridgeContract.CallOpts)
+// Solidity: function getProviders(uint256[] providerIds) view returns((uint256,address,string,uint256,uint256,uint256,uint256,string,bool,string)[])
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetProviders(providerIds []*big.Int) ([]LiquidityBridgeContractLiquidityProvider, error) {
+	return _LiquidityBridgeContract.Contract.GetProviders(&_LiquidityBridgeContract.CallOpts, providerIds)
+}
+
+// GetRegisteredPegOutQuote is a free data retrieval call binding the contract method 0xe90d2ddb.
+//
+// Solidity: function getRegisteredPegOutQuote(bytes32 quoteHash) view returns((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32))
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) GetRegisteredPegOutQuote(opts *bind.CallOpts, quoteHash [32]byte) (QuotesPegOutQuote, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "getRegisteredPegOutQuote", quoteHash)
+
+	if err != nil {
+		return *new(QuotesPegOutQuote), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(QuotesPegOutQuote)).(*QuotesPegOutQuote)
+
+	return out0, err
+
+}
+
+// GetRegisteredPegOutQuote is a free data retrieval call binding the contract method 0xe90d2ddb.
+//
+// Solidity: function getRegisteredPegOutQuote(bytes32 quoteHash) view returns((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32))
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) GetRegisteredPegOutQuote(quoteHash [32]byte) (QuotesPegOutQuote, error) {
+	return _LiquidityBridgeContract.Contract.GetRegisteredPegOutQuote(&_LiquidityBridgeContract.CallOpts, quoteHash)
+}
+
+// GetRegisteredPegOutQuote is a free data retrieval call binding the contract method 0xe90d2ddb.
+//
+// Solidity: function getRegisteredPegOutQuote(bytes32 quoteHash) view returns((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32))
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetRegisteredPegOutQuote(quoteHash [32]byte) (QuotesPegOutQuote, error) {
+	return _LiquidityBridgeContract.Contract.GetRegisteredPegOutQuote(&_LiquidityBridgeContract.CallOpts, quoteHash)
 }
 
 // GetResignDelayBlocks is a free data retrieval call binding the contract method 0xbd5798c3.
@@ -597,10 +1292,10 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) GetRewardP
 	return _LiquidityBridgeContract.Contract.GetRewardPercentage(&_LiquidityBridgeContract.CallOpts)
 }
 
-// HashPegoutQuote is a free data retrieval call binding the contract method 0x4e43529e.
+// HashPegoutQuote is a free data retrieval call binding the contract method 0xf691ceb2.
 //
-// Solidity: function hashPegoutQuote((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashPegoutQuote(opts *bind.CallOpts, quote LiquidityBridgeContractPegOutQuote) ([32]byte, error) {
+// Solidity: function hashPegoutQuote((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashPegoutQuote(opts *bind.CallOpts, quote QuotesPegOutQuote) ([32]byte, error) {
 	var out []interface{}
 	err := _LiquidityBridgeContract.contract.Call(opts, &out, "hashPegoutQuote", quote)
 
@@ -614,24 +1309,24 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashPegoutQuote(o
 
 }
 
-// HashPegoutQuote is a free data retrieval call binding the contract method 0x4e43529e.
+// HashPegoutQuote is a free data retrieval call binding the contract method 0xf691ceb2.
 //
-// Solidity: function hashPegoutQuote((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) HashPegoutQuote(quote LiquidityBridgeContractPegOutQuote) ([32]byte, error) {
+// Solidity: function hashPegoutQuote((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) HashPegoutQuote(quote QuotesPegOutQuote) ([32]byte, error) {
 	return _LiquidityBridgeContract.Contract.HashPegoutQuote(&_LiquidityBridgeContract.CallOpts, quote)
 }
 
-// HashPegoutQuote is a free data retrieval call binding the contract method 0x4e43529e.
+// HashPegoutQuote is a free data retrieval call binding the contract method 0xf691ceb2.
 //
-// Solidity: function hashPegoutQuote((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) HashPegoutQuote(quote LiquidityBridgeContractPegOutQuote) ([32]byte, error) {
+// Solidity: function hashPegoutQuote((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote) view returns(bytes32)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) HashPegoutQuote(quote QuotesPegOutQuote) ([32]byte, error) {
 	return _LiquidityBridgeContract.Contract.HashPegoutQuote(&_LiquidityBridgeContract.CallOpts, quote)
 }
 
 // HashQuote is a free data retrieval call binding the contract method 0x1b032188.
 //
 // Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashQuote(opts *bind.CallOpts, quote LiquidityBridgeContractQuote) ([32]byte, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashQuote(opts *bind.CallOpts, quote QuotesPeginQuote) ([32]byte, error) {
 	var out []interface{}
 	err := _LiquidityBridgeContract.contract.Call(opts, &out, "hashQuote", quote)
 
@@ -648,14 +1343,14 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) HashQuote(opts *b
 // HashQuote is a free data retrieval call binding the contract method 0x1b032188.
 //
 // Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) HashQuote(quote LiquidityBridgeContractQuote) ([32]byte, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) HashQuote(quote QuotesPeginQuote) ([32]byte, error) {
 	return _LiquidityBridgeContract.Contract.HashQuote(&_LiquidityBridgeContract.CallOpts, quote)
 }
 
 // HashQuote is a free data retrieval call binding the contract method 0x1b032188.
 //
 // Solidity: function hashQuote((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) view returns(bytes32)
-func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) HashQuote(quote LiquidityBridgeContractQuote) ([32]byte, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) HashQuote(quote QuotesPeginQuote) ([32]byte, error) {
 	return _LiquidityBridgeContract.Contract.HashQuote(&_LiquidityBridgeContract.CallOpts, quote)
 }
 
@@ -690,6 +1385,130 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) IsOperatio
 	return _LiquidityBridgeContract.Contract.IsOperational(&_LiquidityBridgeContract.CallOpts, addr)
 }
 
+// IsOperationalForPegout is a free data retrieval call binding the contract method 0x4d0ec971.
+//
+// Solidity: function isOperationalForPegout(address addr) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) IsOperationalForPegout(opts *bind.CallOpts, addr common.Address) (bool, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "isOperationalForPegout", addr)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsOperationalForPegout is a free data retrieval call binding the contract method 0x4d0ec971.
+//
+// Solidity: function isOperationalForPegout(address addr) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) IsOperationalForPegout(addr common.Address) (bool, error) {
+	return _LiquidityBridgeContract.Contract.IsOperationalForPegout(&_LiquidityBridgeContract.CallOpts, addr)
+}
+
+// IsOperationalForPegout is a free data retrieval call binding the contract method 0x4d0ec971.
+//
+// Solidity: function isOperationalForPegout(address addr) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) IsOperationalForPegout(addr common.Address) (bool, error) {
+	return _LiquidityBridgeContract.Contract.IsOperationalForPegout(&_LiquidityBridgeContract.CallOpts, addr)
+}
+
+// IsPegOutQuoteCompleted is a free data retrieval call binding the contract method 0x54015ee0.
+//
+// Solidity: function isPegOutQuoteCompleted(bytes32 quoteHash) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "isPegOutQuoteCompleted", quoteHash)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsPegOutQuoteCompleted is a free data retrieval call binding the contract method 0x54015ee0.
+//
+// Solidity: function isPegOutQuoteCompleted(bytes32 quoteHash) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) IsPegOutQuoteCompleted(quoteHash [32]byte) (bool, error) {
+	return _LiquidityBridgeContract.Contract.IsPegOutQuoteCompleted(&_LiquidityBridgeContract.CallOpts, quoteHash)
+}
+
+// IsPegOutQuoteCompleted is a free data retrieval call binding the contract method 0x54015ee0.
+//
+// Solidity: function isPegOutQuoteCompleted(bytes32 quoteHash) view returns(bool)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) IsPegOutQuoteCompleted(quoteHash [32]byte) (bool, error) {
+	return _LiquidityBridgeContract.Contract.IsPegOutQuoteCompleted(&_LiquidityBridgeContract.CallOpts, quoteHash)
+}
+
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "owner")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Owner() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Owner(&_LiquidityBridgeContract.CallOpts)
+}
+
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) Owner() (common.Address, error) {
+	return _LiquidityBridgeContract.Contract.Owner(&_LiquidityBridgeContract.CallOpts)
+}
+
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCaller) ProviderId(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _LiquidityBridgeContract.contract.Call(opts, &out, "providerId")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) ProviderId() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.ProviderId(&_LiquidityBridgeContract.CallOpts)
+}
+
+// ProviderId is a free data retrieval call binding the contract method 0x8490a8df.
+//
+// Solidity: function providerId() view returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractCallerSession) ProviderId() (*big.Int, error) {
+	return _LiquidityBridgeContract.Contract.ProviderId(&_LiquidityBridgeContract.CallOpts)
+}
+
 // AddCollateral is a paid mutator transaction binding the contract method 0x9e816999.
 //
 // Solidity: function addCollateral() payable returns()
@@ -711,24 +1530,45 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) AddCol
 	return _LiquidityBridgeContract.Contract.AddCollateral(&_LiquidityBridgeContract.TransactOpts)
 }
 
+// AddPegoutCollateral is a paid mutator transaction binding the contract method 0x4198687e.
+//
+// Solidity: function addPegoutCollateral() payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) AddPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "addPegoutCollateral")
+}
+
+// AddPegoutCollateral is a paid mutator transaction binding the contract method 0x4198687e.
+//
+// Solidity: function addPegoutCollateral() payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) AddPegoutCollateral() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.AddPegoutCollateral(&_LiquidityBridgeContract.TransactOpts)
+}
+
+// AddPegoutCollateral is a paid mutator transaction binding the contract method 0x4198687e.
+//
+// Solidity: function addPegoutCollateral() payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) AddPegoutCollateral() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.AddPegoutCollateral(&_LiquidityBridgeContract.TransactOpts)
+}
+
 // CallForUser is a paid mutator transaction binding the contract method 0xac29d744.
 //
 // Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) CallForUser(opts *bind.TransactOpts, quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) CallForUser(opts *bind.TransactOpts, quote QuotesPeginQuote) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.contract.Transact(opts, "callForUser", quote)
 }
 
 // CallForUser is a paid mutator transaction binding the contract method 0xac29d744.
 //
 // Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) CallForUser(quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) CallForUser(quote QuotesPeginQuote) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.CallForUser(&_LiquidityBridgeContract.TransactOpts, quote)
 }
 
 // CallForUser is a paid mutator transaction binding the contract method 0xac29d744.
 //
 // Solidity: function callForUser((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote) payable returns(bool)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) CallForUser(quote LiquidityBridgeContractQuote) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) CallForUser(quote QuotesPeginQuote) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.CallForUser(&_LiquidityBridgeContract.TransactOpts, quote)
 }
 
@@ -753,109 +1593,151 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Deposi
 	return _LiquidityBridgeContract.Contract.Deposit(&_LiquidityBridgeContract.TransactOpts)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x9023550c.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Initialize(opts *bind.TransactOpts, _bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "initialize", _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) DepositPegout(opts *bind.TransactOpts, quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "depositPegout", quote, signature)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x9023550c.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Initialize(_bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Initialize(&_LiquidityBridgeContract.TransactOpts, _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) DepositPegout(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote, signature)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x9023550c.
+// DepositPegout is a paid mutator transaction binding the contract method 0xfccb2ee6.
 //
-// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold) returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Initialize(_bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Initialize(&_LiquidityBridgeContract.TransactOpts, _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold)
+// Solidity: function depositPegout((address,address,bytes,address,bytes,uint256,uint256,int64,bytes,uint32,uint256,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) DepositPegout(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.DepositPegout(&_LiquidityBridgeContract.TransactOpts, quote, signature)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xb0e1cb75.
+// Initialize is a paid mutator transaction binding the contract method 0x4bca2321.
 //
-// Solidity: function refundPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes32 btcTxHash, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundPegOut(opts *bind.TransactOpts, quote LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "refundPegOut", quote, btcTxHash, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold, uint256 _maxQuoteValue, uint256 _btcBlockTime, bool _mainnet) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Initialize(opts *bind.TransactOpts, _bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int, _maxQuoteValue *big.Int, _btcBlockTime *big.Int, _mainnet bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "initialize", _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold, _maxQuoteValue, _btcBlockTime, _mainnet)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xb0e1cb75.
+// Initialize is a paid mutator transaction binding the contract method 0x4bca2321.
 //
-// Solidity: function refundPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes32 btcTxHash, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundPegOut(quote LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quote, btcTxHash, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold, uint256 _maxQuoteValue, uint256 _btcBlockTime, bool _mainnet) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Initialize(_bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int, _maxQuoteValue *big.Int, _btcBlockTime *big.Int, _mainnet bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Initialize(&_LiquidityBridgeContract.TransactOpts, _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold, _maxQuoteValue, _btcBlockTime, _mainnet)
 }
 
-// RefundPegOut is a paid mutator transaction binding the contract method 0xb0e1cb75.
+// Initialize is a paid mutator transaction binding the contract method 0x4bca2321.
 //
-// Solidity: function refundPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes32 btcTxHash, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundPegOut(quote LiquidityBridgeContractPegOutQuote, btcTxHash [32]byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quote, btcTxHash, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+// Solidity: function initialize(address _bridgeAddress, uint256 _minimumCollateral, uint256 _minimumPegIn, uint32 _rewardPercentage, uint32 _resignDelayBlocks, uint256 _dustThreshold, uint256 _maxQuoteValue, uint256 _btcBlockTime, bool _mainnet) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Initialize(_bridgeAddress common.Address, _minimumCollateral *big.Int, _minimumPegIn *big.Int, _rewardPercentage uint32, _resignDelayBlocks uint32, _dustThreshold *big.Int, _maxQuoteValue *big.Int, _btcBlockTime *big.Int, _mainnet bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Initialize(&_LiquidityBridgeContract.TransactOpts, _bridgeAddress, _minimumCollateral, _minimumPegIn, _rewardPercentage, _resignDelayBlocks, _dustThreshold, _maxQuoteValue, _btcBlockTime, _mainnet)
 }
 
-// Register is a paid mutator transaction binding the contract method 0x1aa3a008.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function register() payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Register(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "register")
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "refundPegOut", quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
 }
 
-// Register is a paid mutator transaction binding the contract method 0x1aa3a008.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function register() payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Register() (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts)
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundPegOut(quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
 }
 
-// Register is a paid mutator transaction binding the contract method 0x1aa3a008.
+// RefundPegOut is a paid mutator transaction binding the contract method 0xd6c70de8.
 //
-// Solidity: function register() payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Register() (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts)
+// Solidity: function refundPegOut(bytes32 quoteHash, bytes btcTx, bytes32 btcBlockHeaderHash, uint256 partialMerkleTree, bytes32[] merkleBranchHashes) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundPegOut(quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash, btcTx, btcBlockHeaderHash, partialMerkleTree, merkleBranchHashes)
+}
+
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
+//
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RefundUserPegOut(opts *bind.TransactOpts, quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "refundUserPegOut", quoteHash)
+}
+
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
+//
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RefundUserPegOut(quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash)
+}
+
+// RefundUserPegOut is a paid mutator transaction binding the contract method 0x8f91797d.
+//
+// Solidity: function refundUserPegOut(bytes32 quoteHash) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RefundUserPegOut(quoteHash [32]byte) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RefundUserPegOut(&_LiquidityBridgeContract.TransactOpts, quoteHash)
+}
+
+// Register is a paid mutator transaction binding the contract method 0x80a76e28.
+//
+// Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status, string _providerType) payable returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) Register(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "register", _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _providerType)
+}
+
+// Register is a paid mutator transaction binding the contract method 0x80a76e28.
+//
+// Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status, string _providerType) payable returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _providerType)
+}
+
+// Register is a paid mutator transaction binding the contract method 0x80a76e28.
+//
+// Solidity: function register(string _name, uint256 _fee, uint256 _quoteExpiration, uint256 _minTransactionValue, uint256 _maxTransactionValue, string _apiBaseUrl, bool _status, string _providerType) payable returns(uint256)
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Register(_name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.Register(&_LiquidityBridgeContract.TransactOpts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _providerType)
 }
 
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x6e2e8c70.
 //
 // Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RegisterPegIn(opts *bind.TransactOpts, quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RegisterPegIn(opts *bind.TransactOpts, quote QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.contract.Transact(opts, "registerPegIn", quote, signature, btcRawTransaction, partialMerkleTree, height)
 }
 
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x6e2e8c70.
 //
 // Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RegisterPegIn(quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RegisterPegIn(quote QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.RegisterPegIn(&_LiquidityBridgeContract.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
 }
 
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x6e2e8c70.
 //
 // Solidity: function registerPegIn((bytes20,address,address,bytes,address,bytes,uint256,uint256,address,bytes,uint32,int64,uint256,uint32,uint32,uint32,uint16,bool) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RegisterPegIn(quote LiquidityBridgeContractQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RegisterPegIn(quote QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.RegisterPegIn(&_LiquidityBridgeContract.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
 }
 
-// RegisterPegOut is a paid mutator transaction binding the contract method 0x797e152d.
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
 //
-// Solidity: function registerPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RegisterPegOut(opts *bind.TransactOpts, quote LiquidityBridgeContractPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.contract.Transact(opts, "registerPegOut", quote, signature)
+// Solidity: function renounceOwnership() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) RenounceOwnership(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "renounceOwnership")
 }
 
-// RegisterPegOut is a paid mutator transaction binding the contract method 0x797e152d.
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
 //
-// Solidity: function registerPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RegisterPegOut(quote LiquidityBridgeContractPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RegisterPegOut(&_LiquidityBridgeContract.TransactOpts, quote, signature)
+// Solidity: function renounceOwnership() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) RenounceOwnership() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RenounceOwnership(&_LiquidityBridgeContract.TransactOpts)
 }
 
-// RegisterPegOut is a paid mutator transaction binding the contract method 0x797e152d.
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
 //
-// Solidity: function registerPegOut((address,address,address,uint64,uint64,int64,uint64,uint32,uint32,uint16,uint16,uint32,uint32,uint32) quote, bytes signature) payable returns()
-func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RegisterPegOut(quote LiquidityBridgeContractPegOutQuote, signature []byte) (*types.Transaction, error) {
-	return _LiquidityBridgeContract.Contract.RegisterPegOut(&_LiquidityBridgeContract.TransactOpts, quote, signature)
+// Solidity: function renounceOwnership() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) RenounceOwnership() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.RenounceOwnership(&_LiquidityBridgeContract.TransactOpts)
 }
 
 // Resign is a paid mutator transaction binding the contract method 0x69652fcf.
@@ -877,6 +1759,48 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractSession) Resign() (*types
 // Solidity: function resign() returns()
 func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) Resign() (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.Resign(&_LiquidityBridgeContract.TransactOpts)
+}
+
+// SetProviderStatus is a paid mutator transaction binding the contract method 0x72cbf4e8.
+//
+// Solidity: function setProviderStatus(uint256 _providerId, bool status) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) SetProviderStatus(opts *bind.TransactOpts, _providerId *big.Int, status bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "setProviderStatus", _providerId, status)
+}
+
+// SetProviderStatus is a paid mutator transaction binding the contract method 0x72cbf4e8.
+//
+// Solidity: function setProviderStatus(uint256 _providerId, bool status) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) SetProviderStatus(_providerId *big.Int, status bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.SetProviderStatus(&_LiquidityBridgeContract.TransactOpts, _providerId, status)
+}
+
+// SetProviderStatus is a paid mutator transaction binding the contract method 0x72cbf4e8.
+//
+// Solidity: function setProviderStatus(uint256 _providerId, bool status) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) SetProviderStatus(_providerId *big.Int, status bool) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.SetProviderStatus(&_LiquidityBridgeContract.TransactOpts, _providerId, status)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "transferOwnership", newOwner)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.TransferOwnership(&_LiquidityBridgeContract.TransactOpts, newOwner)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.TransferOwnership(&_LiquidityBridgeContract.TransactOpts, newOwner)
 }
 
 // Withdraw is a paid mutator transaction binding the contract method 0x2e1a7d4d.
@@ -919,6 +1843,27 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractSession) WithdrawCollater
 // Solidity: function withdrawCollateral() returns()
 func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) WithdrawCollateral() (*types.Transaction, error) {
 	return _LiquidityBridgeContract.Contract.WithdrawCollateral(&_LiquidityBridgeContract.TransactOpts)
+}
+
+// WithdrawPegoutCollateral is a paid mutator transaction binding the contract method 0x35510a7d.
+//
+// Solidity: function withdrawPegoutCollateral() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactor) WithdrawPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _LiquidityBridgeContract.contract.Transact(opts, "withdrawPegoutCollateral")
+}
+
+// WithdrawPegoutCollateral is a paid mutator transaction binding the contract method 0x35510a7d.
+//
+// Solidity: function withdrawPegoutCollateral() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractSession) WithdrawPegoutCollateral() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.WithdrawPegoutCollateral(&_LiquidityBridgeContract.TransactOpts)
+}
+
+// WithdrawPegoutCollateral is a paid mutator transaction binding the contract method 0x35510a7d.
+//
+// Solidity: function withdrawPegoutCollateral() returns()
+func (_LiquidityBridgeContract *LiquidityBridgeContractTransactorSession) WithdrawPegoutCollateral() (*types.Transaction, error) {
+	return _LiquidityBridgeContract.Contract.WithdrawPegoutCollateral(&_LiquidityBridgeContract.TransactOpts)
 }
 
 // Receive is a paid mutator transaction binding the contract receive function.
@@ -1563,10 +2508,19 @@ type LiquidityBridgeContractCallForUser struct {
 
 // FilterCallForUser is a free log retrieval operation binding the contract event 0xbfc7404e6fe464f0646fe2c6ab942b92d56be722bb39f8c6bc4830d2d32fb80d.
 //
-// Solidity: event CallForUser(address from, address dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
-func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterCallForUser(opts *bind.FilterOpts) (*LiquidityBridgeContractCallForUserIterator, error) {
+// Solidity: event CallForUser(address indexed from, address indexed dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterCallForUser(opts *bind.FilterOpts, from []common.Address, dest []common.Address) (*LiquidityBridgeContractCallForUserIterator, error) {
 
-	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "CallForUser")
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var destRule []interface{}
+	for _, destItem := range dest {
+		destRule = append(destRule, destItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "CallForUser", fromRule, destRule)
 	if err != nil {
 		return nil, err
 	}
@@ -1575,10 +2529,19 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterCallForUs
 
 // WatchCallForUser is a free log subscription operation binding the contract event 0xbfc7404e6fe464f0646fe2c6ab942b92d56be722bb39f8c6bc4830d2d32fb80d.
 //
-// Solidity: event CallForUser(address from, address dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
-func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchCallForUser(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractCallForUser) (event.Subscription, error) {
+// Solidity: event CallForUser(address indexed from, address indexed dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchCallForUser(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractCallForUser, from []common.Address, dest []common.Address) (event.Subscription, error) {
 
-	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "CallForUser")
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var destRule []interface{}
+	for _, destItem := range dest {
+		destRule = append(destRule, destItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "CallForUser", fromRule, destRule)
 	if err != nil {
 		return nil, err
 	}
@@ -1612,7 +2575,7 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchCallForUse
 
 // ParseCallForUser is a log parse operation binding the contract event 0xbfc7404e6fe464f0646fe2c6ab942b92d56be722bb39f8c6bc4830d2d32fb80d.
 //
-// Solidity: event CallForUser(address from, address dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
+// Solidity: event CallForUser(address indexed from, address indexed dest, uint256 gasLimit, uint256 value, bytes data, bool success, bytes32 quoteHash)
 func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParseCallForUser(log types.Log) (*LiquidityBridgeContractCallForUser, error) {
 	event := new(LiquidityBridgeContractCallForUser)
 	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "CallForUser", log); err != nil {
@@ -2026,6 +2989,159 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParseInitialize
 	return event, nil
 }
 
+// LiquidityBridgeContractOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractOwnershipTransferredIterator struct {
+	Event *LiquidityBridgeContractOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractOwnershipTransferred represents a OwnershipTransferred event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*LiquidityBridgeContractOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractOwnershipTransferredIterator{contract: _LiquidityBridgeContract.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractOwnershipTransferred)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseOwnershipTransferred is a log parse operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParseOwnershipTransferred(log types.Log) (*LiquidityBridgeContractOwnershipTransferred, error) {
+	event := new(LiquidityBridgeContractOwnershipTransferred)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // LiquidityBridgeContractPegOutIterator is returned from FilterPegOut and is used to iterate over the raw logs and unpacked data for PegOut events raised by the LiquidityBridgeContract contract.
 type LiquidityBridgeContractPegOutIterator struct {
 	Event *LiquidityBridgeContractPegOut // Event containing the contract specifics and raw log
@@ -2433,6 +3549,709 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegOutBala
 	return event, nil
 }
 
+// LiquidityBridgeContractPegOutDepositIterator is returned from FilterPegOutDeposit and is used to iterate over the raw logs and unpacked data for PegOutDeposit events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutDepositIterator struct {
+	Event *LiquidityBridgeContractPegOutDeposit // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractPegOutDepositIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractPegOutDeposit)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractPegOutDeposit)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractPegOutDepositIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractPegOutDepositIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractPegOutDeposit represents a PegOutDeposit event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutDeposit struct {
+	QuoteHash [32]byte
+	Sender    common.Address
+	Amount    *big.Int
+	Timestamp *big.Int
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterPegOutDeposit is a free log retrieval operation binding the contract event 0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f.
+//
+// Solidity: event PegOutDeposit(bytes32 quoteHash, address indexed sender, uint256 indexed amount, uint256 indexed timestamp)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterPegOutDeposit(opts *bind.FilterOpts, sender []common.Address, amount []*big.Int, timestamp []*big.Int) (*LiquidityBridgeContractPegOutDepositIterator, error) {
+
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+	var timestampRule []interface{}
+	for _, timestampItem := range timestamp {
+		timestampRule = append(timestampRule, timestampItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "PegOutDeposit", senderRule, amountRule, timestampRule)
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractPegOutDepositIterator{contract: _LiquidityBridgeContract.contract, event: "PegOutDeposit", logs: logs, sub: sub}, nil
+}
+
+// WatchPegOutDeposit is a free log subscription operation binding the contract event 0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f.
+//
+// Solidity: event PegOutDeposit(bytes32 quoteHash, address indexed sender, uint256 indexed amount, uint256 indexed timestamp)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchPegOutDeposit(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractPegOutDeposit, sender []common.Address, amount []*big.Int, timestamp []*big.Int) (event.Subscription, error) {
+
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+	var timestampRule []interface{}
+	for _, timestampItem := range timestamp {
+		timestampRule = append(timestampRule, timestampItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "PegOutDeposit", senderRule, amountRule, timestampRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractPegOutDeposit)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutDeposit", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePegOutDeposit is a log parse operation binding the contract event 0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f.
+//
+// Solidity: event PegOutDeposit(bytes32 quoteHash, address indexed sender, uint256 indexed amount, uint256 indexed timestamp)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegOutDeposit(log types.Log) (*LiquidityBridgeContractPegOutDeposit, error) {
+	event := new(LiquidityBridgeContractPegOutDeposit)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutDeposit", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// LiquidityBridgeContractPegOutRefundedIterator is returned from FilterPegOutRefunded and is used to iterate over the raw logs and unpacked data for PegOutRefunded events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutRefundedIterator struct {
+	Event *LiquidityBridgeContractPegOutRefunded // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractPegOutRefundedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractPegOutRefunded)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractPegOutRefunded)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractPegOutRefundedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractPegOutRefundedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractPegOutRefunded represents a PegOutRefunded event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutRefunded struct {
+	QuoteHash [32]byte
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterPegOutRefunded is a free log retrieval operation binding the contract event 0xb781856ec73fd0dc39351043d1634ea22cd3277b0866ab93e7ec1801766bb384.
+//
+// Solidity: event PegOutRefunded(bytes32 quoteHash)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterPegOutRefunded(opts *bind.FilterOpts) (*LiquidityBridgeContractPegOutRefundedIterator, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "PegOutRefunded")
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractPegOutRefundedIterator{contract: _LiquidityBridgeContract.contract, event: "PegOutRefunded", logs: logs, sub: sub}, nil
+}
+
+// WatchPegOutRefunded is a free log subscription operation binding the contract event 0xb781856ec73fd0dc39351043d1634ea22cd3277b0866ab93e7ec1801766bb384.
+//
+// Solidity: event PegOutRefunded(bytes32 quoteHash)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchPegOutRefunded(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractPegOutRefunded) (event.Subscription, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "PegOutRefunded")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractPegOutRefunded)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutRefunded", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePegOutRefunded is a log parse operation binding the contract event 0xb781856ec73fd0dc39351043d1634ea22cd3277b0866ab93e7ec1801766bb384.
+//
+// Solidity: event PegOutRefunded(bytes32 quoteHash)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegOutRefunded(log types.Log) (*LiquidityBridgeContractPegOutRefunded, error) {
+	event := new(LiquidityBridgeContractPegOutRefunded)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutRefunded", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// LiquidityBridgeContractPegOutUserRefundedIterator is returned from FilterPegOutUserRefunded and is used to iterate over the raw logs and unpacked data for PegOutUserRefunded events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutUserRefundedIterator struct {
+	Event *LiquidityBridgeContractPegOutUserRefunded // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractPegOutUserRefundedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractPegOutUserRefunded)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractPegOutUserRefunded)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractPegOutUserRefundedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractPegOutUserRefundedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractPegOutUserRefunded represents a PegOutUserRefunded event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegOutUserRefunded struct {
+	QuoteHash   [32]byte
+	Value       *big.Int
+	UserAddress common.Address
+	Raw         types.Log // Blockchain specific contextual infos
+}
+
+// FilterPegOutUserRefunded is a free log retrieval operation binding the contract event 0x9ccbeffc442024e2a6ade18ff0978af9a4c4d6562ae38adb51ccf8256cf42b41.
+//
+// Solidity: event PegOutUserRefunded(bytes32 quoteHash, uint256 value, address userAddress)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterPegOutUserRefunded(opts *bind.FilterOpts) (*LiquidityBridgeContractPegOutUserRefundedIterator, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "PegOutUserRefunded")
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractPegOutUserRefundedIterator{contract: _LiquidityBridgeContract.contract, event: "PegOutUserRefunded", logs: logs, sub: sub}, nil
+}
+
+// WatchPegOutUserRefunded is a free log subscription operation binding the contract event 0x9ccbeffc442024e2a6ade18ff0978af9a4c4d6562ae38adb51ccf8256cf42b41.
+//
+// Solidity: event PegOutUserRefunded(bytes32 quoteHash, uint256 value, address userAddress)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchPegOutUserRefunded(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractPegOutUserRefunded) (event.Subscription, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "PegOutUserRefunded")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractPegOutUserRefunded)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutUserRefunded", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePegOutUserRefunded is a log parse operation binding the contract event 0x9ccbeffc442024e2a6ade18ff0978af9a4c4d6562ae38adb51ccf8256cf42b41.
+//
+// Solidity: event PegOutUserRefunded(bytes32 quoteHash, uint256 value, address userAddress)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegOutUserRefunded(log types.Log) (*LiquidityBridgeContractPegOutUserRefunded, error) {
+	event := new(LiquidityBridgeContractPegOutUserRefunded)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegOutUserRefunded", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// LiquidityBridgeContractPegoutCollateralIncreaseIterator is returned from FilterPegoutCollateralIncrease and is used to iterate over the raw logs and unpacked data for PegoutCollateralIncrease events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegoutCollateralIncreaseIterator struct {
+	Event *LiquidityBridgeContractPegoutCollateralIncrease // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractPegoutCollateralIncreaseIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractPegoutCollateralIncrease)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractPegoutCollateralIncrease)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractPegoutCollateralIncreaseIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractPegoutCollateralIncreaseIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractPegoutCollateralIncrease represents a PegoutCollateralIncrease event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegoutCollateralIncrease struct {
+	From   common.Address
+	Amount *big.Int
+	Raw    types.Log // Blockchain specific contextual infos
+}
+
+// FilterPegoutCollateralIncrease is a free log retrieval operation binding the contract event 0x873d5a2949567203ad4f0cceef41c2813c87b9a397ee777d87a8acdaec2c6fa9.
+//
+// Solidity: event PegoutCollateralIncrease(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterPegoutCollateralIncrease(opts *bind.FilterOpts) (*LiquidityBridgeContractPegoutCollateralIncreaseIterator, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "PegoutCollateralIncrease")
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractPegoutCollateralIncreaseIterator{contract: _LiquidityBridgeContract.contract, event: "PegoutCollateralIncrease", logs: logs, sub: sub}, nil
+}
+
+// WatchPegoutCollateralIncrease is a free log subscription operation binding the contract event 0x873d5a2949567203ad4f0cceef41c2813c87b9a397ee777d87a8acdaec2c6fa9.
+//
+// Solidity: event PegoutCollateralIncrease(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchPegoutCollateralIncrease(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractPegoutCollateralIncrease) (event.Subscription, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "PegoutCollateralIncrease")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractPegoutCollateralIncrease)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegoutCollateralIncrease", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePegoutCollateralIncrease is a log parse operation binding the contract event 0x873d5a2949567203ad4f0cceef41c2813c87b9a397ee777d87a8acdaec2c6fa9.
+//
+// Solidity: event PegoutCollateralIncrease(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegoutCollateralIncrease(log types.Log) (*LiquidityBridgeContractPegoutCollateralIncrease, error) {
+	event := new(LiquidityBridgeContractPegoutCollateralIncrease)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegoutCollateralIncrease", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// LiquidityBridgeContractPegoutWithdrawCollateralIterator is returned from FilterPegoutWithdrawCollateral and is used to iterate over the raw logs and unpacked data for PegoutWithdrawCollateral events raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegoutWithdrawCollateralIterator struct {
+	Event *LiquidityBridgeContractPegoutWithdrawCollateral // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *LiquidityBridgeContractPegoutWithdrawCollateralIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(LiquidityBridgeContractPegoutWithdrawCollateral)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(LiquidityBridgeContractPegoutWithdrawCollateral)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *LiquidityBridgeContractPegoutWithdrawCollateralIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *LiquidityBridgeContractPegoutWithdrawCollateralIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// LiquidityBridgeContractPegoutWithdrawCollateral represents a PegoutWithdrawCollateral event raised by the LiquidityBridgeContract contract.
+type LiquidityBridgeContractPegoutWithdrawCollateral struct {
+	From   common.Address
+	Amount *big.Int
+	Raw    types.Log // Blockchain specific contextual infos
+}
+
+// FilterPegoutWithdrawCollateral is a free log retrieval operation binding the contract event 0xfc72299650b405e7b0480ca8fb0fb3948fb10a77ac02f797cc9de1f4aaa55db7.
+//
+// Solidity: event PegoutWithdrawCollateral(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterPegoutWithdrawCollateral(opts *bind.FilterOpts) (*LiquidityBridgeContractPegoutWithdrawCollateralIterator, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "PegoutWithdrawCollateral")
+	if err != nil {
+		return nil, err
+	}
+	return &LiquidityBridgeContractPegoutWithdrawCollateralIterator{contract: _LiquidityBridgeContract.contract, event: "PegoutWithdrawCollateral", logs: logs, sub: sub}, nil
+}
+
+// WatchPegoutWithdrawCollateral is a free log subscription operation binding the contract event 0xfc72299650b405e7b0480ca8fb0fb3948fb10a77ac02f797cc9de1f4aaa55db7.
+//
+// Solidity: event PegoutWithdrawCollateral(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchPegoutWithdrawCollateral(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractPegoutWithdrawCollateral) (event.Subscription, error) {
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "PegoutWithdrawCollateral")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(LiquidityBridgeContractPegoutWithdrawCollateral)
+				if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegoutWithdrawCollateral", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePegoutWithdrawCollateral is a log parse operation binding the contract event 0xfc72299650b405e7b0480ca8fb0fb3948fb10a77ac02f797cc9de1f4aaa55db7.
+//
+// Solidity: event PegoutWithdrawCollateral(address from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParsePegoutWithdrawCollateral(log types.Log) (*LiquidityBridgeContractPegoutWithdrawCollateral, error) {
+	event := new(LiquidityBridgeContractPegoutWithdrawCollateral)
+	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "PegoutWithdrawCollateral", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // LiquidityBridgeContractPenalizedIterator is returned from FilterPenalized and is used to iterate over the raw logs and unpacked data for Penalized events raised by the LiquidityBridgeContract contract.
 type LiquidityBridgeContractPenalizedIterator struct {
 	Event *LiquidityBridgeContractPenalized // Event containing the contract specifics and raw log
@@ -2783,10 +4602,15 @@ type LiquidityBridgeContractRegister struct {
 
 // FilterRegister is a free log retrieval operation binding the contract event 0xa9d44d6e13bb3fee938c3f66d1103e91f8dc6b12d4405a55eea558e8f275aa6e.
 //
-// Solidity: event Register(uint256 id, address from, uint256 amount)
-func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterRegister(opts *bind.FilterOpts) (*LiquidityBridgeContractRegisterIterator, error) {
+// Solidity: event Register(uint256 id, address indexed from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterRegister(opts *bind.FilterOpts, from []common.Address) (*LiquidityBridgeContractRegisterIterator, error) {
 
-	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "Register")
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.FilterLogs(opts, "Register", fromRule)
 	if err != nil {
 		return nil, err
 	}
@@ -2795,10 +4619,15 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) FilterRegister(
 
 // WatchRegister is a free log subscription operation binding the contract event 0xa9d44d6e13bb3fee938c3f66d1103e91f8dc6b12d4405a55eea558e8f275aa6e.
 //
-// Solidity: event Register(uint256 id, address from, uint256 amount)
-func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchRegister(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractRegister) (event.Subscription, error) {
+// Solidity: event Register(uint256 id, address indexed from, uint256 amount)
+func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchRegister(opts *bind.WatchOpts, sink chan<- *LiquidityBridgeContractRegister, from []common.Address) (event.Subscription, error) {
 
-	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "Register")
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+
+	logs, sub, err := _LiquidityBridgeContract.contract.WatchLogs(opts, "Register", fromRule)
 	if err != nil {
 		return nil, err
 	}
@@ -2832,7 +4661,7 @@ func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) WatchRegister(o
 
 // ParseRegister is a log parse operation binding the contract event 0xa9d44d6e13bb3fee938c3f66d1103e91f8dc6b12d4405a55eea558e8f275aa6e.
 //
-// Solidity: event Register(uint256 id, address from, uint256 amount)
+// Solidity: event Register(uint256 id, address indexed from, uint256 amount)
 func (_LiquidityBridgeContract *LiquidityBridgeContractFilterer) ParseRegister(log types.Log) (*LiquidityBridgeContractRegister, error) {
 	event := new(LiquidityBridgeContractRegister)
 	if err := _LiquidityBridgeContract.contract.UnpackLog(event, "Register", log); err != nil {
