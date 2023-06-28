@@ -90,8 +90,9 @@ type BTCClient interface {
 }
 
 type BTC struct {
-	c      BTCClient
-	params chaincfg.Params
+	c            BTCClient
+	params       chaincfg.Params
+	TxDefaultFee int64
 }
 
 func NewBTC(network string) (*BTC, error) {
@@ -141,6 +142,7 @@ func (btc *BTC) Connect(btcConfig BtcConfig) error {
 	}
 
 	btc.c = c
+	btc.TxDefaultFee = btcConfig.TxFee
 	return nil
 }
 
@@ -1036,6 +1038,9 @@ func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnConte
 		return "", err
 	}
 	tx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+
+	fee := btc.TxDefaultFee * int64(tx.SerializeSize())
+	tx.TxOut[0].Value -= fee
 
 	signedTx, _, err := btc.c.SignRawTransactionWithWallet(tx)
 	if err != nil {
