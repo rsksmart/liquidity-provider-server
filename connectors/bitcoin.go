@@ -3,27 +3,44 @@ package connectors
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"github.com/btcsuite/btcd/btcjson"
+	"math"
+	"math/big"
+	"regexp"
 	"time"
 
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/bloom"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/bloom"
 	log "github.com/sirupsen/logrus"
 
 	"encoding/hex"
 
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil/base58"
+	"github.com/btcsuite/btcutil/bech32"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const unknownBtcdVersion = -1
+const (
+	unknownBtcdVersion = -1
+	BTC_TO_SATOSHI     = 100000000
+)
+
+type BtcConfig struct {
+	Endpoint        string  `env:"BTC_ENDPOINT"`
+	Username        string  `env:"BTC_USERNAME"`
+	Password        string  `env:"BTC_PASSWORD"`
+	Network         string  `env:"BTC_NETWORK"`
+	TxFixedFee      int64   `env:"BTC_TX_FEE"`
+	TxFeePercentage float64 `env:"BTC_TX_FEE_PERCENTAGE"`
+}
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
 
@@ -34,7 +51,7 @@ type AddressWatcher interface {
 }
 
 type BTCConnector interface {
-	Connect(endpoint string, username string, password string) error
+	Connect(config BtcConfig) error
 	CheckConnection() error
 	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
@@ -46,8 +63,13 @@ type BTCConnector interface {
 	GetDerivedBitcoinAddress(fedInfo *FedInfo, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
 	ComputeDerivationAddresss(userBtcRefundAddr []byte, quoteHash []byte) (string, error)
 	BuildMerkleBranch(txHash string) (*MerkleBranch, error)
-	BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error)
-	SendBTC(address string, amount uint) (string, error)
+	SendBtc(address string, amount uint64) (string, error)
+	SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error)
+	GetAvailableLiquidity() (*big.Int, error)
+	LockBtc(amount float64) error
+	UnlockBtc(amount float64) error
+	GetBlockHeaderHashByTx(txHash string) ([32]byte, error)
+	GetAmauntWithFeesIncluded(amount float64) float64
 }
 
 type BTCClient interface {
@@ -60,11 +82,22 @@ type BTCClient interface {
 	GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error)
 	Disconnect()
 	SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error)
+	GetBalance(address string) (btcutil.Amount, error)
+	LockUnspent(shouldUnlock bool, txToUnlock []*wire.OutPoint) error
+	ListUnspent() ([]btcjson.ListUnspentResult, error)
+	ListLockUnspent() ([]*wire.OutPoint, error)
+	GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error)
+	CreateRawTransaction(inputs []btcjson.TransactionInput, amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error)
+	SignRawTransactionWithWallet(tx *wire.MsgTx) (*wire.MsgTx, bool, error)
+	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
+	SetTxFee(fee btcutil.Amount) error
 }
 
 type BTC struct {
-	c      BTCClient
-	params chaincfg.Params
+	c               BTCClient
+	params          chaincfg.Params
+	TxDefaultFee    int64
+	TxFeePercentage float64
 }
 
 func NewBTC(network string) (*BTC, error) {
@@ -83,12 +116,12 @@ func NewBTC(network string) (*BTC, error) {
 	return &btc, nil
 }
 
-func (btc *BTC) Connect(endpoint string, username string, password string) error {
+func (btc *BTC) Connect(btcConfig BtcConfig) error {
 	log.Debug("connecting to BTC node")
 	config := rpcclient.ConnConfig{
-		Host:         endpoint,
-		User:         username,
-		Pass:         password,
+		Host:         btcConfig.Endpoint,
+		User:         btcConfig.Username,
+		Pass:         btcConfig.Password,
 		Params:       btc.params.Name,
 		DisableTLS:   true,
 		HTTPPostMode: true,
@@ -109,6 +142,8 @@ func (btc *BTC) Connect(endpoint string, username string, password string) error
 	}
 
 	btc.c = c
+	btc.TxDefaultFee = btcConfig.TxFixedFee
+	btc.TxFeePercentage = btcConfig.TxFeePercentage
 	return nil
 }
 
@@ -230,7 +265,6 @@ func (btc *BTC) Close() {
 // - uint256[]  hashes in depth-first order (<= 32*N bytes)
 // - varint     number of bytes of flag bits (1-3 bytes)
 // - byte[]     flag bits, packed per 8 in a byte, least significant bit first (<= 2*N-1 bits)
-//
 func (btc *BTC) SerializePMT(txHash string) ([]byte, error) {
 	blockHash, err := btc.getBlockHash(txHash)
 	if err != nil {
@@ -321,13 +355,35 @@ func (btc *BTC) ComputeDerivationAddresss(userPublicKey []byte, quoteHash []byte
 
 func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 	addressBts, ver, err := base58.CheckDecode(address)
-	if err != nil {
-		return nil, fmt.Errorf("the provider address is not a valid base58 encoded address. address: %v", address)
-	}
 	var bts bytes.Buffer
+	if err != nil {
+		hrp, data, err := bech32.Decode(address)
+		if err != nil {
+			return nil, fmt.Errorf("the provider address is not a valid Bech32 or base58 encoded address. address: %v", address)
+		}
+		if hrp != "tb" && hrp != "bc" {
+			return nil, fmt.Errorf("the provider address is not a valid Bitcoin address. address: %v", address)
+		}
+		log.Debug("decoded btc address data", addressBts)
+		log.Debug("decoded version address data", data)
+		bts.Write(addressBts)
+		return bts.Bytes(), nil
+	}
+	log.Debug("decoded btc address data", addressBts)
+	log.Debug("decoded version address data", ver)
 	bts.WriteByte(ver)
 	bts.Write(addressBts)
 	return bts.Bytes(), nil
+}
+
+func DecodeBech32BTCAddress(address string) ([]byte, error) {
+	_, dec, err := bech32.Decode(address) // omit first argument because its always "bc"
+	if err != nil {
+		log.Error()
+		return nil, fmt.Errorf("provided BTC address is not valid and couldn't be decoded: %v", address)
+	}
+
+	return dec, err
 }
 
 func serializeTx(tx *btcutil.Tx) ([]byte, error) {
@@ -362,31 +418,22 @@ func (btc *BTC) BuildMerkleBranch(txHash string) (*MerkleBranch, error) {
 		return nil, fmt.Errorf("error parsing hash: %v", err)
 	}
 
+	var cleanStore []*chainhash.Hash
 	store := blockchain.BuildMerkleTreeStore(txs, false)
+	for _, node := range store {
+		if node != nil {
+			cleanStore = append(cleanStore, node)
+		}
+	}
 
-	idx := FindInMerkleTreeStore(store, hash)
+	idx := FindInMerkleTreeStore(cleanStore, hash)
 	if idx == -1 {
 		return nil, fmt.Errorf("tx not found in merkle tree: %v", err)
 	}
 
-	branch := buildMerkleBranch(store, uint32(len(block.Transactions())), uint32(idx))
+	branch := buildMerkleBranch(cleanStore, uint32(len(block.Transactions())), uint32(idx))
 
 	return branch, nil
-}
-
-func (btc *BTC) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*MerkleBranch, error) {
-
-	btcAdd, err := btcutil.DecodeAddress(btcAddress, &btc.params)
-	if err != nil {
-		return nil, err
-	}
-
-	err = btc.c.ImportAddressRescan(btcAdd.String(), "", false)
-	if err != nil {
-		return nil, buildErrorImportAddress(btcAddress, err)
-	}
-
-	return btc.BuildMerkleBranch(txHash)
 }
 
 func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
@@ -428,14 +475,14 @@ func serializePMT(txHash string, block *btcutil.Block) ([]byte, error) {
 
 func FindInMerkleTreeStore(store []*chainhash.Hash, hash *chainhash.Hash) int {
 	for i, h := range store {
-		if h.IsEqual(hash) {
+		if h != nil && h.IsEqual(hash) {
 			return i
 		}
 	}
 	return -1
 }
 
-func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
+func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 
 	btcAdd, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
@@ -447,7 +494,12 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 		return "", err
 	}
 
-	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(btcutil.Amount(amount).ToBTC()))
+	err = btc.c.SetTxFee(btcutil.Amount(btc.TxDefaultFee)) // could be part of the pegout quote instead of env var
+	if err != nil {
+		return "", fmt.Errorf("RPC client error: %v", err)
+	}
+
+	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(amount))
 
 	if err != nil {
 		return "", err
@@ -456,13 +508,22 @@ func (btc *BTC) SendBTC(address string, amount uint) (string, error) {
 	return hash.String(), nil
 }
 
+func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
+	balance, err := btc.c.GetBalance("*") // dummy parameter, see explanation -> https://bitcoincore.org/en/doc/23.0.0/rpc/wallet/getbalance/
+	if err != nil {
+		return nil, err
+	} else {
+		return big.NewInt(int64(balance)), nil
+	}
+}
+
 type MerkleBranch struct {
-	Hashes []*chainhash.Hash
+	Hashes [][32]byte
 	Path   int
 }
 
 func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uint32) *MerkleBranch {
-	hashes := make([]*chainhash.Hash, 0)
+	hashes := make([][32]byte, 0)
 	path := 0
 	pathIndex := 0
 	var levelOffset uint32 = 0
@@ -478,7 +539,7 @@ func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uin
 			targetOffset = currentNodeOffset - 1
 			path = path + (1 << pathIndex)
 		}
-		hashes = append(hashes, merkleTree[levelOffset+targetOffset])
+		hashes = append(hashes, toBytes32(merkleTree[levelOffset+targetOffset]))
 
 		levelOffset += levelSize
 		currentNodeOffset = currentNodeOffset / 2
@@ -594,7 +655,7 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 
 	// All federations activated AFTER Iris will be ERP, therefore we build erp redeem script.
 	if fedInfo.ActiveFedBlockHeight < fedInfo.IrisActivationHeight {
-		err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
+		err := btc.buildRedeemScriptBuf(fedInfo, hashBuf, err)
 		if err != nil {
 			return nil, err
 		}
@@ -605,8 +666,8 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 		}
 
 		err = btc.validateRedeemScript(fedInfo, hashBuf.Bytes())
-		if err != nil { // ok, it could be that ERP is not yet activated, falling back to PowPeg Redeem Script
-			err := btc.buildPowPegRedeemScriptBuf(fedInfo, hashBuf, err)
+		if err != nil { // ok, it could be that ERP is not yet activated, falling back to Redeem Script
+			err := btc.buildRedeemScriptBuf(fedInfo, hashBuf, err)
 			if err != nil {
 				return nil, err
 			}
@@ -617,8 +678,8 @@ func (btc *BTC) getRedeemScript(fedInfo *FedInfo, derivationValue []byte) ([]byt
 	return buf.Bytes(), nil
 }
 
-func (btc *BTC) buildPowPegRedeemScriptBuf(fedInfo *FedInfo, hashBuf *bytes.Buffer, err error) error {
-	hashBuf, err = btc.getPowPegRedeemScriptBuf(fedInfo, true)
+func (btc *BTC) buildRedeemScriptBuf(fedInfo *FedInfo, hashBuf *bytes.Buffer, err error) error {
+	hashBuf, err = btc.getRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		return err
 	}
@@ -644,7 +705,7 @@ func getFlyoverPrefix(hash []byte) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-func (btc *BTC) getPowPegRedeemScriptBuf(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
+func (btc *BTC) getRedeemScriptBuf(fedInfo *FedInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
 	err := btc.addStdNToMScriptPart(fedInfo, sb)
@@ -668,7 +729,7 @@ func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-	powPegRedeemScriptBuf, err := btc.getPowPegRedeemScriptBuf(fedInfo, false)
+	redeemScriptBuf, err := btc.getRedeemScriptBuf(fedInfo, false)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +741,7 @@ func (btc *BTC) getErpRedeemScriptBuf(fedInfo *FedInfo) (*bytes.Buffer, error) {
 		return nil, err
 	}
 	erpRedeemScriptBuffer.Write(scrA)
-	erpRedeemScriptBuffer.Write(powPegRedeemScriptBuf.Bytes())
+	erpRedeemScriptBuffer.Write(redeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
 	byteArr, err := hex.DecodeString("02")
 	if err != nil {
@@ -816,4 +877,191 @@ func getOpCodeFromInt(val int) byte {
 	default:
 		return txscript.OP_16
 	}
+}
+
+func isP2PKH(address string) bool {
+	pattern := regexp.MustCompile(`^[13][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isP2SH(address string) bool {
+	pattern := regexp.MustCompile(`^[32][a-km-zA-HJ-NP-Z0-9]{25,34}$`)
+	return pattern.MatchString(address)
+}
+
+func isBech32(address string) bool {
+	pattern := regexp.MustCompile(`^(bc1|tb1)[a-zA-HJ-NP-Z0-9]{8,87}$`)
+	return pattern.MatchString(address)
+}
+
+func btcAddressType(address string) string {
+	if isBech32(address) {
+		return "BECH32"
+	}
+	if isP2SH(address) {
+		return "P2SH"
+	}
+	if isP2PKH(address) {
+		return "P2PKH"
+	}
+	return "unknown"
+}
+
+func (btc *BTC) LockBtc(amount float64) error {
+	utxos, err := btc.c.ListUnspent()
+	if err != nil {
+		return err
+	}
+
+	var txInputs []*wire.OutPoint
+	var totalAmount float64
+	for _, utxo := range utxos {
+		if totalAmount >= amount {
+			break
+		}
+		txIdHash, err := chainhash.NewHashFromStr(utxo.TxID)
+		if err != nil {
+			return err
+		}
+		txInputs = append(txInputs, wire.NewOutPoint(txIdHash, utxo.Vout))
+		totalAmount += utxo.Amount * BTC_TO_SATOSHI
+	}
+	if totalAmount < amount {
+		return errors.New("not enough balance")
+	}
+	return btc.c.LockUnspent(false, txInputs)
+}
+
+func (btc *BTC) UnlockBtc(amount float64) error {
+	utxos, err := btc.c.ListLockUnspent()
+	if err != nil {
+		return err
+	}
+
+	var transactionsToUnlock []*wire.OutPoint
+	var totalAmount float64
+	var txOut *btcjson.GetTxOutResult
+	for _, utxo := range utxos {
+		txOut, err = btc.c.GetTxOut(&utxo.Hash, utxo.Index, true)
+		if totalAmount >= amount {
+			break
+		}
+		transactionsToUnlock = append(transactionsToUnlock, utxo)
+		totalAmount += txOut.Value * BTC_TO_SATOSHI
+	}
+	return btc.c.LockUnspent(true, transactionsToUnlock)
+}
+
+func (btc *BTC) GetBlockHeaderHashByTx(txHash string) ([32]byte, error) {
+	blockHash, err := btc.getBlockHash(txHash)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	result := toBytes32(blockHash)
+	return result, nil
+}
+
+func toBytes32(hash *chainhash.Hash) [32]byte {
+	var result [32]byte
+	for i := 0; i < chainhash.HashSize/2; i++ {
+		result[i], result[chainhash.HashSize-1-i] = hash[chainhash.HashSize-1-i], hash[i]
+	}
+	return result
+}
+
+func DecodeBTCAddress(address string) ([]byte, error) {
+	var decoded []byte
+	var err error
+	if isBech32(address) {
+		decoded, err = DecodeBech32BTCAddress(address)
+	} else {
+		decoded, err = DecodeBTCAddressWithVersion(address)
+	}
+	if err != nil {
+		err = fmt.Errorf("error decoding BTC address: %v", err)
+	}
+	return decoded, err
+}
+
+func (btc *BTC) getTxInputs(amount uint64) ([]*wire.TxIn, error) {
+	utxos, err := btc.c.ListUnspent()
+	if err != nil {
+		return nil, err
+	}
+
+	var txInputs []*wire.TxIn
+	var totalAmount float64
+	for _, utxo := range utxos {
+		if totalAmount >= float64(amount) {
+			break
+		} else if !utxo.Spendable {
+			continue
+		}
+
+		txIdHash, err := chainhash.NewHashFromStr(utxo.TxID)
+		if err != nil {
+			return nil, err
+		}
+		networkOutpoint, err := btc.c.GetTxOut(txIdHash, utxo.Vout, true)
+		scriptPk, err := hex.DecodeString(networkOutpoint.ScriptPubKey.Hex)
+		if err != nil {
+			return nil, err
+		}
+		outpoint := wire.NewOutPoint(txIdHash, utxo.Vout)
+		txInputs = append(txInputs, wire.NewTxIn(outpoint, scriptPk, nil))
+
+		totalAmount += utxo.Amount * BTC_TO_SATOSHI
+	}
+	if totalAmount < float64(amount) {
+		return nil, errors.New("not enough balance")
+	}
+	return txInputs, nil
+}
+
+func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error) {
+	amountWithFees := btc.GetAmauntWithFeesIncluded(math.Ceil(float64(amount)))
+	inputs, err := btc.getTxInputs(uint64(amountWithFees))
+	if err != nil {
+		return "", err
+	}
+
+	tx := wire.NewMsgTx(wire.TxVersion)
+	for _, input := range inputs {
+		tx.AddTxIn(input)
+	}
+
+	btcAddress, err := btcutil.DecodeAddress(address, &btc.params)
+	if err != nil {
+		return "", err
+	}
+	pkScript, err := txscript.PayToAddrScript(btcAddress)
+	if err != nil {
+		return "", err
+	}
+	tx.AddTxOut(wire.NewTxOut(int64(amount), pkScript)) // in satoshis
+
+	opReturnScript, err := txscript.NullDataScript(opReturnContent)
+	if err != nil {
+		return "", err
+	}
+	tx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+
+	signedTx, _, err := btc.c.SignRawTransactionWithWallet(tx)
+	if err != nil {
+		return "", err
+	}
+
+	txHash, err := btc.c.SendRawTransaction(signedTx, false)
+	if err != nil {
+		return "", err
+	}
+	return txHash.String(), nil
+}
+
+func (btc *BTC) GetAmauntWithFeesIncluded(amount float64) float64 {
+	return btc.getAmountFee(amount) + amount
+}
+
+func (btc *BTC) getAmountFee(amount float64) float64 {
+	return btc.TxFeePercentage * amount
 }

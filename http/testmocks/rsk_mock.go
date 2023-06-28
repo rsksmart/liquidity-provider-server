@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +21,35 @@ import (
 type RskMock struct {
 	mock.Mock
 	QuoteHash string
+}
+
+func (m *RskMock) GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error) {
+	args := m.Called(fromBlock, toBlock)
+	return args.Get(0).([]*pegin.PunishmentEvent), args.Error(1)
+}
+
+func (m *RskMock) GetProviderIds() (providerList *big.Int, err error) {
+	args := m.Called()
+	return args.Get(0).(*big.Int), args.Error(1)
+}
+
+func (m *RskMock) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error) {
+	args := m.Called(fromBlock, toBlock)
+	return args.Get(0).([]*pegout.DepositEvent), args.Error(1)
+}
+
+func (m *RskMock) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
+	return m.Called(opts, _providerId, _status).Error(0)
+}
+
+func (m *RskMock) GetActiveRedeemScript() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *RskMock) IsEOA(address string) (bool, error) {
+	args := m.Called(address)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *RskMock) GetMinimumLockTxValue() (*big.Int, error) {
@@ -38,13 +68,26 @@ func (m *RskMock) GetAvailableLiquidity(addr string) (*big.Int, error) {
 }
 
 func (m *RskMock) GetCollateral(addr string) (*big.Int, *big.Int, error) {
-	m.Called(addr)
-	return big.NewInt(10), big.NewInt(10), nil
+	arg := m.Called(addr)
+
+	var (
+		collateral *big.Int
+		minimum    *big.Int
+	)
+
+	if arg.Get(0) != nil {
+		collateral = arg.Get(0).(*big.Int)
+	}
+	if arg.Get(1) != nil {
+		minimum = arg.Get(1).(*big.Int)
+	}
+
+	return collateral, minimum, arg.Error(2)
 }
 
-func (m *RskMock) RegisterProvider(opts *bind.TransactOpts) error {
-	m.Called(opts)
-	return nil
+func (m *RskMock) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _type string) (int64, error) {
+	args := m.Called(opts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, _type)
+	return int64(args.Int(0)), args.Error(1)
 }
 
 func (m *RskMock) AddCollateral(opts *bind.TransactOpts) error {
@@ -62,22 +105,22 @@ func (m *RskMock) GetChainId() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.LiquidityBridgeContractQuote, error) {
+func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error) {
 	m.Called(q)
-	return bindings.LiquidityBridgeContractQuote{}, nil
+	return bindings.QuotesPeginQuote{}, nil
 }
 
-func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
 	m.Called(opt, q, signature, tx, pmt, height)
 	return nil, nil
 }
 
-func (m *RskMock) RegisterPegInWithoutTx(q bindings.LiquidityBridgeContractQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
+func (m *RskMock) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
 	m.Called(q, signature, tx, pmt, height)
 	return nil
 }
 
-func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.LiquidityBridgeContractQuote) (*gethTypes.Transaction, error) {
+func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Transaction, error) {
 	m.Called(opt, q)
 	return nil, nil
 }
@@ -147,28 +190,52 @@ func (m *RskMock) FetchFederationInfo() (*connectors.FedInfo, error) {
 }
 
 func (m *RskMock) AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w connectors.QuotePegOutWatcher, cb func(w connectors.QuotePegOutWatcher)) error {
-	return nil
+	args := m.Called(hash, interval, exp, w, cb)
+	return args.Error(0)
+}
+
+func (m *RskMock) GetBridgeAddress() common.Address {
+	return common.Address{}
+}
+
+func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.QuotesPegOutQuote, error) {
+	return bindings.QuotesPegOutQuote{}, nil
+}
+
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
+	return nil, nil
 }
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
 	return m.QuoteHash, nil
 }
 
-func (m *RskMock) GetProviders() ([]bindings.LiquidityBridgeContractProvider, error) {
-	m.Called()
-
+func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.QuotesPegOutQuote, []byte) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
-func (m *RskMock) GetActivePowpegRedeemScript() ([]byte, error) {
-	return nil, nil
+func (m *RskMock) SendRbtc(bind.SignerFn, string, string, uint64) error {
+	return nil
+}
+
+func (m *RskMock) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
+	args := m.Called(providerList)
+	return args.Get(0).([]bindings.LiquidityBridgeContractLiquidityProvider), args.Error(1)
 }
 
 func (m *RskMock) GetRskHeight() (uint64, error) {
 	return 0, nil
 }
 
-func (b *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
-	b.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
+func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+	m.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	return "", nil
+}
+
+func (m *RskMock) WithdrawCollateral(opts *bind.TransactOpts) error {
+	return m.Called(opts).Error(0)
+}
+
+func (m *RskMock) Resign(opt *bind.TransactOpts) error {
+	return m.Called(opt).Error(0)
 }

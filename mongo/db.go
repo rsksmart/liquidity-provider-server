@@ -17,6 +17,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const queryTimeout = 3 * time.Second
+
 type DBConnector interface {
 	CheckConnection() error
 	Close() error
@@ -28,11 +30,20 @@ type DBConnector interface {
 	DeleteExpiredQuotes(expTimestamp int64) error
 	UpdateRetainedQuoteState(hash string, oldState types.RQState, newState types.RQState) error
 	GetLockedLiquidity() (*types.Wei, error)
-	InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error
+	InsertPegOutQuote(id string, q *pegout.Quote) error
 	GetPegOutQuote(quoteHash string) (*pegout.Quote, error)
 	RetainPegOutQuote(entry *pegout.RetainedQuote) error
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
+	GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
+	UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error
+	GetLockedLiquidityPegOut() (uint64, error)
+	GetProviders() ([]*ProviderAddress, error)
+	GetProvider(uint64) (*ProviderAddress, error)
+	InsertProvider(id int64,details types.ProviderRegisterRequest, address string, providerType string) error
+	ResetProviders([]*types.GlobalProvider) error
+	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
+	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
 }
 
 type DB struct {
@@ -63,9 +74,26 @@ type PeginQuote struct {
 }
 
 type PegoutQuote struct {
-	Hash              string        `bson:"quotehash,omitempty"`
-	DerivationAddress string        `bson:"derivationAddress,omitempty"`
-	Quote             *pegout.Quote `bson:"quote,omitempty"`
+	Hash string `bson:"quotehash,omitempty"`
+
+	LBCAddr               string `bson:"lbcAddress,omitempty"`
+	LPRSKAddr             string `bson:"liquidityProviderRskAddress,omitempty"`
+	BtcRefundAddr         string `bson:"btcRefundAddress,omitempty"`
+	RSKRefundAddr         string `bson:"rskRefundAddress,omitempty"`
+	LpBTCAddr             string `bson:"lpBtcAddr,omitempty"`
+	CallFee               string `bson:"callFee,omitempty"`
+	PenaltyFee            uint64 `bson:"penaltyFee,omitempty"`
+	Nonce                 int64  `bson:"nonce,omitempty"`
+	DepositAddr           string `bson:"depositAddr,omitempty"`
+	GasLimit              uint32 `bson:"gasLimit,omitempty"`
+	Value                 string `bson:"value,omitempty"`
+	AgreementTimestamp    uint32 `bson:"agreementTimestamp,omitempty"`
+	DepositDateLimit      uint32 `bson:"depositDateLimit,omitempty"`
+	DepositConfirmations  uint16 `bson:"depositConfirmations,omitempty"`
+	TransferConfirmations uint16 `bson:"transferConfirmations,omitempty"`
+	TransferTime          uint32 `bson:"transferTime,omitempty"`
+	ExpireDate            uint32 `bson:"expireDate,omitempty"`
+	ExpireBlock           uint32 `bson:"expireBlocks,omitempty"`
 }
 
 type RetainedPeginQuote struct {
@@ -74,6 +102,18 @@ type RetainedPeginQuote struct {
 	Signature   string        `json:"signature" db:"signature"`
 	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
 	State       types.RQState `json:"state" db:"state"`
+}
+
+type ProviderAddress struct {
+	Id      int64  `bson:"id"`
+	Provider string `bson:"provider"`
+}
+
+type PegoutKeys struct {
+	QuoteHash  string `bson:"quoteHash,omitempty"`
+	Addr       string `bson:"addr,omitempty"`
+	PublicKey  []byte `bson:"publicKey,omitempty"`
+	PrivateKey []byte `bson:"privateKey,omitempty"`
 }
 
 func Connect() (*DB, error) {
@@ -215,6 +255,24 @@ func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	return nil
 }
 
+func (db *DB) GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error) {
+	log.Debug("retrieving retained pegout quotes MongoDB")
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	rows, err := coll.Find(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close(ctx)
+	var retainedQuotes []*pegout.RetainedQuote
+	if err = rows.All(ctx, &retainedQuotes); err != nil {
+		return nil, err
+	}
+	return retainedQuotes, nil
+}
+
 func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote, error) {
 	log.Debug("retrieving retained quotes MongoDB")
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
@@ -224,7 +282,6 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 		return nil, err
 	}
 	var retainedQuotes []*types.RetainedQuote
-	rows.All(context.TODO(), &retainedQuotes)
 
 	defer rows.Close(context.TODO())
 	for rows.Next(context.TODO()) {
@@ -325,21 +382,20 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 	log.Debug("retrieving locked liquidity")
 
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
-	stateFilter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
-	filter := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: stateFilter}}}}
-	rows, err := coll.Find(context.TODO(), filter)
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	rows, err := coll.Find(context.TODO(), query)
 	if err != nil {
 		return nil, err
 	}
-
 	var lockedLiq = types.NewWei(0)
+
 	for rows.Next(context.TODO()) {
-		var reqLiqString string
-		err = rows.Decode(&reqLiqString)
-		if err != nil {
+		var rq RetainedPeginQuote
+		if err = rows.Decode(&rq); err != nil {
 			return nil, err
 		}
-		reqLiqInt, err := strconv.ParseInt(reqLiqString, 10, 64)
+		reqLiqInt, err := strconv.ParseInt(rq.ReqLiq, 10, 64)
 
 		if err != nil {
 			return nil, err
@@ -350,19 +406,109 @@ func (db *DB) GetLockedLiquidity() (*types.Wei, error) {
 		lockedLiq.Add(lockedLiq, reqLiq)
 	}
 
-	log.Debug("Loked Liquidity: ", lockedLiq.String())
-
 	return lockedLiq, nil
 }
+func (db *DB) ResetProviders(providers []*types.GlobalProvider) error {
+	coll := db.db.Database("flyover").Collection("providers")
+	_, err := coll.DeleteMany(context.Background(), bson.M{})
+	if err != nil {
+		return fmt.Errorf("failed to delete existing providers: %w", err)
+	}
 
-func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote, derivationAddress string) error {
+	// Insert the new providers
+	for _, provider := range providers {
+		_, err := coll.InsertOne(context.Background(), provider)
+		if err != nil {
+			return fmt.Errorf("failed to insert provider %s: %w", provider.Name, err)
+		}
+	}
+
+	log.Debug("Providers reset and updated successfully")
+	return nil
+}
+type InsertProvider struct {
+	Id      int64  `bson:"id"`
+	Provider string `bson: "provider"`
+	types.ProviderRegisterRequest `bson:",inline"`
+	ProviderType string `bson: "providerType"`
+}
+
+func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error {
+	log.Debug("inserting provider: ", id)
+	coll := db.db.Database("flyover").Collection("providers")
+	filter := bson.M{"id": id}
+
+	newProvider := InsertProvider{
+		Id: id,
+		Provider: address,
+		ProviderRegisterRequest  : details,
+		ProviderType: providerType,
+	} 
+
+	update := bson.M{"$set": newProvider}
+	opts := options.Update().SetUpsert(true)
+	_, err := coll.UpdateOne(context.Background(), filter, update, opts)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (db *DB) GetProvider(providerId uint64) (*ProviderAddress, error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	var result ProviderAddress
+	err := coll.FindOne(context.TODO(), bson.M{"id": providerId}).Decode(&result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (db *DB) GetProviders() ([]*ProviderAddress, error) {
+	coll := db.db.Database("flyover").Collection("providers")
+	var results []*ProviderAddress
+	cur, err := coll.Find(context.TODO(), bson.D{{}})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.TODO())
+	for cur.Next(context.TODO()) {
+		var result ProviderAddress
+		err := cur.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, &result)
+	}
+	if err := cur.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote) error {
 	log.Debug("inserting pegout_quote{", id, "}", ": ", q)
 	coll := db.db.Database("flyover").Collection("pegoutQuote")
 
 	quoteToInsert := &PegoutQuote{
-		Hash:              id,
-		DerivationAddress: derivationAddress,
-		Quote:             q,
+		Hash:                  id,
+		LBCAddr:               q.LBCAddr,
+		LPRSKAddr:             q.LPRSKAddr,
+		BtcRefundAddr:         q.BtcRefundAddr,
+		RSKRefundAddr:         q.RSKRefundAddr,
+		LpBTCAddr:             q.LpBTCAddr,
+		CallFee:               q.CallFee.String(),
+		PenaltyFee:            q.PenaltyFee,
+		Nonce:                 q.Nonce,
+		DepositAddr:           q.DepositAddr,
+		GasLimit:              q.GasLimit,
+		Value:                 q.Value.String(),
+		AgreementTimestamp:    q.AgreementTimestamp,
+		DepositDateLimit:      q.DepositDateLimit,
+		DepositConfirmations:  q.DepositConfirmations,
+		TransferConfirmations: q.TransferConfirmations,
+		TransferTime:          q.TransferTime,
+		ExpireDate:            q.ExpireDate,
+		ExpireBlock:           q.ExpireBlock,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToInsert)
@@ -387,7 +533,37 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 		return nil, err
 	}
 
-	return result.Quote, nil
+	callFee, err := strconv.ParseInt(result.CallFee, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	valueQuote, err := strconv.ParseInt(result.Value, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	quote := pegout.Quote{
+		LBCAddr:               result.LBCAddr,
+		LPRSKAddr:             result.LPRSKAddr,
+		BtcRefundAddr:         result.BtcRefundAddr,
+		RSKRefundAddr:         result.RSKRefundAddr,
+		LpBTCAddr:             result.LpBTCAddr,
+		CallFee:               types.NewWei(callFee),
+		PenaltyFee:            result.PenaltyFee,
+		Nonce:                 result.Nonce,
+		DepositAddr:           result.DepositAddr,
+		GasLimit:              result.GasLimit,
+		Value:                 types.NewWei(valueQuote),
+		AgreementTimestamp:    result.AgreementTimestamp,
+		DepositDateLimit:      result.DepositDateLimit,
+		DepositConfirmations:  result.DepositConfirmations,
+		TransferConfirmations: result.TransferConfirmations,
+		TransferTime:          result.TransferTime,
+		ExpireDate:            result.ExpireDate,
+		ExpireBlock:           result.ExpireBlock,
+	}
+
+	return &quote, nil
 }
 
 func (db *DB) RetainPegOutQuote(entry *pegout.RetainedQuote) error {
@@ -426,7 +602,7 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	log.Debugf("updating state from %v to %v for retained quote: %v", oldState, newState, hash)
 
 	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
-	filter := bson.D{primitive.E{Key: "quoteHash", Value: hash}, primitive.E{Key: "state", Value: oldState}}
+	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}, primitive.E{Key: "state", Value: oldState}}
 	update := bson.D{primitive.E{Key: "$set", Value: bson.D{primitive.E{Key: "state", Value: newState}}}}
 	result, err := coll.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
@@ -438,4 +614,91 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	}
 
 	return nil
+}
+
+func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}, primitive.E{Key: "state", Value: types.RQStateWaitingForDeposit}}
+	update := bson.D{
+		primitive.E{Key: "$set", Value: bson.D{
+			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
+			primitive.E{Key: "deposit_block_number", Value: depositBlockNumber},
+		}},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount != 1 {
+		return fmt.Errorf("error updating confirmed quote %v on mongoBD", hash)
+	}
+
+	return nil
+}
+
+func (db *DB) SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error {
+	log.Debug("inserting deposit address keys{", addr, "}")
+	coll := db.db.Database("flyover").Collection("pegoutKeys")
+
+	depositAddressKeys := &PegoutKeys{
+		QuoteHash:  quoteHash,
+		Addr:       addr,
+		PublicKey:  pubKey,
+		PrivateKey: privateKey,
+	}
+
+	_, err := coll.InsertOne(context.TODO(), depositAddressKeys)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetAddressKeys(quoteHash string) (*PegoutKeys, error) {
+	log.Debug("retrieving keys: ", quoteHash)
+
+	coll := db.db.Database("flyover").Collection("pegoutKeys")
+	filter := bson.D{primitive.E{Key: "quoteHash", Value: quoteHash}}
+	var result PegoutKeys
+	err := coll.FindOne(context.TODO(), filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (db *DB) GetLockedLiquidityPegOut() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+
+	coll := db.db.Database("flyover").Collection("retainedPegoutQuote")
+	filter := []types.RQState{types.RQStateWaitingForDeposit, types.RQStateCallForUserFailed}
+	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: filter}}}}
+	rows, err := coll.Find(ctx, query)
+
+	var quotes []pegout.RetainedQuote
+	if err != nil {
+		return 0, err
+	}
+
+	if err = rows.All(ctx, &quotes); err != nil {
+		return 0, err
+	}
+
+	var lockedLiquidity uint64 = 0
+	for _, quote := range quotes {
+		lockedLiquidity += quote.ReqLiq
+	}
+
+	return lockedLiquidity, nil
 }

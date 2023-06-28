@@ -2,9 +2,9 @@ package testmocks
 
 import (
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -12,8 +12,29 @@ type BTCClientMock struct {
 	mock.Mock
 }
 
+func (B *BTCClientMock) LockUnspent(shouldUnlock bool, txToUnlock []*wire.OutPoint) error {
+	args := B.Called(shouldUnlock, txToUnlock)
+	return args.Error(0)
+}
+
+func (B *BTCClientMock) ListUnspent() ([]btcjson.ListUnspentResult, error) {
+	args := B.Called()
+	return args.Get(0).([]btcjson.ListUnspentResult), args.Error(1)
+}
+
+func (B *BTCClientMock) ListLockUnspent() ([]*wire.OutPoint, error) {
+	args := B.Called()
+	return args.Get(0).([]*wire.OutPoint), args.Error(1)
+}
+
+func (B *BTCClientMock) GetTxOut(txHash *chainhash.Hash, index uint32, mempool bool) (*btcjson.GetTxOutResult, error) {
+	args := B.Called(txHash, index, mempool)
+	return args.Get(0).(*btcjson.GetTxOutResult), args.Error(1)
+}
+
 func (B *BTCClientMock) SendToAddress(address btcutil.Address, amount btcutil.Amount) (*chainhash.Hash, error) {
-	panic("implement me")
+	args := B.Called(address, amount)
+	return args.Get(0).(*chainhash.Hash), args.Error(1)
 }
 
 func (B *BTCClientMock) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
@@ -53,4 +74,9 @@ func (B *BTCClientMock) GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, 
 
 func (B *BTCClientMock) Disconnect() {
 	B.Called()
+}
+
+func (B *BTCClientMock) GetBalance(address string) (btcutil.Amount, error) {
+	args := B.Called(address)
+	return args.Get(0).(btcutil.Amount), args.Error(1)
 }
