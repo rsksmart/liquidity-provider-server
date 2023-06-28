@@ -119,6 +119,7 @@ services:
       - RSKJ_CONNECTION_STRING
       - BTC_NETWORK
       - BTC_TX_FEE
+      - BTC_TX_FEE_PERCENTAGE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD
