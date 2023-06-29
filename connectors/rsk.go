@@ -49,7 +49,7 @@ const (
 	// BridgeConversionGasLimit see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
 	BridgeConversionGasLimit = 100000
 	// BridgeConversionGasPrice see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
-	BridgeConversionGasPrice = 6000000000
+	BridgeConversionGasPrice = 60000000
 
 	newAccountGasCost = uint64(25000)
 )
