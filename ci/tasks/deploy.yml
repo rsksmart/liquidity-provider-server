@@ -24,6 +24,7 @@ run:
     ssh_deploy_keyfile=$(pwd)/ssh_deploy_key
     flyover_ssh_keyfile=$(pwd)/flyover_ssh_key
     out_message_file=$(pwd)/out/message.txt
+    
     apk add -q --no-progress openssh ansible gnupg git jq curl
     mkdir -p ~/.ssh/
     touch ~/.ssh/known_hosts
@@ -40,6 +41,7 @@ run:
     echo "$SSH_DEPLOY_KEY" > $ssh_deploy_keyfile
     echo "$FLYOVER_SSH_KEY" > $flyover_ssh_keyfile
     umask 022
+    
     eval $(ssh-agent)
     ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
     
