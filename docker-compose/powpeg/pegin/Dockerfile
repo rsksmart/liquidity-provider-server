@@ -5,8 +5,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/powpeg
 
-ARG POWPEG_RELEASE="HOP"
-ARG POWPEG_VERSION="4.3.0.1"
+ARG POWPEG_RELEASE="FINGERROOT"
+ARG POWPEG_VERSION="5.0.0.0"
 
 RUN gitrev="${POWPEG_RELEASE}-${POWPEG_VERSION}" && \
     git init && \
