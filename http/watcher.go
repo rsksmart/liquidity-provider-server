@@ -58,7 +58,7 @@ type BTCAddressPegOutWatcher struct {
 
 const (
 	pegInGasLim           = 1500000
-	CFUExtraGas           = 150000
+	CFUExtraGas           = 180000
 	WatcherClosedError    = "watcher is closed; cannot handle OnNewConfirmation; hash: %v"
 	WatcherOnExpireError  = "watcher is closed; cannot handle OnExpire; hash: %v"
 	TimeExpiredError      = "time has expired for quote: %v"
@@ -295,7 +295,7 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 
 	err = w.rsk.RegisterPegInWithoutTx(q, w.signature, rawTx, pmt, big.NewInt(bh))
 	if err != nil {
-		if strings.Contains(err.Error(), "Failed to validate BTC transaction") {
+		if strings.Contains(err.Error(), "LBC031") {
 			log.Debugf("bridge failed to validate BTC transaction. retrying on next confirmation. tx: %v", txHash)
 			return nil // allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		}
