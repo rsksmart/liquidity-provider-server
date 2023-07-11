@@ -404,7 +404,7 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
+	// TODO comment until we decide if keep or remove r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
@@ -1474,6 +1474,7 @@ type SenBTCResponse struct {
 	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
 }
 
+/* TODO comment until we decide if keep or remove
 // @Title Send BTC
 // @Description Sends BTC
 // @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
@@ -1513,6 +1514,7 @@ func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+*/
 
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required" example:"100000000000" description:"Amount to add to the collateral"`
