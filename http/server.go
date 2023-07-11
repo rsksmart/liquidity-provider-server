@@ -9,9 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
 	"strconv"
+
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 
 	"github.com/rsksmart/liquidity-provider-server/account"
 
@@ -78,7 +79,9 @@ type LiquidityProviderList struct {
 	LBCAddr                     string `env:"LBC_ADDR"`
 	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
 	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
-	LpsAddress                  string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddress                	string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddress_pegin            string `env:"LIQUIDITY_PEGIN_PROVIDER_RSK_ADDR"`
+	LpsAddress_pegout           string `env:"LIQUIDITY_PEGOUT_PROVIDER_RSK_ADDR"`
 }
 
 type ConfigData struct {
