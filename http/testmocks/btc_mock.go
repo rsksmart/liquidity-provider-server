@@ -100,7 +100,3 @@ func (b *BtcMock) BuildMerkleBranch(txHash string) (*connectors.MerkleBranch, er
 func (b *BtcMock) BuildMerkleBranchByEndpoint(txHash string, btcAddress string) (*connectors.MerkleBranch, error) {
 	return nil, nil
 }
-
-func (b *BtcMock) SendBtc(address string, amount uint64) (string, error) {
-	return "", nil
-}

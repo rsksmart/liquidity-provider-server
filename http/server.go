@@ -404,7 +404,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	// TODO comment until we decide if keep or remove r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
@@ -1465,56 +1464,9 @@ type RegisterPegOutReg struct {
 	signature string
 }
 
-type SenBTCRequest struct {
-	Address string `json:"address" example:"0x0" description:"Address to send BTC to"`
-	Amount  uint   `json:"amount" example:"100000000000" description:"Amount to send BTC to address"`
-}
-
 type SenBTCResponse struct {
 	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
 }
-
-/* TODO comment until we decide if keep or remove
-// @Title Send BTC
-// @Description Sends BTC
-// @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
-// @Success  200  object SenBTCResponse
-// @Route /pegout/sendBTC [post]
-func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	enableCors(&w)
-	payload := SenBTCRequest{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&payload)
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
-		return
-	}
-
-	txHash, err := s.btc.SendBtc(payload.Address, uint64(payload.Amount))
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to sendAddress", http.StatusBadRequest)
-		return
-	}
-
-	response := &SenBTCResponse{
-		TxHash: txHash,
-	}
-
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
-}
-*/
 
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required" example:"100000000000" description:"Amount to add to the collateral"`
