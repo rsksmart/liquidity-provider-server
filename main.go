@@ -100,26 +100,27 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, *cfg.Provider, peginAccountProvider)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
-		Name:                    cfg.PeginProviderName,
-		Fee:                     cfg.PeginFee,
-		QuoteExpiration:         cfg.PeginQuoteExp,
-		MinTransactionValue:     cfg.PeginMinTransactValue,
-		MaxTransactionValue:     cfg.PeginMaxTransactValue,
-		ApiBaseUrl:              cfg.BaseURL,
-		Status:                  true,
+		Name:                cfg.PeginProviderName,
+		Fee:                 cfg.PeginFee,
+		QuoteExpiration:     cfg.PeginQuoteExp,
+		MinTransactionValue: cfg.PeginMinTransactValue,
+		MaxTransactionValue: cfg.PeginMaxTransactValue,
+		ApiBaseUrl:          cfg.BaseURL,
+		Status:              true,
 	}
+
 	err = srv.AddProvider(lp, req)
 	if err != nil {
 		log.Fatalf("error registering local provider: %v", err)
 	}
 	req2 := types.ProviderRegisterRequest{
-		Name:                    cfg.PegoutProviderName,
-		Fee:                     cfg.PegoutFee,
-		QuoteExpiration:         cfg.PegoutQuoteExp,
-		MinTransactionValue:     cfg.PegoutMinTransactValue,
-		MaxTransactionValue:     cfg.PegoutMaxTransactValue,
-		ApiBaseUrl:              cfg.BaseURL,
-		Status:                  true,
+		Name:                cfg.PegoutProviderName,
+		Fee:                 cfg.PegoutFee,
+		QuoteExpiration:     cfg.PegoutQuoteExp,
+		MinTransactionValue: cfg.PegoutMinTransactValue,
+		MaxTransactionValue: cfg.PegoutMaxTransactValue,
+		ApiBaseUrl:          cfg.BaseURL,
+		Status:              true,
 	}
 	err = srv.AddPegOutProvider(lpPegOut, req2)
 
