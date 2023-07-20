@@ -125,6 +125,7 @@ type RSKConnector interface {
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
 	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents, err error)
+	IsOperational(opts *bind.CallOpts, address common.Address) (status bool, err error)
 }
 
 type RSKClient interface {
@@ -344,6 +345,14 @@ func (rsk *RSK) GetLbcBalance(addr string) (*big.Int, error) {
 		time.Sleep(rpcSleep)
 	}
 	return nil, fmt.Errorf("error getting %v balance: %v", addr, err)
+}
+
+func (rsk *RSK) IsOperational(opts *bind.CallOpts, address common.Address) (status bool, err error) {
+	stat, err := rsk.lbc.IsOperational(opts, address)
+	if err != nil {
+		return false, err
+	}
+	return stat, nil
 }
 
 func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {

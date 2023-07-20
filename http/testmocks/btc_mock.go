@@ -93,6 +93,18 @@ func (b *BtcMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, userBtcR
 	return "", nil
 }
 
+func (b *BtcMock) SendBtc(address string, amount uint64) (string, error) {
+	return "", nil
+}
+
+func (b *BtcMock) SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error) {
+	return "", nil
+}
+
+func (b *BtcMock) GetAmauntWithFeesIncluded(amount float64) float64 {
+	return 0
+}
+
 func (b *BtcMock) BuildMerkleBranch(txHash string) (*connectors.MerkleBranch, error) {
 	return nil, nil
 }

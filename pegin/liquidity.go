@@ -177,17 +177,16 @@ func sortedConfirmations(m map[int]uint16) []int {
 	return keys
 }
 
-func GetPeginProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
+func GetPeginProviderByAddress(liquidityProvider LiquidityProvider, addr string) LiquidityProvider {
+	if liquidityProvider.Address() == addr {
+		return liquidityProvider
 	}
+
 	return nil
 }
 
-func GetPeginProviderTransactOpts(liquidityProviders []LiquidityProvider, address string) (*bind.TransactOpts, error) {
-	lp := GetPeginProviderByAddress(liquidityProviders, address)
+func GetPeginProviderTransactOpts(liquidityProvider LiquidityProvider, address string) (*bind.TransactOpts, error) {
+	lp := GetPeginProviderByAddress(liquidityProvider, address)
 	if lp == nil {
 		return nil, errors.New("missing liquidity provider")
 	}
