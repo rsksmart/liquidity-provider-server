@@ -459,8 +459,6 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rs/cors v1.7.0 h1:+88SsELBHx5r+hZ8TCkggzSstaWNbDvThkVK8H6f9ik=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
-github.com/rsksmart/liquidity-provider v0.0.0-20230517145259-4a21c1518175 h1:0IWk+Ui5oFzkDrQG+onIIvMwYTsey2WhbPhhrheRORw=
-github.com/rsksmart/liquidity-provider v0.0.0-20230517145259-4a21c1518175/go.mod h1:xZgVfirTQcPjJuB/J/lo21QarRYsPoI/NOpPdbzdhtw=
 github.com/rsksmart/liquidity-provider v0.0.0-20230608123854-e7e7c30a2902 h1:OqfxCg/2yc2HJzxho/gp6WBg8TLiSpVjhZcyAe+CkdQ=
 github.com/rsksmart/liquidity-provider v0.0.0-20230608123854-e7e7c30a2902/go.mod h1:xZgVfirTQcPjJuB/J/lo21QarRYsPoI/NOpPdbzdhtw=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
