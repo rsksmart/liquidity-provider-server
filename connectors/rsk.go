@@ -1,18 +1,13 @@
 package connectors
 
 import (
-	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -43,7 +38,6 @@ const (
 	retries    int = 3
 	rpcSleep       = 5 * time.Second
 	rpcTimeout     = 300 * time.Second
-	ethSleep       = 300 * time.Second
 	ethTimeout     = 300 * time.Minute
 
 	// BridgeConversionGasLimit see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
@@ -91,7 +85,7 @@ type RSKConnector interface {
 	HashPegOutQuote(q *pegout.Quote) (string, error)
 	ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error)
 	ParsePegOutQuote(q *pegout.Quote) (bindings.QuotesPegOutQuote, error)
-	RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error)
+	RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Receipt, error)
 	GetBridgeAddress() common.Address
 	GetFedSize() (int, error)
 	GetFedThreshold() (int, error)
@@ -100,14 +94,13 @@ type RSKConnector interface {
 	GetActiveFederationCreationBlockHeight() (int, error)
 	GetLBCAddress() string
 	GetRequiredBridgeConfirmations() int64
-	CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Transaction, error)
+	CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Receipt, error)
 	RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, newInt *big.Int) error
 	GetCollateral(addr string) (*big.Int, *big.Int, error)
 	RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, _providerType string) (int64, error)
 	AddCollateral(opts *bind.TransactOpts) error
 	GetLbcBalance(addr string) (*big.Int, error)
 	GetAvailableLiquidity(addr string) (*big.Int, error)
-	GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error)
 	GetMinimumLockTxValue() (*big.Int, error)
 	FetchFederationInfo() (*FedInfo, error)
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
@@ -120,7 +113,7 @@ type RSKConnector interface {
 	WithdrawCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
 	SendRbtc(opts *bind.TransactOpts, to common.Address) error
-	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error)
+	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) error
 	GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEvent, error)
 	GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error)
 	GetProviderIds() (providerList *big.Int, err error)
@@ -417,110 +410,40 @@ func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	}
 	return col, min, nil
 }
-func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
-	var err error
-	var tx *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.SetProviderStatus(opts, _providerId, _status)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
-	if tx == nil || err != nil {
-		return fmt.Errorf("error changing provider status: %v", err)
-	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	s, err := rsk.GetTxStatus(ctx, tx)
-	if err != nil || !s {
-		log.Debug("Transaction hash: ", tx.Hash())
-		return fmt.Errorf("error getting tx receipt while registering provider: %v", err)
+func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.SetProviderStatus(opts, _providerId, _status)
+	})
+
+	if receipt == nil || err != nil {
+		return fmt.Errorf("error changing provider status: %v", err)
 	}
 	return err
 }
+
 func (rsk *RSK) RegisterProvider(opts *bind.TransactOpts, _name string, _fee *big.Int, _quoteExpiration *big.Int, _minTransactionValue *big.Int, _maxTransactionValue *big.Int, _apiBaseUrl string, _status bool, providerType string) (int64, error) {
-	var tx *gethTypes.Transaction
-	var eventChannel chan *bindings.LiquidityBridgeContractRegister
-	var subscription event.Subscription
-	var err error
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, providerType)
+	})
 
-	if rsk.twoWayConnection {
-		eventChannel = make(chan *bindings.LiquidityBridgeContractRegister)
-		subscription, err = rsk.lbc.WatchRegister(&bind.WatchOpts{}, eventChannel, []common.Address{opts.From})
-		defer func() { close(eventChannel); subscription.Unsubscribe() }()
-	}
-
-	if err != nil {
-		return 0, err
-	}
-
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.Register(opts, _name, _fee, _quoteExpiration, _minTransactionValue, _maxTransactionValue, _apiBaseUrl, _status, providerType)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
-	if tx == nil || err != nil {
+	if receipt == nil || err != nil {
 		return 0, fmt.Errorf("error registering provider: %v", err)
 	}
-
-	if rsk.twoWayConnection {
-		return rsk.waitForRegistration(eventChannel, subscription, opts)
-	} else {
-		return rsk.registrationPolling(tx)
-	}
-}
-
-func (rsk *RSK) waitForRegistration(eventChannel <-chan *bindings.LiquidityBridgeContractRegister, eventSubscription event.Subscription, operationOpts *bind.TransactOpts) (int64, error) {
-	for {
-		select {
-		case event := <-eventChannel:
-			if bytes.Equal(event.From.Bytes(), operationOpts.From.Bytes()) {
-				log.Debugf("Detected provider registration for %s", event.From.String())
-				return event.Id.Int64(), nil
-			}
-		case err := <-eventSubscription.Err():
-			return 0, err
-		}
-	}
-}
-
-func (rsk *RSK) registrationPolling(tx *gethTypes.Transaction) (int64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	s, err := rsk.GetTxReceipt(ctx, tx)
-	if err != nil || s == nil || s.Logs == nil || len(s.Logs) == 0 {
-		return 0, fmt.Errorf("error getting tx receipt while registering provider: %v", err)
-	}
-	registerEvent, err := rsk.lbc.ParseRegister(*s.Logs[0])
+	registerEvent, err := rsk.lbc.ParseRegister(*receipt.Logs[0])
 	if err != nil {
 		return 0, err
 	}
-	return registerEvent.Id.Int64(), err
+	return registerEvent.Id.Int64(), nil
 }
 
 func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
-	var err error
-	var tx *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.AddCollateral(opts)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
-	if tx == nil || err != nil {
-		return fmt.Errorf("error adding collateral: %v", err)
-	}
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.AddCollateral(opts)
+	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-	s, err := rsk.GetTxStatus(ctx, tx)
-	if err != nil || !s {
-		return fmt.Errorf("error getting tx status while adding collateral: %v", err)
+	if receipt == nil || err != nil {
+		return fmt.Errorf("error adding collateral: %v", err)
 	}
 	return nil
 }
@@ -744,58 +667,41 @@ func (rsk *RSK) GetActiveFederationCreationBlockHeight() (int, error) {
 func (rsk *RSK) GetRequiredBridgeConfirmations() int64 {
 	return rsk.requiredBridgeConfirmations
 }
+
 func (rsk *RSK) GetLBCAddress() string {
 	return rsk.lbcAddress.String()
 }
 
-func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Transaction, error) {
-	var err error
-	var tx *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.CallForUser(opt, q)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
+func (rsk *RSK) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Receipt, error) {
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.CallForUser(opt, q)
+	})
 
-	if tx == nil && err != nil {
-		return nil, fmt.Errorf("error calling callForUser: %v", err)
+	if receipt == nil && err != nil {
+		return receipt, fmt.Errorf("error calling callForUser: %v", err)
 	}
-	return tx, nil
+	return receipt, nil
 }
 
-func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
-	var err error
-	var tx *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		tx, err = rsk.lbc.RefundPegOut(opts, quoteHash, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
-		if err == nil && tx != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
+func (rsk *RSK) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) error {
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.RefundPegOut(opts, quoteHash, btcRawTx, btcBlockHeaderHash, merkleBranchPath, merkleBranchHashes)
+	})
 
-	if tx == nil && err != nil {
-		return nil, fmt.Errorf("error calling RefundPegOut: %v", err)
+	if receipt == nil && err != nil {
+		return fmt.Errorf("error calling RefundPegOut: %v", err)
 	}
-	return tx, nil
+	return nil
 }
 
-func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
-	var err error
-	var t *gethTypes.Transaction
-	for i := 0; i < retries; i++ {
-		t, err = rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
-		if err == nil && t != nil {
-			break
-		}
-		time.Sleep(rpcSleep)
-	}
+func (rsk *RSK) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Receipt, error) {
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.RegisterPegIn(opt, q, signature, tx, pmt, height)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error calling registerPegIn: %v", err)
+		return receipt, fmt.Errorf("error calling registerPegIn: %v", err)
 	}
-	return t, nil
+	return receipt, nil
 }
 
 func (rsk *RSK) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) error {
@@ -806,41 +712,6 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []
 		return err
 	}
 	return nil
-}
-func (rsk *RSK) GetTxReceipt(ctx context.Context, tx *gethTypes.Transaction) (*gethTypes.Receipt, error) {
-	ticker := time.NewTicker(ethSleep)
-
-	for {
-		select {
-		case <-ticker.C:
-			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
-			defer cancel()
-			r, err := rsk.c.TransactionReceipt(cctx, tx.Hash())
-			log.Debug("Geting receipt error ", err)
-			return r, nil
-		case <-ctx.Done():
-			ticker.Stop()
-			return nil, fmt.Errorf("operation cancelled")
-		}
-	}
-}
-func (rsk *RSK) GetTxStatus(ctx context.Context, tx *gethTypes.Transaction) (bool, error) {
-	ticker := time.NewTicker(ethSleep)
-
-	for {
-		select {
-		case <-ticker.C:
-			cctx, cancel := context.WithTimeout(ctx, rpcTimeout)
-			defer cancel()
-			r, _ := rsk.c.TransactionReceipt(cctx, tx.Hash())
-			if r != nil {
-				return r.Status == 1, nil
-			}
-		case <-ctx.Done():
-			ticker.Stop()
-			return false, fmt.Errorf("operation cancelled")
-		}
-	}
 }
 
 func (rsk *RSK) GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
@@ -1242,6 +1113,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([]types.UserEvent
 
 	return eventInfos, nil
 }
+
 func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
 	opts := bind.CallOpts{}
 	providers, err := rsk.lbc.GetProviderIds(&opts)
@@ -1251,6 +1123,7 @@ func (rsk *RSK) GetProviderIds() (providerList *big.Int, err error) {
 
 	return providers, err
 }
+
 func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
 	opts := bind.CallOpts{}
 	providerIds := make([]*big.Int, len(providerList))
@@ -1266,19 +1139,11 @@ func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeCo
 }
 
 func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
-
-	tx, err := rsk.lbc.WithdrawCollateral(opts)
-	if err != nil {
-		return err
-	}
-
-	status, err := rsk.GetTxStatus(ctx, tx)
+	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.WithdrawCollateral(opts)
+	})
 
 	if err != nil {
-		return err
-	} else if !status {
 		return WithdrawCollateralError
 	} else {
 		return nil
@@ -1286,18 +1151,11 @@ func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
 }
 
 func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
-	ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-	defer cancel()
+	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.Resign(opts)
+	})
 
-	tx, err := rsk.lbc.Resign(opts)
 	if err != nil {
-		return err
-	}
-
-	status, err := rsk.GetTxStatus(ctx, tx)
-	if err != nil {
-		return err
-	} else if !status {
 		return ProviderResignError
 	} else {
 		return nil
@@ -1332,14 +1190,20 @@ func (rsk *RSK) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 	return rsk.c.SendTransaction(ctx, signedTx)
 }
 
-func decodePrivateKey(privateKeyString string) (*ecdsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privateKeyString))
-	if block == nil {
-		return nil, errors.New("failed to decode PEM block containing private key")
+func (rsk *RSK) awaitTx(function func() (*gethTypes.Transaction, error)) (*gethTypes.Receipt, error) {
+	var err error
+	for remaining := retries; remaining > 0; remaining-- {
+		tx, err := function()
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
+		receipt, err := bind.WaitMined(ctx, rsk.c, tx)
+		cancel()
+		if err == nil {
+			return receipt, nil
+		}
+		time.Sleep(rpcSleep)
 	}
-	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	return privateKey, nil
+	return nil, err
 }
