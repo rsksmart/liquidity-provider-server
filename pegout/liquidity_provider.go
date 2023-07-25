@@ -69,11 +69,9 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 	return &lp, nil
 }
 
-func GetPegoutProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
+func GetPegoutProviderByAddress(liquidityProvider LiquidityProvider, addr string) LiquidityProvider {
+	if liquidityProvider.Address() == addr {
+		return liquidityProvider
 	}
 	return nil
 }

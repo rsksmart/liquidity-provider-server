@@ -354,17 +354,6 @@ components:
           example: Provider Created Successfully
           type: string
       type: object
-    SenBTCRequest:
-      properties:
-        address:
-          description: Address to send BTC to
-          example: "0x0"
-          type: string
-        amount:
-          description: Amount to send BTC to address
-          example: 100000000000
-          type: integer
-      type: object
     SenBTCResponse:
       properties:
         txHash:
@@ -642,23 +631,6 @@ paths:
                 $ref: '#/components/schemas/QuotePegOutResponse'
           description: ""
       summary: Pegout GetQuote
-  /pegout/sendBTC:
-    post:
-      description: ' Sends BTC'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SenBTCRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SenBTCResponse'
-          description: ""
-      summary: Send BTC
   /provider/changeStatus:
     post:
       description: ' Changes the status of the provider'

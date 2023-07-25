@@ -190,17 +190,14 @@ func (w *BTCAddressPegOutWatcher) performRefundPegout(txHash string) (bool, erro
 	}
 	copy(bytes32Hash[:], quoteHash)
 
-	tx, err := w.rsk.RefundPegOut(opt, bytes32Hash, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mb.Hashes)
+	err = w.rsk.RefundPegOut(opt, bytes32Hash, btcRawTx, bhh, big.NewInt(int64(mb.Path)), mb.Hashes)
 	if err != nil && strings.Contains(err.Error(), "LBC049") {
 		return false, err
 	} else if err != nil {
 		return true, err
+	} else {
+		return false, nil
 	}
-	s, err := w.rsk.GetTxStatus(context.Background(), tx)
-	if err != nil || !s {
-		return true, err
-	}
-	return false, err
 }
 
 func (w *BTCAddressPegOutWatcher) OnExpire() {
@@ -244,19 +241,14 @@ func (w *BTCAddressWatcher) performCallForUser() error {
 		From:     q.LiquidityProviderRskAddress,
 		Signer:   w.lp.SignTx,
 	}
-	tx, err := w.rsk.CallForUser(opt, q)
-	if err != nil {
+	receipt, err := w.rsk.CallForUser(opt, q)
+	if err != nil && receipt != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
+		return fmt.Errorf("CallForUser transaction failed. hash: %v", receipt.TxHash)
+	} else if err != nil {
 		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
-	defer cancel()
-	s, err := w.rsk.GetTxStatus(ctx, tx)
-	if err != nil || !s {
-		_ = w.closeAndUpdateQuoteState(types.RQStateCallForUserFailed)
-		return fmt.Errorf("CallForUser transaction failed. hash: %v", tx.Hash())
-	}
-
 	err = w.updateQuoteState(types.RQStateCallForUserSucceeded)
 	if err != nil {
 		w.close()
@@ -302,17 +294,13 @@ func (w *BTCAddressWatcher) performRegisterPegIn(txHash string) error {
 	}
 
 	log.Debugf("calling pegin for tx %v", txHash)
-	tx, err := w.rsk.RegisterPegIn(opt, q, w.signature, rawTx, pmt, big.NewInt(bh))
-	if err != nil {
+	receipt, err := w.rsk.RegisterPegIn(opt, q, w.signature, rawTx, pmt, big.NewInt(bh))
+	if err != nil && receipt != nil {
+		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
+		return fmt.Errorf("RegisterPegin transaction failed. hash: %v", receipt.TxHash)
+	} else if err != nil {
 		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
 		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*8760) // timeout is a year
-	defer cancel()
-	s, err := w.rsk.GetTxStatus(ctx, tx)
-	if err != nil || !s {
-		_ = w.closeAndUpdateQuoteState(types.RQStateRegisterPegInFailed)
-		return fmt.Errorf("RegisterPegin transaction failed. hash: %v", tx.Hash())
 	}
 
 	err = w.updateQuoteState(types.RQStateRegisterPegInSucceeded)

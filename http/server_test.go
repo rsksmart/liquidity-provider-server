@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	mongoDB "github.com/rsksmart/liquidity-provider-server/mongo"
+	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"math"
 	"math/big"
 	"math/rand"
@@ -18,7 +19,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"github.com/rsksmart/liquidity-provider-server/storage"
 
-	"github.com/rsksmart/liquidity-provider-server/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -70,8 +70,8 @@ func (lp LiquidityPegOutProviderMock) GetCreationBlock(quote *pegout.Quote) uint
 	return 0
 }
 
-func (lp LiquidityPegOutProviderMock) GetQuote(quote *pegout.Quote, test uint64, gas uint64, gasPrice *types.Wei) (*pegout.Quote, error) {
-	return quote, nil
+func (lp LiquidityPegOutProviderMock) GetQuote(*pegout.Quote, uint64, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*pegout.Quote, error) {
+	return &pegout.Quote{}, nil
 }
 
 func (lp LiquidityPegOutProviderMock) SignTx(address common.Address, transaction *gethTypes.Transaction) (*gethTypes.Transaction, error) {
@@ -91,8 +91,8 @@ func (lp LiquidityProviderMock) Address() string {
 	return lp.address
 }
 
-func (lp LiquidityProviderMock) GetQuote(quote *pegin.Quote, _ uint64, _ *types.Wei) (*pegin.Quote, error) {
-	res := *quote
+func (lp LiquidityProviderMock) GetQuote(*pegin.Quote, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*pegin.Quote, error) {
+	res := pegin.Quote{}
 	res.CallFee = types.NewWei(0)
 	res.PenaltyFee = types.NewWei(0)
 	return &res, nil
@@ -185,7 +185,7 @@ func testGetProviderByAddress(t *testing.T) {
 	}
 
 	for _, tt := range liquidityProviders {
-		result := pegin.GetPeginProviderByAddress(liquidityProviders, tt.Address())
+		result := pegin.GetPeginProviderByAddress(liquidityProviders[0], tt.Address())
 		assert.EqualValues(t, tt.Address(), result.Address())
 	}
 }
@@ -197,7 +197,7 @@ func testGetProviderByAddressWhenNotFoundShouldReturnNull(t *testing.T) {
 	}
 
 	var nonLiquidityProviderAddress = "0xa554d96413FF72E93437C4072438302C38350EE3"
-	result := pegin.GetPeginProviderByAddress(liquidityProviders, nonLiquidityProviderAddress)
+	result := pegin.GetPeginProviderByAddress(liquidityProviders[0], nonLiquidityProviderAddress)
 	assert.Empty(t, result)
 }
 
@@ -335,7 +335,7 @@ func testGetQuoteComplete(t *testing.T) {
 			[]bindings.LiquidityBridgeContractLiquidityProvider{{MinTransactionValue: big.NewInt(1), MaxTransactionValue: big.NewInt(1000000000)}},
 			nil)
 		dbMock.On("InsertQuote", "", mock.Anything).Times(len(providerMocks)).Return(quote)
-		dbMock.On("GetProviders").Return([]*mongoDB.ProviderAddress{{Id: 1, Address: "0x123456789"}}, nil)
+		dbMock.On("GetProviders").Return([]*mongoDB.ProviderAddress{{Id: 1, Provider: "0x123456789"}}, nil)
 	}
 
 	testCases := []*struct {
@@ -645,9 +645,7 @@ func testAddCollateral(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 
-	for _, provider := range providerMocks {
-		srv.providers = append(srv.providers, provider)
-	}
+	srv.provider = providerMocks[0]
 
 	rsk.On("AddCollateral", mock.Anything).Return(nil).Once()
 	rsk.On("GetCollateral", mock.Anything).Return(big.NewInt(2), big.NewInt(4), nil).Once()
@@ -744,9 +742,7 @@ func testGetCollateral(t *testing.T) {
 	rsk := new(testmocks.RskMock)
 	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
 
-	for _, provider := range providerMocks {
-		srv.providers = append(srv.providers, provider)
-	}
+	srv.provider = providerMocks[0]
 
 	rsk.On("GetCollateral", providerMocks[0].address).Return(big.NewInt(0), big.NewInt(4), nil).Once()
 	rsk.On("GetCollateral", providerMocks[0].address).Return(nil, nil, errors.New("some error"))
@@ -813,9 +809,7 @@ func testWithdrawCollateral(t *testing.T) {
 
 	rsk := new(testmocks.RskMock)
 	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
-	for _, provider := range providerMocks {
-		srv.providers = append(srv.providers, provider)
-	}
+	srv.provider = providerMocks[0]
 
 	rsk.On("WithdrawCollateral", mock.Anything).Return(connectors.WithdrawCollateralError).Once()
 	rsk.On("WithdrawCollateral", mock.Anything).Return(errors.New("some error")).Once()
@@ -888,9 +882,8 @@ func testProviderResign(t *testing.T) {
 
 	rsk := new(testmocks.RskMock)
 	srv := New(rsk, nil, nil, cfgData, nil, providerCfgData, nil)
-	for _, provider := range providerMocks {
-		srv.providers = append(srv.providers, provider)
-	}
+
+	srv.provider = providerMocks[0]
 
 	rsk.On("Resign", mock.Anything).Return(connectors.ProviderResignError).Once()
 	rsk.On("Resign", mock.Anything).Return(errors.New("some error")).Once()

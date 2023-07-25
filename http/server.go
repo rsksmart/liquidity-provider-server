@@ -88,8 +88,8 @@ type ConfigData struct {
 
 type Server struct {
 	srv                  http.Server
-	providers            []pegin.LiquidityProvider
-	pegoutProviders      []pegout.LiquidityProvider
+	provider             pegin.LiquidityProvider
+	pegoutProvider       pegout.LiquidityProvider
 	rsk                  connectors.RSKConnector
 	btc                  connectors.BTCConnector
 	dbMongo              mongoDB.DBConnector
@@ -171,8 +171,8 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		rsk:                 rsk,
 		btc:                 btc,
 		dbMongo:             dbMongo,
-		providers:           make([]pegin.LiquidityProvider, 0),
-		pegoutProviders:     make([]pegout.LiquidityProvider, 0),
+		provider:            nil,
+		pegoutProvider:      nil,
 		now:                 now,
 		watchers:            make(map[string]*BTCAddressWatcher),
 		pegOutWatchers:      make(map[string]*BTCAddressPegOutWatcher),
@@ -184,7 +184,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 }
 
 func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.providers = append(s.providers, lp)
+	s.provider = lp
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
 	if err != nil {
@@ -192,30 +192,37 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp >= 0 {
-		opts := &bind.TransactOpts{
-			Value:  new(big.Int).Mul(m, big.NewInt(2)),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
-		if err != nil {
-			return err
-		}
-		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegin")
-		if err2 != nil {
-			return err2
-		}
+	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
 
-	} else if cmp < 0 { // not enough collateral
-		opts := &bind.TransactOpts{
-			Value:  m.Sub(m, c),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		err := s.rsk.AddCollateral(opts)
-		if err != nil {
-			return err
+	if err != nil {
+		return err
+	}
+	if !stat {
+		if cmp >= 0 {
+			opts := &bind.TransactOpts{
+				Value:  new(big.Int).Mul(m, big.NewInt(2)),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
+			if err != nil {
+				return err
+			}
+			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegin")
+			if err2 != nil {
+				return err2
+			}
+
+		} else if cmp < 0 { // not enough collateral
+			opts := &bind.TransactOpts{
+				Value:  m.Sub(m, c),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			err := s.rsk.AddCollateral(opts)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -223,7 +230,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 }
 
 func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.pegoutProviders = append(s.pegoutProviders, lp)
+	s.pegoutProvider = lp
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
 	if err != nil {
@@ -231,29 +238,37 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp >= 0 {
-		opts := &bind.TransactOpts{
-			Value:  new(big.Int).Mul(m, big.NewInt(2)),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
-		if err != nil {
-			return err
-		}
-		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegout")
-		if err2 != nil {
-			return err2
-		}
-	} else if cmp < 0 { // not enough collateral
-		opts := &bind.TransactOpts{
-			Value:  m.Sub(m, c),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		err := s.rsk.AddCollateral(opts)
-		if err != nil {
-			return err
+
+	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
+
+	if err != nil {
+		return err
+	}
+	if !stat {
+		if cmp >= 0 {
+			opts := &bind.TransactOpts{
+				Value:  new(big.Int).Mul(m, big.NewInt(2)),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
+			if err != nil {
+				return err
+			}
+			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegout")
+			if err2 != nil {
+				return err2
+			}
+		} else if cmp < 0 { // not enough collateral
+			opts := &bind.TransactOpts{
+				Value:  m.Sub(m, c),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			err := s.rsk.AddCollateral(opts)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -370,11 +385,10 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == providerAddress.Provider {
-			lp = provider
-		}
+	if s.provider.Address() == providerAddress.Provider {
+		lp = s.provider
 	}
+
 	addrStr := lp.Address()
 	addr := common.HexToAddress(addrStr)
 	opts := &bind.TransactOpts{
@@ -404,7 +418,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
@@ -427,7 +440,7 @@ func (s *Server) Start(port uint) error {
 		return err
 	}
 
-	provider := s.pegoutProviders[0] // TODO convert providers array into normal variable since its going to be only 1 LP per LPS instance
+	provider := s.pegoutProvider
 	s.pegOutDepositWatcher = NewDepositEventWatcher(PegoutDepositCheckInterval, provider, &s.addWatcherMu, &s.sharedPegoutMutex, make(chan bool), s.rsk, s.btc, s.dbMongo,
 		func(hash string, quote *WatchedQuote, endState types.RQState) {
 			if endState != types.RQStateCallForUserSucceeded {
@@ -443,8 +456,8 @@ func (s *Server) Start(port uint) error {
 			}
 		})
 
-	peginProvider := s.providers[0]
-	pegoutProvider := s.pegoutProviders[0]
+	peginProvider := s.provider
+	pegoutProvider := s.pegoutProvider
 	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
 	s.lpFundsEventtWatcher.Init()
 
@@ -490,7 +503,7 @@ func (s *Server) initPegoutWatchers() error {
 			continue
 		}
 
-		p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
+		p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
 		if p == nil {
 			log.Errorf("initPegoutWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
 			continue
@@ -541,7 +554,7 @@ func (s *Server) initPeginWatchers() error {
 			continue
 		}
 
-		p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
+		p := pegin.GetPeginProviderByAddress(s.provider, quote.LPRSKAddr)
 		if p == nil {
 			log.Errorf("initPeginBtcWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
 			continue
@@ -787,7 +800,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.providers[0].Address())
+	lbcProvider, err := s.getProvider(s.provider.Address())
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -841,37 +854,33 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
-	for _, p := range s.providers {
-		pq, err := p.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
-		if err != nil {
-			log.Error("error getting quote: ", err)
-			getQuoteFailed = true
-			continue
+	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
+	if err != nil {
+		log.Error("error getting quote: ", err)
+		getQuoteFailed = true
+	}
+	if pq != nil {
+		if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
+			log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+			amountBelowMinLockTxValue = true
 		}
-		if pq != nil {
-			if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
-				log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
-				amountBelowMinLockTxValue = true
-				continue
-			}
 
-			hash, err := s.storeQuote(pq)
+		hash, err := s.storeQuote(pq)
 
-			if err != nil {
-				log.Error(err)
-				errmsg := ErrorStoringProviderQuote + ": " + err.Error()
-				status := http.StatusInternalServerError
-				if strings.HasPrefix(err.Error(), "VM Exception") {
-					_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
-					status = http.StatusBadRequest
-					errmsg = "LBC error: " + vmString
-				}
-				customError := NewServerError(errmsg, make(map[string]interface{}), false)
-				ResponseError(w, customError, status)
-				return
-			} else {
-				quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
+		if err != nil {
+			log.Error(err)
+			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
+			status := http.StatusInternalServerError
+			if strings.HasPrefix(err.Error(), "VM Exception") {
+				_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
+				status = http.StatusBadRequest
+				errmsg = "LBC error: " + vmString
 			}
+			customError := NewServerError(errmsg, make(map[string]interface{}), false)
+			ResponseError(w, customError, status)
+			return
+		} else {
+			quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
 		}
 	}
 
@@ -935,7 +944,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.pegoutProviders[0].Address())
+	lbcProvider, err := s.getProvider(s.pegoutProvider.Address())
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -988,37 +997,33 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	for _, p := range s.pegoutProviders {
-		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
-		if err != nil {
-			log.Error("error getting quote: ", err)
-			getQuoteFailed = true
-			continue
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
+	if err != nil {
+		log.Error("error getting quote: ", err)
+		getQuoteFailed = true
+	}
+	if pq != nil {
+		if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
+			log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+			amountBelowMinLockTxValue = true
 		}
-		if pq != nil {
-			if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
-				log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
-				amountBelowMinLockTxValue = true
-				continue
-			}
 
-			hash, err := s.storePegoutQuote(pq)
+		hash, err := s.storePegoutQuote(pq)
 
-			if err != nil {
-				log.Error(err)
-				errmsg := ErrorStoringProviderQuote + ": " + err.Error()
-				status := http.StatusInternalServerError
-				if strings.HasPrefix(err.Error(), "VM Exception") {
-					_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
-					status = http.StatusBadRequest
-					errmsg = "LBC error: " + vmString
-				}
-				customError := NewServerError(errmsg, make(map[string]interface{}), false)
-				ResponseError(w, customError, status)
-				return
-			} else {
-				quotes = append(quotes, &QuotePegOutResponse{toPegoutQuote(pq), hash})
+		if err != nil {
+			log.Error(err)
+			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
+			status := http.StatusInternalServerError
+			if strings.HasPrefix(err.Error(), "VM Exception") {
+				_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
+				status = http.StatusBadRequest
+				errmsg = "LBC error: " + vmString
 			}
+			customError := NewServerError(errmsg, make(map[string]interface{}), false)
+			ResponseError(w, customError, status)
+			return
+		} else {
+			quotes = append(quotes, &QuotePegOutResponse{toPegoutQuote(pq), hash})
 		}
 	}
 
@@ -1160,7 +1165,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegin.GetPeginProviderByAddress(s.provider, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -1406,7 +1411,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
+	p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -1465,53 +1470,8 @@ type RegisterPegOutReg struct {
 	signature string
 }
 
-type SenBTCRequest struct {
-	Address string `json:"address" example:"0x0" description:"Address to send BTC to"`
-	Amount  uint   `json:"amount" example:"100000000000" description:"Amount to send BTC to address"`
-}
-
 type SenBTCResponse struct {
 	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
-}
-
-// @Title Send BTC
-// @Description Sends BTC
-// @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
-// @Success  200  object SenBTCResponse
-// @Route /pegout/sendBTC [post]
-func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	enableCors(&w)
-	payload := SenBTCRequest{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&payload)
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
-		return
-	}
-
-	txHash, err := s.btc.SendBtc(payload.Address, uint64(payload.Amount))
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to sendAddress", http.StatusBadRequest)
-		return
-	}
-
-	response := &SenBTCResponse{
-		TxHash: txHash,
-	}
-
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
 }
 
 type AddCollateralRequest struct {
@@ -1545,7 +1505,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lp := pegin.GetPeginProviderByAddress(s.providers, payload.LpRskAddress)
+	lp := pegin.GetPeginProviderByAddress(s.provider, payload.LpRskAddress)
 	if lp == nil {
 		customError := NewServerError("missing liquidity provider", make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1617,7 +1577,7 @@ func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	opts, err := pegin.GetPeginProviderTransactOpts(s.provider, payload.LpRskAddress)
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1685,7 +1645,7 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	opts, err := pegin.GetPeginProviderTransactOpts(s.provider, payload.LpRskAddress)
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
