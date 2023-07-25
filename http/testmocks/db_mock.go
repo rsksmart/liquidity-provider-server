@@ -62,7 +62,7 @@ func (d *DbMock) GetProviders() ([]*mongoDB.ProviderAddress, error) {
 	return args.Get(0).([]*mongoDB.ProviderAddress), args.Error(1)
 }
 
-func (d *DbMock) InsertProvider(id int64, address string) error {
+func (d *DbMock) InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error {
 	args := d.Called(id, address)
 	return args.Error(0)
 }

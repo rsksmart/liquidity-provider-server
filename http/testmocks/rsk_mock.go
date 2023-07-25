@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider/types"
 	"math/big"
 	"time"
 
@@ -26,6 +27,10 @@ type RskMock struct {
 func (m *RskMock) GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error) {
 	args := m.Called(fromBlock, toBlock)
 	return args.Get(0).([]*pegin.PunishmentEvent), args.Error(1)
+}
+
+func (m *RskMock) GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents, err error) {
+	return make([]types.UserEvents, 0), nil
 }
 
 func (m *RskMock) GetProviderIds() (providerList *big.Int, err error) {
@@ -202,7 +207,7 @@ func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.QuotesPegOutQu
 	return bindings.QuotesPegOutQuote{}, nil
 }
 
-func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*gethTypes.Transaction, error) {
 	return nil, nil
 }
 
@@ -214,7 +219,7 @@ func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.QuotesPegOutQuote,
 	return nil, nil
 }
 
-func (m *RskMock) SendRbtc(bind.SignerFn, string, string, uint64) error {
+func (m *RskMock) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 	return nil
 }
 
