@@ -122,7 +122,7 @@ curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Conte
 
 if [ "$LPS_STAGE" = "regtest" ]; then
   # define all provider address variables
-  declare -a PROVIDERS=("LIQUIDITY_PROVIDER_RSK_ADDR" "LIQUIDITY_PEGIN_PROVIDER_RSK_ADDR" "LIQUIDITY_PEGOUT_PROVIDER_RSK_ADDR")
+  declare -a PROVIDERS=("LIQUIDITY_PROVIDER_RSK_ADDR" "PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR" "PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR")
 
   # iterate over providers
   for PROVIDER in "${PROVIDERS[@]}"
