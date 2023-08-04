@@ -969,6 +969,23 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var gasRefund uint64
+	gasRefund, err = s.rsk.EstimateGas(s.rsk.GetLBCAddress(), big.NewInt(int64(0)), []byte(nil))
+
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	var amountWithFee uint64
+	amountWithFee = uint64(s.btc.GetAmauntWithFeesIncluded(float64(qr.ValueToTransfer)))
+
+	var btcFee = qr.ValueToTransfer - amountWithFee
+
+	var totalGas = gas + gasRefund + btcFee
+
 	price, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error(ErrorEstimatingGas+" price", err.Error())
@@ -989,7 +1006,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), gas)
+	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), totalGas)
 	rskBlockNumber, err := s.rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting last block", err.Error())
@@ -997,7 +1014,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGas, types.NewBigWei(price), lbcProvider)
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -1042,7 +1059,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		if getQuoteFailed {
 			details := Details{
 				"quote": q,
-				"gas":   gas,
+				"gas":   totalGas,
 			}
 			customError := NewServerError(ErrorGetQuoteFailed, details, true)
 			ResponseError(w, customError, http.StatusNotFound) // StatusBadRequest or StatusInternalServerError?
