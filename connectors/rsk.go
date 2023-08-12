@@ -106,7 +106,7 @@ type RSKConnector interface {
 	AddQuoteToWatch(hash string, interval time.Duration, exp time.Time, w QuotePegOutWatcher, cb RegisterPegOutQuoteWatcherCompleteCallback) error
 	GetRskHeight() (uint64, error)
 	GetProviders(providerList []int64) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
-	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error)
+	GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, string, error)
 	GetActiveRedeemScript() ([]byte, error)
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
@@ -714,36 +714,36 @@ func (rsk *RSK) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature []
 	return nil
 }
 
-func (rsk *RSK) GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+func (rsk *RSK) GetDerivedBitcoinAddress(fedInfo *FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, string, error) {
 	derivationValue, err := getDerivationValueHash(userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
 	if err != nil {
-		return "", fmt.Errorf("error computing derivation value: %v", err)
+		return "", "", fmt.Errorf("error computing derivation value: %v", err)
 	}
 	var fedRedeemScript []byte
 	fedRedeemScript, err = rsk.GetActiveRedeemScript()
 	if err != nil {
-		return "", fmt.Errorf("error retreiving fed redeem script from bridge: %v", err)
+		return "", "", fmt.Errorf("error retreiving fed redeem script from bridge: %v", err)
 	}
 	if len(fedRedeemScript) == 0 {
 		fedRedeemScript, err = fedInfo.getFedRedeemScript(btcParams)
 		if err != nil {
-			return "", fmt.Errorf("error generating fed redeem script: %v", err)
+			return "", "", fmt.Errorf("error generating fed redeem script: %v", err)
 		}
 	} else {
 		err = fedInfo.validateRedeemScript(btcParams, fedRedeemScript)
 		if err != nil {
-			return "", fmt.Errorf("error validating fed redeem script: %v", err)
+			return "", "", fmt.Errorf("error validating fed redeem script: %v", err)
 		}
 	}
 	flyoverScript, err := fedInfo.getFlyoverRedeemScript(derivationValue, fedRedeemScript)
 	if err != nil {
-		return "", fmt.Errorf("error generating flyover redeem script: %v", err)
+		return "", "", fmt.Errorf("error generating flyover redeem script: %v", err)
 	}
 	addressScriptHash, err := btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return addressScriptHash.EncodeAddress(), nil
+	return addressScriptHash.EncodeAddress(), hex.EncodeToString(flyoverScript), nil
 }
 
 // GetActiveRedeemScript returns a redeem script fetched from the RSK bridge.

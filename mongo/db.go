@@ -40,7 +40,7 @@ type DBConnector interface {
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]*ProviderAddress, error)
 	GetProvider(uint64) (*ProviderAddress, error)
-	InsertProvider(id int64,details types.ProviderRegisterRequest, address string, providerType string) error
+	InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error
 	ResetProviders([]*types.GlobalProvider) error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
@@ -97,15 +97,16 @@ type PegoutQuote struct {
 }
 
 type RetainedPeginQuote struct {
-	QuoteHash   string        `json:"quoteHash" db:"quote_hash"`
-	DepositAddr string        `json:"depositAddr" db:"deposit_addr"`
-	Signature   string        `json:"signature" db:"signature"`
-	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
-	State       types.RQState `json:"state" db:"state"`
+	QuoteHash           string        `json:"quoteHash" db:"quote_hash"`
+	DepositAddr         string        `json:"depositAddr" db:"deposit_addr"`
+	Signature           string        `json:"signature" db:"signature"`
+	FlyoverRedeemScript string        `json:"flyoverRedeemScript" db:"flyover_redeem_script"`
+	ReqLiq              string        `json:"reqLiq" db:"req_liq"`
+	State               types.RQState `json:"state" db:"state"`
 }
 
 type ProviderAddress struct {
-	Id      int64  `bson:"id"`
+	Id       int64  `bson:"id"`
 	Provider string `bson:"provider"`
 }
 
@@ -236,15 +237,17 @@ func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 }
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
-	log.Debug("inserting retained quote mongo DB:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr, "; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
+	log.Debug("inserting retained quote mongo DB:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr,
+		"; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq, "; FlyoverRedeemScript: ", entry.FlyoverRedeemScript)
 	coll := db.db.Database("flyover").Collection("retainedPeginQuote")
 
 	quoteToRetain := RetainedPeginQuote{
-		DepositAddr: entry.DepositAddr,
-		QuoteHash:   entry.QuoteHash,
-		ReqLiq:      entry.ReqLiq.String(),
-		Signature:   entry.Signature,
-		State:       entry.State,
+		DepositAddr:         entry.DepositAddr,
+		QuoteHash:           entry.QuoteHash,
+		ReqLiq:              entry.ReqLiq.String(),
+		Signature:           entry.Signature,
+		State:               entry.State,
+		FlyoverRedeemScript: entry.FlyoverRedeemScript,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToRetain)
@@ -295,11 +298,12 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 			return nil, err
 		}
 		rqToReturn := types.RetainedQuote{
-			DepositAddr: rq.DepositAddr,
-			QuoteHash:   rq.QuoteHash,
-			ReqLiq:      types.NewWei(reqLiq),
-			Signature:   rq.Signature,
-			State:       rq.State,
+			DepositAddr:         rq.DepositAddr,
+			QuoteHash:           rq.QuoteHash,
+			FlyoverRedeemScript: rq.FlyoverRedeemScript,
+			ReqLiq:              types.NewWei(reqLiq),
+			Signature:           rq.Signature,
+			State:               rq.State,
 		}
 
 		retainedQuotes = append(retainedQuotes, &rqToReturn)
@@ -331,11 +335,12 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	}
 
 	rqToReturn := types.RetainedQuote{
-		DepositAddr: result.DepositAddr,
-		QuoteHash:   result.QuoteHash,
-		ReqLiq:      types.NewWei(reqLiq),
-		Signature:   result.Signature,
-		State:       result.State,
+		DepositAddr:         result.DepositAddr,
+		FlyoverRedeemScript: result.FlyoverRedeemScript,
+		QuoteHash:           result.QuoteHash,
+		ReqLiq:              types.NewWei(reqLiq),
+		Signature:           result.Signature,
+		State:               result.State,
 	}
 
 	return &rqToReturn, nil
@@ -426,11 +431,12 @@ func (db *DB) ResetProviders(providers []*types.GlobalProvider) error {
 	log.Debug("Providers reset and updated successfully")
 	return nil
 }
+
 type InsertProvider struct {
-	Id      int64  `bson:"id"`
-	Provider string `bson: "provider"`
+	Id                            int64  `bson:"id"`
+	Provider                      string `bson: "provider"`
 	types.ProviderRegisterRequest `bson:",inline"`
-	ProviderType string `bson: "providerType"`
+	ProviderType                  string `bson: "providerType"`
 }
 
 func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error {
@@ -439,11 +445,11 @@ func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, ad
 	filter := bson.M{"id": id}
 
 	newProvider := InsertProvider{
-		Id: id,
-		Provider: address,
-		ProviderRegisterRequest  : details,
-		ProviderType: providerType,
-	} 
+		Id:                      id,
+		Provider:                address,
+		ProviderRegisterRequest: details,
+		ProviderType:            providerType,
+	}
 
 	update := bson.M{"$set": newProvider}
 	opts := options.Update().SetUpsert(true)

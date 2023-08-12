@@ -103,7 +103,7 @@ func (lp LiquidityProviderMock) HasLiquidity(reqLiq *types.Wei) (bool, error) {
 	return arg.Bool(0), arg.Error(1)
 }
 
-func (lp LiquidityProviderMock) SignQuote(_ []byte, _ string, _ *types.Wei) ([]byte, error) {
+func (lp LiquidityProviderMock) SignQuote(_ []byte, _, flyoverRedeemScript string, _ *types.Wei) ([]byte, error) {
 	return []byte("fb4a3e40390dee7db6e861e10e5e3b39a0cf546eeccc8c0902249419140d9f29335023e3a83deee747f4987e9cd32773d2afa5176295dc2042255b57a30300201c"), nil
 }
 
