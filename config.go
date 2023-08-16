@@ -23,6 +23,7 @@ type config struct {
 	PegoutMinTransactValue uint64   `env:"PEGOUT_MIN_TRANSACTION_VALUE"`
 	PegoutMaxTransactValue uint64   `env:"PEGOUT_MAX_TRANSACTION_VALUE"`
 	BaseURL                string   `env:"BASE_URL"`
+	QuoteCacheStartBlock   uint64   `env:"QUOTE_CACHE_START_BLOCK"`
 
 	Server struct {
 		Port uint `env:"SERVER_PORT"`

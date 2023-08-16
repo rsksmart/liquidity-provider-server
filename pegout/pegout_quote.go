@@ -1,6 +1,7 @@
 package pegout
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider/types"
 	"math/big"
 	"time"
@@ -37,10 +38,12 @@ type QuoteState struct {
 }
 
 type DepositEvent struct {
-	QuoteHash   string
-	Amount      *big.Int
-	Timestamp   time.Time
-	BlockNumber uint64
+	TxHash      common.Hash    `json:"-"`
+	QuoteHash   string         `json:"quoteHash" example:"0x0" description:"QuoteHash"`
+	Amount      *big.Int       `json:"amount" example:"10000" description:"Event Value"`
+	Timestamp   time.Time      `json:"timestamp" example:"10000" description:"Event Timestamp"`
+	BlockNumber uint64         `json:"-"`
+	From        common.Address `json:"from" example:"0x0" description:"From Address"`
 }
 
 func (event *DepositEvent) IsValidForQuote(quote *Quote) bool {
