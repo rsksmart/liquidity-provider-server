@@ -205,6 +205,7 @@ func main() {
 
 func initCfgData() {
 	cfgData.RSK = cfg.RSK
+	cfgData.QuoteCacheStartBlock = cfg.QuoteCacheStartBlock
 }
 
 func generateRandomKey(n int) string {

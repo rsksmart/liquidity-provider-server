@@ -183,10 +183,12 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 	for iterator.Next() {
 		lbcEvent = iterator.Event
 		deposit = &pegout.DepositEvent{
+			TxHash:      lbcEvent.Raw.TxHash,
 			QuoteHash:   hex.EncodeToString(iterator.Event.QuoteHash[:]),
 			Amount:      lbcEvent.Amount,
 			Timestamp:   time.Unix(lbcEvent.Timestamp.Int64(), 0),
 			BlockNumber: iterator.Event.Raw.BlockNumber,
+			From:        lbcEvent.Sender,
 		}
 		deposits = append(deposits, deposit)
 	}
