@@ -96,7 +96,7 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 
 	cfgData.EncryptKey = key
 
-	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, cfg.Provider, peginAccountProvider)
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, cfg.Provider, peginAccountProvider, awsConfiguration)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
 		Name:                cfg.PeginProviderName,
