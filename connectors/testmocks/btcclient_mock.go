@@ -12,6 +12,22 @@ type BTCClientMock struct {
 	mock.Mock
 }
 
+func (B *BTCClientMock) CreateRawTransaction(inputs []btcjson.TransactionInput, amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error) {
+	return nil, nil
+}
+
+func (B *BTCClientMock) SignRawTransactionWithWallet(tx *wire.MsgTx) (*wire.MsgTx, bool, error) {
+	return nil, false, nil
+}
+
+func (B *BTCClientMock) SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error) {
+	return nil, nil
+}
+
+func (B *BTCClientMock) SetTxFee(fee btcutil.Amount) error {
+	return nil
+}
+
 func (B *BTCClientMock) LockUnspent(shouldUnlock bool, txToUnlock []*wire.OutPoint) error {
 	args := B.Called(shouldUnlock, txToUnlock)
 	return args.Error(0)
