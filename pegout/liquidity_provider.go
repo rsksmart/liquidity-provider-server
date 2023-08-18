@@ -30,7 +30,7 @@ type LocalProvider struct {
 }
 
 type ProviderConfig struct {
-	pegin.ProviderConfig
+	pegin.ProviderConfig  `env:",squash"`
 	DepositConfirmations  uint16 `env:"DEPOSIT_CONFIRMATIONS"`
 	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
 	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
