@@ -484,6 +484,7 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 			watcher.depositedQuotes[event.QuoteHash] = quote
 			delete(watcher.nonDepositedQuotes, event.QuoteHash)
 		}
+		watcher.db.UpsertDepositEvent(event)
 	}
 	return nil
 }
