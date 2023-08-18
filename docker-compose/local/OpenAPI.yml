@@ -414,6 +414,10 @@ components:
           description: Hash of the deposit BTC address
           example: "0x0"
           type: string
+        flyoverRedeemScript:
+          description: Redeem script that the address is generated from
+          example: "0x0"
+          type: string
         signature:
           description: Signature of the quote
           example: "0x0"
@@ -421,6 +425,7 @@ components:
       required:
       - signature
       - bitcoinDepositAddressHash
+      - flyoverRedeemScript
       type: object
     acceptResPegOut:
       properties:
