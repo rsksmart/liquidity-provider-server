@@ -9,11 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/account"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
-	"strconv"
-
-	"github.com/rsksmart/liquidity-provider-server/account"
 
 	"io"
 	"math"
@@ -82,8 +80,9 @@ type LiquidityProviderList struct {
 }
 
 type ConfigData struct {
-	EncryptKey string
-	RSK        LiquidityProviderList
+	EncryptKey           string
+	RSK                  LiquidityProviderList
+	QuoteCacheStartBlock uint64
 }
 
 type Server struct {
@@ -436,6 +435,9 @@ func (s *Server) Start(port uint) error {
 		_ = w.Close()
 	}(w)
 
+	if err := s.initDepositsCache(); err != nil {
+		return err
+	}
 	err := s.initPeginWatchers()
 	if err != nil {
 		return err
@@ -487,6 +489,19 @@ func (s *Server) Start(port uint) error {
 func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) initDepositsCache() error {
+	height, err := s.rsk.GetRskHeight()
+	if err != nil {
+		return err
+	}
+	events, err := s.rsk.GetDepositEvents(s.cfgData.QuoteCacheStartBlock, height)
+	if err != nil {
+		return err
+	}
+
+	return s.dbMongo.UpsertDepositEvents(events)
 }
 
 func (s *Server) initPegoutWatchers() error {
@@ -1685,8 +1700,8 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title GetUserQuotes
 // @Description Returns user quotes for address.
-// @Param   UserQuoteRequest body types.UserQuoteRequest true "User Quote Request Details"
-// @Success 200 {array} types.UserEvents "Successfully retrieved the user quotes"
+// @Param   UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 {array} pegout.DepositEvent "Successfully retrieved the user quotes"
 // @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
@@ -1698,35 +1713,12 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fromBlock, toBlock *uint64
-	fromBlockStr := r.URL.Query().Get("fromBlock")
-	toBlockStr := r.URL.Query().Get("toBlock")
-
-	if fromBlockStr != "" {
-		fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
-			return
-		}
-		fromBlock = &fb
-	}
-
-	if toBlockStr != "" {
-		tb, err := strconv.ParseUint(toBlockStr, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
-			return
-		}
-		toBlock = &tb
-	}
-
-	payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
-	events, err := s.rsk.GetUserQuotes(payload)
+	events, err := s.dbMongo.GetDepositEvents(address)
 	if err != nil {
 		log.Error("error getting user quotes: ", err.Error())
 	}
 	if events == nil {
-		events = []types.UserEvents{}
+		events = []*pegout.DepositEvent{}
 	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&events)
