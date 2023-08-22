@@ -1193,14 +1193,16 @@ func (rsk *RSK) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 }
 
 func (rsk *RSK) awaitTx(function func() (*gethTypes.Transaction, error)) (*gethTypes.Receipt, error) {
+	var tx *gethTypes.Transaction
+	var receipt *gethTypes.Receipt
 	var err error
 	for remaining := retries; remaining > 0; remaining-- {
-		tx, err := function()
+		tx, err = function()
 		if err != nil {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), ethTimeout)
-		receipt, err := bind.WaitMined(ctx, rsk.c, tx)
+		receipt, err = bind.WaitMined(ctx, rsk.c, tx)
 		cancel()
 		if err == nil {
 			return receipt, nil
