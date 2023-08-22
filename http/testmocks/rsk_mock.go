@@ -2,6 +2,7 @@ package testmocks
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider/types"
 	"math/big"
 	"time"
 
@@ -26,6 +27,10 @@ type RskMock struct {
 func (m *RskMock) GetPeginPunishmentEvents(fromBlock, toBlock uint64) ([]*pegin.PunishmentEvent, error) {
 	args := m.Called(fromBlock, toBlock)
 	return args.Get(0).([]*pegin.PunishmentEvent), args.Error(1)
+}
+
+func (m *RskMock) GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents, err error) {
+	return make([]types.UserEvents, 0), nil
 }
 
 func (m *RskMock) GetProviderIds() (providerList *big.Int, err error) {
@@ -110,7 +115,7 @@ func (m *RskMock) ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error) 
 	return bindings.QuotesPeginQuote{}, nil
 }
 
-func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Transaction, error) {
+func (m *RskMock) RegisterPegIn(opt *bind.TransactOpts, q bindings.QuotesPeginQuote, signature []byte, tx []byte, pmt []byte, height *big.Int) (*gethTypes.Receipt, error) {
 	m.Called(opt, q, signature, tx, pmt, height)
 	return nil, nil
 }
@@ -120,7 +125,7 @@ func (m *RskMock) RegisterPegInWithoutTx(q bindings.QuotesPeginQuote, signature 
 	return nil
 }
 
-func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Transaction, error) {
+func (m *RskMock) CallForUser(opt *bind.TransactOpts, q bindings.QuotesPeginQuote) (*gethTypes.Receipt, error) {
 	m.Called(opt, q)
 	return nil, nil
 }
@@ -202,8 +207,8 @@ func (m *RskMock) ParsePegOutQuote(quote *pegout.Quote) (bindings.QuotesPegOutQu
 	return bindings.QuotesPegOutQuote{}, nil
 }
 
-func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quote bindings.QuotesPegOutQuote, p1 [32]byte, p2 [32]byte, number *big.Int, p3 [][32]byte) (*gethTypes.Transaction, error) {
-	return nil, nil
+func (m *RskMock) RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) error {
+	return nil
 }
 
 func (m *RskMock) HashPegOutQuote(q *pegout.Quote) (string, error) {
@@ -214,7 +219,7 @@ func (m *RskMock) RegisterPegOut(*bind.TransactOpts, bindings.QuotesPegOutQuote,
 	return nil, nil
 }
 
-func (m *RskMock) SendRbtc(bind.SignerFn, string, string, uint64) error {
+func (m *RskMock) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 	return nil
 }
 
@@ -227,9 +232,9 @@ func (m *RskMock) GetRskHeight() (uint64, error) {
 	return 0, nil
 }
 
-func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, error) {
+func (m *RskMock) GetDerivedBitcoinAddress(fedInfo *connectors.FedInfo, btcParams chaincfg.Params, userBtcRefundAddr []byte, lbcAddress []byte, lpBtcAddress []byte, derivationArgumentsHash []byte) (string, string, error) {
 	m.Called(fedInfo, nil, userBtcRefundAddr, lbcAddress, lpBtcAddress, derivationArgumentsHash)
-	return "", nil
+	return "", "", nil
 }
 
 func (m *RskMock) WithdrawCollateral(opts *bind.TransactOpts) error {
@@ -238,4 +243,8 @@ func (m *RskMock) WithdrawCollateral(opts *bind.TransactOpts) error {
 
 func (m *RskMock) Resign(opt *bind.TransactOpts) error {
 	return m.Called(opt).Error(0)
+}
+
+func (m *RskMock) IsOperational(opt *bind.CallOpts, address common.Address) (status bool, err error) {
+	return false, nil
 }

@@ -30,7 +30,7 @@ type LocalProvider struct {
 }
 
 type ProviderConfig struct {
-	pegin.ProviderConfig
+	pegin.ProviderConfig  `env:",squash"`
 	DepositConfirmations  uint16 `env:"DEPOSIT_CONFIRMATIONS"`
 	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
 	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
@@ -69,11 +69,9 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 	return &lp, nil
 }
 
-func GetPegoutProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
+func GetPegoutProviderByAddress(liquidityProvider LiquidityProvider, addr string) LiquidityProvider {
+	if liquidityProvider.Address() == addr {
+		return liquidityProvider
 	}
 	return nil
 }
