@@ -1,0 +1,8 @@
+version: "3.7"
+services:
+  lps:
+    logging:
+      driver: loki
+      options:
+       loki-url: https://loki.iovproject.com:3100/loki/api/v1/push
+       loki-external-labels: job=docker,container=lps,host=flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net
