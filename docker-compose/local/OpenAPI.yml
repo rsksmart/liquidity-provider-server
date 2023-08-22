@@ -22,11 +22,34 @@ components:
         status:
           type: boolean
       type: object
+    DepositEvent:
+      properties:
+        amount:
+          description: Event Value
+          example: "10000"
+        from:
+          description: From Address
+          example: invalid example
+          items: {}
+          type: array
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        timestamp:
+          description: Event Timestamp
+          example: "10000"
+          format: date-time
+          type: string
+      type: object
     GetCollateralResponse:
       properties:
         collateral:
           type: integer
       type: object
+    Hash:
+      items: {}
+      type: array
     PeginQuoteDTO:
       properties:
         agreementTimestamp:
@@ -354,56 +377,12 @@ components:
           example: Provider Created Successfully
           type: string
       type: object
-    SenBTCRequest:
-      properties:
-        address:
-          description: Address to send BTC to
-          example: "0x0"
-          type: string
-        amount:
-          description: Amount to send BTC to address
-          example: 100000000000
-          type: integer
-      type: object
     SenBTCResponse:
       properties:
         txHash:
           description: TxHash of the BTC transaction sent to the address
           example: "0x0"
           type: string
-      type: object
-    UserEvents:
-      properties:
-        amount:
-          description: Event Value
-          example: "10000"
-        from:
-          description: From Address
-          example: invalid example
-          items: {}
-          type: array
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-        timestamp:
-          description: Event Timestamp
-          example: "10000"
-      type: object
-    UserQuoteRequest:
-      properties:
-        address:
-          description: User Address
-          example: "0x0"
-          type: string
-        fromBlock:
-          description: optional fromBlock
-          example: 69
-          type: integer
-        toBlock:
-          description: optional toBlock
-          example: 0
-          type: integer
       type: object
     WithdrawCollateralRequest:
       properties:
@@ -642,23 +621,6 @@ paths:
                 $ref: '#/components/schemas/QuotePegOutResponse'
           description: ""
       summary: Pegout GetQuote
-  /pegout/sendBTC:
-    post:
-      description: ' Sends BTC'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SenBTCRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SenBTCResponse'
-          description: ""
-      summary: Send BTC
   /provider/changeStatus:
     post:
       description: ' Changes the status of the provider'
@@ -733,18 +695,12 @@ paths:
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserQuoteRequest'
-        required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserEvents'
+                $ref: '#/components/schemas/DepositEvent'
           description: Successfully retrieved the user quotes
       summary: GetUserQuotes
   /withdrawCollateral:

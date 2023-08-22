@@ -129,6 +129,7 @@ services:
       - AWS_REGION
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
+      - QUOTE_CACHE_START_BLOCK
     ports:
       - "8080:8080"
     volumes:

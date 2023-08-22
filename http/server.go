@@ -9,12 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strconv"
-
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/account"
+	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+	"net/http"
 
 	"io"
 	"math"
@@ -83,14 +82,15 @@ type LiquidityProviderList struct {
 }
 
 type ConfigData struct {
-	EncryptKey string
-	RSK        LiquidityProviderList
+	EncryptKey           string
+	RSK                  LiquidityProviderList
+	QuoteCacheStartBlock uint64
 }
 
 type Server struct {
 	srv                  http.Server
-	providers            []pegin.LiquidityProvider
-	pegoutProviders      []pegout.LiquidityProvider
+	provider             pegin.LiquidityProvider
+	pegoutProvider       pegout.LiquidityProvider
 	rsk                  connectors.RSKConnector
 	btc                  connectors.BTCConnector
 	dbMongo              mongoDB.DBConnector
@@ -109,6 +109,7 @@ type Server struct {
 	AccountProvider      account.AccountProvider
 	LpsAddress_pegin            string `env:"PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR"`
 	LpsAddress_pegout           string `env:"PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR"`
+	awsConfig            aws.Config
 }
 
 type QuoteRequest struct {
@@ -153,6 +154,7 @@ func enableCors(res *http.ResponseWriter) {
 type acceptRes struct {
 	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
+	FlyoverRedeemScript       string `json:"-"`
 }
 type acceptResPegOut struct {
 	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
@@ -164,18 +166,19 @@ type AcceptResPegOut struct {
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData,
-	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
-	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider)
+	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider, awsConfig aws.Config) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider, awsConfig)
 }
 
 func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time,
-	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
+	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider,
+	awsConfig aws.Config) Server {
 	return Server{
 		rsk:                 rsk,
 		btc:                 btc,
 		dbMongo:             dbMongo,
-		providers:           make([]pegin.LiquidityProvider, 0),
-		pegoutProviders:     make([]pegout.LiquidityProvider, 0),
+		provider:            nil,
+		pegoutProvider:      nil,
 		now:                 now,
 		watchers:            make(map[string]*BTCAddressWatcher),
 		pegOutWatchers:      make(map[string]*BTCAddressPegOutWatcher),
@@ -183,11 +186,12 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		ProviderRespository: LPRep,
 		ProviderConfig:      ProviderConfig,
 		AccountProvider:     accountProvider,
+		awsConfig:           awsConfig,
 	}
 }
 
 func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.providers = append(s.providers, lp)
+	s.provider = lp
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
 	if err != nil {
@@ -195,30 +199,37 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp >= 0 {
-		opts := &bind.TransactOpts{
-			Value:  new(big.Int).Mul(m, big.NewInt(2)),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
-		if err != nil {
-			return err
-		}
-		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegin")
-		if err2 != nil {
-			return err2
-		}
+	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
 
-	} else if cmp < 0 { // not enough collateral
-		opts := &bind.TransactOpts{
-			Value:  m.Sub(m, c),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		err := s.rsk.AddCollateral(opts)
-		if err != nil {
-			return err
+	if err != nil {
+		return err
+	}
+	if !stat {
+		if cmp >= 0 {
+			opts := &bind.TransactOpts{
+				Value:  new(big.Int).Mul(m, big.NewInt(2)),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
+			if err != nil {
+				return err
+			}
+			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegin")
+			if err2 != nil {
+				return err2
+			}
+
+		} else if cmp < 0 { // not enough collateral
+			opts := &bind.TransactOpts{
+				Value:  m.Sub(m, c),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			err := s.rsk.AddCollateral(opts)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -226,7 +237,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 }
 
 func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.pegoutProviders = append(s.pegoutProviders, lp)
+	s.pegoutProvider = lp
 	addrStr := lp.Address()
 	c, m, err := s.rsk.GetCollateral(addrStr)
 	if err != nil {
@@ -234,29 +245,37 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 	}
 	addr := common.HexToAddress(addrStr)
 	cmp := c.Cmp(big.NewInt(0))
-	if cmp >= 0 {
-		opts := &bind.TransactOpts{
-			Value:  new(big.Int).Mul(m, big.NewInt(2)),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
-		if err != nil {
-			return err
-		}
-		err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegout")
-		if err2 != nil {
-			return err2
-		}
-	} else if cmp < 0 { // not enough collateral
-		opts := &bind.TransactOpts{
-			Value:  m.Sub(m, c),
-			From:   addr,
-			Signer: lp.SignTx,
-		}
-		err := s.rsk.AddCollateral(opts)
-		if err != nil {
-			return err
+
+	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
+
+	if err != nil {
+		return err
+	}
+	if !stat {
+		if cmp >= 0 {
+			opts := &bind.TransactOpts{
+				Value:  new(big.Int).Mul(m, big.NewInt(2)),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
+			if err != nil {
+				return err
+			}
+			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegout")
+			if err2 != nil {
+				return err2
+			}
+		} else if cmp < 0 { // not enough collateral
+			opts := &bind.TransactOpts{
+				Value:  m.Sub(m, c),
+				From:   addr,
+				Signer: lp.SignTx,
+			}
+			err := s.rsk.AddCollateral(opts)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -373,11 +392,10 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var lp pegin.LiquidityProvider
-	for _, provider := range s.providers {
-		if provider.Address() == providerAddress.Provider {
-			lp = provider
-		}
+	if s.provider.Address() == providerAddress.Provider {
+		lp = s.provider
 	}
+
 	addrStr := lp.Address()
 	addr := common.HexToAddress(addrStr)
 	opts := &bind.TransactOpts{
@@ -407,7 +425,6 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
-	// TODO comment until we decide if keep or remove r.Path("/pegout/sendBTC").Methods(http.MethodPost).HandlerFunc(s.sendBTC)
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
@@ -425,12 +442,15 @@ func (s *Server) Start(port uint) error {
 		_ = w.Close()
 	}(w)
 
+	if err := s.initDepositsCache(); err != nil {
+		return err
+	}
 	err := s.initPeginWatchers()
 	if err != nil {
 		return err
 	}
 
-	provider := s.pegoutProviders[0] // TODO convert providers array into normal variable since its going to be only 1 LP per LPS instance
+	provider := s.pegoutProvider
 	s.pegOutDepositWatcher = NewDepositEventWatcher(PegoutDepositCheckInterval, provider, &s.addWatcherMu, &s.sharedPegoutMutex, make(chan bool), s.rsk, s.btc, s.dbMongo,
 		func(hash string, quote *WatchedQuote, endState types.RQState) {
 			if endState != types.RQStateCallForUserSucceeded {
@@ -446,9 +466,9 @@ func (s *Server) Start(port uint) error {
 			}
 		})
 
-	peginProvider := s.providers[0]
-	pegoutProvider := s.pegoutProviders[0]
-	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	peginProvider := s.provider
+	pegoutProvider := s.pegoutProvider
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider, s.awsConfig)
 	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()
@@ -478,6 +498,19 @@ func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s *Server) initDepositsCache() error {
+	height, err := s.rsk.GetRskHeight()
+	if err != nil {
+		return err
+	}
+	events, err := s.rsk.GetDepositEvents(s.cfgData.QuoteCacheStartBlock, height)
+	if err != nil {
+		return err
+	}
+
+	return s.dbMongo.UpsertDepositEvents(events)
+}
+
 func (s *Server) initPegoutWatchers() error {
 	quoteStatesToWatch := []types.RQState{types.RQStateCallForUserSucceeded, types.RQStateWaitingForDeposit, types.RQStateWaitingForDepositConfirmations}
 	quotes, err := s.dbMongo.GetRetainedPegOutQuoteByState(quoteStatesToWatch)
@@ -493,7 +526,7 @@ func (s *Server) initPegoutWatchers() error {
 			continue
 		}
 
-		p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
+		p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
 		if p == nil {
 			log.Errorf("initPegoutWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
 			continue
@@ -544,7 +577,7 @@ func (s *Server) initPeginWatchers() error {
 			continue
 		}
 
-		p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
+		p := pegin.GetPeginProviderByAddress(s.provider, quote.LPRSKAddr)
 		if p == nil {
 			log.Errorf("initPeginBtcWatchers: provider not found for LPRSKAddr: %s. Watcher not initialized for address %s", quote.LPRSKAddr, entry.DepositAddr)
 			continue
@@ -790,7 +823,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.providers[0].Address())
+	lbcProvider, err := s.getProvider(s.provider.Address())
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -844,37 +877,33 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
-	for _, p := range s.providers {
-		pq, err := p.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
-		if err != nil {
-			log.Error("error getting quote: ", err)
-			getQuoteFailed = true
-			continue
+	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
+	if err != nil {
+		log.Error("error getting quote: ", err)
+		getQuoteFailed = true
+	}
+	if pq != nil {
+		if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
+			log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+			amountBelowMinLockTxValue = true
 		}
-		if pq != nil {
-			if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
-				log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
-				amountBelowMinLockTxValue = true
-				continue
-			}
 
-			hash, err := s.storeQuote(pq)
+		hash, err := s.storeQuote(pq)
 
-			if err != nil {
-				log.Error(err)
-				errmsg := ErrorStoringProviderQuote + ": " + err.Error()
-				status := http.StatusInternalServerError
-				if strings.HasPrefix(err.Error(), "VM Exception") {
-					_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
-					status = http.StatusBadRequest
-					errmsg = "LBC error: " + vmString
-				}
-				customError := NewServerError(errmsg, make(map[string]interface{}), false)
-				ResponseError(w, customError, status)
-				return
-			} else {
-				quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
+		if err != nil {
+			log.Error(err)
+			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
+			status := http.StatusInternalServerError
+			if strings.HasPrefix(err.Error(), "VM Exception") {
+				_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
+				status = http.StatusBadRequest
+				errmsg = "LBC error: " + vmString
 			}
+			customError := NewServerError(errmsg, make(map[string]interface{}), false)
+			ResponseError(w, customError, status)
+			return
+		} else {
+			quotes = append(quotes, &QuoteReturn{toPeginQuote(pq), hash})
 		}
 	}
 
@@ -938,7 +967,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.pegoutProviders[0].Address())
+	lbcProvider, err := s.getProvider(s.pegoutProvider.Address())
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -963,6 +992,23 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var gasRefund uint64
+	gasRefund, err = s.rsk.EstimateGas(s.rsk.GetLBCAddress(), big.NewInt(int64(0)), []byte(nil))
+
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	var amountWithFee uint64
+	amountWithFee = uint64(s.btc.GetAmauntWithFeesIncluded(float64(qr.ValueToTransfer)))
+
+	var btcFee = qr.ValueToTransfer - amountWithFee
+
+	var totalGas = gas + gasRefund + btcFee
+
 	price, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error(ErrorEstimatingGas+" price", err.Error())
@@ -983,7 +1029,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), gas)
+	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), totalGas)
 	rskBlockNumber, err := s.rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting last block", err.Error())
@@ -991,37 +1037,33 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	for _, p := range s.pegoutProviders {
-		pq, err := p.GetQuote(q, rskBlockNumber, gas, types.NewBigWei(price), lbcProvider)
-		if err != nil {
-			log.Error("error getting quote: ", err)
-			getQuoteFailed = true
-			continue
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGas, types.NewBigWei(price), lbcProvider)
+	if err != nil {
+		log.Error("error getting quote: ", err)
+		getQuoteFailed = true
+	}
+	if pq != nil {
+		if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
+			log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
+			amountBelowMinLockTxValue = true
 		}
-		if pq != nil {
-			if new(types.Wei).Add(pq.Value, pq.CallFee).Cmp(minLockTxValueInWei) < 0 {
-				log.Error("error getting quote; requested amount below bridge's min pegin tx value: ", qr.ValueToTransfer)
-				amountBelowMinLockTxValue = true
-				continue
-			}
 
-			hash, err := s.storePegoutQuote(pq)
+		hash, err := s.storePegoutQuote(pq)
 
-			if err != nil {
-				log.Error(err)
-				errmsg := ErrorStoringProviderQuote + ": " + err.Error()
-				status := http.StatusInternalServerError
-				if strings.HasPrefix(err.Error(), "VM Exception") {
-					_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
-					status = http.StatusBadRequest
-					errmsg = "LBC error: " + vmString
-				}
-				customError := NewServerError(errmsg, make(map[string]interface{}), false)
-				ResponseError(w, customError, status)
-				return
-			} else {
-				quotes = append(quotes, &QuotePegOutResponse{toPegoutQuote(pq), hash})
+		if err != nil {
+			log.Error(err)
+			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
+			status := http.StatusInternalServerError
+			if strings.HasPrefix(err.Error(), "VM Exception") {
+				_, vmString, _ := strings.Cut(err.Error(), "VM Exception while processing transaction: revert ")
+				status = http.StatusBadRequest
+				errmsg = "LBC error: " + vmString
 			}
+			customError := NewServerError(errmsg, make(map[string]interface{}), false)
+			ResponseError(w, customError, status)
+			return
+		} else {
+			quotes = append(quotes, &QuotePegOutResponse{toPegoutQuote(pq), hash})
 		}
 	}
 
@@ -1040,7 +1082,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		if getQuoteFailed {
 			details := Details{
 				"quote": q,
-				"gas":   gas,
+				"gas":   totalGas,
 			}
 			customError := NewServerError(ErrorGetQuoteFailed, details, true)
 			ResponseError(w, customError, http.StatusNotFound) // StatusBadRequest or StatusInternalServerError?
@@ -1071,11 +1113,12 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	returnQuoteSignFunc := func(w http.ResponseWriter, signature string, depositAddr string) {
+	returnQuoteSignFunc := func(w http.ResponseWriter, signature, depositAddr, flyoverRedeemScript string) {
 		enc := json.NewEncoder(w)
 		response := acceptRes{
 			Signature:                 signature,
 			BitcoinDepositAddressHash: depositAddr,
+			FlyoverRedeemScript:       flyoverRedeemScript,
 		}
 
 		err := enc.Encode(response)
@@ -1135,7 +1178,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rq != nil { // if the quote has already been accepted, just return signature and deposit addr
-		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr)
+		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr, rq.FlyoverRedeemScript)
 		return
 	}
 
@@ -1155,7 +1198,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	depositAddress, err := s.rsk.GetDerivedBitcoinAddress(fedInfo, s.btc.GetParams(), btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+	depositAddress, flyoverRedeemScript, err := s.rsk.GetDerivedBitcoinAddress(fedInfo, s.btc.GetParams(), btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
 		log.Error("error getting derived bitcoin address: ", err.Error())
 		customError := NewServerError("error getting derived bitcoin address: "+err.Error(), make(map[string]interface{}), true)
@@ -1163,7 +1206,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := pegin.GetPeginProviderByAddress(s.providers, quote.LPRSKAddr)
+	p := pegin.GetPeginProviderByAddress(s.provider, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -1175,7 +1218,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
 	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
 	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
-	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
+	signB, err := p.SignQuote(hashBytes, depositAddress, flyoverRedeemScript, reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
 		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
@@ -1192,7 +1235,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signature := hex.EncodeToString(signB)
-	returnQuoteSignFunc(w, signature, depositAddress)
+	returnQuoteSignFunc(w, signature, depositAddress, flyoverRedeemScript)
 }
 
 func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *pegin.Quote {
@@ -1409,7 +1452,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	p := pegout.GetPegoutProviderByAddress(s.pegoutProviders, quote.LPRSKAddr)
+	p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
 	gasPrice, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error("error getting provider by address: ", err.Error())
@@ -1468,56 +1511,9 @@ type RegisterPegOutReg struct {
 	signature string
 }
 
-type SenBTCRequest struct {
-	Address string `json:"address" example:"0x0" description:"Address to send BTC to"`
-	Amount  uint   `json:"amount" example:"100000000000" description:"Amount to send BTC to address"`
-}
-
 type SenBTCResponse struct {
 	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
 }
-
-/* TODO comment until we decide if keep or remove
-// @Title Send BTC
-// @Description Sends BTC
-// @Param  SendBTCRequest  body SenBTCRequest true "Send BTC Request"
-// @Success  200  object SenBTCResponse
-// @Route /pegout/sendBTC [post]
-func (s *Server) sendBTC(w http.ResponseWriter, r *http.Request) {
-	toRestAPI(w)
-	enableCors(&w)
-	payload := SenBTCRequest{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&payload)
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
-		return
-	}
-
-	txHash, err := s.btc.SendBtc(payload.Address, uint64(payload.Amount))
-
-	if err != nil {
-		log.Errorf(UnableToDeserializePayloadError, err)
-		http.Error(w, "Unable to sendAddress", http.StatusBadRequest)
-		return
-	}
-
-	response := &SenBTCResponse{
-		TxHash: txHash,
-	}
-
-	encoder := json.NewEncoder(w)
-
-	err = encoder.Encode(&response)
-
-	if err != nil {
-		http.Error(w, UnableToBuildResponse, http.StatusInternalServerError)
-		return
-	}
-}
-*/
 
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required" example:"100000000000" description:"Amount to add to the collateral"`
@@ -1550,7 +1546,7 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lp := pegin.GetPeginProviderByAddress(s.providers, payload.LpRskAddress)
+	lp := pegin.GetPeginProviderByAddress(s.provider, payload.LpRskAddress)
 	if lp == nil {
 		customError := NewServerError("missing liquidity provider", make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1622,7 +1618,7 @@ func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	opts, err := pegin.GetPeginProviderTransactOpts(s.provider, payload.LpRskAddress)
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1690,7 +1686,7 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts, err := pegin.GetPeginProviderTransactOpts(s.providers, payload.LpRskAddress)
+	opts, err := pegin.GetPeginProviderTransactOpts(s.provider, payload.LpRskAddress)
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
 		ResponseError(w, customError, http.StatusNotFound)
@@ -1711,8 +1707,8 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title GetUserQuotes
 // @Description Returns user quotes for address.
-// @Param   UserQuoteRequest body types.UserQuoteRequest true "User Quote Request Details"
-// @Success 200 {array} types.UserEvents "Successfully retrieved the user quotes"
+// @Param   UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 {array} pegout.DepositEvent "Successfully retrieved the user quotes"
 // @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
@@ -1724,35 +1720,12 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fromBlock, toBlock *uint64
-	fromBlockStr := r.URL.Query().Get("fromBlock")
-	toBlockStr := r.URL.Query().Get("toBlock")
-
-	if fromBlockStr != "" {
-		fb, err := strconv.ParseUint(fromBlockStr, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid fromBlock parameter", http.StatusBadRequest)
-			return
-		}
-		fromBlock = &fb
-	}
-
-	if toBlockStr != "" {
-		tb, err := strconv.ParseUint(toBlockStr, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid toBlock parameter", http.StatusBadRequest)
-			return
-		}
-		toBlock = &tb
-	}
-
-	payload := types.UserQuoteRequest{Address: address, FromBlock: fromBlock, ToBlock: toBlock}
-	events, err := s.rsk.GetUserQuotes(payload)
+	events, err := s.dbMongo.GetDepositEvents(address)
 	if err != nil {
 		log.Error("error getting user quotes: ", err.Error())
 	}
 	if events == nil {
-		events = []types.UserEvents{}
+		events = []*pegout.DepositEvent{}
 	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&events)

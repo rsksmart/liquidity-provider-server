@@ -26,7 +26,7 @@ import (
 type LiquidityProvider interface {
 	Address() string
 	GetQuote(*Quote, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
-	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
+	SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
@@ -52,7 +52,7 @@ type ProviderConfig struct {
 	PwdFile        string         `env:"PWD_FILE"`
 	ChainId        *big.Int       `env:"CHAIN_ID"`
 	MaxConf        uint16         `env:"MAX_CONF"`
-	Confirmations  map[int]uint16 `env:"CONFIRMATIONS,delimiter=|"`
+	Confirmations  map[int]uint16 `env:"CONFIRMATIONS"`
 	TimeForDeposit uint32         `env:"TIME_FOR_DEPOSIT"`
 	CallTime       uint32         `env:"CALL_TIME"`
 	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
@@ -104,7 +104,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei, lbc
 	return &res, nil
 }
 
-func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error) {
+func (lp *LocalProvider) SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error) {
 	quoteHash := hex.EncodeToString(hash)
 
 	var buf bytes.Buffer
@@ -135,11 +135,12 @@ func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *type
 
 		signature := hex.EncodeToString(signB)
 		rq := types.RetainedQuote{
-			QuoteHash:   quoteHash,
-			DepositAddr: depositAddr,
-			Signature:   signature,
-			ReqLiq:      reqLiq.Copy(),
-			State:       types.RQStateWaitingForDeposit,
+			QuoteHash:           quoteHash,
+			DepositAddr:         depositAddr,
+			Signature:           signature,
+			ReqLiq:              reqLiq.Copy(),
+			FlyoverRedeemScript: flyoverRedeemScript,
+			State:               types.RQStateWaitingForDeposit,
 		}
 		err = lp.repository.RetainQuote(&rq)
 		if err != nil {
@@ -177,17 +178,16 @@ func sortedConfirmations(m map[int]uint16) []int {
 	return keys
 }
 
-func GetPeginProviderByAddress(liquidityProviders []LiquidityProvider, addr string) LiquidityProvider {
-	for _, p := range liquidityProviders {
-		if p.Address() == addr {
-			return p
-		}
+func GetPeginProviderByAddress(liquidityProvider LiquidityProvider, addr string) LiquidityProvider {
+	if liquidityProvider.Address() == addr {
+		return liquidityProvider
 	}
+
 	return nil
 }
 
-func GetPeginProviderTransactOpts(liquidityProviders []LiquidityProvider, address string) (*bind.TransactOpts, error) {
-	lp := GetPeginProviderByAddress(liquidityProviders, address)
+func GetPeginProviderTransactOpts(liquidityProvider LiquidityProvider, address string) (*bind.TransactOpts, error) {
+	lp := GetPeginProviderByAddress(liquidityProvider, address)
 	if lp == nil {
 		return nil, errors.New("missing liquidity provider")
 	}
