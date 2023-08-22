@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/account"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
@@ -105,6 +106,7 @@ type Server struct {
 	ProviderConfig       pegin.ProviderConfig
 	PegoutConfig         pegout.ProviderConfig
 	AccountProvider      account.AccountProvider
+	awsConfig            aws.Config
 }
 
 type QuoteRequest struct {
@@ -149,7 +151,7 @@ func enableCors(res *http.ResponseWriter) {
 type acceptRes struct {
 	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
-	FlyoverRedeemScript       string `json:"flyoverRedeemScript" required:"" example:"0x0" description:"Redeem script that the address is generated from"`
+	FlyoverRedeemScript       string `json:"-"`
 }
 type acceptResPegOut struct {
 	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
@@ -161,12 +163,13 @@ type AcceptResPegOut struct {
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData,
-	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
-	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider)
+	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider, awsConfig aws.Config) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider, awsConfig)
 }
 
 func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time,
-	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider) Server {
+	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider,
+	awsConfig aws.Config) Server {
 	return Server{
 		rsk:                 rsk,
 		btc:                 btc,
@@ -180,6 +183,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		ProviderRespository: LPRep,
 		ProviderConfig:      ProviderConfig,
 		AccountProvider:     accountProvider,
+		awsConfig:           awsConfig,
 	}
 }
 
@@ -461,7 +465,7 @@ func (s *Server) Start(port uint) error {
 
 	peginProvider := s.provider
 	pegoutProvider := s.pegoutProvider
-	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider)
+	s.lpFundsEventtWatcher = NewLpFundsEventWatcher(1*time.Minute, make(chan bool), s.rsk, peginProvider, pegoutProvider, s.awsConfig)
 	s.lpFundsEventtWatcher.Init()
 
 	err = s.initPegoutWatchers()

@@ -52,7 +52,7 @@ type ProviderConfig struct {
 	PwdFile        string         `env:"PWD_FILE"`
 	ChainId        *big.Int       `env:"CHAIN_ID"`
 	MaxConf        uint16         `env:"MAX_CONF"`
-	Confirmations  map[int]uint16 `env:"CONFIRMATIONS,delimiter=|"`
+	Confirmations  map[int]uint16 `env:"CONFIRMATIONS"`
 	TimeForDeposit uint32         `env:"TIME_FOR_DEPOSIT"`
 	CallTime       uint32         `env:"CALL_TIME"`
 	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
