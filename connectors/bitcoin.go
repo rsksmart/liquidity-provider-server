@@ -509,12 +509,17 @@ func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 }
 
 func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
-	balance, err := btc.c.GetBalance("*") // dummy parameter, see explanation -> https://bitcoincore.org/en/doc/23.0.0/rpc/wallet/getbalance/
+	utxos, err := btc.c.ListUnspent()
 	if err != nil {
 		return nil, err
-	} else {
-		return big.NewInt(int64(balance)), nil
 	}
+	balance := big.NewInt(0)
+	for _, utxo := range utxos {
+		if utxo.Spendable {
+			balance.Add(balance, big.NewInt(int64(utxo.Amount*BTC_TO_SATOSHI)))
+		}
+	}
+	return balance, nil
 }
 
 type MerkleBranch struct {

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/account"
 	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
@@ -78,7 +77,7 @@ type LiquidityProviderList struct {
 	LBCAddr                     string `env:"LBC_ADDR"`
 	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
 	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
-	LpsAddress                	string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddress                  string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
 }
 
 type ConfigData struct {
@@ -107,8 +106,8 @@ type Server struct {
 	ProviderConfig       pegin.ProviderConfig
 	PegoutConfig         pegout.ProviderConfig
 	AccountProvider      account.AccountProvider
-	LpsAddress_pegin            string `env:"PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR"`
-	LpsAddress_pegout           string `env:"PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddressPegin      string `env:"PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR"`
+	LpsAddressPegout     string `env:"PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR"`
 	awsConfig            aws.Config
 }
 
