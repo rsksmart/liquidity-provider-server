@@ -96,16 +96,12 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 
 	cfgData.EncryptKey = key
 
-	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, cfg.Provider, peginAccountProvider, awsConfiguration)
+	srv = http.New(rsk, btc, dbMongo, cfgData, lpRepository, cfg.Provider, cfg.PegoutProvier, peginAccountProvider, awsConfiguration)
 	log.Debug("registering local provider (this might take a while)")
 	req := types.ProviderRegisterRequest{
-		Name:                cfg.PeginProviderName,
-		Fee:                 cfg.PeginFee,
-		QuoteExpiration:     cfg.PeginQuoteExp,
-		MinTransactionValue: cfg.PeginMinTransactValue,
-		MaxTransactionValue: cfg.PeginMaxTransactValue,
-		ApiBaseUrl:          cfg.BaseURL,
-		Status:              true,
+		Name:       cfg.PeginProviderName,
+		ApiBaseUrl: cfg.BaseURL,
+		Status:     true,
 	}
 
 	err = srv.AddProvider(lp, req)
@@ -113,13 +109,9 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 		log.Fatalf("error registering local provider: %v", err)
 	}
 	req2 := types.ProviderRegisterRequest{
-		Name:                cfg.PegoutProviderName,
-		Fee:                 cfg.PegoutFee,
-		QuoteExpiration:     cfg.PegoutQuoteExp,
-		MinTransactionValue: cfg.PegoutMinTransactValue,
-		MaxTransactionValue: cfg.PegoutMaxTransactValue,
-		ApiBaseUrl:          cfg.BaseURL,
-		Status:              true,
+		Name:       cfg.PegoutProviderName,
+		ApiBaseUrl: cfg.BaseURL,
+		Status:     true,
 	}
 	err = srv.AddPegOutProvider(lpPegOut, req2)
 
