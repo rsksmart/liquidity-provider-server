@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/rand"
 	"sort"
 	"sync"
@@ -47,7 +46,7 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
+	GetQuote(*Quote, uint64, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	GetCreationBlock(quote *Quote) uint32
@@ -76,7 +75,7 @@ func GetPegoutProviderByAddress(liquidityProvider LiquidityProvider, addr string
 	return nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei, lbcProvider *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -100,7 +99,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 	}
 
 	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
-	fee := types.NewBigWei(lbcProvider.Fee)
+	fee := lp.cfg.Fee
 	res.CallFee = new(types.Wei).Add(callCost, fee)
 	return &res, nil
 }

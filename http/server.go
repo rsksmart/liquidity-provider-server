@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/account"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"net/http"
 
 	"io"
@@ -106,8 +105,6 @@ type Server struct {
 	ProviderConfig       pegin.ProviderConfig
 	PegoutConfig         pegout.ProviderConfig
 	AccountProvider      account.AccountProvider
-	LpsAddressPegin      string `env:"PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR"`
-	LpsAddressPegout     string `env:"PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR"`
 	awsConfig            aws.Config
 }
 
@@ -165,12 +162,12 @@ type AcceptResPegOut struct {
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData,
-	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider, awsConfig aws.Config) Server {
-	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, accountProvider, awsConfig)
+	LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, pegoutConfig pegout.ProviderConfig, accountProvider account.AccountProvider, awsConfig aws.Config) Server {
+	return newServer(rsk, btc, dbMongo, time.Now, cfgData, LPRep, ProviderConfig, pegoutConfig, accountProvider, awsConfig)
 }
 
 func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, now func() time.Time,
-	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, accountProvider account.AccountProvider,
+	cfgData ConfigData, LPRep *storage.LPRepository, ProviderConfig pegin.ProviderConfig, pegoutConfig pegout.ProviderConfig, accountProvider account.AccountProvider,
 	awsConfig aws.Config) Server {
 	return Server{
 		rsk:                 rsk,
@@ -184,6 +181,7 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 		cfgData:             cfgData,
 		ProviderRespository: LPRep,
 		ProviderConfig:      ProviderConfig,
+		PegoutConfig:        pegoutConfig,
 		AccountProvider:     accountProvider,
 		awsConfig:           awsConfig,
 	}
@@ -210,7 +208,7 @@ func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.P
 				From:   addr,
 				Signer: lp.SignTx,
 			}
-			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
 			if err != nil {
 				return err
 			}
@@ -257,7 +255,7 @@ func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails 
 				From:   addr,
 				Signer: lp.SignTx,
 			}
-			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, big.NewInt(int64(ProviderDetails.Fee)), big.NewInt(int64(ProviderDetails.QuoteExpiration)), big.NewInt(int64(ProviderDetails.MinTransactionValue)), big.NewInt(int64(ProviderDetails.MaxTransactionValue)), ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
+			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
 			if err != nil {
 				return err
 			}
@@ -822,14 +820,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.provider.Address())
-	if err != nil {
-		log.Error(err)
-		customError := NewServerError(err.Error(), Details{}, true)
-		ResponseError(w, customError, http.StatusConflict)
-		return
-	}
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), &s.ProviderConfig)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -876,7 +867,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
 	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
-	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price), lbcProvider)
+	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -966,14 +957,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lbcProvider, err := s.getProvider(s.pegoutProvider.Address())
-	if err != nil {
-		log.Error(err)
-		customError := NewServerError(err.Error(), Details{}, true)
-		ResponseError(w, customError, http.StatusConflict)
-		return
-	}
-	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), lbcProvider)
+	err = s.validateAmountForProvider(new(big.Int).SetUint64(qr.ValueToTransfer), &s.PegoutConfig.ProviderConfig)
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(err.Error(), Details{}, true)
@@ -1036,7 +1020,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGas, types.NewBigWei(price), lbcProvider)
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -1768,35 +1752,10 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	err = encoder.Encode(&response)
 }
 
-func (s *Server) getProvider(providerAddress string) (*bindings.LiquidityBridgeContractLiquidityProvider, error) {
-	storedAddresses, err := s.dbMongo.GetProviders()
-	if err != nil {
-		return nil, err
-	}
-	var id int64
-	for _, address := range storedAddresses {
-		if address.Provider == providerAddress {
-			id = address.Id
-		}
-	}
-	if id == 0 {
-		return nil, errors.New("provider not found")
-	}
-
-	providers, err := s.rsk.GetProviders([]int64{id})
-	if err != nil {
-		return nil, err
-	} else if len(providers) == 0 {
-		return nil, errors.New("provider not found")
-	} else {
-		return &providers[0], nil
-	}
-}
-
-func (s *Server) validateAmountForProvider(amount *big.Int, provider *bindings.LiquidityBridgeContractLiquidityProvider) error {
+func (s *Server) validateAmountForProvider(amount *big.Int, provider *pegin.ProviderConfig) error {
 	var min, max = provider.MinTransactionValue, provider.MaxTransactionValue
 	if amount.Cmp(min) < 0 || amount.Cmp(max) > 0 {
-		return fmt.Errorf("amount out of provider range which is [%d, %d]", min, max)
+		return fmt.Errorf("amount out of provider range which is (%d, %d)", min, max)
 	}
 	return nil
 }

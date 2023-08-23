@@ -15,22 +15,14 @@ import (
 )
 
 type Config struct {
-	LogFile                string   `env:"LOG_FILE"`
-	Debug                  bool     `env:"DEBUG"`
-	IrisActivationHeight   int      `env:"IRIS_ACTIVATION_HEIGHT"`
-	ErpKeys                []string `env:"ERP_KEYS"`
-	PeginProviderName      string   `env:"PEGIN_PROVIDER_NAME"`
-	PeginFee               uint     `env:"PEGIN_FEE"`
-	PeginQuoteExp          uint     `env:"PEGIN_QUOTE_EXPIRATION"`
-	PeginMinTransactValue  uint64   `env:"PEGIN_MIN_TRANSACTION_VALUE"`
-	PeginMaxTransactValue  uint64   `env:"PEGIN_MAX_TRANSACTION_VALUE"`
-	PegoutProviderName     string   `env:"PEGOUT_PROVIDER_NAME"`
-	PegoutFee              uint     `env:"PEGOUT_FEE"`
-	PegoutQuoteExp         uint     `env:"PEGOUT_QUOTE_EXPIRATION"`
-	PegoutMinTransactValue uint64   `env:"PEGOUT_MIN_TRANSACTION_VALUE"`
-	PegoutMaxTransactValue uint64   `env:"PEGOUT_MAX_TRANSACTION_VALUE"`
-	BaseURL                string   `env:"BASE_URL"`
-	QuoteCacheStartBlock   uint64   `env:"QUOTE_CACHE_START_BLOCK"`
+	LogFile              string   `env:"LOG_FILE"`
+	Debug                bool     `env:"DEBUG"`
+	IrisActivationHeight int      `env:"IRIS_ACTIVATION_HEIGHT"`
+	ErpKeys              []string `env:"ERP_KEYS"`
+	PeginProviderName    string   `env:"PEGIN_PROVIDER_NAME"`
+	PegoutProviderName   string   `env:"PEGOUT_PROVIDER_NAME"`
+	BaseURL              string   `env:"BASE_URL"`
+	QuoteCacheStartBlock uint64   `env:"QUOTE_CACHE_START_BLOCK"`
 
 	Server struct {
 		Port uint `env:"SERVER_PORT"`
