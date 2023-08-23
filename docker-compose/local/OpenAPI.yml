@@ -195,21 +195,9 @@ components:
           description: Provider's LPS instance URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Provider fee
-          example: 100000000000000000
-          type: integer
         id:
           description: Provider id
           example: 1
-          type: integer
-        maxTransactionValue:
-          description: Maximum transaction value
-          example: 1000000000000000000
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value
-          example: 100000000
           type: integer
         name:
           description: Provider name
@@ -223,10 +211,6 @@ components:
           description: Provider Type
           example: pegin
           type: string
-        quoteExpiration:
-          description: Quote expiration time in seconds
-          example: 3600
-          type: integer
         status:
           description: Provider status
           example: true
@@ -235,10 +219,6 @@ components:
       - id
       - provider
       - name
-      - fee
-      - quoteExpiration
-      - minTransactionValue
-      - maxTransactionValue
       - apiBaseUrl
       - status
       - providerType
