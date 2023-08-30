@@ -973,12 +973,17 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var amountWithFee uint64
-	amountWithFee = uint64(s.btc.GetAmauntWithFeesIncluded(float64(qr.ValueToTransfer)))
+	amountInSatoshi, _ := types.NewUWei(qr.ValueToTransfer).ToSatoshi().Uint64()
+	feeInSatoshi, err := s.btc.EstimateFees(qr.To, amountInSatoshi)
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
 
-	var btcFee = qr.ValueToTransfer - amountWithFee
-
-	var totalGas = gas + gasRefund + btcFee
+	// TODO this fee shouldnt be in gas limit, we need to move after discussing how we'll handler fees
+	var totalGas = gas + gasRefund + types.SatoshiToWei(feeInSatoshi).Uint64()
 
 	price, err := s.rsk.GasPrice()
 	if err != nil {
