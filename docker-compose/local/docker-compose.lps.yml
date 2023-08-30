@@ -79,6 +79,9 @@ services:
       - AWS_REGION
       - ENCRYPT_APP_KEY
       - QUOTE_CACHE_START_BLOCK
+      - CAPTCHA_SECRET_KEY
+      - CAPTCHA_THRESHOLD
+      - DISABLE_CAPTCHA
     ports:
       - "8080:8080"
     volumes:

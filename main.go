@@ -197,6 +197,8 @@ func main() {
 func initCfgData() {
 	cfgData.RSK = cfg.RSK
 	cfgData.QuoteCacheStartBlock = cfg.QuoteCacheStartBlock
+	cfgData.CaptchaSecretKey = cfg.CaptchaSecretKey
+	cfgData.CaptchaThreshold = cfg.CaptchaThreshold
 }
 
 func generateRandomKey(n int) string {
