@@ -12,6 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/account"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 
 	"io"
 	"math"
@@ -83,6 +86,8 @@ type ConfigData struct {
 	EncryptKey           string
 	RSK                  LiquidityProviderList
 	QuoteCacheStartBlock uint64
+	CaptchaSecretKey     string
+	CaptchaThreshold     float32
 }
 
 type Server struct {
@@ -135,16 +140,6 @@ type QuotePegOutResponse struct {
 
 type acceptReq struct {
 	QuoteHash string `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
-}
-
-func enableCors(res *http.ResponseWriter) {
-	headers := (*res).Header()
-	headers.Add("Access-Control-Allow-Origin", "*")
-	headers.Add("Vary", "Origin")
-	headers.Add("Vary", "Access-Control-Request-Method")
-	headers.Add("Vary", "Access-Control-Request-Headers")
-	headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token")
-	headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 }
 
 type acceptRes struct {
@@ -290,7 +285,6 @@ type RegistrationStatus struct {
 // @Route /provider/pegin/register [post]
 func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
-	enableCors(&w)
 	payload := types.ProviderRegisterRequest{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&payload)
@@ -327,7 +321,6 @@ func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Req
 // @Route /provider/pegout/register [post]
 func (s *Server) registerPegoutProviderHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
-	enableCors(&w)
 	payload := types.ProviderRegisterRequest{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&payload)
@@ -373,7 +366,6 @@ type ProviderStatusChangeStatus struct {
 // @Route /provider/changeStatus [post]
 func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
-	enableCors(&w)
 	payload := ChangeStatusRequest{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&payload)
@@ -416,12 +408,13 @@ func (s *Server) changeStatusHandler(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) Start(port uint) error {
 	r := mux.NewRouter()
+	r.Use(s.corsMiddleware)
 	r.Path("/health").Methods(http.MethodGet).HandlerFunc(s.checkHealthHandler)
 	r.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(s.getProvidersHandler)
 	r.Path("/pegin/getQuote").Methods(http.MethodPost).HandlerFunc(s.getQuoteHandler)
-	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuoteHandler)
+	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).Handler(s.captchaMiddleware(http.HandlerFunc(s.acceptQuoteHandler)))
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
-	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).HandlerFunc(s.acceptQuotePegOutHandler)
+	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).Handler(s.captchaMiddleware(http.HandlerFunc(s.acceptQuotePegOutHandler)))
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
@@ -491,7 +484,6 @@ func (s *Server) Start(port uint) error {
 }
 
 func (s *Server) handleOptions(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -701,7 +693,6 @@ type healthRes struct {
 // @Success  200  object healthRes
 // @Route /health [get]
 func (s *Server) checkHealthHandler(w http.ResponseWriter, _ *http.Request) {
-	enableCors(&w)
 	lpsSvcStatus := svcStatusOk
 	dbSvcStatus := svcStatusOk
 	rskSvcStatus := svcStatusOk
@@ -761,7 +752,6 @@ func (a *QuotePegOutRequest) validateQuoteRequest() string {
 // @Success  200  array ProviderDTO
 // @Route /getProviders [get]
 func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	w.Header().Set("Content-Type", "application/json")
 
 	providerList, error := s.dbMongo.GetProviders()
@@ -805,7 +795,6 @@ func (s *Server) getProvidersHandler(w http.ResponseWriter, r *http.Request) {
 // @Success  200  array QuoteReturn The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegin/getQuote [post]
 func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	qr := QuoteRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -942,7 +931,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Success 200 array QuotePegOutResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegout/getQuotes [post]
 func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	qr := QuotePegOutRequest{}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -1095,7 +1083,6 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Success  200  object acceptRes Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	returnQuoteSignFunc := func(w http.ResponseWriter, signature, depositAddr, flyoverRedeemScript string) {
 		enc := json.NewEncoder(w)
 		response := acceptRes{
@@ -1382,7 +1369,6 @@ func generateRskEthereumAddress() ([]byte, []byte, common.Address, error) {
 // @Success 200 object acceptResPegOut
 // @Route /pegout/acceptQuote [post]
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	req := acceptReq{}
 	toRestAPI(w)
 	dec := json.NewDecoder(r.Body)
@@ -1514,7 +1500,6 @@ type AddCollateralResponse struct {
 // @Route /addCollateral [post]
 func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
-	enableCors(&w)
 	payload := AddCollateralRequest{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&payload)
@@ -1590,7 +1575,6 @@ type WithdrawCollateralRequest struct {
 // @Route /withdrawCollateral [post]
 // @Success 204 object
 func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	payload := WithdrawCollateralRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -1658,7 +1642,6 @@ type ProviderResignRequest struct {
 // @Route /provider/resignation [post]
 // @Success 204 object
 func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	payload := ProviderResignRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -1695,7 +1678,6 @@ func (s *Server) providerResignHandler(w http.ResponseWriter, r *http.Request) {
 // @Router /userQuotes [get]
 func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
-	enableCors(&w)
 
 	address := r.URL.Query().Get("address")
 	if address == "" {
@@ -1723,7 +1705,6 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 // @Route /provider/sync [post]
 // @Success 204 object
 func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
 	providerIds, err := s.rsk.GetProviderIds()
 	if err != nil {
 		customError := NewServerError(err.Error(), make(Details), true)
@@ -1750,6 +1731,79 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 	response := filteredProviders
 	encoder := json.NewEncoder(w)
 	err = encoder.Encode(&response)
+}
+
+type CaptchaValidationResponse struct {
+	Success     bool      `json:"success"`
+	Score       float32   `json:"score"`
+	Action      string    `json:"action"`
+	ChallengeTs time.Time `json:"challenge_ts"`
+	Hostname    string    `json:"hostname"`
+	ErrorCodes  []string  `json:"error-codes"`
+}
+
+func (s *Server) captchaMiddleware(next http.Handler) http.Handler {
+	if s.cfgData.CaptchaThreshold < 0.5 {
+		log.Warn("Too low captcha threshold value!")
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("X-Captcha-Token")
+		disabled, _ := strconv.ParseBool(os.Getenv("DISABLE_CAPTCHA"))
+		if disabled {
+			log.Warning("IMPORTANT! Handling request with captcha validation disabled")
+			next.ServeHTTP(w, r)
+			return
+		} else if token == "" {
+			customError := NewServerError("missing X-Captcha-Token header", make(Details), true)
+			ResponseError(w, customError, http.StatusBadRequest)
+			return
+		}
+
+		form := make(url.Values)
+		form.Set("secret", s.cfgData.CaptchaSecretKey)
+		form.Set("response", token)
+		res, err := http.DefaultClient.PostForm("https://www.google.com/recaptcha/api/siteverify", form)
+
+		if err != nil {
+			details := make(Details)
+			details["error"] = err.Error()
+			customError := NewServerError("error validating captcha", details, false)
+			ResponseError(w, customError, http.StatusInternalServerError)
+			return
+		}
+		defer res.Body.Close()
+
+		var validation CaptchaValidationResponse
+		err = json.NewDecoder(res.Body).Decode(&validation)
+		if err != nil {
+			customError := NewServerError("error validating captcha", make(Details), false)
+			ResponseError(w, customError, http.StatusInternalServerError)
+			return
+		}
+
+		if validation.Success && validation.Score >= s.cfgData.CaptchaThreshold {
+			log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
+			next.ServeHTTP(w, r)
+		} else {
+			details := make(Details)
+			details["errors"] = validation.ErrorCodes
+			customError := NewServerError("error validating captcha", details, true)
+			ResponseError(w, customError, http.StatusBadRequest)
+		}
+	})
+}
+
+func (s *Server) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers := w.Header()
+		headers.Add("Access-Control-Allow-Origin", "*")
+		headers.Add("Vary", "Origin")
+		headers.Add("Vary", "Access-Control-Request-Method")
+		headers.Add("Vary", "Access-Control-Request-Headers")
+		headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token")
+		headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) validateAmountForProvider(amount *big.Int, provider *pegin.ProviderConfig) error {
