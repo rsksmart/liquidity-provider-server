@@ -23,6 +23,8 @@ type Config struct {
 	PegoutProviderName   string   `env:"PEGOUT_PROVIDER_NAME"`
 	BaseURL              string   `env:"BASE_URL"`
 	QuoteCacheStartBlock uint64   `env:"QUOTE_CACHE_START_BLOCK"`
+	CaptchaSecretKey     string   `env:"CAPTCHA_SECRET_KEY"`
+	CaptchaThreshold     float32  `env:"CAPTCHA_THRESHOLD"`
 
 	Server struct {
 		Port uint `env:"SERVER_PORT"`
