@@ -418,12 +418,13 @@ func (s *Server) Start(port uint) error {
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
-	r.Path("/provider/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
-	r.Path("/provider/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
-	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
-	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
+	r.Path("/providers/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
+	r.Path("/providers/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
+	r.Path("/providers/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
+	r.Path("/providers/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
 	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
+	r.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(s.providerDetailHandler)
 
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -1699,6 +1700,45 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	enc := json.NewEncoder(w)
 	err = enc.Encode(&events)
+	if err != nil {
+		log.Error("error encoding user events")
+		return
+	}
+}
+
+type ProviderDetail struct {
+	Fee                 uint64 `json:"fee"  required:""`
+	MinTransactionValue uint64 `json:"minTransactionValue"  required:""`
+	MaxTransactionValue uint64 `json:"maxTransactionValue"  required:""`
+}
+
+type ProviderDetailResponse struct {
+	Pegin  ProviderDetail `json:"pegin" required:""`
+	Pegout ProviderDetail `json:"pegout" required:""`
+}
+
+// @Title Provider detail
+// @Description Returns the details of the provider that manages this instance of LPS
+// @Param   UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 object ProviderDetailResponse "Detail of the provider that manges this instance"
+// @Router /providers/details [get]
+func (s *Server) providerDetailHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+
+	detail := ProviderDetailResponse{
+		Pegin: ProviderDetail{
+			Fee:                 s.ProviderConfig.Fee.Uint64(),
+			MinTransactionValue: s.ProviderConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue: s.ProviderConfig.MaxTransactionValue.Uint64(),
+		},
+		Pegout: ProviderDetail{
+			Fee:                 s.PegoutConfig.Fee.Uint64(),
+			MinTransactionValue: s.PegoutConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue: s.PegoutConfig.MaxTransactionValue.Uint64(),
+		},
+	}
+
+	err := json.NewEncoder(w).Encode(&detail)
 	if err != nil {
 		log.Error("error encoding user events")
 		return
