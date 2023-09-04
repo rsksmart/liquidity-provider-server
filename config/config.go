@@ -19,11 +19,12 @@ type Config struct {
 	Debug                bool     `env:"DEBUG"`
 	IrisActivationHeight int      `env:"IRIS_ACTIVATION_HEIGHT"`
 	ErpKeys              []string `env:"ERP_KEYS"`
-	PeginProviderName    string   `env:"PEGIN_PROVIDER_NAME"`
-	PegoutProviderName   string   `env:"PEGOUT_PROVIDER_NAME"`
+	ProviderName         string   `env:"PROVIDER_NAME"`
+	ProviderType         string   `env:"PROVIDER_TYPE"`
 	BaseURL              string   `env:"BASE_URL"`
 	QuoteCacheStartBlock uint64   `env:"QUOTE_CACHE_START_BLOCK"`
 	CaptchaSecretKey     string   `env:"CAPTCHA_SECRET_KEY"`
+	CaptchaSiteKey       string   `env:"CAPTCHA_SITE_KEY"`
 	CaptchaThreshold     float32  `env:"CAPTCHA_THRESHOLD"`
 
 	Server struct {
