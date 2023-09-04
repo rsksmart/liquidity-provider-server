@@ -40,8 +40,15 @@ type Config struct {
 		}
 		Path string `env:"DB_PATH"`
 	}
-	RSK           http.LiquidityProviderList
-	BTC           connectors.BtcConfig
+	RSK                 http.LiquidityProviderList
+	BTC                 connectors.BtcConfig
+	ProviderCredentials struct {
+		Keydir         string `env:"KEY_DIR"`
+		AccountNum     int    `env:"ACCOUNT_NUM"`
+		PwdFile        string `env:"PWD_FILE"`
+		KeySecret      string `env:"KEY_SECRET"`
+		PasswordSecret string `env:"PASSWORD_SECRET"`
+	}
 	Provider      pegin.ProviderConfig  `env:",prefix=PEGIN_PROVIDER_"`
 	PegoutProvier pegout.ProviderConfig `env:",prefix=PEGOUT_PROVIDER_"`
 }

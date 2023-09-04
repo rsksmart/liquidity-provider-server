@@ -73,13 +73,21 @@ func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, 
 	}
 
 	secretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
-	secretNames := &account.AccountSecretNames{KeySecretName: cfg.Provider.KeySecret, PasswordSecretName: cfg.Provider.PasswordSecret}
-	accountProvider := account.NewRemoteAccountProvider(cfg.Provider.Keydir, cfg.Provider.AccountNum, secretNames, secretsStorage)
-	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository, accountProvider)
+	secretNames := &account.AccountSecretNames{
+		KeySecretName:      cfg.ProviderCredentials.KeySecret,
+		PasswordSecretName: cfg.ProviderCredentials.PasswordSecret,
+	}
+	accountProvider := account.NewRemoteAccountProvider(
+		cfg.ProviderCredentials.Keydir,
+		cfg.ProviderCredentials.AccountNum,
+		secretNames,
+		secretsStorage,
+	)
+	lp, err := pegin.NewLocalProvider(cfg.Provider, lpRepository, accountProvider, cfg.RSK.ChainId)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}
-	lpPegOut, err := pegout.NewLocalProvider(&cfg.PegoutProvier, lpRepository, accountProvider)
+	lpPegOut, err := pegout.NewLocalProvider(&cfg.PegoutProvier, lpRepository, accountProvider, cfg.RSK.ChainId)
 	if err != nil {
 		log.Fatal("cannot create local provider: ", err)
 	}

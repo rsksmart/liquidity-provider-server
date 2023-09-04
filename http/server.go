@@ -75,11 +75,12 @@ const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 
 type LiquidityProviderList struct {
-	Endpoint                    string `env:"RSK_ENDPOINT"`
-	LBCAddr                     string `env:"LBC_ADDR"`
-	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
-	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
-	LpsAddress                  string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	Endpoint                    string   `env:"RSK_ENDPOINT"`
+	LBCAddr                     string   `env:"LBC_ADDR"`
+	BridgeAddr                  string   `env:"RSK_BRIDGE_ADDR"`
+	RequiredBridgeConfirmations int64    `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
+	LpsAddress                  string   `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	ChainId                     *big.Int `env:"CHAIN_ID"`
 }
 
 type ConfigData struct {
@@ -303,7 +304,7 @@ func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
-	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository, s.AccountProvider)
+	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository, s.AccountProvider, s.cfgData.RSK.ChainId)
 	if err != nil {
 		log.Error(ErrorCreatingLocalProvider, err)
 		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
@@ -340,7 +341,7 @@ func (s *Server) registerPegoutProviderHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
-	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider)
+	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider, s.cfgData.RSK.ChainId)
 	if err != nil {
 		log.Error(ErrorCreatingLocalProvider, err)
 		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
