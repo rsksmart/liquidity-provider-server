@@ -183,35 +183,34 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 }
 
 func (s *Server) AddProvider(peginProvider pegin.LiquidityProvider, pegoutProvider pegout.LiquidityProvider, providerDetails types.ProviderRegisterRequest) error {
-	if providerDetails.ProviderType != "pegin" && providerDetails.ProviderType != "pegout" && providerDetails.ProviderType != "both" {
-		return errors.New("invalid provider type")
-	}
+	var peginCollateral, pegoutCollateral, minCollateral *big.Int
+	var operationalForPegin, operationalForPegout bool
+	var err error
+
 	s.provider = peginProvider
 	s.pegoutProvider = pegoutProvider
 
-	peginCollateral, minCollateral, err := s.rsk.GetCollateral(peginProvider.Address())
-	if err != nil {
+	if providerDetails.ProviderType != "pegin" && providerDetails.ProviderType != "pegout" && providerDetails.ProviderType != "both" {
+		return errors.New("invalid provider type")
+	}
+
+	if peginCollateral, minCollateral, err = s.rsk.GetCollateral(peginProvider.Address()); err != nil {
 		return err
 	}
 
-	pegoutCollateral, _, err := s.rsk.GetPegoutCollateral(pegoutProvider.Address())
-	if err != nil {
+	if pegoutCollateral, _, err = s.rsk.GetPegoutCollateral(pegoutProvider.Address()); err != nil {
 		return err
 	}
 
-	operationalForPegin, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address()))
-	if err != nil {
+	if operationalForPegin, err = s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address())); err != nil {
 		return err
 	}
 
-	operationalForPegout, err := s.rsk.IsOperationalForPegout(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address()))
-	if err != nil {
+	if operationalForPegout, err = s.rsk.IsOperationalForPegout(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address())); err != nil {
 		return err
 	}
 
-	if (providerDetails.ProviderType == "both" && operationalForPegin && operationalForPegout) ||
-		(providerDetails.ProviderType == "pegin" && operationalForPegin) ||
-		(providerDetails.ProviderType == "pegout" && operationalForPegout) {
+	if isProviderRegistered(providerDetails.ProviderType, operationalForPegin, operationalForPegout) {
 		log.Debug("Already registered")
 		return nil
 	}
@@ -223,22 +222,13 @@ func (s *Server) AddProvider(peginProvider pegin.LiquidityProvider, pegoutProvid
 		return s.addPegoutCollateral(pegoutProvider, pegoutCollateral, minCollateral)
 	}
 
-	log.Debug("Registering new provider...")
-	var signer bind.SignerFn
-	var address string
-	if providerDetails.ProviderType == "pegin" || providerDetails.ProviderType == "both" {
-		address = peginProvider.Address()
-		signer = peginProvider.SignTx
-	} else {
-		address = pegoutProvider.Address()
-		signer = pegoutProvider.SignTx
-	}
-	opts := &bind.TransactOpts{
-		Value:  new(big.Int).Mul(minCollateral, big.NewInt(2)),
-		From:   common.HexToAddress(address),
-		Signer: signer,
-	}
-	return s.performRegisterProvider(opts, address, providerDetails)
+	return s.performRegisterProvider(peginProvider, pegoutProvider, providerDetails, minCollateral)
+}
+
+func isProviderRegistered(providerType string, isOperationalForPegin, isOperationalForPegout bool) bool {
+	return (providerType == "both" && isOperationalForPegin && isOperationalForPegout) ||
+		(providerType == "pegin" && isOperationalForPegin) ||
+		(providerType == "pegout" && isOperationalForPegout)
 }
 
 func (s *Server) addPeginCollateral(peginProvider pegin.LiquidityProvider, peginCollateral, minCollateral *big.Int) error {
@@ -265,7 +255,24 @@ func (s *Server) addPegoutCollateral(pegoutProvider pegout.LiquidityProvider, pe
 	return s.rsk.AddPegoutCollateral(opts)
 }
 
-func (s *Server) performRegisterProvider(opts *bind.TransactOpts, address string, providerDetails types.ProviderRegisterRequest) error {
+func (s *Server) performRegisterProvider(peginProvider pegin.LiquidityProvider, pegoutProvider pegout.LiquidityProvider,
+	providerDetails types.ProviderRegisterRequest, minCollateral *big.Int) error {
+	log.Debug("Registering new provider...")
+	var signer bind.SignerFn
+	var address string
+	if providerDetails.ProviderType == "pegin" || providerDetails.ProviderType == "both" {
+		address = peginProvider.Address()
+		signer = peginProvider.SignTx
+	} else {
+		address = pegoutProvider.Address()
+		signer = pegoutProvider.SignTx
+	}
+	opts := &bind.TransactOpts{
+		Value:  new(big.Int).Mul(minCollateral, big.NewInt(2)),
+		From:   common.HexToAddress(address),
+		Signer: signer,
+	}
+
 	providerID, err := s.rsk.RegisterProvider(opts, providerDetails.Name, providerDetails.ApiBaseUrl, providerDetails.Status, providerDetails.ProviderType)
 	if err != nil {
 		return err
