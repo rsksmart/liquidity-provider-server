@@ -42,27 +42,22 @@ type LocalProvider struct {
 	ks         *keystore.KeyStore
 	cfg        ProviderConfig
 	repository LocalProviderRepository
+	chainId    *big.Int
 }
 
 type ProviderConfig struct {
-	Keydir              string         `env:"KEY_DIR"`
 	BtcAddr             string         `env:"BTC_ADDR"`
-	AccountNum          int            `env:"ACCOUNT_NUM"`
-	PwdFile             string         `env:"PWD_FILE"`
-	ChainId             *big.Int       `env:"CHAIN_ID"`
 	MaxConf             uint16         `env:"MAX_CONF"`
 	Confirmations       map[int]uint16 `env:"CONFIRMATIONS"`
 	TimeForDeposit      uint32         `env:"TIME_FOR_DEPOSIT"`
 	CallTime            uint32         `env:"CALL_TIME"`
 	PenaltyFee          *types.Wei     `env:"PENALTY_FEE"`
-	KeySecret           string         `env:"KEY_SECRET"`
-	PasswordSecret      string         `env:"PASSWORD_SECRET"`
 	Fee                 *types.Wei     `env:"FEE"`
 	MinTransactionValue *big.Int       `env:"MIN_TRANSACTION_VALUE"`
 	MaxTransactionValue *big.Int       `env:"MAX_TRANSACTION_VALUE"`
 }
 
-func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
+func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider, chainId *big.Int) (*LocalProvider, error) {
 	acc, err := accountProvider.GetAccount()
 
 	if err != nil {
@@ -73,6 +68,7 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository,
 		ks:         acc.Keystore,
 		cfg:        config,
 		repository: repository,
+		chainId:    chainId,
 	}
 	return &lp, nil
 }
@@ -157,7 +153,7 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 	if !bytes.Equal(address[:], lp.account.Address[:]) {
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
-	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+	return lp.ks.SignTx(*lp.account, tx, lp.chainId)
 }
 
 func (lp *LocalProvider) HasLiquidity(reqLiq *types.Wei) (bool, error) {
