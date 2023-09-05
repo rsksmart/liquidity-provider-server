@@ -42,19 +42,18 @@ type BTCAddressWatcher struct {
 }
 
 type BTCAddressPegOutWatcher struct {
-	hash                 string
-	derivationAddress    string
-	addressDecryptionKey string
-	btc                  connectors.BTCConnector
-	rsk                  connectors.RSKConnector
-	lp                   pegout.LiquidityProvider
-	dbMongo              mongoDB.DBConnector
-	state                types.RQState
-	quote                *pegout.Quote
-	done                 chan struct{}
-	closed               bool
-	signature            []byte
-	sharedLocker         sync.Locker
+	hash              string
+	derivationAddress string
+	btc               connectors.BTCConnector
+	rsk               connectors.RSKConnector
+	lp                pegout.LiquidityProvider
+	dbMongo           mongoDB.DBConnector
+	state             types.RQState
+	quote             *pegout.Quote
+	done              chan struct{}
+	closed            bool
+	signature         []byte
+	sharedLocker      sync.Locker
 }
 
 const (

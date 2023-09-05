@@ -119,6 +119,9 @@ type RSKConnector interface {
 	GetProviderIds() (providerList *big.Int, err error)
 	GetUserQuotes(types.UserQuoteRequest) (events []types.UserEvents, err error)
 	IsOperational(opts *bind.CallOpts, address common.Address) (status bool, err error)
+	IsOperationalForPegout(opts *bind.CallOpts, address common.Address) (status bool, err error)
+	GetPegoutCollateral(addr string) (*big.Int, *big.Int, error)
+	AddPegoutCollateral(opts *bind.TransactOpts) error
 }
 
 type RSKClient interface {
@@ -350,6 +353,14 @@ func (rsk *RSK) IsOperational(opts *bind.CallOpts, address common.Address) (stat
 	return stat, nil
 }
 
+func (rsk *RSK) IsOperationalForPegout(opts *bind.CallOpts, address common.Address) (status bool, err error) {
+	stat, err := rsk.lbc.IsOperationalForPegout(opts, address)
+	if err != nil {
+		return false, err
+	}
+	return stat, nil
+}
+
 func (rsk *RSK) GetAvailableLiquidity(addr string) (*big.Int, error) {
 	if !common.IsHexAddress(addr) {
 		return nil, fmt.Errorf("invalid address: %v", addr)
@@ -413,6 +424,26 @@ func (rsk *RSK) GetCollateral(addr string) (*big.Int, *big.Int, error) {
 	return col, min, nil
 }
 
+func (rsk *RSK) GetPegoutCollateral(addr string) (*big.Int, *big.Int, error) {
+	if !common.IsHexAddress(addr) {
+		return nil, nil, NewInvalidAddressError(addr)
+	}
+	hexAddress := common.HexToAddress(addr)
+	opts := &bind.CallOpts{}
+
+	var minimumCollateral, collateral *big.Int
+	var err error
+	minimumCollateral, err = rsk.lbc.GetMinCollateral(opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	collateral, err = rsk.lbc.GetPegoutCollateral(opts, hexAddress)
+	if err != nil {
+		return nil, nil, err
+	}
+	return collateral, minimumCollateral, nil
+}
+
 func (rsk *RSK) ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error {
 	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
 		return rsk.lbc.SetProviderStatus(opts, _providerId, _status)
@@ -446,6 +477,17 @@ func (rsk *RSK) AddCollateral(opts *bind.TransactOpts) error {
 
 	if receipt == nil || err != nil {
 		return fmt.Errorf("error adding collateral: %v", err)
+	}
+	return nil
+}
+
+func (rsk *RSK) AddPegoutCollateral(opts *bind.TransactOpts) error {
+	receipt, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.AddPegoutCollateral(opts)
+	})
+
+	if receipt == nil || err != nil {
+		return fmt.Errorf("error adding pegout collateral: %v", err)
 	}
 	return nil
 }

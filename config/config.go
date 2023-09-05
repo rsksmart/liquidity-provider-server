@@ -19,11 +19,12 @@ type Config struct {
 	Debug                bool     `env:"DEBUG"`
 	IrisActivationHeight int      `env:"IRIS_ACTIVATION_HEIGHT"`
 	ErpKeys              []string `env:"ERP_KEYS"`
-	PeginProviderName    string   `env:"PEGIN_PROVIDER_NAME"`
-	PegoutProviderName   string   `env:"PEGOUT_PROVIDER_NAME"`
+	ProviderName         string   `env:"PROVIDER_NAME"`
+	ProviderType         string   `env:"PROVIDER_TYPE"`
 	BaseURL              string   `env:"BASE_URL"`
 	QuoteCacheStartBlock uint64   `env:"QUOTE_CACHE_START_BLOCK"`
 	CaptchaSecretKey     string   `env:"CAPTCHA_SECRET_KEY"`
+	CaptchaSiteKey       string   `env:"CAPTCHA_SITE_KEY"`
 	CaptchaThreshold     float32  `env:"CAPTCHA_THRESHOLD"`
 
 	Server struct {
@@ -39,8 +40,15 @@ type Config struct {
 		}
 		Path string `env:"DB_PATH"`
 	}
-	RSK           http.LiquidityProviderList
-	BTC           connectors.BtcConfig
+	RSK                 http.LiquidityProviderList
+	BTC                 connectors.BtcConfig
+	ProviderCredentials struct {
+		Keydir         string `env:"KEY_DIR"`
+		AccountNum     int    `env:"ACCOUNT_NUM"`
+		PwdFile        string `env:"PWD_FILE"`
+		KeySecret      string `env:"KEY_SECRET"`
+		PasswordSecret string `env:"PASSWORD_SECRET"`
+	}
 	Provider      pegin.ProviderConfig  `env:",prefix=PEGIN_PROVIDER_"`
 	PegoutProvier pegout.ProviderConfig `env:",prefix=PEGOUT_PROVIDER_"`
 }

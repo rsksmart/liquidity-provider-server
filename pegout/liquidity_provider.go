@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
@@ -26,6 +27,7 @@ type LocalProvider struct {
 	ks         *keystore.KeyStore
 	cfg        *ProviderConfig
 	repository LocalProviderRepository
+	chainId    *big.Int
 }
 
 type ProviderConfig struct {
@@ -53,7 +55,7 @@ type LiquidityProvider interface {
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
 
-func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
+func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider, chainId *big.Int) (*LocalProvider, error) {
 	acc, err := accountProvider.GetAccount()
 
 	if err != nil {
@@ -64,6 +66,7 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 		ks:         acc.Keystore,
 		cfg:        config,
 		repository: repository,
+		chainId:    chainId,
 	}
 	return &lp, nil
 }
@@ -170,7 +173,7 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 	if !bytes.Equal(address[:], lp.account.Address[:]) {
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
-	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+	return lp.ks.SignTx(*lp.account, tx, lp.chainId)
 }
 
 func (lp *LocalProvider) GetCreationBlock(quote *Quote) uint32 {
