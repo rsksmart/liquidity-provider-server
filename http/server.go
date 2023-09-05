@@ -75,18 +75,19 @@ const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 
 type LiquidityProviderList struct {
-	Endpoint                    string `env:"RSK_ENDPOINT"`
-	LBCAddr                     string `env:"LBC_ADDR"`
-	BridgeAddr                  string `env:"RSK_BRIDGE_ADDR"`
-	RequiredBridgeConfirmations int64  `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
-	LpsAddress                  string `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	Endpoint                    string   `env:"RSK_ENDPOINT"`
+	LBCAddr                     string   `env:"LBC_ADDR"`
+	BridgeAddr                  string   `env:"RSK_BRIDGE_ADDR"`
+	RequiredBridgeConfirmations int64    `env:"RSK_REQUIRED_BRIDGE_CONFIRMATONS"`
+	LpsAddress                  string   `env:"LIQUIDITY_PROVIDER_RSK_ADDR"`
+	ChainId                     *big.Int `env:"CHAIN_ID"`
 }
 
 type ConfigData struct {
-	EncryptKey           string
 	RSK                  LiquidityProviderList
 	QuoteCacheStartBlock uint64
 	CaptchaSecretKey     string
+	CaptchaSiteKey       string
 	CaptchaThreshold     float32
 }
 
@@ -182,95 +183,105 @@ func newServer(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo
 	}
 }
 
-func (s *Server) AddProvider(lp pegin.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.provider = lp
-	addrStr := lp.Address()
-	c, m, err := s.rsk.GetCollateral(addrStr)
-	if err != nil {
+func (s *Server) AddProvider(peginProvider pegin.LiquidityProvider, pegoutProvider pegout.LiquidityProvider, providerDetails types.ProviderRegisterRequest) error {
+	var peginCollateral, pegoutCollateral, minCollateral *big.Int
+	var operationalForPegin, operationalForPegout bool
+	var err error
+
+	s.provider = peginProvider
+	s.pegoutProvider = pegoutProvider
+
+	if providerDetails.ProviderType != "pegin" && providerDetails.ProviderType != "pegout" && providerDetails.ProviderType != "both" {
+		return errors.New("invalid provider type")
+	}
+
+	if peginCollateral, minCollateral, err = s.rsk.GetCollateral(peginProvider.Address()); err != nil {
 		return err
 	}
-	addr := common.HexToAddress(addrStr)
-	cmp := c.Cmp(big.NewInt(0))
-	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
 
-	if err != nil {
+	if pegoutCollateral, _, err = s.rsk.GetPegoutCollateral(pegoutProvider.Address()); err != nil {
 		return err
 	}
-	if !stat {
-		if cmp >= 0 {
-			opts := &bind.TransactOpts{
-				Value:  new(big.Int).Mul(m, big.NewInt(2)),
-				From:   addr,
-				Signer: lp.SignTx,
-			}
-			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegin")
-			if err != nil {
-				return err
-			}
-			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegin")
-			if err2 != nil {
-				return err2
-			}
 
-		} else if cmp < 0 { // not enough collateral
-			opts := &bind.TransactOpts{
-				Value:  m.Sub(m, c),
-				From:   addr,
-				Signer: lp.SignTx,
-			}
-			err := s.rsk.AddCollateral(opts)
-			if err != nil {
-				return err
-			}
-		}
+	if operationalForPegin, err = s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address())); err != nil {
+		return err
 	}
 
-	return nil
+	if operationalForPegout, err = s.rsk.IsOperationalForPegout(&bind.CallOpts{}, common.HexToAddress(peginProvider.Address())); err != nil {
+		return err
+	}
+
+	if isProviderRegistered(providerDetails.ProviderType, operationalForPegin, operationalForPegout) {
+		log.Debug("Already registered")
+		return nil
+	}
+
+	if (providerDetails.ProviderType == "pegin" || providerDetails.ProviderType == "both") && !operationalForPegin && peginCollateral.Cmp(big.NewInt(0)) != 0 {
+		return s.addPeginCollateral(peginProvider, peginCollateral, minCollateral)
+	}
+	if (providerDetails.ProviderType == "pegout" || providerDetails.ProviderType == "both") && !operationalForPegout && pegoutCollateral.Cmp(big.NewInt(0)) != 0 {
+		return s.addPegoutCollateral(pegoutProvider, pegoutCollateral, minCollateral)
+	}
+
+	return s.performRegisterProvider(peginProvider, pegoutProvider, providerDetails, minCollateral)
 }
 
-func (s *Server) AddPegOutProvider(lp pegout.LiquidityProvider, ProviderDetails types.ProviderRegisterRequest) error {
-	s.pegoutProvider = lp
-	addrStr := lp.Address()
-	c, m, err := s.rsk.GetCollateral(addrStr)
+func isProviderRegistered(providerType string, isOperationalForPegin, isOperationalForPegout bool) bool {
+	return (providerType == "both" && isOperationalForPegin && isOperationalForPegout) ||
+		(providerType == "pegin" && isOperationalForPegin) ||
+		(providerType == "pegout" && isOperationalForPegout)
+}
+
+func (s *Server) addPeginCollateral(peginProvider pegin.LiquidityProvider, peginCollateral, minCollateral *big.Int) error {
+	if peginCollateral.Cmp(minCollateral) >= 0 {
+		return nil
+	}
+	opts := &bind.TransactOpts{
+		Value:  minCollateral.Sub(minCollateral, peginCollateral),
+		From:   common.HexToAddress(peginProvider.Address()),
+		Signer: peginProvider.SignTx,
+	}
+	return s.rsk.AddCollateral(opts)
+}
+
+func (s *Server) addPegoutCollateral(pegoutProvider pegout.LiquidityProvider, pegoutCollateral, minCollateral *big.Int) error {
+	if pegoutCollateral.Cmp(minCollateral) >= 0 {
+		return nil
+	}
+	opts := &bind.TransactOpts{
+		Value:  minCollateral.Sub(minCollateral, pegoutCollateral),
+		From:   common.HexToAddress(pegoutProvider.Address()),
+		Signer: pegoutProvider.SignTx,
+	}
+	return s.rsk.AddPegoutCollateral(opts)
+}
+
+func (s *Server) performRegisterProvider(peginProvider pegin.LiquidityProvider, pegoutProvider pegout.LiquidityProvider,
+	providerDetails types.ProviderRegisterRequest, minCollateral *big.Int) error {
+	log.Debug("Registering new provider...")
+	var signer bind.SignerFn
+	var address string
+	if providerDetails.ProviderType == "pegin" || providerDetails.ProviderType == "both" {
+		address = peginProvider.Address()
+		signer = peginProvider.SignTx
+	} else {
+		address = pegoutProvider.Address()
+		signer = pegoutProvider.SignTx
+	}
+	opts := &bind.TransactOpts{
+		Value:  new(big.Int).Mul(minCollateral, big.NewInt(2)),
+		From:   common.HexToAddress(address),
+		Signer: signer,
+	}
+
+	providerID, err := s.rsk.RegisterProvider(opts, providerDetails.Name, providerDetails.ApiBaseUrl, providerDetails.Status, providerDetails.ProviderType)
 	if err != nil {
 		return err
 	}
-	addr := common.HexToAddress(addrStr)
-	cmp := c.Cmp(big.NewInt(0))
-
-	stat, err := s.rsk.IsOperational(&bind.CallOpts{}, common.HexToAddress(addrStr))
-
+	err = s.dbMongo.InsertProvider(providerID, providerDetails, address, providerDetails.ProviderType)
 	if err != nil {
 		return err
 	}
-	if !stat {
-		if cmp >= 0 {
-			opts := &bind.TransactOpts{
-				Value:  new(big.Int).Mul(m, big.NewInt(2)),
-				From:   addr,
-				Signer: lp.SignTx,
-			}
-			providerID, err := s.rsk.RegisterProvider(opts, ProviderDetails.Name, ProviderDetails.ApiBaseUrl, ProviderDetails.Status, "pegout")
-			if err != nil {
-				return err
-			}
-			err2 := s.dbMongo.InsertProvider(providerID, ProviderDetails, lp.Address(), "pegout")
-			if err2 != nil {
-				return err2
-			}
-		} else if cmp < 0 { // not enough collateral
-			opts := &bind.TransactOpts{
-				Value:  m.Sub(m, c),
-				From:   addr,
-				Signer: lp.SignTx,
-			}
-			err := s.rsk.AddCollateral(opts)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -293,13 +304,14 @@ func (s *Server) registerPeginProviderHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
-	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository, s.AccountProvider)
+	lp, err := pegin.NewLocalProvider(s.ProviderConfig, s.ProviderRespository, s.AccountProvider, s.cfgData.RSK.ChainId)
 	if err != nil {
 		log.Error(ErrorCreatingLocalProvider, err)
 		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
 		return
 	}
-	err = s.AddProvider(lp, payload)
+	payload.ProviderType = "pegin"
+	err = s.AddProvider(lp, nil, payload)
 	if err != nil {
 		log.Errorf(ErrorAddingProvider, err)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
@@ -329,13 +341,14 @@ func (s *Server) registerPegoutProviderHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, UnableToDeserializePayloadError, http.StatusBadRequest)
 		return
 	}
-	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider)
+	lp, err := pegout.NewLocalProvider(&s.PegoutConfig, s.ProviderRespository, s.AccountProvider, s.cfgData.RSK.ChainId)
 	if err != nil {
 		log.Error(ErrorCreatingLocalProvider, err)
 		http.Error(w, ErrorCreatingLocalProvider, http.StatusBadRequest)
 		return
 	}
-	err = s.AddPegOutProvider(lp, payload)
+	payload.ProviderType = "pegout"
+	err = s.AddProvider(nil, lp, payload)
 	if err != nil {
 		log.Errorf(ErrorAddingProvider, err)
 		http.Error(w, ErrorAddingProvider, http.StatusBadRequest)
@@ -418,12 +431,13 @@ func (s *Server) Start(port uint) error {
 	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
 	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
 	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
-	r.Path("/provider/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
-	r.Path("/provider/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
-	r.Path("/provider/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
-	r.Path("/provider/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
+	r.Path("/providers/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
+	r.Path("/providers/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
+	r.Path("/providers/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
+	r.Path("/providers/resignation").Methods(http.MethodPost).HandlerFunc(s.providerResignHandler)
 	r.Path("/providers/sync").Methods(http.MethodPost).HandlerFunc(s.providerSyncHandler)
 	r.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(s.getUserQuotesHandler)
+	r.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(s.providerDetailHandler)
 
 	r.Methods("OPTIONS").HandlerFunc(s.handleOptions)
 	w := log.StandardLogger().WriterLevel(log.DebugLevel)
@@ -624,17 +638,16 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(satoshis)))
 	expTime := quote.GetExpirationTime()
 	watcher := &BTCAddressPegOutWatcher{
-		hash:                 hash,
-		btc:                  s.btc,
-		addressDecryptionKey: s.cfgData.EncryptKey,
-		rsk:                  s.rsk,
-		lp:                   provider,
-		dbMongo:              s.dbMongo,
-		quote:                quote,
-		state:                state,
-		signature:            signB,
-		done:                 make(chan struct{}),
-		sharedLocker:         &s.sharedPegoutMutex,
+		hash:         hash,
+		btc:          s.btc,
+		rsk:          s.rsk,
+		lp:           provider,
+		dbMongo:      s.dbMongo,
+		quote:        quote,
+		state:        state,
+		signature:    signB,
+		done:         make(chan struct{}),
+		sharedLocker: &s.sharedPegoutMutex,
 	}
 	err := s.btc.AddAddressPegOutWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		s.addWatcherMu.Lock()
@@ -1705,6 +1718,47 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type ProviderDetail struct {
+	Fee                 uint64 `json:"fee"  required:""`
+	MinTransactionValue uint64 `json:"minTransactionValue"  required:""`
+	MaxTransactionValue uint64 `json:"maxTransactionValue"  required:""`
+}
+
+type ProviderDetailResponse struct {
+	SiteKey string         `json:"siteKey" required:""`
+	Pegin   ProviderDetail `json:"pegin" required:""`
+	Pegout  ProviderDetail `json:"pegout" required:""`
+}
+
+// @Title Provider detail
+// @Description Returns the details of the provider that manages this instance of LPS
+// @Param   UserQuoteRequest query types.UserQuoteRequest true "User Quote Request Details"
+// @Success 200 object ProviderDetailResponse "Detail of the provider that manges this instance"
+// @Router /providers/details [get]
+func (s *Server) providerDetailHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+
+	detail := ProviderDetailResponse{
+		SiteKey: s.cfgData.CaptchaSiteKey,
+		Pegin: ProviderDetail{
+			Fee:                 s.ProviderConfig.Fee.Uint64(),
+			MinTransactionValue: s.ProviderConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue: s.ProviderConfig.MaxTransactionValue.Uint64(),
+		},
+		Pegout: ProviderDetail{
+			Fee:                 s.PegoutConfig.Fee.Uint64(),
+			MinTransactionValue: s.PegoutConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue: s.PegoutConfig.MaxTransactionValue.Uint64(),
+		},
+	}
+
+	err := json.NewEncoder(w).Encode(&detail)
+	if err != nil {
+		log.Error("error encoding user events")
+		return
+	}
+}
+
 // @Title Provider Synchronization
 // @Description Synchronizes providers with MongoDB
 // @Route /provider/sync [post]
@@ -1740,8 +1794,8 @@ func (s *Server) providerSyncHandler(w http.ResponseWriter, r *http.Request) {
 
 type CaptchaValidationResponse struct {
 	Success     bool      `json:"success"`
-	Score       float32   `json:"score"`
-	Action      string    `json:"action"`
+	Score       *float32  `json:"score"`
+	Action      *string   `json:"action"`
 	ChallengeTs time.Time `json:"challenge_ts"`
 	Hostname    string    `json:"hostname"`
 	ErrorCodes  []string  `json:"error-codes"`
@@ -1786,7 +1840,12 @@ func (s *Server) captchaMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if validation.Success && validation.Score >= s.cfgData.CaptchaThreshold {
+		validCaptcha := validation.Success
+		if validation.Score != nil { // if is v3 we also use the score
+			validCaptcha = validCaptcha && *validation.Score >= s.cfgData.CaptchaThreshold
+		}
+
+		if validCaptcha {
 			log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
 			next.ServeHTTP(w, r)
 		} else {

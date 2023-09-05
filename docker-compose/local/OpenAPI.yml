@@ -223,6 +223,34 @@ components:
       - status
       - providerType
       type: object
+    ProviderDetail:
+      properties:
+        fee:
+          type: integer
+        maxTransactionValue:
+          type: integer
+        minTransactionValue:
+          type: integer
+      required:
+      - fee
+      - minTransactionValue
+      - maxTransactionValue
+      type: object
+    ProviderDetailResponse:
+      properties:
+        pegin:
+          $ref: '#/components/schemas/ProviderDetail'
+          type: object
+        pegout:
+          $ref: '#/components/schemas/ProviderDetail'
+          type: object
+        siteKey:
+          type: string
+      required:
+      - siteKey
+      - pegin
+      - pegout
+      type: object
     ProviderRegisterRequest:
       properties:
         acceptedQuoteExpiration:
@@ -672,6 +700,18 @@ paths:
         "204":
           description: ""
       summary: Provider Synchronization
+  /providers/details:
+    get:
+      description: ' Returns the details of the provider that manages this instance
+        of LPS'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderDetailResponse'
+          description: Detail of the provider that manges this instance
+      summary: Provider detail
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
