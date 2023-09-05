@@ -970,7 +970,6 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.QuotesPegOutQuote, e
 	pq.CallFee = q.CallFee.AsBigInt()
 	pq.PenaltyFee = types.NewWei(int64(q.PenaltyFee)).AsBigInt()
 	pq.Nonce = q.Nonce
-	pq.GasLimit = q.GasLimit
 	pq.Value = q.Value.AsBigInt()
 	pq.AgreementTimestamp = q.AgreementTimestamp
 	pq.DepositDateLimit = q.DepositDateLimit

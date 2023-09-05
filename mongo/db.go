@@ -87,6 +87,7 @@ type PeginQuote struct {
 	CallTime           uint32 `bson:"callTime,omitempty"`
 	Confirmations      uint16 `bson:"confirmations,omitempty"`
 	CallOnRegister     bool   `bson:"callOnRegister,omitempty"`
+	CallCost           string `bson:"callCost,omitempty"`
 }
 
 type PegoutQuote struct {
@@ -110,6 +111,7 @@ type PegoutQuote struct {
 	TransferTime          uint32 `bson:"transferTime,omitempty"`
 	ExpireDate            uint32 `bson:"expireDate,omitempty"`
 	ExpireBlock           uint32 `bson:"expireBlocks,omitempty"`
+	CallCost              string `bson:"callCost,omitempty"`
 }
 
 type RetainedPeginQuote struct {
@@ -543,7 +545,7 @@ func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote) error {
 		PenaltyFee:            q.PenaltyFee,
 		Nonce:                 q.Nonce,
 		DepositAddr:           q.DepositAddr,
-		GasLimit:              q.GasLimit,
+		CallCost:              q.CallCost.String(),
 		Value:                 q.Value.String(),
 		AgreementTimestamp:    q.AgreementTimestamp,
 		DepositDateLimit:      q.DepositDateLimit,
@@ -584,6 +586,10 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 	if err != nil {
 		return nil, err
 	}
+	callCost, err := strconv.ParseInt(result.CallCost, 10, 64)
+	if err != nil {
+		return nil, err
+	}
 
 	quote := pegout.Quote{
 		LBCAddr:               result.LBCAddr,
@@ -595,7 +601,7 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 		PenaltyFee:            result.PenaltyFee,
 		Nonce:                 result.Nonce,
 		DepositAddr:           result.DepositAddr,
-		GasLimit:              result.GasLimit,
+		CallCost:              types.NewWei(callCost),
 		Value:                 types.NewWei(valueQuote),
 		AgreementTimestamp:    result.AgreementTimestamp,
 		DepositDateLimit:      result.DepositDateLimit,
