@@ -99,6 +99,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Q
 	callCost := new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
 	fee := lp.cfg.Fee
 	res.CallFee = new(types.Wei).Add(callCost, fee)
+	res.CallCost = callCost
 	return &res, nil
 }
 

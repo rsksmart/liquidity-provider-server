@@ -966,42 +966,11 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var gas uint64
-	gas, err = s.rsk.EstimateGas(s.rsk.GetBridgeAddress().Hex(), big.NewInt(int64(qr.ValueToTransfer)), []byte(nil))
-
-	if err != nil {
-		log.Error(ErrorEstimatingGas, err.Error())
-		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
-		ResponseError(w, customError, http.StatusInternalServerError)
-		return
-	}
-
-	var gasRefund uint64
-	gasRefund, err = s.rsk.EstimateGas(s.rsk.GetLBCAddress(), big.NewInt(int64(0)), []byte(nil))
-
-	if err != nil {
-		log.Error(ErrorEstimatingGas, err.Error())
-		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
-		ResponseError(w, customError, http.StatusInternalServerError)
-		return
-	}
-
 	amountInSatoshi, _ := types.NewUWei(qr.ValueToTransfer).ToSatoshi().Uint64()
 	feeInSatoshi, err := s.btc.EstimateFees(qr.To, amountInSatoshi)
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
-		ResponseError(w, customError, http.StatusInternalServerError)
-		return
-	}
-
-	// TODO this fee shouldnt be in gas limit, we need to move after discussing how we'll handler fees
-	var totalGas = gas + gasRefund + types.SatoshiToWei(feeInSatoshi).Uint64()
-
-	price, err := s.rsk.GasPrice()
-	if err != nil {
-		log.Error(ErrorEstimatingGas+" price", err.Error())
-		customError := NewServerError(ErrorEstimatingGas+" price", make(map[string]interface{}), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
@@ -1018,7 +987,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), totalGas)
+	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress())
 	rskBlockNumber, err := s.rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting last block", err.Error())
@@ -1026,7 +995,7 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGas, types.NewBigWei(price))
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, types.SatoshiToWei(feeInSatoshi))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -1071,7 +1040,6 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		if getQuoteFailed {
 			details := Details{
 				"quote": q,
-				"gas":   totalGas,
 			}
 			customError := NewServerError(ErrorGetQuoteFailed, details, true)
 			ResponseError(w, customError, http.StatusNotFound) // StatusBadRequest or StatusInternalServerError?
@@ -1239,14 +1207,13 @@ func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas u
 	}
 }
 
-func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string, limitGas uint64) *pegout.Quote {
+func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string) *pegout.Quote {
 	return &pegout.Quote{
 		LBCAddr:       lbcAddr,
 		BtcRefundAddr: qr.BitcoinRefundAddress,
 		RSKRefundAddr: qr.RskRefundAddress,
 		DepositAddr:   qr.To,
 		Value:         types.NewWei(int64(qr.ValueToTransfer)),
-		GasLimit:      uint32(limitGas),
 	}
 }
 
@@ -1440,17 +1407,8 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
-	gasPrice, err := s.rsk.GasPrice()
-	if err != nil {
-		log.Error("error getting provider by address: ", err.Error())
-		customError := NewServerError("error getting provider by address: "+err.Error(), make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusBadRequest)
-		return
-	}
 
-	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
-	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
-	reqLiq := gasCost.Uint64() + quote.Value.Uint64()
+	reqLiq := quote.CallCost.Uint64() + quote.Value.Uint64()
 	signB, err := p.SignQuote(hashBytes, s.rsk.GetLBCAddress(), reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())

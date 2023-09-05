@@ -58,6 +58,10 @@ components:
         btcRefundAddr:
           description: A User BTC refund address
           type: string
+        callCost:
+          description: The estimated cost for the LP to do the call on behalf of the
+            user. Is calculated with gasPrice * gasLimit
+          type: integer
         callFee:
           description: The fee charged by the LP
           type: integer
@@ -130,6 +134,7 @@ components:
       - lpCallTime
       - confirmations
       - callOnRegister
+      - callCost
       type: object
     PegoutQuoteDTO:
       properties:
@@ -137,6 +142,10 @@ components:
           type: integer
         btcRefundAddress:
           type: string
+        callCost:
+          description: The estimated cost for the LP to do the transaction on behalf
+            of the user in Bitcoin network
+          type: integer
         callFee:
           type: integer
         depositAddr:
@@ -148,8 +157,6 @@ components:
         expireBlocks:
           type: integer
         expireDate:
-          type: integer
-        gasLimit:
           type: integer
         lbcAddress:
           type: string
@@ -179,7 +186,6 @@ components:
       - penaltyFee
       - nonce
       - depositAddr
-      - gasLimit
       - value
       - agreementTimestamp
       - depositDateLimit
@@ -188,6 +194,7 @@ components:
       - transferTime
       - expireDate
       - expireBlocks
+      - callCost
       type: object
     ProviderDTO:
       properties:
@@ -253,10 +260,6 @@ components:
       type: object
     ProviderRegisterRequest:
       properties:
-        acceptedQuoteExpiration:
-          description: Accepted quote expiration in seconds
-          example: 100
-          type: integer
         apiBaseUrl:
           description: API base URL
           example: https://api.example.com
@@ -265,22 +268,14 @@ components:
           description: Fee in wei
           example: 100
           type: integer
-        maxTransactionValue:
-          description: Maximum transaction value in wei
-          example: 100
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
           type: string
-        quoteExpiration:
-          description: Quote expiration in seconds
-          example: 100
-          type: integer
+        providerType:
+          description: Provider type must be "pegin", "pegout" or "both"
+          example: pegin
+          type: string
         status:
           description: Provider status
           example: true
@@ -459,10 +454,6 @@ components:
       type: object
     types.ProviderRegisterRequest:
       properties:
-        acceptedQuoteExpiration:
-          description: Accepted quote expiration in seconds
-          example: 100
-          type: integer
         apiBaseUrl:
           description: API base URL
           example: https://api.example.com
@@ -471,22 +462,14 @@ components:
           description: Fee in wei
           example: 100
           type: integer
-        maxTransactionValue:
-          description: Maximum transaction value in wei
-          example: 100
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
           type: string
-        quoteExpiration:
-          description: Quote expiration in seconds
-          example: 100
-          type: integer
+        providerType:
+          description: Provider type must be "pegin", "pegout" or "both"
+          example: pegin
+          type: string
         status:
           description: Provider status
           example: true
