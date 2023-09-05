@@ -238,10 +238,13 @@ components:
           type: integer
         minTransactionValue:
           type: integer
+        requiredConfirmations:
+          type: integer
       required:
       - fee
       - minTransactionValue
       - maxTransactionValue
+      - requiredConfirmations
       type: object
     ProviderDetailResponse:
       properties:

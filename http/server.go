@@ -1677,9 +1677,10 @@ func (s *Server) getUserQuotesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type ProviderDetail struct {
-	Fee                 uint64 `json:"fee"  required:""`
-	MinTransactionValue uint64 `json:"minTransactionValue"  required:""`
-	MaxTransactionValue uint64 `json:"maxTransactionValue"  required:""`
+	Fee                   uint64 `json:"fee"  required:""`
+	MinTransactionValue   uint64 `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   uint64 `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16 `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -1699,14 +1700,16 @@ func (s *Server) providerDetailHandler(w http.ResponseWriter, r *http.Request) {
 	detail := ProviderDetailResponse{
 		SiteKey: s.cfgData.CaptchaSiteKey,
 		Pegin: ProviderDetail{
-			Fee:                 s.ProviderConfig.Fee.Uint64(),
-			MinTransactionValue: s.ProviderConfig.MinTransactionValue.Uint64(),
-			MaxTransactionValue: s.ProviderConfig.MaxTransactionValue.Uint64(),
+			Fee:                   s.ProviderConfig.Fee.Uint64(),
+			MinTransactionValue:   s.ProviderConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue:   s.ProviderConfig.MaxTransactionValue.Uint64(),
+			RequiredConfirmations: s.ProviderConfig.MaxConf,
 		},
 		Pegout: ProviderDetail{
-			Fee:                 s.PegoutConfig.Fee.Uint64(),
-			MinTransactionValue: s.PegoutConfig.MinTransactionValue.Uint64(),
-			MaxTransactionValue: s.PegoutConfig.MaxTransactionValue.Uint64(),
+			Fee:                   s.PegoutConfig.Fee.Uint64(),
+			MinTransactionValue:   s.PegoutConfig.MinTransactionValue.Uint64(),
+			MaxTransactionValue:   s.PegoutConfig.MaxTransactionValue.Uint64(),
+			RequiredConfirmations: s.PegoutConfig.MaxConf,
 		},
 	}
 
