@@ -17,7 +17,6 @@ type Quote struct {
 	PenaltyFee            uint64     `json:"penaltyFee" db:"penalty_fee" validate:"required"`
 	Nonce                 int64      `json:"nonce" db:"nonce" validate:"required"`
 	DepositAddr           string     `json:"depositAddr" db:"deposit_addr" validate:"required"`
-	GasLimit              uint32     `json:"gasLimit" db:"gas_limit" validate:"required"`
 	Value                 *types.Wei `json:"value" db:"value" validate:"required"`
 	AgreementTimestamp    uint32     `json:"agreementTimestamp" db:"agreement_timestamp" validate:"required"`
 	DepositDateLimit      uint32     `json:"depositDateLimit" db:"deposit_date_limit" validate:"required"`
@@ -26,6 +25,7 @@ type Quote struct {
 	TransferTime          uint32     `json:"transferTime" db:"transfer_time" validate:"required"`
 	ExpireDate            uint32     `json:"expireDate" db:"expire_date" validate:"required"`
 	ExpireBlock           uint32     `json:"expireBlocks" db:"expire_blocks" validate:"required"`
+	CallCost              *types.Wei `json:"callCost" db:"callCost" validate:"required"`
 }
 
 func (q *Quote) GetExpirationTime() time.Time {
