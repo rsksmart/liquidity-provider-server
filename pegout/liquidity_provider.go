@@ -101,9 +101,9 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, transacti
 		}
 	}
 
-	callCost := transactionFee
+	res.CallCost = transactionFee
 	fee := lp.cfg.Fee
-	res.CallFee = new(types.Wei).Add(callCost, fee)
+	res.CallFee = new(types.Wei).Add(res.CallCost, fee)
 	return &res, nil
 }
 
