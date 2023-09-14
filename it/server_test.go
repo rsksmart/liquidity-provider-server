@@ -1,22 +1,18 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/config"
+	"github.com/rsksmart/liquidity-provider-server/connectors"
+	server "github.com/rsksmart/liquidity-provider-server/http"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/sethvargo/go-envconfig"
-
-	"github.com/rsksmart/liquidity-provider-server/connectors"
-	server "github.com/rsksmart/liquidity-provider-server/http"
-	"github.com/rsksmart/liquidity-provider/providers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type ExampleTestSuite struct {
@@ -31,39 +27,12 @@ type Execution struct {
 	Response interface{}
 }
 
-type config struct {
-	LogFile              string
-	Debug                bool
-	IrisActivationHeight int
-	ErpKeys              []string
-
-	Server struct {
-		Port uint
-	}
-	DB struct {
-		Path string
-	}
-	RSK struct {
-		Endpoint                    string
-		LBCAddr                     string
-		BridgeAddr                  string
-		RequiredBridgeConfirmations int64
-	}
-	BTC struct {
-		Endpoint string
-		Username string
-		Password string
-		Network  string
-	}
-	Provider providers.ProviderConfig
-}
-
 var (
-	cfg config
+	cfg config.Config
 )
 
 func loadConfig() {
-	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+	if err := config.LoadEnv(&cfg); err != nil {
 		panic(fmt.Sprintf("error loading config file: %v", err))
 	}
 }

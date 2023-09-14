@@ -8,46 +8,35 @@ import (
 )
 
 type ProviderDTO struct {
-	Id                      uint64 `json:"id" required:"" example:"1" description:"Provider id"`
-	Provider                string `json:"provider" required:"" example:"0x0000000000000000000000000000000000000000" description:"Provider address"`
-	Name                    string `json:"name" required:"" example:"Default Pegin Provider" description:"Provider name"`
-	Fee                     uint64 `json:"fee" required:"" example:"100000000000000000" description:"Provider fee"`
-	QuoteExpiration         uint64 `json:"quoteExpiration" required:"" example:"3600" description:"Quote expiration time in seconds"`
-	MinTransactionValue     uint64 `json:"minTransactionValue" required:"" example:"100000000" description:"Minimum transaction value"`
-	MaxTransactionValue     uint64 `json:"maxTransactionValue" required:"" example:"1000000000000000000" description:"Maximum transaction value"`
-	ApiBaseUrl              string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider's LPS instance URL"`
-	Status                  bool   `json:"status" required:"" example:"true" description:"Provider status"`
-	ProviderType			string `json:"providerType" required:"" example:"pegin" description:"Provider Type"`
+	Id           uint64 `json:"id" required:"" example:"1" description:"Provider id"`
+	Provider     string `json:"provider" required:"" example:"0x0000000000000000000000000000000000000000" description:"Provider address"`
+	Name         string `json:"name" required:"" example:"Default Pegin Provider" description:"Provider name"`
+	ApiBaseUrl   string `json:"apiBaseUrl" required:"" example:"https://api.example.com" description:"Provider's LPS instance URL"`
+	Status       bool   `json:"status" required:"" example:"true" description:"Provider status"`
+	ProviderType string `json:"providerType" required:"" example:"pegin" description:"Provider Type"`
 }
 
 func toProviderDTO(provider *bindings.LiquidityBridgeContractLiquidityProvider) *ProviderDTO {
 	return &ProviderDTO{
-		Id:                      provider.Id.Uint64(),
-		Provider:                provider.Provider.Hex(),
-		Name:                    provider.Name,
-		Fee:                     provider.Fee.Uint64(),
-		QuoteExpiration:         provider.QuoteExpiration.Uint64(),
-		MinTransactionValue:     provider.MinTransactionValue.Uint64(),
-		MaxTransactionValue:     provider.MaxTransactionValue.Uint64(),
-		ApiBaseUrl:              provider.ApiBaseUrl,
-		Status:                  provider.Status,
-		ProviderType: 			 provider.ProviderType,
+		Id:           provider.Id.Uint64(),
+		Provider:     provider.Provider.Hex(),
+		Name:         provider.Name,
+		ApiBaseUrl:   provider.ApiBaseUrl,
+		Status:       provider.Status,
+		ProviderType: provider.ProviderType,
 	}
 }
 func toGlobalProvider(provider *bindings.LiquidityBridgeContractLiquidityProvider) *types.GlobalProvider {
 	return &types.GlobalProvider{
-		Id:                      provider.Id.Uint64(),
-		Provider:                provider.Provider.Hex(),
-		Name:                    provider.Name,
-		Fee:                     provider.Fee.Uint64(),
-		QuoteExpiration:         provider.QuoteExpiration.Uint64(),
-		MinTransactionValue:     provider.MinTransactionValue.Uint64(),
-		MaxTransactionValue:     provider.MaxTransactionValue.Uint64(),
-		ApiBaseUrl:              provider.ApiBaseUrl,
-		Status:                  provider.Status,
-		ProviderType: 			 provider.ProviderType,
+		Id:           provider.Id.Uint64(),
+		Provider:     provider.Provider.Hex(),
+		Name:         provider.Name,
+		ApiBaseUrl:   provider.ApiBaseUrl,
+		Status:       provider.Status,
+		ProviderType: provider.ProviderType,
 	}
 }
+
 type PeginQuoteDTO struct {
 	FedBTCAddr         string `json:"fedBTCAddr" required:"" description:"The BTC address of the PowPeg"`
 	LBCAddr            string `json:"lbcAddr" required:"" description:"The address of the LBC"`
@@ -67,6 +56,7 @@ type PeginQuoteDTO struct {
 	LpCallTime         uint32 `json:"lpCallTime" required:"" description:"The time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations"`
 	Confirmations      uint16 `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
 	CallOnRegister     bool   `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
+	CallCost           uint64 `json:"callCost" required:"" description:"The estimated cost for the LP to do the call on behalf of the user. Is calculated with gasPrice * gasLimit"`
 }
 
 func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
@@ -89,6 +79,7 @@ func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
 		LpCallTime:         quote.LpCallTime,
 		Confirmations:      quote.Confirmations,
 		CallOnRegister:     quote.CallOnRegister,
+		CallCost:           quote.CallCost.Uint64(),
 	}
 }
 
@@ -102,7 +93,6 @@ type PegoutQuoteDTO struct {
 	PenaltyFee            uint64 `json:"penaltyFee" required:"" validate:"required"`
 	Nonce                 int64  `json:"nonce" required:"" validate:"required"`
 	DepositAddr           string `json:"depositAddr" required:"" validate:"required"`
-	GasLimit              uint32 `json:"gasLimit" required:"" validate:"required"`
 	Value                 uint64 `json:"value" required:"" validate:"required"`
 	AgreementTimestamp    uint32 `json:"agreementTimestamp" required:"" validate:"required"`
 	DepositDateLimit      uint32 `json:"depositDateLimit" required:"" validate:"required"`
@@ -111,6 +101,7 @@ type PegoutQuoteDTO struct {
 	TransferTime          uint32 `json:"transferTime" required:"" validate:"required"`
 	ExpireDate            uint32 `json:"expireDate" required:"" validate:"required"`
 	ExpireBlock           uint32 `json:"expireBlocks" required:"" validate:"required"`
+	CallCost              uint64 `json:"callCost" required:"" description:"The estimated cost for the LP to do the transaction on behalf of the user in Bitcoin network"`
 }
 
 func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
@@ -124,7 +115,6 @@ func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
 		PenaltyFee:            quote.PenaltyFee,
 		Nonce:                 quote.Nonce,
 		DepositAddr:           quote.DepositAddr,
-		GasLimit:              quote.GasLimit,
 		Value:                 quote.Value.Uint64(),
 		AgreementTimestamp:    quote.AgreementTimestamp,
 		DepositDateLimit:      quote.DepositDateLimit,
@@ -133,5 +123,6 @@ func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
 		TransferTime:          quote.TransferTime,
 		ExpireDate:            quote.ExpireDate,
 		ExpireBlock:           quote.ExpireBlock,
+		CallCost:              quote.CallCost.Uint64(),
 	}
 }
