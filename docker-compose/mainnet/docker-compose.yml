@@ -26,6 +26,8 @@ services:
     container_name: lps01
     environment:
       - LIQUIDITY_PROVIDER_RSK_ADDR
+      - PEGIN_LIQUIDITY_PROVIDER_RSK_ADDR
+      - PEGOUT_LIQUIDITY_PROVIDER_RSK_ADDR
       - BTCD_RPC_USER
       - BTCD_RPC_PASS
       - RSK_CHAIN_ID
@@ -39,8 +41,7 @@ services:
       - MONGODB_LOCAL_HOST
       - RSKJ_CONNECTION_STRING
       - BTC_NETWORK
-      - BTC_TX_FEE
-      - BTC_TX_FEE_PERCENTAGE
+      - BTC_TX_FEE_RATE
       - BTC_ENDPOINT
       - BTC_USERNAME
       - BTC_PASSWORD

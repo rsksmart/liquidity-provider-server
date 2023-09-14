@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/rsksmart/liquidity-provider-server/account"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -25,8 +24,8 @@ import (
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
-	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
+	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
+	SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
@@ -43,24 +42,22 @@ type LocalProvider struct {
 	ks         *keystore.KeyStore
 	cfg        ProviderConfig
 	repository LocalProviderRepository
+	chainId    *big.Int
 }
 
 type ProviderConfig struct {
-	Keydir         string         `env:"KEY_DIR"`
-	BtcAddr        string         `env:"BTC_ADDR"`
-	AccountNum     int            `env:"ACCOUNT_NUM"`
-	PwdFile        string         `env:"PWD_FILE"`
-	ChainId        *big.Int       `env:"CHAIN_ID"`
-	MaxConf        uint16         `env:"MAX_CONF"`
-	Confirmations  map[int]uint16 `env:"CONFIRMATIONS,delimiter=|"`
-	TimeForDeposit uint32         `env:"TIME_FOR_DEPOSIT"`
-	CallTime       uint32         `env:"CALL_TIME"`
-	PenaltyFee     *types.Wei     `env:"PENALTY_FEE"`
-	KeySecret      string         `env:"KEY_SECRET"`
-	PasswordSecret string         `env:"PASSWORD_SECRET"`
+	BtcAddr             string         `env:"BTC_ADDR"`
+	MaxConf             uint16         `env:"MAX_CONF"`
+	Confirmations       map[int]uint16 `env:"CONFIRMATIONS"`
+	TimeForDeposit      uint32         `env:"TIME_FOR_DEPOSIT"`
+	CallTime            uint32         `env:"CALL_TIME"`
+	PenaltyFee          *types.Wei     `env:"PENALTY_FEE"`
+	Fee                 *types.Wei     `env:"FEE"`
+	MinTransactionValue *big.Int       `env:"MIN_TRANSACTION_VALUE"`
+	MaxTransactionValue *big.Int       `env:"MAX_TRANSACTION_VALUE"`
 }
 
-func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
+func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider, chainId *big.Int) (*LocalProvider, error) {
 	acc, err := accountProvider.GetAccount()
 
 	if err != nil {
@@ -71,6 +68,7 @@ func NewLocalProvider(config ProviderConfig, repository LocalProviderRepository,
 		ks:         acc.Keystore,
 		cfg:        config,
 		repository: repository,
+		chainId:    chainId,
 	}
 	return &lp, nil
 }
@@ -79,7 +77,7 @@ func (lp *LocalProvider) Address() string {
 	return lp.account.Address.String()
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei, lbcProvider *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPBTCAddr = lp.cfg.BtcAddr
 	res.LPRSKAddr = lp.account.Address.String()
@@ -99,12 +97,13 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei, lbc
 		}
 	}
 	callCost := new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
-	fee := types.NewBigWei(lbcProvider.Fee)
+	fee := lp.cfg.Fee
 	res.CallFee = new(types.Wei).Add(callCost, fee)
+	res.CallCost = callCost
 	return &res, nil
 }
 
-func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error) {
+func (lp *LocalProvider) SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error) {
 	quoteHash := hex.EncodeToString(hash)
 
 	var buf bytes.Buffer
@@ -135,11 +134,12 @@ func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *type
 
 		signature := hex.EncodeToString(signB)
 		rq := types.RetainedQuote{
-			QuoteHash:   quoteHash,
-			DepositAddr: depositAddr,
-			Signature:   signature,
-			ReqLiq:      reqLiq.Copy(),
-			State:       types.RQStateWaitingForDeposit,
+			QuoteHash:           quoteHash,
+			DepositAddr:         depositAddr,
+			Signature:           signature,
+			ReqLiq:              reqLiq.Copy(),
+			FlyoverRedeemScript: flyoverRedeemScript,
+			State:               types.RQStateWaitingForDeposit,
 		}
 		err = lp.repository.RetainQuote(&rq)
 		if err != nil {
@@ -154,7 +154,7 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 	if !bytes.Equal(address[:], lp.account.Address[:]) {
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
-	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+	return lp.ks.SignTx(*lp.account, tx, lp.chainId)
 }
 
 func (lp *LocalProvider) HasLiquidity(reqLiq *types.Wei) (bool, error) {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
+	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
@@ -27,10 +27,11 @@ type LocalProvider struct {
 	ks         *keystore.KeyStore
 	cfg        *ProviderConfig
 	repository LocalProviderRepository
+	chainId    *big.Int
 }
 
 type ProviderConfig struct {
-	pegin.ProviderConfig
+	pegin.ProviderConfig  `env:",squash"`
 	DepositConfirmations  uint16 `env:"DEPOSIT_CONFIRMATIONS"`
 	DepositDateLimit      uint32 `env:"DEPOSIT_DATE_LIMIT"`
 	TransferConfirmations uint16 `env:"TRANSFER_CONFIRMATIONS"`
@@ -47,14 +48,14 @@ type LocalProviderRepository interface {
 
 type LiquidityProvider interface {
 	Address() string
-	GetQuote(*Quote, uint64, uint64, *types.Wei, *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error)
+	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
 	SignQuote(hash []byte, depositAddr string, satoshis uint64) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	GetCreationBlock(quote *Quote) uint32
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
 
-func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider) (*LocalProvider, error) {
+func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository, accountProvider account.AccountProvider, chainId *big.Int) (*LocalProvider, error) {
 	acc, err := accountProvider.GetAccount()
 
 	if err != nil {
@@ -65,6 +66,7 @@ func NewLocalProvider(config *ProviderConfig, repository LocalProviderRepository
 		ks:         acc.Keystore,
 		cfg:        config,
 		repository: repository,
+		chainId:    chainId,
 	}
 	return &lp, nil
 }
@@ -76,7 +78,7 @@ func GetPegoutProviderByAddress(liquidityProvider LiquidityProvider, addr string
 	return nil
 }
 
-func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint64, gasPrice *types.Wei, lbcProvider *bindings.LiquidityBridgeContractLiquidityProvider) (*Quote, error) {
+func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, transactionFee *types.Wei) (*Quote, error) {
 	res := *q
 	res.LPRSKAddr = lp.account.Address.String()
 	res.AgreementTimestamp = uint32(time.Now().Unix())
@@ -99,9 +101,9 @@ func (lp *LocalProvider) GetQuote(q *Quote, rskLastBlockNumber uint64, gas uint6
 		}
 	}
 
-	callCost := new(types.Wei).Mul(types.NewUWei(gasPrice.Uint64()), types.NewUWei(gas))
-	fee := types.NewBigWei(lbcProvider.Fee)
-	res.CallFee = new(types.Wei).Add(callCost, fee)
+	res.CallCost = transactionFee
+	fee := lp.cfg.Fee
+	res.CallFee = new(types.Wei).Add(res.CallCost, fee)
 	return &res, nil
 }
 
@@ -171,7 +173,7 @@ func (lp *LocalProvider) SignTx(address common.Address, tx *gethTypes.Transactio
 	if !bytes.Equal(address[:], lp.account.Address[:]) {
 		return nil, fmt.Errorf("provider address %v is incorrect", address.Hash())
 	}
-	return lp.ks.SignTx(*lp.account, tx, lp.cfg.ChainId)
+	return lp.ks.SignTx(*lp.account, tx, lp.chainId)
 }
 
 func (lp *LocalProvider) GetCreationBlock(quote *Quote) uint32 {
