@@ -73,6 +73,7 @@ const ErrorCreatingLocalProvider = "Error Creating New Local Provider"
 const GetCollateralError = "Unable to get collateral"
 const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
+const ErrorNotLiquidity = "Not enough liquidity"
 
 type LiquidityProviderList struct {
 	Endpoint                    string   `env:"RSK_ENDPOINT"`
@@ -968,11 +969,15 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	amountInSatoshi, _ := types.NewUWei(qr.ValueToTransfer).ToSatoshi().Uint64()
 	feeInSatoshi, err := s.btc.EstimateFees(qr.To, amountInSatoshi)
-	if err != nil {
-		log.Error(ErrorEstimatingGas, err.Error())
-		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
+	if err != nil && strings.Contains(err.Error(), "Insufficient funds") {
+		log.Error(ErrorNotLiquidity)
+		customError := NewServerError(ErrorNotLiquidity, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
+	} else if err != nil {
+		log.Error(err.Error())
+		customError := NewServerError(err.Error(), make(Details), false)
+		ResponseError(w, customError, http.StatusInternalServerError)
 	}
 
 	var quotes []*QuotePegOutResponse
