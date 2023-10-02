@@ -48,11 +48,11 @@ type DBConnector interface {
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
-	UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error
+	UpdateDepositedPegOutQuote(hash string, transactionHash string) error
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]*ProviderAddress, error)
 	GetProvider(uint64) (*ProviderAddress, error)
-	InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error
+	InsertProvider(id int64, details types.ProviderRegisterRequest, address string) error
 	ResetProviders([]*types.GlobalProvider) error
 	SaveAddressKeys(quoteHash string, addr string, pubKey []byte, privateKey []byte) error
 	GetAddressKeys(quoteHash string) (*PegoutKeys, error)
@@ -115,12 +115,11 @@ type PegoutQuote struct {
 }
 
 type RetainedPeginQuote struct {
-	QuoteHash           string        `json:"quoteHash" db:"quote_hash"`
-	DepositAddr         string        `json:"depositAddr" db:"deposit_addr"`
-	Signature           string        `json:"signature" db:"signature"`
-	FlyoverRedeemScript string        `json:"flyoverRedeemScript" db:"flyover_redeem_script"`
-	ReqLiq              string        `json:"reqLiq" db:"req_liq"`
-	State               types.RQState `json:"state" db:"state"`
+	QuoteHash   string        `json:"quoteHash" db:"quote_hash"`
+	DepositAddr string        `json:"depositAddr" db:"deposit_addr"`
+	Signature   string        `json:"signature" db:"signature"`
+	ReqLiq      string        `json:"reqLiq" db:"req_liq"`
+	State       types.RQState `json:"state" db:"state"`
 }
 
 type ProviderAddress struct {
@@ -277,16 +276,15 @@ func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 
 func (db *DB) RetainQuote(entry *types.RetainedQuote) error {
 	log.Debug("inserting retained quote mongo DB:", entry.QuoteHash, "; DepositAddr: ", entry.DepositAddr,
-		"; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq, "; FlyoverRedeemScript: ", entry.FlyoverRedeemScript)
+		"; Signature: ", entry.Signature, "; ReqLiq: ", entry.ReqLiq)
 	coll := db.db.Collection(retainedPeginQuoteCollection)
 
 	quoteToRetain := RetainedPeginQuote{
-		DepositAddr:         entry.DepositAddr,
-		QuoteHash:           entry.QuoteHash,
-		ReqLiq:              entry.ReqLiq.String(),
-		Signature:           entry.Signature,
-		State:               entry.State,
-		FlyoverRedeemScript: entry.FlyoverRedeemScript,
+		DepositAddr: entry.DepositAddr,
+		QuoteHash:   entry.QuoteHash,
+		ReqLiq:      entry.ReqLiq.String(),
+		Signature:   entry.Signature,
+		State:       entry.State,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToRetain)
@@ -337,12 +335,11 @@ func (db *DB) GetRetainedQuotes(filter []types.RQState) ([]*types.RetainedQuote,
 			return nil, err
 		}
 		rqToReturn := types.RetainedQuote{
-			DepositAddr:         rq.DepositAddr,
-			QuoteHash:           rq.QuoteHash,
-			FlyoverRedeemScript: rq.FlyoverRedeemScript,
-			ReqLiq:              types.NewWei(reqLiq),
-			Signature:           rq.Signature,
-			State:               rq.State,
+			DepositAddr: rq.DepositAddr,
+			QuoteHash:   rq.QuoteHash,
+			ReqLiq:      types.NewWei(reqLiq),
+			Signature:   rq.Signature,
+			State:       rq.State,
 		}
 
 		retainedQuotes = append(retainedQuotes, &rqToReturn)
@@ -374,12 +371,11 @@ func (db *DB) GetRetainedQuote(hash string) (*types.RetainedQuote, error) {
 	}
 
 	rqToReturn := types.RetainedQuote{
-		DepositAddr:         result.DepositAddr,
-		FlyoverRedeemScript: result.FlyoverRedeemScript,
-		QuoteHash:           result.QuoteHash,
-		ReqLiq:              types.NewWei(reqLiq),
-		Signature:           result.Signature,
-		State:               result.State,
+		DepositAddr: result.DepositAddr,
+		QuoteHash:   result.QuoteHash,
+		ReqLiq:      types.NewWei(reqLiq),
+		Signature:   result.Signature,
+		State:       result.State,
 	}
 
 	return &rqToReturn, nil
@@ -473,12 +469,11 @@ func (db *DB) ResetProviders(providers []*types.GlobalProvider) error {
 
 type InsertProvider struct {
 	Id                            int64  `bson:"id"`
-	Provider                      string `bson: "provider"`
+	Provider                      string `bson:"provider"`
 	types.ProviderRegisterRequest `bson:",inline"`
-	ProviderType                  string `bson: "providerType"`
 }
 
-func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string, providerType string) error {
+func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, address string) error {
 	log.Debug("inserting provider: ", id)
 	coll := db.db.Collection(providersCollection)
 	filter := bson.M{"id": id}
@@ -487,7 +482,6 @@ func (db *DB) InsertProvider(id int64, details types.ProviderRegisterRequest, ad
 		Id:                      id,
 		Provider:                address,
 		ProviderRegisterRequest: details,
-		ProviderType:            providerType,
 	}
 
 	update := bson.M{"$set": newProvider}
@@ -665,7 +659,7 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	return nil
 }
 
-func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
+func (db *DB) UpdateDepositedPegOutQuote(hash string, transactionHash string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	coll := db.db.Collection(retainedPegoutQuoteCollection)
@@ -673,7 +667,7 @@ func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64)
 	update := bson.D{
 		primitive.E{Key: "$set", Value: bson.D{
 			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
-			primitive.E{Key: "deposit_block_number", Value: depositBlockNumber},
+			primitive.E{Key: "deposit_transaction", Value: transactionHash},
 		}},
 	}
 

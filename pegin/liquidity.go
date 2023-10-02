@@ -25,7 +25,7 @@ import (
 type LiquidityProvider interface {
 	Address() string
 	GetQuote(*Quote, uint64, *types.Wei) (*Quote, error)
-	SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error)
+	SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error)
 	SignTx(common.Address, *gethTypes.Transaction) (*gethTypes.Transaction, error)
 	HasLiquidity(reqLiq *types.Wei) (bool, error)
 }
@@ -103,7 +103,7 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Q
 	return &res, nil
 }
 
-func (lp *LocalProvider) SignQuote(hash []byte, depositAddr, flyoverRedeemScript string, reqLiq *types.Wei) ([]byte, error) {
+func (lp *LocalProvider) SignQuote(hash []byte, depositAddr string, reqLiq *types.Wei) ([]byte, error) {
 	quoteHash := hex.EncodeToString(hash)
 
 	var buf bytes.Buffer
@@ -134,12 +134,11 @@ func (lp *LocalProvider) SignQuote(hash []byte, depositAddr, flyoverRedeemScript
 
 		signature := hex.EncodeToString(signB)
 		rq := types.RetainedQuote{
-			QuoteHash:           quoteHash,
-			DepositAddr:         depositAddr,
-			Signature:           signature,
-			ReqLiq:              reqLiq.Copy(),
-			FlyoverRedeemScript: flyoverRedeemScript,
-			State:               types.RQStateWaitingForDeposit,
+			QuoteHash:   quoteHash,
+			DepositAddr: depositAddr,
+			Signature:   signature,
+			ReqLiq:      reqLiq.Copy(),
+			State:       types.RQStateWaitingForDeposit,
 		}
 		err = lp.repository.RetainQuote(&rq)
 		if err != nil {
