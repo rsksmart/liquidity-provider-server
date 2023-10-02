@@ -48,7 +48,7 @@ type DBConnector interface {
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
-	UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error
+	UpdateDepositedPegOutQuote(hash string, transactionHash string) error
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]*ProviderAddress, error)
 	GetProvider(uint64) (*ProviderAddress, error)
@@ -665,7 +665,7 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	return nil
 }
 
-func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
+func (db *DB) UpdateDepositedPegOutQuote(hash string, transactionHash string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	coll := db.db.Collection(retainedPegoutQuoteCollection)
@@ -673,7 +673,7 @@ func (db *DB) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64)
 	update := bson.D{
 		primitive.E{Key: "$set", Value: bson.D{
 			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
-			primitive.E{Key: "deposit_block_number", Value: depositBlockNumber},
+			primitive.E{Key: "deposit_transaction", Value: transactionHash},
 		}},
 	}
 
