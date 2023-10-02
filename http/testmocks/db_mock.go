@@ -19,8 +19,8 @@ func (d *DbMock) ResetProviders(providers []*types.GlobalProvider) error {
 	return d.Called(providers).Error(0)
 }
 
-func (d *DbMock) UpdateDepositedPegOutQuote(hash string, depositBlockNumber uint64) error {
-	args := d.Called(hash, depositBlockNumber)
+func (d *DbMock) UpdateDepositedPegOutQuote(hash string, depositTransaction string) error {
+	args := d.Called(hash, depositTransaction)
 	return args.Error(0)
 }
 

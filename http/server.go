@@ -546,10 +546,10 @@ func (s *Server) initPegoutWatchers() error {
 			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, quote.DepositAddr, signB, p, entry.State)
 		} else if entry.State == types.RQStateWaitingForDepositConfirmations {
 			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{
-				Signature:    entry.Signature,
-				Data:         quote,
-				DepositBlock: entry.DepositBlockNumber,
-				QuoteHash:    entry.QuoteHash,
+				Signature:          entry.Signature,
+				Data:               quote,
+				DepositTransaction: entry.DepositTransaction,
+				QuoteHash:          entry.QuoteHash,
 			}
 		} else {
 			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{

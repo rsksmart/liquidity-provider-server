@@ -122,6 +122,7 @@ type RSKConnector interface {
 	IsOperationalForPegout(opts *bind.CallOpts, address common.Address) (status bool, err error)
 	GetPegoutCollateral(addr string) (*big.Int, *big.Int, error)
 	AddPegoutCollateral(opts *bind.TransactOpts) error
+	GetTransactionReceipt(txHash string) (*gethTypes.Receipt, error)
 }
 
 type RSKClient interface {
@@ -1231,6 +1232,19 @@ func (rsk *RSK) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 		return err
 	}
 	return rsk.c.SendTransaction(ctx, signedTx)
+}
+
+func (rsk *RSK) GetTransactionReceipt(hashString string) (*gethTypes.Receipt, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	hash := common.HexToHash(hashString)
+	receipt, err := rsk.c.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return receipt, nil
 }
 
 func (rsk *RSK) awaitTx(function func() (*gethTypes.Transaction, error)) (*gethTypes.Receipt, error) {
