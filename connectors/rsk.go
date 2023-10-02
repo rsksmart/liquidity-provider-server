@@ -111,6 +111,7 @@ type RSKConnector interface {
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
 	WithdrawCollateral(opts *bind.TransactOpts) error
+	WithdrawPegoutCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
 	SendRbtc(opts *bind.TransactOpts, to common.Address) error
 	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) error
@@ -1185,6 +1186,18 @@ func (rsk *RSK) GetProviders(providerList []int64) ([]bindings.LiquidityBridgeCo
 func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
 	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
 		return rsk.lbc.WithdrawCollateral(opts)
+	})
+
+	if err != nil {
+		return WithdrawCollateralError
+	} else {
+		return nil
+	}
+}
+
+func (rsk *RSK) WithdrawPegoutCollateral(opts *bind.TransactOpts) error {
+	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.WithdrawPegoutCollateral(opts)
 	})
 
 	if err != nil {

@@ -428,9 +428,12 @@ func (s *Server) Start(port uint) error {
 	r.Path("/pegin/acceptQuote").Methods(http.MethodPost).Handler(s.captchaMiddleware(http.HandlerFunc(s.acceptQuoteHandler)))
 	r.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(s.getPegoutQuoteHandler)
 	r.Path("/pegout/acceptQuote").Methods(http.MethodPost).Handler(s.captchaMiddleware(http.HandlerFunc(s.acceptQuotePegOutHandler)))
-	r.Path("/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
-	r.Path("/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addCollateral)
-	r.Path("/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawCollateral)
+	r.Path("/pegin/collateral").Methods(http.MethodGet).HandlerFunc(s.getCollateralHandler)
+	r.Path("/pegin/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addPeginCollateralHandler)
+	r.Path("/pegin/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawPeginCollateralHandler)
+	r.Path("/pegout/collateral").Methods(http.MethodGet).HandlerFunc(s.getPegoutCollateralHandler)
+	r.Path("/pegout/addCollateral").Methods(http.MethodPost).HandlerFunc(s.addPegoutCollateralHandler)
+	r.Path("/pegout/withdrawCollateral").Methods(http.MethodPost).HandlerFunc(s.withdrawPegoutCollateralHandler)
 	r.Path("/providers/pegin/register").Methods(http.MethodPost).HandlerFunc(s.registerPeginProviderHandler)
 	r.Path("/providers/pegout/register").Methods(http.MethodPost).HandlerFunc(s.registerPegoutProviderHandler)
 	r.Path("/providers/changeStatus").Methods(http.MethodPost).HandlerFunc(s.changeStatusHandler)
@@ -1459,10 +1462,6 @@ type RegisterPegOutReg struct {
 	signature string
 }
 
-type SenBTCResponse struct {
-	TxHash string `json:"txHash" example:"0x0" description:"TxHash of the BTC transaction sent to the address"`
-}
-
 type AddCollateralRequest struct {
 	Amount       uint64 `json:"amount" validate:"required" example:"100000000000" description:"Amount to add to the collateral"`
 	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr" example:"0x0" description:"Liquidity Provider RSK Address"`
@@ -1472,12 +1471,12 @@ type AddCollateralResponse struct {
 	NewCollateralBalance uint64 `json:"newCollateralBalance" example:"100000000000" description:"New Collateral Balance`
 }
 
-// @Title Add Collateral
-// @Description Adds Collateral
+// @Title Add PegIn Collateral
+// @Description Adds PegIn Collateral
 // @Param  AddCollateralRequest  body AddCollateralRequest true "Add Collateral Request"
-// @Success  200  object SenBTCResponse
-// @Route /addCollateral [post]
-func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
+// @Success  200  object AddCollateralResponse
+// @Route /pegin/addCollateral [post]
+func (s *Server) addPeginCollateralHandler(w http.ResponseWriter, r *http.Request) {
 	toRestAPI(w)
 	payload := AddCollateralRequest{}
 	decoder := json.NewDecoder(r.Body)
@@ -1500,28 +1499,72 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addrStr := lp.Address()
+	s.addCollateral(true, w, lp.Address(), lp.SignTx, payload.Amount)
+}
 
-	collateral, min, err := s.rsk.GetCollateral(addrStr)
+// @Title Add PegOut Collateral
+// @Description Adds PegOut Collateral
+// @Param  AddCollateralRequest  body AddCollateralRequest true "Add Collateral Request"
+// @Success  200  object AddCollateralResponse
+// @Route /pegout/addCollateral [post]
+func (s *Server) addPegoutCollateralHandler(w http.ResponseWriter, r *http.Request) {
+	toRestAPI(w)
+	payload := AddCollateralRequest{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&payload)
+
+	if err != nil {
+		customError := NewServerError(fmt.Sprintf(UnableToDeserializePayloadError, err.Error()), make(Details), true)
+		ResponseError(w, customError, http.StatusBadRequest)
+		return
+	}
+
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	lp := pegout.GetPegoutProviderByAddress(s.pegoutProvider, payload.LpRskAddress)
+	if lp == nil {
+		customError := NewServerError("missing liquidity provider", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+
+	s.addCollateral(false, w, lp.Address(), lp.SignTx, payload.Amount)
+}
+
+func (s *Server) addCollateral(isPegin bool, w http.ResponseWriter, addrStr string, signerFn bind.SignerFn, amount uint64) {
+	var collateral, min *big.Int
+	var err error
+	if isPegin {
+		collateral, min, err = s.rsk.GetCollateral(addrStr)
+	} else {
+		collateral, min, err = s.rsk.GetPegoutCollateral(addrStr)
+	}
 
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
-	} else if collateral.Uint64()+payload.Amount < min.Uint64() {
+	} else if collateral.Uint64()+amount < min.Uint64() {
 		customError := NewServerError("Amount is lower than min collateral", make(Details), true)
 		ResponseError(w, customError, http.StatusConflict)
 		return
 	}
 
 	opts := &bind.TransactOpts{
-		Value:  big.NewInt(int64(payload.Amount)),
+		Value:  big.NewInt(int64(amount)),
 		From:   common.HexToAddress(addrStr),
-		Signer: lp.SignTx,
+		Signer: signerFn,
 	}
 
-	err = s.rsk.AddCollateral(opts)
+	if isPegin {
+		err = s.rsk.AddCollateral(opts)
+	} else {
+		err = s.rsk.AddPegoutCollateral(opts)
+	}
+
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
@@ -1529,14 +1572,17 @@ func (s *Server) addCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collateral, _, err = s.rsk.GetCollateral(addrStr)
+	if isPegin {
+		collateral, _, err = s.rsk.GetCollateral(addrStr)
+	} else {
+		collateral, _, err = s.rsk.GetPegoutCollateral(addrStr)
+	}
 	if err != nil {
 		log.Error(err)
 		customError := NewServerError(GetCollateralError, *NewBasicDetail(err), false)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-
 	response := &AddCollateralResponse{
 		NewCollateralBalance: collateral.Uint64(),
 	}
@@ -1548,12 +1594,12 @@ type WithdrawCollateralRequest struct {
 	LpRskAddress string `json:"lpRskAddress" validate:"required,eth_addr"`
 }
 
-// @Title Withdraw Collateral
-// @Description Withdraw Collateral of a resigned LP
+// @Title Withdraw PegIn Collateral
+// @Description Withdraw PegIn collateral of a resigned LP
 // @Param  WithdrawCollateralRequest  body WithdrawCollateralRequest true "Withdraw Collateral Request"
-// @Route /withdrawCollateral [post]
+// @Route /pegin/withdrawCollateral [post]
 // @Success 204 object
-func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
+func (s *Server) withdrawPeginCollateralHandler(w http.ResponseWriter, r *http.Request) {
 	payload := WithdrawCollateralRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -1571,7 +1617,43 @@ func (s *Server) withdrawCollateral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.rsk.WithdrawCollateral(opts); err != nil && errors.Is(err, connectors.WithdrawCollateralError) {
+	err = s.rsk.WithdrawCollateral(opts)
+	withdrawCollateralResponse(w, err)
+}
+
+// @Title Withdraw PegOut Collateral
+// @Description Withdraw PegOut collateral of a resigned LP
+// @Param  WithdrawCollateralRequest  body WithdrawCollateralRequest true "Withdraw Collateral Request"
+// @Route /pegout/withdrawCollateral [post]
+// @Success 204 object
+func (s *Server) withdrawPegoutCollateralHandler(w http.ResponseWriter, r *http.Request) {
+	payload := WithdrawCollateralRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		buildErrorDecodingRequest(w, err)
+		return
+	}
+	if isValid := Validate(payload)(w); !isValid {
+		return
+	}
+
+	lp := pegout.GetPegoutProviderByAddress(s.pegoutProvider, payload.LpRskAddress)
+	if lp == nil {
+		customError := NewServerError("liquidity provider not found", make(Details), true)
+		ResponseError(w, customError, http.StatusNotFound)
+		return
+	}
+	opts := &bind.TransactOpts{
+		From:   common.HexToAddress(lp.Address()),
+		Signer: lp.SignTx,
+	}
+
+	err := s.rsk.WithdrawPegoutCollateral(opts)
+	withdrawCollateralResponse(w, err)
+}
+
+func withdrawCollateralResponse(w http.ResponseWriter, err error) {
+	if err != nil && errors.Is(err, connectors.WithdrawCollateralError) {
 		customError := NewServerError(fmt.Sprintf("%s, please complete resign proccess first", err.Error()), make(Details), true)
 		ResponseError(w, customError, http.StatusConflict)
 	} else if err != nil {
@@ -1586,15 +1668,29 @@ type GetCollateralResponse struct {
 	Collateral uint64 `json:"collateral"`
 }
 
-// @Title Get Collateral
-// @Description Get Collateral
+// @Title Get PegIn Collateral
+// @Description Get PegIn Collateral
 // @Param address path  string  true  "Liquidity provider address"
 // @Success  200  object GetCollateralResponse
-// @Route /collateral/{address} [get]
+// @Route /pegin/collateral/{address} [get]
 func (s *Server) getCollateralHandler(w http.ResponseWriter, request *http.Request) {
 	address := request.URL.Query().Get("address")
 	collateral, _, err := s.rsk.GetCollateral(address)
+	handleCollateralResponse(w, collateral, err)
+}
 
+// @Title Get PegOut Collateral
+// @Description Get PegOut Collateral
+// @Param address path  string  true  "Liquidity provider address"
+// @Success  200  object GetCollateralResponse
+// @Route /pegout/collateral/{address} [get]
+func (s *Server) getPegoutCollateralHandler(w http.ResponseWriter, request *http.Request) {
+	address := request.URL.Query().Get("address")
+	collateral, _, err := s.rsk.GetPegoutCollateral(address)
+	handleCollateralResponse(w, collateral, err)
+}
+
+func handleCollateralResponse(w http.ResponseWriter, collateral *big.Int, err error) {
 	var e *connectors.AddressError
 	if err != nil && errors.As(err, &e) {
 		customError := NewServerError(err.Error(), make(Details), true)
