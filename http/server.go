@@ -147,7 +147,6 @@ type acceptReq struct {
 type acceptRes struct {
 	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
-	FlyoverRedeemScript       string `json:"-"`
 }
 type acceptResPegOut struct {
 	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
@@ -279,7 +278,7 @@ func (s *Server) performRegisterProvider(peginProvider pegin.LiquidityProvider, 
 	if err != nil {
 		return err
 	}
-	err = s.dbMongo.InsertProvider(providerID, providerDetails, address, providerDetails.ProviderType)
+	err = s.dbMongo.InsertProvider(providerID, providerDetails, address)
 	if err != nil {
 		return err
 	}
@@ -1074,12 +1073,11 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 // @Success  200  object acceptRes Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
-	returnQuoteSignFunc := func(w http.ResponseWriter, signature, depositAddr, flyoverRedeemScript string) {
+	returnQuoteSignFunc := func(w http.ResponseWriter, signature, depositAddr string) {
 		enc := json.NewEncoder(w)
 		response := acceptRes{
 			Signature:                 signature,
 			BitcoinDepositAddressHash: depositAddr,
-			FlyoverRedeemScript:       flyoverRedeemScript,
 		}
 
 		err := enc.Encode(response)
@@ -1139,7 +1137,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rq != nil { // if the quote has already been accepted, just return signature and deposit addr
-		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr, rq.FlyoverRedeemScript)
+		returnQuoteSignFunc(w, rq.Signature, rq.DepositAddr)
 		return
 	}
 
@@ -1159,7 +1157,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	depositAddress, flyoverRedeemScript, err := s.rsk.GetDerivedBitcoinAddress(fedInfo, s.btc.GetParams(), btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
+	depositAddress, _, err := s.rsk.GetDerivedBitcoinAddress(fedInfo, s.btc.GetParams(), btcRefAddr, lbcAddr, lpBTCAddr, hashBytes)
 	if err != nil {
 		log.Error("error getting derived bitcoin address: ", err.Error())
 		customError := NewServerError("error getting derived bitcoin address: "+err.Error(), make(map[string]interface{}), true)
@@ -1179,7 +1177,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	adjustedGasLimit := types.NewUWei(uint64(CFUExtraGas) + uint64(quote.GasLimit))
 	gasCost := new(types.Wei).Mul(adjustedGasLimit, types.NewBigWei(gasPrice))
 	reqLiq := new(types.Wei).Add(gasCost, quote.Value)
-	signB, err := p.SignQuote(hashBytes, depositAddress, flyoverRedeemScript, reqLiq)
+	signB, err := p.SignQuote(hashBytes, depositAddress, reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
 		customError := NewServerError(ErrorSigningQuote+err.Error(), make(map[string]interface{}), true)
@@ -1196,7 +1194,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signature := hex.EncodeToString(signB)
-	returnQuoteSignFunc(w, signature, depositAddress, flyoverRedeemScript)
+	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
 func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *pegin.Quote {
