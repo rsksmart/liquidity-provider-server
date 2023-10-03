@@ -368,7 +368,7 @@ func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 		}
 		log.Debug("decoded btc address data", addressBts)
 		log.Debug("decoded version address data", data)
-		bts.Write(addressBts)
+		bts.Write(data)
 		return bts.Bytes(), nil
 	}
 	log.Debug("decoded btc address data", addressBts)
