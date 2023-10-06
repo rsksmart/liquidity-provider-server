@@ -184,6 +184,16 @@ Gets the registered providers List.
 2. Management API protection. To have a secure server it's important to have some things.
    1. Firewall rules to avoid DDOS and CSRF attacks on the server
    2. CORS policy
+   3. Protect the management API endpoints, with Firewall, VPN and so on, this endpoints should be accessible 
+only by authorized persons, list of endpoints:
+      1. /collateral
+      2. /addCollateral
+      3. /withdrawCollateral
+      4. /provider/pegin/register
+      5. /provider/pegout/register
+      6. /provider/changeStatus
+      7. /provider/resignation
+      8. /providers/sync
 3. Fee calculation for PegIn and PegOut. The fee calculation is not explicit for liquidity providers
 and may result in inaccurate expectations. Like gas price changes, for send BTC to user in Pegout there is no way to 
 make sure that the same inputs of the estimation will be used in the transaction and that could let to variations in 
