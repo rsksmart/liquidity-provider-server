@@ -179,8 +179,13 @@ Gets the registered providers List.
 3. Then into it folder you only need to run `go test -integration`
 
 
-#### Note: 
-It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.
+#### Notes: 
+1. It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.
+2. Management API protection. To have a secure server it's important to have some things.
+   1. Firewall rules to avoid DDOS and CSRF attacks on the server
+   2. CORS policy
+3. Fee calculation for PegIn and PegOut. The fee calculation is not explicit for liquidity providers
+and may result in inaccurate expectations. Like gas price changes and so on.
 
 #### Technical Specifications:
 1. Minumum Golang version: 1.20.2
