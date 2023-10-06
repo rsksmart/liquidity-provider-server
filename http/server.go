@@ -140,21 +140,17 @@ type QuotePegOutResponse struct {
 	QuoteHash string          `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
-type acceptReq struct {
+type AcceptReq struct {
 	QuoteHash string `json:"quoteHash" required:"" example:"0x0" description:"QuoteHash"`
 }
 
-type acceptRes struct {
+type AcceptRes struct {
 	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
-type acceptResPegOut struct {
+type AcceptResPegOut struct {
 	Signature  string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	LbcAddress string `json:"lbcAddress" required:"" example:"0x0" description:"LBC address to execute depositPegout function"`
-}
-
-type AcceptResPegOut struct {
-	Signature string `json:"signature" required:"" example:"0x0" description:"Signature"`
 }
 
 func New(rsk connectors.RSKConnector, btc connectors.BTCConnector, dbMongo mongoDB.DBConnector, cfgData ConfigData,
@@ -1072,13 +1068,13 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 // @Title Accept Quote
 // @Description Accepts Quote
-// @Param  QuoteHash  body acceptReq true "Quote Hash"
-// @Success  200  object acceptRes Interface that represents that the quote has been successfully accepted
+// @Param  QuoteHash  body AcceptReq true "Quote Hash"
+// @Success  200  object AcceptRes Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
 func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc := func(w http.ResponseWriter, signature, depositAddr string) {
 		enc := json.NewEncoder(w)
-		response := acceptRes{
+		response := AcceptRes{
 			Signature:                 signature,
 			BitcoinDepositAddressHash: depositAddr,
 		}
@@ -1093,7 +1089,7 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	req := acceptReq{}
+	req := AcceptReq{}
 	toRestAPI(w)
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
@@ -1305,7 +1301,7 @@ func buildErrorDecodingRequest(w http.ResponseWriter, err error) {
 
 func returnQuoteSignFunc(w http.ResponseWriter, signature string, depositAddr string) {
 	enc := json.NewEncoder(w)
-	response := acceptRes{
+	response := AcceptRes{
 		Signature:                 signature,
 		BitcoinDepositAddressHash: depositAddr,
 	}
@@ -1356,11 +1352,11 @@ func generateRskEthereumAddress() ([]byte, []byte, common.Address, error) {
 
 // @Title Accept Quote Pegout
 // @Description Accepts Quote Pegout
-// @Param  QuoteHash  body acceptReq true "Quote Hash"
-// @Success 200 object acceptResPegOut
+// @Param  QuoteHash  body AcceptReq true "Quote Hash"
+// @Success 200 object AcceptResPegOut
 // @Route /pegout/acceptQuote [post]
 func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request) {
-	req := acceptReq{}
+	req := AcceptReq{}
 	toRestAPI(w)
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&req)
@@ -1437,7 +1433,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 func signAndReturnPegoutQuote(w http.ResponseWriter, signature string, depositAddr string) {
 	enc := json.NewEncoder(w)
-	response := acceptResPegOut{
+	response := AcceptResPegOut{
 		Signature:  signature,
 		LbcAddress: depositAddr,
 	}

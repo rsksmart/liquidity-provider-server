@@ -170,7 +170,7 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		Start:   fromBlock,
 		End:     &toBlock,
 		Context: ctx,
-	}, nil, nil, nil)
+	}, nil, nil)
 
 	defer func() {
 		if iterator != nil {
@@ -1140,7 +1140,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([]types.UserEvent
 		filterOpts.End = request.ToBlock
 	}
 
-	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, []common.Address{common.HexToAddress(request.Address)}, nil, nil)
+	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, nil, []common.Address{common.HexToAddress(request.Address)})
 	if err != nil {
 		return nil, err
 	}

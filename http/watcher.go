@@ -405,7 +405,7 @@ func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingFor
 	if waitingForDepositQuotes == nil || waitingForConfirmationQuotes == nil {
 		log.Fatal("invalid initial pegout quote map")
 	}
-	var oldestBlock uint32
+	var oldestBlock uint32 = 1
 	for _, quote := range waitingForDepositQuotes {
 		watcher.updateOldestBlock(quote, &oldestBlock)
 	}
@@ -468,7 +468,7 @@ func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
 }
 
 func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
-	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
+	if height == watcher.lastCheckedBlock {
 		return nil
 	}
 	events, err := watcher.rsk.GetDepositEvents(watcher.lastCheckedBlock-1, height)
