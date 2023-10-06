@@ -185,7 +185,9 @@ Gets the registered providers List.
    1. Firewall rules to avoid DDOS and CSRF attacks on the server
    2. CORS policy
 3. Fee calculation for PegIn and PegOut. The fee calculation is not explicit for liquidity providers
-and may result in inaccurate expectations. Like gas price changes and so on.
+and may result in inaccurate expectations. Like gas price changes, for send BTC to user in Pegout there is no way to 
+make sure that the same inputs of the estimation will be used in the transaction and that could let to variations in 
+the fee value.
 
 #### Technical Specifications:
 1. Minumum Golang version: 1.20.2
