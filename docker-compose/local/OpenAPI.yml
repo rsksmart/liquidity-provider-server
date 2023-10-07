@@ -1,6 +1,43 @@
 components:
   schemas:
     "": {}
+    AcceptReq:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      type: object
+    AcceptRes:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
+    AcceptResPegOut:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
     AddCollateralRequest:
       properties:
         amount:
@@ -11,6 +48,12 @@ components:
           description: Liquidity Provider RSK Address
           example: "0x0"
           type: string
+      type: object
+    AddCollateralResponse:
+      properties:
+        newCollateralBalance:
+          example: 100000000000
+          type: integer
       type: object
     Address:
       items: {}
@@ -267,10 +310,6 @@ components:
           description: API base URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Fee in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
@@ -383,54 +422,10 @@ components:
           example: Provider Created Successfully
           type: string
       type: object
-    SenBTCResponse:
-      properties:
-        txHash:
-          description: TxHash of the BTC transaction sent to the address
-          example: "0x0"
-          type: string
-      type: object
     WithdrawCollateralRequest:
       properties:
         lpRskAddress:
           type: string
-      type: object
-    acceptReq:
-      properties:
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      required:
-      - quoteHash
-      type: object
-    acceptRes:
-      properties:
-        bitcoinDepositAddressHash:
-          description: Hash of the deposit BTC address
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - bitcoinDepositAddressHash
-      type: object
-    acceptResPegOut:
-      properties:
-        lbcAddress:
-          description: LBC address to execute depositPegout function
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - lbcAddress
       type: object
     healthRes:
       properties:
@@ -461,10 +456,6 @@ components:
           description: API base URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Fee in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
@@ -488,43 +479,6 @@ info:
   version: "0.5"
 openapi: 3.0.0
 paths:
-  /addCollateral:
-    post:
-      description: ' Adds Collateral'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddCollateralRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SenBTCResponse'
-          description: ""
-      summary: Add Collateral
-  /collateral/{address}:
-    get:
-      description: ' Get Collateral'
-      parameters:
-      - description: Liquidity provider address
-        in: path
-        name: address
-        required: true
-        schema:
-          description: Liquidity provider address
-          format: string
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetCollateralResponse'
-          description: ""
-      summary: Get Collateral
   /getProviders:
     get:
       description: ' Returns a list of providers.'
@@ -554,16 +508,53 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/acceptReq'
+              $ref: '#/components/schemas/AcceptReq'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/acceptRes'
+                $ref: '#/components/schemas/AcceptRes'
           description: ""
       summary: Accept Quote
+  /pegin/addCollateral:
+    post:
+      description: ' Adds PegIn Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddCollateralResponse'
+          description: ""
+      summary: Add PegIn Collateral
+  /pegin/collateral/{address}:
+    get:
+      description: ' Get PegIn Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: address
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get PegIn Collateral
   /pegin/getQuote:
     post:
       description: ' Gets Pegin Quote'
@@ -581,6 +572,19 @@ paths:
                 $ref: '#/components/schemas/QuoteReturn'
           description: ""
       summary: Pegin GetQuote
+  /pegin/withdrawCollateral:
+    post:
+      description: ' Withdraw PegIn collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw PegIn Collateral
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'
@@ -588,16 +592,53 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/acceptReq'
+              $ref: '#/components/schemas/AcceptReq'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/acceptResPegOut'
+                $ref: '#/components/schemas/AcceptResPegOut'
           description: ""
       summary: Accept Quote Pegout
+  /pegout/addCollateral:
+    post:
+      description: ' Adds PegOut Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddCollateralResponse'
+          description: ""
+      summary: Add PegOut Collateral
+  /pegout/collateral/{address}:
+    get:
+      description: ' Get PegOut Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: address
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get PegOut Collateral
   /pegout/getQuotes:
     post:
       description: ' Gets Pegout Quote'
@@ -615,6 +656,19 @@ paths:
                 $ref: '#/components/schemas/QuotePegOutResponse'
           description: ""
       summary: Pegout GetQuote
+  /pegout/withdrawCollateral:
+    post:
+      description: ' Withdraw PegOut collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw PegOut Collateral
   /provider/changeStatus:
     post:
       description: ' Changes the status of the provider'
@@ -709,19 +763,6 @@ paths:
                 $ref: '#/components/schemas/DepositEvent'
           description: Successfully retrieved the user quotes
       summary: GetUserQuotes
-  /withdrawCollateral:
-    post:
-      description: ' Withdraw Collateral of a resigned LP'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawCollateralRequest'
-        required: true
-      responses:
-        "204":
-          description: ""
-      summary: Withdraw Collateral
 security:
 - AuthorizationHeader:
   - read
