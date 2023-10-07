@@ -1,15 +1,23 @@
 # Liquidity Provider Server Integration Test
 ## How to run
-To run this test you need to have the same environment variables that you have when you run the LPS. 
+There are two ways of running this tests:
+1. **Test instance**: to run this test you need to have the same environment variables that you have when you run the LPS. 
+The test will start a LPS instance, connect to the blockchains and perform the validations, once the integration test 
+are done, the instance of the LPS is terminated. This option is activated by setting `lps.useTestInstance` to true in
+config file.
+2. **Running instance**: this option doesn't start a LPS instance, it assumes that the url provided is a running instance 
+of the LPS. This is useful to run the integration test against a deployed LPS in mainnet or testnet. This option is 
+activated by setting `lps.useTestInstance` to false in config file.
+
 Also, you need a Bitcoin node available to listen to the network and perform the transactions simulating the user and a
 RSK node to do the same thing, in the case of the RSK node, it **must have enabled the websocket connections** so the 
 test can listen properly for the events.
+
 You can run the test with the following command:
 ```
     go tool test2json -t <compiled test file> -test.v -test.paniconexit0 -test.run ^\QTestIntegrationTestSuite\E$
 ``` 
-The test will start a LPS instance, connect to the blockchains and perform the validations, once the integration test are done, 
-the instance of the LPS is terminated.
+
 All the accounts and wallets that you provide to perform the integration test must have balance to do the proper transactions.
 
 ## Configuration
