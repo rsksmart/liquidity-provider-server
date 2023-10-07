@@ -36,7 +36,8 @@ type IntegrationTestSuite struct {
 
 type SuiteConfig struct {
 	Lps struct {
-		Url string `json:"url"`
+		Url             string `json:"url"`
+		UseTestInstance bool   `json:"useTestInstance"`
 	} `json:"lps"`
 	Btc struct {
 		RpcEndpoint string `json:"rpcEndpoint"`
@@ -67,17 +68,18 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.FailNow("Error reading configuration", err)
 	}
 
-	err = s.setupLps()
-	if err != nil {
-		s.FailNow("Error setting up LPS", err)
+	if s.config.Lps.UseTestInstance {
+		if err = s.setupLps(); err != nil {
+			s.FailNow("Error setting up LPS", err)
+		}
+		time.Sleep(1 * time.Second)
 	}
-	time.Sleep(1 * time.Second)
-	err = s.setupBtc()
-	if err != nil {
+
+	if err = s.setupBtc(); err != nil {
 		s.FailNow("Error setting up Bitcoin client", err)
 	}
-	err = s.setupRsk()
-	if err != nil {
+
+	if err = s.setupRsk(); err != nil {
 		s.FailNow("Error setting up RSK client", err)
 	}
 
@@ -85,8 +87,10 @@ func (s *IntegrationTestSuite) SetupSuite() {
 }
 
 func (s *IntegrationTestSuite) TearDownSuite() {
-	time.Sleep(3 * time.Second) // to allow LPS to finish updating the database after blockchain calls
-	s.ServerDoneChannel <- syscall.SIGINT
+	if s.config.Lps.UseTestInstance {
+		time.Sleep(3 * time.Second) // to allow LPS to finish updating the database after blockchain calls
+		s.ServerDoneChannel <- syscall.SIGINT
+	}
 }
 
 func (s *IntegrationTestSuite) setupLps() error {

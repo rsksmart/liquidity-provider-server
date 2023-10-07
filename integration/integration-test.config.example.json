@@ -1,6 +1,7 @@
 {
   "lps": {
-    "url": "http://localhost:8080"
+    "url": "http://localhost:8080",
+    "useTestInstance": true
   },
   "btc": {
       "rpcEndpoint": "localhost:5555",

@@ -32,10 +32,10 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 	s.Run("Should be able to get pegout quote", func() {
 		body := lps.QuotePegOutRequest{
-			To:                   "mz5RDWsNN38ehxNfKozmt4n1dFnV9BjJ5e",
+			To:                   "mzr2waPr8yqCD2t8kDNvNm4cQYtSvAJxm7",
 			ValueToTransfer:      600000000000000000,
 			RskRefundAddress:     "0x79568c2989232dCa1840087D73d403602364c0D4",
-			BitcoinRefundAddress: "mz5RDWsNN38ehxNfKozmt4n1dFnV9BjJ5e",
+			BitcoinRefundAddress: "mzr2waPr8yqCD2t8kDNvNm4cQYtSvAJxm7",
 		}
 
 		result, err := execute[[]lps.QuotePegOutResponse](Execution{
@@ -180,7 +180,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 		depositTx, err := s.lbc.DepositPegout(opts, pegoutQuote, signature)
 		if err != nil {
-			assert.FailNow(s.T(), "error depositing pegout")
+			assert.FailNow(s.T(), "error depositing pegout: "+err.Error())
 		}
 		log.Debug("[Integration test] Hash of deposit tx ", depositTx.Hash().String())
 
