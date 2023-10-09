@@ -111,6 +111,7 @@ type RSKConnector interface {
 	IsEOA(address string) (bool, error)
 	ChangeStatus(opts *bind.TransactOpts, _providerId *big.Int, _status bool) error
 	WithdrawCollateral(opts *bind.TransactOpts) error
+	WithdrawPegoutCollateral(opts *bind.TransactOpts) error
 	Resign(opts *bind.TransactOpts) error
 	SendRbtc(opts *bind.TransactOpts, to common.Address) error
 	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcRawTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) error
@@ -122,6 +123,7 @@ type RSKConnector interface {
 	IsOperationalForPegout(opts *bind.CallOpts, address common.Address) (status bool, err error)
 	GetPegoutCollateral(addr string) (*big.Int, *big.Int, error)
 	AddPegoutCollateral(opts *bind.TransactOpts) error
+	GetTransactionReceipt(txHash string) (*gethTypes.Receipt, error)
 }
 
 type RSKClient interface {
@@ -168,7 +170,7 @@ func (rsk *RSK) GetDepositEvents(fromBlock, toBlock uint64) ([]*pegout.DepositEv
 		Start:   fromBlock,
 		End:     &toBlock,
 		Context: ctx,
-	}, nil, nil, nil)
+	}, nil, nil)
 
 	defer func() {
 		if iterator != nil {
@@ -1138,7 +1140,7 @@ func (rsk *RSK) GetUserQuotes(request types.UserQuoteRequest) ([]types.UserEvent
 		filterOpts.End = request.ToBlock
 	}
 
-	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, []common.Address{common.HexToAddress(request.Address)}, nil, nil)
+	events, err := rsk.lbc.FilterPegOutDeposit(&filterOpts, nil, []common.Address{common.HexToAddress(request.Address)})
 	if err != nil {
 		return nil, err
 	}
@@ -1193,6 +1195,18 @@ func (rsk *RSK) WithdrawCollateral(opts *bind.TransactOpts) error {
 	}
 }
 
+func (rsk *RSK) WithdrawPegoutCollateral(opts *bind.TransactOpts) error {
+	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
+		return rsk.lbc.WithdrawPegoutCollateral(opts)
+	})
+
+	if err != nil {
+		return WithdrawCollateralError
+	} else {
+		return nil
+	}
+}
+
 func (rsk *RSK) Resign(opts *bind.TransactOpts) error {
 	_, err := rsk.awaitTx(func() (*gethTypes.Transaction, error) {
 		return rsk.lbc.Resign(opts)
@@ -1231,6 +1245,19 @@ func (rsk *RSK) SendRbtc(opts *bind.TransactOpts, to common.Address) error {
 		return err
 	}
 	return rsk.c.SendTransaction(ctx, signedTx)
+}
+
+func (rsk *RSK) GetTransactionReceipt(hashString string) (*gethTypes.Receipt, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+
+	hash := common.HexToHash(hashString)
+	receipt, err := rsk.c.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return receipt, nil
 }
 
 func (rsk *RSK) awaitTx(function func() (*gethTypes.Transaction, error)) (*gethTypes.Receipt, error) {

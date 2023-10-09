@@ -731,7 +731,7 @@ func testAddCollateral(t *testing.T) {
 				t.Fatalf("couldn't instantiate request. error: %v", err)
 			}
 			rr := httptest.NewRecorder()
-			srv.addCollateral(rr, req)
+			srv.addPeginCollateralHandler(rr, req)
 			test.assertions(rr.Result())
 			rsk.Calls = []mock.Call{}
 		})
