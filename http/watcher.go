@@ -395,17 +395,17 @@ func NewDepositEventWatcher(checkInterval time.Duration, liquidityProvider pegou
 }
 
 type WatchedQuote struct {
-	Data         *pegout.Quote
-	Signature    string
-	QuoteHash    string
-	DepositBlock uint64
+	Data               *pegout.Quote
+	Signature          string
+	QuoteHash          string
+	DepositTransaction string
 }
 
 func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
 	if waitingForDepositQuotes == nil || waitingForConfirmationQuotes == nil {
 		log.Fatal("invalid initial pegout quote map")
 	}
-	var oldestBlock uint32
+	var oldestBlock uint32 = 1
 	for _, quote := range waitingForDepositQuotes {
 		watcher.updateOldestBlock(quote, &oldestBlock)
 	}
@@ -468,7 +468,7 @@ func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
 }
 
 func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
-	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
+	if height == watcher.lastCheckedBlock {
 		return nil
 	}
 	events, err := watcher.rsk.GetDepositEvents(watcher.lastCheckedBlock-1, height)
@@ -479,8 +479,8 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 	for _, event := range events {
 		quote, exists := watcher.nonDepositedQuotes[event.QuoteHash]
 		if exists && event.IsValidForQuote(quote.Data) {
-			quote.DepositBlock = event.BlockNumber
-			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositBlock)
+			quote.DepositTransaction = event.TxHash.String()
+			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositTransaction)
 			watcher.depositedQuotes[event.QuoteHash] = quote
 			delete(watcher.nonDepositedQuotes, event.QuoteHash)
 		}
@@ -492,7 +492,10 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 func (watcher *DepositEventWatcherImpl) getConfirmedQuotes(height uint64) map[string]*WatchedQuote {
 	confirmedQuotes := make(map[string]*WatchedQuote, 0)
 	for hash, quote := range watcher.depositedQuotes {
-		if uint64(quote.Data.DepositConfirmations)+quote.DepositBlock < height {
+		receipt, err := watcher.rsk.GetTransactionReceipt(quote.DepositTransaction)
+		if err != nil {
+			log.Debugf("Error getting transaction %s receipt\n", quote.DepositTransaction)
+		} else if uint64(quote.Data.DepositConfirmations)+receipt.BlockNumber.Uint64() < height {
 			confirmedQuotes[hash] = quote
 			delete(watcher.depositedQuotes, hash)
 		}
