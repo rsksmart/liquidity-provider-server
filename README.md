@@ -172,16 +172,8 @@ Gets the registered providers List.
     Provider - The address of the Liquidity Provider in RSK Network
 
 
-## Run Integration Tests
-
-1. You should run LPS env into [docker-compose](./docker-compose/README.md)
-2. Then you need to change directory to it
-3. Then into it folder you only need to run `go test -integration`
-
-
 #### Notes: 
-1. It is required to run LPS env to run integration tests because in `it` folder there is a config.json file which will be updated when contracts will be deployed.
-2. Management API protection. To have a secure server it's important to have some things.
+1. Management API protection. To have a secure server it's important to have some things.
    1. Firewall rules to avoid DDOS and CSRF attacks on the server
    2. CORS policy
    3. Protect the management API endpoints, with Firewall, VPN and so on, this endpoints should be accessible 
