@@ -399,6 +399,7 @@ type WatchedQuote struct {
 	Signature          string
 	QuoteHash          string
 	DepositTransaction string
+	LpBtcTransaction   string
 }
 
 func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
@@ -480,7 +481,7 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 		quote, exists := watcher.nonDepositedQuotes[event.QuoteHash]
 		if exists && event.IsValidForQuote(quote.Data) {
 			quote.DepositTransaction = event.TxHash.String()
-			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositTransaction)
+			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositTransaction, mongoDB.RskTransaction)
 			watcher.depositedQuotes[event.QuoteHash] = quote
 			delete(watcher.nonDepositedQuotes, event.QuoteHash)
 		}
@@ -552,12 +553,12 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote
 	if err != nil {
 		return err
 	}
-	_, err = watcher.btc.SendBtcWithOpReturn(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)), quoteBytes)
+	tx, err := watcher.btc.SendBtcWithOpReturn(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)), quoteBytes)
 	if err != nil {
 		return err
 	}
-
-	return nil
+	quote.LpBtcTransaction = tx
+	return watcher.db.UpdateDepositedPegOutQuote(quote.QuoteHash, tx, mongoDB.BtcTransaction)
 }
 
 func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
