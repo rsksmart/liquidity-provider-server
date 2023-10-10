@@ -463,7 +463,7 @@ func (s *Server) Start(port uint) error {
 			if err != nil {
 				log.Error("Error decoding pegout quote signature: ", err)
 			}
-			err = s.addAddressPegOutWatcher(quote.Data, hash, quote.Data.DepositAddr, signB, provider, types.RQStateCallForUserSucceeded)
+			err = s.addAddressPegOutWatcher(quote.Data, hash, quote.LpBtcTransaction, signB, provider, types.RQStateCallForUserSucceeded)
 			if err != nil {
 				log.Error("Error starting BTC pegout watcher: ", err)
 			}
@@ -541,13 +541,14 @@ func (s *Server) initPegoutWatchers() error {
 		}
 
 		if entry.State == types.RQStateCallForUserSucceeded {
-			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, quote.DepositAddr, signB, p, entry.State)
+			err = s.addAddressPegOutWatcher(quote, entry.QuoteHash, entry.LpBtcTransaction, signB, p, entry.State)
 		} else if entry.State == types.RQStateWaitingForDepositConfirmations {
 			waitingForConfirmationQuotes[entry.QuoteHash] = &WatchedQuote{
 				Signature:          entry.Signature,
 				Data:               quote,
 				DepositTransaction: entry.DepositTransaction,
 				QuoteHash:          entry.QuoteHash,
+				LpBtcTransaction:   entry.LpBtcTransaction,
 			}
 		} else {
 			waitingForDepositQuotes[entry.QuoteHash] = &WatchedQuote{
@@ -626,15 +627,13 @@ func (s *Server) addAddressWatcher(quote *pegin.Quote, hash string, depositAddr 
 	return err
 }
 
-func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depositAddr string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
+func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, btcTxHash string, signB []byte, provider pegout.LiquidityProvider, state types.RQState) error {
 	_, ok := s.pegOutWatchers[hash]
 
 	if ok {
 		return nil
 	}
 
-	satoshis, _ := quote.Value.ToSatoshi().Float64()
-	minBtcAmount := btcutil.Amount(uint64(math.Ceil(satoshis)))
 	expTime := quote.GetExpirationTime()
 	watcher := &BTCAddressPegOutWatcher{
 		hash:         hash,
@@ -648,7 +647,7 @@ func (s *Server) addAddressPegOutWatcher(quote *pegout.Quote, hash string, depos
 		done:         make(chan struct{}),
 		sharedLocker: &s.sharedPegoutMutex,
 	}
-	err := s.btc.AddAddressPegOutWatcher(depositAddr, minBtcAmount, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
+	err := s.btc.AddAddressPegOutWatcher(btcTxHash, quote, time.Minute, expTime, watcher, func(w connectors.AddressWatcher) {
 		s.addWatcherMu.Lock()
 		defer s.addWatcherMu.Unlock()
 		delete(s.pegOutWatchers, hash)

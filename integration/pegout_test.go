@@ -32,10 +32,10 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 	s.Run("Should be able to get pegout quote", func() {
 		body := lps.QuotePegOutRequest{
-			To:                   "mzr2waPr8yqCD2t8kDNvNm4cQYtSvAJxm7",
+			To:                   "mi1r1QvaBVxLDLBPoZ3jJMUKCYMh7dBkBv",
 			ValueToTransfer:      600000000000000000,
 			RskRefundAddress:     "0x79568c2989232dCa1840087D73d403602364c0D4",
-			BitcoinRefundAddress: "mzr2waPr8yqCD2t8kDNvNm4cQYtSvAJxm7",
+			BitcoinRefundAddress: "mi1r1QvaBVxLDLBPoZ3jJMUKCYMh7dBkBv",
 		}
 
 		result, err := execute[[]lps.QuotePegOutResponse](Execution{
