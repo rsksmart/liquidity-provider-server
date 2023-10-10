@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math/big"
 	"regexp"
 	"time"
@@ -52,7 +53,7 @@ type BTCConnector interface {
 	Connect(config BtcConfig) error
 	CheckConnection() error
 	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
-	AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
+	AddAddressPegOutWatcher(txHash string, quote *pegout.Quote, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
@@ -182,24 +183,18 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 	return nil
 }
 
-func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
-	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
-	if err != nil {
-		return err
-	}
-
-	err = btc.c.ImportAddressRescan(address, "", false)
+func (btc *BTC) AddAddressPegOutWatcher(txHash string, quote *pegout.Quote, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
+	hash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {
 		return err
 	}
 
 	go func(w AddressWatcher) {
 		ticker := time.NewTicker(interval)
-		var confirmations int64
 		for {
 			select {
 			case <-ticker.C:
-				_ = btc.checkBtcAddr(w, btcAddr, minBtcAmount, exp, &confirmations, time.Now)
+				_ = btc.checkBtcTransaction(w, hash, exp, quote.DepositConfirmations, time.Now)
 			case <-w.Done():
 				ticker.Stop()
 				cb(w)
@@ -208,11 +203,6 @@ func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amo
 		}
 	}(w)
 	return nil
-}
-
-func buildErrorImportAddress(address string, err error) error {
-	log.Errorf("error importing address %v: %v", address, err)
-	return fmt.Errorf("error importing address %v: %v", address, err)
 }
 
 func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
@@ -249,6 +239,38 @@ func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAm
 	}
 
 	return fmt.Errorf("num of confirmations has not advanced; conf: %v", conf)
+}
+
+func (btc *BTC) checkBtcTransaction(w AddressWatcher, hash *chainhash.Hash, expTime time.Time, confirmations uint16, now func() time.Time) error {
+	tx, err := btc.c.GetTransaction(hash)
+	log.Debugf("Tx %v confirmations:: %v of %v", hash.String(), tx.Confirmations, confirmations)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Debugf("expTime:: %v", expTime)
+	log.Debugf("now:: %v", now())
+
+	if tx.Confirmations < int64(confirmations) && now().After(expTime) {
+		w.OnExpire()
+		return fmt.Errorf("time for deposit has elapsed; tx: %v", tx)
+	}
+
+	var amount btcutil.Amount
+	var branch *MerkleBranch
+	if tx.Confirmations > int64(confirmations) {
+		amount, err = btcutil.NewAmount(tx.Amount)
+		w.OnNewConfirmation(hash.String(), tx.Confirmations, amount)
+		branch, err = btc.BuildMerkleBranch(hash.String())
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Merkle Branch info :::: path:%v hashes:%v ", branch.Path, branch.Hashes)
+		return nil
+	}
+
+	return fmt.Errorf("num of confirmations has not advanced; conf: %v", tx.Confirmations)
 }
 
 func (btc *BTC) GetParams() chaincfg.Params {
