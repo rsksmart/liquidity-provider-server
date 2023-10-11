@@ -9,4 +9,5 @@ type RetainedQuote struct {
 	ReqLiq             uint64        `json:"reqLiq" db:"req_liq"`
 	State              types.RQState `json:"state" db:"state"`
 	DepositTransaction string        `json:"depositTransaction" db:"deposit_transaction" bson:"deposit_transaction"`
+	LpBtcTransaction   string        `json:"lpBtcTransaction" db:"lp_btc_transaction" bson:"lp_btc_transaction"`
 }
