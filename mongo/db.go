@@ -29,6 +29,13 @@ const (
 	pegoutKeysCollection          = "pegoutKeys"
 )
 
+type TransactionType int
+
+const (
+	RskTransaction TransactionType = iota
+	BtcTransaction
+)
+
 const queryTimeout = 3 * time.Second
 
 type DBConnector interface {
@@ -48,7 +55,7 @@ type DBConnector interface {
 	GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	GetRetainedPegOutQuoteByState(filter []types.RQState) ([]*pegout.RetainedQuote, error)
 	UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState, newState types.RQState) error
-	UpdateDepositedPegOutQuote(hash string, transactionHash string) error
+	UpdateDepositedPegOutQuote(hash string, transactionHash string, txType TransactionType) error
 	GetLockedLiquidityPegOut() (uint64, error)
 	GetProviders() ([]*ProviderAddress, error)
 	GetProvider(uint64) (*ProviderAddress, error)
@@ -659,16 +666,35 @@ func (db *DB) UpdateRetainedPegOutQuoteState(hash string, oldState types.RQState
 	return nil
 }
 
-func (db *DB) UpdateDepositedPegOutQuote(hash string, transactionHash string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+func (db *DB) UpdateDepositedPegOutQuote(hash string, transactionHash string, txType TransactionType) error {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout*500)
 	defer cancel()
+
+	var update bson.D
+	if txType == RskTransaction {
+		update = bson.D{
+			primitive.E{Key: "$set", Value: bson.D{
+				primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
+				primitive.E{Key: "deposit_transaction", Value: transactionHash},
+			}},
+		}
+	} else {
+		update = bson.D{
+			primitive.E{Key: "$set", Value: bson.D{primitive.E{Key: "lp_btc_transaction", Value: transactionHash}}},
+		}
+	}
+
 	coll := db.db.Collection(retainedPegoutQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}, primitive.E{Key: "state", Value: types.RQStateWaitingForDeposit}}
-	update := bson.D{
-		primitive.E{Key: "$set", Value: bson.D{
-			primitive.E{Key: "state", Value: types.RQStateWaitingForDepositConfirmations},
-			primitive.E{Key: "deposit_transaction", Value: transactionHash},
-		}},
+	filter := bson.M{
+		"$and": []bson.M{
+			{"quotehash": hash},
+			{
+				"$or": []bson.M{
+					{"state": types.RQStateWaitingForDeposit},
+					{"state": types.RQStateWaitingForDepositConfirmations},
+				},
+			},
+		},
 	}
 
 	result, err := coll.UpdateOne(ctx, filter, update)
