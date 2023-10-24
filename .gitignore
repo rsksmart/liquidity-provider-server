@@ -1,7 +1,7 @@
 # IDE
 .vscode/
 .idea/
-it/config.json
+.DS_Store
 
 # Project-specific content
 /.geth_keystore/
@@ -11,10 +11,10 @@ it/config.json
 /docker-compose/local/volumes/
 /liquidity-provider-server
 /server.db
-/it/config.json
 pwd.txt
 /docker-compose/volumes
 /docker-compose/.env.testnet
-.DS_Store
+integration/integration-test.config.json
+integration/geth_keystore
 
 /docker-compose/lbc-deployer/liquidity-bridge-contract/

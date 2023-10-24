@@ -1,6 +1,43 @@
 components:
   schemas:
     "": {}
+    AcceptReq:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      type: object
+    AcceptRes:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
+    AcceptResPegOut:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
     AddCollateralRequest:
       properties:
         amount:
@@ -12,6 +49,12 @@ components:
           example: "0x0"
           type: string
       type: object
+    AddCollateralResponse:
+      properties:
+        newCollateralBalance:
+          example: 100000000000
+          type: integer
+      type: object
     Address:
       items: {}
       type: array
@@ -22,11 +65,34 @@ components:
         status:
           type: boolean
       type: object
+    DepositEvent:
+      properties:
+        amount:
+          description: Event Value
+          example: "10000"
+        from:
+          description: From Address
+          example: invalid example
+          items: {}
+          type: array
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        timestamp:
+          description: Event Timestamp
+          example: "10000"
+          format: date-time
+          type: string
+      type: object
     GetCollateralResponse:
       properties:
         collateral:
           type: integer
       type: object
+    Hash:
+      items: {}
+      type: array
     PeginQuoteDTO:
       properties:
         agreementTimestamp:
@@ -35,6 +101,10 @@ components:
         btcRefundAddr:
           description: A User BTC refund address
           type: string
+        callCost:
+          description: The estimated cost for the LP to do the call on behalf of the
+            user. Is calculated with gasPrice * gasLimit
+          type: integer
         callFee:
           description: The fee charged by the LP
           type: integer
@@ -107,6 +177,7 @@ components:
       - lpCallTime
       - confirmations
       - callOnRegister
+      - callCost
       type: object
     PegoutQuoteDTO:
       properties:
@@ -114,6 +185,10 @@ components:
           type: integer
         btcRefundAddress:
           type: string
+        callCost:
+          description: The estimated cost for the LP to do the transaction on behalf
+            of the user in Bitcoin network
+          type: integer
         callFee:
           type: integer
         depositAddr:
@@ -125,8 +200,6 @@ components:
         expireBlocks:
           type: integer
         expireDate:
-          type: integer
-        gasLimit:
           type: integer
         lbcAddress:
           type: string
@@ -156,7 +229,6 @@ components:
       - penaltyFee
       - nonce
       - depositAddr
-      - gasLimit
       - value
       - agreementTimestamp
       - depositDateLimit
@@ -165,6 +237,7 @@ components:
       - transferTime
       - expireDate
       - expireBlocks
+      - callCost
       type: object
     ProviderDTO:
       properties:
@@ -172,21 +245,9 @@ components:
           description: Provider's LPS instance URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Provider fee
-          example: 100000000000000000
-          type: integer
         id:
           description: Provider id
           example: 1
-          type: integer
-        maxTransactionValue:
-          description: Maximum transaction value
-          example: 1000000000000000000
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value
-          example: 100000000
           type: integer
         name:
           description: Provider name
@@ -200,10 +261,6 @@ components:
           description: Provider Type
           example: pegin
           type: string
-        quoteExpiration:
-          description: Quote expiration time in seconds
-          example: 3600
-          type: integer
         status:
           description: Provider status
           example: true
@@ -212,44 +269,55 @@ components:
       - id
       - provider
       - name
-      - fee
-      - quoteExpiration
-      - minTransactionValue
-      - maxTransactionValue
       - apiBaseUrl
       - status
       - providerType
       type: object
+    ProviderDetail:
+      properties:
+        fee:
+          type: integer
+        maxTransactionValue:
+          type: integer
+        minTransactionValue:
+          type: integer
+        requiredConfirmations:
+          type: integer
+      required:
+      - fee
+      - minTransactionValue
+      - maxTransactionValue
+      - requiredConfirmations
+      type: object
+    ProviderDetailResponse:
+      properties:
+        pegin:
+          $ref: '#/components/schemas/ProviderDetail'
+          type: object
+        pegout:
+          $ref: '#/components/schemas/ProviderDetail'
+          type: object
+        siteKey:
+          type: string
+      required:
+      - siteKey
+      - pegin
+      - pegout
+      type: object
     ProviderRegisterRequest:
       properties:
-        acceptedQuoteExpiration:
-          description: Accepted quote expiration in seconds
-          example: 100
-          type: integer
         apiBaseUrl:
           description: API base URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Fee in wei
-          example: 100
-          type: integer
-        maxTransactionValue:
-          description: Maximum transaction value in wei
-          example: 100
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
           type: string
-        quoteExpiration:
-          description: Quote expiration in seconds
-          example: 100
-          type: integer
+        providerType:
+          description: Provider type must be "pegin", "pegout" or "both"
+          example: pegin
+          type: string
         status:
           description: Provider status
           example: true
@@ -354,87 +422,10 @@ components:
           example: Provider Created Successfully
           type: string
       type: object
-    SenBTCResponse:
-      properties:
-        txHash:
-          description: TxHash of the BTC transaction sent to the address
-          example: "0x0"
-          type: string
-      type: object
-    UserEvents:
-      properties:
-        amount:
-          description: Event Value
-          example: "10000"
-        from:
-          description: From Address
-          example: invalid example
-          items: {}
-          type: array
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-        timestamp:
-          description: Event Timestamp
-          example: "10000"
-      type: object
-    UserQuoteRequest:
-      properties:
-        address:
-          description: User Address
-          example: "0x0"
-          type: string
-        fromBlock:
-          description: optional fromBlock
-          example: 69
-          type: integer
-        toBlock:
-          description: optional toBlock
-          example: 0
-          type: integer
-      type: object
     WithdrawCollateralRequest:
       properties:
         lpRskAddress:
           type: string
-      type: object
-    acceptReq:
-      properties:
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      required:
-      - quoteHash
-      type: object
-    acceptRes:
-      properties:
-        bitcoinDepositAddressHash:
-          description: Hash of the deposit BTC address
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - bitcoinDepositAddressHash
-      type: object
-    acceptResPegOut:
-      properties:
-        lbcAddress:
-          description: LBC address to execute depositPegout function
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - lbcAddress
       type: object
     healthRes:
       properties:
@@ -461,34 +452,18 @@ components:
       type: object
     types.ProviderRegisterRequest:
       properties:
-        acceptedQuoteExpiration:
-          description: Accepted quote expiration in seconds
-          example: 100
-          type: integer
         apiBaseUrl:
           description: API base URL
           example: https://api.example.com
           type: string
-        fee:
-          description: Fee in wei
-          example: 100
-          type: integer
-        maxTransactionValue:
-          description: Maximum transaction value in wei
-          example: 100
-          type: integer
-        minTransactionValue:
-          description: Minimum transaction value in wei
-          example: 100
-          type: integer
         name:
           description: Provider Name
           example: New Provider
           type: string
-        quoteExpiration:
-          description: Quote expiration in seconds
-          example: 100
-          type: integer
+        providerType:
+          description: Provider type must be "pegin", "pegout" or "both"
+          example: pegin
+          type: string
         status:
           description: Provider status
           example: true
@@ -504,43 +479,6 @@ info:
   version: "0.5"
 openapi: 3.0.0
 paths:
-  /addCollateral:
-    post:
-      description: ' Adds Collateral'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddCollateralRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SenBTCResponse'
-          description: ""
-      summary: Add Collateral
-  /collateral/{address}:
-    get:
-      description: ' Get Collateral'
-      parameters:
-      - description: Liquidity provider address
-        in: path
-        name: address
-        required: true
-        schema:
-          description: Liquidity provider address
-          format: string
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetCollateralResponse'
-          description: ""
-      summary: Get Collateral
   /getProviders:
     get:
       description: ' Returns a list of providers.'
@@ -570,16 +508,53 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/acceptReq'
+              $ref: '#/components/schemas/AcceptReq'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/acceptRes'
+                $ref: '#/components/schemas/AcceptRes'
           description: ""
       summary: Accept Quote
+  /pegin/addCollateral:
+    post:
+      description: ' Adds PegIn Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddCollateralResponse'
+          description: ""
+      summary: Add PegIn Collateral
+  /pegin/collateral/{address}:
+    get:
+      description: ' Get PegIn Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: address
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get PegIn Collateral
   /pegin/getQuote:
     post:
       description: ' Gets Pegin Quote'
@@ -597,6 +572,19 @@ paths:
                 $ref: '#/components/schemas/QuoteReturn'
           description: ""
       summary: Pegin GetQuote
+  /pegin/withdrawCollateral:
+    post:
+      description: ' Withdraw PegIn collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw PegIn Collateral
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'
@@ -604,16 +592,53 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/acceptReq'
+              $ref: '#/components/schemas/AcceptReq'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/acceptResPegOut'
+                $ref: '#/components/schemas/AcceptResPegOut'
           description: ""
       summary: Accept Quote Pegout
+  /pegout/addCollateral:
+    post:
+      description: ' Adds PegOut Collateral'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollateralRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddCollateralResponse'
+          description: ""
+      summary: Add PegOut Collateral
+  /pegout/collateral/{address}:
+    get:
+      description: ' Get PegOut Collateral'
+      parameters:
+      - description: Liquidity provider address
+        in: path
+        name: address
+        required: true
+        schema:
+          description: Liquidity provider address
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCollateralResponse'
+          description: ""
+      summary: Get PegOut Collateral
   /pegout/getQuotes:
     post:
       description: ' Gets Pegout Quote'
@@ -631,6 +656,19 @@ paths:
                 $ref: '#/components/schemas/QuotePegOutResponse'
           description: ""
       summary: Pegout GetQuote
+  /pegout/withdrawCollateral:
+    post:
+      description: ' Withdraw PegOut collateral of a resigned LP'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawCollateralRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw PegOut Collateral
   /provider/changeStatus:
     post:
       description: ' Changes the status of the provider'
@@ -702,36 +740,29 @@ paths:
         "204":
           description: ""
       summary: Provider Synchronization
-  /userQuotes:
+  /providers/details:
     get:
-      description: ' Returns user quotes for address.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserQuoteRequest'
-        required: true
+      description: ' Returns the details of the provider that manages this instance
+        of LPS'
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserEvents'
+                $ref: '#/components/schemas/ProviderDetailResponse'
+          description: Detail of the provider that manges this instance
+      summary: Provider detail
+  /userQuotes:
+    get:
+      description: ' Returns user quotes for address.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositEvent'
           description: Successfully retrieved the user quotes
       summary: GetUserQuotes
-  /withdrawCollateral:
-    post:
-      description: ' Withdraw Collateral of a resigned LP'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawCollateralRequest'
-        required: true
-      responses:
-        "204":
-          description: ""
-      summary: Withdraw Collateral
 security:
 - AuthorizationHeader:
   - read

@@ -1,0 +1,17 @@
+{
+  "lps": {
+    "url": "http://localhost:8080",
+    "useTestInstance": true
+  },
+  "btc": {
+      "rpcEndpoint": "localhost:5555",
+      "user": "test",
+      "password": "test",
+      "network": "regtest"
+  },
+  "rsk": {
+    "rpcUrl": "ws://localhost:4445/websocket",
+    "lbcAddress": "<lbc address>",
+    "userPrivateKey": "<user private key>"
+  }
+}

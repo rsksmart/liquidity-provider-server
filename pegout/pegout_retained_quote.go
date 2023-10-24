@@ -8,5 +8,6 @@ type RetainedQuote struct {
 	Signature          string        `json:"signature" db:"signature"`
 	ReqLiq             uint64        `json:"reqLiq" db:"req_liq"`
 	State              types.RQState `json:"state" db:"state"`
-	DepositBlockNumber uint64        `json:"depositBlockNumber" db:"deposit_block_number" bson:"deposit_block_number"`
+	DepositTransaction string        `json:"depositTransaction" db:"deposit_transaction" bson:"deposit_transaction"`
+	LpBtcTransaction   string        `json:"lpBtcTransaction" db:"lp_btc_transaction" bson:"lp_btc_transaction"`
 }

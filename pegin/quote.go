@@ -1,8 +1,8 @@
 package pegin
 
 import (
-	"github.com/rsksmart/liquidity-provider/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/rsksmart/liquidity-provider/types"
 	"math/big"
 )
 
@@ -25,6 +25,7 @@ type Quote struct {
 	LpCallTime         uint32     `json:"lpCallTime" db:"call_time"`
 	Confirmations      uint16     `json:"confirmations" db:"confirmations"`
 	CallOnRegister     bool       `json:"callOnRegister" db:"call_on_register"`
+	CallCost           *types.Wei `json:"callCost" db:"call_cost"`
 }
 
 type PunishmentEvent struct {
