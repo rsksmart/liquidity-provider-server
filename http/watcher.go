@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ses"
+	sesTypes "github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/ethereum/go-ethereum/common"
 	"math"
 	"math/big"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +22,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
-	"github.com/mailgun/mailgun-go/v4"
 	"github.com/rsksmart/liquidity-provider-server/connectors"
 	"github.com/rsksmart/liquidity-provider/types"
 	log "github.com/sirupsen/logrus"
@@ -41,19 +42,18 @@ type BTCAddressWatcher struct {
 }
 
 type BTCAddressPegOutWatcher struct {
-	hash                 string
-	derivationAddress    string
-	addressDecryptionKey string
-	btc                  connectors.BTCConnector
-	rsk                  connectors.RSKConnector
-	lp                   pegout.LiquidityProvider
-	dbMongo              mongoDB.DBConnector
-	state                types.RQState
-	quote                *pegout.Quote
-	done                 chan struct{}
-	closed               bool
-	signature            []byte
-	sharedLocker         sync.Locker
+	hash              string
+	derivationAddress string
+	btc               connectors.BTCConnector
+	rsk               connectors.RSKConnector
+	lp                pegout.LiquidityProvider
+	dbMongo           mongoDB.DBConnector
+	state             types.RQState
+	quote             *pegout.Quote
+	done              chan struct{}
+	closed            bool
+	signature         []byte
+	sharedLocker      sync.Locker
 }
 
 const (
@@ -395,17 +395,18 @@ func NewDepositEventWatcher(checkInterval time.Duration, liquidityProvider pegou
 }
 
 type WatchedQuote struct {
-	Data         *pegout.Quote
-	Signature    string
-	QuoteHash    string
-	DepositBlock uint64
+	Data               *pegout.Quote
+	Signature          string
+	QuoteHash          string
+	DepositTransaction string
+	LpBtcTransaction   string
 }
 
 func (watcher *DepositEventWatcherImpl) Init(waitingForDepositQuotes, waitingForConfirmationQuotes map[string]*WatchedQuote) {
 	if waitingForDepositQuotes == nil || waitingForConfirmationQuotes == nil {
 		log.Fatal("invalid initial pegout quote map")
 	}
-	var oldestBlock uint32
+	var oldestBlock uint32 = 1
 	for _, quote := range waitingForDepositQuotes {
 		watcher.updateOldestBlock(quote, &oldestBlock)
 	}
@@ -468,7 +469,7 @@ func (watcher *DepositEventWatcherImpl) watchDepositEvent() {
 }
 
 func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
-	if height == watcher.lastCheckedBlock || watcher.lastCheckedBlock == 0 {
+	if height == watcher.lastCheckedBlock {
 		return nil
 	}
 	events, err := watcher.rsk.GetDepositEvents(watcher.lastCheckedBlock-1, height)
@@ -479,11 +480,12 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 	for _, event := range events {
 		quote, exists := watcher.nonDepositedQuotes[event.QuoteHash]
 		if exists && event.IsValidForQuote(quote.Data) {
-			quote.DepositBlock = event.BlockNumber
-			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositBlock)
+			quote.DepositTransaction = event.TxHash.String()
+			_ = watcher.db.UpdateDepositedPegOutQuote(event.QuoteHash, quote.DepositTransaction, mongoDB.RskTransaction)
 			watcher.depositedQuotes[event.QuoteHash] = quote
 			delete(watcher.nonDepositedQuotes, event.QuoteHash)
 		}
+		watcher.db.UpsertDepositEvent(event)
 	}
 	return nil
 }
@@ -491,7 +493,10 @@ func (watcher *DepositEventWatcherImpl) checkDeposits(height uint64) error {
 func (watcher *DepositEventWatcherImpl) getConfirmedQuotes(height uint64) map[string]*WatchedQuote {
 	confirmedQuotes := make(map[string]*WatchedQuote, 0)
 	for hash, quote := range watcher.depositedQuotes {
-		if uint64(quote.Data.DepositConfirmations)+quote.DepositBlock < height {
+		receipt, err := watcher.rsk.GetTransactionReceipt(quote.DepositTransaction)
+		if err != nil {
+			log.Debugf("Error getting transaction %s receipt\n", quote.DepositTransaction)
+		} else if uint64(quote.Data.DepositConfirmations)+receipt.BlockNumber.Uint64() < height {
 			confirmedQuotes[hash] = quote
 			delete(watcher.depositedQuotes, hash)
 		}
@@ -548,12 +553,12 @@ func (watcher *DepositEventWatcherImpl) handleDepositedQuote(quote *WatchedQuote
 	if err != nil {
 		return err
 	}
-	_, err = watcher.btc.SendBtcWithOpReturn(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)), quoteBytes)
+	tx, err := watcher.btc.SendBtcWithOpReturn(quote.Data.DepositAddr, uint64(math.Ceil(satoshi)), quoteBytes)
 	if err != nil {
 		return err
 	}
-
-	return nil
+	quote.LpBtcTransaction = tx
+	return watcher.db.UpdateDepositedPegOutQuote(quote.QuoteHash, tx, mongoDB.BtcTransaction)
 }
 
 func (watcher *DepositEventWatcherImpl) EndChannel() chan<- bool {
@@ -580,13 +585,16 @@ type LpFundsEventWatcherImpl struct {
 	liquidityPegoutProvider pegout.LiquidityProvider
 	minTxValue              *types.Wei
 	recipient               string
+	sesClient               *ses.Client
 }
 
-func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, rsk connectors.RSKConnector, peginLiquidityProvider pegin.LiquidityProvider, pegoutLiquidityProvider pegout.LiquidityProvider) LpFundsEventWatcher {
+func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, rsk connectors.RSKConnector,
+	peginLiquidityProvider pegin.LiquidityProvider, pegoutLiquidityProvider pegout.LiquidityProvider, awsConfig aws.Config) LpFundsEventWatcher {
 	height, err := rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting rsk height: ", err)
 	}
+	sesClient := ses.NewFromConfig(awsConfig)
 	return &LpFundsEventWatcherImpl{
 		checkInterval:           checkInterval,
 		endChannel:              endChannel,
@@ -595,6 +603,7 @@ func NewLpFundsEventWatcher(checkInterval time.Duration, endChannel chan bool, r
 		liquidityPeginProvider:  peginLiquidityProvider,
 		liquidityPegoutProvider: pegoutLiquidityProvider,
 		recipient:               "test@iovlabs.org",
+		sesClient:               sesClient,
 	}
 }
 
@@ -674,40 +683,30 @@ func (watcher *LpFundsEventWatcherImpl) GetLpPegoutOutOfLiquidity() error {
 
 func (watcher *LpFundsEventWatcherImpl) SendAlert(subject string, body string, recipient string) {
 	log.Debug("Sending alert to LP")
-	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
-
-	//When you have an EU-domain, you must specify the endpoint:
-	//mg.SetAPIBase("https://api.eu.mailgun.net/v3")
-
 	sender := "no-reply@mail.flyover.rifcomputing.net"
-
-	message := mg.NewMessage(sender, subject, body, recipient)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	var resp string
-	var id string
-	var err error
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error("An error occurred while sending the email:", r)
-				err = fmt.Errorf("%v", r)
-			}
-		}()
-
-		resp, id, err = mg.Send(ctx, message)
-	}()
+	result, err := watcher.sesClient.SendEmail(ctx, &ses.SendEmailInput{
+		Destination: &sesTypes.Destination{
+			ToAddresses: []string{recipient},
+		},
+		Message: &sesTypes.Message{
+			Body: &sesTypes.Body{
+				Text: &sesTypes.Content{Data: &body},
+			},
+			Subject: &sesTypes.Content{Data: &subject},
+		},
+		Source: &sender,
+	})
 
 	if err != nil {
-		log.Error(err)
-		// Handle the error gracefully, instead of crashing the application
+		log.Error("An error occurred while sending the email: ", err.Error())
 		return
 	}
 
-	log.Debugf("ID: %s Resp: %s\n", id, resp)
+	log.Debugf("Alert sent with ID: %s\n", *result.MessageId)
 }
 
 func (watcher *LpFundsEventWatcherImpl) WatchLpFunds() error {

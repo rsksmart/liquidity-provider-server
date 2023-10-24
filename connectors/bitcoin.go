@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
+	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math/big"
 	"regexp"
 	"time"
@@ -34,12 +34,11 @@ const (
 )
 
 type BtcConfig struct {
-	Endpoint        string  `env:"BTC_ENDPOINT"`
-	Username        string  `env:"BTC_USERNAME"`
-	Password        string  `env:"BTC_PASSWORD"`
-	Network         string  `env:"BTC_NETWORK"`
-	TxFixedFee      int64   `env:"BTC_TX_FEE"`
-	TxFeePercentage float64 `env:"BTC_TX_FEE_PERCENTAGE"`
+	Endpoint  string  `env:"BTC_ENDPOINT"`
+	Username  string  `env:"BTC_USERNAME"`
+	Password  string  `env:"BTC_PASSWORD"`
+	Network   string  `env:"BTC_NETWORK"`
+	TxFeeRate float64 `env:"BTC_TX_FEE_RATE"`
 }
 
 type AddressWatcherCompleteCallback = func(w AddressWatcher)
@@ -54,7 +53,7 @@ type BTCConnector interface {
 	Connect(config BtcConfig) error
 	CheckConnection() error
 	AddAddressWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
-	AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
+	AddAddressPegOutWatcher(txHash string, quote *pegout.Quote, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error
 	GetParams() chaincfg.Params
 	Close()
 	SerializePMT(txHash string) ([]byte, error)
@@ -69,7 +68,7 @@ type BTCConnector interface {
 	LockBtc(amount float64) error
 	UnlockBtc(amount float64) error
 	GetBlockHeaderHashByTx(txHash string) ([32]byte, error)
-	GetAmauntWithFeesIncluded(amount float64) float64
+	EstimateFees(address string, amountInSatoshi uint64) (uint64, error)
 }
 
 type BTCClient interface {
@@ -91,13 +90,18 @@ type BTCClient interface {
 	SignRawTransactionWithWallet(tx *wire.MsgTx) (*wire.MsgTx, bool, error)
 	SendRawTransaction(tx *wire.MsgTx, allowHighFees bool) (*chainhash.Hash, error)
 	SetTxFee(fee btcutil.Amount) error
+	FundRawTransaction(tx *wire.MsgTx, opts btcjson.FundRawTransactionOpts, isWitness *bool) (*btcjson.FundRawTransactionResult, error)
+	WalletCreateFundedPsbt(
+		inputs []btcjson.PsbtInput, outputs []btcjson.PsbtOutput, locktime *uint32,
+		options *btcjson.WalletCreateFundedPsbtOpts, bip32Derivs *bool,
+	) (*btcjson.WalletCreateFundedPsbtResult, error)
 }
 
 type BTC struct {
-	c               BTCClient
-	params          chaincfg.Params
-	TxDefaultFee    int64
-	TxFeePercentage float64
+	c            BTCClient
+	params       chaincfg.Params
+	TxDefaultFee int64
+	TxFeeRate    float64
 }
 
 func NewBTC(network string) (*BTC, error) {
@@ -142,8 +146,7 @@ func (btc *BTC) Connect(btcConfig BtcConfig) error {
 	}
 
 	btc.c = c
-	btc.TxDefaultFee = btcConfig.TxFixedFee
-	btc.TxFeePercentage = btcConfig.TxFeePercentage
+	btc.TxFeeRate = btcConfig.TxFeeRate
 	return nil
 }
 
@@ -180,24 +183,18 @@ func (btc *BTC) AddAddressWatcher(address string, minBtcAmount btcutil.Amount, i
 	return nil
 }
 
-func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amount, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
-	btcAddr, err := btcutil.DecodeAddress(address, &btc.params)
-	if err != nil {
-		return err
-	}
-
-	err = btc.c.ImportAddressRescan(address, "", false)
+func (btc *BTC) AddAddressPegOutWatcher(txHash string, quote *pegout.Quote, interval time.Duration, exp time.Time, w AddressWatcher, cb AddressWatcherCompleteCallback) error {
+	hash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {
 		return err
 	}
 
 	go func(w AddressWatcher) {
 		ticker := time.NewTicker(interval)
-		var confirmations int64
 		for {
 			select {
 			case <-ticker.C:
-				_ = btc.checkBtcAddr(w, btcAddr, minBtcAmount, exp, &confirmations, time.Now)
+				_ = btc.checkBtcTransaction(w, hash, exp, quote.DepositConfirmations, time.Now)
 			case <-w.Done():
 				ticker.Stop()
 				cb(w)
@@ -206,11 +203,6 @@ func (btc *BTC) AddAddressPegOutWatcher(address string, minBtcAmount btcutil.Amo
 		}
 	}(w)
 	return nil
-}
-
-func buildErrorImportAddress(address string, err error) error {
-	log.Errorf("error importing address %v: %v", address, err)
-	return fmt.Errorf("error importing address %v: %v", address, err)
 }
 
 func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAmount btcutil.Amount, expTime time.Time, confirmations *int64, now func() time.Time) error {
@@ -247,6 +239,38 @@ func (btc *BTC) checkBtcAddr(w AddressWatcher, btcAddr btcutil.Address, minBtcAm
 	}
 
 	return fmt.Errorf("num of confirmations has not advanced; conf: %v", conf)
+}
+
+func (btc *BTC) checkBtcTransaction(w AddressWatcher, hash *chainhash.Hash, expTime time.Time, confirmations uint16, now func() time.Time) error {
+	tx, err := btc.c.GetTransaction(hash)
+	log.Debugf("Tx %v confirmations:: %v of %v", hash.String(), tx.Confirmations, confirmations)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Debugf("expTime:: %v", expTime)
+	log.Debugf("now:: %v", now())
+
+	if tx.Confirmations < int64(confirmations) && now().After(expTime) {
+		w.OnExpire()
+		return fmt.Errorf("time for deposit has elapsed; tx: %v", tx)
+	}
+
+	var amount btcutil.Amount
+	var branch *MerkleBranch
+	if tx.Confirmations > int64(confirmations) {
+		amount, err = btcutil.NewAmount(tx.Amount)
+		w.OnNewConfirmation(hash.String(), tx.Confirmations, amount)
+		branch, err = btc.BuildMerkleBranch(hash.String())
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Merkle Branch info :::: path:%v hashes:%v ", branch.Path, branch.Hashes)
+		return nil
+	}
+
+	return fmt.Errorf("num of confirmations has not advanced; conf: %v", tx.Confirmations)
 }
 
 func (btc *BTC) GetParams() chaincfg.Params {
@@ -366,7 +390,7 @@ func DecodeBTCAddressWithVersion(address string) ([]byte, error) {
 		}
 		log.Debug("decoded btc address data", addressBts)
 		log.Debug("decoded version address data", data)
-		bts.Write(addressBts)
+		bts.Write(data)
 		return bts.Bytes(), nil
 	}
 	log.Debug("decoded btc address data", addressBts)
@@ -509,12 +533,17 @@ func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 }
 
 func (btc *BTC) GetAvailableLiquidity() (*big.Int, error) {
-	balance, err := btc.c.GetBalance("*") // dummy parameter, see explanation -> https://bitcoincore.org/en/doc/23.0.0/rpc/wallet/getbalance/
+	utxos, err := btc.c.ListUnspent()
 	if err != nil {
 		return nil, err
-	} else {
-		return big.NewInt(int64(balance)), nil
 	}
+	balance := big.NewInt(0)
+	for _, utxo := range utxos {
+		if utxo.Spendable {
+			balance.Add(balance, big.NewInt(int64(utxo.Amount*BTC_TO_SATOSHI)))
+		}
+	}
+	return balance, nil
 }
 
 type MerkleBranch struct {
@@ -1018,35 +1047,35 @@ func (btc *BTC) getTxInputs(amount uint64) ([]*wire.TxIn, error) {
 	return txInputs, nil
 }
 
-func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnContent []byte) (string, error) {
-	amountWithFees := btc.GetAmauntWithFeesIncluded(math.Ceil(float64(amount)))
-	inputs, err := btc.getTxInputs(uint64(amountWithFees))
-	if err != nil {
-		return "", err
-	}
-
-	tx := wire.NewMsgTx(wire.TxVersion)
-	for _, input := range inputs {
-		tx.AddTxIn(input)
-	}
-
+func (btc *BTC) SendBtcWithOpReturn(address string, amountInSatoshi uint64, opReturnContent []byte) (string, error) {
 	btcAddress, err := btcutil.DecodeAddress(address, &btc.params)
 	if err != nil {
 		return "", err
 	}
-	pkScript, err := txscript.PayToAddrScript(btcAddress)
-	if err != nil {
-		return "", err
+
+	output := map[btcutil.Address]btcutil.Amount{
+		btcAddress: btcutil.Amount(amountInSatoshi),
 	}
-	tx.AddTxOut(wire.NewTxOut(int64(amount), pkScript)) // in satoshis
+	rawTx, err := btc.c.CreateRawTransaction(nil, output, nil)
 
 	opReturnScript, err := txscript.NullDataScript(opReturnContent)
 	if err != nil {
 		return "", err
 	}
-	tx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
 
-	signedTx, _, err := btc.c.SignRawTransactionWithWallet(tx)
+	changePosition := 2
+	feeRate := btc.TxFeeRate
+	opts := btcjson.FundRawTransactionOpts{
+		ChangePosition: &changePosition,
+		FeeRate:        &feeRate,
+	}
+
+	fundedTx, err := btc.c.FundRawTransaction(rawTx, opts, nil)
+	if err != nil {
+		return "", err
+	}
+	signedTx, _, err := btc.c.SignRawTransactionWithWallet(fundedTx.Transaction)
 	if err != nil {
 		return "", err
 	}
@@ -1058,10 +1087,26 @@ func (btc *BTC) SendBtcWithOpReturn(address string, amount uint64, opReturnConte
 	return txHash.String(), nil
 }
 
-func (btc *BTC) GetAmauntWithFeesIncluded(amount float64) float64 {
-	return btc.getAmountFee(amount) + amount
-}
+func (btc *BTC) EstimateFees(address string, amountInSatoshi uint64) (uint64, error) {
+	_, err := btcutil.DecodeAddress(address, &btc.params)
+	if err != nil {
+		return 0, err
+	}
 
-func (btc *BTC) getAmountFee(amount float64) float64 {
-	return btc.TxFeePercentage * amount
+	output := []btcjson.PsbtOutput{
+		{address: float64(amountInSatoshi) / BTC_TO_SATOSHI},
+		{"data": hex.EncodeToString(make([]byte, 32))}, // quote hash output
+	}
+	var changePosition int64 = 2
+	feeRate := btc.TxFeeRate
+	opts := btcjson.WalletCreateFundedPsbtOpts{
+		ChangePosition: &changePosition,
+		FeeRate:        &feeRate,
+	}
+
+	simulatedTx, err := btc.c.WalletCreateFundedPsbt(nil, output, nil, &opts, nil)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(simulatedTx.Fee * BTC_TO_SATOSHI), nil
 }

@@ -17,6 +17,7 @@ COPY pegin ./pegin
 COPY mongo ./mongo
 COPY secrets ./secrets
 COPY account ./account
+COPY config ./config
 
 RUN go build -o /usr/local/bin/liquidity-provider-server
 
