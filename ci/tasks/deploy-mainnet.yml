@@ -37,8 +37,8 @@ run:
       ssh-add $ssh_deploy_keyfile $flyover_ssh_keyfile
       mkdir ~/.ssh/
       touch ~/.ssh/known_hosts
-      ssh-keyscan flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
-      ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net sh -s << EOF 
+      ssh-keyscan flyover-01.aws-us-east-1.mainnet.flyover.rif.technology >> ~/.ssh/known_hosts
+      ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.mainnet.flyover.rif.technology sh -s << EOF 
       cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin master && docker-compose -f docker-compose.yml -f loki-mainnet.yml --env-file .env.mainnet up -d --build 
 
       EOF
