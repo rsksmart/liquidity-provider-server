@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	unknownBtcdVersion = -1
-	BTC_TO_SATOSHI     = 100000000
+	unknownBtcdVersion  = -1
+	BTC_TO_SATOSHI      = 100000000
+	WalletUnlockSeconds = 120
 )
 
 type BtcConfig struct {
@@ -95,16 +96,20 @@ type BTCClient interface {
 		inputs []btcjson.PsbtInput, outputs []btcjson.PsbtOutput, locktime *uint32,
 		options *btcjson.WalletCreateFundedPsbtOpts, bip32Derivs *bool,
 	) (*btcjson.WalletCreateFundedPsbtResult, error)
+	GetWalletInfo() (*btcjson.GetWalletInfoResult, error)
+	WalletPassphrase(passphrase string, timeoutSecs int64) error
 }
 
 type BTC struct {
-	c            BTCClient
-	params       chaincfg.Params
-	TxDefaultFee int64
-	TxFeeRate    float64
+	c               BTCClient
+	params          chaincfg.Params
+	TxDefaultFee    int64
+	TxFeeRate       float64
+	walletPassword  string
+	encryptedWallet bool
 }
 
-func NewBTC(network string) (*BTC, error) {
+func NewBTC(network, walletPassword string, encryptedWallet bool) (*BTC, error) {
 	log.Debug("initializing BTC connector")
 	btc := BTC{}
 	switch network {
@@ -117,6 +122,8 @@ func NewBTC(network string) (*BTC, error) {
 	default:
 		return nil, fmt.Errorf("invalid network name: %v", network)
 	}
+	btc.walletPassword = walletPassword
+	btc.encryptedWallet = encryptedWallet
 	return &btc, nil
 }
 
@@ -147,6 +154,12 @@ func (btc *BTC) Connect(btcConfig BtcConfig) error {
 
 	btc.c = c
 	btc.TxFeeRate = btcConfig.TxFeeRate
+	if btc.encryptedWallet {
+		if err = btc.unlockWallet(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -523,6 +536,11 @@ func (btc *BTC) SendBtc(address string, amount uint64) (string, error) {
 		return "", fmt.Errorf("RPC client error: %v", err)
 	}
 
+	if btc.encryptedWallet {
+		if err = btc.unlockWallet(); err != nil {
+			return "", err
+		}
+	}
 	hash, err := btc.c.SendToAddress(btcAdd, btcutil.Amount(amount))
 
 	if err != nil {
@@ -1071,6 +1089,12 @@ func (btc *BTC) SendBtcWithOpReturn(address string, amountInSatoshi uint64, opRe
 		FeeRate:        &feeRate,
 	}
 
+	if btc.encryptedWallet {
+		if err = btc.unlockWallet(); err != nil {
+			return "", err
+		}
+	}
+
 	fundedTx, err := btc.c.FundRawTransaction(rawTx, opts, nil)
 	if err != nil {
 		return "", err
@@ -1109,4 +1133,16 @@ func (btc *BTC) EstimateFees(address string, amountInSatoshi uint64) (uint64, er
 		return 0, err
 	}
 	return uint64(simulatedTx.Fee * BTC_TO_SATOSHI), nil
+}
+
+func (btc *BTC) unlockWallet() error {
+	info, err := btc.c.GetWalletInfo()
+	if err != nil {
+		return err
+	}
+	if info.UnlockedUntil != nil && time.Until(time.Unix(int64(*info.UnlockedUntil), 0)) > 0 {
+		log.Debug("Wallet already unlocked")
+		return nil
+	}
+	return btc.c.WalletPassphrase(btc.walletPassword, WalletUnlockSeconds)
 }
