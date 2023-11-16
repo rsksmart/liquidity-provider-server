@@ -115,7 +115,7 @@ done
 curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getwalletinfo", "params": [], "id":"getwallet"}' | grep "{\"result\":null,\"error\":{\"code\":-18" \
   && echo "No default wallet" \
   && echo "Creating wallet" \
-  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "createwallet", "params": ["main", false, false, "", true, false, true], "id":"createwallet"}' \
+  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "createwallet", "params": ["main", false, false, "test-password", true, false, true], "id":"createwallet"}' \
   && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
   | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [500, "ADDRESS"], "id":"generatetoaddress"}' \
   && echo "Wallet created and generated 500 blocks"

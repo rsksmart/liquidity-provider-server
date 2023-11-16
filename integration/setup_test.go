@@ -123,6 +123,13 @@ func setup(readyChannel chan<- error, doneChannel chan os.Signal, logHooks ...lo
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
+	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal("error loading configuration: ", err.Error())
+	}
+
+	secretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+
 	dbMongo, err := mongoDB.Connect()
 	if err != nil {
 		readyChannel <- fmt.Errorf("error connecting to DB: %v", err)
@@ -149,7 +156,12 @@ func setup(readyChannel chan<- error, doneChannel chan os.Signal, logHooks ...lo
 		return
 	}
 
-	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"))
+	walletPassword, err := secretsStorage.GetTextSecret(cfg.BtcWalletPassword)
+	if err != nil {
+		log.Fatal("Error getting BTC wallet password: ", err)
+	}
+
+	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"), walletPassword, cfg.IsBtcEncryptedWallet)
 	if err != nil {
 		readyChannel <- fmt.Errorf("error initializing BTC connector: %v", err)
 		return
