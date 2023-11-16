@@ -633,7 +633,7 @@ func (db *DB) GetRetainedPegOutQuote(hash string) (*pegout.RetainedQuote, error)
 	log.Debug("getting retained quote: ", hash)
 
 	coll := db.db.Collection(retainedPegoutQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quoteHash", Value: hash}}
+	filter := bson.D{primitive.E{Key: "quotehash", Value: hash}}
 
 	var result *pegout.RetainedQuote
 	err := coll.FindOne(context.TODO(), filter).Decode(&result)
