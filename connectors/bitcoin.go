@@ -31,7 +31,7 @@ import (
 const (
 	unknownBtcdVersion  = -1
 	BTC_TO_SATOSHI      = 100000000
-	WalletUnlockSeconds = 120
+	WalletUnlockSeconds = 30
 )
 
 type BtcConfig struct {
