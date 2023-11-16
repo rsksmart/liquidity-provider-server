@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/rsksmart/liquidity-provider-server/config"
 	"github.com/rsksmart/liquidity-provider-server/pegout"
 	"math/big"
@@ -64,15 +65,11 @@ func initLogger() {
 	}
 }
 
-func startServer(rsk *connectors.RSK, btc *connectors.BTC, dbMongo *mongoDB.DB, endChannel chan<- os.Signal) {
+func startServer(
+	rsk *connectors.RSK, btc *connectors.BTC,
+	dbMongo *mongoDB.DB, awsConfiguration aws.Config,
+	secretsStorage secrets.SecretStorage[any], endChannel chan<- os.Signal) {
 	lpRepository := storage.NewLPRepository(dbMongo, rsk, btc)
-
-	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
-	if err != nil {
-		log.Fatal("error loading configuration: ", err.Error())
-	}
-
-	secretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
 	secretNames := &account.AccountSecretNames{
 		KeySecretName:      cfg.ProviderCredentials.KeySecret,
 		PasswordSecretName: cfg.ProviderCredentials.PasswordSecret,
@@ -133,6 +130,13 @@ func main() {
 	log.Info("starting liquidity provider server")
 	log.Debugf("loaded config %+v", cfg)
 
+	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal("error loading configuration: ", err.Error())
+	}
+
+	secretsStorage := secrets.NewSecretsManagerStorage[any](awsConfiguration)
+
 	dbMongo, err := mongoDB.Connect()
 	if err != nil {
 		log.Fatal("error connecting to DB: ", err)
@@ -158,7 +162,12 @@ func main() {
 		log.Fatal("error connecting to RSK: ", err)
 	}
 
-	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"))
+	walletPassword, err := secretsStorage.GetTextSecret(cfg.BtcWalletPassword)
+	if err != nil {
+		log.Fatal("Error getting BTC wallet password: ", err)
+	}
+
+	btc, err := connectors.NewBTC(os.Getenv("BTC_NETWORK"), walletPassword, cfg.IsBtcEncryptedWallet)
 	if err != nil {
 		log.Fatal("error initializing BTC connector: ", err)
 	}
@@ -171,7 +180,7 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	startServer(rsk, btc, dbMongo, done)
+	startServer(rsk, btc, dbMongo, awsConfiguration, secretsStorage, done)
 
 	<-done
 

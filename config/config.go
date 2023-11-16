@@ -26,6 +26,8 @@ type Config struct {
 	CaptchaSecretKey     string   `env:"CAPTCHA_SECRET_KEY"`
 	CaptchaSiteKey       string   `env:"CAPTCHA_SITE_KEY"`
 	CaptchaThreshold     float32  `env:"CAPTCHA_THRESHOLD"`
+	BtcWalletPassword    string   `env:"BTC_WALLET_PASSWORD"`
+	IsBtcEncryptedWallet bool     `env:"BTC_ENCRYPTED_WALLET"`
 
 	Server struct {
 		Port uint `env:"SERVER_PORT"`
