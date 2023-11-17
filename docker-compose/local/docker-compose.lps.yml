@@ -76,6 +76,8 @@ services:
       - CAPTCHA_SITE_KEY
       - CAPTCHA_THRESHOLD
       - DISABLE_CAPTCHA
+      - BTC_WALLET_PASSWORD
+      - BTC_ENCRYPTED_WALLET
     ports:
       - "8080:8080"
     volumes:
