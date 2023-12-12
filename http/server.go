@@ -74,6 +74,7 @@ const GetCollateralError = "Unable to get collateral"
 const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 const ErrorNotLiquidity = "Not enough liquidity"
+const ErrorRetrievingDaoFeePercentage = "Error retrieving dao fee percentage"
 
 type LiquidityProviderList struct {
 	Endpoint                    string   `env:"RSK_ENDPOINT"`
@@ -830,14 +831,12 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var gas uint64
 	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.CallContractArguments))
-
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-
 	price, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
@@ -864,9 +863,20 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
 
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
+
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas, daoFeeAmount)
 	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
@@ -879,7 +889,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		hash, err := s.storeQuote(pq)
-
 		if err != nil {
 			log.Error(err)
 			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
@@ -989,7 +998,19 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress())
+
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
+
+	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), daoFeeAmount)
 	rskBlockNumber, err := s.rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting last block", err.Error())
@@ -1195,26 +1216,28 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *pegin.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64, daoFeeAmount uint64) *pegin.Quote {
 	return &pegin.Quote{
-		LBCAddr:       lbcAddr,
-		FedBTCAddr:    fedAddr,
-		BTCRefundAddr: qr.BitcoinRefundAddress,
-		RSKRefundAddr: qr.RskRefundAddress,
-		ContractAddr:  qr.CallEoaOrContractAddress,
-		Data:          qr.CallContractArguments,
-		Value:         types.NewWei(int64(qr.ValueToTransfer)),
-		GasLimit:      uint32(limitGas),
+		LBCAddr:          lbcAddr,
+		FedBTCAddr:       fedAddr,
+		BTCRefundAddr:    qr.BitcoinRefundAddress,
+		RSKRefundAddr:    qr.RskRefundAddress,
+		ContractAddr:     qr.CallEoaOrContractAddress,
+		Data:             qr.CallContractArguments,
+		Value:            types.NewWei(int64(qr.ValueToTransfer)),
+		GasLimit:         uint32(limitGas),
+		ProductFeeAmount: daoFeeAmount,
 	}
 }
 
-func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string) *pegout.Quote {
+func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string, productFeeAmount uint64) *pegout.Quote {
 	return &pegout.Quote{
-		LBCAddr:       lbcAddr,
-		BtcRefundAddr: qr.BitcoinRefundAddress,
-		RSKRefundAddr: qr.RskRefundAddress,
-		DepositAddr:   qr.To,
-		Value:         types.NewWei(int64(qr.ValueToTransfer)),
+		LBCAddr:          lbcAddr,
+		BtcRefundAddr:    qr.BitcoinRefundAddress,
+		RSKRefundAddr:    qr.RskRefundAddress,
+		DepositAddr:      qr.To,
+		Value:            types.NewWei(int64(qr.ValueToTransfer)),
+		ProductFeeAmount: productFeeAmount,
 	}
 }
 
@@ -1260,6 +1283,7 @@ func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, a
 }
 
 func (s *Server) storeQuote(q *pegin.Quote) (string, error) {
+	log.Debug(q.ProductFeeAmount)
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
 		return "", err
