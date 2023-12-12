@@ -1283,7 +1283,6 @@ func getPegOutProviderByAddress(liquidityProviders []pegout.LiquidityProvider, a
 }
 
 func (s *Server) storeQuote(q *pegin.Quote) (string, error) {
-	log.Debug(q.ProductFeeAmount)
 	h, err := s.rsk.HashQuote(q)
 	if err != nil {
 		return "", err

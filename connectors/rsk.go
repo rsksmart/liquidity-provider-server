@@ -982,7 +982,7 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.QuotesPegOutQuote, e
 	pq.TransferTime = q.TransferTime
 	pq.ExpireDate = q.ExpireDate
 	pq.ExpireBlock = q.ExpireBlock
-	pq.ProductFeeAmount = types.NewWei(int64(q.ProductFeeAmount)).AsBigInt()
+	pq.ProductFeeAmount = big.NewInt(int64(q.ProductFeeAmount))
 
 	return pq, nil
 }
