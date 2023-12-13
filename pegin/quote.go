@@ -26,6 +26,7 @@ type Quote struct {
 	Confirmations      uint16     `json:"confirmations" db:"confirmations"`
 	CallOnRegister     bool       `json:"callOnRegister" db:"call_on_register"`
 	CallCost           *types.Wei `json:"callCost" db:"call_cost"`
+	ProductFeeAmount   uint64     `json:"productFeeAmount" db:"product_fee_amount"`
 }
 
 type PunishmentEvent struct {
