@@ -26,6 +26,7 @@ type Quote struct {
 	ExpireDate            uint32     `json:"expireDate" db:"expire_date" validate:"required"`
 	ExpireBlock           uint32     `json:"expireBlocks" db:"expire_blocks" validate:"required"`
 	CallCost              *types.Wei `json:"callCost" db:"callCost" validate:"required"`
+	ProductFeeAmount      uint64     `json:"productFeeAmount" db:"product_fee_amount" validate:"required"`
 }
 
 func (q *Quote) GetExpirationTime() time.Time {

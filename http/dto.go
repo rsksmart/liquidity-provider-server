@@ -57,6 +57,7 @@ type PeginQuoteDTO struct {
 	Confirmations      uint16 `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
 	CallOnRegister     bool   `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
 	CallCost           uint64 `json:"callCost" required:"" description:"The estimated cost for the LP to do the call on behalf of the user. Is calculated with gasPrice * gasLimit"`
+	ProductFeeAmount   uint64 `json:"productFeeAmount" required:"" description:"The DAO Fee amount"`
 }
 
 func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
@@ -80,6 +81,7 @@ func toPeginQuote(quote *pegin.Quote) *PeginQuoteDTO {
 		Confirmations:      quote.Confirmations,
 		CallOnRegister:     quote.CallOnRegister,
 		CallCost:           quote.CallCost.Uint64(),
+		ProductFeeAmount:   quote.ProductFeeAmount,
 	}
 }
 
@@ -102,6 +104,7 @@ type PegoutQuoteDTO struct {
 	ExpireDate            uint32 `json:"expireDate" required:"" validate:"required"`
 	ExpireBlock           uint32 `json:"expireBlocks" required:"" validate:"required"`
 	CallCost              uint64 `json:"callCost" required:"" description:"The estimated cost for the LP to do the transaction on behalf of the user in Bitcoin network"`
+	ProductFeeAmount      uint64 `json:"productFeeAmount" required:"" description:"The DAO fee amount"`
 }
 
 func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
@@ -124,5 +127,6 @@ func toPegoutQuote(quote *pegout.Quote) *PegoutQuoteDTO {
 		ExpireDate:            quote.ExpireDate,
 		ExpireBlock:           quote.ExpireBlock,
 		CallCost:              quote.CallCost.Uint64(),
+		ProductFeeAmount:      quote.ProductFeeAmount,
 	}
 }

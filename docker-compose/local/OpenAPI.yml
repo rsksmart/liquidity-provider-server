@@ -148,6 +148,9 @@ components:
           description: The penalty fee that the LP pays if it fails to deliver the
             service
           type: integer
+        productFeeAmount:
+          description: The DAO Fee amount
+          type: integer
         rskRefundAddr:
           description: A User RSK refund address
           type: string
@@ -178,6 +181,7 @@ components:
       - confirmations
       - callOnRegister
       - callCost
+      - productFeeAmount
       type: object
     PegoutQuoteDTO:
       properties:
@@ -211,6 +215,9 @@ components:
           type: integer
         penaltyFee:
           type: integer
+        productFeeAmount:
+          description: The DAO fee amount
+          type: integer
         rskRefundAddress:
           type: string
         transferConfirmations:
@@ -238,6 +245,7 @@ components:
       - expireDate
       - expireBlocks
       - callCost
+      - productFeeAmount
       type: object
     ProviderDTO:
       properties:
