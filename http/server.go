@@ -831,6 +831,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var gas uint64
 	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.CallContractArguments))
+
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
@@ -841,6 +842,13 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+	gasDao, err := s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), make([]byte, 0))
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
@@ -876,8 +884,9 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas, daoFeeAmount)
-	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price))
+	totalGas := gas + gasDao
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, totalGas, daoFeeAmount)
+	pq, err := s.provider.GetQuote(q, totalGas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
