@@ -146,9 +146,8 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
     # deploy LBC contracts to RSKJ
-    # LBC_ADDR_LINE=$(docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    export LBC_ADDR="0x55c46eBC90C903Ff830b203Da1e7CA7CD2f0C3aa"
-    # export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
+    LBC_ADDR_LINE=$(docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
   fi
 fi
 
