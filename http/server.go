@@ -831,6 +831,7 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	var gas uint64
 	gas, err = s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), []byte(qr.CallContractArguments))
+
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
@@ -841,6 +842,25 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
+
+	gasDao, err := s.rsk.EstimateGas(os.Getenv("DAO_FEE_COLLECTOR_ADDRESS"), big.NewInt(int64(daoFeeAmount)), make([]byte, 0))
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
@@ -863,21 +883,11 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
 
-	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
-
-	if err != nil {
-		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
-		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusInternalServerError)
-		return
-	}
-
-	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
-
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas, daoFeeAmount)
-	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price))
+	totalGas := gas + gasDao
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, totalGas, daoFeeAmount)
+	pq, err := s.provider.GetQuote(q, totalGas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
