@@ -845,7 +845,19 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	gasDao, err := s.rsk.EstimateGas(qr.CallEoaOrContractAddress, big.NewInt(int64(qr.ValueToTransfer)), make([]byte, 0))
+
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
+
+	gasDao, err := s.rsk.EstimateGas(os.Getenv("DAO_FEE_COLLECTOR_ADDRESS"), big.NewInt(int64(daoFeeAmount)), make([]byte, 0))
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
@@ -870,17 +882,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	minLockTxValueInWei := types.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
-
-	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
-
-	if err != nil {
-		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
-		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
-		ResponseError(w, customError, http.StatusInternalServerError)
-		return
-	}
-
-	daoFeeAmount := qr.ValueToTransfer * daoFeePercentage / 100
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
