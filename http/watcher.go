@@ -57,7 +57,7 @@ type BTCAddressPegOutWatcher struct {
 }
 
 const (
-	pegInGasLim           = 1500000
+	pegInGasLim           = 2500000
 	CFUExtraGas           = 180000
 	WatcherClosedError    = "watcher is closed; cannot handle OnNewConfirmation; hash: %v"
 	WatcherOnExpireError  = "watcher is closed; cannot handle OnExpire; hash: %v"
