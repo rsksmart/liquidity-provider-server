@@ -95,6 +95,7 @@ type PeginQuote struct {
 	Confirmations      uint16 `bson:"confirmations,omitempty"`
 	CallOnRegister     bool   `bson:"callOnRegister,omitempty"`
 	CallCost           string `bson:"callCost,omitempty"`
+	ProductFeeAmount   uint64 `bson:"productFeeAmount,omitempty"`
 }
 
 type PegoutQuote struct {
@@ -119,6 +120,7 @@ type PegoutQuote struct {
 	ExpireDate            uint32 `bson:"expireDate,omitempty"`
 	ExpireBlock           uint32 `bson:"expireBlocks,omitempty"`
 	CallCost              string `bson:"callCost,omitempty"`
+	ProductFeeAmount      uint64 `bson:"productFeeAmount,omitempty"`
 }
 
 type RetainedPeginQuote struct {
@@ -219,6 +221,7 @@ func (db *DB) InsertQuote(id string, q *pegin.Quote) error {
 		CallTime:           q.LpCallTime,
 		Confirmations:      q.Confirmations,
 		CallOnRegister:     q.CallOnRegister,
+		ProductFeeAmount:   q.ProductFeeAmount,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToinsert)
@@ -276,6 +279,7 @@ func (db *DB) GetQuote(quoteHash string) (*pegin.Quote, error) {
 		RSKRefundAddr:      result.RSKRefundAddr,
 		TimeForDeposit:     result.TimeForDeposit,
 		Value:              types.NewWei(value),
+		ProductFeeAmount:   result.ProductFeeAmount,
 	}
 
 	return &quote, nil
@@ -555,6 +559,7 @@ func (db *DB) InsertPegOutQuote(id string, q *pegout.Quote) error {
 		TransferTime:          q.TransferTime,
 		ExpireDate:            q.ExpireDate,
 		ExpireBlock:           q.ExpireBlock,
+		ProductFeeAmount:      q.ProductFeeAmount,
 	}
 
 	_, err := coll.InsertOne(context.TODO(), quoteToInsert)
@@ -611,6 +616,7 @@ func (db *DB) GetPegOutQuote(quoteHash string) (*pegout.Quote, error) {
 		TransferTime:          result.TransferTime,
 		ExpireDate:            result.ExpireDate,
 		ExpireBlock:           result.ExpireBlock,
+		ProductFeeAmount:      result.ProductFeeAmount,
 	}
 
 	return &quote, nil
