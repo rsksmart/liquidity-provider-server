@@ -937,6 +937,7 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error) {
 	pq.DepositConfirmations = q.Confirmations
 	pq.TimeForDeposit = q.TimeForDeposit
 	pq.ProductFeeAmount = big.NewInt(int64(q.ProductFeeAmount))
+	pq.GasFee = q.GasFee.AsBigInt()
 	return pq, nil
 }
 
@@ -983,6 +984,7 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.QuotesPegOutQuote, e
 	pq.ExpireDate = q.ExpireDate
 	pq.ExpireBlock = q.ExpireBlock
 	pq.ProductFeeAmount = big.NewInt(int64(q.ProductFeeAmount))
+	pq.GasFee = q.GasFee.AsBigInt()
 
 	return pq, nil
 }
