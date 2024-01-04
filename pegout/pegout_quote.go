@@ -25,7 +25,7 @@ type Quote struct {
 	TransferTime          uint32     `json:"transferTime" db:"transfer_time" validate:"required"`
 	ExpireDate            uint32     `json:"expireDate" db:"expire_date" validate:"required"`
 	ExpireBlock           uint32     `json:"expireBlocks" db:"expire_blocks" validate:"required"`
-	CallCost              *types.Wei `json:"callCost" db:"callCost" validate:"required"`
+	GasFee                *types.Wei `json:"gasFee" db:"gas_fee" validate:"required"`
 	ProductFeeAmount      uint64     `json:"productFeeAmount" db:"product_fee_amount" validate:"required"`
 }
 

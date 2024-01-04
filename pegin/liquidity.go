@@ -96,10 +96,10 @@ func (lp *LocalProvider) GetQuote(q *Quote, gas uint64, gasPrice *types.Wei) (*Q
 			break
 		}
 	}
-	callCost := new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
-	fee := lp.cfg.Fee
-	res.CallFee = new(types.Wei).Add(callCost, fee)
-	res.CallCost = callCost
+
+	res.CallFee = lp.cfg.Fee
+	// this contains dao gas and call for user gas
+	res.GasFee = new(types.Wei).Mul(gasPrice, types.NewUWei(gas))
 	return &res, nil
 }
 
