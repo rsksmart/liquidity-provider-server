@@ -16,9 +16,9 @@ RUN gitBranch=${LBC_GIT_BRANCH} && \
     git fetch --depth 1 origin "$gitBranch" && \
     git checkout "$gitBranch"
 
-#COPY --chown=node truffle-config.patch ./
-#
-#RUN git apply truffle-config.patch
+COPY --chown=node truffle-config.patch ./
+
+RUN git apply truffle-config.patch
 
 RUN npm ci
 
