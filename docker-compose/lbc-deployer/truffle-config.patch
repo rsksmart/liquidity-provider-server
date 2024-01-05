@@ -1,9 +1,10 @@
 diff --git a/truffle-config.js b/truffle-config.js
+index 8f445d3..8f0ed97 100644
 --- a/truffle-config.js
 +++ b/truffle-config.js
-@@ -16,7 +16,7 @@ module.exports = {
-   plugins: ["truffle-contract-size"],
-   networks: {
+@@ -23,7 +23,7 @@ module.exports = {
+       gas: 200000000
+     },
      rskRegtest: {
 -      host: '127.0.0.1',
 +      host: 'rskj',
