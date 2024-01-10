@@ -611,7 +611,12 @@ func (s *Server) addAddressWatcher(quote *pegin.Quote, hash string, depositAddr 
 		return nil
 	}
 
-	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+	total := new(types.Wei)
+	total.Add(total, quote.Value)
+	total.Add(total, quote.CallFee)
+	total.Add(total, types.NewUWei(quote.ProductFeeAmount))
+	total.Add(total, quote.GasFee)
+	sat, _ := total.ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
 	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.dbMongo, quote, signB, state, &s.sharedPeginMutex)
