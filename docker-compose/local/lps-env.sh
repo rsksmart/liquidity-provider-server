@@ -77,6 +77,7 @@ fi
 BTCD_HOME="${BTCD_HOME:-./volumes/bitcoind}"
 POWPEG_PEGIN_HOME="${POWPEG_PEGIN_HOME_:-./volumes/powpeg/pegin}"
 POWPEG_PEGOUT_HOME="${POWPEG_PEGOUT_HOME_:-./volumes/powpeg/pegout}"
+LOCALSTACK_HOME="${LOCALSTACK_HOME_:-./volumes/powpeg/pegout}"
 RSKJ_HOME="${RSKJ_HOME:-./volumes/rskj}"
 LPS_HOME="${LPS_HOME:-./volumes/lps}"
 MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
@@ -141,6 +142,8 @@ if [ "$LPS_STAGE" = "regtest" ]; then
       echo "No need to fund the '$PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
     fi
   done
+
+  docker-compose -f docker-compose.localstack.yml up -d localstack
 
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
