@@ -1,0 +1,60 @@
+package liquidity_provider
+
+import (
+	"context"
+	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
+)
+
+type CheckLiquidityUseCase struct {
+	peginProvider  entities.PeginLiquidityProvider
+	pegoutProvider entities.PegoutLiquidityProvider
+	bridge         blockchain.RootstockBridge
+	alertSender    entities.AlertSender
+	recipient      string
+}
+
+func NewCheckLiquidityUseCase(peginProvider entities.PeginLiquidityProvider, pegoutProvider entities.PegoutLiquidityProvider, bridge blockchain.RootstockBridge, alertSender entities.AlertSender) *CheckLiquidityUseCase {
+	return &CheckLiquidityUseCase{peginProvider: peginProvider, pegoutProvider: pegoutProvider, bridge: bridge, alertSender: alertSender}
+}
+
+func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
+	minLockTxValueInSatoshi, err := useCase.bridge.GetMinimumLockTxValue()
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.CheckLiquidityId, err)
+	}
+	minLockTxValueInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
+
+	err = useCase.peginProvider.HasPeginLiquidity(ctx, minLockTxValueInWei)
+	if errors.Is(err, usecases.NoLiquidityError) {
+		if err = useCase.alertSender.SendAlert(
+			ctx,
+			"Pegin: Out of liquidity",
+			"You are out of liquidity to perform a pegin. Please, do a deposit",
+			useCase.recipient,
+		); err != nil {
+			log.Error("Error sending notification to liquidity provider: ", err)
+		}
+	} else if err != nil {
+		return usecases.WrapUseCaseError(usecases.CheckLiquidityId, err)
+	}
+
+	err = useCase.pegoutProvider.HasPegoutLiquidity(ctx, minLockTxValueInWei)
+	if errors.Is(err, usecases.NoLiquidityError) {
+		if err = useCase.alertSender.SendAlert(
+			ctx,
+			"Pegout: Out of liquidity",
+			"You are out of liquidity to perform a pegout. Please, do a deposit",
+			useCase.recipient,
+		); err != nil {
+			log.Error("Error sending notification to liquidity provider: ", err)
+		}
+	} else if err != nil {
+		return usecases.WrapUseCaseError(usecases.CheckLiquidityId, err)
+	}
+
+	return nil
+}
