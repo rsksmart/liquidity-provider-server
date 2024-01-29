@@ -26,7 +26,7 @@ func (bus *localEventBus) Subscribe(id entities.EventId) <-chan entities.Event {
 		topics = make([]chan<- entities.Event, 0)
 		bus.topics[id] = topics
 	}
-	subscription := make(chan entities.Event, 0)
+	subscription := make(chan entities.Event)
 	bus.topics[id] = append(topics, subscription)
 	return subscription
 }

@@ -15,8 +15,7 @@ func NewWithdrawCollateralUseCase(lbc blockchain.LiquidityBridgeContract) *Withd
 }
 
 func (useCase *WithdrawCollateralUseCase) Run() error {
-	var err error
-	err = useCase.lbc.WithdrawCollateral()
+	err := useCase.lbc.WithdrawCollateral()
 	if err != nil && (strings.Contains(err.Error(), "LBC021") || strings.Contains(err.Error(), "LBC022")) {
 		return usecases.WrapUseCaseError(usecases.WithdrawCollateralId, usecases.ProviderNotResignedError)
 	} else if err != nil {

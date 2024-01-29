@@ -40,7 +40,7 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 
 	client, err := rpcclient.New(&config, nil)
 	if err != nil {
-		return nil, fmt.Errorf("RPC client error: %v", err)
+		return nil, fmt.Errorf("RPC client error: %w", err)
 	}
 
 	version, err := checkBtcdVersion(client)
@@ -64,10 +64,10 @@ func checkBtcdVersion(c *rpcclient.Client) (int32, error) {
 		return info.Version, nil
 	case *btcjson.RPCError:
 		if networkErr.Code != btcjson.ErrRPCMethodNotFound.Code {
-			return 0, fmt.Errorf("unable to detect btcd version: %v", networkErr)
+			return 0, fmt.Errorf("unable to detect btcd version: %w", networkErr)
 		}
 		return unknownBtcdVersion, nil
 	default:
-		return 0, fmt.Errorf("unable to detect btcd version: %v", networkErr)
+		return 0, fmt.Errorf("unable to detect btcd version: %w", networkErr)
 	}
 }

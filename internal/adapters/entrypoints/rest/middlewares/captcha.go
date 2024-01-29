@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,13 @@ type captchaValidationResponse struct {
 	ChallengeTs time.Time `json:"challenge_ts"`
 	Hostname    string    `json:"hostname"`
 	ErrorCodes  []string  `json:"error-codes"`
+}
+
+func unexpectedCaptchaError(w http.ResponseWriter, err error) {
+	details := make(rest.ErrorDetails)
+	details["error"] = err.Error()
+	jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
+	rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 }
 
 func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
@@ -38,12 +46,20 @@ func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecret
 			form := make(url.Values)
 			form.Set("secret", captchaSecretKey)
 			form.Set("response", token)
-			res, err := http.DefaultClient.PostForm("https://www.google.com/recaptcha/api/siteverify", form)
+			req, err := http.NewRequestWithContext(
+				r.Context(),
+				http.MethodPost,
+				"https://www.google.com/recaptcha/api/siteverify",
+				bytes.NewBufferString(form.Encode()),
+			)
 			if err != nil {
-				details := make(rest.ErrorDetails)
-				details["error"] = err.Error()
-				jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
-				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+				unexpectedCaptchaError(w, err)
+				return
+			}
+
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				unexpectedCaptchaError(w, err)
 				return
 			}
 
@@ -56,8 +72,7 @@ func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecret
 			var validation captchaValidationResponse
 			err = json.NewDecoder(res.Body).Decode(&validation)
 			if err != nil {
-				jsonErr := rest.NewErrorResponse("error validating captcha", false)
-				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+				unexpectedCaptchaError(w, err)
 				return
 			}
 
@@ -70,10 +85,7 @@ func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecret
 				log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
 				next.ServeHTTP(w, r)
 			} else {
-				details := make(rest.ErrorDetails)
-				details["errors"] = validation.ErrorCodes
-				jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, true)
-				rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+				unexpectedCaptchaError(w, err)
 			}
 		})
 	}

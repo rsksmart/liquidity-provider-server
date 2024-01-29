@@ -98,7 +98,7 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]entities.RegisteredLiq
 	}
 
 	maxProviderId = maxId.Int64()
-	providerIds := make([]*big.Int, maxProviderId)
+	providerIds := make([]*big.Int, 0)
 
 	for i = 1; i <= maxProviderId; i++ {
 		providerIds = append(providerIds, big.NewInt(i))
@@ -110,7 +110,7 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]entities.RegisteredLiq
 	if err != nil {
 		return nil, err
 	}
-	parsedProviders := make([]entities.RegisteredLiquidityProvider, maxProviderId)
+	parsedProviders := make([]entities.RegisteredLiquidityProvider, 0)
 	for i = 0; i < maxProviderId+1; i++ {
 		provider = providers[i]
 		providerType = entities.ProviderType(provider.ProviderType)

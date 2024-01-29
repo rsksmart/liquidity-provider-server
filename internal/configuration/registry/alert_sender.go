@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewAlertSender(env environment.Environment) entities.AlertSender {
-	awsConfiguration, err := awsConfig.LoadDefaultConfig(context.Background())
+func NewAlertSender(ctx context.Context, env environment.Environment) entities.AlertSender {
+	awsConfiguration, err := awsConfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		log.Fatal("error loading alert sender: ", err)
 	}

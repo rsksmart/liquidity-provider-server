@@ -76,9 +76,7 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {
 	var err error
-	minimumCollateral := new(entities.Wei)
-	peginCollateral := new(entities.Wei)
-	pegoutCollateral := new(entities.Wei)
+	var peginCollateral, pegoutCollateral, minimumCollateral *entities.Wei
 
 	if minimumCollateral, err = useCase.lbc.GetMinimumCollateral(); err != nil {
 		return collateralInfo{}, err

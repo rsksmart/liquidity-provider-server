@@ -31,7 +31,6 @@ type TransactionConfig struct {
 
 type TransactionReceipt struct {
 	TransactionHash   string
-	transactionIndex  uint32
 	BlockHash         string
 	BlockNumber       uint64
 	From              string

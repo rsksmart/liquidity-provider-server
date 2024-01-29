@@ -35,7 +35,7 @@ func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote
 
 func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PeginState) ([]WatchedPeginQuote, error) {
 	var retainedQuotes []quote.RetainedPeginQuote
-	var watchedQuote []WatchedPeginQuote
+	watchedQuote := make([]WatchedPeginQuote, 0)
 	var peginQuote *quote.PeginQuote
 	var err error
 	if retainedQuotes, err = useCase.peginRepository.GetRetainedQuoteByState(ctx, state); err != nil {

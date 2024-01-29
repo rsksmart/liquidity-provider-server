@@ -43,7 +43,7 @@ func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...
 
 func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PegoutState) ([]WatchedPegoutQuote, error) {
 	var retainedQuotes []quote.RetainedPegoutQuote
-	var watchedQuote []WatchedPegoutQuote
+	watchedQuote := make([]WatchedPegoutQuote, 0)
 	var pegoutQuote *quote.PegoutQuote
 	var err error
 	if retainedQuotes, err = useCase.pegoutRepository.GetRetainedQuoteByState(ctx, state); err != nil {

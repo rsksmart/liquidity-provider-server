@@ -42,8 +42,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 	var pegoutQuote *quote.PegoutQuote
 	var retainedQuote *quote.RetainedPegoutQuote
 	var quoteSignature string
-
-	requiredLiquidity := new(entities.Wei)
+	var requiredLiquidity *entities.Wei
 
 	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 )
 
@@ -46,7 +46,7 @@ func (s *Server) start() error {
 		_ = w.Close()
 	}(w)
 	s.http = http.Server{
-		Addr:    ":" + fmt.Sprint(s.env.Port),
+		Addr:    ":" + strconv.FormatUint(uint64(s.env.Port), 10),
 		Handler: h,
 	}
 	log.Info("Server started at localhost:", s.http.Addr)

@@ -120,7 +120,7 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 	cumulativeGasUsed.SetUint64(receipt.CumulativeGasUsed)
 	from, err = types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
 	if err != nil {
-		from, err = types.Sender(types.HomesteadSigner{}, tx)
+		from, _ = types.Sender(types.HomesteadSigner{}, tx)
 	}
 	return blockchain.TransactionReceipt{
 		TransactionHash:   receipt.TxHash.String(),
