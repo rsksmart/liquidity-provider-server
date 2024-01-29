@@ -24,6 +24,7 @@ type MongoEnv struct {
 	Username string `env:"MONGODB_USER" validate:"required"`
 	Password string `env:"MONGODB_PASSWORD" validate:"required"`
 	Host     string `env:"MONGODB_HOST" validate:"required"`
+	Port     uint   `env:"MONGODB_PORT" validate:"required"`
 }
 
 type RskEnv struct {
@@ -86,6 +87,7 @@ type CaptchaEnv struct {
 	SiteKey   string  `env:"CAPTCHA_SITE_KEY"`
 	Threshold float32 `env:"CAPTCHA_THRESHOLD"`
 	Disabled  bool    `env:"DISABLE_CAPTCHA"`
+	Url       string  `env:"CAPTCHA_URL"`
 }
 
 func LoadEnv() *Environment {

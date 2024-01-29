@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -11,11 +12,16 @@ import (
 
 const connectTimeout = 10 * time.Second
 
-func Connect(ctx context.Context, username, password, host string) (*mongo.Client, error) {
+func Connect(ctx context.Context, username, password, host string, port uint) (*mongo.Client, error) {
 	var err error
 	var client *mongo.Client
 	log.Info("Connecting to MongoDB")
-	clientOptions := options.Client().ApplyURI("mongodb://" + username + ":" + password + "@" + host + ":27017/admin")
+	clientOptions := options.Client().ApplyURI(
+		fmt.Sprintf(
+			"mongodb://%s:%s@%s:%d/admin",
+			username, password, host, port,
+		),
+	)
 
 	ctx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
