@@ -175,11 +175,11 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 }
 
 func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
 	_, err := repo.conn.Collection(depositEventsCollection).ReplaceOne(
-		ctx,
+		dbCtx,
 		bson.M{"tx_hash": deposit.TxHash},
 		deposit,
 		options.Replace().SetUpsert(true),
@@ -191,14 +191,14 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, depo
 }
 
 func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, deposits []quote.PegoutDeposit) error {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
 	if len(deposits) == 0 {
 		return nil
 	}
 
-	var documents []mongo.WriteModel
+	documents := make([]mongo.WriteModel, 0)
 	for _, deposit := range deposits {
 		filter := bson.M{"tx_hash": deposit.TxHash}
 		replaceModel := mongo.NewReplaceOneModel()
@@ -210,7 +210,7 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	}
 
 	_, err := repo.conn.Collection(depositEventsCollection).BulkWrite(
-		ctx,
+		dbCtx,
 		documents,
 	)
 	if err == nil {

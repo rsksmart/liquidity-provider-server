@@ -51,8 +51,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 	var retainedQuote *quote.RetainedPeginQuote
 	var derivation blockchain.FlyoverDerivation
 	var quoteSignature string
-
-	requiredLiquidity := new(entities.Wei)
+	var requiredLiquidity *entities.Wei
 
 	if quoteHashBytes, err = hex.DecodeString(quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -150,7 +149,7 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 
 func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, peginQuote quote.PeginQuote) (*entities.Wei, error) {
 	var err error
-	gasPrice := new(entities.Wei)
+	var gasPrice *entities.Wei
 	errorArgs := usecases.NewErrorArgs()
 
 	gasLimit := new(entities.Wei).Add(

@@ -77,13 +77,12 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var daoFeePercentage, blockNumber uint64
 	var daoTxAmounts usecases.DaoAmounts
 	var hash string
+	var errorArgs usecases.ErrorArgs
+	var gasPrice, feeInWei *entities.Wei
+	var err error
 
-	feeInWei := new(entities.Wei)
-	gasPrice := new(entities.Wei)
 	gasFeeDao := new(entities.Wei)
 	minLockTxValueInSatoshi := new(entities.Wei)
-	errorArgs := usecases.NewErrorArgs()
-	var err error
 
 	if errorArgs, err = useCase.validateRequest(request); err != nil {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, err, errorArgs)

@@ -60,7 +60,6 @@ func DecodeRequestError(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
 	jsonErr := NewErrorResponse(fmt.Sprintf("Error decoding request: %v", err), true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-	return
 }
 
 func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) error {

@@ -62,7 +62,7 @@ func (watcher *PeginDepositAddressWatcher) Prepare(ctx context.Context) error {
 	for _, watchedQuote := range watchedQuotes {
 		depositAddress = watchedQuote.RetainedQuote.DepositAddress
 		if err = watcher.btcWallet.ImportAddress(depositAddress); err != nil {
-			return fmt.Errorf("error while importing deposit address (%s): %v\n", depositAddress, err)
+			return fmt.Errorf("error while importing deposit address (%s): %w\n", depositAddress, err)
 		}
 		watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = watchedQuote
 	}

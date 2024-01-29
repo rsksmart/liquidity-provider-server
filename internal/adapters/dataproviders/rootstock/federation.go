@@ -178,14 +178,14 @@ func addErpNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.S
 	return nil
 }
 
-func getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) ([]byte, error) {
+func getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) []byte {
 	var buf bytes.Buffer
 	hashPrefix, _ := hex.DecodeString("20")
 	buf.Write(hashPrefix)
 	buf.Write(derivationValue)
 	buf.WriteByte(txscript.OP_DROP)
 	buf.Write(fedRedeemScript)
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
 func getOpCodeFromInt(val int) byte {

@@ -73,8 +73,11 @@ func ErrorArg(key, value string) ErrorArgs {
 }
 
 func (args ErrorArgs) String() string {
-	jsonString, _ := json.Marshal(args)
-	return string(jsonString)
+	if jsonString, err := json.Marshal(args); err != nil {
+		return ""
+	} else {
+		return string(jsonString)
+	}
 }
 
 func WrapUseCaseError(useCase UseCaseId, err error) error {
@@ -95,8 +98,8 @@ type DaoAmounts struct {
 }
 
 func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
+	var daoGasAmount *entities.Wei
 	daoFeeAmount := new(entities.Wei)
-	daoGasAmount := new(entities.Wei)
 	var err error
 	if daoFeePercentage == 0 {
 		return DaoAmounts{}, nil
