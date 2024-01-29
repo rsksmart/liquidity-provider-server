@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Watchers intervals
 const (
 	quoteCleanInterval               = 10 * time.Minute
 	peginDepositWatcherInterval      = 1 * time.Minute
@@ -14,6 +15,11 @@ const (
 	pegoutBtcTransferWatcherInterval = 3 * time.Minute
 	liquidityCheckInterval           = 10 * time.Minute
 	penalizationCheckInterval        = 10 * time.Minute
+)
+
+// Watchers timeouts
+const (
+	watcherValidationTimeout = 15 * time.Second
 )
 
 type Watcher interface {

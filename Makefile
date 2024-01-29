@@ -8,7 +8,7 @@ download:
 	go mod download
 
 lint:
-	golangci-lint run ./...
+	golangci-lint run -v ./...
 
 validation: lint
 	go mod verify

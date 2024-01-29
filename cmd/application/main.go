@@ -38,8 +38,11 @@ func main() {
 		}
 	}
 
+	log.Info("Initializing application...")
 	app := lps.NewApplication(initCtx, *env, *secrets)
+	log.Info("Application initialized successfully")
 	cancel()
+	log.Info("Starting application...")
 	app.Run(*env, logLevel)
 	app.Shutdown()
 }

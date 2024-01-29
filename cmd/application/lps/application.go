@@ -36,6 +36,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	if err != nil {
 		log.Fatal("Error connecting to BTC node:", err)
 	}
+	log.Debug("Connected to BTC node")
 	btcRegistry, err := registry.NewBitcoinRegistry(env.Btc, secrets, btcConnection)
 	if err != nil {
 		log.Fatal("Error creating BTC registry:", err)
@@ -46,11 +47,13 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 		log.Fatal("Error connecting to MongoDB:", err)
 	}
 	dbRegistry := registry.NewDatabaseRegistry(connection)
+	log.Debug("Connected to MongoDB")
 
 	account, err := bootstrap.RootstockAccount(env.Rsk, secrets)
 	if err != nil {
 		log.Fatal("Error connecting to RSK account:", err)
 	}
+	log.Debug("Connected to RSK account")
 	rskClient, err := bootstrap.Rootstock(initCtx, env.Rsk)
 	if err != nil {
 		log.Fatal("Error connecting to RSK node:", err)
@@ -59,6 +62,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
+	log.Debug("Connected to RSK node")
 
 	config := environment.ConfigurationFromEnv(env)
 	liquidityProvider := registry.NewLiquidityProvider(config, dbRegistry, rootstockRegistry, btcRegistry)

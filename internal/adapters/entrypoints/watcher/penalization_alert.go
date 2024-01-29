@@ -41,7 +41,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if height, err = watcher.rskRpc.GetHeight(ctx); err != nil {
 				log.Error("Error checking penalization events inside watcher: ", err)
 			} else {

@@ -8,7 +8,7 @@ import (
 )
 
 func Mongo(ctx context.Context, env environment.MongoEnv) (*mongo.Connection, error) {
-	client, err := mongo.Connect(ctx, env.Username, env.Password, env.Host)
+	client, err := mongo.Connect(ctx, env.Username, env.Password, env.Host, env.Port)
 	if err == nil {
 		return mongo.NewConnection(client), nil
 	} else {
