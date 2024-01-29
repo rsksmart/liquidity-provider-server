@@ -11,7 +11,7 @@ import (
 
 func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
 	router.Use(middlewares.NewCorsMiddleware())
-	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
+	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 
 	router.Path("/health").Methods(http.MethodGet).HandlerFunc(handlers.NewHealthCheckHandler(useCaseRegistry.HealthUseCase()))
 	router.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(handlers.NewGetProvidersHandler(useCaseRegistry.GetProvidersUseCase()))

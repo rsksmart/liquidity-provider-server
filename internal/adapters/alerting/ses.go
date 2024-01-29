@@ -17,11 +17,11 @@ func NewSesAlertSender(sesClient *ses.Client, from string) entities.AlertSender 
 	return &SesAlertSender{sesClient: sesClient, from: from}
 }
 
-func (sender *SesAlertSender) SendAlert(ctx context.Context, subject, body, recipient string) error {
+func (sender *SesAlertSender) SendAlert(ctx context.Context, subject, body string, recipient []string) error {
 	log.Info("Sending alert to liquidity provider")
 	result, err := sender.sesClient.SendEmail(ctx, &ses.SendEmailInput{
 		Destination: &sesTypes.Destination{
-			ToAddresses: []string{recipient},
+			ToAddresses: recipient,
 		},
 		Message: &sesTypes.Message{
 			Body: &sesTypes.Body{

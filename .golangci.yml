@@ -1,8 +1,7 @@
 run:
-  tests: true
+  tests: false # enable when integration dir is updated
   skip-dirs:
     - internal/adapters/dataproviders/rootstock/bindings
-    - integration/ # temporary
 linters:
   presets:
     - bugs

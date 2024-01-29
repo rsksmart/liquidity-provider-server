@@ -26,7 +26,7 @@ func unexpectedCaptchaError(w http.ResponseWriter, err error) {
 	rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 }
 
-func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
+func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if captchaThreshold < 0.5 {
 			log.Warn("Too low captcha threshold value!")
@@ -49,7 +49,7 @@ func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecret
 			req, err := http.NewRequestWithContext(
 				r.Context(),
 				http.MethodPost,
-				"https://www.google.com/recaptcha/api/siteverify",
+				captchaUrl,
 				bytes.NewBufferString(form.Encode()),
 			)
 			if err != nil {
