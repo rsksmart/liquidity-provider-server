@@ -18,7 +18,7 @@ type captchaValidationResponse struct {
 	ErrorCodes  []string  `json:"error-codes"`
 }
 
-func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
+func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if captchaThreshold < 0.5 {
 			log.Warn("Too low captcha threshold value!")
@@ -38,7 +38,7 @@ func NewCaptchaMiddleware(captchaThreshold float32, disabled bool, captchaSecret
 			form := make(url.Values)
 			form.Set("secret", captchaSecretKey)
 			form.Set("response", token)
-			res, err := http.DefaultClient.PostForm("https://www.google.com/recaptcha/api/siteverify", form)
+			res, err := http.DefaultClient.PostForm(captchaUrl, form)
 			if err != nil {
 				details := make(rest.ErrorDetails)
 				details["error"] = err.Error()
