@@ -1,0 +1,14 @@
+run:
+  tests: true
+  skip-dirs:
+    - internal/adapters/dataproviders/rootstock/bindings
+    - integration/ # temporary
+linters:
+  presets:
+    - bugs
+    - complexity
+    - unused
+    - performance
+linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
