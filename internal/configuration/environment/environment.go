@@ -10,7 +10,7 @@ type Environment struct {
 	Port                uint   `env:"SERVER_PORT" validate:"required"`
 	LogLevel            string `env:"LOG_LEVEL" validate:"required"`
 	LogFile             string `env:"LOG_FILE"`
-	EnableManagementApi bool   `env:"ENABLE_MANAGEMENT_API" validate:"required"`
+	EnableManagementApi bool   `env:"ENABLE_MANAGEMENT_API"`
 	Mongo               MongoEnv
 	Rsk                 RskEnv
 	Btc                 BtcEnv

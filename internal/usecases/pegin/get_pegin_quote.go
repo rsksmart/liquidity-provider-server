@@ -7,7 +7,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/rand"
 	"time"
 )
 
@@ -75,13 +74,11 @@ type GetPeginQuoteResult struct {
 
 func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (GetPeginQuoteResult, error) {
 	var daoTxAmounts usecases.DaoAmounts
+	var peginQuote quote.PeginQuote
 	var fedAddress, hash string
-	var daoFeePercentage uint64
 	var errorArgs usecases.ErrorArgs
 	var err error
 	var gasPrice, estimatedCallGas *entities.Wei
-
-	minLockTxValueInSatoshi := new(entities.Wei)
 
 	if errorArgs, err = useCase.validateRequest(request); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPeginQuoteId, err, errorArgs)
@@ -96,11 +93,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
-	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	if daoTxAmounts, err = useCase.buildDaoAmounts(ctx, request); err != nil {
+		return GetPeginQuoteResult{}, err
 	}
 
 	if fedAddress, err = useCase.bridge.GetFedAddress(); err != nil {
@@ -108,56 +102,27 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	}
 
 	totalGas := new(entities.Wei).Add(estimatedCallGas, daoTxAmounts.DaoGasAmount)
-	gasFee := new(entities.Wei).Mul(totalGas, gasPrice)
-	peginQuote := quote.PeginQuote{
-		FedBtcAddress:      fedAddress,
-		LbcAddress:         useCase.lbc.GetAddress(),
-		LpRskAddress:       useCase.lp.RskAddress(),
-		BtcRefundAddress:   request.bitcoinRefundAddress,
-		RskRefundAddress:   request.rskRefundAddress,
-		LpBtcAddress:       useCase.lp.BtcAddress(),
-		CallFee:            useCase.peginLp.CallFeePegin(),
-		PenaltyFee:         useCase.peginLp.PenaltyFeePegin(),
-		ContractAddress:    request.callEoaOrContractAddress,
-		Data:               hex.EncodeToString(request.callContractArguments),
-		GasLimit:           uint32(totalGas.Uint64()),
-		Nonce:              int64(rand.Int()),
-		Value:              request.valueToTransfer,
-		AgreementTimestamp: uint32(time.Now().Unix()),
-		TimeForDeposit:     useCase.peginLp.TimeForDepositPegin(),
-		LpCallTime:         useCase.peginLp.CallTime(),
-		Confirmations:      useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer),
-		CallOnRegister:     false,
-		GasFee:             gasFee,
-		ProductFeeAmount:   daoTxAmounts.DaoFeeAmount.Uint64(),
+	fees := quote.Fees{
+		CallFee:          useCase.peginLp.CallFeePegin(),
+		GasFee:           new(entities.Wei).Mul(totalGas, gasPrice),
+		PenaltyFee:       useCase.peginLp.PenaltyFeePegin(),
+		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
+	}
+	if peginQuote, err = useCase.buildPeginQuote(request, fedAddress, totalGas, fees); err != nil {
+		return GetPeginQuoteResult{}, err
 	}
 
-	if err = entities.ValidateStruct(peginQuote); err != nil {
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-
-	if minLockTxValueInSatoshi, err = useCase.bridge.GetMinimumLockTxValue(); err != nil {
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-
-	minimumInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
-	if peginQuote.Total().Cmp(minimumInWei) <= 0 {
-		errorArgs["minimum"] = minimumInWei.String()
-		errorArgs["value"] = peginQuote.Total().String()
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPeginQuoteId, usecases.TxBelowMinimumError, errorArgs)
+	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.bridge, peginQuote.Total()); err != nil {
+		return GetPeginQuoteResult{}, err
 	}
 
 	if hash, err = useCase.lbc.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
-
 	if err = useCase.peginQuoteRepository.InsertQuote(ctx, hash, peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
-	return GetPeginQuoteResult{
-		PeginQuote: peginQuote,
-		Hash:       hash,
-	}, nil
+	return GetPeginQuoteResult{PeginQuote: peginQuote, Hash: hash}, nil
 }
 
 func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
@@ -177,4 +142,60 @@ func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.
 	} else {
 		return nil, nil
 	}
+}
+
+func (useCase *GetQuoteUseCase) buildPeginQuote(
+	request QuoteRequest,
+	fedAddress string,
+	totalGas *entities.Wei,
+	fees quote.Fees,
+) (quote.PeginQuote, error) {
+	var err error
+	var nonce int64
+
+	if nonce, err = usecases.GetRandomInt(); err != nil {
+		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+
+	peginQuote := quote.PeginQuote{
+		FedBtcAddress:      fedAddress,
+		LbcAddress:         useCase.lbc.GetAddress(),
+		LpRskAddress:       useCase.lp.RskAddress(),
+		BtcRefundAddress:   request.bitcoinRefundAddress,
+		RskRefundAddress:   request.rskRefundAddress,
+		LpBtcAddress:       useCase.lp.BtcAddress(),
+		CallFee:            fees.CallFee,
+		PenaltyFee:         fees.PenaltyFee,
+		ContractAddress:    request.callEoaOrContractAddress,
+		Data:               hex.EncodeToString(request.callContractArguments),
+		GasLimit:           uint32(totalGas.Uint64()),
+		Nonce:              nonce,
+		Value:              request.valueToTransfer,
+		AgreementTimestamp: uint32(time.Now().Unix()),
+		TimeForDeposit:     useCase.peginLp.TimeForDepositPegin(),
+		LpCallTime:         useCase.peginLp.CallTime(),
+		Confirmations:      useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer),
+		CallOnRegister:     false,
+		GasFee:             fees.GasFee,
+		ProductFeeAmount:   fees.ProductFeeAmount,
+	}
+
+	if err = entities.ValidateStruct(peginQuote); err != nil {
+		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	return peginQuote, nil
+}
+
+func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request QuoteRequest) (usecases.DaoAmounts, error) {
+	var daoTxAmounts usecases.DaoAmounts
+	var daoFeePercentage uint64
+	var err error
+
+	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
+		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
+		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	return daoTxAmounts, nil
 }

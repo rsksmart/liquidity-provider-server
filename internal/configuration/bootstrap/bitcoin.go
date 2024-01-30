@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -58,16 +59,16 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 }
 
 func checkBtcdVersion(c *rpcclient.Client) (int32, error) {
+	var networkErr *btcjson.RPCError
 	info, err := c.GetNetworkInfo()
-	switch networkErr := err.(type) {
-	case nil:
+	if err == nil {
 		return info.Version, nil
-	case *btcjson.RPCError:
+	} else if errors.As(err, &networkErr) {
 		if networkErr.Code != btcjson.ErrRPCMethodNotFound.Code {
 			return 0, fmt.Errorf("unable to detect btcd version: %w", networkErr)
 		}
 		return unknownBtcdVersion, nil
-	default:
+	} else {
 		return 0, fmt.Errorf("unable to detect btcd version: %w", networkErr)
 	}
 }
