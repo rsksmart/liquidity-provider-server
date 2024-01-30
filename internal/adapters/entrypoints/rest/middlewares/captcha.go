@@ -19,13 +19,6 @@ type captchaValidationResponse struct {
 	ErrorCodes  []string  `json:"error-codes"`
 }
 
-func unexpectedCaptchaError(w http.ResponseWriter, err error) {
-	details := make(rest.ErrorDetails)
-	details["error"] = err.Error()
-	jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
-	rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
-}
-
 func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled bool, captchaSecretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if captchaThreshold < 0.5 {
@@ -43,34 +36,7 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 				return
 			}
 
-			form := make(url.Values)
-			form.Set("secret", captchaSecretKey)
-			form.Set("response", token)
-			req, err := http.NewRequestWithContext(
-				r.Context(),
-				http.MethodPost,
-				captchaUrl,
-				bytes.NewBufferString(form.Encode()),
-			)
-			if err != nil {
-				unexpectedCaptchaError(w, err)
-				return
-			}
-
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				unexpectedCaptchaError(w, err)
-				return
-			}
-
-			defer func() {
-				if err = res.Body.Close(); err != nil {
-					log.Error("Error closing response body: ", err)
-				}
-			}()
-
-			var validation captchaValidationResponse
-			err = json.NewDecoder(res.Body).Decode(&validation)
+			validation, err := validateCaptcha(r, captchaUrl, captchaSecretKey, token)
 			if err != nil {
 				unexpectedCaptchaError(w, err)
 				return
@@ -89,4 +55,44 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 			}
 		})
 	}
+}
+
+func unexpectedCaptchaError(w http.ResponseWriter, err error) {
+	details := make(rest.ErrorDetails)
+	details["error"] = err.Error()
+	jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
+	rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+}
+
+func validateCaptcha(r *http.Request, captchaUrl, captchaSecretKey, token string) (captchaValidationResponse, error) {
+	var validation captchaValidationResponse
+	form := make(url.Values)
+	form.Set("secret", captchaSecretKey)
+	form.Set("response", token)
+	req, err := http.NewRequestWithContext(
+		r.Context(),
+		http.MethodPost,
+		captchaUrl,
+		bytes.NewBufferString(form.Encode()),
+	)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+
+	defer func() {
+		if err = res.Body.Close(); err != nil {
+			log.Error("Error closing response body: ", err)
+		}
+	}()
+
+	err = json.NewDecoder(res.Body).Decode(&validation)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+	return validation, nil
 }

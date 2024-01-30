@@ -6,7 +6,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/rand"
 	"strings"
 	"time"
 )
@@ -74,7 +73,7 @@ type GetPegoutQuoteResult struct {
 }
 
 func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (GetPegoutQuoteResult, error) {
-	var daoFeePercentage, blockNumber uint64
+	var pegoutQuote quote.PegoutQuote
 	var daoTxAmounts usecases.DaoAmounts
 	var hash string
 	var errorArgs usecases.ErrorArgs
@@ -82,8 +81,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var err error
 
 	gasFeeDao := new(entities.Wei)
-	minLockTxValueInSatoshi := new(entities.Wei)
-
 	if errorArgs, err = useCase.validateRequest(request); err != nil {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, err, errorArgs)
 	}
@@ -94,16 +91,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
-	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
-	}
-
-	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
-	}
-
-	if blockNumber, err = useCase.rsk.GetHeight(ctx); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	if daoTxAmounts, err = useCase.buildDaoAmounts(ctx, request); err != nil {
+		return GetPegoutQuoteResult{}, err
 	}
 
 	if gasPrice, err = useCase.rsk.GasPrice(ctx); err != nil {
@@ -111,57 +100,25 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	}
 
 	gasFeeDao.Mul(daoTxAmounts.DaoGasAmount, gasPrice)
-	totalGasFee := new(entities.Wei).Add(feeInWei, gasFeeDao)
-	now := uint32(time.Now().Unix())
-	confirmationsForUserTx := useCase.lp.GetRootstockConfirmationsForValue(request.valueToTransfer)
-	confirmationsForLpTx := useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer)
-	pegoutQuote := quote.PegoutQuote{
-		LbcAddress:            useCase.lbc.GetAddress(),
-		LpRskAddress:          useCase.lp.RskAddress(),
-		BtcRefundAddress:      request.bitcoinRefundAddress,
-		RskRefundAddress:      request.rskRefundAddress,
-		LpBtcAddress:          useCase.lp.BtcAddress(),
-		CallFee:               useCase.pegoutLp.CallFeePegout(),
-		PenaltyFee:            useCase.pegoutLp.PenaltyFeePegout().Uint64(),
-		Nonce:                 int64(rand.Int()),
-		DepositAddress:        request.to,
-		Value:                 request.valueToTransfer,
-		AgreementTimestamp:    now,
-		DepositDateLimit:      now + useCase.pegoutLp.TimeForDepositPegout(),
-		DepositConfirmations:  confirmationsForUserTx,
-		TransferConfirmations: confirmationsForLpTx,
-		TransferTime:          useCase.pegoutLp.TimeForDepositPegout(),
-		ExpireDate:            now + useCase.pegoutLp.TimeForDepositPegout(),
-		ExpireBlock:           uint32(blockNumber + useCase.pegoutLp.ExpireBlocksPegout()),
-		GasFee:                totalGasFee,
-		ProductFeeAmount:      daoTxAmounts.DaoFeeAmount.Uint64(),
+	fees := quote.Fees{
+		CallFee:          useCase.pegoutLp.CallFeePegout(),
+		GasFee:           new(entities.Wei).Add(feeInWei, gasFeeDao),
+		PenaltyFee:       useCase.pegoutLp.PenaltyFeePegout(),
+		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
+	}
+	if pegoutQuote, err = useCase.buildPegoutQuote(ctx, request, fees); err != nil {
+		return GetPegoutQuoteResult{}, err
 	}
 
-	if err = entities.ValidateStruct(pegoutQuote); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	if err = usecases.ValidateMinLockValue(usecases.GetPegoutQuoteId, useCase.bridge, pegoutQuote.Total()); err != nil {
+		return GetPegoutQuoteResult{}, err
 	}
 
-	if minLockTxValueInSatoshi, err = useCase.bridge.GetMinimumLockTxValue(); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
-	}
-	minimumInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
-	if pegoutQuote.Total().Cmp(minimumInWei) <= 0 {
-		errorArgs["minimum"] = minimumInWei.String()
-		errorArgs["value"] = pegoutQuote.Total().String()
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, usecases.TxBelowMinimumError, errorArgs)
+	if hash, err = useCase.persistQuote(ctx, pegoutQuote); err != nil {
+		return GetPegoutQuoteResult{}, err
 	}
 
-	if hash, err = useCase.lbc.HashPegoutQuote(pegoutQuote); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
-	}
-
-	if err = useCase.pegoutQuoteRepository.InsertQuote(ctx, hash, pegoutQuote); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
-	}
-	return GetPegoutQuoteResult{
-		PegoutQuote: pegoutQuote,
-		Hash:        hash,
-	}, nil
+	return GetPegoutQuoteResult{PegoutQuote: pegoutQuote, Hash: hash}, nil
 }
 
 func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
@@ -181,4 +138,74 @@ func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.
 	} else {
 		return nil, nil
 	}
+}
+
+func (useCase *GetQuoteUseCase) buildPegoutQuote(ctx context.Context, request QuoteRequest, fees quote.Fees) (quote.PegoutQuote, error) {
+	var err error
+	var nonce int64
+	var blockNumber uint64
+
+	if nonce, err = usecases.GetRandomInt(); err != nil {
+		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
+	if blockNumber, err = useCase.rsk.GetHeight(ctx); err != nil {
+		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
+	now := uint32(time.Now().Unix())
+	confirmationsForUserTx := useCase.lp.GetRootstockConfirmationsForValue(request.valueToTransfer)
+	confirmationsForLpTx := useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer)
+	pegoutQuote := quote.PegoutQuote{
+		LbcAddress:            useCase.lbc.GetAddress(),
+		LpRskAddress:          useCase.lp.RskAddress(),
+		BtcRefundAddress:      request.bitcoinRefundAddress,
+		RskRefundAddress:      request.rskRefundAddress,
+		LpBtcAddress:          useCase.lp.BtcAddress(),
+		CallFee:               fees.CallFee,
+		PenaltyFee:            fees.PenaltyFee.Uint64(),
+		Nonce:                 nonce,
+		DepositAddress:        request.to,
+		Value:                 request.valueToTransfer,
+		AgreementTimestamp:    now,
+		DepositDateLimit:      now + useCase.pegoutLp.TimeForDepositPegout(),
+		DepositConfirmations:  confirmationsForUserTx,
+		TransferConfirmations: confirmationsForLpTx,
+		TransferTime:          useCase.pegoutLp.TimeForDepositPegout(),
+		ExpireDate:            now + useCase.pegoutLp.TimeForDepositPegout(),
+		ExpireBlock:           uint32(blockNumber + useCase.pegoutLp.ExpireBlocksPegout()),
+		GasFee:                fees.GasFee,
+		ProductFeeAmount:      fees.ProductFeeAmount,
+	}
+
+	if err = entities.ValidateStruct(pegoutQuote); err != nil {
+		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+	return pegoutQuote, nil
+}
+
+func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request QuoteRequest) (usecases.DaoAmounts, error) {
+	var daoTxAmounts usecases.DaoAmounts
+	var daoFeePercentage uint64
+	var err error
+	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
+		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
+		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+	return daoTxAmounts, nil
+}
+
+func (useCase *GetQuoteUseCase) persistQuote(ctx context.Context, pegoutQuote quote.PegoutQuote) (string, error) {
+	var hash string
+	var err error
+	if hash, err = useCase.lbc.HashPegoutQuote(pegoutQuote); err != nil {
+		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
+	if err = useCase.pegoutQuoteRepository.InsertQuote(ctx, hash, pegoutQuote); err != nil {
+		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+	return hash, nil
 }

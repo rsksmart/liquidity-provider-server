@@ -84,18 +84,9 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
 
-	if err = entities.ValidateStruct(retainedQuote); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote); err != nil {
+		return quote.AcceptedQuote{}, err
 	}
-	if err = useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
-	}
-
-	useCase.eventBus.Publish(quote.AcceptedPegoutQuoteEvent{
-		Event:         entities.NewBaseEvent(quote.AcceptedPegoutQuoteEventId),
-		Quote:         *pegoutQuote,
-		RetainedQuote: *retainedQuote,
-	})
 
 	return quote.AcceptedQuote{
 		Signature:      retainedQuote.Signature,
@@ -114,4 +105,25 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.NoLiquidityError, errorArgs)
 	}
 	return requiredLiquidity, nil
+}
+
+func (useCase *AcceptQuoteUseCase) publishQuote(
+	ctx context.Context,
+	pegoutQuote *quote.PegoutQuote,
+	retainedQuote *quote.RetainedPegoutQuote,
+) error {
+	var err error
+	if err = entities.ValidateStruct(retainedQuote); err != nil {
+		return usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	}
+	if err = useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
+		return usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	}
+
+	useCase.eventBus.Publish(quote.AcceptedPegoutQuoteEvent{
+		Event:         entities.NewBaseEvent(quote.AcceptedPegoutQuoteEventId),
+		Quote:         *pegoutQuote,
+		RetainedQuote: *retainedQuote,
+	})
+	return nil
 }

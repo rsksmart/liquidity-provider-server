@@ -2,11 +2,13 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"math"
 	"math/big"
 )
 
@@ -115,4 +117,28 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 		DaoFeeAmount: daoFeeAmount,
 		DaoGasAmount: daoGasAmount,
 	}, nil
+}
+
+func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+	var err error
+	var minLockTxValueInSatoshi *entities.Wei
+
+	errorArgs := NewErrorArgs()
+	if minLockTxValueInSatoshi, err = bridge.GetMinimumLockTxValue(); err != nil {
+		return WrapUseCaseError(useCase, err)
+	}
+	if minimumInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64()); value.Cmp(minimumInWei) <= 0 {
+		errorArgs["minimum"] = minimumInWei.String()
+		errorArgs["value"] = value.String()
+		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
+	}
+	return nil
+}
+
+func GetRandomInt() (int64, error) {
+	random, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt))
+	if err != nil {
+		return 0, err
+	}
+	return random.Int64(), nil
 }

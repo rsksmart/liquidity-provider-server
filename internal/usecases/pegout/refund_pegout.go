@@ -51,11 +51,8 @@ func NewRefundPegoutUseCase(
 }
 
 func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	var txInfo blockchain.BitcoinTransactionInformation
 	var params blockchain.RefundPegoutParams
 	var pegoutQuote *quote.PegoutQuote
-	var newState quote.PegoutState
-	var refundPegoutTxHash string
 	var err error
 
 	if retainedQuote.State != quote.PegoutStateSendPegoutSucceeded {
@@ -68,10 +65,8 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
 	}
 
-	if txInfo, err = useCase.btc.GetTransactionInfo(retainedQuote.LpBtcTxHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if txInfo.Confirmations < uint64(pegoutQuote.TransferConfirmations) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	if err = useCase.validateBtcTransaction(ctx, *pegoutQuote, retainedQuote); err != nil {
+		return err
 	}
 
 	if params, err = useCase.buildRefundPegoutParams(retainedQuote); err != nil {
@@ -82,21 +77,9 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
-	if refundPegoutTxHash, err = useCase.lbc.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if err != nil {
-		newState = quote.PegoutStateRefundPegOutFailed
-	} else {
-		newState = quote.PegoutStateRefundPegOutSucceeded
+	if err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
+		return err
 	}
-
-	retainedQuote.State = newState
-	retainedQuote.RefundPegoutTxHash = refundPegoutTxHash
-	useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
-		Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
-		RetainedQuote: retainedQuote,
-		Error:         err,
-	})
 
 	if _, sendRbtcError := useCase.sendRbtcToBridge(ctx, *pegoutQuote); err != nil {
 		err = errors.Join(err, sendRbtcError)
@@ -106,9 +89,8 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 
 	if err != nil {
 		return usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retainedQuote quote.RetainedPegoutQuote, err error, recoverable bool) error {
@@ -173,4 +155,47 @@ func (useCase *RefundPegoutUseCase) sendRbtcToBridge(ctx context.Context, pegout
 	}
 	log.Debugf("%s: transaction sent to the bridge successfully (%s)\n", usecases.RefundPegoutId, txHash)
 	return txHash, nil
+}
+
+func (useCase *RefundPegoutUseCase) performRefundPegout(
+	ctx context.Context,
+	retainedQuote quote.RetainedPegoutQuote,
+	txConfig blockchain.TransactionConfig,
+	params blockchain.RefundPegoutParams,
+) error {
+	var newState quote.PegoutState
+	var refundPegoutTxHash string
+	var err error
+
+	if refundPegoutTxHash, err = useCase.lbc.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	} else if err != nil {
+		newState = quote.PegoutStateRefundPegOutFailed
+	} else {
+		newState = quote.PegoutStateRefundPegOutSucceeded
+	}
+
+	retainedQuote.State = newState
+	retainedQuote.RefundPegoutTxHash = refundPegoutTxHash
+	useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
+		Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
+		RetainedQuote: retainedQuote,
+		Error:         err,
+	})
+	return nil
+}
+
+func (useCase *RefundPegoutUseCase) validateBtcTransaction(
+	ctx context.Context,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) error {
+	var txInfo blockchain.BitcoinTransactionInformation
+	var err error
+	if txInfo, err = useCase.btc.GetTransactionInfo(retainedQuote.LpBtcTxHash); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	} else if txInfo.Confirmations < uint64(pegoutQuote.TransferConfirmations) {
+		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+	return nil
 }
