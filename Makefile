@@ -17,3 +17,11 @@ validation: lint
 build: download
 	mkdir -p build && cd build
 	CGO_ENABLED=0 go build -v -race -installsuffix 'static' -ldflags="-s" -o ./build/liquidity-provider-server ./cmd/application/main.go
+
+api:
+	go-swagger3 --module-path . \
+	--main-file-path ./cmd/application/main.go \
+	--handler-path ./internal/adapters/entrypoints/rest/handlers \
+	--output OpenApi.yml \
+	--schema-without-pkg \
+	--generate-yaml true

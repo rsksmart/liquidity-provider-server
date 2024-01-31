@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+// NewGetProvidersHandler
+// @Title Get Providers
+// @Description Returns a list of providers.
+// @Success 200 array pkg.LiquidityProvider
+// @Route /getProviders [get]
 func NewGetProvidersHandler(useCase *liquidity_provider.GetProvidersUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		providers, err := useCase.Run()

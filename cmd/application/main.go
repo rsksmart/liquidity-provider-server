@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// @Version 1.2.1
+// @Title Liquidity Provider Server
+// @Server https://lps.testnet.flyover.rif.technology Testnet
+// @Server https://lps.flyover.rif.technology Mainnet
+
 const bootstrapTimeout = 10 * time.Second
 
 func main() {
