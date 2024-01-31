@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+// NewWithdrawPeginCollateralHandler
+// @Title Withdraw PegIn Collateral
+// @Description Withdraw PegIn collateral of a resigned LP
+// @Route /pegin/withdrawCollateral [post]
+// @Success 204 object
 func NewWithdrawPeginCollateralHandler(useCase *pegin.WithdrawCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()

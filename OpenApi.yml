@@ -1,16 +1,7 @@
 components:
   schemas:
     "": {}
-    AcceptReq:
-      properties:
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      required:
-      - quoteHash
-      type: object
-    AcceptRes:
+    AcceptPeginRespose:
       properties:
         bitcoinDepositAddressHash:
           description: Hash of the deposit BTC address
@@ -24,7 +15,7 @@ components:
       - signature
       - bitcoinDepositAddressHash
       type: object
-    AcceptResPegOut:
+    AcceptPegoutResponse:
       properties:
         lbcAddress:
           description: LBC address to execute depositPegout function
@@ -38,43 +29,45 @@ components:
       - signature
       - lbcAddress
       type: object
+    AcceptQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      type: object
     AddCollateralRequest:
       properties:
         amount:
           description: Amount to add to the collateral
           example: 100000000000
           type: integer
-        lpRskAddress:
-          description: Liquidity Provider RSK Address
-          example: "0x0"
-          type: string
+      required:
+      - amount
       type: object
     AddCollateralResponse:
       properties:
         newCollateralBalance:
+          description: New Collateral Balance
           example: 100000000000
           type: integer
       type: object
-    Address:
-      items: {}
-      type: array
     ChangeStatusRequest:
       properties:
-        providerId:
-          type: integer
         status:
           type: boolean
       type: object
-    DepositEvent:
+    DepositEventDTO:
       properties:
         amount:
           description: Event Value
           example: "10000"
         from:
           description: From Address
-          example: invalid example
-          items: {}
-          type: array
+          example: "0x0"
+          type: string
         quoteHash:
           description: QuoteHash
           example: "0x0"
@@ -89,10 +82,86 @@ components:
       properties:
         collateral:
           type: integer
+      required:
+      - collateral
       type: object
-    Hash:
-      items: {}
-      type: array
+    GetPeginQuoteResponse:
+      properties:
+        quote:
+          $ref: '#/components/schemas/PeginQuoteDTO'
+          description: Detail of the quote
+          type: object
+        quoteHash:
+          description: This is a 64 digit number that derives from a quote object
+          type: string
+      required:
+      - quote
+      - quoteHash
+      type: object
+    GetPegoutQuoteResponse:
+      properties:
+        quote:
+          $ref: '#/components/schemas/PegoutQuoteDTO'
+          description: Detail of the quote
+          type: object
+        quoteHash:
+          description: This is a 64 digit number that derives from a quote object
+          type: string
+      required:
+      - quote
+      - quoteHash
+      type: object
+    HealthResponse:
+      properties:
+        services:
+          description: LPS Services Status
+          example:
+            btc: ok
+            db: ok
+            rsk: ok
+          type: object
+        status:
+          description: Overall LPS Health Status
+          example: ok
+          type: string
+      required:
+      - status
+      - services
+      type: object
+    LiquidityProvider:
+      properties:
+        apiBaseUrl:
+          description: API base URL
+          example: https://api.example.com
+          type: string
+        id:
+          description: Provider Id
+          example: 1
+          type: integer
+        name:
+          description: Provider Name
+          example: New Provider
+          type: string
+        provider:
+          description: Provider Address
+          example: "0x0"
+          type: string
+        providerType:
+          description: Provider type
+          example: pegin
+          type: string
+        status:
+          description: Provider status
+          example: true
+          type: boolean
+      required:
+      - id
+      - provider
+      - name
+      - apiBaseUrl
+      - status
+      - providerType
+      type: object
     PeginQuoteDTO:
       properties:
         agreementTimestamp:
@@ -183,6 +252,36 @@ components:
       - gasFee
       - productFeeAmount
       type: object
+    PeginQuoteRequest:
+      properties:
+        bitcoinRefundAddress:
+          description: 'User Bitcoin refund address. Note: Must be a legacy address,
+            segwit addresses are not accepted'
+          example: "0x0"
+          type: string
+        callContractArguments:
+          description: Contract data
+          example: "0x0"
+          type: string
+        callEoaOrContractAddress:
+          description: Contract address or EOA address
+          example: "0x0"
+          type: string
+        rskRefundAddress:
+          description: User RSK refund address
+          example: "0x0"
+          type: string
+        valueToTransfer:
+          description: Value to send in the call
+          example: 0
+          type: integer
+      required:
+      - callEoaOrContractAddress
+      - callContractArguments
+      - valueToTransfer
+      - rskRefundAddress
+      - bitcoinRefundAddress
+      type: object
     PegoutQuoteDTO:
       properties:
         agreementTimestamp:
@@ -248,39 +347,28 @@ components:
       - gasFee
       - productFeeAmount
       type: object
-    ProviderDTO:
+    PegoutQuoteRequest:
       properties:
-        apiBaseUrl:
-          description: Provider's LPS instance URL
-          example: https://api.example.com
+        bitcoinRefundAddress:
+          description: BitcoinRefundAddress
+          example: "0x0"
           type: string
-        id:
-          description: Provider id
-          example: 1
+        rskRefundAddress:
+          description: RskRefundAddress
+          example: "0x0"
+          type: string
+        to:
+          description: Bitcoin address that will receive the BTC amount
+          type: string
+        valueToTransfer:
+          description: ValueToTransfer
+          example: 10000000000000
           type: integer
-        name:
-          description: Provider name
-          example: Default Pegin Provider
-          type: string
-        provider:
-          description: Provider address
-          example: "0x0000000000000000000000000000000000000000"
-          type: string
-        providerType:
-          description: Provider Type
-          example: pegin
-          type: string
-        status:
-          description: Provider status
-          example: true
-          type: boolean
       required:
-      - id
-      - provider
-      - name
-      - apiBaseUrl
-      - status
-      - providerType
+      - to
+      - valueToTransfer
+      - rskRefundAddress
+      - bitcoinRefundAddress
       type: object
     ProviderDetail:
       properties:
@@ -313,144 +401,7 @@ components:
       - pegin
       - pegout
       type: object
-    ProviderRegisterRequest:
-      properties:
-        apiBaseUrl:
-          description: API base URL
-          example: https://api.example.com
-          type: string
-        name:
-          description: Provider Name
-          example: New Provider
-          type: string
-        providerType:
-          description: Provider type must be "pegin", "pegout" or "both"
-          example: pegin
-          type: string
-        status:
-          description: Provider status
-          example: true
-          type: boolean
-      type: object
-    ProviderResignRequest:
-      properties:
-        lpRskAddress:
-          type: string
-      type: object
-    ProviderStatusChangeStatus:
-      properties:
-        Status:
-          description: Returned Status
-          example: Provider Updated Successfully
-          type: string
-      type: object
-    QuotePegOutRequest:
-      properties:
-        bitcoinRefundAddress:
-          description: BitcoinRefundAddress
-          example: "0x0"
-          type: string
-        rskRefundAddress:
-          description: RskRefundAddress
-          example: "0x0"
-          type: string
-        to:
-          description: Bitcoin address that will receive the BTC amount
-          type: string
-        valueToTransfer:
-          description: ValueToTransfer
-          example: 10000000000000
-          type: integer
-      required:
-      - to
-      - valueToTransfer
-      - rskRefundAddress
-      - bitcoinRefundAddress
-      type: object
-    QuotePegOutResponse:
-      properties:
-        quote:
-          $ref: '#/components/schemas/PegoutQuoteDTO'
-          description: Quote
-          type: object
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      required:
-      - quote
-      - quoteHash
-      type: object
-    QuoteRequest:
-      properties:
-        bitcoinRefundAddress:
-          description: 'User Bitcoin refund address. Note: Must be a legacy address,
-            segwit addresses are not accepted'
-          example: "0x0"
-          type: string
-        callContractArguments:
-          description: Contract data
-          example: "0x0"
-          type: string
-        callEoaOrContractAddress:
-          description: Contract address or EOA address
-          example: "0x0"
-          type: string
-        rskRefundAddress:
-          description: User RSK refund address
-          example: "0x0"
-          type: string
-        valueToTransfer:
-          description: Value to send in the call
-          example: 0
-          type: integer
-      required:
-      - callEoaOrContractAddress
-      - callContractArguments
-      - valueToTransfer
-      - rskRefundAddress
-      - bitcoinRefundAddress
-      type: object
-    QuoteReturn:
-      properties:
-        quote:
-          $ref: '#/components/schemas/PeginQuoteDTO'
-          description: Detail of the quote
-          type: object
-        quoteHash:
-          description: This is a 64 digit number that derives from a quote object
-          type: string
-      required:
-      - quote
-      - quoteHash
-      type: object
-    RegistrationStatus:
-      properties:
-        Status:
-          description: Returned Status
-          example: Provider Created Successfully
-          type: string
-      type: object
-    WithdrawCollateralRequest:
-      properties:
-        lpRskAddress:
-          type: string
-      type: object
-    healthRes:
-      properties:
-        services:
-          description: LPS Services Status
-          example:
-            btc: ok
-            db: ok
-            rsk: ok
-          type: object
-        status:
-          description: Overall LPS Health Status
-          example: ok
-          type: string
-      type: object
-    services:
+    Services:
       properties:
         btc:
           type: string
@@ -459,33 +410,41 @@ components:
         rsk:
           type: string
       type: object
-    types.ProviderRegisterRequest:
+    pkg.AcceptQuoteRequest:
       properties:
-        apiBaseUrl:
-          description: API base URL
-          example: https://api.example.com
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
           type: string
-        name:
-          description: Provider Name
-          example: New Provider
-          type: string
-        providerType:
-          description: Provider type must be "pegin", "pegout" or "both"
-          example: pegin
-          type: string
-        status:
-          description: Provider status
-          example: true
-          type: boolean
+      required:
+      - quoteHash
       type: object
-  securitySchemes:
-    AuthorizationHeader:
-      description: Input your token
-      scheme: bearer
-      type: http
+    pkg.AddCollateralRequest:
+      properties:
+        amount:
+          description: Amount to add to the collateral
+          example: 100000000000
+          type: integer
+      required:
+      - amount
+      type: object
+    pkg.AddCollateralResponse:
+      properties:
+        newCollateralBalance:
+          description: New Collateral Balance
+          example: 100000000000
+          type: integer
+      type: object
+    pkg.GetCollateralResponse:
+      properties:
+        collateral:
+          type: integer
+      required:
+      - collateral
+      type: object
 info:
   title: Liquidity Provider Server
-  version: "0.5"
+  version: 1.2.1
 openapi: 3.0.0
 paths:
   /getProviders:
@@ -496,7 +455,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProviderDTO'
+                $ref: '#/components/schemas/LiquidityProvider'
           description: ""
       summary: Get Providers
   /health:
@@ -507,7 +466,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/healthRes'
+                $ref: '#/components/schemas/HealthResponse'
           description: ""
       summary: Health
   /pegin/acceptQuote:
@@ -517,14 +476,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AcceptReq'
+              $ref: '#/components/schemas/AcceptQuoteRequest'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AcceptRes'
+                $ref: '#/components/schemas/AcceptPeginRespose'
           description: ""
       summary: Accept Quote
   /pegin/addCollateral:
@@ -544,18 +503,9 @@ paths:
                 $ref: '#/components/schemas/AddCollateralResponse'
           description: ""
       summary: Add PegIn Collateral
-  /pegin/collateral/{address}:
+  /pegin/collateral:
     get:
       description: ' Get PegIn Collateral'
-      parameters:
-      - description: Liquidity provider address
-        in: path
-        name: address
-        required: true
-        schema:
-          description: Liquidity provider address
-          format: string
-          type: string
       responses:
         "200":
           content:
@@ -571,25 +521,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QuoteRequest'
+              $ref: '#/components/schemas/PeginQuoteRequest'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteReturn'
+                $ref: '#/components/schemas/GetPeginQuoteResponse'
           description: ""
       summary: Pegin GetQuote
   /pegin/withdrawCollateral:
     post:
       description: ' Withdraw PegIn collateral of a resigned LP'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawCollateralRequest'
-        required: true
       responses:
         "204":
           description: ""
@@ -601,14 +545,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AcceptReq'
+              $ref: '#/components/schemas/AcceptQuoteRequest'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AcceptResPegOut'
+                $ref: '#/components/schemas/AcceptPegoutResponse'
           description: ""
       summary: Accept Quote Pegout
   /pegout/addCollateral:
@@ -628,18 +572,9 @@ paths:
                 $ref: '#/components/schemas/AddCollateralResponse'
           description: ""
       summary: Add PegOut Collateral
-  /pegout/collateral/{address}:
+  /pegout/collateral:
     get:
       description: ' Get PegOut Collateral'
-      parameters:
-      - description: Liquidity provider address
-        in: path
-        name: address
-        required: true
-        schema:
-          description: Liquidity provider address
-          format: string
-          type: string
       responses:
         "200":
           content:
@@ -655,25 +590,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QuotePegOutRequest'
+              $ref: '#/components/schemas/PegoutQuoteRequest'
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuotePegOutResponse'
+                $ref: '#/components/schemas/GetPegoutQuoteResponse'
           description: ""
       summary: Pegout GetQuote
   /pegout/withdrawCollateral:
     post:
       description: ' Withdraw PegOut collateral of a resigned LP'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WithdrawCollateralRequest'
-        required: true
       responses:
         "204":
           description: ""
@@ -688,67 +617,16 @@ paths:
               $ref: '#/components/schemas/ChangeStatusRequest'
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProviderStatusChangeStatus'
+        "204":
           description: ""
       summary: Change Provider Status
-  /provider/pegin/register:
-    post:
-      description: ' Registers New Pegin Provider'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProviderRegisterRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegistrationStatus'
-          description: ""
-      summary: Register Pegin Provider
-  /provider/pegout/register:
-    post:
-      description: ' Registers New Pegout Provider'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProviderRegisterRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegistrationStatus'
-          description: ""
-      summary: Register Pegout Provider
   /provider/resignation:
     post:
       description: ' Provider stops being a liquidity provider'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProviderResignRequest'
-        required: true
       responses:
         "204":
           description: ""
       summary: Provider resignation
-  /provider/sync:
-    post:
-      description: ' Synchronizes providers with MongoDB'
-      responses:
-        "204":
-          description: ""
-      summary: Provider Synchronization
   /providers/details:
     get:
       description: ' Returns the details of the provider that manages this instance
@@ -764,20 +642,25 @@ paths:
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
+      parameters:
+      - description: User Quote Request Details
+        in: query
+        name: address
+        required: true
+        schema:
+          description: User Quote Request Details
+          format: string
+          type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DepositEvent'
+                $ref: '#/components/schemas/DepositEventDTO'
           description: Successfully retrieved the user quotes
       summary: GetUserQuotes
-security:
-- AuthorizationHeader:
-  - read
-  - write
 servers:
 - description: ' Testnet'
-  url: https://flyover-lps.testnet.rsk.co
+  url: https://lps.testnet.flyover.rif.technology
 - description: ' Mainnet'
-  url: https://flyover-lps.mainnet.rifcomputing.net
+  url: https://lps.flyover.rif.technology

@@ -9,6 +9,12 @@ import (
 	"net/http"
 )
 
+// NewAcceptPeginQuoteHandler
+// @Title Accept Quote
+// @Description Accepts Quote
+// @Param QuoteHash body pkg.AcceptQuoteRequest true "Quote Hash"
+// @Success 200  object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
+// @Route /pegin/acceptQuote [post]
 func NewAcceptPeginQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error

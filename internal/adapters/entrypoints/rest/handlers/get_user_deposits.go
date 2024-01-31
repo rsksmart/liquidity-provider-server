@@ -7,6 +7,12 @@ import (
 	"net/http"
 )
 
+// NewGetUserQuotesHandler
+// @Title GetUserQuotes
+// @Description Returns user quotes for address.
+// @Param address query string true "User Quote Request Details"
+// @Success 200 {array} pkg.DepositEventDTO "Successfully retrieved the user quotes"
+// @Router /userQuotes [get]
 func NewGetUserQuotesHandler(useCase *pegout.GetUserDepositsUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		address := req.URL.Query().Get("address")
