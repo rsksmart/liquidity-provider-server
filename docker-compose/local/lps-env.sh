@@ -6,7 +6,7 @@ if [ -z "${LPS_STAGE}" ]; then
   echo "LPS_STAGE is not set. Exit 1"
   exit 1
 elif [ "$LPS_STAGE" = "regtest" ]; then
-  cp ../../sample.config.env .env.regtest
+  cp ../../sample-config.env .env.regtest
   ENV_FILE=".env.regtest"
 elif [ "$LPS_STAGE" = "testnet" ]; then
   ENV_FILE=".env.testnet"

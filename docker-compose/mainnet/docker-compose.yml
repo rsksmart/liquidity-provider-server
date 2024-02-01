@@ -89,7 +89,7 @@ services:
       - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
     networks:
       - net_lps
-    command: ["sh", "-x", "start.sh"]
+    command: ["liquidity-provider-server"]
   lbc-deployer:
     build:
       context: lbc-deployer

@@ -73,4 +73,4 @@ services:
       - ${LPS_HOME:-./volumes/lps/logs}:/home/lps/logs
     networks:
       - net_lps
-    command: ["sh", "start.sh"]
+    command: ["liquidity-provider-server"]

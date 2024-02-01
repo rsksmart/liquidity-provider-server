@@ -1,5 +1,6 @@
 FROM --platform=linux/amd64 node:16
 
+ARG GITHUB_TOKEN
 RUN apt-get update -y && apt-get install -qq --no-install-recommends jq
 
 RUN npm install -g truffle
@@ -19,6 +20,8 @@ RUN gitBranch=${LBC_GIT_BRANCH} && \
 COPY --chown=node truffle-config.patch ./
 
 RUN git apply truffle-config.patch
+
+RUN echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> .npmrc
 
 RUN npm ci
 
