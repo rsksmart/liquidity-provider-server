@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -31,6 +32,11 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 	router.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(handlers.NewProviderDetailsHandler(useCaseRegistry.GetProviderDetailUseCase()))
 
 	if env.EnableManagementApi {
+		log.Warn(
+			"Server is running with the management API exposed. This interface " +
+				"includes endpoints that must remain private at all cost. Please shut down " +
+				"the server if you haven't configured the WAF properly as explained in documentation.",
+		)
 		router.Path("/pegin/collateral").Methods(http.MethodGet).
 			HandlerFunc(handlers.NewGetPeginCollateralHandler(useCaseRegistry.GetPeginCollateralUseCase()))
 		router.Path("/pegin/addCollateral").Methods(http.MethodPost).

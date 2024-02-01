@@ -25,11 +25,11 @@ const (
 func logDbInteraction(interaction dbInteraction, value any) {
 	switch interaction {
 	case insert, update, upsert:
-		log.Infof("%s interaction with db: %#v\n", interaction, value)
+		log.Infof("%s interaction with db: %#v", interaction, value)
 	case read:
-		log.Debugf("%s interaction with db: %#v\n", interaction, value)
+		log.Debugf("%s interaction with db: %#v", interaction, value)
 	case delete:
-		log.Debugf("%s interaction with db: %v\n", interaction, value)
+		log.Debugf("%s interaction with db: %v", interaction, value)
 	default:
 		log.Debug("Unknown DB interaction")
 	}

@@ -16,8 +16,8 @@ import (
 
 const (
 	rpcCallRetryMax     = 3
-	rpcCallRetrySleep   = 2 * time.Minute
-	txMiningWaitTimeout = 3 * time.Minute
+	rpcCallRetrySleep   = 1 * time.Minute
+	txMiningWaitTimeout = 2 * time.Minute
 )
 
 type RskAccount struct {
@@ -82,7 +82,7 @@ func awaitTx(client *ethclient.Client, logName string, txCall func() (*geth.Tran
 	var tx *geth.Transaction
 	var err error
 
-	log.Infof("Executing %s transaction...\n", logName)
+	log.Infof("Executing %s transaction...", logName)
 	tx, err = txCall()
 	if err != nil {
 		return nil, err

@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"sync"
 )
 
 type RegisterPeginUseCase struct {
@@ -16,6 +17,7 @@ type RegisterPeginUseCase struct {
 	eventBus        entities.EventBus
 	bridge          blockchain.RootstockBridge
 	btc             blockchain.BitcoinNetwork
+	rskWalletMutex  *sync.Mutex
 }
 
 func NewRegisterPeginUseCase(
@@ -24,6 +26,7 @@ func NewRegisterPeginUseCase(
 	eventBus entities.EventBus,
 	bridge blockchain.RootstockBridge,
 	btc blockchain.BitcoinNetwork,
+	rskWalletMutex *sync.Mutex,
 ) *RegisterPeginUseCase {
 	return &RegisterPeginUseCase{
 		lbc:             lbc,
@@ -31,6 +34,7 @@ func NewRegisterPeginUseCase(
 		eventBus:        eventBus,
 		bridge:          bridge,
 		btc:             btc,
+		rskWalletMutex:  rskWalletMutex,
 	}
 }
 
@@ -59,6 +63,8 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	}
 
+	useCase.rskWalletMutex.Lock()
+	defer useCase.rskWalletMutex.Unlock()
 	if registerPeginTxHash, err = useCase.lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
