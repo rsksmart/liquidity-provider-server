@@ -103,6 +103,9 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 }
 
 func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	if w == nil {
+		return bson.TypeInt64, make([]byte, 0), errors.New("trying to marshal nil wei pointer")
+	}
 	value := make([]byte, 8)
 	binary.LittleEndian.PutUint64(value, w.Uint64())
 	return bson.TypeInt64, value, nil

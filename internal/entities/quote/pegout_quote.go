@@ -90,6 +90,7 @@ type RetainedPegoutQuote struct {
 	UserRskTxHash      string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
 	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
 }
 
 type AcceptedPegoutQuoteEvent struct {

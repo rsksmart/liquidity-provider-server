@@ -16,7 +16,7 @@ import (
 // @Server https://lps.testnet.flyover.rif.technology Testnet
 // @Server https://lps.flyover.rif.technology Mainnet
 
-const bootstrapTimeout = 10 * time.Second
+const bootstrapTimeout = 3 * time.Minute // In case LP needs to register
 
 func main() {
 	var err error

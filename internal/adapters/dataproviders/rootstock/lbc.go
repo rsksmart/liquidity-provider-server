@@ -357,7 +357,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 		params.BlockHeight,
 	)
 	if err != nil && strings.Contains(err.Error(), "LBC031") {
-		log.Debugln("bridge failed to validate BTC transaction. retrying on next confirmation.")
+		log.Debugln("RegisterPegin: bridge failed to validate BTC transaction. retrying on next confirmation.")
 		// allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
 		return "", blockchain.WaitingForBridgeError
 	} else if err != nil {
@@ -370,11 +370,9 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 		GasLimit: registerPeginGasLimit,
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "RegisterPegIn", func() (*geth.Transaction, error) {
-			return lbc.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
-				params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
-		})
+	receipt, err := awaitTx(lbc.client, "RegisterPegIn", func() (*geth.Transaction, error) {
+		return lbc.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
+			params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
 	})
 
 	if err != nil {
@@ -399,6 +397,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	})
 
 	if err != nil && strings.Contains(err.Error(), "LBC049") {
+		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
 		return "", blockchain.WaitingForBridgeError
 	} else if err != nil {
 		return "", fmt.Errorf("refund pegout error: %w", err)
