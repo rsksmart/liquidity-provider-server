@@ -64,7 +64,8 @@ func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 	if err != nil {
 		return nil, err
 	}
-	return entities.NewBigWei(result), nil
+	// This value comes in satoshi from the bridge
+	return entities.SatoshiToWei(result.Uint64()), nil
 }
 
 func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.FlyoverDerivationArgs) (blockchain.FlyoverDerivation, error) {

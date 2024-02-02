@@ -3,6 +3,7 @@ package quote
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"time"
 )
 
@@ -69,10 +70,19 @@ func (quote *PegoutQuote) IsExpired() bool {
 }
 
 func GetCreationBlock(lp entities.PegoutLiquidityProvider, pegoutQuote PegoutQuote) uint64 {
-	return uint64(pegoutQuote.ExpireBlock) - lp.ExpireBlocksPegout()
+	return utils.SafeSub(uint64(pegoutQuote.ExpireBlock), lp.ExpireBlocksPegout())
 }
 
 func (quote *PegoutQuote) Total() *entities.Wei {
+	if quote.Value == nil {
+		quote.Value = entities.NewWei(0)
+	}
+	if quote.CallFee == nil {
+		quote.CallFee = entities.NewWei(0)
+	}
+	if quote.GasFee == nil {
+		quote.GasFee = entities.NewWei(0)
+	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)
@@ -110,8 +120,9 @@ type PegoutDeposit struct {
 
 func (deposit *PegoutDeposit) IsValidForQuote(quote PegoutQuote) bool {
 	enoughAmount := deposit.Amount.Cmp(quote.Total()) >= 0
-	nonExpired := deposit.Timestamp.Before(quote.ExpireTime())
-	return enoughAmount && nonExpired
+	nonExpiredInTime := deposit.Timestamp.Before(quote.ExpireTime())
+	nonExpiredInBlocks := deposit.BlockNumber <= uint64(quote.ExpireBlock)
+	return enoughAmount && nonExpiredInTime && nonExpiredInBlocks
 }
 
 type PegoutQuoteCompletedEvent struct {

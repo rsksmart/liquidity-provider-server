@@ -124,10 +124,10 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	if !blockchain.IsLegacyBtcAddress(request.to) {
+	if !blockchain.IsSupportedBtcAddress(request.to) {
 		errorArgs["btcAddress"] = request.to
 		return errorArgs, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsLegacyBtcAddress(request.bitcoinRefundAddress) {
+	} else if !blockchain.IsSupportedBtcAddress(request.bitcoinRefundAddress) {
 		errorArgs["btcAddress"] = request.bitcoinRefundAddress
 		return errorArgs, usecases.BtcAddressNotSupportedError
 	} else if !blockchain.IsRskAddress(request.rskRefundAddress) {

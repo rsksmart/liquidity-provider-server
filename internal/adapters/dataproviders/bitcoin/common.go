@@ -60,7 +60,7 @@ func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 }
 
 func DecodeAddressBase58OnlyLegacy(address string, keepVersion bool) ([]byte, error) {
-	if !blockchain.IsLegacyBtcAddress(address) {
+	if !blockchain.IsSupportedBtcAddress(address) {
 		return nil, fmt.Errorf("only legacy address allowed (%s)", address)
 	}
 	return DecodeAddressBase58(address, keepVersion)

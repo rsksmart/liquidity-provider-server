@@ -70,7 +70,7 @@ func (rpc *rskjRpcServer) EstimateGas(ctx context.Context, address string, value
 	if err != nil {
 		return nil, err
 	} else {
-		return entities.NewUWei(result + additionalGas), nil
+		return new(entities.Wei).Add(entities.NewUWei(result), entities.NewUWei(additionalGas)), nil
 	}
 }
 
