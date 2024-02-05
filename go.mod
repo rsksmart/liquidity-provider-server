@@ -1,6 +1,6 @@
 module github.com/rsksmart/liquidity-provider-server
 
-go 1.19
+go 1.21.6
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.20.2
@@ -12,14 +12,14 @@ require (
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/ethereum/go-ethereum v1.11.6
-	github.com/go-playground/validator/v10 v10.13.0
-	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/mux v1.8.0
+	github.com/go-playground/validator/v10 v10.17.0
+	github.com/gorilla/handlers v1.5.2
+	github.com/gorilla/mux v1.8.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/rsksmart/liquidity-provider v0.0.0-20231002161316-675248a10604
 	github.com/sirupsen/logrus v1.9.1
 	github.com/stretchr/testify v1.8.3
-	go.mongodb.org/mongo-driver v1.11.6
+	go.mongodb.org/mongo-driver v1.13.1
 	golang.org/x/term v0.8.0
 	modernc.org/sqlite v1.22.1
 )
@@ -46,6 +46,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -75,6 +76,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
