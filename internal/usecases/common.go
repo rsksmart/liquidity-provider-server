@@ -44,6 +44,7 @@ const (
 	UpdatePegoutDepositId      UseCaseId = "UpdatePegoutDeposit"
 	InitPegoutDepositCacheId   UseCaseId = "InitPegoutDepositCache"
 	CheckLiquidityId           UseCaseId = "CheckLiquidity"
+	PenalizationId             UseCaseId = "Penalization"
 )
 
 var (

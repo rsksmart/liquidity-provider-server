@@ -11,6 +11,10 @@ type ChangeStatusUseCase struct {
 	provider entities.LiquidityProvider
 }
 
+func NewChangeStatusUseCase(lbc blockchain.LiquidityBridgeContract, provider entities.LiquidityProvider) *ChangeStatusUseCase {
+	return &ChangeStatusUseCase{lbc: lbc, provider: provider}
+}
+
 func (useCase *ChangeStatusUseCase) Run(newStatus bool) error {
 	var err error
 	var id uint64

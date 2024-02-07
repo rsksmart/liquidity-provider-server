@@ -27,8 +27,20 @@ type CheckLiquidityUseCase struct {
 	recipient      string
 }
 
-func NewCheckLiquidityUseCase(peginProvider entities.PeginLiquidityProvider, pegoutProvider entities.PegoutLiquidityProvider, bridge blockchain.RootstockBridge, alertSender entities.AlertSender) *CheckLiquidityUseCase {
-	return &CheckLiquidityUseCase{peginProvider: peginProvider, pegoutProvider: pegoutProvider, bridge: bridge, alertSender: alertSender}
+func NewCheckLiquidityUseCase(
+	peginProvider entities.PeginLiquidityProvider,
+	pegoutProvider entities.PegoutLiquidityProvider,
+	bridge blockchain.RootstockBridge,
+	alertSender entities.AlertSender,
+	recipient string,
+) *CheckLiquidityUseCase {
+	return &CheckLiquidityUseCase{
+		peginProvider:  peginProvider,
+		pegoutProvider: pegoutProvider,
+		bridge:         bridge,
+		alertSender:    alertSender,
+		recipient:      recipient,
+	}
 }
 
 func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {

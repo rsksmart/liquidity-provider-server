@@ -326,4 +326,3 @@ func TestIsSupportedBtcAddress(t *testing.T) {
 		assert.Truef(t, blockchain.IsSupportedBtcAddress(address), "Address %s should be supported", address)
 	}
 }
-
