@@ -27,11 +27,16 @@ type operationalInfo struct {
 	operationalForPegout bool
 }
 
+type addedCollateralInfo struct {
+	pegin  bool
+	pegout bool
+}
+
 func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationParams) (int64, error) {
 	var collateral collateralInfo
 	var operational operationalInfo
-	var addedCollateral bool
-	var id int64
+	var addedCollateral addedCollateralInfo
+	var addedPeginCollateral, addedPegoutCollateral bool
 	var err error
 
 	if err = useCase.validateParams(params); err != nil {
@@ -49,19 +54,30 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
 	}
 
-	if addedCollateral, err = useCase.addPeginCollateral(params, operational, collateral); addedCollateral == true || err != nil {
+	addedPeginCollateral, err = useCase.addPeginCollateral(params, operational, collateral)
+	addedCollateral.pegin = addedPeginCollateral
+	if useCase.isProviderReady(addedCollateral, params) {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
+	} else if err != nil {
 		return 0, err
 	}
 
-	if addedCollateral, err = useCase.addPegoutCollateral(params, operational, collateral); addedCollateral == true || err != nil {
+	addedPegoutCollateral, err = useCase.addPegoutCollateral(params, operational, collateral)
+	addedCollateral.pegout = addedPegoutCollateral
+	if useCase.isProviderReady(addedCollateral, params) {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
+	} else if err != nil {
 		return 0, err
 	}
 
 	log.Debug("Registering new provider...")
-	if id, err = useCase.registerProvider(params, collateral); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	return id, nil
+	return useCase.registerProvider(params, collateral)
+}
+
+func (useCase *RegistrationUseCase) isProviderReady(addedCollateral addedCollateralInfo, providerParams blockchain.ProviderRegistrationParams) bool {
+	return (addedCollateral.pegin && providerParams.Type == entities.PeginProvider) ||
+		(addedCollateral.pegout && providerParams.Type == entities.PegoutProvider) ||
+		(addedCollateral.pegin && addedCollateral.pegout && providerParams.Type == entities.FullProvider)
 }
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {
@@ -110,7 +126,11 @@ func (useCase *RegistrationUseCase) isProviderOperational(providerType entities.
 func (useCase *RegistrationUseCase) registerProvider(params blockchain.ProviderRegistrationParams, collateral collateralInfo) (int64, error) {
 	value := new(entities.Wei)
 	txConfig := blockchain.NewTransactionConfig(value.Mul(collateral.minimumCollateral, entities.NewUWei(2)), 0, nil)
-	return useCase.lbc.RegisterProvider(txConfig, params)
+	if id, err := useCase.lbc.RegisterProvider(txConfig, params); err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	} else {
+		return id, nil
+	}
 }
 
 func (useCase *RegistrationUseCase) validateParams(params blockchain.ProviderRegistrationParams) error {
@@ -129,12 +149,13 @@ func (useCase *RegistrationUseCase) addPeginCollateral(
 	collateral collateralInfo,
 ) (bool, error) {
 	var err error
-	var collateralToAdd *entities.Wei
 	if !(params.Type.AcceptsPegin() && !operational.operationalForPegin && collateral.peginCollateral.Cmp(entities.NewWei(0)) != 0) {
 		return false, nil
 	}
+	collateralToAdd := new(entities.Wei)
+	log.Debug("Adding pegin collateral...")
 	if err = useCase.lbc.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
-		return true, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else {
 		return true, nil
 	}
@@ -146,12 +167,13 @@ func (useCase *RegistrationUseCase) addPegoutCollateral(
 	collateral collateralInfo,
 ) (bool, error) {
 	var err error
-	var collateralToAdd *entities.Wei
 	if !(params.Type.AcceptsPegout() && !operational.operationalForPegout && collateral.pegoutCollateral.Cmp(entities.NewWei(0)) != 0) {
 		return false, nil
 	}
+	collateralToAdd := new(entities.Wei)
+	log.Debug("Adding pegout collateral...")
 	if err = useCase.lbc.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
-		return true, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else {
 		return true, nil
 	}
