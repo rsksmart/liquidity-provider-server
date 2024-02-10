@@ -50,7 +50,7 @@ func TestCalculateDaoAmounts(t *testing.T) {
 	cases := test.Table[testArgs, u.DaoAmounts]{
 		{
 			testArgs{entities.NewWei(1000000000000000000), 0},
-			u.DaoAmounts{},
+			u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
 		},
 		{
 			testArgs{entities.NewWei(500000000000000000), 50},

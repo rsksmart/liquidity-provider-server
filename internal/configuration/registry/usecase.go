@@ -148,7 +148,6 @@ func NewUseCaseRegistry(
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
 			btcRegistry.Wallet,
-			btcRegistry.RpcServer,
 			databaseRegistry.PegoutRepository,
 			rskRegistry.RpcServer,
 			eventBus,
@@ -167,6 +166,7 @@ func NewUseCaseRegistry(
 			alertSender,
 			env.Provider.AlertRecipientEmail,
 		),
+		addPegoutCollateralUseCase:      pegout.NewAddCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
 		changeStatusUseCase:             liquidity_provider.NewChangeStatusUseCase(rskRegistry.Lbc, liquidityProvider),
 		resignUseCase:                   liquidity_provider.NewResignUseCase(rskRegistry.Lbc, liquidityProvider),
 		getProvidersUseCase:             liquidity_provider.NewGetProvidersUseCase(rskRegistry.Lbc),
