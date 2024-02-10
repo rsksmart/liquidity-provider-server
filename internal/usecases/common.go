@@ -105,7 +105,10 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	daoFeeAmount := new(entities.Wei)
 	var err error
 	if daoFeePercentage == 0 {
-		return DaoAmounts{}, nil
+		return DaoAmounts{
+			DaoFeeAmount: entities.NewWei(0),
+			DaoGasAmount: entities.NewWei(0),
+		}, nil
 	}
 
 	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))

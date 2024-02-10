@@ -85,7 +85,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, err, errorArgs)
 	}
 
-	if feeInWei, err = useCase.btcWallet.EstimateTxFees(request.to, request.valueToTransfer); err != nil && strings.Contains(err.Error(), "Insufficient Funds") {
+	if feeInWei, err = useCase.btcWallet.EstimateTxFees(request.to, request.valueToTransfer); err != nil &&
+		strings.Contains(strings.ToLower(err.Error()), "insufficient funds") {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, usecases.NoLiquidityError)
 	} else if err != nil {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)

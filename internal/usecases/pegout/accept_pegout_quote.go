@@ -15,7 +15,7 @@ type AcceptQuoteUseCase struct {
 	lp                   entities.LiquidityProvider
 	pegoutLp             entities.PegoutLiquidityProvider
 	eventBus             entities.EventBus
-	pegoutLiquidityMutex *sync.Mutex
+	pegoutLiquidityMutex sync.Locker
 }
 
 func NewAcceptQuoteUseCase(
@@ -24,7 +24,7 @@ func NewAcceptQuoteUseCase(
 	lp entities.LiquidityProvider,
 	pegoutLp entities.PegoutLiquidityProvider,
 	eventBus entities.EventBus,
-	pegoutLiquidityMutex *sync.Mutex,
+	pegoutLiquidityMutex sync.Locker,
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
 		quoteRepository:      quoteRepository,
@@ -56,9 +56,6 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.ExpiredQuoteError, errorArgs)
 	}
 
-	useCase.pegoutLiquidityMutex.Lock()
-	defer useCase.pegoutLiquidityMutex.Unlock()
-
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	} else if retainedQuote != nil {
@@ -67,6 +64,9 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 			DepositAddress: retainedQuote.DepositAddress,
 		}, nil
 	}
+
+	useCase.pegoutLiquidityMutex.Lock()
+	defer useCase.pegoutLiquidityMutex.Unlock()
 
 	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *pegoutQuote); err != nil {
 		return quote.AcceptedQuote{}, err
