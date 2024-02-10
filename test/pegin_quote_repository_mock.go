@@ -35,3 +35,8 @@ func (m *PeginQuoteRepositoryMock) DeleteQuotes(ctx context.Context, hashes []st
 	args := m.Called(ctx, hashes)
 	return args.Get(0).(uint), args.Error(1)
 }
+
+func (m *PeginQuoteRepositoryMock) UpdateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
+	args := m.Called(ctx, retainedQuote)
+	return args.Error(0)
+}

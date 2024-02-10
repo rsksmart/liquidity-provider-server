@@ -5,10 +5,11 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	pegout "github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -54,8 +55,8 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	lp.AssertExpectations(t)
 	btcWallet.AssertExpectations(t)
 	assert.NotEmpty(t, result.Hash)
-	assert.Nil(t, entities.ValidateStruct(result.PegoutQuote))
-	assert.Nil(t, err)
+	require.NoError(t, entities.ValidateStruct(result.PegoutQuote))
+	require.NoError(t, err)
 }
 
 func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
@@ -70,48 +71,88 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	useCase := pegout.NewGetQuoteUseCase(rsk, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
 	cases := test.Table[pegout.QuoteRequest, error]{
 		{
-			pegout.NewQuoteRequest("any address", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("any address", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
-			usecases.RskAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
+			Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"),
-			usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"),
+			Result: usecases.BtcAddressNotSupportedError,
 		},
 	}
 	for _, testCase := range cases {
 		result, err := useCase.Run(context.Background(), testCase.Value)
 		assert.Equal(t, pegout.GetPegoutQuoteResult{}, result)
-		assert.NotNil(t, err)
-		assert.ErrorIs(t, err, testCase.Result)
+		require.Error(t, err)
+		require.ErrorIs(t, err, testCase.Result)
 	}
 }
 
 func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
-	cases := test.Table[func(
+	cases := getQuoteUseCaseUnexpectedErrorSetups()
+
+	request := pegout.NewQuoteRequest(
+		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
+		entities.NewWei(1000000000000000000),
+		"0x79568c2989232dCa1840087D73d403602364c0D4",
+		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
+	)
+	feeCollectorAddress := "feeCollectorAddress"
+	for _, testCase := range cases {
+		rsk := new(test.RskRpcMock)
+		lp := new(test.ProviderMock)
+		feeCollector := new(test.FeeCollectorMock)
+		bridge := new(test.BridgeMock)
+		lbc := new(test.LbcMock)
+		pegoutQuoteRepository := new(test.PegoutQuoteRepositoryMock)
+		btcWallet := new(test.BtcWalletMock)
+		testCase.Value(rsk, feeCollector, bridge, lbc, lp, btcWallet, pegoutQuoteRepository)
+		lp.On("GetRootstockConfirmationsForValue", mock.Anything).Return(uint16(10))
+		lp.On("GetBitcoinConfirmationsForValue", mock.Anything, mock.Anything).Return(uint16(10))
+		lp.On("CallFeePegout").Return(entities.NewWei(200))
+		lp.On("PenaltyFeePegout").Return(entities.NewWei(20))
+		lp.On("RskAddress").Return("0x1234")
+		lp.On("BtcAddress").Return("address")
+		lp.On("TimeForDepositPegout").Return(uint32(60000))
+		lp.On("ExpireBlocksPegout").Return(uint64(60000))
+		lbc.On("GetAddress").Return("0x1234")
+		useCase := pegout.NewGetQuoteUseCase(rsk, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
+		result, err := useCase.Run(context.Background(), request)
+		assert.Equal(t, pegout.GetPegoutQuoteResult{}, result)
+		require.Error(t, err)
+	}
+}
+
+// nolint:funlen
+func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
+	rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
+	lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock,
+	pegoutQuoteRepository *test.PegoutQuoteRepositoryMock,
+), error] {
+	return test.Table[func(
 		rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 		lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock,
 		pegoutQuoteRepository *test.PegoutQuoteRepositoryMock,
@@ -263,36 +304,5 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(10), nil)
 			},
 		},
-	}
-
-	request := pegout.NewQuoteRequest(
-		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-		entities.NewWei(1000000000000000000),
-		"0x79568c2989232dCa1840087D73d403602364c0D4",
-		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-	)
-	feeCollectorAddress := "feeCollectorAddress"
-	for _, testCase := range cases {
-		rsk := new(test.RskRpcMock)
-		lp := new(test.ProviderMock)
-		feeCollector := new(test.FeeCollectorMock)
-		bridge := new(test.BridgeMock)
-		lbc := new(test.LbcMock)
-		pegoutQuoteRepository := new(test.PegoutQuoteRepositoryMock)
-		btcWallet := new(test.BtcWalletMock)
-		testCase.Value(rsk, feeCollector, bridge, lbc, lp, btcWallet, pegoutQuoteRepository)
-		lp.On("GetRootstockConfirmationsForValue", mock.Anything).Return(uint16(10))
-		lp.On("GetBitcoinConfirmationsForValue", mock.Anything, mock.Anything).Return(uint16(10))
-		lp.On("CallFeePegout").Return(entities.NewWei(200))
-		lp.On("PenaltyFeePegout").Return(entities.NewWei(20))
-		lp.On("RskAddress").Return("0x1234")
-		lp.On("BtcAddress").Return("address")
-		lp.On("TimeForDepositPegout").Return(uint32(60000))
-		lp.On("ExpireBlocksPegout").Return(uint64(60000))
-		lbc.On("GetAddress").Return("0x1234")
-		useCase := pegout.NewGetQuoteUseCase(rsk, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
-		result, err := useCase.Run(context.Background(), request)
-		assert.Equal(t, pegout.GetPegoutQuoteResult{}, result)
-		assert.NotNil(t, err)
 	}
 }

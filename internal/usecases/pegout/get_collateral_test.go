@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -17,7 +18,7 @@ func TestGetCollateralUseCase_Run(t *testing.T) {
 	useCase := pegout.NewGetCollateralUseCase(lbc, lp)
 	result, err := useCase.Run()
 	lbc.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, value, result)
 }
 
@@ -29,6 +30,6 @@ func TestGetCollateralUseCase_Run_Error(t *testing.T) {
 	useCase := pegout.NewGetCollateralUseCase(lbc, lp)
 	result, err := useCase.Run()
 	lbc.AssertExpectations(t)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result)
 }

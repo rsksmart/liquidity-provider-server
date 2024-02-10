@@ -2,7 +2,7 @@ package blockchain_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -245,16 +245,14 @@ var nativeSegwitMainnetAddresses = []string{
 func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 	address := "2N2Sg8C2uX1YtugYSxEQvRqf9V2EivxcWER"
 	cases := test.Table[blockchain.BitcoinTransactionInformation, *entities.Wei]{
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
-			Outputs: map[string][]*entities.Wei{
-				address: {entities.NewWei(500)},
-			},
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(500)}},
 		},
-			entities.NewWei(500),
+			Result: entities.NewWei(500),
 		},
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
 			Outputs: map[string][]*entities.Wei{
@@ -263,9 +261,9 @@ func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(300)},
 			},
 		},
-			entities.NewWei(500),
+			Result: entities.NewWei(500),
 		},
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
 			Outputs: map[string][]*entities.Wei{
@@ -274,32 +272,28 @@ func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(300)},
 			},
 		},
-			entities.NewWei(1600),
+			Result: entities.NewWei(1600),
 		},
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
-			Outputs: map[string][]*entities.Wei{
-				address: {entities.NewWei(400), entities.NewWei(1100)},
-			},
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(400), entities.NewWei(1100)}},
 		},
-			entities.NewWei(1500),
+			Result: entities.NewWei(1500),
 		},
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
 			Outputs:       map[string][]*entities.Wei{},
 		},
-			entities.NewWei(0),
+			Result: entities.NewWei(0),
 		},
-		{blockchain.BitcoinTransactionInformation{
+		{Value: blockchain.BitcoinTransactionInformation{
 			Hash:          "0x1234",
 			Confirmations: 1,
-			Outputs: map[string][]*entities.Wei{
-				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(400), entities.NewWei(1100)},
-			},
+			Outputs:       map[string][]*entities.Wei{"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(400), entities.NewWei(1100)}},
 		},
-			entities.NewWei(0),
+			Result: entities.NewWei(0),
 		},
 	}
 

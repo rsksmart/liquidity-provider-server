@@ -28,6 +28,9 @@ func (m *LbcMock) GetMinimumCollateral() (*entities.Wei, error) {
 
 func (m *LbcMock) GetCollateral(providerAddress string) (*entities.Wei, error) {
 	args := m.Called(providerAddress)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 

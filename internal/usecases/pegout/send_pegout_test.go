@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 	"time"
@@ -63,8 +64,8 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 		expected := retainedQuote
 		expected.LpBtcTxHash = btcTxHash
 		expected.State = quote.PegoutStateSendPegoutSucceeded
-		return assert.Nil(t, event.Error) &&
-			assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		require.NoError(t, event.Error)
+		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -92,7 +93,7 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	btcWallet.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
@@ -156,7 +157,7 @@ func TestSendPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 		rsk.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)
 		eventBus.AssertNotCalled(t, "Publish", mock.Anything)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -167,8 +168,8 @@ func TestSendPegoutUseCase_Run_InsufficientAmount(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := retainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
-		return assert.ErrorIs(t, event.Error, usecases.InsufficientAmountError) &&
-			assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		require.ErrorIs(t, event.Error, usecases.InsufficientAmountError)
+		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -193,7 +194,7 @@ func TestSendPegoutUseCase_Run_InsufficientAmount(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.ErrorIs(t, err, usecases.InsufficientAmountError)
+	require.ErrorIs(t, err, usecases.InsufficientAmountError)
 	quoteRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
@@ -225,7 +226,7 @@ func TestSendPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.ErrorIs(t, err, usecases.NoEnoughConfirmationsError)
+	require.ErrorIs(t, err, usecases.NoEnoughConfirmationsError)
 	quoteRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	eventBus.AssertNotCalled(t, "Publish")
@@ -247,8 +248,8 @@ func TestSendPegoutUseCase_Run_ExpiredQuote(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := retainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
-		return assert.ErrorIs(t, event.Error, usecases.ExpiredQuoteError) &&
-			assert.Equal(t, expiredQuote, event.PegoutQuote) &&
+		require.ErrorIs(t, event.Error, usecases.ExpiredQuoteError)
+		return assert.Equal(t, expiredQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -256,7 +257,7 @@ func TestSendPegoutUseCase_Run_ExpiredQuote(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.ErrorIs(t, err, usecases.ExpiredQuoteError)
+	require.ErrorIs(t, err, usecases.ExpiredQuoteError)
 	quoteRepository.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
 	rsk.AssertNotCalled(t, "GetTransactionReceipt")
@@ -288,7 +289,7 @@ func TestSendPegoutUseCase_Run_NoLiquidity(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.ErrorIs(t, err, usecases.NoLiquidityError)
+	require.ErrorIs(t, err, usecases.NoLiquidityError)
 	quoteRepository.AssertExpectations(t)
 	eventBus.AssertNotCalled(t, "Publish")
 	btcWallet.AssertExpectations(t)
@@ -309,8 +310,8 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := retainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
-		return assert.ErrorIs(t, event.Error, usecases.QuoteNotFoundError) &&
-			assert.Equal(t, quote.PegoutQuote{}, event.PegoutQuote) &&
+		require.ErrorIs(t, event.Error, usecases.QuoteNotFoundError)
+		return assert.Equal(t, quote.PegoutQuote{}, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -318,7 +319,7 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.ErrorIs(t, err, usecases.QuoteNotFoundError)
+	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
 	quoteRepository.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
 	mutex.AssertNotCalled(t, "Lock")
@@ -337,8 +338,8 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := retainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
-		return assert.NotNil(t, event.Error) &&
-			assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		require.Error(t, event.Error)
+		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -365,7 +366,7 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedQuote)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	btcWallet.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
@@ -403,10 +404,8 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 				expected := *retainedQuote
 				expected.LpBtcTxHash = btcTxHash
 				expected.State = quote.PegoutStateSendPegoutSucceeded
-				return assert.Nil(t, event.Error) &&
-					assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
-					assert.Equal(t, expected, event.RetainedQuote) &&
-					assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
+				require.NoError(t, event.Error)
+				return assert.Equal(t, pegoutQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 			})).Return().Once()
 		},
 		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *test.PegoutQuoteRepositoryMock, eventBus *test.EventBusMock) {
@@ -416,10 +415,8 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 				expected := *retainedQuote
 				expected.State = quote.PegoutStateSendPegoutFailed
-				return assert.NotNil(t, event.Error) &&
-					assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
-					assert.Equal(t, expected, event.RetainedQuote) &&
-					assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
+				require.Error(t, event.Error)
+				return assert.Equal(t, pegoutQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 			})).Return().Once()
 		},
 	}
@@ -432,7 +429,7 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 		useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rsk, eventBus, mutex)
 		err := useCase.Run(context.Background(), caseQuote)
 		quoteRepository.AssertExpectations(t)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		btcWallet.AssertExpectations(t)
 		rsk.AssertExpectations(t)
 		eventBus.AssertExpectations(t)

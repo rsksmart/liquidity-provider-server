@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func TestExpiredPegoutQuoteUseCase_Run(t *testing.T) {
 	useCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutQuoteRepository)
 	err := useCase.Run(context.Background(), retainedQuote)
 	pegoutQuoteRepository.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestExpiredPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
@@ -43,5 +44,5 @@ func TestExpiredPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	useCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutQuoteRepository)
 	err := useCase.Run(context.Background(), retainedQuote)
 	pegoutQuoteRepository.AssertExpectations(t)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 }

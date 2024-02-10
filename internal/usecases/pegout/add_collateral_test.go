@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -22,7 +23,7 @@ func TestAddCollateralUseCase_Run(t *testing.T) {
 	result, err := useCase.Run(value)
 	lp.AssertExpectations(t)
 	lbc.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, entities.NewWei(1100), result)
 }
 
@@ -38,7 +39,7 @@ func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
 	lp.AssertExpectations(t)
 	lbc.AssertExpectations(t)
 	lbc.AssertNotCalled(t, "AddPegoutCollateral", mock.Anything)
-	assert.ErrorIs(t, err, usecases.InsufficientAmountError)
+	require.ErrorIs(t, err, usecases.InsufficientAmountError)
 	assert.Nil(t, result)
 }
 
@@ -73,6 +74,6 @@ func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 		result, err := useCase.Run(entities.NewWei(100))
 		lbc.AssertExpectations(t)
 		assert.Nil(t, result)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }

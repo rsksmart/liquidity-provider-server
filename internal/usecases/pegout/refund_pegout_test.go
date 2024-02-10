@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 	"time"
@@ -88,7 +89,6 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 		UserRskTxHash:      retainedQuote.UserRskTxHash,
 		LpBtcTxHash:        retainedQuote.LpBtcTxHash,
 		RefundPegoutTxHash: refundPegoutTxHash,
-		BridgeRefundTxHash: "",
 	}).Return(nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quote.RetainedPegoutQuote{
 		QuoteHash:          retainedQuote.QuoteHash,
@@ -109,9 +109,8 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 		expected := retainedQuote
 		expected.RefundPegoutTxHash = refundPegoutTxHash
 		expected.State = quote.PegoutStateRefundPegOutSucceeded
-		return assert.Nil(t, event.Error) &&
-			assert.Equal(t, expected, event.RetainedQuote) &&
-			assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
+		require.NoError(t, event.Error)
+		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
 	})).Return().Once()
 	btc := new(test.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
@@ -121,8 +120,7 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	rskWallet := new(test.RskWalletMock)
 	rskWallet.On("SendRbtc", mock.AnythingOfType("context.backgroundCtx"),
 		blockchain.NewTransactionConfig(entities.NewWei(8000), 100000, entities.NewWei(60000000)),
-		bridgeAddress).
-		Return(bridgeTxHash, nil).Once()
+		bridgeAddress).Return(bridgeTxHash, nil).Once()
 	bridge := new(test.BridgeMock)
 	bridge.On("GetAddress").Return(bridgeAddress).Once()
 	mutex := new(test.MutexMock)
@@ -130,7 +128,6 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 
 	useCase := pegout.NewRefundPegoutUseCase(quoteRepository, lbc, eventBus, btc, rskWallet, bridge, mutex)
-
 	err := useCase.Run(context.Background(), retainedQuote)
 
 	quoteRepository.AssertExpectations(t)
@@ -140,7 +137,7 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	rskWallet.AssertExpectations(t)
 	bridge.AssertExpectations(t)
 	mutex.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
@@ -201,7 +198,7 @@ func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 		rskWallet.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)
 		eventBus.AssertNotCalled(t, "Publish", mock.Anything)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -243,27 +240,18 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 		setup(&caseQuote, quoteRepository, lbc, btc, rskWallet)
 		eventBus := new(test.EventBusMock)
 		eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
-			return assert.NotNil(t, event.Error) &&
-				assert.Equal(t, caseQuote.LpBtcTxHash, event.RetainedQuote.LpBtcTxHash) &&
-				assert.Equal(t, caseQuote.Signature, event.RetainedQuote.Signature) &&
-				assert.Equal(t, caseQuote.QuoteHash, event.RetainedQuote.QuoteHash) &&
-				assert.Equal(t, caseQuote.DepositAddress, event.RetainedQuote.DepositAddress) &&
-				assert.Equal(t, caseQuote.RequiredLiquidity, event.RetainedQuote.RequiredLiquidity) &&
-				assert.Equal(t, quote.PegoutStateRefundPegOutFailed, event.RetainedQuote.State) &&
-				assert.Equal(t, caseQuote.UserRskTxHash, event.RetainedQuote.UserRskTxHash) &&
-				assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
+			require.Error(t, event.Error)
+			return assert.Equal(t, caseQuote.LpBtcTxHash, event.RetainedQuote.LpBtcTxHash) && assert.Equal(t, caseQuote.Signature, event.RetainedQuote.Signature) &&
+				assert.Equal(t, caseQuote.QuoteHash, event.RetainedQuote.QuoteHash) && assert.Equal(t, caseQuote.DepositAddress, event.RetainedQuote.DepositAddress) &&
+				assert.Equal(t, caseQuote.RequiredLiquidity, event.RetainedQuote.RequiredLiquidity) && assert.Equal(t, quote.PegoutStateRefundPegOutFailed, event.RetainedQuote.State) &&
+				assert.Equal(t, caseQuote.UserRskTxHash, event.RetainedQuote.UserRskTxHash) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
 		})).Return().Once()
-		quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quote.RetainedPegoutQuote{
-			QuoteHash:          caseQuote.QuoteHash,
-			DepositAddress:     caseQuote.DepositAddress,
-			Signature:          caseQuote.Signature,
-			RequiredLiquidity:  caseQuote.RequiredLiquidity,
-			State:              quote.PegoutStateRefundPegOutFailed,
-			UserRskTxHash:      caseQuote.UserRskTxHash,
-			LpBtcTxHash:        caseQuote.LpBtcTxHash,
-			RefundPegoutTxHash: caseQuote.RefundPegoutTxHash,
-			BridgeRefundTxHash: caseQuote.BridgeRefundTxHash,
-		}).Return(nil).Once()
+		quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.MatchedBy(
+			func(q quote.RetainedPegoutQuote) bool {
+				expected := caseQuote
+				expected.State = quote.PegoutStateRefundPegOutFailed
+				return assert.Equal(t, expected, q)
+			})).Return(nil).Once()
 		useCase := pegout.NewRefundPegoutUseCase(quoteRepository, lbc, eventBus, btc, rskWallet, bridge, mutex)
 		err := useCase.Run(context.Background(), caseQuote)
 		lbc.AssertExpectations(t)
@@ -271,7 +259,7 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 		rskWallet.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)
 		eventBus.AssertExpectations(t)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -301,7 +289,7 @@ func TestRefundPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 	lbc.AssertNotCalled(t, "GetAddress")
 	mutex.AssertNotCalled(t, "Lock")
 	mutex.AssertNotCalled(t, "Unlock")
-	assert.ErrorIs(t, err, usecases.NoEnoughConfirmationsError)
+	require.ErrorIs(t, err, usecases.NoEnoughConfirmationsError)
 }
 
 func TestRefundPegoutUseCase_Run_WrongState(t *testing.T) {
@@ -330,10 +318,10 @@ func TestRefundPegoutUseCase_Run_WrongState(t *testing.T) {
 	lbc.AssertNotCalled(t, "GetAddress")
 	mutex.AssertNotCalled(t, "Lock")
 	mutex.AssertNotCalled(t, "Unlock")
-	assert.ErrorIs(t, err, usecases.WrongStateError)
+	require.ErrorIs(t, err, usecases.WrongStateError)
 }
 
-func TestRefundPegoutUseCase_Run_BridgeAmount(t *testing.T) {
+func TestRefundPegoutUseCase_Run_CorrectBridgeAmount(t *testing.T) {
 	bridgeAddress := "0x1234"
 	lbc := new(test.LbcMock)
 	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil)
@@ -350,52 +338,7 @@ func TestRefundPegoutUseCase_Run_BridgeAmount(t *testing.T) {
 	mutex.On("Unlock")
 	mutex.On("Lock")
 
-	cases := test.Table[func() quote.PegoutQuote, *entities.Wei]{
-		{
-			func() quote.PegoutQuote {
-				testQuote := pegoutQuote
-				testQuote.Value = entities.NewWei(3000)
-				testQuote.GasFee = entities.NewWei(3000)
-				testQuote.ProductFeeAmount = 1000
-				testQuote.CallFee = entities.NewWei(2000)
-				return testQuote
-			},
-			entities.NewWei(8000),
-		},
-		{
-			func() quote.PegoutQuote {
-				testQuote := pegoutQuote
-				testQuote.Value = entities.NewWei(3000)
-				testQuote.GasFee = entities.NewWei(3000)
-				testQuote.ProductFeeAmount = 1000
-				testQuote.CallFee = entities.NewWei(2000)
-				return testQuote
-			},
-			entities.NewWei(8000),
-		},
-		{
-			func() quote.PegoutQuote {
-				testQuote := pegoutQuote
-				testQuote.Value = entities.NewWei(0)
-				testQuote.GasFee = entities.NewWei(0)
-				testQuote.ProductFeeAmount = 1
-				testQuote.CallFee = entities.NewWei(0)
-				return testQuote
-			},
-			entities.NewWei(0),
-		},
-		{
-			func() quote.PegoutQuote {
-				testQuote := pegoutQuote
-				testQuote.Value = entities.NewWei(15000)
-				testQuote.GasFee = entities.NewWei(1)
-				testQuote.ProductFeeAmount = 1
-				testQuote.CallFee = entities.NewWei(500)
-				return testQuote
-			},
-			entities.NewWei(15501),
-		},
-	}
+	cases := getQuotesWithExpectedTotalTable()
 
 	for _, c := range cases {
 		quoteRepository := new(test.PegoutQuoteRepositoryMock)
@@ -415,6 +358,55 @@ func TestRefundPegoutUseCase_Run_BridgeAmount(t *testing.T) {
 		err := useCase.Run(context.Background(), retainedQuote)
 		quoteRepository.AssertExpectations(t)
 		rskWallet.AssertExpectations(t)
-		assert.Nil(t, err)
+		require.NoError(t, err)
+	}
+}
+
+func getQuotesWithExpectedTotalTable() test.Table[func() quote.PegoutQuote, *entities.Wei] {
+	return test.Table[func() quote.PegoutQuote, *entities.Wei]{
+		{
+			Value: func() quote.PegoutQuote {
+				testQuote := pegoutQuote
+				testQuote.Value = entities.NewWei(3000)
+				testQuote.GasFee = entities.NewWei(3000)
+				testQuote.ProductFeeAmount = 1000
+				testQuote.CallFee = entities.NewWei(2000)
+				return testQuote
+			},
+			Result: entities.NewWei(8000),
+		},
+		{
+			Value: func() quote.PegoutQuote {
+				testQuote := pegoutQuote
+				testQuote.Value = entities.NewWei(3000)
+				testQuote.GasFee = entities.NewWei(3000)
+				testQuote.ProductFeeAmount = 1000
+				testQuote.CallFee = entities.NewWei(2000)
+				return testQuote
+			},
+			Result: entities.NewWei(8000),
+		},
+		{
+			Value: func() quote.PegoutQuote {
+				testQuote := pegoutQuote
+				testQuote.Value = entities.NewWei(0)
+				testQuote.GasFee = entities.NewWei(0)
+				testQuote.ProductFeeAmount = 1
+				testQuote.CallFee = entities.NewWei(0)
+				return testQuote
+			},
+			Result: entities.NewWei(0),
+		},
+		{
+			Value: func() quote.PegoutQuote {
+				testQuote := pegoutQuote
+				testQuote.Value = entities.NewWei(15000)
+				testQuote.GasFee = entities.NewWei(1)
+				testQuote.ProductFeeAmount = 1
+				testQuote.CallFee = entities.NewWei(500)
+				return testQuote
+			},
+			Result: entities.NewWei(15501),
+		},
 	}
 }

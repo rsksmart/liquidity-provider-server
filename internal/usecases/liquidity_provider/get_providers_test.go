@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -26,7 +27,7 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 	result, err := useCase.Run()
 
 	lbc.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []entities.RegisteredLiquidityProvider{provider}, result)
 }
 
@@ -42,6 +43,6 @@ func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
 	result, err := useCase.Run()
 
 	lbc.AssertExpectations(t)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, []entities.RegisteredLiquidityProvider{}, result)
 }

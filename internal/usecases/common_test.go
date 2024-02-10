@@ -49,26 +49,26 @@ func TestCalculateDaoAmounts(t *testing.T) {
 
 	cases := test.Table[testArgs, u.DaoAmounts]{
 		{
-			testArgs{entities.NewWei(1000000000000000000), 0},
-			u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
+			Value:  testArgs{entities.NewWei(1000000000000000000), 0},
+			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
 		},
 		{
-			testArgs{entities.NewWei(500000000000000000), 50},
-			u.DaoAmounts{
+			Value: testArgs{entities.NewWei(500000000000000000), 50},
+			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(250000000000000000),
 			},
 		},
 		{
-			testArgs{entities.NewWei(6000000000000000000), 1},
-			u.DaoAmounts{
+			Value: testArgs{entities.NewWei(6000000000000000000), 1},
+			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(60000000000000000),
 			},
 		},
 		{
-			testArgs{entities.NewWei(7700000000000000000), 17},
-			u.DaoAmounts{
+			Value: testArgs{entities.NewWei(7700000000000000000), 17},
+			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(1309000000000000000),
 			},
@@ -89,7 +89,7 @@ func TestCalculateDaoAmounts_Fail(t *testing.T) {
 		Return(entities.NewWei(0), errors.New("some error"))
 	result, err := u.CalculateDaoAmounts(ctx, &rpc, entities.NewUWei(500000000000000), 1, "0x1234")
 	require.Equal(t, u.DaoAmounts{}, result)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestGetRandomInt(t *testing.T) {
@@ -100,7 +100,7 @@ func TestGetRandomInt(t *testing.T) {
 		number, err = u.GetRandomInt()
 		assert.Positive(t, number)
 		assert.False(t, slices.Contains(numbers, number))
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		numbers = append(numbers, number)
 	}
 }
@@ -112,13 +112,13 @@ func TestValidateMinLockValue(t *testing.T) {
 	bridge.On("GetMinimumLockTxValue").Return(entities.SatoshiToWei(oneBtcInSatoshi), nil)
 
 	err := u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi+1))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	value := new(entities.Wei).Sub(entities.SatoshiToWei(oneBtcInSatoshi), entities.NewWei(1))
 	err = u.ValidateMinLockValue(useCase, bridge, value)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "anyUseCase: requested amount below bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
 }
