@@ -40,10 +40,8 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 	var pegoutQuote *quote.PegoutQuote
 	var receipt blockchain.TransactionReceipt
 
-	if retainedQuote.State != quote.PegoutStateWaitingForDepositConfirmations {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
-	} else if retainedQuote.UserRskTxHash == "" {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
+	if err = useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
+		return err
 	}
 
 	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
@@ -179,6 +177,15 @@ func (useCase *SendPegoutUseCase) validateBalance(
 	requiredBalance.Add(pegoutQuote.Value, pegoutQuote.GasFee)
 	if balance.Cmp(requiredBalance) < 0 {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoLiquidityError, true)
+	}
+	return nil
+}
+
+func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
+	if retainedQuote.State != quote.PegoutStateWaitingForDepositConfirmations {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
+	} else if retainedQuote.UserRskTxHash == "" {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
 	}
 	return nil
 }

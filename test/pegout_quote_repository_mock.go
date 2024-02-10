@@ -60,3 +60,23 @@ func (m *PegoutQuoteRepositoryMock) ListPegoutDepositsByAddress(ctx context.Cont
 		return arg.([]quote.PegoutDeposit), args.Error(1)
 	}
 }
+
+func (m *PegoutQuoteRepositoryMock) GetRetainedQuoteByState(ctx context.Context, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
+	args := m.Called(ctx, states)
+	arg := args.Get(0)
+	if arg == nil {
+		return nil, args.Error(1)
+	} else {
+		return arg.([]quote.RetainedPegoutQuote), args.Error(1)
+	}
+}
+
+func (m *PegoutQuoteRepositoryMock) DeleteQuotes(ctx context.Context, hashes []string) (uint, error) {
+	args := m.Called(ctx, hashes)
+	return args.Get(0).(uint), args.Error(1)
+}
+
+func (m *PegoutQuoteRepositoryMock) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {
+	args := m.Called(ctx, deposit)
+	return args.Error(0)
+}
