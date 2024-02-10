@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func TestResignUseCase_Run(t *testing.T) {
 	useCase := liquidity_provider.NewResignUseCase(lbc, provider)
 	err := useCase.Run()
 	lbc.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestResignUseCase_Run_NotRegistered(t *testing.T) {
@@ -39,7 +40,7 @@ func TestResignUseCase_Run_NotRegistered(t *testing.T) {
 	useCase := liquidity_provider.NewResignUseCase(lbc, provider)
 	err := useCase.Run()
 	lbc.AssertExpectations(t)
-	assert.ErrorIs(t, err, usecases.ProviderConfigurationError)
+	require.ErrorIs(t, err, usecases.ProviderConfigurationError)
 }
 
 func TestResignUseCase_Run_Error(t *testing.T) {
@@ -56,5 +57,5 @@ func TestResignUseCase_Run_Error(t *testing.T) {
 	useCase := liquidity_provider.NewResignUseCase(lbc, provider)
 	err := useCase.Run()
 	lbc.AssertExpectations(t)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 }

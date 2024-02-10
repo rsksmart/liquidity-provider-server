@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -26,7 +27,7 @@ func TestRegistrationUseCase_Run_AlreadyRegistered(t *testing.T) {
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
 	assert.Equal(t, int64(0), id)
-	assert.ErrorIs(t, err, usecases.AlreadyRegisteredError)
+	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
 
 func TestRegistrationUseCase_Run_ValidateParams(t *testing.T) {
@@ -45,7 +46,7 @@ func TestRegistrationUseCase_Run_ValidateParams(t *testing.T) {
 	for _, c := range cases {
 		id, err = useCase.Run(c)
 		assert.Equal(t, int64(0), id)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -66,7 +67,7 @@ func TestRegistrationUseCase_Run_AddPeginCollateralIfNotOperational(t *testing.T
 	provider.AssertExpectations(t)
 	lbc.AssertNotCalled(t, "AddPegoutCollateral", mock.AnythingOfType("*entities.Wei"))
 	assert.Equal(t, int64(0), id)
-	assert.ErrorIs(t, err, usecases.AlreadyRegisteredError)
+	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
 
 func TestRegistrationUseCase_Run_AddPegoutCollateralIfNotOperational(t *testing.T) {
@@ -86,7 +87,7 @@ func TestRegistrationUseCase_Run_AddPegoutCollateralIfNotOperational(t *testing.
 	provider.AssertExpectations(t)
 	lbc.AssertNotCalled(t, "AddCollateral", mock.AnythingOfType("*entities.Wei"))
 	assert.Equal(t, int64(0), id)
-	assert.ErrorIs(t, err, usecases.AlreadyRegisteredError)
+	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
 
 func TestRegistrationUseCase_Run_AddCollateralIfNotOperational(t *testing.T) {
@@ -106,7 +107,7 @@ func TestRegistrationUseCase_Run_AddCollateralIfNotOperational(t *testing.T) {
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
 	assert.Equal(t, int64(0), id)
-	assert.ErrorIs(t, err, usecases.AlreadyRegisteredError)
+	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
 
 func TestRegistrationUseCase_Run(t *testing.T) {
@@ -131,11 +132,29 @@ func TestRegistrationUseCase_Run(t *testing.T) {
 	lbc.AssertNotCalled(t, "AddPegoutCollateral")
 	provider.AssertExpectations(t)
 	assert.Equal(t, int64(1), id)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRegistrationUseCase_Run_ErrorHandling(t *testing.T) {
-	cases := test.Table[func(mock *test.LbcMock), error]{
+	cases := registrationUseCaseUnexpectedErrorSetups()
+
+	for _, testCase := range cases {
+		lbc := &test.LbcMock{}
+		testCase.Value(lbc) // setup function
+		provider := &test.ProviderMock{}
+		provider.On("RskAddress").Return("rskAddress")
+		useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+		params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
+		id, err := useCase.Run(params)
+		lbc.AssertExpectations(t)
+		assert.Equal(t, int64(0), id)
+		require.Error(t, err)
+	}
+}
+
+// nolint:funlen
+func registrationUseCaseUnexpectedErrorSetups() test.Table[func(mock *test.LbcMock), error] {
+	return test.Table[func(mock *test.LbcMock), error]{
 		{
 			Value: func(lbc *test.LbcMock) {
 				lbc.On("GetMinimumCollateral").Return(entities.NewWei(0), assert.AnError)
@@ -206,18 +225,5 @@ func TestRegistrationUseCase_Run_ErrorHandling(t *testing.T) {
 				lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(assert.AnError)
 			},
 		},
-	}
-
-	for _, testCase := range cases {
-		lbc := &test.LbcMock{}
-		testCase.Value(lbc) // setup function
-		provider := &test.ProviderMock{}
-		provider.On("RskAddress").Return("rskAddress")
-		useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
-		params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
-		id, err := useCase.Run(params)
-		lbc.AssertExpectations(t)
-		assert.Equal(t, int64(0), id)
-		assert.NotNil(t, err)
 	}
 }

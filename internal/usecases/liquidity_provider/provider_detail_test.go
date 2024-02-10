@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -21,8 +22,8 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 	captchaKey := "testKey"
 	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider)
 	result, err := useCase.Run()
-	assert.Nil(t, err)
-	assert.Equal(t, result, liquidity_provider.FullLiquidityProvider{
+	require.NoError(t, err)
+	assert.Equal(t, liquidity_provider.FullLiquidityProvider{
 		SiteKey: captchaKey,
 		Pegin: entities.LiquidityProviderDetail{
 			Fee:                   entities.NewWei(100),
@@ -36,7 +37,7 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 			MaxTransactionValue:   entities.NewWei(20000),
 			RequiredConfirmations: 20,
 		},
-	})
+	}, result)
 }
 
 func TestGetDetailUseCase_Run_InvalidCaptchaKey(t *testing.T) {

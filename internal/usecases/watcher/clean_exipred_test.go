@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -58,8 +59,8 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
-	assert.Nil(t, err)
-	assert.True(t, len(hashes) == 6)
+	require.NoError(t, err)
+	assert.Len(t, hashes, 6)
 	assert.Equal(t, []string{"peginHash1", "peginHash2", "peginHash4", "pegoutHash3", "pegoutHash5", "pegoutHash6"}, hashes)
 }
 
@@ -101,7 +102,7 @@ func TestCleanExpiredQuotesUseCase_Run_ErrorHandling(t *testing.T) {
 		setup(peginRepository, pegoutRepository)
 		useCase := watcher.NewCleanExpiredQuotesUseCase(peginRepository, pegoutRepository)
 		_, err := useCase.Run(context.Background())
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		peginRepository.AssertExpectations(t)
 		pegoutRepository.AssertExpectations(t)
 	}

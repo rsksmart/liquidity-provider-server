@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -44,7 +45,7 @@ func TestValidateConfiguredProvider(t *testing.T) {
 
 	id, err := liquidity_provider.ValidateConfiguredProvider(provider, lbc)
 	assert.Equal(t, uint64(2), id)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestValidateConfiguredProvider_Fail(t *testing.T) {
@@ -53,7 +54,7 @@ func TestValidateConfiguredProvider_Fail(t *testing.T) {
 	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{}, errors.New("some error")).Once()
 	id, err := liquidity_provider.ValidateConfiguredProvider(provider, lbc)
 	assert.Equal(t, uint64(0), id)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 
 	provider = &test.ProviderMock{}
 	provider.On("RskAddress").Return("0x02")
@@ -69,5 +70,5 @@ func TestValidateConfiguredProvider_Fail(t *testing.T) {
 	}, nil).Once()
 	id, err = liquidity_provider.ValidateConfiguredProvider(provider, lbc)
 	assert.Equal(t, uint64(0), id)
-	assert.ErrorIs(t, err, usecases.ProviderConfigurationError)
+	require.ErrorIs(t, err, usecases.ProviderConfigurationError)
 }

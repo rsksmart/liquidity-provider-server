@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -43,7 +44,7 @@ func TestInitPegoutDepositCacheUseCase_Run(t *testing.T) {
 	rpc.AssertExpectations(t)
 	lbc.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestInitPegoutDepositCacheUseCase_Run_ErrorHandling(t *testing.T) {
@@ -78,6 +79,6 @@ func TestInitPegoutDepositCacheUseCase_Run_ErrorHandling(t *testing.T) {
 		lbc.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)
 		rsk.AssertExpectations(t)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }

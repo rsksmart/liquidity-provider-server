@@ -55,7 +55,6 @@ func TestHealthUseCase_Run(t *testing.T) {
 			Db:  u.SvcStatusOk,
 		},
 	}, badHealthRsk)
-
 	assert.Equal(t, u.HealthStatus{
 		Status: u.SvcStatusDegraded,
 		Services: u.Services{
@@ -64,7 +63,6 @@ func TestHealthUseCase_Run(t *testing.T) {
 			Db:  u.SvcStatusOk,
 		},
 	}, badHealthBtc)
-
 	assert.Equal(t, u.HealthStatus{
 		Status: u.SvcStatusDegraded,
 		Services: u.Services{
@@ -73,7 +71,6 @@ func TestHealthUseCase_Run(t *testing.T) {
 			Db:  u.SvcStatusUnreachable,
 		},
 	}, badHealthDb)
-
 	assert.Equal(t, u.HealthStatus{
 		Status: u.SvcStatusOk,
 		Services: u.Services{

@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run(t *testing.T) {
 	useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
 	watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
 	quoteReporitory.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, quote.PegoutStateWaitingForDepositConfirmations, watchedPegoutQuote.RetainedQuote.State)
 	assert.Equal(t, deposit.TxHash, watchedPegoutQuote.RetainedQuote.UserRskTxHash)
 }
@@ -120,7 +121,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 			quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
 			quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
 			assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.True(t, strings.Contains(err.Error(), "deposit not valid for quote"))
 		})
 	}
@@ -150,7 +151,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 		quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
 		quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
 		assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "illegal quote state"))
 	}
 }
@@ -182,6 +183,6 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_ErrorHandling(t *testing.T) {
 		watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
 		quoteReporitory.AssertExpectations(t)
 		assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }

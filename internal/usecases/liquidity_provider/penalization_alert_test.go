@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -53,7 +54,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(lbc, sender, recipient)
 	err := useCase.Run(context.Background(), 5, 10)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	lbc.AssertExpectations(t)
 	sender.AssertExpectations(t)
 }
@@ -66,5 +67,5 @@ func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(lbc, sender, "recipient")
 	err := useCase.Run(context.Background(), 5, 10)
 	lbc.AssertExpectations(t)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 }

@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -25,7 +26,7 @@ func TestCheckLiquidityUseCase_Run(t *testing.T) {
 	bridge.AssertExpectations(t)
 	provider.AssertExpectations(t)
 	alertSender.AssertNotCalled(t, "SendAlert")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
@@ -47,7 +48,7 @@ func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
 	bridge.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
 	provider.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
@@ -69,10 +70,10 @@ func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
 	bridge.AssertExpectations(t)
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
-func TestCheckLiquidityUseCase_Run_ErrorHandling(t *testing.T) {
+func TestCheckLiquidityUseCase_Run_NoRecoverableErrorHandling(t *testing.T) {
 	recipient := "anything"
 	cases := test.Table[func(bridge *test.BridgeMock, provider *test.ProviderMock, sender *test.AlertSenderMock), error]{
 		{
@@ -105,21 +106,19 @@ func TestCheckLiquidityUseCase_Run_ErrorHandling(t *testing.T) {
 		provider.AssertExpectations(t)
 
 		sender.AssertExpectations(t)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
+}
 
-	cases = test.Table[func(bridge *test.BridgeMock, provider *test.ProviderMock, sender *test.AlertSenderMock), error]{
+func TestCheckLiquidityUseCase_Run_OnlyLogSendErrors(t *testing.T) {
+	recipient := "anything"
+	cases := test.Table[func(bridge *test.BridgeMock, provider *test.ProviderMock, sender *test.AlertSenderMock), error]{
 		{
 			Value: func(bridge *test.BridgeMock, provider *test.ProviderMock, sender *test.AlertSenderMock) {
 				bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 				provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
 				provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
-				sender.On("SendAlert",
-					mock.AnythingOfType("context.backgroundCtx"),
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
-				).Return(assert.AnError).Once()
+				sender.On("SendAlert", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 		{
@@ -127,12 +126,7 @@ func TestCheckLiquidityUseCase_Run_ErrorHandling(t *testing.T) {
 				bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 				provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 				provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
-				sender.On("SendAlert",
-					mock.AnythingOfType("context.backgroundCtx"),
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
-				).Return(assert.AnError).Once()
+				sender.On("SendAlert", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 	}
@@ -150,6 +144,6 @@ func TestCheckLiquidityUseCase_Run_ErrorHandling(t *testing.T) {
 		bridge.AssertExpectations(t)
 		provider.AssertExpectations(t)
 		sender.AssertExpectations(t)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	}
 }

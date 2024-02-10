@@ -166,6 +166,7 @@ func NewUseCaseRegistry(
 			alertSender,
 			env.Provider.AlertRecipientEmail,
 		),
+		addPeginCollateralUseCase:       pegin.NewAddCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
 		addPegoutCollateralUseCase:      pegout.NewAddCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
 		changeStatusUseCase:             liquidity_provider.NewChangeStatusUseCase(rskRegistry.Lbc, liquidityProvider),
 		resignUseCase:                   liquidity_provider.NewResignUseCase(rskRegistry.Lbc, liquidityProvider),
