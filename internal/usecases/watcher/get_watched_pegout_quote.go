@@ -54,10 +54,10 @@ func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Contex
 		if pegoutQuote, err = useCase.pegoutRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
 			return nil, usecases.WrapUseCaseError(usecases.GetWatchedPegoutQuoteId, err)
 		}
-		watchedQuote = append(watchedQuote, WatchedPegoutQuote{
-			PegoutQuote:   *pegoutQuote,
-			RetainedQuote: retainedQuote,
-		})
+		watchedQuote = append(
+			watchedQuote,
+			NewWatchedPegoutQuote(*pegoutQuote, retainedQuote),
+		)
 	}
 	return watchedQuote, nil
 }

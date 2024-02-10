@@ -33,7 +33,7 @@ func (useCase *CleanExpiredQuotesUseCase) Run(ctx context.Context) ([]string, er
 		return nil, err
 	}
 	for _, pegoutQuote := range pegoutQuotes {
-		pegoutHashes = append(peginHashes, pegoutQuote.QuoteHash)
+		pegoutHashes = append(pegoutHashes, pegoutQuote.QuoteHash)
 	}
 
 	if _, err = useCase.peginRepository.DeleteQuotes(ctx, peginHashes); err != nil {
