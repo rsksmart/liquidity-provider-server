@@ -19,6 +19,17 @@ func (m *RskRpcMock) GetTransactionReceipt(ctx context.Context, hash string) (bl
 
 func (m *RskRpcMock) GasPrice(ctx context.Context) (*entities.Wei, error) {
 	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+
+func (m *RskRpcMock) GetBalance(ctx context.Context, address string) (*entities.Wei, error) {
+	args := m.Called(ctx, address)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 
@@ -28,5 +39,8 @@ func (m *RskRpcMock) GetHeight(ctx context.Context) (uint64, error) {
 }
 func (m *RskRpcMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
 	args := m.Called(ctx, addr, value, data)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }

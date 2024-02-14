@@ -77,6 +77,7 @@ func NewUseCaseRegistry(
 			btcRegistry.RpcServer,
 			liquidityProvider,
 			eventBus,
+			rskRegistry.RpcServer,
 			mutexes.RskWalletMutex(),
 		),
 		registerPeginUseCase: pegin.NewRegisterPeginUseCase(

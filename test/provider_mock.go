@@ -73,9 +73,19 @@ func (m *ProviderMock) MaxPegoutConfirmations() uint16 {
 	return args.Get(0).(uint16)
 }
 
+func (m *ProviderMock) ValidateAmountForPegin(amount *entities.Wei) error {
+	args := m.Called(amount)
+	return args.Error(0)
+}
+
 func (m *ProviderMock) ValidateAmountForPegout(amount *entities.Wei) error {
 	args := m.Called(amount)
 	return args.Error(0)
+}
+
+func (m *ProviderMock) PenaltyFeePegin() *entities.Wei {
+	args := m.Called()
+	return args.Get(0).(*entities.Wei)
 }
 
 func (m *ProviderMock) PenaltyFeePegout() *entities.Wei {
@@ -91,6 +101,16 @@ func (m *ProviderMock) GetRootstockConfirmationsForValue(value *entities.Wei) ui
 func (m *ProviderMock) GetBitcoinConfirmationsForValue(value *entities.Wei) uint16 {
 	args := m.Called(value)
 	return args.Get(0).(uint16)
+}
+
+func (m *ProviderMock) TimeForDepositPegin() uint32 {
+	args := m.Called()
+	return args.Get(0).(uint32)
+}
+
+func (m *ProviderMock) CallTime() uint32 {
+	args := m.Called()
+	return args.Get(0).(uint32)
 }
 
 func (m *ProviderMock) TimeForDepositPegout() uint32 {

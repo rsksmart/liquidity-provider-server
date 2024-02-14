@@ -87,12 +87,22 @@ func (m *LbcMock) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64
 	return args.Get(0).([]entities.PunishmentEvent), args.Error(1)
 }
 
+func (m *LbcMock) HashPeginQuote(peginQuote quote.PeginQuote) (string, error) {
+	args := m.Called(peginQuote)
+	return args.String(0), args.Error(1)
+}
+
 func (m *LbcMock) HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error) {
 	args := m.Called(pegoutQuote)
 	return args.String(0), args.Error(1)
 }
 
 func (m *LbcMock) WithdrawPegoutCollateral() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *LbcMock) WithdrawCollateral() error {
 	args := m.Called()
 	return args.Error(0)
 }
@@ -107,5 +117,23 @@ func (m *LbcMock) GetDepositEvents(ctx context.Context, fromBlock uint64, toBloc
 
 func (m *LbcMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
 	args := m.Called(txConfig, params)
+	return args.String(0), args.Error(1)
+}
+
+func (m *LbcMock) GetBalance(address string) (*entities.Wei, error) {
+	args := m.Called(address)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+
+func (m *LbcMock) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (string, error) {
+	args := m.Called(txConfig, peginQuote)
+	return args.String(0), args.Error(1)
+}
+
+func (m *LbcMock) RegisterPegin(params blockchain.RegisterPeginParams) (string, error) {
+	args := m.Called(params)
 	return args.String(0), args.Error(1)
 }
