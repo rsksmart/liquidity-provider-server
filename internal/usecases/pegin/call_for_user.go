@@ -18,7 +18,8 @@ type CallForUserUseCase struct {
 	btc             blockchain.BitcoinNetwork
 	peginProvider   entities.LiquidityProvider
 	eventBus        entities.EventBus
-	rskWalletMutex  *sync.Mutex
+	rsk             blockchain.RootstockRpcServer
+	rskWalletMutex  sync.Locker
 }
 
 func NewCallForUserUseCase(
@@ -27,7 +28,8 @@ func NewCallForUserUseCase(
 	btc blockchain.BitcoinNetwork,
 	peginProvider entities.LiquidityProvider,
 	eventBus entities.EventBus,
-	rskWalletMutex *sync.Mutex,
+	rsk blockchain.RootstockRpcServer,
+	rskWalletMutex sync.Locker,
 ) *CallForUserUseCase {
 	return &CallForUserUseCase{
 		lbc:             lbc,
@@ -35,13 +37,13 @@ func NewCallForUserUseCase(
 		btc:             btc,
 		peginProvider:   peginProvider,
 		eventBus:        eventBus,
+		rsk:             rsk,
 		rskWalletMutex:  rskWalletMutex,
 	}
 }
 
 func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, retainedQuote quote.RetainedPeginQuote) error {
-	balance := new(entities.Wei)
-	valueToSend := new(entities.Wei)
+	var valueToSend *entities.Wei
 	var peginQuote *quote.PeginQuote
 	var err error
 
@@ -66,12 +68,8 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
-	if balance, err = useCase.lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
-	}
-
-	if balance.Cmp(peginQuote.Value) < 0 { // lbc balance is not sufficient, calc delta to transfer
-		valueToSend.Sub(peginQuote.Value, balance)
+	if valueToSend, err = useCase.calculateValueToSend(ctx, *peginQuote, retainedQuote); err != nil {
+		return err
 	}
 
 	retainedQuote, err = useCase.performCallForUser(bitcoinTx, valueToSend, peginQuote, retainedQuote)
@@ -108,6 +106,33 @@ func (useCase *CallForUserUseCase) publishErrorEvent(
 
 	}
 	return wrappedError
+}
+
+func (useCase *CallForUserUseCase) calculateValueToSend(
+	ctx context.Context,
+	peginQuote quote.PeginQuote,
+	retainedQuote quote.RetainedPeginQuote,
+) (*entities.Wei, error) {
+	var contractBalance, networkBalance *entities.Wei
+	var err error
+
+	if contractBalance, err = useCase.lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
+	}
+
+	valueToSend := entities.NewWei(0)
+	if contractBalance.Cmp(peginQuote.Value) < 0 { // lbc balance is not sufficient, calc delta to transfer
+		valueToSend.Sub(peginQuote.Value, contractBalance)
+	} else {
+		return valueToSend, nil
+	}
+
+	if networkBalance, err = useCase.rsk.GetBalance(ctx, useCase.peginProvider.RskAddress()); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
+	} else if networkBalance.Cmp(valueToSend) < 0 {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, usecases.NoLiquidityError, true)
+	}
+	return valueToSend, nil
 }
 
 func (useCase *CallForUserUseCase) performCallForUser(
@@ -164,7 +189,7 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 			ctx,
 			retainedQuote,
 			*peginQuote,
-			fmt.Errorf("insufficient amount %v < %v", sentAmount, peginQuote.Total()),
+			fmt.Errorf("%w: %v < %v", usecases.InsufficientAmountError, sentAmount, peginQuote.Total()),
 			false,
 		)
 	}

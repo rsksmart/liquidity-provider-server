@@ -83,11 +83,11 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
-			Result: usecases.BtcAddressNotSupportedError,
+			Value:  pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
+			Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value:  pegout.NewQuoteRequest("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Value:  pegout.NewQuoteRequest("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
 			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
@@ -95,7 +95,7 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
-			Value:  pegout.NewQuoteRequest("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "any"),
+			Value:  pegout.NewQuoteRequest("tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"),
 			Result: usecases.BtcAddressNotSupportedError,
 		},
 		{
