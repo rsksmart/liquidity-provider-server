@@ -103,14 +103,17 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 }
 
 func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	if w == nil {
+		return bson.TypeInt64, make([]byte, 0), SerializationError
+	}
 	value := make([]byte, 8)
 	binary.LittleEndian.PutUint64(value, w.Uint64())
 	return bson.TypeInt64, value, nil
 }
 
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if bsonType != bson.TypeInt64 {
-		return errors.New("trying to unmarshal something that is not int64 into Wei")
+	if w == nil || bsonType != bson.TypeInt64 {
+		return DeserializationError
 	}
 	slices.Reverse(bytes)
 	w.AsBigInt().SetBytes(bytes)

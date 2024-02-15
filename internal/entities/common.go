@@ -2,11 +2,14 @@ package entities
 
 import (
 	"context"
+	"errors"
 	"github.com/go-playground/validator/v10"
 )
 
 var (
-	validate = validator.New(validator.WithRequiredStructEnabled())
+	DeserializationError = errors.New("error during value deserialization")
+	SerializationError   = errors.New("error during value serialization")
+	validate             = validator.New(validator.WithRequiredStructEnabled())
 )
 
 func ValidateStruct(s any) error {
