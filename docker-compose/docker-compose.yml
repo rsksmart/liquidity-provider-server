@@ -135,6 +135,7 @@ services:
       - /mnt/lps/logs:/home/lps/logs
     depends_on:
       - mongodb
+      - bitcoind
 
     networks:
       - net_lps
