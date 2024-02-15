@@ -16,6 +16,35 @@ func getFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Pa
 
 	// All Federations activated AFTER Iris will be ERP, therefore we build redeem script.
 	if fedInfo.ActiveFedBlockHeight > fedInfo.IrisActivationHeight {
+		buf, err = getFedRedeemScriptAfterIrisActivation(fedInfo, btcParams)
+	} else {
+		buf, err = getFedRedeemScriptBeforeIrisActivation(fedInfo, btcParams)
+	}
+
+	return buf.Bytes(), err
+}
+
+func getFedRedeemScriptAfterIrisActivation(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
+	buf, err := getRedeemScriptBuf(fedInfo, true)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return buf, nil
+}
+
+func getFedRedeemScriptBeforeIrisActivation(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
+	buf, err := getErpRedeemScriptBuf(fedInfo, btcParams)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
+	if err != nil { // ok, it could be that ERP is not yet activated, falling back to redeem Script
 		buf, err = getRedeemScriptBuf(fedInfo, true)
 		if err != nil {
 			return nil, err
@@ -25,27 +54,8 @@ func getFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Pa
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		buf, err = getErpRedeemScriptBuf(fedInfo, btcParams)
-		if err != nil {
-			return nil, err
-		}
-
-		err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
-		if err != nil { // ok, it could be that ERP is not yet activated, falling back to redeem Script
-			buf, err = getRedeemScriptBuf(fedInfo, true)
-			if err != nil {
-				return nil, err
-			}
-
-			err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
-
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 func getRedeemScriptBuf(fedInfo blockchain.FederationInfo, addMultiSig bool) (*bytes.Buffer, error) {
@@ -178,16 +188,17 @@ func addErpNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.S
 	return nil
 }
 
-func getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) ([]byte, error) {
+func getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) []byte {
 	var buf bytes.Buffer
 	hashPrefix, _ := hex.DecodeString("20")
 	buf.Write(hashPrefix)
 	buf.Write(derivationValue)
 	buf.WriteByte(txscript.OP_DROP)
 	buf.Write(fedRedeemScript)
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
+// nolint:cyclop
 func getOpCodeFromInt(val int) byte {
 	switch val {
 	case 1:

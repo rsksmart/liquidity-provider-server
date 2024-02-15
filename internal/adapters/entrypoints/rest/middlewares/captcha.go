@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	log "github.com/sirupsen/logrus"
@@ -35,29 +36,9 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 				return
 			}
 
-			form := make(url.Values)
-			form.Set("secret", captchaSecretKey)
-			form.Set("response", token)
-			res, err := http.DefaultClient.PostForm(captchaUrl, form)
+			validation, err := validateCaptcha(r, captchaUrl, captchaSecretKey, token)
 			if err != nil {
-				details := make(rest.ErrorDetails)
-				details["error"] = err.Error()
-				jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
-				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
-				return
-			}
-
-			defer func() {
-				if err = res.Body.Close(); err != nil {
-					log.Error("Error closing response body: ", err)
-				}
-			}()
-
-			var validation captchaValidationResponse
-			err = json.NewDecoder(res.Body).Decode(&validation)
-			if err != nil {
-				jsonErr := rest.NewErrorResponse("error validating captcha", false)
-				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+				unexpectedCaptchaError(w, err)
 				return
 			}
 
@@ -70,11 +51,48 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 				log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
 				next.ServeHTTP(w, r)
 			} else {
-				details := make(rest.ErrorDetails)
-				details["errors"] = validation.ErrorCodes
-				jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, true)
-				rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+				unexpectedCaptchaError(w, err)
 			}
 		})
 	}
+}
+
+func unexpectedCaptchaError(w http.ResponseWriter, err error) {
+	details := make(rest.ErrorDetails)
+	details["error"] = err.Error()
+	jsonErr := rest.NewErrorResponseWithDetails("error validating captcha", details, false)
+	rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+}
+
+func validateCaptcha(r *http.Request, captchaUrl, captchaSecretKey, token string) (captchaValidationResponse, error) {
+	var validation captchaValidationResponse
+	form := make(url.Values)
+	form.Set("secret", captchaSecretKey)
+	form.Set("response", token)
+	req, err := http.NewRequestWithContext(
+		r.Context(),
+		http.MethodPost,
+		captchaUrl,
+		bytes.NewBufferString(form.Encode()),
+	)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+
+	defer func() {
+		if err = res.Body.Close(); err != nil {
+			log.Error("Error closing response body: ", err)
+		}
+	}()
+
+	err = json.NewDecoder(res.Body).Decode(&validation)
+	if err != nil {
+		return captchaValidationResponse{}, err
+	}
+	return validation, nil
 }

@@ -10,6 +10,12 @@ import (
 	"net/http"
 )
 
+// NewAddPeginCollateralHandler
+// @Title Add PegIn Collateral
+// @Description Adds PegIn Collateral
+// @Param AddCollateralRequest  body pkg.AddCollateralRequest true "Add Collateral Request"
+// @Success 200 object pkg.AddCollateralResponse
+// @Route /pegin/addCollateral [post]
 func NewAddPeginCollateralHandler(useCase *pegin.AddCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error

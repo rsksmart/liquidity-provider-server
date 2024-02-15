@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	log "github.com/sirupsen/logrus"
@@ -60,7 +61,12 @@ func DecodeRequestError(w http.ResponseWriter, err error) {
 	log.Error("Error decoding request: ", err.Error())
 	jsonErr := NewErrorResponse(fmt.Sprintf("Error decoding request: %v", err), true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-	return
+}
+
+func ValidateRequestError(w http.ResponseWriter, err error) {
+	log.Error("Error validating request: ", err.Error())
+	jsonErr := NewErrorResponse(fmt.Sprintf("Error validating request: %v", err), true)
+	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 }
 
 func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) error {
@@ -75,13 +81,16 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 }
 
 func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
+	var validationErrors *validator.ValidationErrors
 	err := RequestValidator.Struct(body)
 	if err == nil {
 		return nil
+	} else if !errors.As(err, &validationErrors) {
+		ValidateRequestError(w, err)
+		return err
 	}
-	validationErrors := err.(validator.ValidationErrors)
 	details := make(ErrorDetails)
-	for _, field := range validationErrors {
+	for _, field := range *validationErrors {
 		details[field.Field()] = fmt.Sprintf("validation failed: %s", field.Tag())
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)

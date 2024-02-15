@@ -11,6 +11,12 @@ import (
 	"net/http"
 )
 
+// NewGetPeginQuoteHandler
+// @Title Pegin GetQuote
+// @Description Gets Pegin Quote
+// @Param PeginQuoteRequest  body pkg.PeginQuoteRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success 200 array pkg.GetPeginQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
+// @Route /pegin/getQuote [post]
 func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error

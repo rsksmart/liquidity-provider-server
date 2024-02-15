@@ -72,7 +72,7 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.Flyover
 	var fedRedeemScript, derivationValue, flyoverScript []byte
 	var addressScriptHash *btcutil.AddressScriptHash
 
-	if derivationValue, err = bridge.getDerivationValueHash(args); err != nil {
+	if derivationValue = bridge.getDerivationValueHash(args); err != nil {
 		return blockchain.FlyoverDerivation{}, fmt.Errorf("error computing derivation value: %w", err)
 	}
 	opts := &bind.CallOpts{}
@@ -93,9 +93,7 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.Flyover
 		}
 	}
 
-	if flyoverScript, err = getFlyoverRedeemScript(derivationValue, fedRedeemScript); err != nil {
-		return blockchain.FlyoverDerivation{}, fmt.Errorf("error generating flyover redeem script: %w", err)
-	}
+	flyoverScript = getFlyoverRedeemScript(derivationValue, fedRedeemScript)
 	if addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, bridge.btcParams); err != nil {
 		return blockchain.FlyoverDerivation{}, err
 	}
@@ -166,7 +164,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 	}, nil
 }
 
-func (bridge *rskBridgeImpl) getDerivationValueHash(args blockchain.FlyoverDerivationArgs) ([]byte, error) {
+func (bridge *rskBridgeImpl) getDerivationValueHash(args blockchain.FlyoverDerivationArgs) []byte {
 	var buf bytes.Buffer
 	buf.Write(args.QuoteHash)
 	buf.Write(args.UserBtcRefundAddress)
@@ -175,5 +173,5 @@ func (bridge *rskBridgeImpl) getDerivationValueHash(args blockchain.FlyoverDeriv
 
 	derivationValueHash := crypto.Keccak256(buf.Bytes())
 
-	return derivationValueHash, nil
+	return derivationValueHash
 }

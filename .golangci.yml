@@ -1,0 +1,13 @@
+run:
+  tests: false # enable when integration dir is updated
+  skip-dirs:
+    - internal/adapters/dataproviders/rootstock/bindings
+linters:
+  presets:
+    - bugs
+    - complexity
+    - unused
+    - performance
+linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true

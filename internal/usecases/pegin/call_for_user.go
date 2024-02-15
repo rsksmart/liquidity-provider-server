@@ -42,11 +42,7 @@ func NewCallForUserUseCase(
 func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, retainedQuote quote.RetainedPeginQuote) error {
 	balance := new(entities.Wei)
 	valueToSend := new(entities.Wei)
-	var txInfo blockchain.BitcoinTransactionInformation
 	var peginQuote *quote.PeginQuote
-	var quoteState quote.PeginState
-	var callForUserTx string
-	var txConfirmations big.Int
 	var err error
 
 	if retainedQuote.State != quote.PeginStateWaitingForDeposit {
@@ -63,24 +59,8 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.ExpiredQuoteError, false)
 	}
 
-	if txInfo, err = useCase.btc.GetTransactionInfo(bitcoinTx); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
-	}
-	txConfirmations.SetUint64(txInfo.Confirmations)
-	if txConfirmations.Cmp(big.NewInt(int64(peginQuote.Confirmations))) < 0 {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.NoEnoughConfirmationsError, true)
-	}
-
-	sentAmount := txInfo.AmountToAddress(retainedQuote.DepositAddress)
-	if sentAmount.Cmp(peginQuote.Total()) < 0 {
-		retainedQuote.UserBtcTxHash = bitcoinTx
-		return useCase.publishErrorEvent(
-			ctx,
-			retainedQuote,
-			*peginQuote,
-			fmt.Errorf("insufficient amount %v < %v", sentAmount, peginQuote.Total()),
-			false,
-		)
+	if err = useCase.validateBitcoinTx(ctx, bitcoinTx, peginQuote, retainedQuote); err != nil {
+		return err
 	}
 
 	useCase.rskWalletMutex.Lock()
@@ -94,22 +74,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 		valueToSend.Sub(peginQuote.Value, balance)
 	}
 
-	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.lbc.CallForUser(config, *peginQuote); err != nil {
-		quoteState = quote.PeginStateCallForUserFailed
-	} else {
-		quoteState = quote.PeginStateCallForUserSucceeded
-	}
-
-	retainedQuote.CallForUserTxHash = callForUserTx
-	retainedQuote.UserBtcTxHash = bitcoinTx
-	retainedQuote.State = quoteState
-	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
-		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
-		PeginQuote:    *peginQuote,
-		RetainedQuote: retainedQuote,
-		Error:         err,
-	})
+	retainedQuote, err = useCase.performCallForUser(bitcoinTx, valueToSend, peginQuote, retainedQuote)
 
 	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		err = errors.Join(err, updateError)
@@ -117,9 +82,8 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 	if err != nil {
 		err = errors.Join(err, usecases.NonRecoverableError)
 		return usecases.WrapUseCaseErrorArgs(usecases.CallForUserId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (useCase *CallForUserUseCase) publishErrorEvent(
@@ -144,4 +108,65 @@ func (useCase *CallForUserUseCase) publishErrorEvent(
 
 	}
 	return wrappedError
+}
+
+func (useCase *CallForUserUseCase) performCallForUser(
+	bitcoinTx string,
+	valueToSend *entities.Wei,
+	peginQuote *quote.PeginQuote,
+	retainedQuote quote.RetainedPeginQuote,
+) (quote.RetainedPeginQuote, error) {
+	var quoteState quote.PeginState
+	var callForUserTx string
+	var err error
+
+	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
+	if callForUserTx, err = useCase.lbc.CallForUser(config, *peginQuote); err != nil {
+		quoteState = quote.PeginStateCallForUserFailed
+	} else {
+		quoteState = quote.PeginStateCallForUserSucceeded
+	}
+
+	retainedQuote.CallForUserTxHash = callForUserTx
+	retainedQuote.UserBtcTxHash = bitcoinTx
+	retainedQuote.State = quoteState
+	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
+		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
+		PeginQuote:    *peginQuote,
+		RetainedQuote: retainedQuote,
+		Error:         err,
+	})
+	return retainedQuote, err
+}
+
+func (useCase *CallForUserUseCase) validateBitcoinTx(
+	ctx context.Context,
+	bitcoinTx string,
+	peginQuote *quote.PeginQuote,
+	retainedQuote quote.RetainedPeginQuote,
+) error {
+	var txInfo blockchain.BitcoinTransactionInformation
+	var txConfirmations big.Int
+	var err error
+
+	if txInfo, err = useCase.btc.GetTransactionInfo(bitcoinTx); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
+	}
+	txConfirmations.SetUint64(txInfo.Confirmations)
+	if txConfirmations.Cmp(big.NewInt(int64(peginQuote.Confirmations))) < 0 {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+
+	sentAmount := txInfo.AmountToAddress(retainedQuote.DepositAddress)
+	if sentAmount.Cmp(peginQuote.Total()) < 0 {
+		retainedQuote.UserBtcTxHash = bitcoinTx
+		return useCase.publishErrorEvent(
+			ctx,
+			retainedQuote,
+			*peginQuote,
+			fmt.Errorf("insufficient amount %v < %v", sentAmount, peginQuote.Total()),
+			false,
+		)
+	}
+	return nil
 }

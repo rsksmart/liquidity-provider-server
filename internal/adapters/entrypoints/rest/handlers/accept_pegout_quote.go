@@ -9,6 +9,12 @@ import (
 	"net/http"
 )
 
+// NewAcceptPegoutQuoteHandler
+// @Title Accept Quote Pegout
+// @Description Accepts Quote Pegout
+// @Param QuoteHash body pkg.AcceptQuoteRequest true "Quote Hash"
+// @Success 200 object pkg.AcceptPegoutResponse
+// @Route /pegout/acceptQuote [post]
 func NewAcceptPegoutQuoteHandler(useCase *pegout.AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error

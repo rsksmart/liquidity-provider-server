@@ -35,7 +35,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout
+			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if err := watcher.checkLiquidityUseCase.Run(ctx); err != nil {
 				log.Error("Error checking liquidity inside watcher: ", err)
 			}

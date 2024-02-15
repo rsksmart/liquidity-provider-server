@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+// NewProviderDetailsHandler
+// @Title Provider detail
+// @Description Returns the details of the provider that manages this instance of LPS
+// @Success 200 object pkg.ProviderDetailResponse "Detail of the provider that manges this instance"
+// @Route /providers/details [get]
 func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		result, err := useCase.Run()

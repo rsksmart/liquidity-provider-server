@@ -37,7 +37,6 @@ func NewRegisterPeginUseCase(
 func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	var err error
 	var peginQuote *quote.PeginQuote
-	var txInfo blockchain.BitcoinTransactionInformation
 	var params blockchain.RegisterPeginParams
 	var newState quote.PeginState
 	var registerPeginTxHash string
@@ -52,10 +51,8 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
 	}
 
-	if txInfo, err = useCase.btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if txInfo.Confirmations < useCase.bridge.GetRequiredTxConfirmations() {
-		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	if err = useCase.validateTransaction(ctx, retainedQuote); err != nil {
+		return err
 	}
 
 	if params, err = useCase.buildRegisterPeginParams(*peginQuote, retainedQuote); err != nil {
@@ -84,9 +81,8 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 	if err != nil {
 		err = errors.Join(err, usecases.NonRecoverableError)
 		return usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (useCase *RegisterPeginUseCase) publishErrorEvent(ctx context.Context, retainedQuote quote.RetainedPeginQuote, err error, recoverable bool) error {
@@ -136,4 +132,15 @@ func (useCase *RegisterPeginUseCase) buildRegisterPeginParams(peginQuote quote.P
 		BlockHeight:           block.Height,
 		Quote:                 peginQuote,
 	}, nil
+}
+
+func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
+	var txInfo blockchain.BitcoinTransactionInformation
+	var err error
+	if txInfo, err = useCase.btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	} else if txInfo.Confirmations < useCase.bridge.GetRequiredTxConfirmations() {
+		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+	return nil
 }
