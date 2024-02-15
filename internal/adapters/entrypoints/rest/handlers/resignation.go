@@ -6,6 +6,11 @@ import (
 	"net/http"
 )
 
+// NewResignationHandler
+// @Title Provider resignation
+// @Description Provider stops being a liquidity provider
+// @Route /provider/resignation [post]
+// @Success 204 object
 func NewResignationHandler(useCase *liquidity_provider.ResignUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()

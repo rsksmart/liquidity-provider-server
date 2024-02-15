@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+// NewGetPeginCollateralHandler
+// @Title Get PegIn Collateral
+// @Description Get PegIn Collateral
+// @Success 200 object pkg.GetCollateralResponse
+// @Route /pegin/collateral [get]
 func NewGetPeginCollateralHandler(useCase *pegin.GetCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		collateral, err := useCase.Run()

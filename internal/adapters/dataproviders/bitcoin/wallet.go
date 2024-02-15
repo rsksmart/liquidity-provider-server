@@ -89,6 +89,9 @@ func (wallet *bitcoindWallet) SendWithOpReturn(address string, value *entities.W
 		decodedAddress: btcutil.Amount(satoshis),
 	}
 	rawTx, err := wallet.conn.client.CreateRawTransaction(nil, output, nil)
+	if err != nil {
+		return "", err
+	}
 
 	opReturnScript, err := txscript.NullDataScript(opReturnContent)
 	if err != nil {
@@ -146,14 +149,17 @@ func (wallet *bitcoindWallet) ImportAddress(address string) error {
 }
 
 func (wallet *bitcoindWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
-	var result []blockchain.BitcoinTransactionInformation
 	var ok bool
 	var tx blockchain.BitcoinTransactionInformation
+	result := make([]blockchain.BitcoinTransactionInformation, 0)
 	parsedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {
 		return nil, err
 	}
 	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(0, 9999, []btcutil.Address{parsedAddress})
+	if err != nil {
+		return nil, err
+	}
 
 	txs := make(map[string]blockchain.BitcoinTransactionInformation)
 	for _, utxo := range utxos {

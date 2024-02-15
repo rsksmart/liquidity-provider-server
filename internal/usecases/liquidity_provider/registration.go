@@ -30,14 +30,12 @@ type operationalInfo struct {
 func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationParams) (int64, error) {
 	var collateral collateralInfo
 	var operational operationalInfo
-	collateralToAdd := new(entities.Wei)
+	var addedCollateral bool
 	var id int64
 	var err error
 
-	if err = entities.ValidateStruct(params); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	} else if !params.Type.IsValid() {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, entities.InvalidProviderTypeError)
+	if err = useCase.validateParams(params); err != nil {
+		return 0, err
 	}
 
 	if collateral, err = useCase.getCollateralInfo(); err != nil {
@@ -47,24 +45,16 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
 
-	if useCase.isProviderRegistered(params.Type, operational) {
+	if useCase.isProviderOperational(params.Type, operational) {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
 	}
 
-	if params.Type.AcceptsPegin() && !operational.operationalForPegin && collateral.peginCollateral.Cmp(entities.NewWei(0)) != 0 {
-		if err = useCase.lbc.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
-			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-		} else {
-			return 0, nil
-		}
+	if addedCollateral, err = useCase.addPeginCollateral(params, operational, collateral); addedCollateral == true || err != nil {
+		return 0, err
 	}
 
-	if params.Type.AcceptsPegout() && !operational.operationalForPegout && collateral.pegoutCollateral.Cmp(entities.NewWei(0)) != 0 {
-		if err = useCase.lbc.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
-			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-		} else {
-			return 0, nil
-		}
+	if addedCollateral, err = useCase.addPegoutCollateral(params, operational, collateral); addedCollateral == true || err != nil {
+		return 0, err
 	}
 
 	log.Debug("Registering new provider...")
@@ -76,9 +66,7 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {
 	var err error
-	minimumCollateral := new(entities.Wei)
-	peginCollateral := new(entities.Wei)
-	pegoutCollateral := new(entities.Wei)
+	var peginCollateral, pegoutCollateral, minimumCollateral *entities.Wei
 
 	if minimumCollateral, err = useCase.lbc.GetMinimumCollateral(); err != nil {
 		return collateralInfo{}, err
@@ -113,7 +101,7 @@ func (useCase *RegistrationUseCase) getOperationalInfo() (operationalInfo, error
 	}, nil
 }
 
-func (useCase *RegistrationUseCase) isProviderRegistered(providerType entities.ProviderType, operational operationalInfo) bool {
+func (useCase *RegistrationUseCase) isProviderOperational(providerType entities.ProviderType, operational operationalInfo) bool {
 	return (providerType == entities.FullProvider && operational.operationalForPegin && operational.operationalForPegout) ||
 		(providerType == entities.PeginProvider && operational.operationalForPegin) ||
 		(providerType == entities.PegoutProvider && operational.operationalForPegout)
@@ -123,4 +111,48 @@ func (useCase *RegistrationUseCase) registerProvider(params blockchain.ProviderR
 	value := new(entities.Wei)
 	txConfig := blockchain.NewTransactionConfig(value.Mul(collateral.minimumCollateral, entities.NewUWei(2)), 0, nil)
 	return useCase.lbc.RegisterProvider(txConfig, params)
+}
+
+func (useCase *RegistrationUseCase) validateParams(params blockchain.ProviderRegistrationParams) error {
+	var err error
+	if err = entities.ValidateStruct(params); err != nil {
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	} else if !params.Type.IsValid() {
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, entities.InvalidProviderTypeError)
+	}
+	return nil
+}
+
+func (useCase *RegistrationUseCase) addPeginCollateral(
+	params blockchain.ProviderRegistrationParams,
+	operational operationalInfo,
+	collateral collateralInfo,
+) (bool, error) {
+	var err error
+	var collateralToAdd *entities.Wei
+	if !(params.Type.AcceptsPegin() && !operational.operationalForPegin && collateral.peginCollateral.Cmp(entities.NewWei(0)) != 0) {
+		return false, nil
+	}
+	if err = useCase.lbc.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
+		return true, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	} else {
+		return true, nil
+	}
+}
+
+func (useCase *RegistrationUseCase) addPegoutCollateral(
+	params blockchain.ProviderRegistrationParams,
+	operational operationalInfo,
+	collateral collateralInfo,
+) (bool, error) {
+	var err error
+	var collateralToAdd *entities.Wei
+	if !(params.Type.AcceptsPegout() && !operational.operationalForPegout && collateral.pegoutCollateral.Cmp(entities.NewWei(0)) != 0) {
+		return false, nil
+	}
+	if err = useCase.lbc.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
+		return true, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	} else {
+		return true, nil
+	}
 }

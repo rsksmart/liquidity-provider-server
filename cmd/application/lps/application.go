@@ -66,7 +66,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 
 	config := environment.ConfigurationFromEnv(env)
 	liquidityProvider := registry.NewLiquidityProvider(config, dbRegistry, rootstockRegistry, btcRegistry)
-	alertSender := registry.NewAlertSender(env)
+	alertSender := registry.NewAlertSender(initCtx, env)
 	eventBus := registry.NewEventBus()
 	mutexes := environment.NewApplicationMutexes()
 

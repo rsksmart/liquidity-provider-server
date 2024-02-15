@@ -44,6 +44,8 @@ type UseCaseRegistry struct {
 	addPegoutCollateralUseCase      *pegout.AddCollateralUseCase
 }
 
+// NewUseCaseRegistry
+// nolint:funlen
 func NewUseCaseRegistry(
 	env environment.Environment,
 	rskRegistry *Rootstock,

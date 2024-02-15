@@ -2,11 +2,13 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"math"
 	"math/big"
 )
 
@@ -73,8 +75,11 @@ func ErrorArg(key, value string) ErrorArgs {
 }
 
 func (args ErrorArgs) String() string {
-	jsonString, _ := json.Marshal(args)
-	return string(jsonString)
+	if jsonString, err := json.Marshal(args); err != nil {
+		return ""
+	} else {
+		return string(jsonString)
+	}
 }
 
 func WrapUseCaseError(useCase UseCaseId, err error) error {
@@ -95,8 +100,8 @@ type DaoAmounts struct {
 }
 
 func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
+	var daoGasAmount *entities.Wei
 	daoFeeAmount := new(entities.Wei)
-	daoGasAmount := new(entities.Wei)
 	var err error
 	if daoFeePercentage == 0 {
 		return DaoAmounts{}, nil
@@ -112,4 +117,28 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 		DaoFeeAmount: daoFeeAmount,
 		DaoGasAmount: daoGasAmount,
 	}, nil
+}
+
+func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+	var err error
+	var minLockTxValueInSatoshi *entities.Wei
+
+	errorArgs := NewErrorArgs()
+	if minLockTxValueInSatoshi, err = bridge.GetMinimumLockTxValue(); err != nil {
+		return WrapUseCaseError(useCase, err)
+	}
+	if minimumInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64()); value.Cmp(minimumInWei) <= 0 {
+		errorArgs["minimum"] = minimumInWei.String()
+		errorArgs["value"] = value.String()
+		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
+	}
+	return nil
+}
+
+func GetRandomInt() (int64, error) {
+	random, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt))
+	if err != nil {
+		return 0, err
+	}
+	return random.Int64(), nil
 }

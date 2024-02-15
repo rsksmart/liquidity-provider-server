@@ -10,6 +10,12 @@ import (
 	"net/http"
 )
 
+// NewGetPegoutQuoteHandler
+// @Title Pegout GetQuote
+// @Description Gets Pegout Quote
+// @Param PegoutQuoteRequest body pkg.PegoutQuoteRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success 200 array pkg.GetPegoutQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
+// @Route /pegout/getQuotes [post]
 func NewGetPegoutQuoteHandler(useCase *pegout.GetQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error

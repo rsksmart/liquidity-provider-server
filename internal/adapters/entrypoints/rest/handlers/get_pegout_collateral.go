@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+// NewGetPegoutCollateralHandler
+// @Title Get PegOut Collateral
+// @Description Get PegOut Collateral
+// @Success 200 object pkg.GetCollateralResponse
+// @Route /pegout/collateral [get]
 func NewGetPegoutCollateralHandler(useCase *pegout.GetCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		collateral, err := useCase.Run()

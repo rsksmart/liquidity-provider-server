@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+// NewHealthCheckHandler
+// @Title Health
+// @Description Returns server health.
+// @Success 200  object pkg.HealthResponse
+// @Route /health [get]
 func NewHealthCheckHandler(useCase *usecases.HealthUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		result := useCase.Run(req.Context())

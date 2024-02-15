@@ -6,6 +6,7 @@ if [ -z "${LPS_STAGE}" ]; then
   echo "LPS_STAGE is not set. Exit 1"
   exit 1
 elif [ "$LPS_STAGE" = "regtest" ]; then
+  cp ../../sample-config.env .env.regtest
   ENV_FILE=".env.regtest"
 elif [ "$LPS_STAGE" = "testnet" ]; then
   ENV_FILE=".env.testnet"
@@ -23,12 +24,6 @@ if [ -z "${LPS_UID}" ]; then
 fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
-
-go install github.com/parvez3019/go-swagger3@latest
-export PATH="$HOME/go/bin:$PATH"
-
-echo "Compiling LPS with OpenAPI Specifications"
-go-swagger3 --module-path ../../ --output OpenAPI.json --schema-without-pkg --generate-yaml true --mainfile-path ../../main.go --handler-path ../../http/server.go
 
 
 SCRIPT_CMD=$1
@@ -107,17 +102,17 @@ echo "Waiting for Bitcoind to be up and running..."
 while true
 do
   sleep 3
-  curl -s "http://127.0.0.1:5555" -X POST --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnetworkinfo", "params": [], "id":"1"}' | grep "\"result\":{" \
+  curl -s "http://127.0.0.1:5555" -X POST --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnetworkinfo", "params": [], "id":"1"}' | grep "\"result\":{" \
     && echo "Bitcoind is up and running" \
     && break
 done
 
-curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getwalletinfo", "params": [], "id":"getwallet"}' | grep "{\"result\":null,\"error\":{\"code\":-18" \
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getwalletinfo", "params": [], "id":"getwallet"}' | grep "{\"result\":null,\"error\":{\"code\":-18" \
   && echo "No default wallet" \
   && echo "Creating wallet" \
-  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "createwallet", "params": ["main", false, false, "test-password", true, false, true], "id":"createwallet"}' \
-  && curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
-  | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [500, "ADDRESS"], "id":"generatetoaddress"}' \
+  && curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "createwallet", "params": ["main", false, false, "test-password", true, false, true], "id":"createwallet"}' \
+  && curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
+  | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [500, "ADDRESS"], "id":"generatetoaddress"}' \
   && echo "Wallet created and generated 500 blocks"
 
 if [ "$LPS_STAGE" = "regtest" ]; then
@@ -128,17 +123,17 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   for PROVIDER in "${PROVIDERS[@]}"
   do
     # pre-fund provider in regtest, if needed
-    PROVIDER_RSK_ADDR_LINE=$(cat "$ENV_FILE" | grep "$PROVIDER" | head -n 1 | tr -d '\r')
-    PROVIDER_RSK_ADDR="${PROVIDER_RSK_ADDR_LINE#"$PROVIDER="}"
-    PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
+    PROVIDER_RSK_ADDR_LINE=$(cat "$ENV_FILE" | grep "$LIQUIDITY_PROVIDER_RSK_ADDR" | head -n 1 | tr -d '\r')
+    PROVIDER_RSK_ADDR="${PROVIDER_RSK_ADDR_LINE#"$LIQUIDITY_PROVIDER_RSK_ADDR="}"
+    PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
     if [ "$PROVIDER_TX_COUNT" = "0x0" ]; then
-      echo "Transferring funds to $PROVIDER_RSK_ADDR..."
+      echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
 
-      TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
+      TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
       echo "Result: $TX_HASH"
       sleep 10
     else
-      echo "No need to fund the '$PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
+      echo "No need to fund the '$LIQUIDITY_PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
     fi
   done
 

@@ -80,8 +80,8 @@ func (lp *LocalLiquidityProvider) ValidateAmountForPegout(amount *entities.Wei) 
 }
 
 func (lp *LocalLiquidityProvider) GetRootstockConfirmationsForValue(value *entities.Wei) uint16 {
-	var values []int
-	for key, _ := range lp.env.RskConfig.Confirmations {
+	values := make([]int, 0)
+	for key := range lp.env.RskConfig.Confirmations {
 		values = append(values, key)
 	}
 	slices.Sort(values)
@@ -169,8 +169,8 @@ func (lp *LocalLiquidityProvider) ValidateAmountForPegin(amount *entities.Wei) e
 }
 
 func (lp *LocalLiquidityProvider) GetBitcoinConfirmationsForValue(value *entities.Wei) uint16 {
-	var values []int
-	for key, _ := range lp.env.BtcConfig.Confirmations {
+	values := make([]int, 0)
+	for key := range lp.env.BtcConfig.Confirmations {
 		values = append(values, key)
 	}
 	slices.Sort(values)

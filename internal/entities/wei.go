@@ -80,9 +80,9 @@ func (w *Wei) Value() (driver.Value, error) {
 }
 
 func (w *Wei) Scan(src interface{}) error {
-	switch src.(type) {
+	switch src := src.(type) {
 	case string:
-		_, ok := w.AsBigInt().SetString(src.(string), 10)
+		_, ok := w.AsBigInt().SetString(src, 10)
 		if !ok {
 			return errors.New("cannot scan invalid value")
 		}

@@ -46,17 +46,8 @@ func NewAcceptQuoteUseCase(
 func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (quote.AcceptedQuote, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	var quoteHashBytes []byte
 	var peginQuote *quote.PeginQuote
 	var retainedQuote *quote.RetainedPeginQuote
-	var derivation blockchain.FlyoverDerivation
-	var quoteSignature string
-
-	requiredLiquidity := new(entities.Wei)
-
-	if quoteHashBytes, err = hex.DecodeString(quoteHash); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
-	}
 
 	if peginQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -82,22 +73,8 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 		}, nil
 	}
 
-	if derivation, err = useCase.calculateDerivationAddress(quoteHashBytes, *peginQuote); err != nil {
+	if retainedQuote, err = useCase.buildRetainedQuote(ctx, quoteHash, peginQuote); err != nil {
 		return quote.AcceptedQuote{}, err
-	}
-	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *peginQuote); err != nil {
-		return quote.AcceptedQuote{}, err
-	}
-	if quoteSignature, err = useCase.lp.SignQuote(quoteHash); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
-	}
-
-	retainedQuote = &quote.RetainedPeginQuote{
-		QuoteHash:         quoteHash,
-		DepositAddress:    derivation.Address,
-		Signature:         quoteSignature,
-		RequiredLiquidity: requiredLiquidity,
-		State:             quote.PeginStateWaitingForDeposit,
 	}
 
 	if err = entities.ValidateStruct(retainedQuote); err != nil {
@@ -150,7 +127,7 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 
 func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, peginQuote quote.PeginQuote) (*entities.Wei, error) {
 	var err error
-	gasPrice := new(entities.Wei)
+	var gasPrice *entities.Wei
 	errorArgs := usecases.NewErrorArgs()
 
 	gasLimit := new(entities.Wei).Add(
@@ -168,4 +145,33 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.NoLiquidityError, errorArgs)
 	}
 	return requiredLiquidity, nil
+}
+
+func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quoteHash string, peginQuote *quote.PeginQuote) (*quote.RetainedPeginQuote, error) {
+	var derivation blockchain.FlyoverDerivation
+	var requiredLiquidity *entities.Wei
+	var quoteHashBytes []byte
+	var quoteSignature string
+	var err error
+
+	if quoteHashBytes, err = hex.DecodeString(quoteHash); err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	}
+	if derivation, err = useCase.calculateDerivationAddress(quoteHashBytes, *peginQuote); err != nil {
+		return nil, err
+	}
+	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *peginQuote); err != nil {
+		return nil, err
+	}
+	if quoteSignature, err = useCase.lp.SignQuote(quoteHash); err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	}
+
+	return &quote.RetainedPeginQuote{
+		QuoteHash:         quoteHash,
+		DepositAddress:    derivation.Address,
+		Signature:         quoteSignature,
+		RequiredLiquidity: requiredLiquidity,
+		State:             quote.PeginStateWaitingForDeposit,
+	}, nil
 }

@@ -13,7 +13,7 @@ services:
       - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoind/.bitcoind
     networks:
       - net_lps
-    command: ["bitcoind", "-rpcuser=${BTCD_RPC_USER}", "-rpcpassword=${BTCD_RPC_PASS}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
+    command: ["bitcoind", "-rpcuser=${BTC_USERNAME}", "-rpcpassword=${BTC_PASSWORD}", "-addresstype=legacy", "-${LPS_STAGE}", "-printtoconsole", "-server",
               "-txindex", "-deprecatedrpc=signrawtransaction", "-deprecatedrpc=accounts",
               "-rpcbind=0.0.0.0", "-rpcallowip=0.0.0.0/0", "-rpcport=5555"]
 
