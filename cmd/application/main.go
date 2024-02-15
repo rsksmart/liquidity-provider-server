@@ -24,7 +24,6 @@ func main() {
 	initCtx, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
 
 	env := environment.LoadEnv()
-	secrets := environment.LoadSecrets(initCtx, *env)
 
 	logLevel, err := log.ParseLevel(env.LogLevel)
 	if err != nil {
@@ -42,6 +41,10 @@ func main() {
 			log.SetOutput(file)
 		}
 	}
+
+	log.Debugf("Environment loaded: %+v", env)
+
+	secrets := environment.LoadSecrets(initCtx, *env)
 
 	log.Info("Initializing application...")
 	app := lps.NewApplication(initCtx, *env, *secrets)
