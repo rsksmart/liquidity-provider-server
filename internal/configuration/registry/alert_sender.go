@@ -2,7 +2,6 @@ package registry
 
 import (
 	"context"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/alerting"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -11,7 +10,7 @@ import (
 )
 
 func NewAlertSender(ctx context.Context, env environment.Environment) entities.AlertSender {
-	awsConfiguration, err := awsConfig.LoadDefaultConfig(ctx)
+	awsConfiguration, err := environment.GetAwsConfig(ctx, env)
 	if err != nil {
 		log.Fatal("error loading alert sender: ", err)
 	}
