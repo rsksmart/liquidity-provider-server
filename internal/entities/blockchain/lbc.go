@@ -20,7 +20,7 @@ type RegisterPeginParams struct {
 func (params RegisterPeginParams) String() string {
 	return fmt.Sprintf(
 		"RegisterPeginParams { QuoteSignature: %s, BitcoinRawTransaction: %s, "+
-			"PartialMerkleTree: %s, BlockHeight: %v, Quote: %#v }",
+			"PartialMerkleTree: %s, BlockHeight: %v, Quote: %+v }",
 		hex.EncodeToString(params.QuoteSignature),
 		hex.EncodeToString(params.BitcoinRawTransaction),
 		hex.EncodeToString(params.PartialMerkleTree),
@@ -40,7 +40,7 @@ type RefundPegoutParams struct {
 func (params RefundPegoutParams) String() string {
 	return fmt.Sprintf(
 		"RefundPegoutParams { QuoteHash: %s, BtcRawTx: %s, "+
-			"BtcBlockHeaderHash: %s, MerkleBranchPath: %v, MerkleBranchHashes: %#v }",
+			"BtcBlockHeaderHash: %s, MerkleBranchPath: %v, MerkleBranchHashes: %v }",
 		hex.EncodeToString(params.QuoteHash[:]),
 		hex.EncodeToString(params.BtcRawTx),
 		hex.EncodeToString(params.BtcBlockHeaderHash[:]),

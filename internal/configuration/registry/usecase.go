@@ -85,6 +85,7 @@ func NewUseCaseRegistry(
 			eventBus,
 			rskRegistry.Bridge,
 			btcRegistry.RpcServer,
+			mutexes.RskWalletMutex(),
 		),
 		acceptPeginQuoteUseCase: pegin.NewAcceptQuoteUseCase(
 			databaseRegistry.PeginRepository,

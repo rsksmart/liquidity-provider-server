@@ -105,9 +105,9 @@ func (watcher *PegoutBtcTransferWatcher) refundPegout(watchedQuote w.WatchedPego
 	var err error
 	if err = watcher.refundPegoutUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Errorf("Error executing register pegin on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Errorf("Error executing refund pegout on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
 	} else if err != nil {
-		log.Errorf("Error executing register pegin on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Errorf("Error executing refund pegout on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}

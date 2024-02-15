@@ -8,6 +8,7 @@ download:
 	go mod download
 
 lint:
+	test -z $(shell gofmt -l .)
 	golangci-lint run -v ./...
 
 validation: lint
@@ -25,3 +26,13 @@ api:
 	--output OpenApi.yml \
 	--schema-without-pkg \
 	--generate-yaml true
+
+coverage: clean
+	mkdir coverage
+	go test -v -race -covermode=atomic -coverpkg=./... -coverprofile=coverage/cover.out ./...
+	go tool cover -func "coverage/cover.out"
+	go tool cover -html="coverage/cover.out"
+	rm coverage/cover.out
+
+clean:
+	rm -rf build coverage

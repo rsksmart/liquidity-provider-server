@@ -21,3 +21,4 @@ integration/geth_keystore
 keystore/
 build/
 /**/.env.regtest
+coverage/

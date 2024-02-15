@@ -77,18 +77,12 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
-	if err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
+	if retainedQuote, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
 	}
 
-	if _, sendRbtcError := useCase.sendRbtcToBridge(ctx, *pegoutQuote); err != nil {
-		err = errors.Join(err, sendRbtcError)
-	} else if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
-		err = errors.Join(err, updateError)
-	}
-
-	if err != nil {
-		return usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
+	if retainedQuote, err = useCase.sendRbtcToBridge(ctx, *pegoutQuote, retainedQuote); err != nil {
+		return err
 	}
 	return nil
 }
@@ -142,19 +136,24 @@ func (useCase *RefundPegoutUseCase) buildRefundPegoutParams(retainedQuote quote.
 	}, nil
 }
 
-func (useCase *RefundPegoutUseCase) sendRbtcToBridge(ctx context.Context, pegoutQuote quote.PegoutQuote) (string, error) {
-	var err error
+func (useCase *RefundPegoutUseCase) sendRbtcToBridge(ctx context.Context, pegoutQuote quote.PegoutQuote, retainedQuote quote.RetainedPegoutQuote) (quote.RetainedPegoutQuote, error) {
+	var err, updateError error
 	var txHash string
 	value := new(entities.Wei)
 
 	value.Add(pegoutQuote.Value, pegoutQuote.CallFee)
 	value.Add(value, pegoutQuote.GasFee)
 	config := blockchain.NewTransactionConfig(value, bridgeConversionGasLimit, entities.NewWei(bridgeConversionGasPrice))
-	if txHash, err = useCase.rskWallet.SendRbtc(ctx, config, useCase.bridge.GetAddress()); err != nil {
-		return "", err
+	txHash, err = useCase.rskWallet.SendRbtc(ctx, config, useCase.bridge.GetAddress())
+	if err == nil {
+		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.RefundPegoutId, txHash)
 	}
-	log.Debugf("%s: transaction sent to the bridge successfully (%s)\n", usecases.RefundPegoutId, txHash)
-	return txHash, nil
+
+	retainedQuote.BridgeRefundTxHash = txHash
+	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
+		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, errors.Join(updateError, err), usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
+	}
+	return retainedQuote, err
 }
 
 func (useCase *RefundPegoutUseCase) performRefundPegout(
@@ -162,13 +161,13 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	retainedQuote quote.RetainedPegoutQuote,
 	txConfig blockchain.TransactionConfig,
 	params blockchain.RefundPegoutParams,
-) error {
+) (quote.RetainedPegoutQuote, error) {
 	var newState quote.PegoutState
 	var refundPegoutTxHash string
-	var err error
+	var err, updateError error
 
 	if refundPegoutTxHash, err = useCase.lbc.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PegoutStateRefundPegOutFailed
 	} else {
@@ -182,7 +181,11 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 		RetainedQuote: retainedQuote,
 		Error:         err,
 	})
-	return nil
+
+	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
+		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, errors.Join(updateError, err), usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
+	}
+	return retainedQuote, err
 }
 
 func (useCase *RefundPegoutUseCase) validateBtcTransaction(

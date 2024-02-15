@@ -66,6 +66,15 @@ func (quote *PeginQuote) IsExpired() bool {
 }
 
 func (quote *PeginQuote) Total() *entities.Wei {
+	if quote.Value == nil {
+		quote.Value = entities.NewWei(0)
+	}
+	if quote.CallFee == nil {
+		quote.CallFee = entities.NewWei(0)
+	}
+	if quote.GasFee == nil {
+		quote.GasFee = entities.NewWei(0)
+	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)

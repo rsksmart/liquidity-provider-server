@@ -13,7 +13,9 @@ var (
 	btcTestnetP2SHRegex  = regexp.MustCompile("^[2]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
 )
 
-func IsLegacyBtcAddress(address string) bool {
+// IsSupportedBtcAddress checks if flyover protocol supports the given address
+// Currently the supported address types are P2PKH and P2SH
+func IsSupportedBtcAddress(address string) bool {
 	return isP2PKH(address) || isP2SH(address)
 }
 

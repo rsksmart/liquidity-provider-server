@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	svcStatusOk          = "ok"
-	svcStatusDegraded    = "degraded"
-	svcStatusUnreachable = "unreachable"
+	SvcStatusOk          = "ok"
+	SvcStatusDegraded    = "degraded"
+	SvcStatusUnreachable = "unreachable"
 )
 
 type HealthUseCase struct {
@@ -21,32 +21,34 @@ func NewHealthUseCase(rsk entities.Service, btc entities.Service, db entities.Se
 	return &HealthUseCase{rsk: rsk, btc: btc, db: db}
 }
 
+type Services struct {
+	Db  string
+	Rsk string
+	Btc string
+}
+
 type HealthStatus struct {
 	Status   string
-	Services struct {
-		Db  string
-		Rsk string
-		Btc string
-	}
+	Services Services
 }
 
 func (useCase *HealthUseCase) Run(ctx context.Context) HealthStatus {
-	lpsSvcStatus := svcStatusOk
-	dbSvcStatus := svcStatusOk
-	rskSvcStatus := svcStatusOk
-	btcSvcStatus := svcStatusOk
+	lpsSvcStatus := SvcStatusOk
+	dbSvcStatus := SvcStatusOk
+	rskSvcStatus := SvcStatusOk
+	btcSvcStatus := SvcStatusOk
 
 	if !useCase.db.CheckConnection(ctx) {
-		dbSvcStatus = svcStatusUnreachable
-		lpsSvcStatus = svcStatusDegraded
+		dbSvcStatus = SvcStatusUnreachable
+		lpsSvcStatus = SvcStatusDegraded
 	}
 	if !useCase.btc.CheckConnection(ctx) {
-		btcSvcStatus = svcStatusUnreachable
-		lpsSvcStatus = svcStatusDegraded
+		btcSvcStatus = SvcStatusUnreachable
+		lpsSvcStatus = SvcStatusDegraded
 	}
 	if !useCase.rsk.CheckConnection(ctx) {
-		rskSvcStatus = svcStatusUnreachable
-		lpsSvcStatus = svcStatusDegraded
+		rskSvcStatus = SvcStatusUnreachable
+		lpsSvcStatus = SvcStatusDegraded
 	}
 
 	return HealthStatus{

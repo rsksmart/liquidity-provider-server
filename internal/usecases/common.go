@@ -48,7 +48,7 @@ const (
 
 var (
 	NonRecoverableError         = errors.New("non recoverable")
-	TxBelowMinimumError         = errors.New("requested amount below bridge's min pegin transaction value")
+	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
 	BtcAddressNotSupportedError = errors.New("btc address not supported")
 	RskAddressNotSupportedError = errors.New("rsk address not supported")
 	QuoteNotFoundError          = errors.New("quote not found")
@@ -121,14 +121,14 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 
 func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
 	var err error
-	var minLockTxValueInSatoshi *entities.Wei
+	var minLockTxValue *entities.Wei
 
 	errorArgs := NewErrorArgs()
-	if minLockTxValueInSatoshi, err = bridge.GetMinimumLockTxValue(); err != nil {
+	if minLockTxValue, err = bridge.GetMinimumLockTxValue(); err != nil {
 		return WrapUseCaseError(useCase, err)
 	}
-	if minimumInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64()); value.Cmp(minimumInWei) <= 0 {
-		errorArgs["minimum"] = minimumInWei.String()
+	if value.Cmp(minLockTxValue) < 0 {
+		errorArgs["minimum"] = minLockTxValue.String()
 		errorArgs["value"] = value.String()
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
 	}
