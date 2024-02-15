@@ -10,7 +10,7 @@ services:
     ports:
       - "5555:5555"
     volumes:
-      - ${BTCD_HOME:-/mnt/bitcoin}:/home/bitcoin/.bitcoind
+      - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoin/.bitcoin
     networks:
       - net_lps
     command:
