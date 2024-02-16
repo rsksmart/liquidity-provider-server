@@ -150,7 +150,7 @@ func (useCase *RefundPegoutUseCase) sendRbtcToBridge(ctx context.Context, pegout
 	}
 
 	retainedQuote.BridgeRefundTxHash = txHash
-	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
+	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, errors.Join(updateError, err), usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return retainedQuote, err
@@ -182,7 +182,7 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 		Error:         err,
 	})
 
-	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
+	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, errors.Join(updateError, err), usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return retainedQuote, err
