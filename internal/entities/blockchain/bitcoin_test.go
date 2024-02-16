@@ -320,3 +320,41 @@ func TestIsSupportedBtcAddress(t *testing.T) {
 		assert.Truef(t, blockchain.IsSupportedBtcAddress(address), "Address %s should be supported", address)
 	}
 }
+
+func TestIsMainnetBtcAddress(t *testing.T) {
+	var mainnetAddresses []string
+	mainnetAddresses = append(mainnetAddresses, p2pkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2shMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, nativeSegwitMainnetAddresses...)
+
+	var testnetAddresses []string
+	testnetAddresses = append(testnetAddresses, p2pkhTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2shTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, nativeSegwitTestnetAddresses...)
+
+	for _, address := range mainnetAddresses {
+		assert.Truef(t, blockchain.IsMainnetBtcAddress(address), "IsMainnetBtcAddress should return true for address %s", address)
+	}
+	for _, address := range testnetAddresses {
+		assert.Falsef(t, blockchain.IsMainnetBtcAddress(address), "IsMainnetBtcAddress should return false for address %s", address)
+	}
+}
+
+func TestIsTestnetBtcAddress(t *testing.T) {
+	var mainnetAddresses []string
+	mainnetAddresses = append(mainnetAddresses, p2pkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2shMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, nativeSegwitMainnetAddresses...)
+
+	var testnetAddresses []string
+	testnetAddresses = append(testnetAddresses, p2pkhTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2shTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, nativeSegwitTestnetAddresses...)
+
+	for _, address := range mainnetAddresses {
+		assert.Falsef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return false for address %s", address)
+	}
+	for _, address := range testnetAddresses {
+		assert.Truef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return true for address %s", address)
+	}
+}

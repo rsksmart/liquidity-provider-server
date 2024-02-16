@@ -44,7 +44,8 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 		)
 
 		result, err = useCase.Run(req.Context(), peginRequest)
-		if errors.Is(err, usecases.BtcAddressNotSupportedError) ||
+		if errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
+			errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
 			errors.Is(err, usecases.RskAddressNotSupportedError) ||
 			errors.Is(err, usecases.TxBelowMinimumError) ||
 			errors.Is(err, usecases.AmountOutOfRangeError) {
