@@ -35,7 +35,7 @@ func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote
 
 func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PeginState) ([]WatchedPeginQuote, error) {
 	var retainedQuotes []quote.RetainedPeginQuote
-	watchedQuote := make([]WatchedPeginQuote, 0)
+	watchedQuotes := make([]WatchedPeginQuote, 0)
 	var peginQuote *quote.PeginQuote
 	var err error
 	if retainedQuotes, err = useCase.peginRepository.GetRetainedQuoteByState(ctx, state); err != nil {
@@ -46,10 +46,10 @@ func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context
 		if peginQuote, err = useCase.peginRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
 			return nil, usecases.WrapUseCaseError(usecases.GetWatchedPeginQuoteId, err)
 		}
-		watchedQuote = append(watchedQuote, WatchedPeginQuote{
-			PeginQuote:    *peginQuote,
-			RetainedQuote: retainedQuote,
-		})
+		watchedQuotes = append(
+			watchedQuotes,
+			NewWatchedPeginQuote(*peginQuote, retainedQuote),
+		)
 	}
-	return watchedQuote, nil
+	return watchedQuotes, nil
 }

@@ -27,7 +27,7 @@ type RefundPegoutUseCase struct {
 	btc             blockchain.BitcoinNetwork
 	rskWallet       blockchain.RootstockWallet
 	bridge          blockchain.RootstockBridge
-	rskWalletMutex  *sync.Mutex
+	rskWalletMutex  sync.Locker
 }
 
 func NewRefundPegoutUseCase(
@@ -37,7 +37,7 @@ func NewRefundPegoutUseCase(
 	btc blockchain.BitcoinNetwork,
 	rskWallet blockchain.RootstockWallet,
 	bridge blockchain.RootstockBridge,
-	rskWalletMutex *sync.Mutex,
+	rskWalletMutex sync.Locker,
 ) *RefundPegoutUseCase {
 	return &RefundPegoutUseCase{
 		quoteRepository: quoteRepository,
@@ -69,8 +69,8 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return err
 	}
 
-	if params, err = useCase.buildRefundPegoutParams(retainedQuote); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	if params, err = useCase.buildRefundPegoutParams(ctx, retainedQuote); err != nil {
+		return err
 	}
 	txConfig := blockchain.NewTransactionConfig(nil, refundPegoutGasLimit, nil)
 
@@ -90,10 +90,10 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retainedQuote quote.RetainedPegoutQuote, err error, recoverable bool) error {
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
+		retainedQuote.State = quote.PegoutStateRefundPegOutFailed
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
 			wrappedError = errors.Join(wrappedError, err)
 		}
-		retainedQuote.State = quote.PegoutStateRefundPegOutFailed
 		useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 			RetainedQuote: retainedQuote,
@@ -103,7 +103,7 @@ func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retai
 	return wrappedError
 }
 
-func (useCase *RefundPegoutUseCase) buildRefundPegoutParams(retainedQuote quote.RetainedPegoutQuote) (blockchain.RefundPegoutParams, error) {
+func (useCase *RefundPegoutUseCase) buildRefundPegoutParams(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (blockchain.RefundPegoutParams, error) {
 	var merkleBranch blockchain.MerkleBranch
 	var block blockchain.BitcoinBlockInformation
 	var err error
@@ -111,19 +111,19 @@ func (useCase *RefundPegoutUseCase) buildRefundPegoutParams(retainedQuote quote.
 	var quoteHashFixedBytes [32]byte
 
 	if merkleBranch, err = useCase.btc.BuildMerkleBranch(retainedQuote.LpBtcTxHash); err != nil {
-		return blockchain.RefundPegoutParams{}, err
+		return blockchain.RefundPegoutParams{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	}
 
 	if block, err = useCase.btc.GetTransactionBlockInfo(retainedQuote.LpBtcTxHash); err != nil {
-		return blockchain.RefundPegoutParams{}, err
+		return blockchain.RefundPegoutParams{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	}
 
 	if rawTx, err = useCase.btc.GetRawTransaction(retainedQuote.LpBtcTxHash); err != nil {
-		return blockchain.RefundPegoutParams{}, err
+		return blockchain.RefundPegoutParams{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	}
 
 	if quoteHashBytes, err = hex.DecodeString(retainedQuote.QuoteHash); err != nil {
-		return blockchain.RefundPegoutParams{}, err
+		return blockchain.RefundPegoutParams{}, useCase.publishErrorEvent(ctx, retainedQuote, err, false)
 	}
 	copy(quoteHashFixedBytes[:], quoteHashBytes)
 
