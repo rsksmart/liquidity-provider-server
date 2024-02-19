@@ -17,7 +17,7 @@ type RegisterPeginUseCase struct {
 	eventBus        entities.EventBus
 	bridge          blockchain.RootstockBridge
 	btc             blockchain.BitcoinNetwork
-	rskWalletMutex  *sync.Mutex
+	rskWalletMutex  sync.Locker
 }
 
 func NewRegisterPeginUseCase(
@@ -26,7 +26,7 @@ func NewRegisterPeginUseCase(
 	eventBus entities.EventBus,
 	bridge blockchain.RootstockBridge,
 	btc blockchain.BitcoinNetwork,
-	rskWalletMutex *sync.Mutex,
+	rskWalletMutex sync.Locker,
 ) *RegisterPeginUseCase {
 	return &RegisterPeginUseCase{
 		lbc:             lbc,

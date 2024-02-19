@@ -2,7 +2,7 @@ package entities_test
 
 import (
 	"database/sql/driver"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -435,11 +435,11 @@ func TestWei_UnmarshalJSON(t *testing.T) {
 
 func TestWei_UnmarshalBSONValue(t *testing.T) {
 	errorCases := test.Table[bsontype.Type, error]{
-		{bson.TypeInt64, nil},
-		{bson.TypeString, entities.DeserializationError},
-		{bson.TypeDBPointer, entities.DeserializationError},
-		{bson.TypeBinary, entities.DeserializationError},
-		{bson.TypeDouble, entities.DeserializationError},
+		{Value: bson.TypeInt64},
+		{Value: bson.TypeString, Result: entities.DeserializationError},
+		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
+		{Value: bson.TypeBinary, Result: entities.DeserializationError},
+		{Value: bson.TypeDouble, Result: entities.DeserializationError},
 	}
 
 	type result struct {
@@ -447,12 +447,12 @@ func TestWei_UnmarshalBSONValue(t *testing.T) {
 		bytes []byte
 	}
 	successCases := test.Table[*entities.Wei, result]{
-		{nil, result{err: entities.SerializationError, bytes: make([]byte, 0)}},
-		{entities.NewWei(5), result{nil, []byte{5, 0, 0, 0, 0, 0, 0, 0}}},
-		{entities.NewWei(77), result{nil, []byte{77, 0, 0, 0, 0, 0, 0, 0}}},
-		{entities.NewWei(5678), result{nil, []byte{46, 22, 0, 0, 0, 0, 0, 0}}},
-		{entities.NewWei(math.MaxInt64 - 500), result{nil, []byte{11, 254, 255, 255, 255, 255, 255, 127}}},
-		{entities.NewWei(math.MaxInt64), result{nil, []byte{255, 255, 255, 255, 255, 255, 255, 127}}},
+		{Result: result{err: entities.SerializationError, bytes: make([]byte, 0)}},
+		{Value: entities.NewWei(5), Result: result{nil, []byte{5, 0, 0, 0, 0, 0, 0, 0}}},
+		{Value: entities.NewWei(77), Result: result{nil, []byte{77, 0, 0, 0, 0, 0, 0, 0}}},
+		{Value: entities.NewWei(5678), Result: result{nil, []byte{46, 22, 0, 0, 0, 0, 0, 0}}},
+		{Value: entities.NewWei(math.MaxInt64 - 500), Result: result{nil, []byte{11, 254, 255, 255, 255, 255, 255, 127}}},
+		{Value: entities.NewWei(math.MaxInt64), Result: result{nil, []byte{255, 255, 255, 255, 255, 255, 255, 127}}},
 	}
 
 	var nilWei *entities.Wei

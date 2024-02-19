@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,7 +23,7 @@ func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toB
 	var body string
 	events, err := useCase.lbc.GetPeginPunishmentEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
-		return err
+		return usecases.WrapUseCaseError(usecases.PenalizationId, err)
 	}
 	for _, event := range events {
 		body = fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", event.Penalty.ToRbtc(), event.QuoteHash)

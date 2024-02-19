@@ -77,6 +77,7 @@ func NewUseCaseRegistry(
 			btcRegistry.RpcServer,
 			liquidityProvider,
 			eventBus,
+			rskRegistry.RpcServer,
 			mutexes.RskWalletMutex(),
 		),
 		registerPeginUseCase: pegin.NewRegisterPeginUseCase(
@@ -148,7 +149,6 @@ func NewUseCaseRegistry(
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
 			btcRegistry.Wallet,
-			btcRegistry.RpcServer,
 			databaseRegistry.PegoutRepository,
 			rskRegistry.RpcServer,
 			eventBus,
@@ -160,12 +160,17 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			rskRegistry.Bridge,
 			alertSender,
+			env.Provider.AlertRecipientEmail,
 		),
 		penalizationAlertUseCase: liquidity_provider.NewPenalizationAlertUseCase(
 			rskRegistry.Lbc,
 			alertSender,
 			env.Provider.AlertRecipientEmail,
 		),
+		addPeginCollateralUseCase:       pegin.NewAddCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
+		addPegoutCollateralUseCase:      pegout.NewAddCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
+		changeStatusUseCase:             liquidity_provider.NewChangeStatusUseCase(rskRegistry.Lbc, liquidityProvider),
+		resignUseCase:                   liquidity_provider.NewResignUseCase(rskRegistry.Lbc, liquidityProvider),
 		getProvidersUseCase:             liquidity_provider.NewGetProvidersUseCase(rskRegistry.Lbc),
 		getPeginCollateralUseCase:       pegin.NewGetCollateralUseCase(rskRegistry.Lbc, liquidityProvider),
 		getPegoutCollateralUseCase:      pegout.NewGetCollateralUseCase(rskRegistry.Lbc, liquidityProvider),

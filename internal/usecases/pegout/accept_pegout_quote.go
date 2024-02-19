@@ -15,7 +15,7 @@ type AcceptQuoteUseCase struct {
 	lp                   entities.LiquidityProvider
 	pegoutLp             entities.PegoutLiquidityProvider
 	eventBus             entities.EventBus
-	pegoutLiquidityMutex *sync.Mutex
+	pegoutLiquidityMutex sync.Locker
 }
 
 func NewAcceptQuoteUseCase(
@@ -24,7 +24,7 @@ func NewAcceptQuoteUseCase(
 	lp entities.LiquidityProvider,
 	pegoutLp entities.PegoutLiquidityProvider,
 	eventBus entities.EventBus,
-	pegoutLiquidityMutex *sync.Mutex,
+	pegoutLiquidityMutex sync.Locker,
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
 		quoteRepository:      quoteRepository,

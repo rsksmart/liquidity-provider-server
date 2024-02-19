@@ -1,5 +1,5 @@
 run:
-  tests: false
+  tests: true
   skip-dirs:
     - internal/adapters/dataproviders/rootstock/bindings
 linters:

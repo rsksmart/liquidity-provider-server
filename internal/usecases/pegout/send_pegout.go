@@ -13,24 +13,21 @@ import (
 
 type SendPegoutUseCase struct {
 	btcWallet       blockchain.BitcoinWallet
-	btc             blockchain.BitcoinNetwork
 	quoteRepository quote.PegoutQuoteRepository
 	rsk             blockchain.RootstockRpcServer
 	eventBus        entities.EventBus
-	btcWalletMutex  *sync.Mutex
+	btcWalletMutex  sync.Locker
 }
 
 func NewSendPegoutUseCase(
 	btcWallet blockchain.BitcoinWallet,
-	btc blockchain.BitcoinNetwork,
 	quoteRepository quote.PegoutQuoteRepository,
 	rsk blockchain.RootstockRpcServer,
 	eventBus entities.EventBus,
-	btcWalletMutex *sync.Mutex,
+	btcWalletMutex sync.Locker,
 ) *SendPegoutUseCase {
 	return &SendPegoutUseCase{
 		btcWallet:       btcWallet,
-		btc:             btc,
 		quoteRepository: quoteRepository,
 		rsk:             rsk,
 		eventBus:        eventBus,
@@ -43,10 +40,8 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 	var pegoutQuote *quote.PegoutQuote
 	var receipt blockchain.TransactionReceipt
 
-	if retainedQuote.State != quote.PegoutStateWaitingForDepositConfirmations {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
-	} else if retainedQuote.UserRskTxHash == "" {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
+	if err = useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
+		return err
 	}
 
 	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
@@ -55,7 +50,7 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
 	}
 
-	if err = useCase.validateQuote(ctx, retainedQuote, pegoutQuote); err != nil {
+	if receipt, err = useCase.validateQuote(ctx, retainedQuote, pegoutQuote); err != nil {
 		return err
 	}
 
@@ -66,7 +61,10 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 		return err
 	}
 
-	if retainedQuote, err = useCase.performSendPegout(ctx, retainedQuote, pegoutQuote, receipt); err != nil {
+	retainedQuote, err = useCase.performSendPegout(ctx, retainedQuote, pegoutQuote, receipt)
+	// if the error is not nil and the state is not SendPegoutFailed,
+	// means that an error happened before sending the tx
+	if err != nil && retainedQuote.State != quote.PegoutStateSendPegoutFailed {
 		return err
 	}
 
@@ -88,10 +86,10 @@ func (useCase *SendPegoutUseCase) publishErrorEvent(
 ) error {
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.SendPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
+		retainedQuote.State = quote.PegoutStateSendPegoutFailed
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
 			wrappedError = errors.Join(wrappedError, err)
 		}
-		retainedQuote.State = quote.PegoutStateSendPegoutFailed
 		useCase.eventBus.Publish(quote.PegoutBtcSentToUserEvent{
 			Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),
 			PegoutQuote:   pegoutQuote,
@@ -106,28 +104,28 @@ func (useCase *SendPegoutUseCase) validateQuote(
 	ctx context.Context,
 	retainedQuote quote.RetainedPegoutQuote,
 	pegoutQuote *quote.PegoutQuote,
-) error {
+) (blockchain.TransactionReceipt, error) {
 	var err error
 	var chainHeight uint64
 	var receipt blockchain.TransactionReceipt
 
 	if pegoutQuote.IsExpired() {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 
 	if chainHeight, err = useCase.rsk.GetHeight(ctx); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	}
 
 	if receipt, err = useCase.rsk.GetTransactionReceipt(ctx, retainedQuote.UserRskTxHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if chainHeight-receipt.BlockNumber < uint64(pegoutQuote.DepositConfirmations) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoEnoughConfirmationsError, true)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoEnoughConfirmationsError, true)
 	} else if receipt.Value.Cmp(pegoutQuote.Total()) < 0 {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
-		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.InsufficientAmountError, false)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.InsufficientAmountError, false)
 	}
-	return nil
+	return receipt, nil
 }
 
 func (useCase *SendPegoutUseCase) performSendPegout(
@@ -160,7 +158,7 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		RetainedQuote: retainedQuote,
 		Error:         err,
 	})
-	return retainedQuote, nil
+	return retainedQuote, err
 }
 
 func (useCase *SendPegoutUseCase) validateBalance(
@@ -171,10 +169,23 @@ func (useCase *SendPegoutUseCase) validateBalance(
 	var err error
 	var balance *entities.Wei
 
+	requiredBalance := new(entities.Wei)
 	if balance, err = useCase.btcWallet.GetBalance(); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
-	} else if balance.Cmp(pegoutQuote.Value) < 0 {
+	}
+	requiredBalance = new(entities.Wei)
+	requiredBalance.Add(pegoutQuote.Value, pegoutQuote.GasFee)
+	if balance.Cmp(requiredBalance) < 0 {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoLiquidityError, true)
+	}
+	return nil
+}
+
+func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
+	if retainedQuote.State != quote.PegoutStateWaitingForDepositConfirmations {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
+	} else if retainedQuote.UserRskTxHash == "" {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
 	}
 	return nil
 }
