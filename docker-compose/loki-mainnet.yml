@@ -4,5 +4,5 @@ services:
     logging:
       driver: loki
       options:
-       loki-url: 'https://dataingest:yupasjF1slxzhdr~xC7c@loki.iovproject.com:3100/loki/api/v1/push'
+       loki-url: $LOKI_ENDPOINT
        loki-external-labels: job=docker,container=lps,host=flyover-01.aws-us-east-1.mainnet.flyover.rif.technology
