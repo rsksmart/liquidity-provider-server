@@ -101,10 +101,6 @@ components:
         btcRefundAddr:
           description: A User BTC refund address
           type: string
-        callCost:
-          description: The estimated cost for the LP to do the call on behalf of the
-            user. Is calculated with gasPrice * gasLimit
-          type: integer
         callFee:
           description: The fee charged by the LP
           type: integer
@@ -125,6 +121,10 @@ components:
         fedBTCAddr:
           description: The BTC address of the PowPeg
           type: string
+        gasFee:
+          description: Fee to pay for the gas of every call done during the pegin
+            (call on behalf of the user and call to the dao fee collector)
+          type: integer
         gasLimit:
           description: The gas limit
           type: integer
@@ -147,6 +147,9 @@ components:
         penaltyFee:
           description: The penalty fee that the LP pays if it fails to deliver the
             service
+          type: integer
+        productFeeAmount:
+          description: The DAO Fee amount
           type: integer
         rskRefundAddr:
           description: A User RSK refund address
@@ -177,7 +180,8 @@ components:
       - lpCallTime
       - confirmations
       - callOnRegister
-      - callCost
+      - gasFee
+      - productFeeAmount
       type: object
     PegoutQuoteDTO:
       properties:
@@ -185,10 +189,6 @@ components:
           type: integer
         btcRefundAddress:
           type: string
-        callCost:
-          description: The estimated cost for the LP to do the transaction on behalf
-            of the user in Bitcoin network
-          type: integer
         callFee:
           type: integer
         depositAddr:
@@ -201,6 +201,11 @@ components:
           type: integer
         expireDate:
           type: integer
+        gasFee:
+          description: Fee to pay for the gas of every call done during the pegout
+            (call on behalf of the user in Bitcoin network and call to the dao fee
+            collector in Rootstock)
+          type: integer
         lbcAddress:
           type: string
         liquidityProviderRskAddress:
@@ -210,6 +215,9 @@ components:
         nonce:
           type: integer
         penaltyFee:
+          type: integer
+        productFeeAmount:
+          description: The DAO fee amount
           type: integer
         rskRefundAddress:
           type: string
@@ -237,7 +245,8 @@ components:
       - transferTime
       - expireDate
       - expireBlocks
-      - callCost
+      - gasFee
+      - productFeeAmount
       type: object
     ProviderDTO:
       properties:

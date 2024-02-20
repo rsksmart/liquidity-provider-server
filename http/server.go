@@ -74,6 +74,7 @@ const GetCollateralError = "Unable to get collateral"
 const ErrorAddingProvider = "Error Adding New provider: %v"
 const ErrorRetrivingProviderAddress = "Error Retrieving Provider Address from MongoDB"
 const ErrorNotLiquidity = "Not enough liquidity"
+const ErrorRetrievingDaoFeePercentage = "Error retrieving dao fee percentage"
 
 type LiquidityProviderList struct {
 	Endpoint                    string   `env:"RSK_ENDPOINT"`
@@ -610,7 +611,12 @@ func (s *Server) addAddressWatcher(quote *pegin.Quote, hash string, depositAddr 
 		return nil
 	}
 
-	sat, _ := new(types.Wei).Add(quote.Value, quote.CallFee).ToSatoshi().Float64()
+	total := new(types.Wei)
+	total.Add(total, quote.Value)
+	total.Add(total, quote.CallFee)
+	total.Add(total, types.NewUWei(quote.ProductFeeAmount))
+	total.Add(total, quote.GasFee)
+	sat, _ := total.ToSatoshi().Float64()
 	minBtcAmount := btcutil.Amount(uint64(math.Ceil(sat)))
 	expTime := getQuoteExpTime(quote)
 	watcher := NewBTCAddressWatcher(hash, s.btc, s.rsk, provider, s.dbMongo, quote, signB, state, &s.sharedPeginMutex)
@@ -837,11 +843,32 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-
 	price, err := s.rsk.GasPrice()
 	if err != nil {
 		log.Error(ErrorEstimatingGas, err.Error())
 		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	var gasDao, daoFeeAmount uint64
+	if daoFeePercentage != 0 {
+		daoFeeAmount = qr.ValueToTransfer * daoFeePercentage / 100
+		feeCollectorAddress := os.Getenv("DAO_FEE_COLLECTOR_ADDRESS")
+		gasDao, err = s.rsk.EstimateGas(feeCollectorAddress, big.NewInt(int64(daoFeeAmount)), make([]byte, 0))
+	}
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(Details), true)
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
@@ -866,8 +893,9 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, gas)
-	pq, err := s.provider.GetQuote(q, gas, types.NewBigWei(price))
+	totalGas := gas + gasDao
+	q := parseReqToQuote(qr, s.rsk.GetLBCAddress(), fedAddress, totalGas, daoFeeAmount)
+	pq, err := s.provider.GetQuote(q, totalGas, types.NewBigWei(price))
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -879,7 +907,6 @@ func (s *Server) getQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		hash, err := s.storeQuote(pq)
-
 		if err != nil {
 			log.Error(err)
 			errmsg := ErrorStoringProviderQuote + ": " + err.Error()
@@ -989,7 +1016,39 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	getQuoteFailed := false
 	amountBelowMinLockTxValue := false
-	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress())
+
+	daoFeePercentage, err := s.rsk.GetDaoFeePercentage()
+	if err != nil {
+		log.Error(ErrorRetrievingDaoFeePercentage, err.Error())
+		customError := NewServerError(ErrorRetrievingDaoFeePercentage, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	gasPrice, err := s.rsk.GasPrice()
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	var daoFeeAmount, gasDao uint64
+	var gasFeeDao big.Int
+	if daoFeePercentage != 0 {
+		daoFeeAmount = qr.ValueToTransfer * daoFeePercentage / 100
+		feeCollectorAddress := os.Getenv("DAO_FEE_COLLECTOR_ADDRESS")
+		gasDao, err = s.rsk.EstimateGas(feeCollectorAddress, big.NewInt(int64(daoFeeAmount)), make([]byte, 0))
+		gasFeeDao.Mul(big.NewInt(int64(gasDao)), gasPrice)
+	}
+	if err != nil {
+		log.Error(ErrorEstimatingGas, err.Error())
+		customError := NewServerError(ErrorEstimatingGas, make(map[string]interface{}), true)
+		ResponseError(w, customError, http.StatusInternalServerError)
+		return
+	}
+
+	q := parseReqToPegOutQuote(qr, s.rsk.GetLBCAddress(), daoFeeAmount)
 	rskBlockNumber, err := s.rsk.GetRskHeight()
 	if err != nil {
 		log.Error("Error getting last block", err.Error())
@@ -997,7 +1056,9 @@ func (s *Server) getPegoutQuoteHandler(w http.ResponseWriter, r *http.Request) {
 		ResponseError(w, customError, http.StatusInternalServerError)
 		return
 	}
-	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, types.SatoshiToWei(feeInSatoshi))
+
+	totalGasFee := new(types.Wei).Add(types.SatoshiToWei(feeInSatoshi), types.NewBigWei(&gasFeeDao))
+	pq, err := s.pegoutProvider.GetQuote(q, rskBlockNumber, totalGasFee)
 	if err != nil {
 		log.Error("error getting quote: ", err)
 		getQuoteFailed = true
@@ -1195,26 +1256,28 @@ func (s *Server) acceptQuoteHandler(w http.ResponseWriter, r *http.Request) {
 	returnQuoteSignFunc(w, signature, depositAddress)
 }
 
-func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64) *pegin.Quote {
+func parseReqToQuote(qr QuoteRequest, lbcAddr string, fedAddr string, limitGas uint64, daoFeeAmount uint64) *pegin.Quote {
 	return &pegin.Quote{
-		LBCAddr:       lbcAddr,
-		FedBTCAddr:    fedAddr,
-		BTCRefundAddr: qr.BitcoinRefundAddress,
-		RSKRefundAddr: qr.RskRefundAddress,
-		ContractAddr:  qr.CallEoaOrContractAddress,
-		Data:          qr.CallContractArguments,
-		Value:         types.NewWei(int64(qr.ValueToTransfer)),
-		GasLimit:      uint32(limitGas),
+		LBCAddr:          lbcAddr,
+		FedBTCAddr:       fedAddr,
+		BTCRefundAddr:    qr.BitcoinRefundAddress,
+		RSKRefundAddr:    qr.RskRefundAddress,
+		ContractAddr:     qr.CallEoaOrContractAddress,
+		Data:             qr.CallContractArguments,
+		Value:            types.NewWei(int64(qr.ValueToTransfer)),
+		GasLimit:         uint32(limitGas),
+		ProductFeeAmount: daoFeeAmount,
 	}
 }
 
-func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string) *pegout.Quote {
+func parseReqToPegOutQuote(qr QuotePegOutRequest, lbcAddr string, productFeeAmount uint64) *pegout.Quote {
 	return &pegout.Quote{
-		LBCAddr:       lbcAddr,
-		BtcRefundAddr: qr.BitcoinRefundAddress,
-		RSKRefundAddr: qr.RskRefundAddress,
-		DepositAddr:   qr.To,
-		Value:         types.NewWei(int64(qr.ValueToTransfer)),
+		LBCAddr:          lbcAddr,
+		BtcRefundAddr:    qr.BitcoinRefundAddress,
+		RSKRefundAddr:    qr.RskRefundAddress,
+		DepositAddr:      qr.To,
+		Value:            types.NewWei(int64(qr.ValueToTransfer)),
+		ProductFeeAmount: productFeeAmount,
 	}
 }
 
@@ -1409,7 +1472,7 @@ func (s *Server) acceptQuotePegOutHandler(w http.ResponseWriter, r *http.Request
 
 	p := pegout.GetPegoutProviderByAddress(s.pegoutProvider, quote.LPRSKAddr)
 
-	reqLiq := quote.CallCost.Uint64() + quote.Value.Uint64()
+	reqLiq := quote.GasFee.Uint64() + quote.Value.Uint64()
 	signB, err := p.SignQuote(hashBytes, s.rsk.GetLBCAddress(), reqLiq)
 	if err != nil {
 		log.Error(ErrorSigningQuote, err.Error())
