@@ -24,4 +24,8 @@ type UseCaseRegistry interface {
 	ChangeStatusUseCase() *liquidity_provider.ChangeStatusUseCase
 	AddPeginCollateralUseCase() *pegin.AddCollateralUseCase
 	AddPegoutCollateralUseCase() *pegout.AddCollateralUseCase
+	SetPeginConfigUseCase() *liquidity_provider.SetPeginConfigUseCase
+	SetPegoutConfigUseCase() *liquidity_provider.SetPegoutConfigUseCase
+	SetGeneralConfigUseCase() *liquidity_provider.SetGeneralConfigUseCase
+	GetConfigurationUseCase() *liquidity_provider.GetConfigUseCase
 }

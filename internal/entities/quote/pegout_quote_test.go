@@ -2,6 +2,7 @@ package quote_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 
 type LpMock struct {
 	mock.Mock
-	entities.PegoutLiquidityProvider
+	liquidity_provider.PegoutLiquidityProvider
 }
 
 func (l *LpMock) ExpireBlocksPegout() uint64 {

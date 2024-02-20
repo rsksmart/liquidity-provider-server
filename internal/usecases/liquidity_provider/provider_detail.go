@@ -1,51 +1,58 @@
 package liquidity_provider
 
 import (
+	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type GetDetailUseCase struct {
 	captchaSiteKey string
-	peginProvider  entities.PeginLiquidityProvider
-	pegoutProvider entities.PegoutLiquidityProvider
+	provider       liquidity_provider.LiquidityProvider
+	peginProvider  liquidity_provider.PeginLiquidityProvider
+	pegoutProvider liquidity_provider.PegoutLiquidityProvider
 }
 
 func NewGetDetailUseCase(
 	captchaSiteKey string,
-	peginProvider entities.PeginLiquidityProvider,
-	pegoutProvider entities.PegoutLiquidityProvider,
+	provider liquidity_provider.LiquidityProvider,
+	peginProvider liquidity_provider.PeginLiquidityProvider,
+	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 ) *GetDetailUseCase {
 	return &GetDetailUseCase{
 		captchaSiteKey: captchaSiteKey,
+		provider:       provider,
 		peginProvider:  peginProvider,
 		pegoutProvider: pegoutProvider,
 	}
 }
 
 type FullLiquidityProvider struct {
-	SiteKey string                           `json:"siteKey"`
-	Pegin   entities.LiquidityProviderDetail `json:"pegin"`
-	Pegout  entities.LiquidityProviderDetail `json:"pegout"`
+	SiteKey string                                     `json:"siteKey"`
+	Pegin   liquidity_provider.LiquidityProviderDetail `json:"pegin"`
+	Pegout  liquidity_provider.LiquidityProviderDetail `json:"pegout"`
 }
 
-func (useCase *GetDetailUseCase) Run() (FullLiquidityProvider, error) {
+func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider, error) {
 	var err error
-
+	generalConfiguration := useCase.provider.GeneralConfiguration(ctx)
+	peginConfig := useCase.peginProvider.PeginConfiguration(ctx)
+	pegoutConfig := useCase.pegoutProvider.PegoutConfiguration(ctx)
 	detail := FullLiquidityProvider{
 		SiteKey: useCase.captchaSiteKey,
-		Pegin: entities.LiquidityProviderDetail{
-			Fee:                   useCase.peginProvider.CallFeePegin(),
-			MinTransactionValue:   useCase.peginProvider.MinPegin(),
-			MaxTransactionValue:   useCase.peginProvider.MaxPegin(),
-			RequiredConfirmations: useCase.peginProvider.MaxPeginConfirmations(),
+		Pegin: liquidity_provider.LiquidityProviderDetail{
+			Fee:                   peginConfig.CallFee,
+			MinTransactionValue:   peginConfig.MinValue,
+			MaxTransactionValue:   peginConfig.MaxValue,
+			RequiredConfirmations: generalConfiguration.BtcConfirmations.Max(),
 		},
-		Pegout: entities.LiquidityProviderDetail{
-			Fee:                   useCase.pegoutProvider.CallFeePegout(),
-			MinTransactionValue:   useCase.pegoutProvider.MinPegout(),
-			MaxTransactionValue:   useCase.pegoutProvider.MaxPegout(),
-			RequiredConfirmations: useCase.pegoutProvider.MaxPegoutConfirmations(),
+		Pegout: liquidity_provider.LiquidityProviderDetail{
+			Fee:                   pegoutConfig.CallFee,
+			MinTransactionValue:   pegoutConfig.MinValue,
+			MaxTransactionValue:   pegoutConfig.MaxValue,
+			RequiredConfirmations: generalConfiguration.RskConfirmations.Max(),
 		},
 	}
 

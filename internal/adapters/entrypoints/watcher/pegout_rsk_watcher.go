@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
@@ -20,7 +21,7 @@ type PegoutRskDepositWatcher struct {
 	sendPegoutUseCase            *pegout.SendPegoutUseCase
 	updatePegoutDepositUseCase   *w.UpdatePegoutQuoteDepositUseCase
 	initDepositCacheUseCase      *pegout.InitPegoutDepositCacheUseCase
-	pegoutLp                     entities.PegoutLiquidityProvider
+	pegoutLp                     liquidity_provider.PegoutLiquidityProvider
 	rskRpc                       blockchain.RootstockRpcServer
 	lbc                          blockchain.LiquidityBridgeContract
 	ticker                       *time.Ticker
@@ -36,7 +37,7 @@ func NewPegoutRskDepositWatcher(
 	sendPegoutUseCase *pegout.SendPegoutUseCase,
 	updatePegoutDepositUseCase *w.UpdatePegoutQuoteDepositUseCase,
 	initDepositCacheUseCase *pegout.InitPegoutDepositCacheUseCase,
-	pegoutLp entities.PegoutLiquidityProvider,
+	pegoutLp liquidity_provider.PegoutLiquidityProvider,
 	rskRpc blockchain.RootstockRpcServer,
 	lbc blockchain.LiquidityBridgeContract,
 	eventBus entities.EventBus,
@@ -76,8 +77,9 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	pegoutConfig := watcher.pegoutLp.PegoutConfiguration(ctx)
 	for _, watchedQuote := range watchedQuotes {
-		quoteCreationBlock = quote.GetCreationBlock(watcher.pegoutLp, watchedQuote.PegoutQuote)
+		quoteCreationBlock = quote.GetCreationBlock(pegoutConfig, watchedQuote.PegoutQuote)
 		if watcher.currentBlock == 0 || watcher.currentBlock > quoteCreationBlock {
 			watcher.currentBlock = quoteCreationBlock
 		}

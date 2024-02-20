@@ -2,7 +2,7 @@ package liquidity_provider_test
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -13,7 +13,7 @@ import (
 
 func TestValidateConfiguredProvider(t *testing.T) {
 	lbc := &test.LbcMock{}
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{
+	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{
 		{
 			Id:           1,
 			Address:      "0x01",
@@ -51,14 +51,14 @@ func TestValidateConfiguredProvider(t *testing.T) {
 func TestValidateConfiguredProvider_Fail(t *testing.T) {
 	lbc := &test.LbcMock{}
 	var provider *test.ProviderMock = nil
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{}, errors.New("some error")).Once()
+	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{}, errors.New("some error")).Once()
 	id, err := liquidity_provider.ValidateConfiguredProvider(provider, lbc)
 	assert.Equal(t, uint64(0), id)
 	require.Error(t, err)
 
 	provider = &test.ProviderMock{}
 	provider.On("RskAddress").Return("0x02")
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{
+	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{
 		{
 			Id:           3,
 			Address:      "0x03",

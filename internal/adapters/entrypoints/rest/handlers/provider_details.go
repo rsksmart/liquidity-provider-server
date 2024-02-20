@@ -14,7 +14,7 @@ import (
 // @Route /providers/details [get]
 func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		result, err := useCase.Run()
+		result, err := useCase.Run(req.Context())
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

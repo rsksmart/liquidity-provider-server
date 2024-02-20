@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"math/big"
@@ -16,7 +17,7 @@ type CallForUserUseCase struct {
 	lbc             blockchain.LiquidityBridgeContract
 	quoteRepository quote.PeginQuoteRepository
 	btc             blockchain.BitcoinNetwork
-	peginProvider   entities.LiquidityProvider
+	peginProvider   liquidity_provider.LiquidityProvider
 	eventBus        entities.EventBus
 	rsk             blockchain.RootstockRpcServer
 	rskWalletMutex  sync.Locker
@@ -26,7 +27,7 @@ func NewCallForUserUseCase(
 	lbc blockchain.LiquidityBridgeContract,
 	quoteRepository quote.PeginQuoteRepository,
 	btc blockchain.BitcoinNetwork,
-	peginProvider entities.LiquidityProvider,
+	peginProvider liquidity_provider.LiquidityProvider,
 	eventBus entities.EventBus,
 	rsk blockchain.RootstockRpcServer,
 	rskWalletMutex sync.Locker,

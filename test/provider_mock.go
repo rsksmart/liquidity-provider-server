@@ -3,13 +3,14 @@ package test
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/stretchr/testify/mock"
 )
 
 type ProviderMock struct {
-	entities.LiquidityProvider
-	entities.PeginLiquidityProvider
-	entities.PegoutLiquidityProvider
+	liquidity_provider.LiquidityProvider
+	liquidity_provider.PeginLiquidityProvider
+	liquidity_provider.PegoutLiquidityProvider
 	mock.Mock
 }
 

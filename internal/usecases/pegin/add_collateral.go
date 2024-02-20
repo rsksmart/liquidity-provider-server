@@ -3,15 +3,16 @@ package pegin
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type AddCollateralUseCase struct {
 	lbc blockchain.LiquidityBridgeContract
-	lp  entities.LiquidityProvider
+	lp  liquidity_provider.LiquidityProvider
 }
 
-func NewAddCollateralUseCase(lbc blockchain.LiquidityBridgeContract, lp entities.LiquidityProvider) *AddCollateralUseCase {
+func NewAddCollateralUseCase(lbc blockchain.LiquidityBridgeContract, lp liquidity_provider.LiquidityProvider) *AddCollateralUseCase {
 	return &AddCollateralUseCase{lbc: lbc, lp: lp}
 }
 
