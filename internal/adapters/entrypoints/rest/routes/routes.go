@@ -53,6 +53,14 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 			HandlerFunc(handlers.NewChangeStatusHandler(useCaseRegistry.ChangeStatusUseCase()))
 		router.Path("/providers/resignation").Methods(http.MethodPost).
 			HandlerFunc(handlers.NewResignationHandler(useCaseRegistry.ResignationUseCase()))
+		router.Path("/configuration").Methods(http.MethodPost).
+			HandlerFunc(handlers.NewSetGeneralConfigHandler(useCaseRegistry.SetGeneralConfigUseCase()))
+		router.Path("/configuration").Methods(http.MethodGet).
+			HandlerFunc(handlers.NewGetConfigurationHandler(useCaseRegistry.GetConfigurationUseCase()))
+		router.Path("/pegin/configuration").Methods(http.MethodPost).
+			HandlerFunc(handlers.NewSetPeginConfigHandler(useCaseRegistry.SetPeginConfigUseCase()))
+		router.Path("/pegout/configuration").Methods(http.MethodPost).
+			HandlerFunc(handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()))
 	}
 
 	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())

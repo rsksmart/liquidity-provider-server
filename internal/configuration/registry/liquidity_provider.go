@@ -12,6 +12,7 @@ func NewLiquidityProvider(
 		config,
 		databaseRegistry.PeginRepository,
 		databaseRegistry.PegoutRepository,
+		databaseRegistry.LiquidityProviderRepository,
 		rskRegistry.RpcServer,
 		rskRegistry.Wallet,
 		btcRegistry.Wallet,

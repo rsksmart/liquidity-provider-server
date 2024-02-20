@@ -2,6 +2,7 @@ package liquidity_provider_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -25,13 +26,13 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, liquidity_provider.FullLiquidityProvider{
 		SiteKey: captchaKey,
-		Pegin: entities.LiquidityProviderDetail{
+		Pegin: lp.LiquidityProviderDetail{
 			Fee:                   entities.NewWei(100),
 			MinTransactionValue:   entities.NewWei(1000),
 			MaxTransactionValue:   entities.NewWei(10000),
 			RequiredConfirmations: 10,
 		},
-		Pegout: entities.LiquidityProviderDetail{
+		Pegout: lp.LiquidityProviderDetail{
 			Fee:                   entities.NewWei(200),
 			MinTransactionValue:   entities.NewWei(2000),
 			MaxTransactionValue:   entities.NewWei(20000),

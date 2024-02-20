@@ -3,6 +3,7 @@ package environment
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,12 +55,12 @@ type BtcEnv struct {
 }
 
 type ProviderEnv struct {
-	AlertSenderEmail    string                `env:"ALERT_SENDER_EMAIL"  validate:"required"`
-	AlertRecipientEmail string                `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
-	BtcAddress          string                `env:"BTC_ADDR"  validate:"required"`
-	Name                string                `env:"PROVIDER_NAME"  validate:"required"`
-	ApiBaseUrl          string                `env:"BASE_URL"  validate:"required"`
-	ProviderType        entities.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+	AlertSenderEmail    string                          `env:"ALERT_SENDER_EMAIL"  validate:"required"`
+	AlertRecipientEmail string                          `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
+	BtcAddress          string                          `env:"BTC_ADDR"  validate:"required"`
+	Name                string                          `env:"PROVIDER_NAME"  validate:"required"`
+	ApiBaseUrl          string                          `env:"BASE_URL"  validate:"required"`
+	ProviderType        liquidity_provider.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
 }
 
 type PeginEnv struct {

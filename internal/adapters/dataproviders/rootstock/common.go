@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"time"
@@ -52,9 +53,9 @@ func (c *RskClient) CheckConnection(ctx context.Context) bool {
 }
 
 type TransactionSigner interface {
+	entities.Signer
 	Address() common.Address
 	Sign(common.Address, *types.Transaction) (*types.Transaction, error)
-	SignBytes(msg []byte) ([]byte, error)
 }
 
 func ParseAddress(address *common.Address, textAddress string) error {
