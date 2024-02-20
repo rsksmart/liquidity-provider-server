@@ -66,7 +66,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 			"transferTime",
 			"expireDate",
 			"expireBlocks",
-			"callCost",
+			"gasFee",
 		}
 
 		var rawResponse []map[string]any
@@ -129,8 +129,9 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 		value := types.NewWei(int64(quote.Quote.Value))
 		callFee := types.NewWei(int64(quote.Quote.CallFee))
-		callCost := types.NewWei(int64(quote.Quote.CallCost))
-		totalFees := new(types.Wei).Add(callFee, callCost)
+		gasFee := types.NewWei(int64(quote.Quote.GasFee))
+		productFee := types.NewWei(int64(quote.Quote.ProductFeeAmount))
+		totalFees := new(types.Wei).Add(new(types.Wei).Add(callFee, gasFee), productFee)
 		totalAmount := new(types.Wei).Add(totalFees, value)
 		opts.Value = totalAmount.AsBigInt()
 
@@ -171,6 +172,8 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 			TransferTime:          originalQuote.TransferTime,
 			ExpireDate:            originalQuote.ExpireDate,
 			ExpireBlock:           originalQuote.ExpireBlock,
+			ProductFeeAmount:      big.NewInt(int64(originalQuote.ProductFeeAmount)),
+			GasFee:                big.NewInt(int64(originalQuote.GasFee)),
 		}
 
 		signature, err := hex.DecodeString(acceptedQuote.Signature)

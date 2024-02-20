@@ -38,7 +38,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 		}
 
 		expectedFields := []string{
-			"callCost",
+			"gasFee",
 			"callOnRegister",
 			"callFee",
 			"value",
@@ -108,8 +108,9 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 		}
 		value := types.NewWei(int64(quote.Quote.Value))
 		callFee := types.NewWei(int64(quote.Quote.CallFee))
-		callCost := types.NewWei(int64(quote.Quote.CallCost))
-		totalFees := new(types.Wei).Add(callFee, callCost)
+		gasFee := types.NewWei(int64(quote.Quote.GasFee))
+		productFee := types.NewWei(int64(quote.Quote.ProductFeeAmount))
+		totalFees := new(types.Wei).Add(new(types.Wei).Add(callFee, gasFee), productFee)
 		totalAmount := new(types.Wei).Add(totalFees, value)
 		floatAmount, _ := totalAmount.ToRbtc().Float64()
 		btcAmount, err := btcutil.NewAmount(floatAmount)

@@ -124,6 +124,7 @@ type RSKConnector interface {
 	GetPegoutCollateral(addr string) (*big.Int, *big.Int, error)
 	AddPegoutCollateral(opts *bind.TransactOpts) error
 	GetTransactionReceipt(txHash string) (*gethTypes.Receipt, error)
+	GetDaoFeePercentage() (uint64, error)
 }
 
 type RSKClient interface {
@@ -935,6 +936,8 @@ func (rsk *RSK) ParseQuote(q *pegin.Quote) (bindings.QuotesPeginQuote, error) {
 	pq.CallTime = q.LpCallTime
 	pq.DepositConfirmations = q.Confirmations
 	pq.TimeForDeposit = q.TimeForDeposit
+	pq.ProductFeeAmount = big.NewInt(int64(q.ProductFeeAmount))
+	pq.GasFee = q.GasFee.AsBigInt()
 	return pq, nil
 }
 
@@ -980,6 +983,8 @@ func (rsk *RSK) ParsePegOutQuote(q *pegout.Quote) (bindings.QuotesPegOutQuote, e
 	pq.TransferTime = q.TransferTime
 	pq.ExpireDate = q.ExpireDate
 	pq.ExpireBlock = q.ExpireBlock
+	pq.ProductFeeAmount = big.NewInt(int64(q.ProductFeeAmount))
+	pq.GasFee = q.GasFee.AsBigInt()
 
 	return pq, nil
 }
@@ -1278,4 +1283,15 @@ func (rsk *RSK) awaitTx(function func() (*gethTypes.Transaction, error)) (*gethT
 		time.Sleep(rpcSleep)
 	}
 	return nil, err
+}
+
+func (rsk *RSK) GetDaoFeePercentage() (uint64, error) {
+	opts := bind.CallOpts{}
+	amount, err := rsk.lbc.ProductFeePercentage(&opts)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return amount.Uint64(), nil
 }
