@@ -26,5 +26,9 @@ func (useCase *SetPeginConfigUseCase) Run(ctx context.Context, config liquidity_
 	if err != nil {
 		return err
 	}
-	return useCase.lpRepository.UpsertPeginConfiguration(ctx, signedConfig)
+	err = useCase.lpRepository.UpsertPeginConfiguration(ctx, signedConfig)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.SetPeginConfigId, err)
+	}
+	return nil
 }

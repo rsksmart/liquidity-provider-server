@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -187,14 +188,17 @@ func NewUseCaseRegistry(
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
+			crypto.Keccak256,
 		),
 		setPeginConfigUseCase: liquidity_provider.NewSetPeginConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
+			crypto.Keccak256,
 		),
 		setPegoutConfigUseCase: liquidity_provider.NewSetPegoutConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
+			crypto.Keccak256,
 		),
 		getConfigurationUseCase: liquidity_provider.NewGetConfigUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 	}

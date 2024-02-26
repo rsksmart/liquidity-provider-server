@@ -124,6 +124,9 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 }
 
 func TestGetCreationBlock(t *testing.T) {
+	pegoutConfig := liquidity_provider.PegoutConfiguration{
+		ExpireBlocks: 40,
+	}
 	quotes := test.Table[quote.PegoutQuote, uint64]{
 		{
 			Value: quote.PegoutQuote{
@@ -174,10 +177,8 @@ func TestGetCreationBlock(t *testing.T) {
 			Result: 340,
 		},
 	}
-
-	lp := &LpMock{}
 	test.RunTable(t, quotes, func(value quote.PegoutQuote) uint64 {
-		return quote.GetCreationBlock(lp, value)
+		return quote.GetCreationBlock(pegoutConfig, value)
 	})
 }
 
