@@ -75,7 +75,8 @@ func (confirmations ConfirmationsPerAmount) ForValue(value *entities.Wei) uint16
 	}
 	slices.Sort(values)
 	index := slices.IndexFunc(values, func(item int) bool {
-		return int(value.AsBigInt().Int64()) < item
+		bigItem := entities.NewWei(int64(item))
+		return value.Cmp(bigItem) <= 0
 	})
 	if index == -1 {
 		return confirmations[values[len(values)-1]]

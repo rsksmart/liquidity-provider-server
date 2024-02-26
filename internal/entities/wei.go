@@ -105,7 +105,7 @@ func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
 }
 
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if w == nil || bsonType != bson.TypeString {
+	if w == nil || bsonType != bson.TypeString || len(bytes) == 0 {
 		return DeserializationError
 	}
 	var value string

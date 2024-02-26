@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	pegout "github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -28,15 +29,10 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	pegoutQuoteRepository := new(test.PegoutQuoteRepositoryMock)
 	pegoutQuoteRepository.On("InsertQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything).Return(nil)
 	lp := new(test.ProviderMock)
-	lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
-	lp.On("GetRootstockConfirmationsForValue", mock.Anything).Return(uint16(10))
-	lp.On("GetBitcoinConfirmationsForValue", mock.Anything, mock.Anything).Return(uint16(10))
-	lp.On("CallFeePegout").Return(entities.NewWei(200))
-	lp.On("PenaltyFeePegout").Return(entities.NewWei(20))
+	lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	lp.On("RskAddress").Return("0x1234")
 	lp.On("BtcAddress").Return("address")
-	lp.On("TimeForDepositPegout").Return(uint32(60000))
-	lp.On("ExpireBlocksPegout").Return(uint64(60000))
 	btcWallet := new(test.BtcWalletMock)
 	btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000000000000000), nil)
 	btc := new(test.BtcRpcMock)
@@ -77,7 +73,8 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressInvalidNetworkError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			},
 			Result: blockchain.BtcAddressInvalidNetworkError,
 		},
@@ -85,13 +82,15 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressNotSupportedError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			},
 			Result: blockchain.BtcAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			},
 			Result: usecases.RskAddressNotSupportedError,
@@ -99,7 +98,8 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 		{
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			},
 			Result: usecases.RskAddressNotSupportedError,
 		},
@@ -107,7 +107,8 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressInvalidNetworkError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
 			},
 			Result: blockchain.BtcAddressInvalidNetworkError,
 		},
@@ -115,9 +116,19 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressNotSupportedError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(1), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
 			},
 			Result: blockchain.BtcAddressNotSupportedError,
+		},
+		{
+			Value: func(btc *test.BtcRpcMock) pegout.QuoteRequest {
+				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
+				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
+				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(99999999999999999), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+			},
+			Result: lpEntity.AmountOutOfRangeError,
 		},
 	}
 	for _, testCase := range cases {
@@ -158,6 +169,8 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		lp.On("TimeForDepositPegout").Return(uint32(60000))
 		lp.On("ExpireBlocksPegout").Return(uint64(60000))
 		lbc.On("GetAddress").Return("0x1234")
+		lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
+		lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 		btc := new(test.BtcRpcMock)
 		btc.On("ValidateAddress", mock.Anything).Return(nil)
 		useCase := pegout.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
@@ -181,13 +194,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(assert.AnError)
-			},
-		},
-		{
-			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(0), assert.AnError)
 				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -196,7 +202,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(0), assert.AnError)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			},
@@ -204,7 +209,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(0), errors.New("Insufficient funds"))
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			},
@@ -212,7 +216,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(0), assert.AnError)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -222,7 +225,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
@@ -232,7 +234,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -243,7 +244,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -257,7 +257,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -280,7 +279,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -303,7 +301,6 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 		{
 			Value: func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
 				lbc *test.LbcMock, lp *test.ProviderMock, btcWallet *test.BtcWalletMock, pegoutQuoteRepository *test.PegoutQuoteRepositoryMock) {
-				lp.On("ValidateAmountForPegout", mock.Anything).Return(nil)
 				rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", mock.AnythingOfType("context.backgroundCtx")).Return(uint64(100), nil)
 				rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -326,4 +323,21 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 			},
 		},
 	}
+}
+
+func getPegoutConfiguration() lpEntity.PegoutConfiguration {
+	return lpEntity.PegoutConfiguration{
+		TimeForDeposit: 60000,
+		CallTime:       600,
+		PenaltyFee:     entities.NewWei(20),
+		CallFee:        entities.NewWei(200),
+		MaxValue:       entities.NewUWei(10000000000000000000),
+		MinValue:       entities.NewWei(100000000000000000),
+		ExpireBlocks:   60000,
+	}
+
+}
+
+func getGeneralConfiguration() lpEntity.GeneralConfiguration {
+	return lpEntity.GeneralConfiguration{RskConfirmations: map[int]uint16{1: 10}, BtcConfirmations: map[int]uint16{1: 10}}
 }

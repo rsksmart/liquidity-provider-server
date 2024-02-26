@@ -26,5 +26,9 @@ func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidit
 	if err != nil {
 		return err
 	}
-	return useCase.lpRepository.UpsertGeneralConfiguration(ctx, signedConfig)
+	err = useCase.lpRepository.UpsertGeneralConfiguration(ctx, signedConfig)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.SetGeneralConfigId, err)
+	}
+	return nil
 }

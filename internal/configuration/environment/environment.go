@@ -2,7 +2,6 @@ package environment
 
 import (
 	"github.com/go-playground/validator/v10"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 )
@@ -29,29 +28,27 @@ type MongoEnv struct {
 }
 
 type RskEnv struct {
-	Endpoint                    string         `env:"RSK_ENDPOINT" validate:"required"`
-	ChainId                     uint64         `env:"CHAIN_ID" validate:"required"`
-	LbcAddress                  string         `env:"LBC_ADDR" validate:"required"`
-	BridgeAddress               string         `env:"RSK_BRIDGE_ADDR" validate:"required"`
-	BridgeRequiredConfirmations uint64         `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
-	IrisActivationHeight        int64          `env:"IRIS_ACTIVATION_HEIGHT" validate:"required"`
-	ErpKeys                     []string       `env:"ERP_KEYS" validate:"required"`
-	AccountNumber               int            `env:"ACCOUNT_NUM"` // no validation because 0 works fine
-	FeeCollectorAddress         string         `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
-	EncryptedJsonSecret         string         `env:"KEY_SECRET" validate:"required"`
-	EncryptedJsonPasswordSecret string         `env:"PASSWORD_SECRET" validate:"required"`
-	Confirmations               map[int]uint16 `env:"RSK_CONFIRMATIONS" validate:"required"`
+	Endpoint                    string   `env:"RSK_ENDPOINT" validate:"required"`
+	ChainId                     uint64   `env:"CHAIN_ID" validate:"required"`
+	LbcAddress                  string   `env:"LBC_ADDR" validate:"required"`
+	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
+	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
+	IrisActivationHeight        int64    `env:"IRIS_ACTIVATION_HEIGHT" validate:"required"`
+	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
+	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
+	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
+	EncryptedJsonSecret         string   `env:"KEY_SECRET" validate:"required"`
+	EncryptedJsonPasswordSecret string   `env:"PASSWORD_SECRET" validate:"required"`
 }
 
 type BtcEnv struct {
-	Network              string         `env:"BTC_NETWORK" validate:"required"`
-	Username             string         `env:"BTC_USERNAME" validate:"required"`
-	Password             string         `env:"BTC_PASSWORD" validate:"required"`
-	Endpoint             string         `env:"BTC_ENDPOINT" validate:"required"`
-	FixedTxFeeRate       float64        `env:"BTC_TX_FEE_RATE" validate:"required"`
-	WalletEncrypted      bool           `env:"BTC_ENCRYPTED_WALLET" validate:"required"`
-	WalletPasswordSecret string         `env:"BTC_WALLET_PASSWORD"`
-	Confirmations        map[int]uint16 `env:"BTC_CONFIRMATIONS" validate:"required"`
+	Network              string  `env:"BTC_NETWORK" validate:"required"`
+	Username             string  `env:"BTC_USERNAME" validate:"required"`
+	Password             string  `env:"BTC_PASSWORD" validate:"required"`
+	Endpoint             string  `env:"BTC_ENDPOINT" validate:"required"`
+	FixedTxFeeRate       float64 `env:"BTC_TX_FEE_RATE" validate:"required"`
+	WalletEncrypted      bool    `env:"BTC_ENCRYPTED_WALLET" validate:"required"`
+	WalletPasswordSecret string  `env:"BTC_WALLET_PASSWORD"`
 }
 
 type ProviderEnv struct {
@@ -63,24 +60,11 @@ type ProviderEnv struct {
 	ProviderType        liquidity_provider.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
 }
 
-type PeginEnv struct {
-	TimeForDeposit      uint32        `env:"PEGIN_TIME_FOR_DEPOSIT" validate:"required"`
-	CallTime            uint32        `env:"PEGIN_CALL_TIME" validate:"required"`
-	PenaltyFee          *entities.Wei `env:"PEGIN_PENALTY_FEE" validate:"required"`
-	CallFee             *entities.Wei `env:"PEGIN_FEE" validate:"required"`
-	MinTransactionValue *entities.Wei `env:"PEGIN_MIN_TRANSACTION_VALUE" validate:"required"`
-	MaxTransactionValue *entities.Wei `env:"PEGIN_MAX_TRANSACTION_VALUE" validate:"required"`
-}
+// PeginEnv This structure was kept just in case, right now all the parameters are manipulated through management API
+type PeginEnv struct{}
 
 type PegoutEnv struct {
-	TimeForDeposit         uint32        `env:"PEGOUT_TIME_FOR_DEPOSIT" validate:"required"`
-	CallTime               uint32        `env:"PEGOUT_CALL_TIME" validate:"required"`
-	PenaltyFee             *entities.Wei `env:"PEGOUT_PENALTY_FEE" validate:"required"`
-	CallFee                *entities.Wei `env:"PEGOUT_FEE" validate:"required"`
-	MinTransactionValue    *entities.Wei `env:"PEGOUT_MIN_TRANSACTION_VALUE" validate:"required"`
-	MaxTransactionValue    *entities.Wei `env:"PEGOUT_MAX_TRANSACTION_VALUE" validate:"required"`
-	ExpireBlocks           uint32        `env:"PEGOUT_EXPIRE_BLOCKS" validate:"required"`
-	DepositCacheStartBlock uint64        `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
+	DepositCacheStartBlock uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
 }
 
 type CaptchaEnv struct {

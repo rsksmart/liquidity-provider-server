@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	u "github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,8 @@ import (
 	"slices"
 	"testing"
 )
+
+const id = "anyUseCase"
 
 type rpcMock struct {
 	mock.Mock
@@ -121,4 +124,34 @@ func TestValidateMinLockValue(t *testing.T) {
 	err = u.ValidateMinLockValue(useCase, bridge, value)
 	require.Error(t, err)
 	assert.Equal(t, "anyUseCase: requested amount below bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
+}
+
+func TestSignConfiguration(t *testing.T) {
+	var (
+		signature = []byte{1, 2, 3}
+		hash      = []byte{4, 5, 6}
+	)
+	configuration := liquidity_provider.DefaultPeginConfiguration()
+	wallet := &test.RskWalletMock{}
+	wallet.On("SignBytes", mock.Anything).Return(signature, nil)
+	hashFunctionMock := &test.HashMock{}
+	hashFunctionMock.On("Hash", mock.Anything).Return(hash)
+	signed, err := u.SignConfiguration(id, wallet, hashFunctionMock.Hash, configuration)
+	require.NoError(t, err)
+	assert.Equal(t, entities.Signed[liquidity_provider.PeginConfiguration]{
+		Value:     configuration,
+		Hash:      "040506",
+		Signature: "010203",
+	}, signed)
+}
+
+func TestSignConfiguration_SignatureError(t *testing.T) {
+	wallet := &test.RskWalletMock{}
+	wallet.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
+	hashFunctionMock := &test.HashMock{}
+	hashFunctionMock.On("Hash", mock.Anything).Return([]byte{1})
+	configuration := liquidity_provider.DefaultPeginConfiguration()
+	signed, err := u.SignConfiguration(id, wallet, hashFunctionMock.Hash, configuration)
+	require.Equal(t, entities.Signed[liquidity_provider.PeginConfiguration]{}, signed)
+	require.Error(t, err)
 }

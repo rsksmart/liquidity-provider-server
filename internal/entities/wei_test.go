@@ -434,40 +434,36 @@ func TestWei_UnmarshalJSON(t *testing.T) {
 }
 
 func TestWei_UnmarshalBSONValue(t *testing.T) {
-	errorCases := test.Table[bsontype.Type, error]{
-		{Value: bson.TypeInt64},
-		{Value: bson.TypeString, Result: entities.DeserializationError},
+	dataTypeCases := test.Table[bsontype.Type, error]{
+		{Value: bson.TypeInt64, Result: entities.DeserializationError},
+		{Value: bson.TypeString},
 		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
 		{Value: bson.TypeBinary, Result: entities.DeserializationError},
 		{Value: bson.TypeDouble, Result: entities.DeserializationError},
 	}
 
-	type result struct {
-		err   error
-		bytes []byte
-	}
-	successCases := test.Table[*entities.Wei, result]{
-		{Result: result{err: entities.SerializationError, bytes: make([]byte, 0)}},
-		{Value: entities.NewWei(5), Result: result{nil, []byte{5, 0, 0, 0, 0, 0, 0, 0}}},
-		{Value: entities.NewWei(77), Result: result{nil, []byte{77, 0, 0, 0, 0, 0, 0, 0}}},
-		{Value: entities.NewWei(5678), Result: result{nil, []byte{46, 22, 0, 0, 0, 0, 0, 0}}},
-		{Value: entities.NewWei(math.MaxInt64 - 500), Result: result{nil, []byte{11, 254, 255, 255, 255, 255, 255, 127}}},
-		{Value: entities.NewWei(math.MaxInt64), Result: result{nil, []byte{255, 255, 255, 255, 255, 255, 255, 127}}},
+	zeroRepresentation := []byte{2, 0, 0, 0, 48, 0}
+	successCases := test.Table[*entities.Wei, []byte]{
+		{Value: entities.NewWei(0), Result: zeroRepresentation},
+		{Value: entities.NewWei(5), Result: []byte{2, 0, 0, 0, 53, 0}},
+		{Value: entities.NewWei(77), Result: []byte{3, 0, 0, 0, 55, 55, 0}},
+		{Value: entities.NewWei(5678), Result: []byte{5, 0, 0, 0, 53, 54, 55, 56, 0}},
+		{Value: entities.NewWei(math.MaxInt64 - 500), Result: []byte{20, 0, 0, 0, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 51, 48, 55, 0}},
+		{Value: entities.NewWei(math.MaxInt64), Result: []byte{20, 0, 0, 0, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 56, 48, 55, 0}},
 	}
 
 	var nilWei *entities.Wei
-	var err error
 	var bytes []byte
 	var bsonTypeResult bsontype.Type
 	weiValue := entities.NewWei(1)
 	require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeInt64, []byte{}), entities.DeserializationError)
-	test.RunTable(t, errorCases, func(bsonType bsontype.Type) error {
-		return weiValue.UnmarshalBSONValue(bsonType, []byte{})
+	test.RunTable(t, dataTypeCases, func(bsonType bsontype.Type) error {
+		return weiValue.UnmarshalBSONValue(bsonType, zeroRepresentation)
 	})
-	test.RunTable(t, successCases, func(value *entities.Wei) result {
-		bsonTypeResult, bytes, err = value.MarshalBSONValue()
-		assert.Equal(t, bson.TypeInt64, bsonTypeResult)
-		return result{err, bytes}
+	test.RunTable(t, successCases, func(value *entities.Wei) []byte {
+		bsonTypeResult, bytes, _ = value.MarshalBSONValue()
+		assert.Equal(t, bson.TypeString, bsonTypeResult)
+		return bytes
 	})
 
 }

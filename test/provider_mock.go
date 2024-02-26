@@ -34,97 +34,22 @@ func (m *ProviderMock) HasPegoutLiquidity(ctx context.Context, amount *entities.
 	return args.Error(0)
 }
 
-func (m *ProviderMock) CallFeePegin() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MinPegin() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MaxPegin() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MaxPeginConfirmations() uint16 {
-	args := m.Called()
-	return args.Get(0).(uint16)
-}
-
-func (m *ProviderMock) CallFeePegout() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MinPegout() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MaxPegout() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) MaxPegoutConfirmations() uint16 {
-	args := m.Called()
-	return args.Get(0).(uint16)
-}
-
-func (m *ProviderMock) ValidateAmountForPegin(amount *entities.Wei) error {
-	args := m.Called(amount)
-	return args.Error(0)
-}
-
-func (m *ProviderMock) ValidateAmountForPegout(amount *entities.Wei) error {
-	args := m.Called(amount)
-	return args.Error(0)
-}
-
-func (m *ProviderMock) PenaltyFeePegin() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) PenaltyFeePegout() *entities.Wei {
-	args := m.Called()
-	return args.Get(0).(*entities.Wei)
-}
-
-func (m *ProviderMock) GetRootstockConfirmationsForValue(value *entities.Wei) uint16 {
-	args := m.Called(value)
-	return args.Get(0).(uint16)
-}
-
-func (m *ProviderMock) GetBitcoinConfirmationsForValue(value *entities.Wei) uint16 {
-	args := m.Called(value)
-	return args.Get(0).(uint16)
-}
-
-func (m *ProviderMock) TimeForDepositPegin() uint32 {
-	args := m.Called()
-	return args.Get(0).(uint32)
-}
-
-func (m *ProviderMock) CallTime() uint32 {
-	args := m.Called()
-	return args.Get(0).(uint32)
-}
-
-func (m *ProviderMock) TimeForDepositPegout() uint32 {
-	args := m.Called()
-	return args.Get(0).(uint32)
-}
-
-func (m *ProviderMock) ExpireBlocksPegout() uint64 {
-	args := m.Called()
-	return args.Get(0).(uint64)
-}
-
 func (m *ProviderMock) SignQuote(quoteHash string) (string, error) {
 	args := m.Called(quoteHash)
 	return args.String(0), args.Error(1)
+}
+
+func (m *ProviderMock) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
+	args := m.Called(ctx)
+	return args.Get(0).(liquidity_provider.GeneralConfiguration)
+}
+
+func (m *ProviderMock) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
+	args := m.Called(ctx)
+	return args.Get(0).(liquidity_provider.PeginConfiguration)
+}
+
+func (m *ProviderMock) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
+	args := m.Called(ctx)
+	return args.Get(0).(liquidity_provider.PegoutConfiguration)
 }

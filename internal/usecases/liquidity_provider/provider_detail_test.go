@@ -1,28 +1,23 @@
 package liquidity_provider_test
 
 import (
+	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestGetDetailUseCase_Run(t *testing.T) {
 	provider := &test.ProviderMock{}
-	provider.On("CallFeePegin").Return(entities.NewWei(100))
-	provider.On("MinPegin").Return(entities.NewWei(1000))
-	provider.On("MaxPegin").Return(entities.NewWei(10000))
-	provider.On("MaxPeginConfirmations").Return(uint16(10))
-	provider.On("CallFeePegout").Return(entities.NewWei(200))
-	provider.On("MinPegout").Return(entities.NewWei(2000))
-	provider.On("MaxPegout").Return(entities.NewWei(20000))
-	provider.On("MaxPegoutConfirmations").Return(uint16(20))
+	prepareDetailMock(provider)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider)
-	result, err := useCase.Run()
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
+	result, err := useCase.Run(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, liquidity_provider.FullLiquidityProvider{
 		SiteKey: captchaKey,
@@ -43,34 +38,24 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 
 func TestGetDetailUseCase_Run_InvalidCaptchaKey(t *testing.T) {
 	provider := &test.ProviderMock{}
-	provider.On("CallFeePegin").Return(entities.NewWei(100))
-	provider.On("MinPegin").Return(entities.NewWei(1000))
-	provider.On("MaxPegin").Return(entities.NewWei(10000))
-	provider.On("MaxPeginConfirmations").Return(uint16(10))
-	provider.On("CallFeePegout").Return(entities.NewWei(200))
-	provider.On("MinPegout").Return(entities.NewWei(2000))
-	provider.On("MaxPegout").Return(entities.NewWei(20000))
-	provider.On("MaxPegoutConfirmations").Return(uint16(20))
+	prepareDetailMock(provider)
 	captchaKey := ""
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider)
-	_, err := useCase.Run()
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
+	_, err := useCase.Run(context.Background())
 	assert.Equal(t, "ProviderDetail: missing captcha key", err.Error())
 }
 
 func TestGetDetailUseCase_Run_InvalidPeginDetail(t *testing.T) {
 	var nilWei *entities.Wei
 	provider := &test.ProviderMock{}
-	provider.On("CallFeePegin").Return(entities.NewWei(100))
-	provider.On("MinPegin").Return(nilWei)
-	provider.On("MaxPegin").Return(entities.NewWei(10000))
-	provider.On("MaxPeginConfirmations").Return(uint16(10))
-	provider.On("CallFeePegout").Return(entities.NewWei(200))
-	provider.On("MinPegout").Return(entities.NewWei(2000))
-	provider.On("MaxPegout").Return(entities.NewWei(20000))
-	provider.On("MaxPegoutConfirmations").Return(uint16(20))
+	ctx := context.Background()
+	prepareDetailMock(provider)
+	config := provider.PeginConfiguration(ctx)
+	config.MinValue = nilWei
+	provider.On("PeginConfiguration", mock.AnythingOfType("context.backgroundCtx")).Return(config)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider)
-	_, err := useCase.Run()
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
+	_, err := useCase.Run(ctx)
 	assert.Equal(t, "ProviderDetail: Key: 'LiquidityProviderDetail.MinTransactionValue' "+
 		"Error:Field validation for 'MinTransactionValue' failed on the 'required' tag", err.Error())
 }
@@ -78,17 +63,39 @@ func TestGetDetailUseCase_Run_InvalidPeginDetail(t *testing.T) {
 func TestGetDetailUseCase_Run_InvalidPegoutDetail(t *testing.T) {
 	var nilWei *entities.Wei
 	provider := &test.ProviderMock{}
-	provider.On("CallFeePegin").Return(entities.NewWei(100))
-	provider.On("MinPegin").Return(entities.NewWei(1000))
-	provider.On("MaxPegin").Return(entities.NewWei(10000))
-	provider.On("MaxPeginConfirmations").Return(uint16(10))
-	provider.On("CallFeePegout").Return(entities.NewWei(200))
-	provider.On("MinPegout").Return(nilWei)
-	provider.On("MaxPegout").Return(entities.NewWei(20000))
-	provider.On("MaxPegoutConfirmations").Return(uint16(20))
+	ctx := context.Background()
+	prepareDetailMock(provider)
+	config := provider.PegoutConfiguration(ctx)
+	config.MinValue = nilWei
+	provider.On("PegoutConfiguration", mock.AnythingOfType("context.backgroundCtx")).Return(config)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider)
-	_, err := useCase.Run()
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
+	_, err := useCase.Run(ctx)
 	assert.Equal(t, "ProviderDetail: Key: 'LiquidityProviderDetail.MinTransactionValue' "+
 		"Error:Field validation for 'MinTransactionValue' failed on the 'required' tag", err.Error())
+}
+
+func prepareDetailMock(provider *test.ProviderMock) {
+	provider.On("PeginConfiguration", test.AnyCtx).Return(lp.PeginConfiguration{
+		TimeForDeposit: lp.PeginTimeForDeposit,
+		CallTime:       lp.PeginCallTime,
+		PenaltyFee:     entities.NewWei(lp.PeginPenaltyFee),
+		CallFee:        entities.NewWei(100),
+		MaxValue:       entities.NewWei(10000),
+		MinValue:       entities.NewWei(1000),
+	}).Once()
+	provider.On("PegoutConfiguration", test.AnyCtx).Return(lp.PegoutConfiguration{
+		TimeForDeposit: lp.PegoutTimeForDeposit,
+		CallTime:       lp.PegoutCallTime,
+		PenaltyFee:     entities.NewWei(lp.PegoutPenaltyFee),
+		CallFee:        entities.NewWei(200),
+		MaxValue:       entities.NewWei(20000),
+		MinValue:       entities.NewWei(2000),
+		ExpireBlocks:   lp.PegoutExpireBlocks,
+	}).Once()
+	provider.On("GeneralConfiguration", test.AnyCtx).
+		Return(lp.GeneralConfiguration{
+			RskConfirmations: map[int]uint16{1: 20},
+			BtcConfirmations: map[int]uint16{1: 10},
+		}).Once()
 }

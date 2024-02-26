@@ -26,5 +26,9 @@ func (useCase *SetPegoutConfigUseCase) Run(ctx context.Context, config liquidity
 	if err != nil {
 		return err
 	}
-	return useCase.lpRepository.UpsertPegoutConfiguration(ctx, signedConfig)
+	err = useCase.lpRepository.UpsertPegoutConfiguration(ctx, signedConfig)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.SetPegoutConfigId, err)
+	}
+	return nil
 }

@@ -2,8 +2,11 @@ package test
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
+
+var AnyCtx = mock.AnythingOfType("context.backgroundCtx")
 
 type Case[V, R any] struct {
 	Value  V
