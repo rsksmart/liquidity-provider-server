@@ -10,66 +10,21 @@ import (
 
 func TestConfirmationsPerAmount_ForValue(t *testing.T) {
 	table := test.Table[*entities.Wei, uint16]{
-		{
-			Value:  entities.NewWei(1),
-			Result: uint16(40),
-		},
-		{
-			Value:  entities.NewWei(10000000),
-			Result: uint16(40),
-		},
-		{
-			Value:  entities.NewWei(100000000000000000),
-			Result: uint16(40),
-		},
-		{
-			Value:  entities.NewWei(100000000000000001),
-			Result: uint16(120),
-		},
-		{
-			Value:  entities.NewWei(400000000000000000),
-			Result: uint16(120),
-		},
-		{
-			Value:  entities.NewWei(400000000000000001),
-			Result: uint16(200),
-		},
-		{
-			Value:  entities.NewWei(400000000050000000),
-			Result: uint16(200),
-		},
-		{
-			Value:  entities.NewWei(2000000000000000000),
-			Result: uint16(200),
-		},
-		{
-			Value:  entities.NewWei(2000000000000000001),
-			Result: uint16(400),
-		},
-		{
-			Value:  entities.NewWei(4000000000000000000),
-			Result: uint16(400),
-		},
-		{
-			Value:  entities.NewWei(4000000000000000001),
-			Result: uint16(800),
-		},
-		{
-			Value:  entities.NewWei(4000000005000000000),
-			Result: uint16(800),
-		},
-		{
-			Value:  entities.NewWei(8000000000000000000),
-			Result: uint16(800),
-		},
-		{
-			Value:  entities.NewWei(8000000000000000005),
-			Result: uint16(800),
-		},
-		{
-			Value:  entities.NewWei(9000000000000000000),
-			Result: uint16(800),
-		},
+		{Value: entities.NewWei(1), Result: uint16(40)},
+		{Value: entities.NewWei(10000000), Result: uint16(40)},
+		{Value: entities.NewWei(100000000000000000), Result: uint16(40)},
+		{Value: entities.NewWei(100000000000000001), Result: uint16(120)},
+		{Value: entities.NewWei(400000000000000000), Result: uint16(120)},
+		{Value: entities.NewWei(400000000000000001), Result: uint16(200)},
+		{Value: entities.NewWei(400000000050000000), Result: uint16(200)},
+		{Value: entities.NewWei(2000000000000000000), Result: uint16(200)},
+		{Value: entities.NewWei(2000000000000000001), Result: uint16(400)},
+		{Value: entities.NewWei(4000000000000000000), Result: uint16(400)},
+		{Value: entities.NewWei(4000000000000000001), Result: uint16(800)},
+		{Value: entities.NewWei(4000000005000000000), Result: uint16(800)},
+		{Value: entities.NewWei(8000000000000000000), Result: uint16(800)},
+		{Value: entities.NewWei(8000000000000000005), Result: uint16(800)},
+		{Value: entities.NewWei(9000000000000000000), Result: uint16(800)},
 	}
 	confirmations := liquidity_provider.DefaultRskConfirmationsPerAmount()
 	test.RunTable(t, table, confirmations.ForValue)

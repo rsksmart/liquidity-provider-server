@@ -52,58 +52,14 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		signed entities.Signed[any]
 		err    error
 	}{
-		{
-			signed: entities.Signed[any]{
-				Value: peginConfig,
-				Hash:  "f3daae424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900",
-			},
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: pegoutConfig,
-				Hash:  "3b3e7b075eb60b8c249f44a117f406c64992bafda1173f540277448abd14077e",
-			},
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: generalConfig,
-				Hash:  "3eecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757",
-			},
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: peginConfig,
-				Hash:  "f3daab424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900",
-			},
-			err: entities.IntegrityError,
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: pegoutConfig,
-				Hash:  "3b3e7b075eb60b8c249f44a117f406c64992bafda1273f540277448abd14077e",
-			},
-			err: entities.IntegrityError,
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: generalConfig,
-				Hash:  "3fecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757",
-			},
-			err: entities.IntegrityError,
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: generalConfig,
-				Hash:  "not a hash",
-			},
-			err: hex.InvalidByteError('n'),
-		},
-		{
-			signed: entities.Signed[any]{
-				Value: map[string]int{"test": 5},
-				Hash:  "17bdb7aeb84082e4f0bf751ba78ee1fea05982f93d01e41016d1aeaaa718e18b",
-			},
-		},
+		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daae424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}},
+		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "3b3e7b075eb60b8c249f44a117f406c64992bafda1173f540277448abd14077e"}},
+		{signed: entities.Signed[any]{Value: generalConfig, Hash: "3eecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757"}},
+		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daab424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}, err: entities.IntegrityError},
+		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "3b3e7b075eb60b8c249f44a117f406c64992bafda1273f540277448abd14077e"}, err: entities.IntegrityError},
+		{signed: entities.Signed[any]{Value: generalConfig, Hash: "3fecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757"}, err: entities.IntegrityError},
+		{signed: entities.Signed[any]{Value: generalConfig, Hash: "not a hash"}, err: hex.InvalidByteError('n')},
+		{signed: entities.Signed[any]{Value: map[string]int{"test": 5}, Hash: "17bdb7aeb84082e4f0bf751ba78ee1fea05982f93d01e41016d1aeaaa718e18b"}},
 	}
 
 	for _, testCase := range tests {

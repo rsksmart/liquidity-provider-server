@@ -6,6 +6,7 @@ import (
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -26,11 +27,11 @@ var peginConfigMock = entities.Signed[lp.PeginConfiguration]{
 }
 
 func TestSetPeginConfigUseCase_Run(t *testing.T) {
-	lpRepository := &test.LpRepositoryMock{}
+	lpRepository := &mocks.LpRepositoryMock{}
 	lpRepository.On("UpsertPeginConfiguration", test.AnyCtx, peginConfigMock).Return(nil)
-	walletMock := &test.RskWalletMock{}
+	walletMock := &mocks.RskWalletMock{}
 	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
-	hashMock := &test.HashMock{}
+	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
 	useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash)
@@ -43,22 +44,22 @@ func TestSetPeginConfigUseCase_Run(t *testing.T) {
 }
 
 func TestSetPeginConfigUseCase_Run_ErrorHandling(t *testing.T) {
-	hashMock := &test.HashMock{}
+	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
-	errorSetups := []func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock){
-		func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock) {
+	errorSetups := []func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock){
+		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
 		},
-		func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock) {
+		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
 			lpRepository.On("UpsertPeginConfiguration", test.AnyCtx, peginConfigMock).Return(assert.AnError)
 		},
 	}
 
 	for _, errorSetup := range errorSetups {
-		lpRepository := &test.LpRepositoryMock{}
-		walletMock := &test.RskWalletMock{}
+		lpRepository := &mocks.LpRepositoryMock{}
+		walletMock := &mocks.RskWalletMock{}
 		errorSetup(lpRepository, walletMock)
 		useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash)
 		err := useCase.Run(context.Background(), peginConfigMock.Value)

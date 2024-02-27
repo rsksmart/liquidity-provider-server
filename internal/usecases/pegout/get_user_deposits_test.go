@@ -5,7 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,7 +14,7 @@ import (
 )
 
 func TestGetUserDepositsUseCase_Run(t *testing.T) {
-	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	deposit := quote.PegoutDeposit{
 		TxHash:      "0x123456",
 		QuoteHash:   "0x654321",
@@ -35,7 +35,7 @@ func TestGetUserDepositsUseCase_Run(t *testing.T) {
 }
 
 func TestGetUserDepositsUseCase_Run_ErrorHandling(t *testing.T) {
-	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On(
 		"ListPegoutDepositsByAddress",
 		mock.AnythingOfType("context.backgroundCtx"),

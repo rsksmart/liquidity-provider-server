@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,25 +41,25 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 			q.CallOnRegister == false && q.GasFee.Cmp(entities.NewWei(10000)) == 0 && q.ProductFeeAmount == 0
 	})
 
-	rsk := new(test.RskRpcMock)
+	rsk := new(mocks.RskRpcMock)
 	rsk.On("EstimateGas", mock.Anything, userRskAddress, quoteValue, quoteData).Return(gasLimit, nil)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(100), nil)
-	feeCollector := new(test.FeeCollectorMock)
+	feeCollector := new(mocks.FeeCollectorMock)
 	feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-	bridge := new(test.BridgeMock)
+	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	lbc.On("GetAddress").Return(lbcAddress)
 	lbc.On("HashPeginQuote", quoteMatchFunction).Return(quoteHash, nil)
-	peginQuoteRepository := new(test.PeginQuoteRepositoryMock)
+	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginQuoteRepository.On("InsertQuote", test.AnyCtx, quoteHash, quoteMatchFunction).Return(nil)
-	lp := new(test.ProviderMock)
+	lp := new(mocks.ProviderMock)
 	lp.On("PeginConfiguration", test.AnyCtx).Return(config)
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	lp.On("RskAddress").Return(lpRskAddress)
 	lp.On("BtcAddress").Return(lpBtcAddress)
-	btc := new(test.BtcRpcMock)
+	btc := new(mocks.BtcRpcMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 	useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, "feeCollectorAddress")
 	result, err := useCase.Run(context.Background(), request)
@@ -76,71 +77,61 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 }
 
 func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
-	rsk := new(test.RskRpcMock)
-	lp := new(test.ProviderMock)
+	rsk := new(mocks.RskRpcMock)
+	lp := new(mocks.ProviderMock)
 	lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
-	feeCollector := new(test.FeeCollectorMock)
-	bridge := new(test.BridgeMock)
-	lbc := new(test.LbcMock)
-	peginQuoteRepository := new(test.PeginQuoteRepositoryMock)
-	feeCollectorAddress := "feeCollectorAddress"
-	cases := test.Table[func(btc *test.BtcRpcMock) pegin.QuoteRequest, error]{
+	feeCollector := new(mocks.FeeCollectorMock)
+	bridge := new(mocks.BridgeMock)
+	lbc := new(mocks.LbcMock)
+	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	cases := test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error]{
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
-				const anyAddress = "any address"
-				btc.On("ValidateAddress", anyAddress).Return(blockchain.BtcAddressNotSupportedError)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", anyAddress)
-			},
-			Result: blockchain.BtcAddressNotSupportedError,
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+				btc.On("ValidateAddress", test.AnyAddress).Return(blockchain.BtcAddressNotSupportedError)
+				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", test.AnyAddress)
+			}, Result: blockchain.BtcAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
-				const anyAddress = "any address"
-				btc.On("ValidateAddress", anyAddress).Return(blockchain.BtcAddressInvalidNetworkError)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", anyAddress)
-			},
-			Result: blockchain.BtcAddressInvalidNetworkError,
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+				btc.On("ValidateAddress", test.AnyAddress).Return(blockchain.BtcAddressInvalidNetworkError)
+				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", test.AnyAddress)
+			}, Result: blockchain.BtcAddressInvalidNetworkError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("any", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
-			},
-			Result: usecases.RskAddressNotSupportedError,
+			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "any", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
-			},
-			Result: usecases.RskAddressNotSupportedError,
+			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
-			},
-			Result: usecases.RskAddressNotSupportedError,
+			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D41", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
-			},
-			Result: usecases.RskAddressNotSupportedError,
+			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *test.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(999), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
-			},
-			Result: lpEntity.AmountOutOfRangeError,
+			}, Result: lpEntity.AmountOutOfRangeError,
 		},
 	}
 	for _, testCase := range cases {
-		btc := new(test.BtcRpcMock)
-		useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, feeCollectorAddress)
+		btc := new(mocks.BtcRpcMock)
+		useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, "feeCollectorAddress")
 		result, err := useCase.Run(context.Background(), testCase.Value(btc))
 		assert.Equal(t, pegin.GetPeginQuoteResult{}, result)
 		require.Error(t, err)
@@ -155,13 +146,13 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	setups := getQuoteUseCaseUnexpectedErrorSetups()
 
 	for _, setup := range setups {
-		rsk := new(test.RskRpcMock)
-		feeCollector := new(test.FeeCollectorMock)
-		bridge := new(test.BridgeMock)
-		lbc := new(test.LbcMock)
-		peginQuoteRepository := new(test.PeginQuoteRepositoryMock)
-		lp := new(test.ProviderMock)
-		btc := new(test.BtcRpcMock)
+		rsk := new(mocks.RskRpcMock)
+		feeCollector := new(mocks.FeeCollectorMock)
+		bridge := new(mocks.BridgeMock)
+		lbc := new(mocks.LbcMock)
+		peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
+		lp := new(mocks.ProviderMock)
+		btc := new(mocks.BtcRpcMock)
 		btc.On("ValidateAddress", mock.Anything).Return(nil)
 
 		setup(rsk, feeCollector, bridge, lbc, lp, peginQuoteRepository)
@@ -181,41 +172,41 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 
 // nolint:funlen
 func getQuoteUseCaseUnexpectedErrorSetups() []func(
-	rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-	lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock,
+	rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+	lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock,
 ) {
 	return []func(
-		rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-		lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock,
+		rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+		lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock,
 	){
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(nil, assert.AnError)
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			bridge.On("GetFedAddress").Return("", assert.AnError)
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -227,8 +218,8 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -241,8 +232,8 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lp.On("RskAddress").Return("0x4b5b6b")
 			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
@@ -256,16 +247,16 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil).Once()
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
 		},
-		func(rsk *test.RskRpcMock, feeCollector *test.FeeCollectorMock, bridge *test.BridgeMock,
-			lbc *test.LbcMock, lp *test.ProviderMock, peginQuoteRepository *test.PeginQuoteRepositoryMock) {
+		func(rsk *mocks.RskRpcMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
+			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)

@@ -4,14 +4,14 @@ import (
 	"errors"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestGetProvidersUseCase_Run(t *testing.T) {
-	lbc := &test.LbcMock{}
+	lbc := &mocks.LbcMock{}
 
 	provider := lpEntity.RegisteredLiquidityProvider{
 		Id:           1,
@@ -32,7 +32,7 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 }
 
 func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
-	lbc := &test.LbcMock{}
+	lbc := &mocks.LbcMock{}
 
 	lbc.On("GetProviders").Return(
 		[]lpEntity.RegisteredLiquidityProvider{},
