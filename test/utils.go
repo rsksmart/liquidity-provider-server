@@ -8,6 +8,10 @@ import (
 
 var AnyCtx = mock.AnythingOfType("context.backgroundCtx")
 
+const (
+	AnyAddress = "any address"
+)
+
 type Case[V, R any] struct {
 	Value  V
 	Result R

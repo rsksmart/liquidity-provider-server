@@ -5,12 +5,13 @@ import (
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestGetConfigUseCase_Run(t *testing.T) {
-	lpMock := &test.ProviderMock{}
+	lpMock := &mocks.ProviderMock{}
 	lpMock.On("GeneralConfiguration", test.AnyCtx).Return(lp.DefaultGeneralConfiguration())
 	lpMock.On("PeginConfiguration", test.AnyCtx).Return(lp.DefaultPeginConfiguration())
 	lpMock.On("PegoutConfiguration", test.AnyCtx).Return(lp.DefaultPegoutConfiguration())

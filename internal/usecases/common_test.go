@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	u "github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -132,9 +133,9 @@ func TestSignConfiguration(t *testing.T) {
 		hash      = []byte{4, 5, 6}
 	)
 	configuration := liquidity_provider.DefaultPeginConfiguration()
-	wallet := &test.RskWalletMock{}
+	wallet := &mocks.RskWalletMock{}
 	wallet.On("SignBytes", mock.Anything).Return(signature, nil)
-	hashFunctionMock := &test.HashMock{}
+	hashFunctionMock := &mocks.HashMock{}
 	hashFunctionMock.On("Hash", mock.Anything).Return(hash)
 	signed, err := u.SignConfiguration(id, wallet, hashFunctionMock.Hash, configuration)
 	require.NoError(t, err)
@@ -146,9 +147,9 @@ func TestSignConfiguration(t *testing.T) {
 }
 
 func TestSignConfiguration_SignatureError(t *testing.T) {
-	wallet := &test.RskWalletMock{}
+	wallet := &mocks.RskWalletMock{}
 	wallet.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
-	hashFunctionMock := &test.HashMock{}
+	hashFunctionMock := &mocks.HashMock{}
 	hashFunctionMock.On("Hash", mock.Anything).Return([]byte{1})
 	configuration := liquidity_provider.DefaultPeginConfiguration()
 	signed, err := u.SignConfiguration(id, wallet, hashFunctionMock.Hash, configuration)

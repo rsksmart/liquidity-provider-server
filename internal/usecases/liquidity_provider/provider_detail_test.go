@@ -6,6 +6,7 @@ import (
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestGetDetailUseCase_Run(t *testing.T) {
-	provider := &test.ProviderMock{}
+	provider := &mocks.ProviderMock{}
 	prepareDetailMock(provider)
 	captchaKey := "testKey"
 	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
@@ -37,7 +38,7 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 }
 
 func TestGetDetailUseCase_Run_InvalidCaptchaKey(t *testing.T) {
-	provider := &test.ProviderMock{}
+	provider := &mocks.ProviderMock{}
 	prepareDetailMock(provider)
 	captchaKey := ""
 	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, provider, provider, provider)
@@ -47,7 +48,7 @@ func TestGetDetailUseCase_Run_InvalidCaptchaKey(t *testing.T) {
 
 func TestGetDetailUseCase_Run_InvalidPeginDetail(t *testing.T) {
 	var nilWei *entities.Wei
-	provider := &test.ProviderMock{}
+	provider := &mocks.ProviderMock{}
 	ctx := context.Background()
 	prepareDetailMock(provider)
 	config := provider.PeginConfiguration(ctx)
@@ -62,7 +63,7 @@ func TestGetDetailUseCase_Run_InvalidPeginDetail(t *testing.T) {
 
 func TestGetDetailUseCase_Run_InvalidPegoutDetail(t *testing.T) {
 	var nilWei *entities.Wei
-	provider := &test.ProviderMock{}
+	provider := &mocks.ProviderMock{}
 	ctx := context.Background()
 	prepareDetailMock(provider)
 	config := provider.PegoutConfiguration(ctx)
@@ -75,7 +76,7 @@ func TestGetDetailUseCase_Run_InvalidPegoutDetail(t *testing.T) {
 		"Error:Field validation for 'MinTransactionValue' failed on the 'required' tag", err.Error())
 }
 
-func prepareDetailMock(provider *test.ProviderMock) {
+func prepareDetailMock(provider *mocks.ProviderMock) {
 	provider.On("PeginConfiguration", test.AnyCtx).Return(lp.PeginConfiguration{
 		TimeForDeposit: lp.PeginTimeForDeposit,
 		CallTime:       lp.PeginCallTime,

@@ -6,6 +6,7 @@ import (
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -22,11 +23,11 @@ func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 		Hash:      "040506",
 	}
 
-	lpRepository := &test.LpRepositoryMock{}
+	lpRepository := &mocks.LpRepositoryMock{}
 	lpRepository.On("UpsertGeneralConfiguration", test.AnyCtx, config).Return(nil)
-	walletMock := &test.RskWalletMock{}
+	walletMock := &mocks.RskWalletMock{}
 	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
-	hashMock := &test.HashMock{}
+	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
 	useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, walletMock, hashMock.Hash)
@@ -48,22 +49,22 @@ func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 		Hash:      "040506",
 	}
 
-	hashMock := &test.HashMock{}
+	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
-	errorSetups := []func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock){
-		func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock) {
+	errorSetups := []func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock){
+		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
 		},
-		func(lpRepository *test.LpRepositoryMock, walletMock *test.RskWalletMock) {
+		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
 			lpRepository.On("UpsertGeneralConfiguration", test.AnyCtx, config).Return(assert.AnError)
 		},
 	}
 
 	for _, errorSetup := range errorSetups {
-		lpRepository := &test.LpRepositoryMock{}
-		walletMock := &test.RskWalletMock{}
+		lpRepository := &mocks.LpRepositoryMock{}
+		walletMock := &mocks.RskWalletMock{}
 		errorSetup(lpRepository, walletMock)
 		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, walletMock, hashMock.Hash)
 		err := useCase.Run(context.Background(), config.Value)
