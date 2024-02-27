@@ -1,0 +1,101 @@
+sequenceDiagram
+    actor usr as User
+    participant cli as Client (SDK)
+    participant lbc as Liquidity Bridge Contract
+    participant lps as Liquidity Provider Server
+    participant btc as Bitcoin Network
+    participant rsk as Rootstock Network
+    participant feeCollector as DAO Fee Collector
+    participant bridge as Rootstock Bridge
+
+    activate usr
+    usr->>+cli: Ask to convert BTC to RBTC
+    cli->>+lbc: GetProviders()
+    lbc-->>-cli: Providers list
+    cli-->>-usr: Renders list
+    usr->>+cli: Selects provider
+    deactivate cli
+
+    usr->>+cli: Quote request info
+    cli->>+lps: getQuote(quoteRequest)
+    lps->>+rsk: estimateGas(destinationAddress, quoteData)
+    rsk-->>-lps: gasEstimation
+    lps->>+rsk: gasPrice()
+    rsk-->>-lps: gasPrice
+    lps->>+feeCollector: getFeePercentage()
+    feeCollector-->>-lps: feePercentage
+    alt is not zero
+        lps->>lps: Add product fee
+    end
+    lps->>+bridge: getFederationAddress()
+    bridge-->>-lps: federationAddress
+    lps->>+lbc: hashQuote(quote)
+    lbc-->>-lps: quoteHash
+    lps->>lps: storeQuote(quote, quoteHash)
+    lps-->>-cli: quote + quoteHash
+    cli->>+lbc: hashQuote(quote)
+    Note right of cli: Validates quote integrity
+    lbc-->>-cli: quoteHash
+    cli-->>-usr: Show quote information
+
+    usr->>+cli: Accepts quote terms
+    cli->>+lps: acceptQuote(quoteHash)
+    activate lps
+    lps->>lps: buildDerivationAddress(quoteHash, quote)
+    deactivate lps
+    activate lps
+    lps->>lps: retainQuote(quoteHash, requiredLiquidity)
+    deactivate lps
+    activate lps
+    lps->>lps: signQuote(quoteHash)
+    deactivate lps
+    lps-->>-cli: depositAddress + quoteSignature
+
+    activate cli
+    cli->>cli: validateSignature(signature)
+    deactivate cli
+    cli->>+lbc: validateAddress(depositAddress)
+    Note right of cli: Validate address belongs to federation
+    lbc-->>-cli: isValid
+
+    activate lps
+    loop
+        activate lps
+        lps->>lps: Waits for btc transaction
+        deactivate lps
+    end
+
+    cli-->>-usr: depositAddress
+    usr->>+btc: sendToAddress(quoteValue + fees, depositAddress)
+
+    loop
+        activate lps
+        lps->>lps: Waits for btc transaction confirmations
+        deactivate lps
+    end
+
+    lps->>+lbc: callForUser(value, quote)
+    lbc->>+rsk: transaction to user
+    Note left of rsk: Here the user gets the RBTC
+    rsk-->>-usr: Requested RBTC
+    lbc-->>-lps: Transaction hash
+    deactivate usr
+
+    loop
+        activate lps
+        lps->>lps: Waits for bridge transaction confirmations
+        deactivate lps
+    end
+    lps->>+btc: getTransaction(btcTxHash)
+    btc-->>-lps: rawTx
+    activate lps
+    lps->>lps: buildPmt(rawTx)
+    deactivate lps
+    lps->>+lbc: registerPegIn(signature, rawTx, pmt, blockHeight, quote)
+    lbc->>+bridge: registerFastBridgeBtcTransaction(rawTx, blockHeight, pmt, depositAddress, userBtcRefundAddress, lbcAddress, lpBtcAddress, shouldTransferToContract)
+    bridge->>+rsk: Transaction to LP
+    Note right of rsk: Here the LP gets the RBTC refunded + fee
+    rsk-->>-bridge: Transaction hash
+    bridge-->>-lbc: Transaction hash
+    lbc-->>-lps: Transaction hash
+    deactivate lps
