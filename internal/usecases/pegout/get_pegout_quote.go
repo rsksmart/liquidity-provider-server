@@ -12,6 +12,7 @@ import (
 
 type GetQuoteUseCase struct {
 	rsk                   blockchain.RootstockRpcServer
+	btc                   blockchain.BitcoinNetwork
 	feeCollector          blockchain.FeeCollector
 	bridge                blockchain.RootstockBridge
 	lbc                   blockchain.LiquidityBridgeContract
@@ -24,6 +25,7 @@ type GetQuoteUseCase struct {
 
 func NewGetQuoteUseCase(
 	rsk blockchain.RootstockRpcServer,
+	btc blockchain.BitcoinNetwork,
 	feeCollector blockchain.FeeCollector,
 	bridge blockchain.RootstockBridge,
 	lbc blockchain.LiquidityBridgeContract,
@@ -35,6 +37,7 @@ func NewGetQuoteUseCase(
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
 		rsk:                   rsk,
+		btc:                   btc,
 		feeCollector:          feeCollector,
 		bridge:                bridge,
 		lbc:                   lbc,
@@ -125,20 +128,22 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	if !blockchain.IsSupportedBtcAddress(request.to) {
+	if err = useCase.btc.ValidateAddress(request.to); err != nil {
 		errorArgs["btcAddress"] = request.to
-		return errorArgs, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsSupportedBtcAddress(request.bitcoinRefundAddress) {
+		return errorArgs, err
+	}
+	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		errorArgs["btcAddress"] = request.bitcoinRefundAddress
-		return errorArgs, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.rskRefundAddress) {
+		return errorArgs, err
+	}
+	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		errorArgs["rskAddress"] = request.rskRefundAddress
 		return errorArgs, usecases.RskAddressNotSupportedError
-	} else if err = useCase.pegoutLp.ValidateAmountForPegout(request.valueToTransfer); err != nil {
-		return errorArgs, err
-	} else {
-		return nil, nil
 	}
+	if err = useCase.pegoutLp.ValidateAmountForPegout(request.valueToTransfer); err != nil {
+		return errorArgs, err
+	}
+	return nil, nil
 }
 
 func (useCase *GetQuoteUseCase) buildPegoutQuote(ctx context.Context, request QuoteRequest, fees quote.Fees) (quote.PegoutQuote, error) {

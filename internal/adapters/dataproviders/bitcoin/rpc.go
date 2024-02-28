@@ -22,6 +22,33 @@ func NewBitcoindRpc(conn *Connection) blockchain.BitcoinNetwork {
 	return &bitcoindRpc{conn: conn}
 }
 
+func (rpc *bitcoindRpc) ValidateAddress(address string) error {
+	if err := rpc.validateNetwork(address); err != nil {
+		return err
+	}
+	if !blockchain.IsSupportedBtcAddress(address) {
+		return blockchain.BtcAddressNotSupportedError
+	}
+	return nil
+}
+
+func (rpc *bitcoindRpc) validateNetwork(address string) error {
+	switch rpc.conn.NetworkParams.Net {
+	case wire.MainNet:
+		if !blockchain.IsMainnetBtcAddress(address) {
+			return blockchain.BtcAddressInvalidNetworkError
+		}
+		return nil
+	case wire.TestNet, wire.TestNet3:
+		if !blockchain.IsTestnetBtcAddress(address) {
+			return blockchain.BtcAddressInvalidNetworkError
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported network: %v", rpc.conn.NetworkParams.Net)
+	}
+}
+
 func (rpc *bitcoindRpc) DecodeAddress(address string, keepVersion bool) ([]byte, error) {
 	return DecodeAddressBase58(address, keepVersion)
 }

@@ -2,6 +2,7 @@ package pegout_test
 
 import (
 	"context"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -138,6 +139,48 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	bridge.AssertExpectations(t)
 	mutex.AssertExpectations(t)
 	require.NoError(t, err)
+}
+
+func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
+	updateError := errors.New("an update error")
+	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
+	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(updateError).Once()
+	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	lbc := new(test.LbcMock)
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil).Once()
+	eventBus := new(test.EventBusMock)
+	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
+		expected := retainedQuote
+		expected.RefundPegoutTxHash = refundPegoutTxHash
+		expected.State = quote.PegoutStateRefundPegOutSucceeded
+		require.NoError(t, event.Error)
+		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
+	})).Return().Once()
+	btc := new(test.BtcRpcMock)
+	btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
+	btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil)
+	btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil)
+	btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil)
+	rskWallet := new(test.RskWalletMock)
+	rskWallet.On("SendRbtc", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything).Return(bridgeTxHash, nil).Once()
+	bridge := new(test.BridgeMock)
+	bridge.On("GetAddress").Return("an address").Once()
+	mutex := new(test.MutexMock)
+	mutex.On("Unlock").Return().Once()
+	mutex.On("Lock").Return().Once()
+
+	useCase := pegout.NewRefundPegoutUseCase(quoteRepository, lbc, eventBus, btc, rskWallet, bridge, mutex)
+	err := useCase.Run(context.Background(), retainedQuote)
+
+	quoteRepository.AssertExpectations(t)
+	lbc.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	bridge.AssertExpectations(t)
+	mutex.AssertExpectations(t)
+	require.ErrorIs(t, err, updateError)
 }
 
 func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
