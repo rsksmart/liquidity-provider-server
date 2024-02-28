@@ -16,15 +16,35 @@ import (
 // @Server https://lps.testnet.flyover.rif.technology Testnet
 // @Server https://lps.flyover.rif.technology Mainnet
 
+var (
+	BuildVersion string
+	BuildTime    string
+)
+
 const bootstrapTimeout = 3 * time.Minute // In case LP needs to register
 
 func main() {
-	var err error
-	var file *os.File
 	initCtx, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
 
 	env := environment.LoadEnv()
 
+	logLevel := setUpLogger(*env)
+	logBuildInfo()
+	log.Debugf("Environment loaded: %+v", env)
+
+	secrets := environment.LoadSecrets(initCtx, *env)
+
+	log.Info("Initializing application...")
+	app := lps.NewApplication(initCtx, *env, *secrets)
+	log.Info("Application initialized successfully")
+	cancel()
+	log.Info("Starting application...")
+	app.Run(*env, logLevel)
+	app.Shutdown()
+}
+
+func setUpLogger(env environment.Environment) log.Level {
+	var file *os.File
 	logLevel, err := log.ParseLevel(env.LogLevel)
 	if err != nil {
 		log.Fatal("Error parsing log level:", err)
@@ -41,16 +61,16 @@ func main() {
 			log.SetOutput(file)
 		}
 	}
+	return logLevel
+}
 
-	log.Debugf("Environment loaded: %+v", env)
-
-	secrets := environment.LoadSecrets(initCtx, *env)
-
-	log.Info("Initializing application...")
-	app := lps.NewApplication(initCtx, *env, *secrets)
-	log.Info("Application initialized successfully")
-	cancel()
-	log.Info("Starting application...")
-	app.Run(*env, logLevel)
-	app.Shutdown()
+func logBuildInfo() {
+	if BuildVersion == "" {
+		BuildVersion = "No version provided during build"
+	}
+	if BuildTime == "" {
+		BuildTime = "No time provided during build"
+	}
+	log.Info("Build version: ", BuildVersion)
+	log.Info("Build time: ", BuildTime)
 }

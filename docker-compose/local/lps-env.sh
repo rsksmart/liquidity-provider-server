@@ -157,4 +157,6 @@ echo "LBC deployed at $LBC_ADDR"
 
 docker-compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
+
+docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build --build-arg COMMIT_HASH="$(git rev-parse HEAD)" lps
 docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps

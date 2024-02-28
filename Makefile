@@ -17,9 +17,12 @@ validation: lint
 	go mod verify
 	govulncheck ./... # should fail on non informational vulnerabilities
 
+COMMIT_HASH ?= $(shell git rev-parse HEAD)
+SOURCE_VERSION := $(COMMIT_HASH)
 build: download
 	mkdir -p build && cd build
-	CGO_ENABLED=0 go build -v -installsuffix 'static' -ldflags="-s" -o ./build/liquidity-provider-server ./cmd/application/main.go
+	@echo "Building liquidity-provider-server $(SOURCE_VERSION)"
+	CGO_ENABLED=0 go build -v -installsuffix 'static' -ldflags="-s -X 'main.BuildVersion=$(SOURCE_VERSION)' -X 'main.BuildTime=$(shell date)'" -o ./build/liquidity-provider-server ./cmd/application/main.go
 
 api:
 	go-swagger3 --module-path . \
