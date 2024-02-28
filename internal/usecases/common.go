@@ -50,7 +50,6 @@ const (
 var (
 	NonRecoverableError         = errors.New("non recoverable")
 	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	BtcAddressNotSupportedError = errors.New("btc address not supported")
 	RskAddressNotSupportedError = errors.New("rsk address not supported")
 	QuoteNotFoundError          = errors.New("quote not found")
 	ExpiredQuoteError           = errors.New("expired quote")

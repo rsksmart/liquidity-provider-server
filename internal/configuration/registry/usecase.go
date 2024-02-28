@@ -59,6 +59,7 @@ func NewUseCaseRegistry(
 	return &UseCaseRegistry{
 		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
 			rskRegistry.RpcServer,
+			btcRegistry.RpcServer,
 			rskRegistry.FeeCollector,
 			rskRegistry.Bridge,
 			rskRegistry.Lbc,
@@ -130,6 +131,7 @@ func NewUseCaseRegistry(
 		),
 		getPegoutQuoteUseCase: pegout.NewGetQuoteUseCase(
 			rskRegistry.RpcServer,
+			btcRegistry.RpcServer,
 			rskRegistry.FeeCollector,
 			rskRegistry.Bridge,
 			rskRegistry.Lbc,

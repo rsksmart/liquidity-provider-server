@@ -12,6 +12,7 @@ import (
 
 type GetQuoteUseCase struct {
 	rsk                  blockchain.RootstockRpcServer
+	btc                  blockchain.BitcoinNetwork
 	feeCollector         blockchain.FeeCollector
 	bridge               blockchain.RootstockBridge
 	lbc                  blockchain.LiquidityBridgeContract
@@ -23,6 +24,7 @@ type GetQuoteUseCase struct {
 
 func NewGetQuoteUseCase(
 	rsk blockchain.RootstockRpcServer,
+	btc blockchain.BitcoinNetwork,
 	feeCollector blockchain.FeeCollector,
 	bridge blockchain.RootstockBridge,
 	lbc blockchain.LiquidityBridgeContract,
@@ -33,6 +35,7 @@ func NewGetQuoteUseCase(
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
 		rsk:                  rsk,
+		btc:                  btc,
 		feeCollector:         feeCollector,
 		bridge:               bridge,
 		lbc:                  lbc,
@@ -128,20 +131,22 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	args := usecases.NewErrorArgs()
-	if !blockchain.IsSupportedBtcAddress(request.bitcoinRefundAddress) {
+	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		args["btcAddress"] = request.bitcoinRefundAddress
-		return args, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.rskRefundAddress) {
+		return args, err
+	}
+	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		args["rskAddress"] = request.rskRefundAddress
 		return args, usecases.RskAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.callEoaOrContractAddress) {
+	}
+	if !blockchain.IsRskAddress(request.callEoaOrContractAddress) {
 		args["rskAddress"] = request.callEoaOrContractAddress
 		return args, usecases.RskAddressNotSupportedError
-	} else if err = useCase.peginLp.ValidateAmountForPegin(request.valueToTransfer); err != nil {
-		return args, err
-	} else {
-		return nil, nil
 	}
+	if err = useCase.peginLp.ValidateAmountForPegin(request.valueToTransfer); err != nil {
+		return args, err
+	}
+	return nil, nil
 }
 
 func (useCase *GetQuoteUseCase) buildPeginQuote(

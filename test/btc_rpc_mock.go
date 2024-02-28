@@ -45,3 +45,8 @@ func (m *BtcRpcMock) GetPartialMerkleTree(hash string) ([]byte, error) {
 	args := m.Called(hash)
 	return args.Get(0).([]byte), args.Error(1)
 }
+
+func (m *BtcRpcMock) ValidateAddress(address string) error {
+	args := m.Called(address)
+	return args.Error(0)
+}
