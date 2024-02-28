@@ -7,10 +7,12 @@ import (
 )
 
 type Environment struct {
+	LpsStage            string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
 	Port                uint   `env:"SERVER_PORT" validate:"required"`
 	LogLevel            string `env:"LOG_LEVEL" validate:"required"`
 	LogFile             string `env:"LOG_FILE"`
 	EnableManagementApi bool   `env:"ENABLE_MANAGEMENT_API"`
+	AwsLocalEndpoint    string `env:"AWS_LOCAL_ENDPOINT"`
 	Mongo               MongoEnv
 	Rsk                 RskEnv
 	Btc                 BtcEnv
