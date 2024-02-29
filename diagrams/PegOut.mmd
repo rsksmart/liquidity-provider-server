@@ -1,0 +1,113 @@
+sequenceDiagram
+    actor usr as User
+    participant cli as Client (SDK)
+    participant lbc as Liquidity Bridge Contract
+    participant lps as Liquidity Provider Server
+    participant btcWallet as Bitcoin Wallet
+    participant btc as Bitcoin Network
+    participant rsk as Rootstock Network
+    participant feeCollector as DAO Fee Collector
+    participant bridge as Rootstock Bridge
+
+    activate usr
+    usr->>+cli: Ask to convert RBTC to BTC
+    cli->>+lbc: GetProviders()
+    lbc-->>-cli: Providers list
+    cli-->>-usr: Renders list
+    usr->>+cli: Selects provider
+    deactivate cli
+
+    usr->>+cli: Quote request info
+    cli->>+lps: getPegoutQuote(quoteRequest)
+    lps->>+btcWallet: estimateFees(destinationAddress, quoteValue)
+    btcWallet-->>-lps: feeEstimation
+    lps->>+feeCollector: getFeePercentage()
+    feeCollector-->>-lps: feePercentage
+    alt is not zero
+        Note right of lps: The gas price is to estimate the cost of the tx to the fee collector
+        lps->>+rsk: gasPrice()
+        rsk-->>-lps: gasPrice
+        lps->>lps: Add product fee
+    end
+
+    lps->>+lbc: hashPegoutQuote(quote)
+    lbc-->>-lps: quoteHash
+    lps->>lps: storeQuote(quote, quoteHash)
+    lps-->>-cli: quote + quoteHash
+
+    cli->>+lbc: hashPegoutQuote(quote)
+    Note right of cli: Validates quote integrity
+    lbc-->>-cli: quoteHash
+    cli-->>-usr: Show quote information
+
+    usr->>+cli: Accepts quote terms
+    cli->>+lps: acceptPegoutQuote(quoteHash)
+    activate lps
+    lps->>lps: retainQuote(quoteHash, requiredLiquidity)
+    deactivate lps
+    activate lps
+    lps->>lps: signQuote(quoteHash)
+    deactivate lps
+    lps-->>-cli: lbcAddress + quoteSignature
+
+    activate cli
+    cli->>cli: validateSignature(signature)
+    deactivate cli
+
+
+    activate lps
+    loop
+        activate lps
+        lps->>lps: Waits for rsk transaction
+        deactivate lps
+    end
+
+    cli-->>-usr: lbcAddress
+
+    usr->>+cli: Create deposit transaction
+    cli->>+lbc: depositPegout(quote, signature, quoteValue + fees)
+    lbc-)lps: Deposit event
+    lbc-->>-cli: Transaction hash
+    cli-->>-usr: Transaction hash
+
+    loop
+        activate lps
+        lps->>lps: Waits for rsk transaction confirmations
+        deactivate lps
+    end
+
+    lps->>+btcWallet: sendToAddress(quoteValue, depositAddress)
+    btcWallet->>+btc: Transaction to user
+    Note left of btcWallet: Here the user gets the BTC
+    btc-->>-usr: Requested BTC
+    btcWallet-->>-lps: Transaction hash
+    deactivate usr
+
+    loop
+        activate lps
+        lps->>lps: Waits for bridge transaction confirmations
+        deactivate lps
+    end
+
+    lps->>+btc: getTransaction(btcTxHash)
+    btc-->>-lps: rawTx
+    activate lps
+    lps->>lps: buildMerkleBranch(rawTx)
+    deactivate lps
+    lps->>+lbc: refundPegout(quoteHash, rawTx, blockHash, merkleBranchPath, merkleBranchHashes)
+    lbc-->>-lps: Transaction hash
+    lps->>+rsk: sendTransaction(bridgeAddress, quoteValue + fees)
+    rsk->>+bridge: Pegout(lpAddress, quoteValue + fees)
+
+    bridge-->>-rsk: Internal transaction hash
+    rsk-->>-lps: Transaction hash
+    deactivate lps
+    activate bridge
+    bridge->>bridge: Process pegout
+    loop
+        bridge->>bridge: Wait pegout confirmations
+        Note left of bridge: A lot of confirmations
+    end
+    bridge-->>+btcWallet: Refunded BTC + fees
+    deactivate bridge
+    deactivate btcWallet
