@@ -1,9 +1,10 @@
-package test
+package mocks
 
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/stretchr/testify/mock"
 )
@@ -72,9 +73,9 @@ func (m *LbcMock) RegisterProvider(txConfig blockchain.TransactionConfig, params
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *LbcMock) GetProviders() ([]entities.RegisteredLiquidityProvider, error) {
+func (m *LbcMock) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
 	args := m.Called()
-	return args.Get(0).([]entities.RegisteredLiquidityProvider), args.Error(1)
+	return args.Get(0).([]liquidity_provider.RegisteredLiquidityProvider), args.Error(1)
 }
 
 func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
@@ -82,9 +83,9 @@ func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
 	return args.Error(0)
 }
 
-func (m *LbcMock) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]entities.PunishmentEvent, error) {
+func (m *LbcMock) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
 	args := m.Called(ctx, fromBlock, toBlock)
-	return args.Get(0).([]entities.PunishmentEvent), args.Error(1)
+	return args.Get(0).([]liquidity_provider.PunishmentEvent), args.Error(1)
 }
 
 func (m *LbcMock) HashPeginQuote(peginQuote quote.PeginQuote) (string, error) {

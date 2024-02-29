@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"sync"
@@ -15,8 +16,8 @@ type AcceptQuoteUseCase struct {
 	bridge              blockchain.RootstockBridge
 	btc                 blockchain.BitcoinNetwork
 	rsk                 blockchain.RootstockRpcServer
-	lp                  entities.LiquidityProvider
-	peginLp             entities.PeginLiquidityProvider
+	lp                  liquidity_provider.LiquidityProvider
+	peginLp             liquidity_provider.PeginLiquidityProvider
 	eventBus            entities.EventBus
 	peginLiquidityMutex sync.Locker
 }
@@ -26,8 +27,8 @@ func NewAcceptQuoteUseCase(
 	bridge blockchain.RootstockBridge,
 	btc blockchain.BitcoinNetwork,
 	rsk blockchain.RootstockRpcServer,
-	lp entities.LiquidityProvider,
-	peginLp entities.PeginLiquidityProvider,
+	lp liquidity_provider.LiquidityProvider,
+	peginLp liquidity_provider.PeginLiquidityProvider,
 	eventBus entities.EventBus,
 	peginLiquidityMutex sync.Locker,
 ) *AcceptQuoteUseCase {

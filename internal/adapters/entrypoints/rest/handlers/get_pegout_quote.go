@@ -4,6 +4,8 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -35,10 +37,11 @@ func NewGetPegoutQuoteHandler(useCase *pegout.GetQuoteUseCase) http.HandlerFunc 
 		)
 
 		result, err = useCase.Run(req.Context(), pegoutRequest)
-		if errors.Is(err, usecases.BtcAddressNotSupportedError) ||
+		if errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
+			errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
 			errors.Is(err, usecases.RskAddressNotSupportedError) ||
 			errors.Is(err, usecases.TxBelowMinimumError) ||
-			errors.Is(err, usecases.AmountOutOfRangeError) {
+			errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
 			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return

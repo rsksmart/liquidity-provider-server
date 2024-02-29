@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 	CallFee:               entities.NewWei(1000),
 	PenaltyFee:            100,
 	Nonce:                 123456,
-	DepositAddress:        "any address",
+	DepositAddress:        test.AnyAddress,
 	Value:                 entities.NewWei(5000),
 	AgreementTimestamp:    now - 60,
 	DepositDateLimit:      now + 60,
@@ -55,7 +56,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run(t *testing.T) {
 		BlockNumber: 480,
 		From:        "0x1a1b1c",
 	}
-	quoteReporitory := new(test.PegoutQuoteRepositoryMock)
+	quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 	quoteReporitory.On(
 		"UpdateRetainedQuote",
 		mock.AnythingOfType("context.backgroundCtx"),
@@ -115,7 +116,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			quoteReporitory := new(test.PegoutQuoteRepositoryMock)
+			quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 			useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
 			watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), testCase.deposit)
 			quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
@@ -145,7 +146,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 		{State: quote.PegoutStateTimeForDepositElapsed},
 	}
 	for _, retainedQuote := range quotes {
-		quoteReporitory := new(test.PegoutQuoteRepositoryMock)
+		quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 		useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
 		watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, retainedQuote), deposit)
 		quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
@@ -166,18 +167,18 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_ErrorHandling(t *testing.T) {
 		From:        "0x1a1b1c",
 	}
 
-	setups := []func(quoteRepository *test.PegoutQuoteRepositoryMock){
-		func(quoteRepository *test.PegoutQuoteRepositoryMock) {
+	setups := []func(quoteRepository *mocks.PegoutQuoteRepositoryMock){
+		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
 			quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError)
 		},
-		func(quoteRepository *test.PegoutQuoteRepositoryMock) {
+		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
 			quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil)
 			quoteRepository.On("UpsertPegoutDeposit", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError)
 		},
 	}
 
 	for _, setup := range setups {
-		quoteReporitory := new(test.PegoutQuoteRepositoryMock)
+		quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 		setup(quoteReporitory)
 		useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
 		watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)

@@ -1,17 +1,17 @@
 package liquidity_provider
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type ChangeStatusUseCase struct {
 	lbc      blockchain.LiquidityBridgeContract
-	provider entities.LiquidityProvider
+	provider liquidity_provider.LiquidityProvider
 }
 
-func NewChangeStatusUseCase(lbc blockchain.LiquidityBridgeContract, provider entities.LiquidityProvider) *ChangeStatusUseCase {
+func NewChangeStatusUseCase(lbc blockchain.LiquidityBridgeContract, provider liquidity_provider.LiquidityProvider) *ChangeStatusUseCase {
 	return &ChangeStatusUseCase{lbc: lbc, provider: provider}
 }
 

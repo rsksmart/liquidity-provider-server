@@ -1,5 +1,7 @@
 package pkg
 
+import "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+
 type ProviderDetail struct {
 	Fee                   uint64 `json:"fee"  required:""`
 	MinTransactionValue   uint64 `json:"minTransactionValue"  required:""`
@@ -24,4 +26,16 @@ type LiquidityProvider struct {
 
 type ChangeStatusRequest struct {
 	Status *bool `json:"status"`
+}
+
+type PeginConfigurationRequest struct {
+	Configuration *liquidity_provider.PeginConfiguration `json:"configuration" validate:"required"`
+}
+
+type PegoutConfigurationRequest struct {
+	Configuration *liquidity_provider.PegoutConfiguration `json:"configuration" validate:"required"`
+}
+
+type GeneralConfigurationRequest struct {
+	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
 }

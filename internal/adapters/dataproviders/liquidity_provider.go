@@ -4,21 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"slices"
 )
 
 type LocalLiquidityProvider struct {
 	env              *Configuration
 	peginRepository  quote.PeginQuoteRepository
 	pegoutRepository quote.PegoutQuoteRepository
+	lpRepository     liquidity_provider.LiquidityProviderRepository
 	rsk              blockchain.RootstockRpcServer
 	signer           rootstock.TransactionSigner
 	btc              blockchain.BitcoinWallet
@@ -29,6 +31,7 @@ func NewLocalLiquidityProvider(
 	env *Configuration,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
+	lpRepository liquidity_provider.LiquidityProviderRepository,
 	rsk blockchain.RootstockRpcServer,
 	signer rootstock.TransactionSigner,
 	btc blockchain.BitcoinWallet,
@@ -38,6 +41,7 @@ func NewLocalLiquidityProvider(
 		env:              env,
 		peginRepository:  peginRepository,
 		pegoutRepository: pegoutRepository,
+		lpRepository:     lpRepository,
 		rsk:              rsk,
 		signer:           signer,
 		btc:              btc,
@@ -71,30 +75,6 @@ func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
 	return hex.EncodeToString(signatureBytes), nil
 }
 
-func (lp *LocalLiquidityProvider) ValidateAmountForPegout(amount *entities.Wei) error {
-	if amount.Cmp(lp.MaxPegout()) <= 0 && amount.Cmp(lp.MinPegout()) >= 0 {
-		return nil
-	} else {
-		return fmt.Errorf("%w [%v, %v]", usecases.AmountOutOfRangeError, lp.MinPegout(), lp.MaxPegout())
-	}
-}
-
-func (lp *LocalLiquidityProvider) GetRootstockConfirmationsForValue(value *entities.Wei) uint16 {
-	values := make([]int, 0)
-	for key := range lp.env.RskConfig.Confirmations {
-		values = append(values, key)
-	}
-	slices.Sort(values)
-	index := slices.IndexFunc(values, func(item int) bool {
-		return int(value.AsBigInt().Int64()) < item
-	})
-	if index == -1 {
-		return lp.env.RskConfig.Confirmations[values[len(values)-1]]
-	} else {
-		return lp.env.RskConfig.Confirmations[values[index]]
-	}
-}
-
 func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
 	lockedLiquidity := new(entities.Wei)
 	log.Debug("Verifying if has liquidity")
@@ -121,66 +101,6 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 			"not enough liquidity, missing %s satoshi\n",
 			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
 		)
-	}
-}
-
-func (lp *LocalLiquidityProvider) CallFeePegout() *entities.Wei {
-	return lp.env.PegoutConfig.CallFee
-}
-
-func (lp *LocalLiquidityProvider) PenaltyFeePegout() *entities.Wei {
-	return lp.env.PegoutConfig.PenaltyFee
-}
-
-func (lp *LocalLiquidityProvider) TimeForDepositPegout() uint32 {
-	return lp.env.PegoutConfig.TimeForDeposit
-}
-
-func (lp *LocalLiquidityProvider) ExpireBlocksPegout() uint64 {
-	return uint64(lp.env.PegoutConfig.ExpireBlocks)
-}
-
-func (lp *LocalLiquidityProvider) MaxPegout() *entities.Wei {
-	return lp.env.PegoutConfig.MaxTransactionValue
-}
-
-func (lp *LocalLiquidityProvider) MinPegout() *entities.Wei {
-	return lp.env.PegoutConfig.MinTransactionValue
-}
-
-func (lp *LocalLiquidityProvider) MaxPegoutConfirmations() uint16 {
-	// TODO replace in go 1.22 with
-	// return slices.Max(maps.Values(lp.env.RskConfig.Confirmations))
-	var maxValue uint16
-	for _, value := range lp.env.RskConfig.Confirmations {
-		if maxValue < value {
-			maxValue = value
-		}
-	}
-	return maxValue
-}
-
-func (lp *LocalLiquidityProvider) ValidateAmountForPegin(amount *entities.Wei) error {
-	if amount.Cmp(lp.MaxPegin()) <= 0 && amount.Cmp(lp.MinPegin()) >= 0 {
-		return nil
-	} else {
-		return fmt.Errorf("%w [%v, %v]", usecases.AmountOutOfRangeError, lp.MinPegin(), lp.MaxPegin())
-	}
-}
-
-func (lp *LocalLiquidityProvider) GetBitcoinConfirmationsForValue(value *entities.Wei) uint16 {
-	values := make([]int, 0)
-	for key := range lp.env.BtcConfig.Confirmations {
-		values = append(values, key)
-	}
-	slices.Sort(values)
-	index := slices.IndexFunc(values, func(item int) bool {
-		return int(value.AsBigInt().Int64()) < item
-	})
-	if index == -1 {
-		return lp.env.BtcConfig.Confirmations[values[len(values)-1]]
-	} else {
-		return lp.env.BtcConfig.Confirmations[values[index]]
 	}
 }
 
@@ -218,38 +138,57 @@ func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, require
 	}
 }
 
-func (lp *LocalLiquidityProvider) CallTime() uint32 {
-	return lp.env.PeginConfig.CallTime
-}
-
-func (lp *LocalLiquidityProvider) CallFeePegin() *entities.Wei {
-	return lp.env.PeginConfig.CallFee
-}
-
-func (lp *LocalLiquidityProvider) PenaltyFeePegin() *entities.Wei {
-	return lp.env.PeginConfig.PenaltyFee
-}
-
-func (lp *LocalLiquidityProvider) TimeForDepositPegin() uint32 {
-	return lp.env.PeginConfig.TimeForDeposit
-}
-
-func (lp *LocalLiquidityProvider) MaxPegin() *entities.Wei {
-	return lp.env.PeginConfig.MaxTransactionValue
-}
-
-func (lp *LocalLiquidityProvider) MinPegin() *entities.Wei {
-	return lp.env.PeginConfig.MinTransactionValue
-}
-
-func (lp *LocalLiquidityProvider) MaxPeginConfirmations() uint16 {
-	// TODO replace in go 1.22 with
-	// return slices.Max(maps.Values(lp.env.BtcConfig.Confirmations))
-	var maxValue uint16
-	for _, value := range lp.env.BtcConfig.Confirmations {
-		if maxValue < value {
-			maxValue = value
-		}
+func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
+	configuration, err := validateConfiguration("general", lp, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+		return lp.lpRepository.GetGeneralConfiguration(ctx)
+	})
+	if err != nil {
+		return liquidity_provider.DefaultGeneralConfiguration()
 	}
-	return maxValue
+	return configuration.Value
+}
+
+func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
+	configuration, err := validateConfiguration("pegout", lp, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
+		return lp.lpRepository.GetPegoutConfiguration(ctx)
+	})
+	if err != nil {
+		return liquidity_provider.DefaultPegoutConfiguration()
+	}
+	return configuration.Value
+}
+
+func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
+	configuration, err := validateConfiguration("pegin", lp, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
+		return lp.lpRepository.GetPeginConfiguration(ctx)
+	})
+	if err != nil {
+		return liquidity_provider.DefaultPeginConfiguration()
+	}
+	return configuration.Value
+}
+
+func validateConfiguration[T liquidity_provider.ConfigurationType](
+	displayName string,
+	lp *LocalLiquidityProvider,
+	readFunction func() (*entities.Signed[T], error),
+) (*entities.Signed[T], error) {
+	configuration, err := readFunction()
+	if err != nil {
+		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
+		return nil, err
+	}
+	if configuration == nil {
+		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
+		return nil, errors.New("configuration not found")
+	}
+	if err = configuration.CheckIntegrity(crypto.Keccak256); err != nil {
+		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
+		return nil, err
+	}
+	if !lp.signer.Validate(configuration.Signature, configuration.Hash) {
+		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
+		return nil, errors.New("invalid signature")
+	}
+	return configuration, nil
 }
