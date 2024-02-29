@@ -3,6 +3,9 @@ ARG ALPINE_VERSION=3.19.1
 
 FROM --platform=linux/amd64 golang:${GO_VERSION} AS builder
 
+ARG COMMIT_HASH
+ENV COMMIT_HASH=${COMMIT_HASH}
+
 WORKDIR /code
 
 COPY Makefile go.mod go.sum ./
