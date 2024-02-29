@@ -2,18 +2,18 @@ package liquidity_provider_test
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestGetProvidersUseCase_Run(t *testing.T) {
-	lbc := &test.LbcMock{}
+	lbc := &mocks.LbcMock{}
 
-	provider := entities.RegisteredLiquidityProvider{
+	provider := lpEntity.RegisteredLiquidityProvider{
 		Id:           1,
 		Address:      "0x01",
 		Name:         "one",
@@ -21,21 +21,21 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 		Status:       true,
 		ProviderType: "both",
 	}
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{provider}, nil).Once()
+	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{provider}, nil).Once()
 
 	useCase := liquidity_provider.NewGetProvidersUseCase(lbc)
 	result, err := useCase.Run()
 
 	lbc.AssertExpectations(t)
 	require.NoError(t, err)
-	assert.Equal(t, []entities.RegisteredLiquidityProvider{provider}, result)
+	assert.Equal(t, []lpEntity.RegisteredLiquidityProvider{provider}, result)
 }
 
 func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
-	lbc := &test.LbcMock{}
+	lbc := &mocks.LbcMock{}
 
 	lbc.On("GetProviders").Return(
-		[]entities.RegisteredLiquidityProvider{},
+		[]lpEntity.RegisteredLiquidityProvider{},
 		errors.New("some error"),
 	).Once()
 
@@ -44,5 +44,5 @@ func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
 
 	lbc.AssertExpectations(t)
 	require.Error(t, err)
-	assert.Equal(t, []entities.RegisteredLiquidityProvider{}, result)
+	assert.Equal(t, []lpEntity.RegisteredLiquidityProvider{}, result)
 }

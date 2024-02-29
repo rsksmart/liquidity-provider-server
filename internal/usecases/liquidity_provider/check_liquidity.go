@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,16 +21,16 @@ const (
 )
 
 type CheckLiquidityUseCase struct {
-	peginProvider  entities.PeginLiquidityProvider
-	pegoutProvider entities.PegoutLiquidityProvider
+	peginProvider  liquidity_provider.PeginLiquidityProvider
+	pegoutProvider liquidity_provider.PegoutLiquidityProvider
 	bridge         blockchain.RootstockBridge
 	alertSender    entities.AlertSender
 	recipient      string
 }
 
 func NewCheckLiquidityUseCase(
-	peginProvider entities.PeginLiquidityProvider,
-	pegoutProvider entities.PegoutLiquidityProvider,
+	peginProvider liquidity_provider.PeginLiquidityProvider,
+	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	bridge blockchain.RootstockBridge,
 	alertSender entities.AlertSender,
 	recipient string,

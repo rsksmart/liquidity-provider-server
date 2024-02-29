@@ -2,17 +2,17 @@ package liquidity_provider_test
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestChangeStatusUseCase_Run(t *testing.T) {
-	lbc := &test.LbcMock{}
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetProviders").Return([]lp.RegisteredLiquidityProvider{
 		{
 			Id:      1,
 			Address: "0x01",
@@ -28,7 +28,7 @@ func TestChangeStatusUseCase_Run(t *testing.T) {
 	}, nil).Once()
 	lbc.On("SetProviderStatus", uint64(2), false).Return(nil).Once()
 
-	provider := &test.ProviderMock{}
+	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("0x02")
 
 	err := liquidity_provider.NewChangeStatusUseCase(lbc, provider).Run(false)
@@ -38,18 +38,18 @@ func TestChangeStatusUseCase_Run(t *testing.T) {
 }
 
 func TestChangeStatusUseCase_Run_Fail(t *testing.T) {
-	lbc := &test.LbcMock{}
-	provider := &test.ProviderMock{}
+	lbc := &mocks.LbcMock{}
+	provider := &mocks.ProviderMock{}
 
 	lbc.On("GetProviders").Return(
-		[]entities.RegisteredLiquidityProvider{},
+		[]lp.RegisteredLiquidityProvider{},
 		errors.New("some error"),
 	).Once()
 	err := liquidity_provider.NewChangeStatusUseCase(lbc, provider).Run(false)
 	lbc.AssertExpectations(t)
 	require.Error(t, err)
 
-	lbc.On("GetProviders").Return([]entities.RegisteredLiquidityProvider{
+	lbc.On("GetProviders").Return([]lp.RegisteredLiquidityProvider{
 		{Id: 1, Address: "0x01"},
 	}, nil).Once()
 	provider.On("RskAddress").Return("0x01")

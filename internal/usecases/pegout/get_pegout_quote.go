@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"strings"
@@ -12,29 +13,32 @@ import (
 
 type GetQuoteUseCase struct {
 	rsk                   blockchain.RootstockRpcServer
+	btc                   blockchain.BitcoinNetwork
 	feeCollector          blockchain.FeeCollector
 	bridge                blockchain.RootstockBridge
 	lbc                   blockchain.LiquidityBridgeContract
 	pegoutQuoteRepository quote.PegoutQuoteRepository
-	lp                    entities.LiquidityProvider
-	pegoutLp              entities.PegoutLiquidityProvider
+	lp                    liquidity_provider.LiquidityProvider
+	pegoutLp              liquidity_provider.PegoutLiquidityProvider
 	btcWallet             blockchain.BitcoinWallet
 	feeCollectorAddress   string
 }
 
 func NewGetQuoteUseCase(
 	rsk blockchain.RootstockRpcServer,
+	btc blockchain.BitcoinNetwork,
 	feeCollector blockchain.FeeCollector,
 	bridge blockchain.RootstockBridge,
 	lbc blockchain.LiquidityBridgeContract,
 	pegoutQuoteRepository quote.PegoutQuoteRepository,
-	lp entities.LiquidityProvider,
-	pegoutLp entities.PegoutLiquidityProvider,
+	lp liquidity_provider.LiquidityProvider,
+	pegoutLp liquidity_provider.PegoutLiquidityProvider,
 	btcWallet blockchain.BitcoinWallet,
 	feeCollectorAddress string,
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
 		rsk:                   rsk,
+		btc:                   btc,
 		feeCollector:          feeCollector,
 		bridge:                bridge,
 		lbc:                   lbc,
@@ -81,7 +85,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var err error
 
 	gasFeeDao := new(entities.Wei)
-	if errorArgs, err = useCase.validateRequest(request); err != nil {
+	configuration := useCase.pegoutLp.PegoutConfiguration(ctx)
+	if errorArgs, err = useCase.validateRequest(configuration, request); err != nil {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, err, errorArgs)
 	}
 
@@ -102,12 +107,12 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 
 	gasFeeDao.Mul(daoTxAmounts.DaoGasAmount, gasPrice)
 	fees := quote.Fees{
-		CallFee:          useCase.pegoutLp.CallFeePegout(),
+		CallFee:          configuration.CallFee,
 		GasFee:           new(entities.Wei).Add(feeInWei, gasFeeDao),
-		PenaltyFee:       useCase.pegoutLp.PenaltyFeePegout(),
+		PenaltyFee:       configuration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
 	}
-	if pegoutQuote, err = useCase.buildPegoutQuote(ctx, request, fees); err != nil {
+	if pegoutQuote, err = useCase.buildPegoutQuote(ctx, configuration, request, fees); err != nil {
 		return GetPegoutQuoteResult{}, err
 	}
 
@@ -122,26 +127,33 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	return GetPegoutQuoteResult{PegoutQuote: pegoutQuote, Hash: hash}, nil
 }
 
-func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
+func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PegoutConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	if !blockchain.IsSupportedBtcAddress(request.to) {
+	if err = useCase.btc.ValidateAddress(request.to); err != nil {
 		errorArgs["btcAddress"] = request.to
-		return errorArgs, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsSupportedBtcAddress(request.bitcoinRefundAddress) {
+		return errorArgs, err
+	}
+	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		errorArgs["btcAddress"] = request.bitcoinRefundAddress
-		return errorArgs, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.rskRefundAddress) {
+		return errorArgs, err
+	}
+	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		errorArgs["rskAddress"] = request.rskRefundAddress
 		return errorArgs, usecases.RskAddressNotSupportedError
-	} else if err = useCase.pegoutLp.ValidateAmountForPegout(request.valueToTransfer); err != nil {
-		return errorArgs, err
-	} else {
-		return nil, nil
 	}
+	if err = configuration.ValidateAmount(request.valueToTransfer); err != nil {
+		return errorArgs, err
+	}
+	return nil, nil
 }
 
-func (useCase *GetQuoteUseCase) buildPegoutQuote(ctx context.Context, request QuoteRequest, fees quote.Fees) (quote.PegoutQuote, error) {
+func (useCase *GetQuoteUseCase) buildPegoutQuote(
+	ctx context.Context,
+	configuration liquidity_provider.PegoutConfiguration,
+	request QuoteRequest,
+	fees quote.Fees,
+) (quote.PegoutQuote, error) {
 	var err error
 	var nonce int64
 	var blockNumber uint64
@@ -155,8 +167,9 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(ctx context.Context, request Qu
 	}
 
 	now := uint32(time.Now().Unix())
-	confirmationsForUserTx := useCase.lp.GetRootstockConfirmationsForValue(request.valueToTransfer)
-	confirmationsForLpTx := useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer)
+	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
+	confirmationsForUserTx := generalConfiguration.RskConfirmations.ForValue(request.valueToTransfer)
+	confirmationsForLpTx := generalConfiguration.BtcConfirmations.ForValue(request.valueToTransfer)
 	pegoutQuote := quote.PegoutQuote{
 		LbcAddress:            useCase.lbc.GetAddress(),
 		LpRskAddress:          useCase.lp.RskAddress(),
@@ -169,12 +182,12 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(ctx context.Context, request Qu
 		DepositAddress:        request.to,
 		Value:                 request.valueToTransfer,
 		AgreementTimestamp:    now,
-		DepositDateLimit:      now + useCase.pegoutLp.TimeForDepositPegout(),
+		DepositDateLimit:      now + configuration.TimeForDeposit,
 		DepositConfirmations:  confirmationsForUserTx,
 		TransferConfirmations: confirmationsForLpTx,
-		TransferTime:          useCase.pegoutLp.TimeForDepositPegout(),
-		ExpireDate:            now + useCase.pegoutLp.TimeForDepositPegout(),
-		ExpireBlock:           uint32(blockNumber + useCase.pegoutLp.ExpireBlocksPegout()),
+		TransferTime:          configuration.TimeForDeposit,
+		ExpireDate:            now + configuration.TimeForDeposit,
+		ExpireBlock:           uint32(blockNumber + configuration.ExpireBlocks),
 		GasFee:                fees.GasFee,
 		ProductFeeAmount:      fees.ProductFeeAmount,
 	}

@@ -1,16 +1,26 @@
 package blockchain
 
 import (
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"math/big"
 	"regexp"
 )
 
 var (
-	btcTestnetP2PKHRegex = regexp.MustCompile("^[mn]([a-km-zA-HJ-NP-Z1-9]{25,34})$")
-	btcMainnetP2PKHRegex = regexp.MustCompile("^[1]([a-km-zA-HJ-NP-Z1-9]{25,34})$")
-	btcMainnetP2SHRegex  = regexp.MustCompile("^[3]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
-	btcTestnetP2SHRegex  = regexp.MustCompile("^[2]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
+	btcTestnetP2PKHRegex  = regexp.MustCompile("^[mn]([a-km-zA-HJ-NP-Z1-9]{25,34})$")
+	btcMainnetP2PKHRegex  = regexp.MustCompile("^[1]([a-km-zA-HJ-NP-Z1-9]{25,34})$")
+	btcMainnetP2SHRegex   = regexp.MustCompile("^[3]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
+	btcTestnetP2SHRegex   = regexp.MustCompile("^[2]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
+	btcMainnetP2WPKHRegex = regexp.MustCompile("^(bc1)([ac-hj-np-z02-9]{39})$")
+	btcTestnetP2WPKHRegex = regexp.MustCompile("^(tb1)([ac-hj-np-z02-9]{39})$")
+	btcMainnetP2WSHRegex  = regexp.MustCompile("^(bc1)([ac-hj-np-z02-9]{59})$")
+	btcTestnetP2WSHRegex  = regexp.MustCompile("^(tb1)([ac-hj-np-z02-9]{59})$")
+)
+
+var (
+	BtcAddressInvalidNetworkError = errors.New("address network is not valid")
+	BtcAddressNotSupportedError   = errors.New("btc address not supported")
 )
 
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
@@ -27,6 +37,20 @@ func isP2SH(address string) bool {
 	return btcTestnetP2SHRegex.MatchString(address) || btcMainnetP2SHRegex.MatchString(address)
 }
 
+func IsTestnetBtcAddress(address string) bool {
+	return btcTestnetP2PKHRegex.MatchString(address) ||
+		btcTestnetP2SHRegex.MatchString(address) ||
+		btcTestnetP2WPKHRegex.MatchString(address) ||
+		btcTestnetP2WSHRegex.MatchString(address)
+}
+
+func IsMainnetBtcAddress(address string) bool {
+	return btcMainnetP2PKHRegex.MatchString(address) ||
+		btcMainnetP2SHRegex.MatchString(address) ||
+		btcMainnetP2WPKHRegex.MatchString(address) ||
+		btcMainnetP2WSHRegex.MatchString(address)
+}
+
 type BitcoinWallet interface {
 	EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error)
 	GetBalance() (*entities.Wei, error)
@@ -37,6 +61,7 @@ type BitcoinWallet interface {
 }
 
 type BitcoinNetwork interface {
+	ValidateAddress(address string) error
 	DecodeAddress(address string, keepVersion bool) ([]byte, error)
 	GetTransactionInfo(hash string) (BitcoinTransactionInformation, error)
 	GetRawTransaction(hash string) ([]byte, error)

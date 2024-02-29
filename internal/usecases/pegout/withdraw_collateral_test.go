@@ -4,14 +4,14 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestWithdrawCollateralUseCase_Run(t *testing.T) {
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	lbc.On("WithdrawPegoutCollateral").Return(nil)
 	useCase := pegout.NewWithdrawCollateralUseCase(lbc)
 	err := useCase.Run()
@@ -20,7 +20,7 @@ func TestWithdrawCollateralUseCase_Run(t *testing.T) {
 }
 
 func TestWithdrawCollateralUseCase_Run_ErrorHandling(t *testing.T) {
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	useCase := pegout.NewWithdrawCollateralUseCase(lbc)
 
 	lbc.On("WithdrawPegoutCollateral").Return(errors.New("LBC021")).Once()

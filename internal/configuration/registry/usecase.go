@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -42,6 +43,10 @@ type UseCaseRegistry struct {
 	changeStatusUseCase             *liquidity_provider.ChangeStatusUseCase
 	addPeginCollateralUseCase       *pegin.AddCollateralUseCase
 	addPegoutCollateralUseCase      *pegout.AddCollateralUseCase
+	setPeginConfigUseCase           *liquidity_provider.SetPeginConfigUseCase
+	setPegoutConfigUseCase          *liquidity_provider.SetPegoutConfigUseCase
+	setGeneralConfigUseCase         *liquidity_provider.SetGeneralConfigUseCase
+	getConfigurationUseCase         *liquidity_provider.GetConfigUseCase
 }
 
 // NewUseCaseRegistry
@@ -59,6 +64,7 @@ func NewUseCaseRegistry(
 	return &UseCaseRegistry{
 		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
 			rskRegistry.RpcServer,
+			btcRegistry.RpcServer,
 			rskRegistry.FeeCollector,
 			rskRegistry.Bridge,
 			rskRegistry.Lbc,
@@ -108,6 +114,7 @@ func NewUseCaseRegistry(
 			env.Captcha.SiteKey,
 			liquidityProvider,
 			liquidityProvider,
+			liquidityProvider,
 		),
 		getWatchedPegoutQuoteUseCase: watcher.NewGetWatchedPegoutQuoteUseCase(
 			databaseRegistry.PegoutRepository,
@@ -130,6 +137,7 @@ func NewUseCaseRegistry(
 		),
 		getPegoutQuoteUseCase: pegout.NewGetQuoteUseCase(
 			rskRegistry.RpcServer,
+			btcRegistry.RpcServer,
 			rskRegistry.FeeCollector,
 			rskRegistry.Bridge,
 			rskRegistry.Lbc,
@@ -177,6 +185,22 @@ func NewUseCaseRegistry(
 		withdrawPeginCollateralUseCase:  pegin.NewWithdrawCollateralUseCase(rskRegistry.Lbc),
 		withdrawPegoutCollateralUseCase: pegout.NewWithdrawCollateralUseCase(rskRegistry.Lbc),
 		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.Connection, databaseRegistry.Connection),
+		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			rskRegistry.Wallet,
+			crypto.Keccak256,
+		),
+		setPeginConfigUseCase: liquidity_provider.NewSetPeginConfigUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			rskRegistry.Wallet,
+			crypto.Keccak256,
+		),
+		setPegoutConfigUseCase: liquidity_provider.NewSetPegoutConfigUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			rskRegistry.Wallet,
+			crypto.Keccak256,
+		),
+		getConfigurationUseCase: liquidity_provider.NewGetConfigUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 	}
 }
 
@@ -246,4 +270,20 @@ func (registry *UseCaseRegistry) AddPeginCollateralUseCase() *pegin.AddCollatera
 
 func (registry *UseCaseRegistry) AddPegoutCollateralUseCase() *pegout.AddCollateralUseCase {
 	return registry.addPegoutCollateralUseCase
+}
+
+func (registry *UseCaseRegistry) SetPeginConfigUseCase() *liquidity_provider.SetPeginConfigUseCase {
+	return registry.setPeginConfigUseCase
+}
+
+func (registry *UseCaseRegistry) SetPegoutConfigUseCase() *liquidity_provider.SetPegoutConfigUseCase {
+	return registry.setPegoutConfigUseCase
+}
+
+func (registry *UseCaseRegistry) SetGeneralConfigUseCase() *liquidity_provider.SetGeneralConfigUseCase {
+	return registry.setGeneralConfigUseCase
+}
+
+func (registry *UseCaseRegistry) GetConfigurationUseCase() *liquidity_provider.GetConfigUseCase {
+	return registry.getConfigurationUseCase
 }

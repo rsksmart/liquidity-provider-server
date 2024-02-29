@@ -1,4 +1,4 @@
-package test
+package mocks
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -44,4 +44,9 @@ func (m *BtcRpcMock) DecodeAddress(address string, keepVersion bool) ([]byte, er
 func (m *BtcRpcMock) GetPartialMerkleTree(hash string) ([]byte, error) {
 	args := m.Called(hash)
 	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *BtcRpcMock) ValidateAddress(address string) error {
+	args := m.Called(address)
+	return args.Error(0)
 }

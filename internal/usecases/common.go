@@ -3,11 +3,13 @@ package usecases
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"math"
 	"math/big"
 )
@@ -45,12 +47,14 @@ const (
 	InitPegoutDepositCacheId   UseCaseId = "InitPegoutDepositCache"
 	CheckLiquidityId           UseCaseId = "CheckLiquidity"
 	PenalizationId             UseCaseId = "Penalization"
+	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
+	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
+	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
 )
 
 var (
 	NonRecoverableError         = errors.New("non recoverable")
 	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	BtcAddressNotSupportedError = errors.New("btc address not supported")
 	RskAddressNotSupportedError = errors.New("rsk address not supported")
 	QuoteNotFoundError          = errors.New("quote not found")
 	ExpiredQuoteError           = errors.New("expired quote")
@@ -61,7 +65,6 @@ var (
 	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError     = errors.New("insufficient amount")
 	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
-	AmountOutOfRangeError       = errors.New("amount out of range")
 	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
 )
 
@@ -145,4 +148,27 @@ func GetRandomInt() (int64, error) {
 		return 0, err
 	}
 	return random.Int64(), nil
+}
+
+func SignConfiguration[C liquidity_provider.ConfigurationType](
+	useCaseId UseCaseId,
+	signer entities.Signer,
+	hashFunction entities.HashFunction,
+	config C,
+) (entities.Signed[C], error) {
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return entities.Signed[C]{}, WrapUseCaseError(useCaseId, err)
+	}
+	hash := hashFunction(configBytes)
+	signature, err := signer.SignBytes(hash)
+	if err != nil {
+		return entities.Signed[C]{}, WrapUseCaseError(useCaseId, err)
+	}
+	signedConfig := entities.Signed[C]{
+		Value:     config,
+		Hash:      hex.EncodeToString(hash),
+		Signature: hex.EncodeToString(signature),
+	}
+	return signedConfig, nil
 }

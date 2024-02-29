@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"time"
@@ -12,27 +13,30 @@ import (
 
 type GetQuoteUseCase struct {
 	rsk                  blockchain.RootstockRpcServer
+	btc                  blockchain.BitcoinNetwork
 	feeCollector         blockchain.FeeCollector
 	bridge               blockchain.RootstockBridge
 	lbc                  blockchain.LiquidityBridgeContract
 	peginQuoteRepository quote.PeginQuoteRepository
-	lp                   entities.LiquidityProvider
-	peginLp              entities.PeginLiquidityProvider
+	lp                   liquidity_provider.LiquidityProvider
+	peginLp              liquidity_provider.PeginLiquidityProvider
 	feeCollectorAddress  string
 }
 
 func NewGetQuoteUseCase(
 	rsk blockchain.RootstockRpcServer,
+	btc blockchain.BitcoinNetwork,
 	feeCollector blockchain.FeeCollector,
 	bridge blockchain.RootstockBridge,
 	lbc blockchain.LiquidityBridgeContract,
 	peginQuoteRepository quote.PeginQuoteRepository,
-	lp entities.LiquidityProvider,
-	peginLp entities.PeginLiquidityProvider,
+	lp liquidity_provider.LiquidityProvider,
+	peginLp liquidity_provider.PeginLiquidityProvider,
 	feeCollectorAddress string,
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
 		rsk:                  rsk,
+		btc:                  btc,
 		feeCollector:         feeCollector,
 		bridge:               bridge,
 		lbc:                  lbc,
@@ -80,7 +84,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var err error
 	var gasPrice, estimatedCallGas *entities.Wei
 
-	if errorArgs, err = useCase.validateRequest(request); err != nil {
+	peginConfiguration := useCase.peginLp.PeginConfiguration(ctx)
+	if errorArgs, err = useCase.validateRequest(peginConfiguration, request); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPeginQuoteId, err, errorArgs)
 	}
 
@@ -101,14 +106,15 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
+	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
 	totalGas := new(entities.Wei).Add(estimatedCallGas, daoTxAmounts.DaoGasAmount)
 	fees := quote.Fees{
-		CallFee:          useCase.peginLp.CallFeePegin(),
+		CallFee:          peginConfiguration.CallFee,
 		GasFee:           new(entities.Wei).Mul(totalGas, gasPrice),
-		PenaltyFee:       useCase.peginLp.PenaltyFeePegin(),
+		PenaltyFee:       peginConfiguration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
 	}
-	if peginQuote, err = useCase.buildPeginQuote(request, fedAddress, totalGas, fees); err != nil {
+	if peginQuote, err = useCase.buildPeginQuote(generalConfiguration, peginConfiguration, request, fedAddress, totalGas, fees); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
 
@@ -125,26 +131,30 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	return GetPeginQuoteResult{PeginQuote: peginQuote, Hash: hash}, nil
 }
 
-func (useCase *GetQuoteUseCase) validateRequest(request QuoteRequest) (usecases.ErrorArgs, error) {
+func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PeginConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	args := usecases.NewErrorArgs()
-	if !blockchain.IsSupportedBtcAddress(request.bitcoinRefundAddress) {
+	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		args["btcAddress"] = request.bitcoinRefundAddress
-		return args, usecases.BtcAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.rskRefundAddress) {
+		return args, err
+	}
+	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		args["rskAddress"] = request.rskRefundAddress
 		return args, usecases.RskAddressNotSupportedError
-	} else if !blockchain.IsRskAddress(request.callEoaOrContractAddress) {
+	}
+	if !blockchain.IsRskAddress(request.callEoaOrContractAddress) {
 		args["rskAddress"] = request.callEoaOrContractAddress
 		return args, usecases.RskAddressNotSupportedError
-	} else if err = useCase.peginLp.ValidateAmountForPegin(request.valueToTransfer); err != nil {
-		return args, err
-	} else {
-		return nil, nil
 	}
+	if err = configuration.ValidateAmount(request.valueToTransfer); err != nil {
+		return args, err
+	}
+	return nil, nil
 }
 
 func (useCase *GetQuoteUseCase) buildPeginQuote(
+	generalConfig liquidity_provider.GeneralConfiguration,
+	peginConfig liquidity_provider.PeginConfiguration,
 	request QuoteRequest,
 	fedAddress string,
 	totalGas *entities.Wei,
@@ -172,9 +182,9 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 		Nonce:              nonce,
 		Value:              request.valueToTransfer,
 		AgreementTimestamp: uint32(time.Now().Unix()),
-		TimeForDeposit:     useCase.peginLp.TimeForDepositPegin(),
-		LpCallTime:         useCase.peginLp.CallTime(),
-		Confirmations:      useCase.lp.GetBitcoinConfirmationsForValue(request.valueToTransfer),
+		TimeForDeposit:     peginConfig.TimeForDeposit,
+		LpCallTime:         peginConfig.CallTime,
+		Confirmations:      generalConfig.BtcConfirmations.ForValue(request.valueToTransfer),
 		CallOnRegister:     false,
 		GasFee:             fees.GasFee,
 		ProductFeeAmount:   fees.ProductFeeAmount,

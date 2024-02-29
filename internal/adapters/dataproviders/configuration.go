@@ -1,9 +1,5 @@
 package dataproviders
 
-import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-)
-
 type Configuration struct {
 	RskConfig    RskConfig
 	BtcConfig    BitcoinConfig
@@ -22,21 +18,8 @@ type BitcoinConfig struct {
 	Confirmations map[int]uint16
 }
 
-type PeginConfig struct {
-	TimeForDeposit      uint32
-	CallTime            uint32
-	PenaltyFee          *entities.Wei
-	CallFee             *entities.Wei
-	MinTransactionValue *entities.Wei
-	MaxTransactionValue *entities.Wei
-}
+// This structures were kept just in case, right now all the parameters are manipulated through management API
 
-type PegoutConfig struct {
-	TimeForDeposit      uint32
-	CallTime            uint32
-	PenaltyFee          *entities.Wei
-	CallFee             *entities.Wei
-	MinTransactionValue *entities.Wei
-	MaxTransactionValue *entities.Wei
-	ExpireBlocks        uint32
-}
+type PeginConfig struct{}
+
+type PegoutConfig struct{}
