@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"math/big"
 )
@@ -50,17 +51,17 @@ func (params RefundPegoutParams) String() string {
 }
 
 type ProviderRegistrationParams struct {
-	Name       string                `validate:"required"`
-	ApiBaseUrl string                `validate:"required"`
-	Status     bool                  `validate:"required"`
-	Type       entities.ProviderType `validate:"required"`
+	Name       string                          `validate:"required"`
+	ApiBaseUrl string                          `validate:"required"`
+	Status     bool                            `validate:"required"`
+	Type       liquidity_provider.ProviderType `validate:"required"`
 }
 
 func NewProviderRegistrationParams(
 	name string,
 	apiBaseUrl string,
 	status bool,
-	providerType entities.ProviderType,
+	providerType liquidity_provider.ProviderType,
 ) ProviderRegistrationParams {
 	return ProviderRegistrationParams{
 		Name:       name,
@@ -74,7 +75,7 @@ type LiquidityBridgeContract interface {
 	GetAddress() string
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
-	GetProviders() ([]entities.RegisteredLiquidityProvider, error)
+	GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error)
 	ProviderResign() error
 	SetProviderStatus(id uint64, newStatus bool) error
 	GetCollateral(address string) (*entities.Wei, error)
@@ -92,7 +93,7 @@ type LiquidityBridgeContract interface {
 	IsOperationalPegout(address string) (bool, error)
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]entities.PunishmentEvent, error)
+	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
 }
 
 type FeeCollector interface {

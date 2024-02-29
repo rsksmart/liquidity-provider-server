@@ -2,6 +2,7 @@ package quote_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 
 type LpMock struct {
 	mock.Mock
-	entities.PegoutLiquidityProvider
+	liquidity_provider.PegoutLiquidityProvider
 }
 
 func (l *LpMock) ExpireBlocksPegout() uint64 {
@@ -123,6 +124,9 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 }
 
 func TestGetCreationBlock(t *testing.T) {
+	pegoutConfig := liquidity_provider.PegoutConfiguration{
+		ExpireBlocks: 40,
+	}
 	quotes := test.Table[quote.PegoutQuote, uint64]{
 		{
 			Value: quote.PegoutQuote{
@@ -173,10 +177,8 @@ func TestGetCreationBlock(t *testing.T) {
 			Result: 340,
 		},
 	}
-
-	lp := &LpMock{}
 	test.RunTable(t, quotes, func(value quote.PegoutQuote) uint64 {
-		return quote.GetCreationBlock(lp, value)
+		return quote.GetCreationBlock(pegoutConfig, value)
 	})
 }
 
@@ -198,7 +200,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 				Amount:      entities.NewWei(490000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,
-				From:        "any address",
+				From:        test.AnyAddress,
 			},
 			Result: false,
 		},
@@ -209,7 +211,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   time.Unix(now.Unix()+61, 0),
 				BlockNumber: 499,
-				From:        "any address",
+				From:        test.AnyAddress,
 			},
 			Result: false,
 		},
@@ -220,7 +222,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 501,
-				From:        "any address",
+				From:        test.AnyAddress,
 			},
 			Result: false,
 		},
@@ -231,7 +233,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,
-				From:        "any address",
+				From:        test.AnyAddress,
 			},
 			Result: true,
 		},

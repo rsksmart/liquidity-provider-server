@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 		{QuoteHash: "pegoutHash6", State: quote.PegoutStateTimeForDepositElapsed},
 	}
 
-	peginRepository := new(test.PeginQuoteRepositoryMock)
+	peginRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginRepository.On(
 		"GetRetainedQuoteByState",
 		mock.AnythingOfType("context.backgroundCtx"),
@@ -42,7 +42,7 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 		[]string{"peginHash1", "peginHash2", "peginHash4"},
 	).Return(uint(3), nil)
 
-	pegoutRepository := new(test.PegoutQuoteRepositoryMock)
+	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutRepository.On(
 		"GetRetainedQuoteByState",
 		mock.AnythingOfType("context.backgroundCtx"),
@@ -65,18 +65,18 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 }
 
 func TestCleanExpiredQuotesUseCase_Run_ErrorHandling(t *testing.T) {
-	setups := []func(peginRepository *test.PeginQuoteRepositoryMock, pegoutRepository *test.PegoutQuoteRepositoryMock){
-		func(peginRepository *test.PeginQuoteRepositoryMock, pegoutRepository *test.PegoutQuoteRepositoryMock) {
+	setups := []func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock){
+		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
 			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(nil, assert.AnError)
 		},
-		func(peginRepository *test.PeginQuoteRepositoryMock, pegoutRepository *test.PegoutQuoteRepositoryMock) {
+		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
 			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(retainedQuotes, nil)
 			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(nil, assert.AnError)
 		},
-		func(peginRepository *test.PeginQuoteRepositoryMock, pegoutRepository *test.PegoutQuoteRepositoryMock) {
+		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
 			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(retainedQuotes, nil)
 			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
@@ -84,7 +84,7 @@ func TestCleanExpiredQuotesUseCase_Run_ErrorHandling(t *testing.T) {
 			peginRepository.On("DeleteQuotes", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(uint(0), assert.AnError)
 		},
-		func(peginRepository *test.PeginQuoteRepositoryMock, pegoutRepository *test.PegoutQuoteRepositoryMock) {
+		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
 			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(retainedQuotes, nil)
 			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
@@ -97,8 +97,8 @@ func TestCleanExpiredQuotesUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 
 	for _, setup := range setups {
-		peginRepository := new(test.PeginQuoteRepositoryMock)
-		pegoutRepository := new(test.PegoutQuoteRepositoryMock)
+		peginRepository := new(mocks.PeginQuoteRepositoryMock)
+		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		setup(peginRepository, pegoutRepository)
 		useCase := watcher.NewCleanExpiredQuotesUseCase(peginRepository, pegoutRepository)
 		_, err := useCase.Run(context.Background())

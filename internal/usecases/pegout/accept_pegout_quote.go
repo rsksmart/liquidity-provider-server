@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"sync"
@@ -12,8 +13,8 @@ import (
 type AcceptQuoteUseCase struct {
 	quoteRepository      quote.PegoutQuoteRepository
 	lbc                  blockchain.LiquidityBridgeContract
-	lp                   entities.LiquidityProvider
-	pegoutLp             entities.PegoutLiquidityProvider
+	lp                   liquidity_provider.LiquidityProvider
+	pegoutLp             liquidity_provider.PegoutLiquidityProvider
 	eventBus             entities.EventBus
 	pegoutLiquidityMutex sync.Locker
 }
@@ -21,8 +22,8 @@ type AcceptQuoteUseCase struct {
 func NewAcceptQuoteUseCase(
 	quoteRepository quote.PegoutQuoteRepository,
 	lbc blockchain.LiquidityBridgeContract,
-	lp entities.LiquidityProvider,
-	pegoutLp entities.PegoutLiquidityProvider,
+	lp liquidity_provider.LiquidityProvider,
+	pegoutLp liquidity_provider.PegoutLiquidityProvider,
 	eventBus entities.EventBus,
 	pegoutLiquidityMutex sync.Locker,
 ) *AcceptQuoteUseCase {

@@ -3,10 +3,12 @@ package rootstock
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -38,6 +40,26 @@ func (wallet *RskWalletImpl) Sign(address common.Address, transaction *geth.Tran
 
 func (wallet *RskWalletImpl) SignBytes(msg []byte) ([]byte, error) {
 	return wallet.account.Keystore.SignHash(*wallet.account.Account, msg)
+}
+
+func (wallet *RskWalletImpl) Validate(signature, hash string) bool {
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		log.Error("Error decoding signature: ", err)
+		return false
+	}
+	hashBytes, err := hex.DecodeString(hash)
+	if err != nil {
+		log.Error("Error decoding hash: ", err)
+		return false
+	}
+	pubKey, err := crypto.Ecrecover(hashBytes, signatureBytes)
+	if err != nil {
+		log.Error("Error recovering public key: ", err)
+		return false
+	}
+	pubKeyHash := crypto.Keccak256Hash(pubKey[1:])
+	return bytes.Equal(wallet.account.Account.Address.Bytes(), pubKeyHash[12:]) // the last 20 bytes of the hash
 }
 
 func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (string, error) {

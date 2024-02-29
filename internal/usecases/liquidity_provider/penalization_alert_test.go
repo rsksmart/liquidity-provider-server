@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -13,8 +14,8 @@ import (
 )
 
 func TestPenalizationAlertUseCase_Run(t *testing.T) {
-	lbc := &test.LbcMock{}
-	events := []entities.PunishmentEvent{
+	lbc := &mocks.LbcMock{}
+	events := []lp.PunishmentEvent{
 		{
 			LiquidityProvider: "0x01",
 			Penalty:           entities.NewWei(100),
@@ -39,7 +40,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		&toBlock,
 	).Return(events, nil).Once()
 
-	sender := &test.AlertSenderMock{}
+	sender := &mocks.AlertSenderMock{}
 	recipient := "recipient@test.com"
 
 	for i := 0; i < 3; i++ {
@@ -60,10 +61,10 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 }
 
 func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
-	lbc := &test.LbcMock{}
-	sender := &test.AlertSenderMock{}
+	lbc := &mocks.LbcMock{}
+	sender := &mocks.AlertSenderMock{}
 	lbc.On("GetPeginPunishmentEvents", mock.AnythingOfType("context.backgroundCtx"), uint64(5), mock.Anything).
-		Return([]entities.PunishmentEvent{}, assert.AnError).Once()
+		Return([]lp.PunishmentEvent{}, assert.AnError).Once()
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(lbc, sender, "recipient")
 	err := useCase.Run(context.Background(), 5, 10)
 	lbc.AssertExpectations(t)

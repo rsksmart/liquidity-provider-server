@@ -2,12 +2,10 @@ package entities
 
 import (
 	"database/sql/driver"
-	"encoding/binary"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"math/big"
-	"slices"
 )
 
 type Wei big.Int
@@ -103,20 +101,18 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 }
 
 func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
-	if w == nil {
-		return bson.TypeInt64, make([]byte, 0), SerializationError
-	}
-	value := make([]byte, 8)
-	binary.LittleEndian.PutUint64(value, w.Uint64())
-	return bson.TypeInt64, value, nil
+	return bson.MarshalValue(w.AsBigInt().String())
 }
 
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if w == nil || bsonType != bson.TypeInt64 {
+	if w == nil || bsonType != bson.TypeString || len(bytes) == 0 {
 		return DeserializationError
 	}
-	slices.Reverse(bytes)
-	w.AsBigInt().SetBytes(bytes)
+	var value string
+	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+		return errors.Join(DeserializationError, err)
+	}
+	w.AsBigInt().SetString(value, 10)
 	return nil
 }
 
