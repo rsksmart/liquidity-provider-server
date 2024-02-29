@@ -80,11 +80,12 @@ MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
 [ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/db" && mkdir -p "$LPS_HOME/logs" && chown -R "$LPS_UID" "$LPS_HOME"
 [ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
+[ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
 
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'"
 
 # start bitcoind and RSKJ dependant services
-docker-compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb
+docker-compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
 
 # read env vars
 . ./"$ENV_FILE"

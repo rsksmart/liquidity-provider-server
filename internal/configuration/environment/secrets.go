@@ -2,7 +2,6 @@ package environment
 
 import (
 	"context"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,7 +17,7 @@ func LoadSecrets(ctx context.Context, environment Environment) *ApplicationSecre
 }
 
 func loadFromSecretsManager(ctx context.Context, env Environment) *ApplicationSecrets {
-	awsConfiguration, err := awsConfig.LoadDefaultConfig(ctx)
+	awsConfiguration, err := GetAwsConfig(ctx, env)
 	if err != nil {
 		log.Fatal("error loading secrets: ", err)
 	}
