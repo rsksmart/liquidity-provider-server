@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ var pegoutQuotes = []quote.PegoutQuote{
 }
 
 func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
-	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On(
 		"GetRetainedQuoteByState",
 		mock.AnythingOfType("context.backgroundCtx"),
@@ -59,7 +59,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 }
 
 func TestGetWatchedPegoutQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
-	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), []quote.PegoutState{quote.PegoutStateSendPegoutSucceeded}).
 		Return([]quote.RetainedPegoutQuote{retainedPegoutQuotes[1]}, nil)
 	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedPegoutQuotes[1].QuoteHash).Return(&pegoutQuotes[3], nil)
@@ -84,7 +84,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WrongState(t *testing.T) {
 		quote.PegoutStateRefundPegOutFailed,
 		quote.PegoutStateRefundPegOutSucceeded,
 	}
-	quoteRepository := new(test.PegoutQuoteRepositoryMock)
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 	for _, state := range wrongStates {
 		_, err := useCase.Run(context.Background(), state)
@@ -93,12 +93,12 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WrongState(t *testing.T) {
 }
 
 func TestGetWatchedPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
-	setups := []func(quoteRepository *test.PegoutQuoteRepositoryMock){
-		func(quoteRepository *test.PegoutQuoteRepositoryMock) {
+	setups := []func(quoteRepository *mocks.PegoutQuoteRepositoryMock){
+		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
 			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(nil, assert.AnError)
 		},
-		func(quoteRepository *test.PegoutQuoteRepositoryMock) {
+		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
 			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 				Return(retainedPegoutQuotes, nil)
 			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
@@ -106,7 +106,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		},
 	}
 	for _, setup := range setups {
-		quoteRepository := new(test.PegoutQuoteRepositoryMock)
+		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		setup(quoteRepository)
 		useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 		_, err := useCase.Run(context.Background(), quote.PegoutStateWaitingForDeposit)

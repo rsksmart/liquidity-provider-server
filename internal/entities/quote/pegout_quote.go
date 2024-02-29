@@ -3,6 +3,7 @@ package quote
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"time"
 )
@@ -69,8 +70,8 @@ func (quote *PegoutQuote) IsExpired() bool {
 	return time.Now().After(quote.ExpireTime())
 }
 
-func GetCreationBlock(lp entities.PegoutLiquidityProvider, pegoutQuote PegoutQuote) uint64 {
-	return utils.SafeSub(uint64(pegoutQuote.ExpireBlock), lp.ExpireBlocksPegout())
+func GetCreationBlock(pegoutConfig liquidity_provider.PegoutConfiguration, pegoutQuote PegoutQuote) uint64 {
+	return utils.SafeSub(uint64(pegoutQuote.ExpireBlock), pegoutConfig.ExpireBlocks)
 }
 
 func (quote *PegoutQuote) Total() *entities.Wei {

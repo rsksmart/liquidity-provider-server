@@ -5,7 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
-	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestExpiredPegoutQuoteUseCase_Run(t *testing.T) {
 
 	expectedRetainedQuote := retainedQuote
 	expectedRetainedQuote.State = quote.PegoutStateTimeForDepositElapsed
-	pegoutQuoteRepository := new(test.PegoutQuoteRepositoryMock)
+	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutQuoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), expectedRetainedQuote).Return(nil)
 	useCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutQuoteRepository)
 	err := useCase.Run(context.Background(), retainedQuote)
@@ -39,7 +39,7 @@ func TestExpiredPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		RequiredLiquidity: entities.NewWei(1),
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
-	pegoutQuoteRepository := new(test.PegoutQuoteRepositoryMock)
+	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutQuoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError)
 	useCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutQuoteRepository)
 	err := useCase.Run(context.Background(), retainedQuote)

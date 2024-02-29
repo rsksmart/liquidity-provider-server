@@ -3,6 +3,7 @@ package blockchain
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -37,15 +38,15 @@ func TestRegisterPeginParams_String(t *testing.T) {
 		PartialMerkleTree:     []byte{0x07, 0x08, 0x09},
 		BlockHeight:           big.NewInt(1),
 		Quote: quote.PeginQuote{
-			FedBtcAddress:      "any address",
-			LbcAddress:         "any address",
-			LpRskAddress:       "any address",
-			BtcRefundAddress:   "any address",
-			RskRefundAddress:   "any address",
-			LpBtcAddress:       "any address",
+			FedBtcAddress:      test.AnyAddress,
+			LbcAddress:         test.AnyAddress,
+			LpRskAddress:       test.AnyAddress,
+			BtcRefundAddress:   test.AnyAddress,
+			RskRefundAddress:   test.AnyAddress,
+			LpBtcAddress:       test.AnyAddress,
 			CallFee:            entities.NewWei(3),
 			PenaltyFee:         entities.NewWei(4),
-			ContractAddress:    "any address",
+			ContractAddress:    test.AnyAddress,
 			Data:               "any data",
 			GasLimit:           5,
 			Nonce:              6,

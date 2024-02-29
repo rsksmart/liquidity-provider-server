@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -47,21 +48,21 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		RequiredLiquidity: entities.NewWei(18),
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("InsertRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote).Return(nil).Once()
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	lbc.On("GetAddress").Return("0xabcd01").Once()
-	lp := new(test.ProviderMock)
+	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
 	lp.On("SignQuote", mock.Anything).Return(signature, nil).Once()
-	eventBus := new(test.EventBusMock)
+	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPegoutQuoteEvent) bool {
 		return assert.Equal(t, quoteMock, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id())
 	})).Once()
 
-	mutex := new(test.MutexMock)
+	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
@@ -108,13 +109,13 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 		RequiredLiquidity: entities.NewWei(1),
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&retainedQuote, nil).Once()
-	lbc := new(test.LbcMock)
-	lp := new(test.ProviderMock)
-	eventBus := new(test.EventBusMock)
-	mutex := new(test.MutexMock)
+	lbc := new(mocks.LbcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
@@ -155,12 +156,12 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 		GasFee:                entities.NewWei(1),
 		ProductFeeAmount:      1,
 	}
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&quoteMock, nil).Once()
-	lbc := new(test.LbcMock)
-	lp := new(test.ProviderMock)
-	eventBus := new(test.EventBusMock)
-	mutex := new(test.MutexMock)
+	lbc := new(mocks.LbcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), quoteHash)
 	quoteRepositoryMock.AssertExpectations(t)
@@ -177,12 +178,12 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 
 func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	quoteHash := "0x654321"
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
-	lbc := new(test.LbcMock)
-	lp := new(test.ProviderMock)
-	eventBus := new(test.EventBusMock)
-	mutex := new(test.MutexMock)
+	lbc := new(mocks.LbcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), quoteHash)
 	quoteRepositoryMock.AssertExpectations(t)
@@ -221,14 +222,14 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		GasFee:                entities.NewWei(15),
 		ProductFeeAmount:      8,
 	}
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
-	lbc := new(test.LbcMock)
-	lp := new(test.ProviderMock)
+	lbc := new(mocks.LbcMock)
+	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), entities.NewWei(65)).Return(usecases.NoLiquidityError).Once()
-	eventBus := new(test.EventBusMock)
-	mutex := new(test.MutexMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
@@ -277,23 +278,23 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
 
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	lbc.On("GetAddress").Return("0xabcd01")
-	eventBus := new(test.EventBusMock)
+	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPegoutQuoteEvent) bool {
 		return assert.Equal(t, quoteMock, event.Quote) &&
 			assert.Equal(t, retainedQuote, event.RetainedQuote) &&
 			assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id())
 	}))
-	mutex := new(test.MutexMock)
+	mutex := new(mocks.MutexMock)
 	mutex.On("Lock")
 	mutex.On("Unlock")
 
 	cases := acceptQuoteUseCaseUnexpectedErrorSetups(&quoteMock, quoteHash, signature)
 
 	for _, c := range cases {
-		quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
-		lp := new(test.ProviderMock)
+		quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
+		lp := new(mocks.ProviderMock)
 		c.Value(quoteRepositoryMock, lp)
 		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)
 		result, err := useCase.Run(context.Background(), quoteHash)
@@ -304,30 +305,30 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 }
 
-func acceptQuoteUseCaseUnexpectedErrorSetups(quoteMock *quote.PegoutQuote, quoteHash, signature string) test.Table[func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock), error] {
-	return test.Table[func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock), error]{
+func acceptQuoteUseCaseUnexpectedErrorSetups(quoteMock *quote.PegoutQuote, quoteHash, signature string) test.Table[func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock), error] {
+	return test.Table[func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock), error]{
 		{
-			Value: func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock) {
+			Value: func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock) {
 				quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 					Return(nil, assert.AnError).Once()
 			},
 		},
 		{
-			Value: func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock) {
+			Value: func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock) {
 				quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(quoteMock, nil).Once()
 				quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
 					Return(nil, assert.AnError).Once()
 			},
 		},
 		{
-			Value: func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock) {
+			Value: func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock) {
 				quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(quoteMock, nil).Once()
 				quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
 				lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 		{
-			Value: func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock) {
+			Value: func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock) {
 				quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(quoteMock, nil).Once()
 				quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
 				lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
@@ -335,7 +336,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups(quoteMock *quote.PegoutQuote, quote
 			},
 		},
 		{
-			Value: func(quoteRepository *test.PegoutQuoteRepositoryMock, lp *test.ProviderMock) {
+			Value: func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lp *mocks.ProviderMock) {
 				quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(quoteMock, nil).Once()
 				quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
 				lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
@@ -372,17 +373,17 @@ func TestInitPegoutDepositCacheUseCase_Run_RetainedQuoteValidation(t *testing.T)
 		ProductFeeAmount:      2,
 	}
 
-	lbc := new(test.LbcMock)
+	lbc := new(mocks.LbcMock)
 	lbc.On("GetAddress").Return("")
-	lp := new(test.ProviderMock)
+	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
 	lp.On("SignQuote", mock.Anything).Return(signature, nil).Once()
-	eventBus := new(test.EventBusMock)
+	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish").Once()
-	mutex := new(test.MutexMock)
+	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
-	quoteRepositoryMock := new(test.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), quoteHash).Return(nil, nil).Once()
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, lbc, lp, lp, eventBus, mutex)

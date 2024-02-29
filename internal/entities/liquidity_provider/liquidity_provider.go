@@ -1,8 +1,9 @@
-package entities
+package liquidity_provider
 
 import (
 	"context"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 type ProviderType string
@@ -45,32 +46,26 @@ type LiquidityProvider interface {
 	RskAddress() string
 	BtcAddress() string
 	SignQuote(quoteHash string) (string, error)
-	GetBitcoinConfirmationsForValue(value *Wei) uint16
-	GetRootstockConfirmationsForValue(value *Wei) uint16
+	GeneralConfiguration(ctx context.Context) GeneralConfiguration
 }
 
 type PeginLiquidityProvider interface {
-	ValidateAmountForPegin(amount *Wei) error
-	HasPeginLiquidity(ctx context.Context, requiredLiquidity *Wei) error
-	CallTime() uint32
-	CallFeePegin() *Wei
-	PenaltyFeePegin() *Wei
-	TimeForDepositPegin() uint32
-	MaxPegin() *Wei
-	MinPegin() *Wei
-	MaxPeginConfirmations() uint16
+	HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
+	PeginConfiguration(ctx context.Context) PeginConfiguration
 }
 
 type PegoutLiquidityProvider interface {
-	ValidateAmountForPegout(amount *Wei) error
-	HasPegoutLiquidity(ctx context.Context, requiredLiquidity *Wei) error
-	CallFeePegout() *Wei
-	PenaltyFeePegout() *Wei
-	TimeForDepositPegout() uint32
-	ExpireBlocksPegout() uint64
-	MaxPegout() *Wei
-	MinPegout() *Wei
-	MaxPegoutConfirmations() uint16
+	HasPegoutLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
+	PegoutConfiguration(ctx context.Context) PegoutConfiguration
+}
+
+type LiquidityProviderRepository interface {
+	GetPeginConfiguration(ctx context.Context) (*entities.Signed[PeginConfiguration], error)
+	UpsertPeginConfiguration(ctx context.Context, configuration entities.Signed[PeginConfiguration]) error
+	GetPegoutConfiguration(ctx context.Context) (*entities.Signed[PegoutConfiguration], error)
+	UpsertPegoutConfiguration(ctx context.Context, configuration entities.Signed[PegoutConfiguration]) error
+	GetGeneralConfiguration(ctx context.Context) (*entities.Signed[GeneralConfiguration], error)
+	UpsertGeneralConfiguration(ctx context.Context, configuration entities.Signed[GeneralConfiguration]) error
 }
 
 type RegisteredLiquidityProvider struct {
@@ -83,14 +78,14 @@ type RegisteredLiquidityProvider struct {
 }
 
 type LiquidityProviderDetail struct {
-	Fee                   *Wei   `json:"fee" validate:"required"`
-	MinTransactionValue   *Wei   `json:"minTransactionValue"  validate:"required"`
-	MaxTransactionValue   *Wei   `json:"maxTransactionValue"  validate:"required"`
-	RequiredConfirmations uint16 `json:"requiredConfirmations"  validate:"required"`
+	Fee                   *entities.Wei `json:"fee" validate:"required"`
+	MinTransactionValue   *entities.Wei `json:"minTransactionValue"  validate:"required"`
+	MaxTransactionValue   *entities.Wei `json:"maxTransactionValue"  validate:"required"`
+	RequiredConfirmations uint16        `json:"requiredConfirmations"  validate:"required"`
 }
 
 type PunishmentEvent struct {
 	LiquidityProvider string
-	Penalty           *Wei
+	Penalty           *entities.Wei
 	QuoteHash         string
 }

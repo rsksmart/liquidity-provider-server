@@ -3,16 +3,17 @@ package liquidity_provider
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 )
 
 type RegistrationUseCase struct {
 	lbc      blockchain.LiquidityBridgeContract
-	provider entities.LiquidityProvider
+	provider liquidity_provider.LiquidityProvider
 }
 
-func NewRegistrationUseCase(lbc blockchain.LiquidityBridgeContract, provider entities.LiquidityProvider) *RegistrationUseCase {
+func NewRegistrationUseCase(lbc blockchain.LiquidityBridgeContract, provider liquidity_provider.LiquidityProvider) *RegistrationUseCase {
 	return &RegistrationUseCase{lbc: lbc, provider: provider}
 }
 
@@ -75,9 +76,9 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 }
 
 func (useCase *RegistrationUseCase) isProviderReady(addedCollateral addedCollateralInfo, providerParams blockchain.ProviderRegistrationParams) bool {
-	return (addedCollateral.pegin && providerParams.Type == entities.PeginProvider) ||
-		(addedCollateral.pegout && providerParams.Type == entities.PegoutProvider) ||
-		(addedCollateral.pegin && addedCollateral.pegout && providerParams.Type == entities.FullProvider)
+	return (addedCollateral.pegin && providerParams.Type == liquidity_provider.PeginProvider) ||
+		(addedCollateral.pegout && providerParams.Type == liquidity_provider.PegoutProvider) ||
+		(addedCollateral.pegin && addedCollateral.pegout && providerParams.Type == liquidity_provider.FullProvider)
 }
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {
@@ -117,10 +118,10 @@ func (useCase *RegistrationUseCase) getOperationalInfo() (operationalInfo, error
 	}, nil
 }
 
-func (useCase *RegistrationUseCase) isProviderOperational(providerType entities.ProviderType, operational operationalInfo) bool {
-	return (providerType == entities.FullProvider && operational.operationalForPegin && operational.operationalForPegout) ||
-		(providerType == entities.PeginProvider && operational.operationalForPegin) ||
-		(providerType == entities.PegoutProvider && operational.operationalForPegout)
+func (useCase *RegistrationUseCase) isProviderOperational(providerType liquidity_provider.ProviderType, operational operationalInfo) bool {
+	return (providerType == liquidity_provider.FullProvider && operational.operationalForPegin && operational.operationalForPegout) ||
+		(providerType == liquidity_provider.PeginProvider && operational.operationalForPegin) ||
+		(providerType == liquidity_provider.PegoutProvider && operational.operationalForPegout)
 }
 
 func (useCase *RegistrationUseCase) registerProvider(params blockchain.ProviderRegistrationParams, collateral collateralInfo) (int64, error) {
@@ -138,7 +139,7 @@ func (useCase *RegistrationUseCase) validateParams(params blockchain.ProviderReg
 	if err = entities.ValidateStruct(params); err != nil {
 		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else if !params.Type.IsValid() {
-		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, entities.InvalidProviderTypeError)
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, liquidity_provider.InvalidProviderTypeError)
 	}
 	return nil
 }

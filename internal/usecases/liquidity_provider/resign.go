@@ -1,17 +1,17 @@
 package liquidity_provider
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type ResignUseCase struct {
 	lbc      blockchain.LiquidityBridgeContract
-	provider entities.LiquidityProvider
+	provider liquidity_provider.LiquidityProvider
 }
 
-func NewResignUseCase(lbc blockchain.LiquidityBridgeContract, provider entities.LiquidityProvider) *ResignUseCase {
+func NewResignUseCase(lbc blockchain.LiquidityBridgeContract, provider liquidity_provider.LiquidityProvider) *ResignUseCase {
 	return &ResignUseCase{lbc: lbc, provider: provider}
 }
 

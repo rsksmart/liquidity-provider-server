@@ -13,6 +13,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	log "github.com/sirupsen/logrus"
 	"math/big"
@@ -83,9 +84,9 @@ func (lbc *liquidityBridgeContractImpl) HashPegoutQuote(pegoutQuote quote.Pegout
 	return hex.EncodeToString(results[:]), nil
 }
 
-func (lbc *liquidityBridgeContractImpl) GetProviders() ([]entities.RegisteredLiquidityProvider, error) {
+func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
 	var i, maxProviderId int64
-	var providerType entities.ProviderType
+	var providerType liquidity_provider.ProviderType
 	var providers []bindings.LiquidityBridgeContractLiquidityProvider
 	var provider bindings.LiquidityBridgeContractLiquidityProvider
 
@@ -110,14 +111,14 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]entities.RegisteredLiq
 	if err != nil {
 		return nil, err
 	}
-	parsedProviders := make([]entities.RegisteredLiquidityProvider, 0)
+	parsedProviders := make([]liquidity_provider.RegisteredLiquidityProvider, 0)
 	for i = 0; i < maxProviderId+1; i++ {
 		provider = providers[i]
-		providerType = entities.ProviderType(provider.ProviderType)
+		providerType = liquidity_provider.ProviderType(provider.ProviderType)
 		if !providerType.IsValid() {
-			return nil, entities.InvalidProviderTypeError
+			return nil, liquidity_provider.InvalidProviderTypeError
 		}
-		parsedProviders = append(parsedProviders, entities.RegisteredLiquidityProvider{
+		parsedProviders = append(parsedProviders, liquidity_provider.RegisteredLiquidityProvider{
 			Id:           provider.Id.Uint64(),
 			Address:      provider.Provider.String(),
 			Name:         provider.Name,
@@ -473,9 +474,9 @@ func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fr
 	return result, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]entities.PunishmentEvent, error) {
+func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
 	var lbcEvent *bindings.LiquidityBridgeContractPenalized
-	result := make([]entities.PunishmentEvent, 0)
+	result := make([]liquidity_provider.PunishmentEvent, 0)
 
 	iterator, err := lbc.contract.FilterPenalized(&bind.FilterOpts{
 		Start:   fromBlock,
@@ -495,7 +496,7 @@ func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Con
 
 	for iterator.Next() {
 		lbcEvent = iterator.Event
-		result = append(result, entities.PunishmentEvent{
+		result = append(result, liquidity_provider.PunishmentEvent{
 			LiquidityProvider: lbcEvent.LiquidityProvider.String(),
 			Penalty:           entities.NewBigWei(lbcEvent.Penalty),
 			QuoteHash:         hex.EncodeToString(lbcEvent.QuoteHash[:]),

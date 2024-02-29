@@ -2,7 +2,7 @@ package blockchain_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
