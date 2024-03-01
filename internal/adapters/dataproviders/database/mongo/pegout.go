@@ -101,7 +101,7 @@ func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Conte
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	filter := bson.M{"from": address}
+	filter := bson.M{"from": bson.M{"$regex": address, "$options": "i"}}
 	sort := options.Find().SetSort(bson.M{"timestamp": -1})
 	cursor, err := repo.conn.Collection(depositEventsCollection).Find(dbCtx, filter, sort)
 	if err != nil {
