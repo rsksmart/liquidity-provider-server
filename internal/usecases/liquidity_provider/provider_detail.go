@@ -9,23 +9,26 @@ import (
 )
 
 type GetDetailUseCase struct {
-	captchaSiteKey string
-	provider       liquidity_provider.LiquidityProvider
-	peginProvider  liquidity_provider.PeginLiquidityProvider
-	pegoutProvider liquidity_provider.PegoutLiquidityProvider
+	captchaSiteKey  string
+	captchaDisabled bool
+	provider        liquidity_provider.LiquidityProvider
+	peginProvider   liquidity_provider.PeginLiquidityProvider
+	pegoutProvider  liquidity_provider.PegoutLiquidityProvider
 }
 
 func NewGetDetailUseCase(
 	captchaSiteKey string,
+	captchaDisabled bool,
 	provider liquidity_provider.LiquidityProvider,
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 ) *GetDetailUseCase {
 	return &GetDetailUseCase{
-		captchaSiteKey: captchaSiteKey,
-		provider:       provider,
-		peginProvider:  peginProvider,
-		pegoutProvider: pegoutProvider,
+		captchaSiteKey:  captchaSiteKey,
+		captchaDisabled: captchaDisabled,
+		provider:        provider,
+		peginProvider:   peginProvider,
+		pegoutProvider:  pegoutProvider,
 	}
 }
 
@@ -56,7 +59,7 @@ func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider
 		},
 	}
 
-	if detail.SiteKey == "" {
+	if detail.SiteKey == "" && !useCase.captchaDisabled {
 		return FullLiquidityProvider{}, usecases.WrapUseCaseError(usecases.ProviderDetailId, errors.New("missing captcha key"))
 	} else if err = entities.ValidateStruct(detail.Pegin); err != nil {
 		return FullLiquidityProvider{}, usecases.WrapUseCaseError(usecases.ProviderDetailId, err)

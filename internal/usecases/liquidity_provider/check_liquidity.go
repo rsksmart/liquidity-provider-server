@@ -45,11 +45,10 @@ func NewCheckLiquidityUseCase(
 }
 
 func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
-	minLockTxValueInSatoshi, err := useCase.bridge.GetMinimumLockTxValue()
+	minLockTxValueInWei, err := useCase.bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.CheckLiquidityId, err)
 	}
-	minLockTxValueInWei := entities.SatoshiToWei(minLockTxValueInSatoshi.Uint64())
 
 	err = useCase.peginProvider.HasPeginLiquidity(ctx, minLockTxValueInWei)
 	if errors.Is(err, usecases.NoLiquidityError) {
