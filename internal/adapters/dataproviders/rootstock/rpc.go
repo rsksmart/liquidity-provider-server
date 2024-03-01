@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+// newAccountGasCost fixed gas amount to add to the estimation if the destination address is a new account
 const newAccountGasCost = 25000
 
 type rskjRpcServer struct {
