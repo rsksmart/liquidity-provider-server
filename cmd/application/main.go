@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path"
-	"time"
 )
 
 // @Version 1.2.1
@@ -21,10 +20,8 @@ var (
 	BuildTime    string
 )
 
-const bootstrapTimeout = 3 * time.Minute // In case LP needs to register
-
 func main() {
-	initCtx, cancel := context.WithTimeout(context.Background(), bootstrapTimeout)
+	initCtx, cancel := context.WithTimeout(context.Background(), lps.BootstrapTimeout)
 
 	env := environment.LoadEnv()
 
@@ -40,7 +37,7 @@ func main() {
 	cancel()
 	log.Info("Starting application...")
 	app.Run(*env, logLevel)
-	app.Shutdown()
+	app.ShutdownServices()
 }
 
 func setUpLogger(env environment.Environment) log.Level {

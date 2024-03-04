@@ -1,4 +1,5 @@
 {
+  "network": "regtest",
   "lps": {
     "url": "http://localhost:8080",
     "useTestInstance": true
@@ -7,7 +8,7 @@
       "rpcEndpoint": "localhost:5555",
       "user": "test",
       "password": "test",
-      "network": "regtest"
+      "password": "test-password"
   },
   "rsk": {
     "rpcUrl": "ws://localhost:4445/websocket",
