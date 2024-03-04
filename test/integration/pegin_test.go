@@ -5,37 +5,36 @@ import (
 	"encoding/json"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rsksmart/liquidity-provider-server/connectors/bindings"
-	lps "github.com/rsksmart/liquidity-provider-server/http"
-	"github.com/rsksmart/liquidity-provider/types"
-	"github.com/stretchr/testify/assert"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
+// nolint:funlen
 func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
-
-	var quote lps.QuoteReturn
-	var acceptedQuote lps.AcceptRes
+	var quote pkg.GetPeginQuoteResponse
+	var acceptedQuote pkg.AcceptPeginRespose
 	URL := s.config.Lps.Url
 
 	s.Run("Should be able to get pegin quote", func() {
-		body := lps.QuoteRequest{
+		body := pkg.PeginQuoteRequest{
 			CallEoaOrContractAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
 			CallContractArguments:    "",
 			ValueToTransfer:          600000000000000000,
 			RskRefundAddress:         "0x79568c2989232dCa1840087D73d403602364c0D4",
-			BitcoinRefundAddress:     "mxEp7KGqyjFiLnWJoXU6MNXpop8BYe9Gv1",
+			BitcoinRefundAddress:     "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
 		}
 
-		result, err := execute[[]lps.QuoteReturn](Execution{
+		result, err := execute[[]pkg.GetPeginQuoteResponse](Execution{
 			Method: http.MethodPost,
 			URL:    URL + "/pegin/getQuote",
 			Body:   body,
 		})
-
-		if err != nil {
-			assert.Fail(s.T(), "Unexpected error: ", err)
-		}
+		s.NoError(err)
 
 		expectedFields := []string{
 			"gasFee",
@@ -61,68 +60,56 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 
 		var rawResponse []map[string]any
 		err = json.Unmarshal(result.RawResponse, &rawResponse)
-		if err != nil {
-			assert.Fail(s.T(), "Response does not have required format")
-		}
-		assert.Equal(s.T(), http.StatusOK, result.StatusCode)
-		assert.NotEmpty(s.T(), rawResponse[0]["quoteHash"])
-		assert.NotEmpty(s.T(), rawResponse[0]["quote"])
+		s.NoError(err)
+		s.Equal(http.StatusOK, result.StatusCode)
+		s.NotEmpty(rawResponse[0]["quoteHash"])
+		s.NotEmpty(rawResponse[0]["quote"])
 		quoteFields, ok := rawResponse[0]["quote"].(map[string]any)
 		if !ok {
-			assert.Fail(s.T(), "Quote is not an object")
+			s.FailNow("Quote is not an object")
 		}
 		s.AssertFields(expectedFields, quoteFields)
 		quote = result.Response[0]
 	})
 
 	s.Run("Should be able to accept pegin quote", func() {
-		body := lps.AcceptReq{QuoteHash: quote.QuoteHash}
-		result, err := execute[lps.AcceptRes](Execution{
+		body := pkg.AcceptQuoteRequest{QuoteHash: quote.QuoteHash}
+		result, err := execute[pkg.AcceptPeginRespose](Execution{
 			Method: http.MethodPost,
 			URL:    URL + "/pegin/acceptQuote",
 			Body:   body,
 		})
-		if err != nil {
-			assert.Fail(s.T(), "Unexpected error: ", err)
-		}
+		s.NoError(err)
 
-		expectedFields := []string{
-			"signature",
-			"bitcoinDepositAddressHash",
-		}
+		expectedFields := []string{"signature", "bitcoinDepositAddressHash"}
 
-		assert.Equal(s.T(), http.StatusOK, result.StatusCode)
+		s.Require().Equal(http.StatusOK, result.StatusCode)
 		var rawResponse map[string]any
 		err = json.Unmarshal(result.RawResponse, &rawResponse)
-		if err != nil {
-			assert.Fail(s.T(), "Response does not have required format")
-		}
+		s.NoError(err)
 		s.AssertFields(expectedFields, rawResponse)
 		acceptedQuote = result.Response
 	})
 
 	s.Run("Should process bitcoin deposit and callForUser", func() {
 		address, err := btcutil.DecodeAddress(acceptedQuote.BitcoinDepositAddressHash, &s.btcParams)
-		if err != nil {
-			assert.Fail(s.T(), "Invalid derivation address")
-		}
-		value := types.NewWei(int64(quote.Quote.Value))
-		callFee := types.NewWei(int64(quote.Quote.CallFee))
-		gasFee := types.NewWei(int64(quote.Quote.GasFee))
-		productFee := types.NewWei(int64(quote.Quote.ProductFeeAmount))
-		totalFees := new(types.Wei).Add(new(types.Wei).Add(callFee, gasFee), productFee)
-		totalAmount := new(types.Wei).Add(totalFees, value)
+		s.NoError(err)
+		value := entities.NewUWei(quote.Quote.Value)
+		callFee := entities.NewUWei(quote.Quote.CallFee)
+		gasFee := entities.NewUWei(quote.Quote.GasFee)
+		productFee := entities.NewUWei(quote.Quote.ProductFeeAmount)
+		totalFees := new(entities.Wei).Add(new(entities.Wei).Add(callFee, gasFee), productFee)
+		totalAmount := new(entities.Wei).Add(totalFees, value)
 		floatAmount, _ := totalAmount.ToRbtc().Float64()
 		btcAmount, err := btcutil.NewAmount(floatAmount)
-		if err != nil {
-			assert.Fail(s.T(), err.Error())
-		}
+		s.NoError(err)
 		amount, _ := btcutil.NewAmount(0.00025)
-		_ = s.btc.SetTxFee(amount)
+		err = s.btc.WalletPassphrase(s.config.Btc.WalletPassword, 60)
+		s.Require().NoError(err)
+		err = s.btc.SetTxFee(amount)
+		s.Require().NoError(err)
 		_, err = s.btc.SendToAddress(address, btcAmount)
-		if err != nil {
-			assert.FailNow(s.T(), "Error sending btc transaction")
-		}
+		s.Require().NoError(err)
 
 		eventChannel := make(chan *bindings.LiquidityBridgeContractCallForUser)
 		lpAddress := common.HexToAddress(quote.Quote.LPRSKAddr)
@@ -133,16 +120,19 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 			[]common.Address{lpAddress},
 			[]common.Address{toAddress},
 		)
-		if err != nil {
-			assert.FailNow(s.T(), "Error listening for callForUser")
-		}
+		s.NoError(err)
 
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case callForUser := <-eventChannel:
 			subscription.Unsubscribe()
-			assert.True(s.T(), callForUser.Success, "Call for user failed")
+			s.True(callForUser.Success, "Call for user failed")
 		case err = <-subscription.Err():
-			assert.FailNow(s.T(), "Error listening for callForUser")
+			s.FailNow("Error listening for callForUser", err)
+		case <-done:
+			subscription.Unsubscribe()
+			s.FailNow("Test cancelled")
 		}
 	})
 
@@ -157,15 +147,20 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 			[][32]byte{quoteHash},
 		)
 		if err != nil {
-			assert.FailNow(s.T(), "Error listening for callForUser")
+			s.FailNow("Error listening for registerPegIn")
 		}
 
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		select {
 		case registerPegIn := <-eventChannel:
 			subscription.Unsubscribe()
-			assert.Positive(s.T(), registerPegIn.TransferredAmount.Int64(), "Register PegIn failed")
+			s.Positive(registerPegIn.TransferredAmount.Int64(), "Register PegIn failed")
 		case err = <-subscription.Err():
-			assert.FailNow(s.T(), "Error listening for callForUser")
+			s.FailNow("Error listening for registerPegIn", err)
+		case <-done:
+			subscription.Unsubscribe()
+			s.FailNow("Test cancelled")
 		}
 	})
 }

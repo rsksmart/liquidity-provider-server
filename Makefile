@@ -35,15 +35,14 @@ api:
 
 coverage: clean
 	mkdir coverage
-	go test -v -race -covermode=atomic -coverpkg=./... -coverprofile=coverage/cover.out ./...
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out ./pkg/... ./internal/... ./cmd/...
 	go tool cover -func "coverage/cover.out"
 	go tool cover -html="coverage/cover.out"
 	rm coverage/cover.out
 
 test: clean
 	mkdir coverage
-	go test -v -race -covermode=atomic ./...
-	go test -v -race -covermode=atomic -coverpkg=./... -coverprofile=coverage/cover.out ./...
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out  ./pkg/... ./internal/... ./cmd/...
 	go tool cover -func "coverage/cover.out"
 	rm coverage/cover.out
 
