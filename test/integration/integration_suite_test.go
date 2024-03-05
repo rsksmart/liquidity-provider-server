@@ -84,7 +84,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	if s.config.Lps.UseTestInstance {
 		s.setupLps()
-		time.Sleep(1 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 	if s.config.Network == "regtest" {

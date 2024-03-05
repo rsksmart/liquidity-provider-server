@@ -173,7 +173,9 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 			subscription.Unsubscribe()
 			s.NotNil(refund, "refundPegOut failed")
 		case err = <-subscription.Err():
-			s.FailNow("Error listening for refundPegOut", err)
+			if err != nil {
+				s.FailNow("Error listening for refundPegOut", err)
+			}
 		case <-done:
 			subscription.Unsubscribe()
 			s.FailNow("Test cancelled")
@@ -236,19 +238,21 @@ func waitForBtcTransactionToAddress(s *IntegrationTestSuite, address btcutil.Add
 	var txHash string
 	for txHash == "" {
 		txHash = lookForTxToAddress(block, address, &s.btcParams)
-		if txHash == "" {
-			hash, getBlockError := s.btc.GetBlockHash(int64(latestBlockNumber + 1))
-			if getBlockError != nil && !strings.Contains(getBlockError.Error(), "Block height out of range") {
-				s.FailNow(getBlockError.Error())
-			} else if getBlockError == nil {
-				latestBlockHash = hash
-				latestBlockNumber++
-				if block, err = s.btc.GetBlock(latestBlockHash); err != nil {
-					s.FailNow(err.Error())
-				}
+		if txHash != "" {
+			return txHash
+		}
+		hash, getBlockError := s.btc.GetBlockHash(int64(latestBlockNumber + 1))
+		if getBlockError != nil && !strings.Contains(getBlockError.Error(), "Block height out of range") {
+			s.FailNow(getBlockError.Error())
+		} else if getBlockError != nil && strings.Contains(getBlockError.Error(), "Block height out of range") {
+			time.Sleep(10 * time.Second)
+		} else if getBlockError == nil {
+			latestBlockHash = hash
+			latestBlockNumber++
+			if block, err = s.btc.GetBlock(latestBlockHash); err != nil {
+				s.FailNow(err.Error())
 			}
 		}
-		time.Sleep(10 * time.Second)
 	}
 	return txHash
 }
