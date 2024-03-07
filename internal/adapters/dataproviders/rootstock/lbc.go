@@ -21,6 +21,7 @@ import (
 	"time"
 )
 
+// registerPeginGasLimit Fixed gas limit for registerPegin function, should change only if the function does
 const registerPeginGasLimit = 2500000
 
 type liquidityBridgeContractImpl struct {
