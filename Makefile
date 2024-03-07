@@ -40,6 +40,10 @@ coverage: clean
 	go tool cover -html="coverage/cover.out"
 	rm coverage/cover.out
 
+coverage-report: clean
+	mkdir coverage
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out ./pkg/... ./internal/... ./cmd/...
+
 test: clean
 	mkdir coverage
 	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out  ./pkg/... ./internal/... ./cmd/...
