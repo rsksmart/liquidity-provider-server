@@ -13,9 +13,12 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"syscall"
 	"time"
 )
 
+const BootstrapTimeout = 3 * time.Minute // In case LP needs to register
 const watcherPreparationTimeout = 3 * time.Second
 
 type Application struct {
@@ -29,6 +32,7 @@ type Application struct {
 	dbRegistry        *registry.Database
 	eventBus          entities.EventBus
 	runningServices   []entities.Closeable
+	doneChannel       chan os.Signal
 }
 
 func NewApplication(initCtx context.Context, env environment.Environment, secrets environment.ApplicationSecrets) *Application {
@@ -112,6 +116,7 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	}
 
 	applicationServer, done := server.NewServer(env, app.useCaseRegistry, logLevel)
+	app.doneChannel = done
 	app.addRunningService(applicationServer)
 	go applicationServer.Start()
 	<-done
@@ -144,7 +149,7 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 	return watchers, nil
 }
 
-func (app *Application) Shutdown() {
+func (app *Application) ShutdownServices() {
 	log.Info("Starting graceful shutdown...")
 	numberOfServices := len(app.runningServices)
 	closeChannel := make(chan bool, numberOfServices)
@@ -155,4 +160,8 @@ func (app *Application) Shutdown() {
 		<-closeChannel
 	}
 	log.Info("Shutdown completed")
+}
+
+func (app *Application) ForceShutdown() {
+	app.doneChannel <- syscall.SIGINT
 }

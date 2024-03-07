@@ -144,6 +144,8 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote w.WatchedPeg
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
 		if err = watcher.expiredUseCase.Run(context.Background(), watchedQuote.RetainedQuote); err != nil {
 			log.Errorf("Error updating expired quote (%s): %v\n", quoteHash, err)
+		} else {
+			delete(watcher.quotes, quoteHash)
 		}
 	}
 }
