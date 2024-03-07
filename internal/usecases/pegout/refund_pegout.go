@@ -13,10 +13,11 @@ import (
 )
 
 const (
+	// refundPegoutGasLimit Fixed gas limit for refundPegout function, should change only if the function does
 	refundPegoutGasLimit = 2500000
-	// BridgeConversionGasLimit see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
+	// bridgeConversionGasLimit see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
 	bridgeConversionGasLimit = 100000
-	// BridgeConversionGasPrice see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
+	// bridgeConversionGasPrice see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
 	bridgeConversionGasPrice = 60000000
 )
 
