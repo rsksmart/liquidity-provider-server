@@ -27,7 +27,7 @@ type Server struct {
 	useCaseRegistry registry.UseCaseRegistry
 }
 
-func NewServer(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, logLevel log.Level) (*Server, <-chan os.Signal) {
+func NewServer(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, logLevel log.Level) (*Server, chan os.Signal) {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	return &Server{
