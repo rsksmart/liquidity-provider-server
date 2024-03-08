@@ -2,6 +2,7 @@ package liquidity_provider_test
 
 import (
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -23,7 +24,8 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 	}
 	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{provider}, nil).Once()
 
-	useCase := liquidity_provider.NewGetProvidersUseCase(lbc)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewGetProvidersUseCase(contracts)
 	result, err := useCase.Run()
 
 	lbc.AssertExpectations(t)
@@ -39,7 +41,8 @@ func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
 		errors.New("some error"),
 	).Once()
 
-	useCase := liquidity_provider.NewGetProvidersUseCase(lbc)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewGetProvidersUseCase(contracts)
 	result, err := useCase.Run()
 
 	lbc.AssertExpectations(t)

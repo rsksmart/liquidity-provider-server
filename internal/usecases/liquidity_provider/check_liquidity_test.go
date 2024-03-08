@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -22,7 +23,8 @@ func TestCheckLiquidityUseCase_Run(t *testing.T) {
 	provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 	provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, bridge, alertSender, "recipient")
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, contracts, alertSender, "recipient")
 	err := useCase.Run(context.Background())
 	bridge.AssertExpectations(t)
 	provider.AssertExpectations(t)
@@ -44,7 +46,8 @@ func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
 	provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
 	provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, bridge, alertSender, recipient)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, contracts, alertSender, recipient)
 	err := useCase.Run(context.Background())
 	bridge.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -66,7 +69,8 @@ func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
 	provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 	provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, bridge, alertSender, recipient)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, contracts, alertSender, recipient)
 	err := useCase.Run(context.Background())
 	bridge.AssertExpectations(t)
 	provider.AssertExpectations(t)
@@ -101,7 +105,8 @@ func TestCheckLiquidityUseCase_Run_NoRecoverableErrorHandling(t *testing.T) {
 		provider := &mocks.ProviderMock{}
 		sender := &mocks.AlertSenderMock{}
 		testCase.Value(bridge, provider, sender)
-		useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, bridge, sender, recipient)
+		contracts := blockchain.RskContracts{Bridge: bridge}
+		useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, contracts, sender, recipient)
 		err := useCase.Run(context.Background())
 		bridge.AssertExpectations(t)
 		provider.AssertExpectations(t)
@@ -139,7 +144,8 @@ func TestCheckLiquidityUseCase_Run_OnlyLogSendErrors(t *testing.T) {
 		buff := new(bytes.Buffer)
 		testCase.Value(bridge, provider, sender)
 		log.SetOutput(buff)
-		useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, bridge, sender, recipient)
+		contracts := blockchain.RskContracts{Bridge: bridge}
+		useCase := liquidity_provider.NewCheckLiquidityUseCase(provider, provider, contracts, sender, recipient)
 		err := useCase.Run(context.Background())
 		assert.Positive(t, buff.Bytes())
 		bridge.AssertExpectations(t)

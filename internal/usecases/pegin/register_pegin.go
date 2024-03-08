@@ -12,28 +12,25 @@ import (
 )
 
 type RegisterPeginUseCase struct {
-	lbc             blockchain.LiquidityBridgeContract
+	contracts       blockchain.RskContracts
 	quoteRepository quote.PeginQuoteRepository
 	eventBus        entities.EventBus
-	bridge          blockchain.RootstockBridge
-	btc             blockchain.BitcoinNetwork
+	rpc             blockchain.Rpc
 	rskWalletMutex  sync.Locker
 }
 
 func NewRegisterPeginUseCase(
-	lbc blockchain.LiquidityBridgeContract,
+	contracts blockchain.RskContracts,
 	quoteRepository quote.PeginQuoteRepository,
 	eventBus entities.EventBus,
-	bridge blockchain.RootstockBridge,
-	btc blockchain.BitcoinNetwork,
+	rpc blockchain.Rpc,
 	rskWalletMutex sync.Locker,
 ) *RegisterPeginUseCase {
 	return &RegisterPeginUseCase{
-		lbc:             lbc,
+		contracts:       contracts,
 		quoteRepository: quoteRepository,
 		eventBus:        eventBus,
-		bridge:          bridge,
-		btc:             btc,
+		rpc:             rpc,
 		rskWalletMutex:  rskWalletMutex,
 	}
 }
@@ -65,7 +62,7 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
-	if registerPeginTxHash, err = useCase.lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed
@@ -119,15 +116,15 @@ func (useCase *RegisterPeginUseCase) buildRegisterPeginParams(peginQuote quote.P
 		return blockchain.RegisterPeginParams{}, err
 	}
 
-	if rawBtcTx, err = useCase.btc.GetRawTransaction(retainedQuote.UserBtcTxHash); err != nil {
+	if rawBtcTx, err = useCase.rpc.Btc.GetRawTransaction(retainedQuote.UserBtcTxHash); err != nil {
 		return blockchain.RegisterPeginParams{}, err
 	}
 
-	if pmt, err = useCase.btc.GetPartialMerkleTree(retainedQuote.UserBtcTxHash); err != nil {
+	if pmt, err = useCase.rpc.Btc.GetPartialMerkleTree(retainedQuote.UserBtcTxHash); err != nil {
 		return blockchain.RegisterPeginParams{}, err
 	}
 
-	if block, err = useCase.btc.GetTransactionBlockInfo(retainedQuote.UserBtcTxHash); err != nil {
+	if block, err = useCase.rpc.Btc.GetTransactionBlockInfo(retainedQuote.UserBtcTxHash); err != nil {
 		return blockchain.RegisterPeginParams{}, err
 	}
 
@@ -143,9 +140,9 @@ func (useCase *RegisterPeginUseCase) buildRegisterPeginParams(peginQuote quote.P
 func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	var txInfo blockchain.BitcoinTransactionInformation
 	var err error
-	if txInfo, err = useCase.btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
+	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if txInfo.Confirmations < useCase.bridge.GetRequiredTxConfirmations() {
+	} else if txInfo.Confirmations < useCase.contracts.Bridge.GetRequiredTxConfirmations() {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
 	}
 	return nil

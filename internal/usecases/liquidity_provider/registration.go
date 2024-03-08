@@ -9,12 +9,12 @@ import (
 )
 
 type RegistrationUseCase struct {
-	lbc      blockchain.LiquidityBridgeContract
-	provider liquidity_provider.LiquidityProvider
+	contracts blockchain.RskContracts
+	provider  liquidity_provider.LiquidityProvider
 }
 
-func NewRegistrationUseCase(lbc blockchain.LiquidityBridgeContract, provider liquidity_provider.LiquidityProvider) *RegistrationUseCase {
-	return &RegistrationUseCase{lbc: lbc, provider: provider}
+func NewRegistrationUseCase(contracts blockchain.RskContracts, provider liquidity_provider.LiquidityProvider) *RegistrationUseCase {
+	return &RegistrationUseCase{contracts: contracts, provider: provider}
 }
 
 type collateralInfo struct {
@@ -85,13 +85,13 @@ func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) 
 	var err error
 	var peginCollateral, pegoutCollateral, minimumCollateral *entities.Wei
 
-	if minimumCollateral, err = useCase.lbc.GetMinimumCollateral(); err != nil {
+	if minimumCollateral, err = useCase.contracts.Lbc.GetMinimumCollateral(); err != nil {
 		return collateralInfo{}, err
 	}
-	if peginCollateral, err = useCase.lbc.GetCollateral(useCase.provider.RskAddress()); err != nil {
+	if peginCollateral, err = useCase.contracts.Lbc.GetCollateral(useCase.provider.RskAddress()); err != nil {
 		return collateralInfo{}, err
 	}
-	if pegoutCollateral, err = useCase.lbc.GetPegoutCollateral(useCase.provider.RskAddress()); err != nil {
+	if pegoutCollateral, err = useCase.contracts.Lbc.GetPegoutCollateral(useCase.provider.RskAddress()); err != nil {
 		return collateralInfo{}, err
 	}
 	return collateralInfo{
@@ -104,11 +104,11 @@ func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) 
 func (useCase *RegistrationUseCase) getOperationalInfo() (operationalInfo, error) {
 	var operationalForPegin, operationalForPegout bool
 	var err error
-	if operationalForPegin, err = useCase.lbc.IsOperationalPegin(useCase.provider.RskAddress()); err != nil {
+	if operationalForPegin, err = useCase.contracts.Lbc.IsOperationalPegin(useCase.provider.RskAddress()); err != nil {
 		return operationalInfo{}, err
 	}
 
-	if operationalForPegout, err = useCase.lbc.IsOperationalPegout(useCase.provider.RskAddress()); err != nil {
+	if operationalForPegout, err = useCase.contracts.Lbc.IsOperationalPegout(useCase.provider.RskAddress()); err != nil {
 		return operationalInfo{}, err
 	}
 
@@ -127,7 +127,7 @@ func (useCase *RegistrationUseCase) isProviderOperational(providerType liquidity
 func (useCase *RegistrationUseCase) registerProvider(params blockchain.ProviderRegistrationParams, collateral collateralInfo) (int64, error) {
 	value := new(entities.Wei)
 	txConfig := blockchain.NewTransactionConfig(value.Mul(collateral.minimumCollateral, entities.NewUWei(2)), 0, nil)
-	if id, err := useCase.lbc.RegisterProvider(txConfig, params); err != nil {
+	if id, err := useCase.contracts.Lbc.RegisterProvider(txConfig, params); err != nil {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else {
 		return id, nil
@@ -155,7 +155,7 @@ func (useCase *RegistrationUseCase) addPeginCollateral(
 	}
 	collateralToAdd := new(entities.Wei)
 	log.Debug("Adding pegin collateral...")
-	if err = useCase.lbc.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
+	if err = useCase.contracts.Lbc.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else {
 		return true, nil
@@ -173,7 +173,7 @@ func (useCase *RegistrationUseCase) addPegoutCollateral(
 	}
 	collateralToAdd := new(entities.Wei)
 	log.Debug("Adding pegout collateral...")
-	if err = useCase.lbc.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
+	if err = useCase.contracts.Lbc.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	} else {
 		return true, nil

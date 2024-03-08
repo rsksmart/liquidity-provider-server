@@ -14,7 +14,7 @@ import (
 type SendPegoutUseCase struct {
 	btcWallet       blockchain.BitcoinWallet
 	quoteRepository quote.PegoutQuoteRepository
-	rsk             blockchain.RootstockRpcServer
+	rpc             blockchain.Rpc
 	eventBus        entities.EventBus
 	btcWalletMutex  sync.Locker
 }
@@ -22,14 +22,14 @@ type SendPegoutUseCase struct {
 func NewSendPegoutUseCase(
 	btcWallet blockchain.BitcoinWallet,
 	quoteRepository quote.PegoutQuoteRepository,
-	rsk blockchain.RootstockRpcServer,
+	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 	btcWalletMutex sync.Locker,
 ) *SendPegoutUseCase {
 	return &SendPegoutUseCase{
 		btcWallet:       btcWallet,
 		quoteRepository: quoteRepository,
-		rsk:             rsk,
+		rpc:             rpc,
 		eventBus:        eventBus,
 		btcWalletMutex:  btcWalletMutex,
 	}
@@ -113,11 +113,11 @@ func (useCase *SendPegoutUseCase) validateQuote(
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 
-	if chainHeight, err = useCase.rsk.GetHeight(ctx); err != nil {
+	if chainHeight, err = useCase.rpc.Rsk.GetHeight(ctx); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	}
 
-	if receipt, err = useCase.rsk.GetTransactionReceipt(ctx, retainedQuote.UserRskTxHash); err != nil {
+	if receipt, err = useCase.rpc.Rsk.GetTransactionReceipt(ctx, retainedQuote.UserRskTxHash); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if chainHeight-receipt.BlockNumber < uint64(pegoutQuote.DepositConfirmations) {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoEnoughConfirmationsError, true)

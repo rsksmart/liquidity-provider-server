@@ -17,35 +17,32 @@ import (
 )
 
 type LocalLiquidityProvider struct {
-	env              *Configuration
 	peginRepository  quote.PeginQuoteRepository
 	pegoutRepository quote.PegoutQuoteRepository
 	lpRepository     liquidity_provider.LiquidityProviderRepository
-	rsk              blockchain.RootstockRpcServer
+	rpc              blockchain.Rpc
 	signer           rootstock.TransactionSigner
 	btc              blockchain.BitcoinWallet
-	lbc              blockchain.LiquidityBridgeContract
+	contracts        blockchain.RskContracts
 }
 
 func NewLocalLiquidityProvider(
-	env *Configuration,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
 	lpRepository liquidity_provider.LiquidityProviderRepository,
-	rsk blockchain.RootstockRpcServer,
+	rpc blockchain.Rpc,
 	signer rootstock.TransactionSigner,
 	btc blockchain.BitcoinWallet,
-	lbc blockchain.LiquidityBridgeContract,
+	contracts blockchain.RskContracts,
 ) *LocalLiquidityProvider {
 	return &LocalLiquidityProvider{
-		env:              env,
 		peginRepository:  peginRepository,
 		pegoutRepository: pegoutRepository,
 		lpRepository:     lpRepository,
-		rsk:              rsk,
+		rpc:              rpc,
 		signer:           signer,
 		btc:              btc,
-		lbc:              lbc,
+		contracts:        contracts,
 	}
 }
 
@@ -54,7 +51,7 @@ func (lp *LocalLiquidityProvider) RskAddress() string {
 }
 
 func (lp *LocalLiquidityProvider) BtcAddress() string {
-	return lp.env.BtcConfig.BtcAddress
+	return lp.btc.Address()
 }
 
 func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
@@ -108,11 +105,11 @@ func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, require
 	liquidity := new(entities.Wei)
 	lockedLiquidity := new(entities.Wei)
 	log.Debug("Verifying if has liquidity")
-	lpRskBalance, err := lp.rsk.GetBalance(ctx, lp.RskAddress())
+	lpRskBalance, err := lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
 	if err != nil {
 		return err
 	}
-	lpLbcBalance, err := lp.lbc.GetBalance(lp.RskAddress())
+	lpLbcBalance, err := lp.contracts.Lbc.GetBalance(lp.RskAddress())
 	if err != nil {
 		return err
 	}

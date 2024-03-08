@@ -3,19 +3,18 @@ package registry
 import "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 
 func NewLiquidityProvider(
-	config *dataproviders.Configuration,
 	databaseRegistry *Database,
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
+	messaging *Messaging,
 ) *dataproviders.LocalLiquidityProvider {
 	return dataproviders.NewLocalLiquidityProvider(
-		config,
 		databaseRegistry.PeginRepository,
 		databaseRegistry.PegoutRepository,
 		databaseRegistry.LiquidityProviderRepository,
-		rskRegistry.RpcServer,
+		messaging.Rpc,
 		rskRegistry.Wallet,
 		btcRegistry.Wallet,
-		rskRegistry.Lbc,
+		rskRegistry.Contracts,
 	)
 }

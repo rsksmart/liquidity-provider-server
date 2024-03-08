@@ -18,7 +18,7 @@ type PegoutBtcTransferWatcher struct {
 	quotes                       map[string]w.WatchedPegoutQuote
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	refundPegoutUseCase          *pegout.RefundPegoutUseCase
-	btcRpc                       blockchain.BitcoinNetwork
+	rpc                          blockchain.Rpc
 	ticker                       *time.Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
@@ -28,7 +28,7 @@ type PegoutBtcTransferWatcher struct {
 func NewPegoutBtcTransferWatcher(
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase,
 	refundPegoutUseCase *pegout.RefundPegoutUseCase,
-	btcRpc blockchain.BitcoinNetwork,
+	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PegoutBtcTransferWatcher {
 	quotes := make(map[string]w.WatchedPegoutQuote)
@@ -38,7 +38,7 @@ func NewPegoutBtcTransferWatcher(
 		quotes:                       quotes,
 		getWatchedPegoutQuoteUseCase: getWatchedPegoutQuoteUseCase,
 		refundPegoutUseCase:          refundPegoutUseCase,
-		btcRpc:                       btcRpc,
+		rpc:                          rpc,
 		eventBus:                     eventBus,
 		watcherStopChannel:           watcherStopChannel,
 		currentBlock:                 currentBlock,
@@ -69,7 +69,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			if height, err := watcher.btcRpc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
+			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
@@ -91,7 +91,7 @@ func (watcher *PegoutBtcTransferWatcher) checkQuotes() {
 	var err error
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
-		if tx, err = watcher.btcRpc.GetTransactionInfo(watchedQuote.RetainedQuote.LpBtcTxHash); err != nil {
+		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.LpBtcTxHash); err != nil {
 			log.Errorf("Error getting Bitcoin transaction information %s: %v\n", watchedQuote.RetainedQuote.LpBtcTxHash, err)
 			return
 		}

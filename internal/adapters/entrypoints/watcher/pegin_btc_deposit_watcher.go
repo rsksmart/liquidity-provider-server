@@ -21,19 +21,21 @@ type PeginDepositAddressWatcher struct {
 	callForUserUseCase          *pegin.CallForUserUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
-	btcRpc                      blockchain.BitcoinNetwork
+	rpc                         blockchain.Rpc
 	ticker                      *time.Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
 	currentBlock                *big.Int
 }
 
+const callForUserErrorTemplate = "Error executing call for user on quote %s: %v"
+
 func NewPeginDepositAddressWatcher(
 	callForUserUseCase *pegin.CallForUserUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
 	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,
 	btcWallet blockchain.BitcoinWallet,
-	btcRpc blockchain.BitcoinNetwork,
+	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PeginDepositAddressWatcher {
 	quotes := make(map[string]w.WatchedPeginQuote)
@@ -46,7 +48,7 @@ func NewPeginDepositAddressWatcher(
 		btcWallet:                   btcWallet,
 		eventBus:                    eventBus,
 		watcherStopChannel:          watcherStopChannel,
-		btcRpc:                      btcRpc,
+		rpc:                         rpc,
 	}
 }
 
@@ -76,7 +78,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			if height, err := watcher.btcRpc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
+			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
@@ -132,7 +134,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote w.WatchedPeg
 	depositAddress := watchedQuote.RetainedQuote.DepositAddress
 	txs, err := watcher.btcWallet.GetTransactions(depositAddress)
 	if err != nil {
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Errorf(callForUserErrorTemplate, quoteHash, err)
 		return
 	}
 	for _, tx := range txs {
@@ -155,9 +157,9 @@ func (watcher *PeginDepositAddressWatcher) callForUser(watchedQuote w.WatchedPeg
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
 	if err = watcher.callForUserUseCase.Run(context.Background(), tx.Hash, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, quoteHash)
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Errorf(callForUserErrorTemplate, quoteHash, err)
 	} else if err != nil {
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Errorf(callForUserErrorTemplate, quoteHash, err)
 	} else {
 		delete(watcher.quotes, quoteHash)
 	}

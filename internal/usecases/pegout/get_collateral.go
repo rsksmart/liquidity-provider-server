@@ -8,16 +8,16 @@ import (
 )
 
 type GetCollateralUseCase struct {
-	lbc            blockchain.LiquidityBridgeContract
+	contracts      blockchain.RskContracts
 	pegoutProvider liquidity_provider.LiquidityProvider
 }
 
-func NewGetCollateralUseCase(lbc blockchain.LiquidityBridgeContract, pegoutProvider liquidity_provider.LiquidityProvider) *GetCollateralUseCase {
-	return &GetCollateralUseCase{lbc: lbc, pegoutProvider: pegoutProvider}
+func NewGetCollateralUseCase(contracts blockchain.RskContracts, pegoutProvider liquidity_provider.LiquidityProvider) *GetCollateralUseCase {
+	return &GetCollateralUseCase{contracts: contracts, pegoutProvider: pegoutProvider}
 }
 
 func (useCase *GetCollateralUseCase) Run() (*entities.Wei, error) {
-	collateral, err := useCase.lbc.GetPegoutCollateral(useCase.pegoutProvider.RskAddress())
+	collateral, err := useCase.contracts.Lbc.GetPegoutCollateral(useCase.pegoutProvider.RskAddress())
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.GetPegoutCollateralId, err)
 	}

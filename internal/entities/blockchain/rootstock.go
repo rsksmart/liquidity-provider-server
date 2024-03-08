@@ -16,6 +16,12 @@ var (
 	InvalidAddressError   = errors.New("invalid rootstock address")
 )
 
+type RskContracts struct {
+	Bridge       RootstockBridge
+	Lbc          LiquidityBridgeContract
+	FeeCollector FeeCollector
+}
+
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
 	return hex.DecodeString(strings.TrimPrefix(hexString, "0x"))
 }

@@ -18,8 +18,8 @@ type PeginBridgeWatcher struct {
 	quotes                      map[string]w.WatchedPeginQuote
 	registerPeginUseCase        *pegin.RegisterPeginUseCase
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
-	bridge                      blockchain.RootstockBridge
-	btcRpc                      blockchain.BitcoinNetwork
+	contracts                   blockchain.RskContracts
+	rpc                         blockchain.Rpc
 	ticker                      *time.Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
@@ -29,8 +29,8 @@ type PeginBridgeWatcher struct {
 func NewPeginBridgeWatcher(
 	registerPeginUseCase *pegin.RegisterPeginUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
-	bridge blockchain.RootstockBridge,
-	btcRpc blockchain.BitcoinNetwork,
+	contracts blockchain.RskContracts,
+	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PeginBridgeWatcher {
 	quotes := make(map[string]w.WatchedPeginQuote)
@@ -39,8 +39,8 @@ func NewPeginBridgeWatcher(
 		quotes:                      quotes,
 		registerPeginUseCase:        registerPeginUseCase,
 		getWatchedPeginQuoteUseCase: getWatchedPeginQuoteUseCase,
-		bridge:                      bridge,
-		btcRpc:                      btcRpc,
+		contracts:                   contracts,
+		rpc:                         rpc,
 		eventBus:                    eventBus,
 		watcherStopChannel:          watcherStopChannel,
 	}
@@ -65,7 +65,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			if height, err := watcher.btcRpc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
+			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
@@ -110,7 +110,7 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 	var err error
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
-		if tx, err = watcher.btcRpc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash); err != nil {
+		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash); err != nil {
 			log.Errorf("Error getting Bitcoin transaction information %s: %v\n", watchedQuote.RetainedQuote.UserBtcTxHash, err)
 			return
 		}
@@ -134,5 +134,5 @@ func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote w.WatchedPeginQuot
 
 func (watcher *PeginBridgeWatcher) validateQuote(watchedQuote w.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PeginStateCallForUserSucceeded &&
-		tx.Confirmations >= watcher.bridge.GetRequiredTxConfirmations()
+		tx.Confirmations >= watcher.contracts.Bridge.GetRequiredTxConfirmations()
 }

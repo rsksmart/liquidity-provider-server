@@ -10,18 +10,18 @@ import (
 )
 
 type PenalizationAlertUseCase struct {
-	lbc       blockchain.LiquidityBridgeContract
+	contracts blockchain.RskContracts
 	sender    entities.AlertSender
 	recipient string
 }
 
-func NewPenalizationAlertUseCase(lbc blockchain.LiquidityBridgeContract, sender entities.AlertSender, recipient string) *PenalizationAlertUseCase {
-	return &PenalizationAlertUseCase{lbc: lbc, sender: sender, recipient: recipient}
+func NewPenalizationAlertUseCase(contracts blockchain.RskContracts, sender entities.AlertSender, recipient string) *PenalizationAlertUseCase {
+	return &PenalizationAlertUseCase{contracts: contracts, sender: sender, recipient: recipient}
 }
 
 func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toBlock uint64) error {
 	var body string
-	events, err := useCase.lbc.GetPeginPunishmentEvents(ctx, fromBlock, &toBlock)
+	events, err := useCase.contracts.Lbc.GetPeginPunishmentEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.PenalizationId, err)
 	}
