@@ -44,13 +44,18 @@ var testPeginQuote = quote.PeginQuote{
 	ProductFeeAmount:   10,
 }
 
+var federationInfo = blockchain.FederationInfo{
+	FedSize:              1,
+	FedThreshold:         2,
+	PubKeys:              []string{"01", "02", "03"},
+	FedAddress:           test.AnyAddress,
+	ActiveFedBlockHeight: 500,
+	IrisActivationHeight: 500,
+	ErpKeys:              []string{"04", "05", "06"},
+}
+
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
-	fedInfo := blockchain.FederationInfo{
-		FedSize: 1, FedThreshold: 2, PubKeys: []string{"01", "02", "03"},
-		FedAddress: test.AnyAddress, ActiveFedBlockHeight: 500,
-		IrisActivationHeight: 500, ErpKeys: []string{"04", "05", "06"},
-	}
 	retainedQuote := quote.RetainedPeginQuote{
 		QuoteHash:         acceptPeginQuoteHash,
 		DepositAddress:    acceptPeginDerivationAddress,
@@ -63,13 +68,13 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(nil, nil)
 	quoteRepository.On("InsertRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote).Return(nil)
 	bridge := new(mocks.BridgeMock)
-	bridge.On("FetchFederationInfo").Return(fedInfo, nil)
+	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
 	lbcParsedAddress, _ := hex.DecodeString(strings.TrimPrefix(testPeginQuote.LbcAddress, "0x"))
 	refundParsedAddress := []byte{4, 5, 6}
 	lpParsedAddress := []byte{7, 8, 9}
 	parsedHash, _ := hex.DecodeString(acceptPeginQuoteHash)
 	bridge.On("GetFlyoverDerivationAddress", blockchain.FlyoverDerivationArgs{
-		FedInfo:              fedInfo,
+		FedInfo:              federationInfo,
 		LbcAdress:            lbcParsedAddress,
 		UserBtcRefundAddress: refundParsedAddress,
 		LpBtcAddress:         lpParsedAddress,
@@ -91,7 +96,8 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	rsk := new(mocks.RskRpcMock)
 	rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50), nil)
 
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
 
 	rsk.AssertExpectations(t)
@@ -128,7 +134,9 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 	mutex.On("Unlock").Return()
 	rsk := new(mocks.RskRpcMock)
 
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -158,7 +166,9 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	rsk := new(mocks.RskRpcMock)
 
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -189,7 +199,9 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	rsk := new(mocks.RskRpcMock)
 
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -208,20 +220,11 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 
 func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
-	fedInfo := blockchain.FederationInfo{
-		FedSize:              1,
-		FedThreshold:         2,
-		PubKeys:              []string{"01", "02", "03"},
-		FedAddress:           test.AnyAddress,
-		ActiveFedBlockHeight: 500,
-		IrisActivationHeight: 500,
-		ErpKeys:              []string{"04", "05", "06"},
-	}
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&testPeginQuote, nil)
 	quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(nil, nil)
 	bridge := new(mocks.BridgeMock)
-	bridge.On("FetchFederationInfo").Return(fedInfo, nil)
+	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
 	bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(blockchain.FlyoverDerivation{
 		Address:      "derivation address",
 		RedeemScript: "any script",
@@ -238,7 +241,9 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	rsk := new(mocks.RskRpcMock)
 	rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50), nil)
 
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
 
 	rsk.AssertExpectations(t)
@@ -268,7 +273,9 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		rsk := new(mocks.RskRpcMock)
 		caseHash := acceptPeginQuoteHash
 		setup(&caseHash, quoteRepository, bridge, btc, lp, rsk)
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, bridge, btc, rsk, lp, lp, eventBus, mutex)
+		contracts := blockchain.RskContracts{Bridge: bridge}
+		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
 		result, err := useCase.Run(context.Background(), caseHash)
 
 		rsk.AssertExpectations(t)
@@ -284,15 +291,6 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 // nolint:funlen
 func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock,
 	bridge *mocks.BridgeMock, btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RskRpcMock) {
-	fedInfo := blockchain.FederationInfo{
-		FedSize:              1,
-		FedThreshold:         2,
-		PubKeys:              []string{"01", "02", "03"},
-		FedAddress:           test.AnyAddress,
-		ActiveFedBlockHeight: 500,
-		IrisActivationHeight: 500,
-		ErpKeys:              []string{"04", "05", "06"},
-	}
 	derivation := blockchain.FlyoverDerivation{Address: test.AnyAddress, RedeemScript: "any script"}
 	return []func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 		btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RskRpcMock){
@@ -351,7 +349,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
-			bridge.On("FetchFederationInfo").Return(fedInfo, nil).Once()
+			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(blockchain.FlyoverDerivation{}, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
@@ -360,7 +358,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
-			bridge.On("FetchFederationInfo").Return(fedInfo, nil).Once()
+			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(nil, assert.AnError).Once()
 		},
@@ -370,7 +368,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
-			bridge.On("FetchFederationInfo").Return(fedInfo, nil).Once()
+			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
@@ -382,7 +380,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
-			bridge.On("FetchFederationInfo").Return(fedInfo, nil).Once()
+			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
 			// set derivation and signature to empty to malform the retained quote
@@ -395,7 +393,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
-			bridge.On("FetchFederationInfo").Return(fedInfo, nil).Once()
+			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()

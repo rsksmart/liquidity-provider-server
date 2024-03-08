@@ -2,6 +2,7 @@ package liquidity_provider_test
 
 import (
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -31,7 +32,8 @@ func TestChangeStatusUseCase_Run(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("0x02")
 
-	err := liquidity_provider.NewChangeStatusUseCase(lbc, provider).Run(false)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	err := liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
 
 	lbc.AssertExpectations(t)
 	require.NoError(t, err)
@@ -45,7 +47,8 @@ func TestChangeStatusUseCase_Run_Fail(t *testing.T) {
 		[]lp.RegisteredLiquidityProvider{},
 		errors.New("some error"),
 	).Once()
-	err := liquidity_provider.NewChangeStatusUseCase(lbc, provider).Run(false)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	err := liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
 	lbc.AssertExpectations(t)
 	require.Error(t, err)
 
@@ -54,7 +57,7 @@ func TestChangeStatusUseCase_Run_Fail(t *testing.T) {
 	}, nil).Once()
 	provider.On("RskAddress").Return("0x01")
 	lbc.On("SetProviderStatus", mock.Anything, mock.Anything).Return(errors.New("some error")).Once()
-	err = liquidity_provider.NewChangeStatusUseCase(lbc, provider).Run(false)
+	err = liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
 	lbc.AssertExpectations(t)
 	require.Error(t, err)
 }

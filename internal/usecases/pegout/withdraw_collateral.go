@@ -7,15 +7,15 @@ import (
 )
 
 type WithdrawCollateralUseCase struct {
-	lbc blockchain.LiquidityBridgeContract
+	contracts blockchain.RskContracts
 }
 
-func NewWithdrawCollateralUseCase(lbc blockchain.LiquidityBridgeContract) *WithdrawCollateralUseCase {
-	return &WithdrawCollateralUseCase{lbc: lbc}
+func NewWithdrawCollateralUseCase(contracts blockchain.RskContracts) *WithdrawCollateralUseCase {
+	return &WithdrawCollateralUseCase{contracts: contracts}
 }
 
 func (useCase *WithdrawCollateralUseCase) Run() error {
-	err := useCase.lbc.WithdrawPegoutCollateral()
+	err := useCase.contracts.Lbc.WithdrawPegoutCollateral()
 	if err != nil && (strings.Contains(err.Error(), "LBC021") || strings.Contains(err.Error(), "LBC022")) {
 		return usecases.WrapUseCaseError(usecases.WithdrawCollateralId, usecases.ProviderNotResignedError)
 	} else if err != nil {

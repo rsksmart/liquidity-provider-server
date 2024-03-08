@@ -57,6 +57,7 @@ type BitcoinWallet interface {
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error)
 	ImportAddress(address string) error
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
+	Address() string
 	Unlock() error
 }
 

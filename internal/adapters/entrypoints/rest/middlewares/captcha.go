@@ -42,19 +42,22 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 				return
 			}
 
-			validCaptcha := validation.Success
-			if validation.Score != nil { // if is v3 we also use the score
-				validCaptcha = validCaptcha && *validation.Score >= captchaThreshold
-			}
-
-			if validCaptcha {
-				log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
-				next.ServeHTTP(w, r)
-			} else {
+			validCaptcha := calculateCaptchaValidity(validation, captchaThreshold)
+			if !validCaptcha {
 				unexpectedCaptchaError(w, err)
 			}
+			log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
+			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func calculateCaptchaValidity(validation captchaValidationResponse, captchaThreshold float32) bool {
+	validCaptcha := validation.Success
+	if validation.Score != nil { // if is v3 we also use the score
+		validCaptcha = validCaptcha && *validation.Score >= captchaThreshold
+	}
+	return validCaptcha
 }
 
 func unexpectedCaptchaError(w http.ResponseWriter, err error) {

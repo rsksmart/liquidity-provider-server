@@ -12,7 +12,7 @@ import (
 
 type AcceptQuoteUseCase struct {
 	quoteRepository      quote.PegoutQuoteRepository
-	lbc                  blockchain.LiquidityBridgeContract
+	contracts            blockchain.RskContracts
 	lp                   liquidity_provider.LiquidityProvider
 	pegoutLp             liquidity_provider.PegoutLiquidityProvider
 	eventBus             entities.EventBus
@@ -21,7 +21,7 @@ type AcceptQuoteUseCase struct {
 
 func NewAcceptQuoteUseCase(
 	quoteRepository quote.PegoutQuoteRepository,
-	lbc blockchain.LiquidityBridgeContract,
+	contracts blockchain.RskContracts,
 	lp liquidity_provider.LiquidityProvider,
 	pegoutLp liquidity_provider.PegoutLiquidityProvider,
 	eventBus entities.EventBus,
@@ -29,7 +29,7 @@ func NewAcceptQuoteUseCase(
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
 		quoteRepository:      quoteRepository,
-		lbc:                  lbc,
+		contracts:            contracts,
 		lp:                   lp,
 		pegoutLp:             pegoutLp,
 		eventBus:             eventBus,
@@ -79,7 +79,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 
 	retainedQuote = &quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
-		DepositAddress:    useCase.lbc.GetAddress(),
+		DepositAddress:    useCase.contracts.Lbc.GetAddress(),
 		Signature:         quoteSignature,
 		RequiredLiquidity: requiredLiquidity,
 		State:             quote.PegoutStateWaitingForDeposit,

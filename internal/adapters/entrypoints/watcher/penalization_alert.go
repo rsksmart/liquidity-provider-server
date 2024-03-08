@@ -9,22 +9,22 @@ import (
 )
 
 type PenalizationAlertWatcher struct {
-	rskRpc                   blockchain.RootstockRpcServer
+	rpc                      blockchain.Rpc
 	penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase
 	currentBlock             uint64
 	ticker                   *time.Ticker
 	watcherStopChannel       chan bool
 }
 
-func NewPenalizationAlertWatcher(rskRpc blockchain.RootstockRpcServer, penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase) *PenalizationAlertWatcher {
+func NewPenalizationAlertWatcher(rpc blockchain.Rpc, penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase) *PenalizationAlertWatcher {
 	watcherStopChannel := make(chan bool, 1)
-	return &PenalizationAlertWatcher{rskRpc: rskRpc, penalizationAlertUseCase: penalizationAlertUseCase, watcherStopChannel: watcherStopChannel}
+	return &PenalizationAlertWatcher{rpc: rpc, penalizationAlertUseCase: penalizationAlertUseCase, watcherStopChannel: watcherStopChannel}
 }
 
 func (watcher *PenalizationAlertWatcher) Prepare(ctx context.Context) error {
 	var err error
 	var height uint64
-	if height, err = watcher.rskRpc.GetHeight(ctx); err != nil {
+	if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 		return err
 	}
 	watcher.currentBlock = height
@@ -42,7 +42,7 @@ watcherLoop:
 		select {
 		case <-watcher.ticker.C:
 			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
-			if height, err = watcher.rskRpc.GetHeight(ctx); err != nil {
+			if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 				log.Error("Error checking penalization events inside watcher: ", err)
 			} else {
 				if err = watcher.penalizationAlertUseCase.Run(ctx, watcher.currentBlock, height); err == nil {

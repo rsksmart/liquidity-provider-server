@@ -6,6 +6,11 @@ import (
 	"sync"
 )
 
+var (
+	singletonLock     = &sync.Mutex{}
+	eventBusSingleton *localEventBus
+)
+
 type localEventBus struct {
 	topics         map[entities.EventId][]chan<- entities.Event
 	subscribeMutex sync.Mutex
@@ -13,8 +18,16 @@ type localEventBus struct {
 }
 
 func NewLocalEventBus() entities.EventBus {
-	topics := make(map[entities.EventId][]chan<- entities.Event)
-	return &localEventBus{topics: topics}
+	if eventBusSingleton == nil {
+		singletonLock.Lock()
+		defer singletonLock.Unlock()
+		// we need to check if it still not created after the getting into the critical section
+		if eventBusSingleton == nil {
+			topics := make(map[entities.EventId][]chan<- entities.Event)
+			eventBusSingleton = &localEventBus{topics: topics}
+		}
+	}
+	return eventBusSingleton
 }
 
 func (bus *localEventBus) Subscribe(id entities.EventId) <-chan entities.Event {

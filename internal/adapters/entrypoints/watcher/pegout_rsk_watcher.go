@@ -22,8 +22,8 @@ type PegoutRskDepositWatcher struct {
 	updatePegoutDepositUseCase   *w.UpdatePegoutQuoteDepositUseCase
 	initDepositCacheUseCase      *pegout.InitPegoutDepositCacheUseCase
 	pegoutLp                     liquidity_provider.PegoutLiquidityProvider
-	rskRpc                       blockchain.RootstockRpcServer
-	lbc                          blockchain.LiquidityBridgeContract
+	rpc                          blockchain.Rpc
+	contracts                    blockchain.RskContracts
 	ticker                       *time.Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
@@ -31,15 +31,35 @@ type PegoutRskDepositWatcher struct {
 	cacheStartBlock              uint64
 }
 
-func NewPegoutRskDepositWatcher(
+type PegoutRskDepositWatcherUseCases struct {
+	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
+	expiredUseCase               *pegout.ExpiredPegoutQuoteUseCase
+	sendPegoutUseCase            *pegout.SendPegoutUseCase
+	updatePegoutDepositUseCase   *w.UpdatePegoutQuoteDepositUseCase
+	initDepositCacheUseCase      *pegout.InitPegoutDepositCacheUseCase
+}
+
+func NewPegoutRskDepositWatcherUseCases(
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase,
 	expiredUseCase *pegout.ExpiredPegoutQuoteUseCase,
 	sendPegoutUseCase *pegout.SendPegoutUseCase,
 	updatePegoutDepositUseCase *w.UpdatePegoutQuoteDepositUseCase,
 	initDepositCacheUseCase *pegout.InitPegoutDepositCacheUseCase,
+) *PegoutRskDepositWatcherUseCases {
+	return &PegoutRskDepositWatcherUseCases{
+		getWatchedPegoutQuoteUseCase: getWatchedPegoutQuoteUseCase,
+		expiredUseCase:               expiredUseCase,
+		sendPegoutUseCase:            sendPegoutUseCase,
+		updatePegoutDepositUseCase:   updatePegoutDepositUseCase,
+		initDepositCacheUseCase:      initDepositCacheUseCase,
+	}
+}
+
+func NewPegoutRskDepositWatcher(
+	watcherUseCases *PegoutRskDepositWatcherUseCases,
 	pegoutLp liquidity_provider.PegoutLiquidityProvider,
-	rskRpc blockchain.RootstockRpcServer,
-	lbc blockchain.LiquidityBridgeContract,
+	rpc blockchain.Rpc,
+	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
 ) *PegoutRskDepositWatcher {
@@ -48,14 +68,14 @@ func NewPegoutRskDepositWatcher(
 	currentBlock := cacheStartBlock
 	return &PegoutRskDepositWatcher{
 		quotes:                       quotes,
-		getWatchedPegoutQuoteUseCase: getWatchedPegoutQuoteUseCase,
-		expiredUseCase:               expiredUseCase,
-		sendPegoutUseCase:            sendPegoutUseCase,
-		updatePegoutDepositUseCase:   updatePegoutDepositUseCase,
-		initDepositCacheUseCase:      initDepositCacheUseCase,
+		getWatchedPegoutQuoteUseCase: watcherUseCases.getWatchedPegoutQuoteUseCase,
+		expiredUseCase:               watcherUseCases.expiredUseCase,
+		sendPegoutUseCase:            watcherUseCases.sendPegoutUseCase,
+		updatePegoutDepositUseCase:   watcherUseCases.updatePegoutDepositUseCase,
+		initDepositCacheUseCase:      watcherUseCases.initDepositCacheUseCase,
 		pegoutLp:                     pegoutLp,
-		rskRpc:                       rskRpc,
-		lbc:                          lbc,
+		rpc:                          rpc,
+		contracts:                    contracts,
 		eventBus:                     eventBus,
 		watcherStopChannel:           watcherStopChannel,
 		currentBlock:                 currentBlock,
@@ -101,7 +121,7 @@ watcherLoop:
 		select {
 		case <-watcher.ticker.C:
 			checkContext, checkCancel = context.WithTimeout(context.Background(), 1*time.Minute)
-			if height, err := watcher.rskRpc.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
+			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
 				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
 				watcher.checkQuotes(checkContext, height)
 				watcher.currentBlock = height
@@ -146,7 +166,7 @@ func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromB
 	var err error
 	var deposits []quote.PegoutDeposit
 
-	deposits, err = watcher.lbc.GetDepositEvents(ctx, fromBlock, &toBlock)
+	deposits, err = watcher.contracts.Lbc.GetDepositEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		log.Errorf("Error executing getting deposits in range [%d, %d] in PegoutRskDepositWatcher\n", fromBlock, toBlock)
 		return
@@ -188,7 +208,7 @@ func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height u
 	}
 
 	if watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations {
-		if receipt, err = watcher.rskRpc.GetTransactionReceipt(ctx, watchedQuote.RetainedQuote.UserRskTxHash); err != nil {
+		if receipt, err = watcher.rpc.Rsk.GetTransactionReceipt(ctx, watchedQuote.RetainedQuote.UserRskTxHash); err != nil {
 			log.Errorf("Error getting pegout deposit receipt of quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
 			return
 		}

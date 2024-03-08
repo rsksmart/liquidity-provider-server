@@ -2,6 +2,7 @@ package pegout_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -20,7 +21,8 @@ func TestAddCollateralUseCase_Run(t *testing.T) {
 	lbc.On("AddPegoutCollateral", value).Return(nil)
 	lbc.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 	lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(100), nil)
-	useCase := pegout.NewAddCollateralUseCase(lbc, lp)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 	result, err := useCase.Run(value)
 	lp.AssertExpectations(t)
 	lbc.AssertExpectations(t)
@@ -35,7 +37,8 @@ func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
 	lp.On("RskAddress").Return("rskAddress")
 	lbc.On("GetMinimumCollateral").Return(entities.NewWei(2000), nil)
 	lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(100), nil)
-	useCase := pegout.NewAddCollateralUseCase(lbc, lp)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 	result, err := useCase.Run(value)
 	lp.AssertExpectations(t)
 	lbc.AssertExpectations(t)
@@ -71,7 +74,8 @@ func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, c := range cases {
 		lbc := new(mocks.LbcMock)
 		c.Value(lbc)
-		useCase := pegout.NewAddCollateralUseCase(lbc, lp)
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 		result, err := useCase.Run(entities.NewWei(100))
 		lbc.AssertExpectations(t)
 		assert.Nil(t, result)

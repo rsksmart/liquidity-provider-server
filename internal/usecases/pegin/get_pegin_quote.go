@@ -12,11 +12,8 @@ import (
 )
 
 type GetQuoteUseCase struct {
-	rsk                  blockchain.RootstockRpcServer
-	btc                  blockchain.BitcoinNetwork
-	feeCollector         blockchain.FeeCollector
-	bridge               blockchain.RootstockBridge
-	lbc                  blockchain.LiquidityBridgeContract
+	rpc                  blockchain.Rpc
+	contracts            blockchain.RskContracts
 	peginQuoteRepository quote.PeginQuoteRepository
 	lp                   liquidity_provider.LiquidityProvider
 	peginLp              liquidity_provider.PeginLiquidityProvider
@@ -24,22 +21,16 @@ type GetQuoteUseCase struct {
 }
 
 func NewGetQuoteUseCase(
-	rsk blockchain.RootstockRpcServer,
-	btc blockchain.BitcoinNetwork,
-	feeCollector blockchain.FeeCollector,
-	bridge blockchain.RootstockBridge,
-	lbc blockchain.LiquidityBridgeContract,
+	rpc blockchain.Rpc,
+	contracts blockchain.RskContracts,
 	peginQuoteRepository quote.PeginQuoteRepository,
 	lp liquidity_provider.LiquidityProvider,
 	peginLp liquidity_provider.PeginLiquidityProvider,
 	feeCollectorAddress string,
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
-		rsk:                  rsk,
-		btc:                  btc,
-		feeCollector:         feeCollector,
-		bridge:               bridge,
-		lbc:                  lbc,
+		rpc:                  rpc,
+		contracts:            contracts,
 		peginQuoteRepository: peginQuoteRepository,
 		lp:                   lp,
 		peginLp:              peginLp,
@@ -89,12 +80,12 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPeginQuoteId, err, errorArgs)
 	}
 
-	estimatedCallGas, err = useCase.rsk.EstimateGas(ctx, request.callEoaOrContractAddress, request.valueToTransfer, request.callContractArguments)
+	estimatedCallGas, err = useCase.rpc.Rsk.EstimateGas(ctx, request.callEoaOrContractAddress, request.valueToTransfer, request.callContractArguments)
 	if err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
-	if gasPrice, err = useCase.rsk.GasPrice(ctx); err != nil {
+	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
@@ -102,7 +93,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if fedAddress, err = useCase.bridge.GetFedAddress(); err != nil {
+	if fedAddress, err = useCase.contracts.Bridge.GetFedAddress(); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
@@ -118,11 +109,11 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.bridge, peginQuote.Total()); err != nil {
+	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.contracts.Bridge, peginQuote.Total()); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
 
-	if hash, err = useCase.lbc.HashPeginQuote(peginQuote); err != nil {
+	if hash, err = useCase.contracts.Lbc.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	if err = useCase.peginQuoteRepository.InsertQuote(ctx, hash, peginQuote); err != nil {
@@ -134,7 +125,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PeginConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	args := usecases.NewErrorArgs()
-	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
+	if err = useCase.rpc.Btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		args["btcAddress"] = request.bitcoinRefundAddress
 		return args, err
 	}
@@ -169,7 +160,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      fedAddress,
-		LbcAddress:         useCase.lbc.GetAddress(),
+		LbcAddress:         useCase.contracts.Lbc.GetAddress(),
 		LpRskAddress:       useCase.lp.RskAddress(),
 		BtcRefundAddress:   request.bitcoinRefundAddress,
 		RskRefundAddress:   request.rskRefundAddress,
@@ -201,10 +192,10 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	var daoFeePercentage uint64
 	var err error
 
-	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
+	if daoFeePercentage, err = useCase.contracts.FeeCollector.DaoFeePercentage(); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
-	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
+	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	return daoTxAmounts, nil

@@ -18,6 +18,7 @@ const (
 
 type bitcoindWallet struct {
 	conn           *Connection
+	address        string
 	fixedTxFeeRate float64
 	isEncrypted    bool
 	password       string
@@ -25,12 +26,14 @@ type bitcoindWallet struct {
 
 func NewBitcoindWallet(
 	conn *Connection,
+	address string,
 	fixedTxFeeRate float64,
 	isEncrypted bool,
 	password string,
 ) blockchain.BitcoinWallet {
 	return &bitcoindWallet{
 		conn:           conn,
+		address:        address,
 		fixedTxFeeRate: fixedTxFeeRate,
 		isEncrypted:    isEncrypted,
 		password:       password,
@@ -187,4 +190,8 @@ func (wallet *bitcoindWallet) GetTransactions(address string) ([]blockchain.Bitc
 
 func (wallet *bitcoindWallet) Unlock() error {
 	return wallet.unlock()
+}
+
+func (wallet *bitcoindWallet) Address() string {
+	return wallet.address
 }

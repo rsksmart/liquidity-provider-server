@@ -8,21 +8,21 @@ import (
 )
 
 type AddCollateralUseCase struct {
-	lbc blockchain.LiquidityBridgeContract
-	lp  liquidity_provider.LiquidityProvider
+	contracts blockchain.RskContracts
+	lp        liquidity_provider.LiquidityProvider
 }
 
-func NewAddCollateralUseCase(lbc blockchain.LiquidityBridgeContract, lp liquidity_provider.LiquidityProvider) *AddCollateralUseCase {
-	return &AddCollateralUseCase{lbc: lbc, lp: lp}
+func NewAddCollateralUseCase(contracts blockchain.RskContracts, lp liquidity_provider.LiquidityProvider) *AddCollateralUseCase {
+	return &AddCollateralUseCase{contracts: contracts, lp: lp}
 }
 
 func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, error) {
 	var err error
-	minCollateral, err := useCase.lbc.GetMinimumCollateral()
+	minCollateral, err := useCase.contracts.Lbc.GetMinimumCollateral()
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}
-	collateral, err := useCase.lbc.GetCollateral(useCase.lp.RskAddress())
+	collateral, err := useCase.contracts.Lbc.GetCollateral(useCase.lp.RskAddress())
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}
@@ -31,7 +31,7 @@ func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, e
 	if minCollateral.Cmp(result) > 0 {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, usecases.InsufficientAmountError)
 	}
-	err = useCase.lbc.AddCollateral(amount)
+	err = useCase.contracts.Lbc.AddCollateral(amount)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}
