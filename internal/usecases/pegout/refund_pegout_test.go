@@ -92,10 +92,10 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 		LpBtcTxHash:        retainedQuote.LpBtcTxHash,
 		RefundPegoutTxHash: refundPegoutTxHash,
 	}
-	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), expectedRetained).Return(nil).Once()
+	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, expectedRetained).Return(nil).Once()
 	expectedRetained.BridgeRefundTxHash = bridgeTxHash
-	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), expectedRetained).Return(nil).Once()
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, expectedRetained).Return(nil).Once()
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	lbc := new(mocks.LbcMock)
 	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil).Once()
 	eventBus := new(mocks.EventBusMock)
@@ -112,7 +112,7 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil)
 	btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil)
 	rskWallet := new(mocks.RskWalletMock)
-	rskWallet.On("SendRbtc", mock.AnythingOfType("context.backgroundCtx"),
+	rskWallet.On("SendRbtc", test.AnyCtx,
 		blockchain.NewTransactionConfig(entities.NewWei(8000), 100000, entities.NewWei(60000000)),
 		bridgeAddress).Return(bridgeTxHash, nil).Once()
 	bridge := new(mocks.BridgeMock)
@@ -138,9 +138,9 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	updateError := errors.New("an update error")
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
-	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(updateError).Once()
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(nil).Once()
+	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(updateError).Once()
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	lbc := new(mocks.LbcMock)
 	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil).Once()
 	eventBus := new(mocks.EventBusMock)
@@ -157,7 +157,7 @@ func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil)
 	btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil)
 	rskWallet := new(mocks.RskWalletMock)
-	rskWallet.On("SendRbtc", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything).Return(bridgeTxHash, nil).Once()
+	rskWallet.On("SendRbtc", test.AnyCtx, mock.Anything, mock.Anything).Return(bridgeTxHash, nil).Once()
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetAddress").Return("an address").Once()
 	mutex := new(mocks.MutexMock)
@@ -188,25 +188,25 @@ func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 
 	recoverableSetups := []func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock){
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(nil, assert.AnError).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(nil, assert.AnError).Once()
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(blockchain.MerkleBranch{}, assert.AnError).Once()
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
@@ -214,7 +214,7 @@ func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
@@ -251,18 +251,18 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 
 	unrecoverableSetups := []func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock){
 		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(nil, nil).Once()
 		},
 		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
 			retainedQuote.QuoteHash = "no hex"
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
 			btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil).Once()
 		},
 		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, rskWallet *mocks.RskWalletMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 			btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(btcTxInfoMock, nil).Once()
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
@@ -286,7 +286,7 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 				assert.Equal(t, caseQuote.RequiredLiquidity, event.RetainedQuote.RequiredLiquidity) && assert.Equal(t, quote.PegoutStateRefundPegOutFailed, event.RetainedQuote.State) &&
 				assert.Equal(t, caseQuote.UserRskTxHash, event.RetainedQuote.UserRskTxHash) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
 		})).Return().Once()
-		quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.MatchedBy(
+		quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(
 			func(q quote.RetainedPegoutQuote) bool {
 				expected := caseQuote
 				expected.State = quote.PegoutStateRefundPegOutFailed
@@ -309,7 +309,7 @@ func TestRefundPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 	unconfirmedBlockInfo := btcTxInfoMock
 	unconfirmedBlockInfo.Confirmations = 1
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	lbc := new(mocks.LbcMock)
 	eventBus := new(mocks.EventBusMock)
 	btc := new(mocks.BtcRpcMock)
@@ -388,13 +388,13 @@ func TestRefundPegoutUseCase_Run_CorrectBridgeAmount(t *testing.T) {
 	for _, c := range cases {
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		q := c.Value()
-		quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil)
-		quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil)
-		quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&q, nil)
-		quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote.QuoteHash).Return(&q, nil)
+		quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(nil)
+		quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(nil)
+		quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&q, nil)
+		quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&q, nil)
 
 		rskWallet := new(mocks.RskWalletMock)
-		rskWallet.On("SendRbtc", mock.AnythingOfType("context.backgroundCtx"),
+		rskWallet.On("SendRbtc", test.AnyCtx,
 			blockchain.NewTransactionConfig(c.Result, 100000, entities.NewWei(60000000)),
 			bridgeAddress).
 			Return(bridgeTxHash, nil).Once()
