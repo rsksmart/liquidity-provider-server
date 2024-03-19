@@ -1,14 +1,17 @@
-version: "3"
 services:
   lbc-deployer:
     build:
       context: ../lbc-deployer
+      secrets:
+        - gh_token
       args:
         LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-QA-Test}"
-        GITHUB_TOKEN: "${GITHUB_TOKEN}"
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:
       - LPS_STAGE
     networks:
       - net_lps
+secrets:
+  gh_token:
+    file: ./gh_token.txt

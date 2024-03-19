@@ -1,7 +1,8 @@
 FROM openjdk:8-jdk-slim-buster AS builder
 
 RUN apt-get update -y && \
-    apt-get install -qq --no-install-recommends git curl gnupg
+    apt-get install -y -qq --no-install-recommends git curl gnupg && \
+    apt-get clean
 
 WORKDIR /code/powpeg
 
@@ -26,11 +27,11 @@ FROM --platform=linux/amd64 openjdk:8-jdk AS runner
 ARG HOME="/home/powpeg"
 RUN useradd -m -u 1000 --home="$HOME" powpeg
 
-COPY --from=builder --chown=1000 --chmod=555 "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
+COPY --from=builder --chown=root:root --chmod=555 "/code/powpeg/build/libs/federate-node-*-all.jar" "$HOME/powpeg.jar"
 
-COPY --chown=1000 reg2.key "$HOME/reg2.key"
-COPY --chown=1000 regtest-fed.conf "$HOME/regtest-fed.conf"
-COPY --chown=1000 regtest-fed.conf "/etc/rsk/node.conf"
+COPY --chown=root:root --chmod=444 reg2.key "$HOME/reg2.key"
+COPY --chown=root:root --chmod=444 regtest-fed.conf "$HOME/regtest-fed.conf"
+COPY --chown=root:root --chmod=444 regtest-fed.conf "/etc/rsk/node.conf"
 
 RUN chmod 400 "$HOME/reg2.key"
 
