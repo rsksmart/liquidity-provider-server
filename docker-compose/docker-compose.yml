@@ -10,7 +10,7 @@ services:
     ports:
       - "5555:5555"
     volumes:
-      - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoind/.bitcoind
+      - ${BTCD_HOME:-/mnt/bitcoind}:/home/bitcoin/.bitcoin
     networks:
       - net_lps
     command:
@@ -119,22 +119,11 @@ services:
       - /mnt/lps/logs:/home/lps/logs
     depends_on:
       - mongodb
+      - bitcoind
 
     networks:
       - net_lps
     command: ["liquidity-provider-server"]
-
-  lbc-deployer:
-    build:
-      context: lbc-deployer
-      args:
-        LBC_GIT_BRANCH: ${LBC_GIT_BRANCH:-QA-Test}
-    image: lbc-deployer:latest
-    container_name: lbc-deployer01
-    environment:
-      - LPS_STAGE
-    networks:
-      - net_lps
 
 networks:
   net_lps:
