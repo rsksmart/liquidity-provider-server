@@ -14,31 +14,28 @@ import (
 )
 
 type CallForUserUseCase struct {
-	lbc             blockchain.LiquidityBridgeContract
+	contracts       blockchain.RskContracts
 	quoteRepository quote.PeginQuoteRepository
-	btc             blockchain.BitcoinNetwork
+	rpc             blockchain.Rpc
 	peginProvider   liquidity_provider.LiquidityProvider
 	eventBus        entities.EventBus
-	rsk             blockchain.RootstockRpcServer
 	rskWalletMutex  sync.Locker
 }
 
 func NewCallForUserUseCase(
-	lbc blockchain.LiquidityBridgeContract,
+	contracts blockchain.RskContracts,
 	quoteRepository quote.PeginQuoteRepository,
-	btc blockchain.BitcoinNetwork,
+	rpc blockchain.Rpc,
 	peginProvider liquidity_provider.LiquidityProvider,
 	eventBus entities.EventBus,
-	rsk blockchain.RootstockRpcServer,
 	rskWalletMutex sync.Locker,
 ) *CallForUserUseCase {
 	return &CallForUserUseCase{
-		lbc:             lbc,
+		contracts:       contracts,
 		quoteRepository: quoteRepository,
-		btc:             btc,
+		rpc:             rpc,
 		peginProvider:   peginProvider,
 		eventBus:        eventBus,
-		rsk:             rsk,
 		rskWalletMutex:  rskWalletMutex,
 	}
 }
@@ -117,7 +114,7 @@ func (useCase *CallForUserUseCase) calculateValueToSend(
 	var contractBalance, networkBalance *entities.Wei
 	var err error
 
-	if contractBalance, err = useCase.lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
+	if contractBalance, err = useCase.contracts.Lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
 	}
 
@@ -128,7 +125,7 @@ func (useCase *CallForUserUseCase) calculateValueToSend(
 		return valueToSend, nil
 	}
 
-	if networkBalance, err = useCase.rsk.GetBalance(ctx, useCase.peginProvider.RskAddress()); err != nil {
+	if networkBalance, err = useCase.rpc.Rsk.GetBalance(ctx, useCase.peginProvider.RskAddress()); err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
 	} else if networkBalance.Cmp(valueToSend) < 0 {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, usecases.NoLiquidityError, true)
@@ -147,7 +144,7 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	var err error
 
 	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.lbc.CallForUser(config, *peginQuote); err != nil {
+	if callForUserTx, err = useCase.contracts.Lbc.CallForUser(config, *peginQuote); err != nil {
 		quoteState = quote.PeginStateCallForUserFailed
 	} else {
 		quoteState = quote.PeginStateCallForUserSucceeded
@@ -175,7 +172,7 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	var txConfirmations big.Int
 	var err error
 
-	if txInfo, err = useCase.btc.GetTransactionInfo(bitcoinTx); err != nil {
+	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(bitcoinTx); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
 	}
 	txConfirmations.SetUint64(txInfo.Confirmations)

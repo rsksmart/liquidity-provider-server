@@ -30,7 +30,7 @@ type Application struct {
 	rskRegistry       *registry.Rootstock
 	btcRegistry       *registry.Bitcoin
 	dbRegistry        *registry.Database
-	eventBus          entities.EventBus
+	messagingRegistry *registry.Messaging
 	runningServices   []entities.Closeable
 	doneChannel       chan os.Signal
 }
@@ -68,14 +68,12 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	}
 	log.Debug("Connected to RSK node")
 
-	config := environment.ConfigurationFromEnv(env)
-	liquidityProvider := registry.NewLiquidityProvider(config, dbRegistry, rootstockRegistry, btcRegistry)
-	alertSender := registry.NewAlertSender(initCtx, env)
-	eventBus := registry.NewEventBus()
+	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection)
+	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
 	mutexes := environment.NewApplicationMutexes()
 
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, eventBus, alertSender, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, eventBus)
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry)
 
 	return &Application{
 		env:               env,
@@ -85,7 +83,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 		rskRegistry:       rootstockRegistry,
 		btcRegistry:       btcRegistry,
 		dbRegistry:        dbRegistry,
-		eventBus:          eventBus,
+		messagingRegistry: messagingRegistry,
 		watcherRegistry:   watcherRegistry,
 		runningServices:   make([]entities.Closeable, 0),
 	}
@@ -95,7 +93,7 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.dbRegistry.Connection)
 	app.addRunningService(app.rskRegistry.Client)
 	app.addRunningService(app.btcRegistry.Connection)
-	app.addRunningService(app.eventBus)
+	app.addRunningService(app.messagingRegistry.EventBus)
 
 	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType)
 	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)

@@ -21,19 +21,21 @@ type PeginDepositAddressWatcher struct {
 	callForUserUseCase          *pegin.CallForUserUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
-	btcRpc                      blockchain.BitcoinNetwork
+	rpc                         blockchain.Rpc
 	ticker                      *time.Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
 	currentBlock                *big.Int
 }
 
+const callForUserErrorTemplate = "Error executing call for user on quote %s: %v"
+
 func NewPeginDepositAddressWatcher(
 	callForUserUseCase *pegin.CallForUserUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
 	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,
 	btcWallet blockchain.BitcoinWallet,
-	btcRpc blockchain.BitcoinNetwork,
+	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PeginDepositAddressWatcher {
 	quotes := make(map[string]w.WatchedPeginQuote)
@@ -46,7 +48,7 @@ func NewPeginDepositAddressWatcher(
 		btcWallet:                   btcWallet,
 		eventBus:                    eventBus,
 		watcherStopChannel:          watcherStopChannel,
-		btcRpc:                      btcRpc,
+		rpc:                         rpc,
 	}
 }
 
@@ -76,11 +78,11 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C:
-			if height, err := watcher.btcRpc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
+			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
-				log.Error("PeginDepositAddressWatcher: error getting Bitcoin chain height: ", err)
+				log.Error(peginBtcDepositWatcherLog("error getting Bitcoin chain height: %v", err))
 			}
 		case event := <-eventChannel:
 			if event != nil {
@@ -97,25 +99,25 @@ watcherLoop:
 func (watcher *PeginDepositAddressWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("PeginDepositAddressWatcher shut down")
+	log.Debug(peginBtcDepositWatcherLog("shut down"))
 }
 
 func (watcher *PeginDepositAddressWatcher) handleAcceptedPeginQuote(event entities.Event) {
 	parsedEvent, ok := event.(quote.AcceptedPeginQuoteEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
-		log.Error("Trying to parse wrong event in Pegin Btc deposit watcher")
+		log.Error(peginBtcDepositWatcherLog("trying to parse wrong event"))
 		return
 	}
 
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Infof("Quote %s is already watched\n", quoteHash)
+		log.Info(peginBtcDepositWatcherLog("Quote %s is already watched", quoteHash))
 		return
 	}
 
 	err := watcher.btcWallet.ImportAddress(parsedEvent.RetainedQuote.DepositAddress)
 	if err != nil {
-		log.Errorf("error while importing deposit address (%s): %v\n", parsedEvent.RetainedQuote.DepositAddress, err)
+		log.Error(peginBtcDepositWatcherLog("error while importing deposit address (%s): %v", parsedEvent.RetainedQuote.DepositAddress, err))
 		return
 	}
 	watcher.quotes[quoteHash] = w.NewWatchedPeginQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
@@ -132,7 +134,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote w.WatchedPeg
 	depositAddress := watchedQuote.RetainedQuote.DepositAddress
 	txs, err := watcher.btcWallet.GetTransactions(depositAddress)
 	if err != nil {
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 		return
 	}
 	for _, tx := range txs {
@@ -143,7 +145,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote w.WatchedPeg
 	}
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
 		if err = watcher.expiredUseCase.Run(context.Background(), watchedQuote.RetainedQuote); err != nil {
-			log.Errorf("Error updating expired quote (%s): %v\n", quoteHash, err)
+			log.Error(peginBtcDepositWatcherLog("Error updating expired quote (%s): %v", quoteHash, err))
 		} else {
 			delete(watcher.quotes, quoteHash)
 		}
@@ -155,9 +157,9 @@ func (watcher *PeginDepositAddressWatcher) callForUser(watchedQuote w.WatchedPeg
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
 	if err = watcher.callForUserUseCase.Run(context.Background(), tx.Hash, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, quoteHash)
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 	} else if err != nil {
-		log.Errorf("Error executing call for user on quote %s: %v\n", quoteHash, err)
+		log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 	} else {
 		delete(watcher.quotes, quoteHash)
 	}
@@ -168,4 +170,8 @@ func validatePeginQuote(watchedQuote w.WatchedPeginQuote, tx blockchain.BitcoinT
 		watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit &&
 		!watchedQuote.PeginQuote.IsExpired() &&
 		tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
+}
+
+func peginBtcDepositWatcherLog(msg string, args ...any) string {
+	return fmt.Sprintf("PeginDepositAddressWatcher: "+msg, args...)
 }

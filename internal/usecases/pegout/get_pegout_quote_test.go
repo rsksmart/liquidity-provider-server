@@ -39,7 +39,9 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	btc := new(mocks.BtcRpcMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 	feeCollectorAddress := "feeCollectorAddress"
-	useCase := pegout.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
+	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
+	useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
 	request := pegout.NewQuoteRequest(
 		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
 		entities.NewWei(1000000000000000000),
@@ -71,7 +73,9 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	for _, testCase := range cases {
 		btc := new(mocks.BtcRpcMock)
 		lp := new(mocks.ProviderMock)
-		useCase := pegout.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
+		contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+		rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
+		useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
 		result, err := useCase.Run(context.Background(), testCase.Value(btc, lp))
 		assert.Equal(t, pegout.GetPegoutQuoteResult{}, result)
 		require.Error(t, err)
@@ -172,7 +176,9 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 		btc := new(mocks.BtcRpcMock)
 		btc.On("ValidateAddress", mock.Anything).Return(nil)
-		useCase := pegout.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
+		contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+		rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
+		useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
 		result, err := useCase.Run(context.Background(), request)
 		assert.Equal(t, pegout.GetPegoutQuoteResult{}, result)
 		require.Error(t, err)

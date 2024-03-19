@@ -23,7 +23,7 @@ const (
 type CheckLiquidityUseCase struct {
 	peginProvider  liquidity_provider.PeginLiquidityProvider
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider
-	bridge         blockchain.RootstockBridge
+	contracts      blockchain.RskContracts
 	alertSender    entities.AlertSender
 	recipient      string
 }
@@ -31,21 +31,21 @@ type CheckLiquidityUseCase struct {
 func NewCheckLiquidityUseCase(
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
-	bridge blockchain.RootstockBridge,
+	contracts blockchain.RskContracts,
 	alertSender entities.AlertSender,
 	recipient string,
 ) *CheckLiquidityUseCase {
 	return &CheckLiquidityUseCase{
 		peginProvider:  peginProvider,
 		pegoutProvider: pegoutProvider,
-		bridge:         bridge,
+		contracts:      contracts,
 		alertSender:    alertSender,
 		recipient:      recipient,
 	}
 }
 
 func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
-	minLockTxValueInWei, err := useCase.bridge.GetMinimumLockTxValue()
+	minLockTxValueInWei, err := useCase.contracts.Bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.CheckLiquidityId, err)
 	}

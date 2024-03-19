@@ -10,11 +10,21 @@ import (
 	"strings"
 )
 
+const (
+	RskChainHeightErrorTemplate = "error getting Rootstock chain height: %v"
+)
+
 var (
 	rskAddressRegex       = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
 )
+
+type RskContracts struct {
+	Bridge       RootstockBridge
+	Lbc          LiquidityBridgeContract
+	FeeCollector FeeCollector
+}
 
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
 	return hex.DecodeString(strings.TrimPrefix(hexString, "0x"))

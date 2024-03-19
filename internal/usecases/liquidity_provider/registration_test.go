@@ -22,7 +22,8 @@ func TestRegistrationUseCase_Run_AlreadyRegistered(t *testing.T) {
 	lbc.On("IsOperationalPegout", mock.Anything).Return(true, nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
@@ -41,7 +42,8 @@ func TestRegistrationUseCase_Run_ValidateParams(t *testing.T) {
 	}
 	lbc := &mocks.LbcMock{}
 	provider := &mocks.ProviderMock{}
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	var id int64
 	var err error
 	for _, c := range cases {
@@ -61,7 +63,8 @@ func TestRegistrationUseCase_Run_AddPeginCollateralIfNotOperational(t *testing.T
 	lbc.On("AddCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "pegin")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
@@ -81,7 +84,8 @@ func TestRegistrationUseCase_Run_AddPegoutCollateralIfNotOperational(t *testing.
 	lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "pegout")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
@@ -102,7 +106,8 @@ func TestRegistrationUseCase_Run_AddCollateralIfNotOperational(t *testing.T) {
 	lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
@@ -125,7 +130,8 @@ func TestRegistrationUseCase_Run(t *testing.T) {
 		Return(int64(1), nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
-	useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
@@ -144,7 +150,8 @@ func TestRegistrationUseCase_Run_ErrorHandling(t *testing.T) {
 		testCase.Value(lbc) // setup function
 		provider := &mocks.ProviderMock{}
 		provider.On("RskAddress").Return("rskAddress")
-		useCase := liquidity_provider.NewRegistrationUseCase(lbc, provider)
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
 		params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
 		id, err := useCase.Run(params)
 		lbc.AssertExpectations(t)
