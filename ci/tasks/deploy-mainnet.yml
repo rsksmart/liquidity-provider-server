@@ -39,7 +39,7 @@ run:
       touch ~/.ssh/known_hosts
       ssh-keyscan flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net >> ~/.ssh/known_hosts
       ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01.aws-us-east-1.mainnet.flyover.rifcomputing.net sh -s << EOF 
-      cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin master && docker-compose -f docker-compose.yml -f loki-mainnet.yml --env-file .env.mainnet up -d --build 
+      cd /home/ubuntu/liquidity-provider-server/docker-compose && git pull origin master && docker system prune -f && docker-compose -f docker-compose.yml -f loki-mainnet.yml --env-file .env.mainnet build --no-cache && docker-compose -f docker-compose.yml -f loki-mainnet.yml --env-file .env.mainnet up --force-recreate -d 
 
       EOF
           

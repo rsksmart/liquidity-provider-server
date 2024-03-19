@@ -10,6 +10,10 @@ import (
 	"math/big"
 )
 
+const (
+	GetPegoutDepositsErrorTemplate = "error executing getting deposits in range [%d, %d]"
+)
+
 type RegisterPeginParams struct {
 	QuoteSignature        []byte
 	BitcoinRawTransaction []byte

@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -69,7 +70,7 @@ watcherLoop:
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
-				log.Error("PeginBridgeWatcher: error getting Bitcoin chain height: ", err)
+				log.Error(peginBridgeWatcherLog(blockchain.BtcChainHeightErrorTemplate, err))
 			}
 		case event := <-eventChannel:
 			if event != nil {
@@ -86,19 +87,19 @@ watcherLoop:
 func (watcher *PeginBridgeWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("PeginBridgeWatcher shut down")
+	log.Debug(peginBridgeWatcherLog("shut down"))
 }
 
 func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Event) {
 	parsedEvent, ok := event.(quote.CallForUserCompletedEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
-		log.Error("Trying to parse wrong event in Pegin Bridge watcher")
+		log.Error(peginBridgeWatcherLog("Trying to parse wrong event"))
 		return
 	}
 
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Infof("Quote %s is already watched\n", quoteHash)
+		log.Info(peginBridgeWatcherLog("Quote %s is already watched", quoteHash))
 		return
 	}
 	if parsedEvent.RetainedQuote.State == quote.PeginStateCallForUserSucceeded {
@@ -111,7 +112,7 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
 		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash); err != nil {
-			log.Errorf("Error getting Bitcoin transaction information %s: %v\n", watchedQuote.RetainedQuote.UserBtcTxHash, err)
+			log.Error(peginBridgeWatcherLog(blockchain.BtcTxInfoErrorTemplate, watchedQuote.RetainedQuote.UserBtcTxHash, err))
 			return
 		}
 		if watcher.validateQuote(watchedQuote, tx) {
@@ -122,11 +123,12 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 
 func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote w.WatchedPeginQuote) {
 	var err error
+	const registerPeginErrorMsgTemplate = "Error executing register pegin on quote %s: %v"
 	if err = watcher.registerPeginUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Errorf("Error executing register pegin on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(peginBridgeWatcherLog(registerPeginErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
 	} else if err != nil {
-		log.Errorf("Error executing register pegin on quote %s: %v\n", watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(peginBridgeWatcherLog(registerPeginErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}
@@ -135,4 +137,8 @@ func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote w.WatchedPeginQuot
 func (watcher *PeginBridgeWatcher) validateQuote(watchedQuote w.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PeginStateCallForUserSucceeded &&
 		tx.Confirmations >= watcher.contracts.Bridge.GetRequiredTxConfirmations()
+}
+
+func peginBridgeWatcherLog(msg string, args ...any) string {
+	return fmt.Sprintf("Pegin Bridge watcher: "+msg, args...)
 }
