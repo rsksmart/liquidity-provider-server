@@ -26,6 +26,6 @@ WORKDIR "$HOME"
 USER bitcoin
 
 HEALTHCHECK --start-period=15s --retries=5 --interval=20s \
-    CMD curl -s "http://127.0.0.1:5555" -X POST --user "$BTCD_RPC_USER:$BTCD_RPC_PASS" -H "Content-Type: application/json" \
+    CMD curl -s "http://127.0.0.1:5555" -X POST --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" \
         -d '{"jsonrpc": "1.0", "method": "getnetworkinfo", "params": [], "id":"1"}' | grep "\"result\":{" || exit 1
         

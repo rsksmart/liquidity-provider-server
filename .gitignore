@@ -14,7 +14,11 @@
 pwd.txt
 /docker-compose/volumes
 /docker-compose/.env.testnet
-integration/integration-test.config.json
+test/integration/integration-test.config.json
 integration/geth_keystore
 
 /docker-compose/lbc-deployer/liquidity-bridge-contract/
+keystore/
+build/
+/**/.env.regtest
+coverage/
