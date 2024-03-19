@@ -6,15 +6,15 @@ ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
 ENV BITCOIN_VERSION=$BITCOIN_VERSION
 ENV BITCOIN_DOWNLOAD_FILENAME=$BITCOIN_DOWNLOAD_FILENAME
 
-RUN apt-get update && apt-get install -y wget gnupg2 curl
+RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates wget gnupg2 curl && apt-get clean
 
-RUN wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc \
-    && wget https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME \
-        && tar -xzvf $BITCOIN_DOWNLOAD_FILENAME \
-        && cd bitcoin-$BITCOIN_VERSION/bin \
+RUN wget "https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc" \
+    && wget "https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME" \
+        && tar -xzvf "$BITCOIN_DOWNLOAD_FILENAME" \
+        && cd "bitcoin-$BITCOIN_VERSION/bin" \
         && mv bitcoin-cli bitcoin-tx bitcoind /usr/local/bin \
         && cd / \
-        && rm -Rfv bitcoin-* *.asc
+        && rm -Rfv ./bitcoin-* ./*.asc
 
 ARG HOME="/home/bitcoin"
 RUN useradd -m -u 1000 --home="$HOME" bitcoin
