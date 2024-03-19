@@ -12,11 +12,8 @@ import (
 )
 
 type GetQuoteUseCase struct {
-	rsk                   blockchain.RootstockRpcServer
-	btc                   blockchain.BitcoinNetwork
-	feeCollector          blockchain.FeeCollector
-	bridge                blockchain.RootstockBridge
-	lbc                   blockchain.LiquidityBridgeContract
+	rpc                   blockchain.Rpc
+	contracts             blockchain.RskContracts
 	pegoutQuoteRepository quote.PegoutQuoteRepository
 	lp                    liquidity_provider.LiquidityProvider
 	pegoutLp              liquidity_provider.PegoutLiquidityProvider
@@ -25,11 +22,8 @@ type GetQuoteUseCase struct {
 }
 
 func NewGetQuoteUseCase(
-	rsk blockchain.RootstockRpcServer,
-	btc blockchain.BitcoinNetwork,
-	feeCollector blockchain.FeeCollector,
-	bridge blockchain.RootstockBridge,
-	lbc blockchain.LiquidityBridgeContract,
+	rpc blockchain.Rpc,
+	contracts blockchain.RskContracts,
 	pegoutQuoteRepository quote.PegoutQuoteRepository,
 	lp liquidity_provider.LiquidityProvider,
 	pegoutLp liquidity_provider.PegoutLiquidityProvider,
@@ -37,11 +31,8 @@ func NewGetQuoteUseCase(
 	feeCollectorAddress string,
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
-		rsk:                   rsk,
-		btc:                   btc,
-		feeCollector:          feeCollector,
-		bridge:                bridge,
-		lbc:                   lbc,
+		rpc:                   rpc,
+		contracts:             contracts,
 		pegoutQuoteRepository: pegoutQuoteRepository,
 		lp:                    lp,
 		pegoutLp:              pegoutLp,
@@ -101,7 +92,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, err
 	}
 
-	if gasPrice, err = useCase.rsk.GasPrice(ctx); err != nil {
+	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
@@ -116,7 +107,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, err
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.GetPegoutQuoteId, useCase.bridge, pegoutQuote.Total()); err != nil {
+	if err = usecases.ValidateMinLockValue(usecases.GetPegoutQuoteId, useCase.contracts.Bridge, pegoutQuote.Total()); err != nil {
 		return GetPegoutQuoteResult{}, err
 	}
 
@@ -130,11 +121,11 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PegoutConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	if err = useCase.btc.ValidateAddress(request.to); err != nil {
+	if err = useCase.rpc.Btc.ValidateAddress(request.to); err != nil {
 		errorArgs["btcAddress"] = request.to
 		return errorArgs, err
 	}
-	if err = useCase.btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
+	if err = useCase.rpc.Btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
 		errorArgs["btcAddress"] = request.bitcoinRefundAddress
 		return errorArgs, err
 	}
@@ -162,7 +153,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
-	if blockNumber, err = useCase.rsk.GetHeight(ctx); err != nil {
+	if blockNumber, err = useCase.rpc.Rsk.GetHeight(ctx); err != nil {
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
@@ -171,7 +162,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 	confirmationsForUserTx := generalConfiguration.RskConfirmations.ForValue(request.valueToTransfer)
 	confirmationsForLpTx := generalConfiguration.BtcConfirmations.ForValue(request.valueToTransfer)
 	pegoutQuote := quote.PegoutQuote{
-		LbcAddress:            useCase.lbc.GetAddress(),
+		LbcAddress:            useCase.contracts.Lbc.GetAddress(),
 		LpRskAddress:          useCase.lp.RskAddress(),
 		BtcRefundAddress:      request.bitcoinRefundAddress,
 		RskRefundAddress:      request.rskRefundAddress,
@@ -202,10 +193,10 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	var daoTxAmounts usecases.DaoAmounts
 	var daoFeePercentage uint64
 	var err error
-	if daoFeePercentage, err = useCase.feeCollector.DaoFeePercentage(); err != nil {
+	if daoFeePercentage, err = useCase.contracts.FeeCollector.DaoFeePercentage(); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
-	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
+	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 	return daoTxAmounts, nil
@@ -214,7 +205,7 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 func (useCase *GetQuoteUseCase) persistQuote(ctx context.Context, pegoutQuote quote.PegoutQuote) (string, error) {
 	var hash string
 	var err error
-	if hash, err = useCase.lbc.HashPegoutQuote(pegoutQuote); err != nil {
+	if hash, err = useCase.contracts.Lbc.HashPegoutQuote(pegoutQuote); err != nil {
 		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 

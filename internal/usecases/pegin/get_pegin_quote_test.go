@@ -61,7 +61,9 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	lp.On("BtcAddress").Return(lpBtcAddress)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
-	useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, "feeCollectorAddress")
+	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, "feeCollectorAddress")
 	result, err := useCase.Run(context.Background(), request)
 
 	rsk.AssertExpectations(t)
@@ -85,7 +87,21 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	lbc := new(mocks.LbcMock)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	cases := test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error]{
+	cases := validateRequestTestCases()
+	for _, testCase := range cases {
+		btc := new(mocks.BtcRpcMock)
+		contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+		useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, "feeCollectorAddress")
+		result, err := useCase.Run(context.Background(), testCase.Value(btc))
+		assert.Equal(t, pegin.GetPeginQuoteResult{}, result)
+		require.Error(t, err)
+		require.ErrorIs(t, err, testCase.Result)
+	}
+}
+
+func validateRequestTestCases() test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error] {
+	return test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error]{
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", test.AnyAddress).Return(blockchain.BtcAddressNotSupportedError)
@@ -129,14 +145,6 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 			}, Result: lpEntity.AmountOutOfRangeError,
 		},
 	}
-	for _, testCase := range cases {
-		btc := new(mocks.BtcRpcMock)
-		useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, "feeCollectorAddress")
-		result, err := useCase.Run(context.Background(), testCase.Value(btc))
-		assert.Equal(t, pegin.GetPeginQuoteResult{}, result)
-		require.Error(t, err)
-		require.ErrorIs(t, err, testCase.Result)
-	}
 }
 
 func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
@@ -156,8 +164,9 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		btc.On("ValidateAddress", mock.Anything).Return(nil)
 
 		setup(rsk, feeCollector, bridge, lbc, lp, peginQuoteRepository)
-
-		useCase := pegin.NewGetQuoteUseCase(rsk, btc, feeCollector, bridge, lbc, peginQuoteRepository, lp, lp, "feeCollectorAddress")
+		contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+		useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, "feeCollectorAddress")
 		result, err := useCase.Run(context.Background(), request)
 		rsk.AssertExpectations(t)
 		feeCollector.AssertExpectations(t)

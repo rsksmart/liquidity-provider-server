@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -53,7 +54,8 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		).Return(nil).Once()
 	}
 
-	useCase := liquidity_provider.NewPenalizationAlertUseCase(lbc, sender, recipient)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, recipient)
 	err := useCase.Run(context.Background(), 5, 10)
 	require.NoError(t, err)
 	lbc.AssertExpectations(t)
@@ -65,7 +67,8 @@ func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
 	sender := &mocks.AlertSenderMock{}
 	lbc.On("GetPeginPunishmentEvents", mock.AnythingOfType("context.backgroundCtx"), uint64(5), mock.Anything).
 		Return([]lp.PunishmentEvent{}, assert.AnError).Once()
-	useCase := liquidity_provider.NewPenalizationAlertUseCase(lbc, sender, "recipient")
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, "recipient")
 	err := useCase.Run(context.Background(), 5, 10)
 	lbc.AssertExpectations(t)
 	require.Error(t, err)

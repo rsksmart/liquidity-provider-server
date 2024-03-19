@@ -10,12 +10,9 @@ import (
 )
 
 type Rootstock struct {
-	RpcServer    blockchain.RootstockRpcServer
-	FeeCollector blockchain.FeeCollector
-	Bridge       blockchain.RootstockBridge
-	Lbc          blockchain.LiquidityBridgeContract
-	Wallet       *rootstock.RskWalletImpl
-	Client       *rootstock.RskClient
+	Contracts blockchain.RskContracts
+	Wallet    *rootstock.RskWalletImpl
+	Client    *rootstock.RskClient
 }
 
 func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, account *rootstock.RskAccount, bitcoinConn *bitcoin.Connection) (*Rootstock, error) {
@@ -40,19 +37,20 @@ func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, a
 	wallet := rootstock.NewRskWalletImpl(client, account, env.ChainId)
 
 	return &Rootstock{
-		RpcServer:    rootstock.NewRskjRpcServer(client),
-		FeeCollector: rootstock.NewFeeCollectorImpl(lbc),
-		Wallet:       wallet,
-		Bridge: rootstock.NewRskBridgeImpl(
-			env.BridgeAddress,
-			env.BridgeRequiredConfirmations,
-			env.IrisActivationHeight,
-			env.ErpKeys,
-			bridge,
-			client,
-			bitcoinConn.NetworkParams,
-		),
-		Lbc:    rootstock.NewLiquidityBridgeContractImpl(client, env.LbcAddress, lbc, wallet),
+		Contracts: blockchain.RskContracts{
+			Bridge: rootstock.NewRskBridgeImpl(
+				env.BridgeAddress,
+				env.BridgeRequiredConfirmations,
+				env.IrisActivationHeight,
+				env.ErpKeys,
+				bridge,
+				client,
+				bitcoinConn.NetworkParams,
+			),
+			Lbc:          rootstock.NewLiquidityBridgeContractImpl(client, env.LbcAddress, lbc, wallet),
+			FeeCollector: rootstock.NewFeeCollectorImpl(lbc),
+		},
+		Wallet: wallet,
 		Client: client,
 	}, nil
 }

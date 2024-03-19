@@ -7,17 +7,17 @@ import (
 )
 
 type GetProvidersUseCase struct {
-	lbc blockchain.LiquidityBridgeContract
+	contracts blockchain.RskContracts
 }
 
-func NewGetProvidersUseCase(lbc blockchain.LiquidityBridgeContract) *GetProvidersUseCase {
-	return &GetProvidersUseCase{lbc: lbc}
+func NewGetProvidersUseCase(contracts blockchain.RskContracts) *GetProvidersUseCase {
+	return &GetProvidersUseCase{contracts: contracts}
 }
 
 func (useCase *GetProvidersUseCase) Run() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
 	var err error
 	var providers []liquidity_provider.RegisteredLiquidityProvider
-	if providers, err = useCase.lbc.GetProviders(); err != nil {
+	if providers, err = useCase.contracts.Lbc.GetProviders(); err != nil {
 		return providers, usecases.WrapUseCaseError(usecases.GetProvidersId, err)
 	}
 	return providers, nil

@@ -72,7 +72,9 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 
-	useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+	rpc := blockchain.Rpc{Btc: btc}
+	useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 	err := useCase.Run(context.Background(), retainedPeginQuote)
 
 	require.NoError(t, err)
@@ -112,7 +114,9 @@ func TestRegisterPeginUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 
 		caseQuote := retainedPeginQuote
 		setup(&caseQuote, lbc, quoteRepository, btc)
-		useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+		contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+		rpc := blockchain.Rpc{Btc: btc}
+		useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 		err := useCase.Run(context.Background(), caseQuote)
 
 		require.Error(t, err)
@@ -217,7 +221,9 @@ func TestRegisterPeginUseCase_Run_QuoteNotFound(t *testing.T) {
 	btc := new(mocks.BtcRpcMock)
 	mutex := new(mocks.MutexMock)
 
-	useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+	rpc := blockchain.Rpc{Btc: btc}
+	useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 
 	err := useCase.Run(context.Background(), retainedPeginQuote)
 
@@ -264,7 +270,6 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
-
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.RegisterPeginCompletedEvent) bool {
 		require.Error(t, event.Error)
@@ -286,9 +291,10 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 
-	useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+	rpc := blockchain.Rpc{Btc: btc}
+	useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 	err := useCase.Run(context.Background(), retainedPeginQuote)
-
 	require.Error(t, err)
 	lbc.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)
@@ -324,7 +330,9 @@ func TestRegisterPeginUseCase_Run_NotEnoughConfirmations(t *testing.T) {
 			bridge.On("GetRequiredTxConfirmations").Return(uint64(30))
 
 			testCase.setup(lbc, quoteRepository, btc)
-			useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+			contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+			rpc := blockchain.Rpc{Btc: btc}
+			useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 			err := useCase.Run(context.Background(), retainedPeginQuote)
 
 			require.ErrorIs(t, err, testCase.err)
@@ -430,7 +438,9 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 		eventBus := new(mocks.EventBusMock)
 
 		setup(quoteRepository, eventBus)
-		useCase := pegin.NewRegisterPeginUseCase(lbc, quoteRepository, eventBus, bridge, btc, mutex)
+		contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
+		rpc := blockchain.Rpc{Btc: btc}
+		useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
 		err := useCase.Run(context.Background(), retainedPeginQuote)
 
 		require.Error(t, err)

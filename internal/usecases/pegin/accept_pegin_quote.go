@@ -13,9 +13,8 @@ import (
 
 type AcceptQuoteUseCase struct {
 	quoteRepository     quote.PeginQuoteRepository
-	bridge              blockchain.RootstockBridge
-	btc                 blockchain.BitcoinNetwork
-	rsk                 blockchain.RootstockRpcServer
+	contracts           blockchain.RskContracts
+	rpc                 blockchain.Rpc
 	lp                  liquidity_provider.LiquidityProvider
 	peginLp             liquidity_provider.PeginLiquidityProvider
 	eventBus            entities.EventBus
@@ -24,9 +23,8 @@ type AcceptQuoteUseCase struct {
 
 func NewAcceptQuoteUseCase(
 	quoteRepository quote.PeginQuoteRepository,
-	bridge blockchain.RootstockBridge,
-	btc blockchain.BitcoinNetwork,
-	rsk blockchain.RootstockRpcServer,
+	contracts blockchain.RskContracts,
+	rpc blockchain.Rpc,
 	lp liquidity_provider.LiquidityProvider,
 	peginLp liquidity_provider.PeginLiquidityProvider,
 	eventBus entities.EventBus,
@@ -34,9 +32,8 @@ func NewAcceptQuoteUseCase(
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
 		quoteRepository:     quoteRepository,
-		bridge:              bridge,
-		btc:                 btc,
-		rsk:                 rsk,
+		contracts:           contracts,
+		rpc:                 rpc,
 		lp:                  lp,
 		peginLp:             peginLp,
 		eventBus:            eventBus,
@@ -103,10 +100,10 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 	var fedInfo blockchain.FederationInfo
 	var userBtcAddress, lpBtcAddress, lbcAddress []byte
 
-	if userBtcAddress, err = useCase.btc.DecodeAddress(peginQuote.BtcRefundAddress, true); err != nil {
+	if userBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.BtcRefundAddress, true); err != nil {
 		errorArgs["btcAddress"] = peginQuote.BtcRefundAddress
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
-	} else if lpBtcAddress, err = useCase.btc.DecodeAddress(peginQuote.LpBtcAddress, true); err != nil {
+	} else if lpBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.LpBtcAddress, true); err != nil {
 		errorArgs["btcAddress"] = peginQuote.LpBtcAddress
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	} else if lbcAddress, err = blockchain.DecodeStringTrimPrefix(peginQuote.LbcAddress); err != nil {
@@ -114,10 +111,10 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	}
 
-	if fedInfo, err = useCase.bridge.FetchFederationInfo(); err != nil {
+	if fedInfo, err = useCase.contracts.Bridge.FetchFederationInfo(); err != nil {
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
-	return useCase.bridge.GetFlyoverDerivationAddress(blockchain.FlyoverDerivationArgs{
+	return useCase.contracts.Bridge.GetFlyoverDerivationAddress(blockchain.FlyoverDerivationArgs{
 		FedInfo:              fedInfo,
 		LbcAdress:            lbcAddress,
 		UserBtcRefundAddress: userBtcAddress,
@@ -135,7 +132,7 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 		entities.NewUWei(uint64(peginQuote.GasLimit)),
 		entities.NewUWei(CallForUserExtraGas),
 	)
-	if gasPrice, err = useCase.rsk.GasPrice(ctx); err != nil {
+	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 	gasCost := new(entities.Wei).Mul(gasLimit, gasPrice)

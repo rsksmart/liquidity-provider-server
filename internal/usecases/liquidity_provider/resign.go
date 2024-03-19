@@ -7,23 +7,23 @@ import (
 )
 
 type ResignUseCase struct {
-	lbc      blockchain.LiquidityBridgeContract
-	provider liquidity_provider.LiquidityProvider
+	contracts blockchain.RskContracts
+	provider  liquidity_provider.LiquidityProvider
 }
 
-func NewResignUseCase(lbc blockchain.LiquidityBridgeContract, provider liquidity_provider.LiquidityProvider) *ResignUseCase {
-	return &ResignUseCase{lbc: lbc, provider: provider}
+func NewResignUseCase(contracts blockchain.RskContracts, provider liquidity_provider.LiquidityProvider) *ResignUseCase {
+	return &ResignUseCase{contracts: contracts, provider: provider}
 }
 
 func (useCase *ResignUseCase) Run() error {
 	var err error
 
-	_, err = ValidateConfiguredProvider(useCase.provider, useCase.lbc)
+	_, err = ValidateConfiguredProvider(useCase.provider, useCase.contracts.Lbc)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.ProviderResignId, err)
 	}
 
-	if err = useCase.lbc.ProviderResign(); err != nil {
+	if err = useCase.contracts.Lbc.ProviderResign(); err != nil {
 		return usecases.WrapUseCaseError(usecases.ProviderResignId, err)
 	}
 	return nil

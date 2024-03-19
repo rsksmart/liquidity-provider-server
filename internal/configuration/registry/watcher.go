@@ -4,7 +4,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 type WatcherRegistry struct {
@@ -23,7 +22,7 @@ func NewWatcherRegistry(
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	liquidityProvider *dataproviders.LocalLiquidityProvider,
-	eventBus entities.EventBus,
+	messaging *Messaging,
 ) *WatcherRegistry {
 	return &WatcherRegistry{
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
@@ -31,40 +30,42 @@ func NewWatcherRegistry(
 			useCaseRegistry.getWatchedPeginQuoteUseCase,
 			useCaseRegistry.expiredPeginQuoteUseCase,
 			btcRegistry.Wallet,
-			btcRegistry.RpcServer,
-			eventBus,
+			messaging.Rpc,
+			messaging.EventBus,
 		),
 		PeginBridgeWatcher: watcher.NewPeginBridgeWatcher(
 			useCaseRegistry.registerPeginUseCase,
 			useCaseRegistry.getWatchedPeginQuoteUseCase,
-			rskRegistry.Bridge,
-			btcRegistry.RpcServer,
-			eventBus,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			messaging.EventBus,
 		),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(
 			useCaseRegistry.cleanExpiredQuotesUseCase,
 		),
 		PegoutRskDepositWatcher: watcher.NewPegoutRskDepositWatcher(
-			useCaseRegistry.getWatchedPegoutQuoteUseCase,
-			useCaseRegistry.expiredPegoutUseCase,
-			useCaseRegistry.sendPegoutUseCase,
-			useCaseRegistry.updatePegoutDepositUseCase,
-			useCaseRegistry.initPegoutDepositCacheUseCase,
+			watcher.NewPegoutRskDepositWatcherUseCases(
+				useCaseRegistry.getWatchedPegoutQuoteUseCase,
+				useCaseRegistry.expiredPegoutUseCase,
+				useCaseRegistry.sendPegoutUseCase,
+				useCaseRegistry.updatePegoutDepositUseCase,
+				useCaseRegistry.initPegoutDepositCacheUseCase,
+			),
 			liquidityProvider,
-			rskRegistry.RpcServer,
-			rskRegistry.Lbc,
-			eventBus,
+			messaging.Rpc,
+			rskRegistry.Contracts,
+			messaging.EventBus,
 			env.Pegout.DepositCacheStartBlock,
 		),
 		PegoutBtcTransferWatcher: watcher.NewPegoutBtcTransferWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.refundPegoutUseCase,
-			btcRegistry.RpcServer,
-			eventBus,
+			messaging.Rpc,
+			messaging.EventBus,
 		),
 		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(useCaseRegistry.liquidityCheckUseCase),
 		PenalizationAlertWatcher: watcher.NewPenalizationAlertWatcher(
-			rskRegistry.RpcServer,
+			messaging.Rpc,
 			useCaseRegistry.penalizationAlertUseCase,
 		),
 	}

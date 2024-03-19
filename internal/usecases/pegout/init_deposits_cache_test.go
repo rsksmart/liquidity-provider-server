@@ -3,6 +3,7 @@ package pegout_test
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -16,10 +17,10 @@ import (
 
 func TestInitPegoutDepositCacheUseCase_Run(t *testing.T) {
 	lbc := new(mocks.LbcMock)
-	rpc := new(mocks.RskRpcMock)
+	rsk := new(mocks.RskRpcMock)
 	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 	height := uint64(10)
-	rpc.On("GetHeight", context.Background()).Return(height, nil)
+	rsk.On("GetHeight", context.Background()).Return(height, nil)
 	events := []quote.PegoutDeposit{
 		{
 			TxHash:      "0x123456",
@@ -40,9 +41,11 @@ func TestInitPegoutDepositCacheUseCase_Run(t *testing.T) {
 	}
 	lbc.On("GetDepositEvents", context.Background(), uint64(5), &height).Return(events, nil)
 	pegoutRepository.On("UpsertPegoutDeposits", context.Background(), events).Return(nil)
-	useCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, lbc, rpc)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+	rpc := blockchain.Rpc{Rsk: rsk}
+	useCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
 	err := useCase.Run(context.Background(), 5)
-	rpc.AssertExpectations(t)
+	rsk.AssertExpectations(t)
 	lbc.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -75,7 +78,9 @@ func TestInitPegoutDepositCacheUseCase_Run_ErrorHandling(t *testing.T) {
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		rsk := new(mocks.RskRpcMock)
 		c.Value(lbc, quoteRepository, rsk)
-		useCase := pegout.NewInitPegoutDepositCacheUseCase(quoteRepository, lbc, rsk)
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		rpc := blockchain.Rpc{Rsk: rsk}
+		useCase := pegout.NewInitPegoutDepositCacheUseCase(quoteRepository, contracts, rpc)
 		err := useCase.Run(context.Background(), 5)
 		lbc.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)

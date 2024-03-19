@@ -51,12 +51,12 @@ type BtcEnv struct {
 	FixedTxFeeRate       float64 `env:"BTC_TX_FEE_RATE" validate:"required"`
 	WalletEncrypted      bool    `env:"BTC_ENCRYPTED_WALLET" validate:"required"`
 	WalletPasswordSecret string  `env:"BTC_WALLET_PASSWORD"`
+	BtcAddress           string  `env:"BTC_ADDR"  validate:"required"`
 }
 
 type ProviderEnv struct {
 	AlertSenderEmail    string                          `env:"ALERT_SENDER_EMAIL"  validate:"required"`
 	AlertRecipientEmail string                          `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
-	BtcAddress          string                          `env:"BTC_ADDR"  validate:"required"`
 	Name                string                          `env:"PROVIDER_NAME"  validate:"required"`
 	ApiBaseUrl          string                          `env:"BASE_URL"  validate:"required"`
 	ProviderType        liquidity_provider.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
