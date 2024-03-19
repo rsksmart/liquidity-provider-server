@@ -23,6 +23,11 @@ var (
 	BtcAddressNotSupportedError   = errors.New("btc address not supported")
 )
 
+const (
+	BtcChainHeightErrorTemplate = "error getting Bitcoin chain height: %v"
+	BtcTxInfoErrorTemplate      = "error getting Bitcoin transaction information (%s): %v"
+)
+
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
 // Currently the supported address types are P2PKH and P2SH
 func IsSupportedBtcAddress(address string) bool {
