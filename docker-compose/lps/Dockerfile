@@ -1,30 +1,26 @@
-FROM --platform=linux/amd64 golang:1.19-alpine
+ARG GO_VERSION=1.21.6
+ARG ALPINE_VERSION=3.19.1
 
-RUN apk add git gcc musl-dev curl jq
+FROM --platform=linux/amd64 golang:${GO_VERSION} AS builder
+
+ARG COMMIT_HASH
+ENV COMMIT_HASH=${COMMIT_HASH}
 
 WORKDIR /code
 
-COPY go.mod ./
-COPY go.sum ./
-RUN go mod download
+COPY Makefile go.mod go.sum ./
+COPY cmd ./cmd
+COPY pkg ./pkg
+COPY internal ./internal
 
-COPY *.go ./
-COPY connectors ./connectors
-COPY http ./http
-COPY storage ./storage
-COPY pegout ./pegout
-COPY pegin ./pegin
-COPY mongo ./mongo
-COPY secrets ./secrets
-COPY account ./account
-COPY config ./config
+RUN make build
 
-RUN go build -o /usr/local/bin/liquidity-provider-server
+FROM --platform=linux/amd64 alpine:${ALPINE_VERSION}
+
+COPY --from=builder /code/build/liquidity-provider-server /usr/local/bin/liquidity-provider-server
 
 ARG HOME="/home/lps"
 RUN adduser -u 1000 --home="$HOME" lps -D lps
-
-COPY --chown=lps "docker-compose/lps/start.sh" "$HOME/"
 
 RUN mkdir -p "$HOME/db"; chown 1000 "$HOME/db"
 RUN mkdir -p "$HOME/logs"; chown 1000 "$HOME/logs"
