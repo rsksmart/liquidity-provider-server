@@ -28,4 +28,5 @@ type UseCaseRegistry interface {
 	SetPegoutConfigUseCase() *liquidity_provider.SetPegoutConfigUseCase
 	SetGeneralConfigUseCase() *liquidity_provider.SetGeneralConfigUseCase
 	GetConfigurationUseCase() *liquidity_provider.GetConfigUseCase
+	GetLiquidityStatusUseCase() *liquidity_provider.LiquidityStatusUseCase
 }

@@ -1,13 +1,14 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
@@ -30,6 +31,7 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 	)
 	router.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(handlers.NewGetUserQuotesHandler(useCaseRegistry.GetUserDepositsUseCase()))
 	router.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(handlers.NewProviderDetailsHandler(useCaseRegistry.GetProviderDetailUseCase()))
+	router.Path("/liquidity/status").Methods(http.MethodGet).HandlerFunc(handlers.NewGetLiquidityStatusHandler(useCaseRegistry.GetLiquidityStatusUseCase()))
 
 	if env.EnableManagementApi {
 		log.Warn(
