@@ -23,6 +23,8 @@ import (
 const (
 	testnetTestBlockHash = "00000000001e94d85c3e736aa4071d36d26547713820a27af9edbe97489c696f"
 	testnetTestTxHash    = "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29"
+	testnetBlockFile     = "block-2582756-testnet.txt"
+	mainnetBlockFile     = "block-696394-mainnet.txt"
 )
 
 func TestBitcoindRpc_ValidateAddress(t *testing.T) {
@@ -110,7 +112,7 @@ func TestBitcoindRpc_GetRawTransaction(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
-	mainnetBlock := getTestBlock(t, "block-696394-mainnet.txt")
+	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	tx, err := mainnetBlock.Tx(0)
 	require.NoError(t, err)
 	client := &mocks.RpcClientMock{}
@@ -196,7 +198,7 @@ func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
-	block := getTestBlock(t, "block-2582756-testnet.txt")
+	block := getTestBlock(t, testnetBlockFile)
 
 	client := &mocks.RpcClientMock{}
 	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
@@ -252,7 +254,7 @@ func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
-	block := getTestBlock(t, "block-2582756-testnet.txt")
+	block := getTestBlock(t, testnetBlockFile)
 
 	client := &mocks.RpcClientMock{}
 	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
@@ -265,7 +267,7 @@ func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetPartialMerkleTree(t *testing.T) {
-	block := getTestBlock(t, "block-2582756-testnet.txt")
+	block := getTestBlock(t, testnetBlockFile)
 	client := &mocks.RpcClientMock{}
 	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
@@ -336,7 +338,7 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 				"04dbd50300",
 		},
 	}
-	mainnetBlock := getTestBlock(t, "block-696394-mainnet.txt")
+	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	for _, c := range cases {
 		client := &mocks.RpcClientMock{}
 		client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
@@ -356,7 +358,7 @@ func TestBitcoindRpc_GetPartialMerkleTree_ErrorHandling(t *testing.T) {
 	require.Nil(t, pmt)
 
 	client := &mocks.RpcClientMock{}
-	block := getTestBlock(t, "block-2582756-testnet.txt")
+	block := getTestBlock(t, testnetBlockFile)
 	msgBlock := block.MsgBlock()
 	msgBlock.Transactions = append(msgBlock.Transactions, msgBlock.Transactions...)
 	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
