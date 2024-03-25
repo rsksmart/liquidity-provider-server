@@ -64,9 +64,14 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 	}
 }
 
+func DefaultBalanceCheck() CheckBalance {
+	return true
+}
+
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
 		RskConfirmations: DefaultRskConfirmationsPerAmount(),
 		BtcConfirmations: DefaultBtcConfirmationsPerAmount(),
+		BalanceCheck: DefaultBalanceCheck(),
 	}
 }

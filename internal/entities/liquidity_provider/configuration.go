@@ -3,8 +3,9 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"slices"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 var (
@@ -32,9 +33,11 @@ type PegoutConfiguration struct {
 	ExpireBlocks   uint64        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
 }
 
+type CheckBalance bool;
 type GeneralConfiguration struct {
 	RskConfirmations ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
 	BtcConfirmations ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
+	BalanceCheck 	 CheckBalance `json:"balanceCheck" bson:"balance_check" validate:"required"`
 }
 
 type ConfigurationType interface {
