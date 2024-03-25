@@ -1,6 +1,6 @@
 module github.com/rsksmart/liquidity-provider-server
 
-go 1.21
+go 1.21.6
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.25
