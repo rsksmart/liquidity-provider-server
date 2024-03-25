@@ -24,12 +24,13 @@ import (
 )
 
 const (
-	mockPassword   = "pwd"
-	mockFeeRate    = 0.0001
-	testnetAddress = "mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5"
-	mainnetAddress = "141dsd6YZxdKcmTZckG4Q9qGzJbR1Jc9kv"
-	expiredTime    = 1711098457 // 2024-03-22
-	unexpiredTime  = 1900400857 // 2030-03-22
+	mockPassword      = "pwd"
+	mockFeeRate       = 0.0001
+	testnetAddress    = "mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5"
+	mainnetAddress    = "141dsd6YZxdKcmTZckG4Q9qGzJbR1Jc9kv"
+	expiredTime       = 1711098457 // 2024-03-22
+	unexpiredTime     = 1900400857 // 2030-03-22
+	paymentScriptMock = "a payment script"
 )
 
 func TestBitcoindWallet_Unlock(t *testing.T) {
@@ -201,7 +202,7 @@ func setupSendWithOpReturnTest(t *testing.T, client *mocks.RpcClientMock, encryp
 	).Return(&wire.MsgTx{
 		Version:  0,
 		TxIn:     nil,
-		TxOut:    []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte("a payment script")}},
+		TxOut:    []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)}},
 		LockTime: 0,
 	}, nil).Once()
 
@@ -216,7 +217,7 @@ func setupSendWithOpReturnTest(t *testing.T, client *mocks.RpcClientMock, encryp
 		Version: 0,
 		TxIn:    nil,
 		TxOut: []*wire.TxOut{
-			{Value: int64(satoshis), PkScript: []byte("a payment script")},
+			{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)},
 			{Value: int64(0), PkScript: []byte{0x6a, 0x08, 0x02, 0x01, 0x00, 0x07, 0x02, 0x00, 0x00, 0x00}},
 		},
 		LockTime: 0,
@@ -280,7 +281,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
-				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte("a payment script")}},
+				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte(paymentScriptMock)}},
 				LockTime: 0,
 			}, nil).Once()
 			client.On("GetWalletInfo").Return(nil, assert.AnError).Once()
@@ -289,7 +290,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
-				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte("a payment script")}},
+				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte(paymentScriptMock)}},
 				LockTime: 0,
 			}, nil).Once()
 			for i := 0; i < txscript.MaxDataCarrierSize; i++ {
@@ -300,7 +301,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
-				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte("a payment script")}},
+				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte(paymentScriptMock)}},
 				LockTime: 0,
 			}, nil).Once()
 			nonExpiredLockUntil := unexpiredTime
@@ -314,7 +315,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
-				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte("a payment script")}},
+				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte(paymentScriptMock)}},
 				LockTime: 0,
 			}, nil).Once()
 			nonExpiredLockUntil := unexpiredTime
@@ -329,7 +330,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
-				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte("a payment script")}},
+				TxOut:    []*wire.TxOut{{Value: int64(1), PkScript: []byte(paymentScriptMock)}},
 				LockTime: 0,
 			}, nil).Once()
 			nonExpiredLockUntil := unexpiredTime
