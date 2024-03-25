@@ -1,0 +1,12 @@
+with-expecter: true
+dir: test/mocks
+filename: "{{ .InterfaceName | snakecase }}_mock.go"
+mockname: "{{ .InterfaceName | firstUpper }}Mock"
+outpkg: mocks
+packages:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/alerting:
+    interfaces:
+      sesClient:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin:
+    interfaces:
+      rpcClient:

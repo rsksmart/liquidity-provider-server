@@ -8,12 +8,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type sesClient interface {
+	SendEmail(ctx context.Context, params *ses.SendEmailInput, optFns ...func(*ses.Options)) (*ses.SendEmailOutput, error)
+}
+
 type SesAlertSender struct {
-	sesClient *ses.Client
+	sesClient sesClient
 	from      string
 }
 
-func NewSesAlertSender(sesClient *ses.Client, from string) entities.AlertSender {
+func NewSesAlertSender(sesClient sesClient, from string) entities.AlertSender {
 	return &SesAlertSender{sesClient: sesClient, from: from}
 }
 

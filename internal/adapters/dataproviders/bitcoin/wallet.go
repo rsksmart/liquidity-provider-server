@@ -63,10 +63,16 @@ func (wallet *bitcoindWallet) EstimateTxFees(toAddress string, value *entities.W
 	if err != nil {
 		return nil, err
 	}
-	return entities.SatoshiToWei(uint64(simulatedTx.Fee * BtcToSatoshi)), nil
+	btcFee, err := btcutil.NewAmount(simulatedTx.Fee)
+	if err != nil {
+		return nil, err
+	}
+	satoshiFee := btcFee.ToUnit(btcutil.AmountSatoshi)
+	return entities.SatoshiToWei(uint64(satoshiFee)), nil
 }
 
 func (wallet *bitcoindWallet) GetBalance() (*entities.Wei, error) {
+	var amount btcutil.Amount
 	balance := new(entities.Wei)
 	utxos, err := wallet.conn.client.ListUnspent()
 	if err != nil {
@@ -75,7 +81,10 @@ func (wallet *bitcoindWallet) GetBalance() (*entities.Wei, error) {
 
 	for _, utxo := range utxos {
 		if utxo.Spendable {
-			balance.Add(balance, entities.SatoshiToWei(uint64(utxo.Amount*BtcToSatoshi)))
+			if amount, err = btcutil.NewAmount(utxo.Amount); err != nil {
+				return nil, err
+			}
+			balance.Add(balance, entities.SatoshiToWei(uint64(amount.ToUnit(btcutil.AmountSatoshi))))
 		}
 	}
 	return balance, nil
@@ -154,12 +163,14 @@ func (wallet *bitcoindWallet) ImportAddress(address string) error {
 func (wallet *bitcoindWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
 	var ok bool
 	var tx blockchain.BitcoinTransactionInformation
+	var btcAmount btcutil.Amount
+	const maxConfirmationsForUtxos = 9999999
 	result := make([]blockchain.BitcoinTransactionInformation, 0)
 	parsedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {
 		return nil, err
 	}
-	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(0, 9999, []btcutil.Address{parsedAddress})
+	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(0, maxConfirmationsForUtxos, []btcutil.Address{parsedAddress})
 	if err != nil {
 		return nil, err
 	}
@@ -175,10 +186,14 @@ func (wallet *bitcoindWallet) GetTransactions(address string) ([]blockchain.Bitc
 			}
 			txs[utxo.TxID] = tx
 		}
-		if _, ok = tx.Outputs[address]; !ok {
-			tx.Outputs[address] = make([]*entities.Wei, 0)
+		if _, ok = tx.Outputs[utxo.Address]; !ok {
+			tx.Outputs[utxo.Address] = make([]*entities.Wei, 0)
 		}
-		tx.Outputs[utxo.Address] = append(tx.Outputs[utxo.Address], entities.SatoshiToWei(uint64(utxo.Amount*BtcToSatoshi)))
+		btcAmount, err = btcutil.NewAmount(utxo.Amount)
+		if err != nil {
+			return nil, err
+		}
+		tx.Outputs[utxo.Address] = append(tx.Outputs[utxo.Address], entities.SatoshiToWei(uint64(btcAmount.ToUnit(btcutil.AmountSatoshi))))
 	}
 
 	for key, value := range txs {

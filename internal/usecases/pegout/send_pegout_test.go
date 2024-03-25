@@ -20,7 +20,7 @@ import (
 var now = uint32(time.Now().Unix())
 
 var retainedQuote = quote.RetainedPegoutQuote{
-	QuoteHash:          "1c2d3f",
+	QuoteHash:          "e64215867af36cad04e8c2e3e8336618b358f68923529f2a1e5dbc6dd4af4df1",
 	DepositAddress:     "0x654321",
 	Signature:          "0x112a3b",
 	RequiredLiquidity:  entities.NewWei(1000),
@@ -32,7 +32,7 @@ var retainedQuote = quote.RetainedPegoutQuote{
 }
 
 var pegoutQuote = quote.PegoutQuote{
-	LbcAddress:            retainedQuote.QuoteHash,
+	LbcAddress:            "0x5678",
 	LpRskAddress:          "0x1234",
 	BtcRefundAddress:      test.AnyAddress,
 	RskRefundAddress:      "0x1234",
