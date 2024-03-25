@@ -136,6 +136,7 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	}
 
 	var cleanStore []*chainhash.Hash
+	// TODO we should change this to support witness when we support non legacy LP wallets
 	store := merkle.BuildMerkleTreeStore(txs, false)
 	for _, node := range store {
 		if node != nil {

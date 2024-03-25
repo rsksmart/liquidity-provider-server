@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil/bloom"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -23,10 +22,10 @@ const (
 
 type Connection struct {
 	NetworkParams *chaincfg.Params
-	client        *rpcclient.Client
+	client        rpcClient
 }
 
-func NewConnection(networkParams *chaincfg.Params, client *rpcclient.Client) *Connection {
+func NewConnection(networkParams *chaincfg.Params, client rpcClient) *Connection {
 	return &Connection{NetworkParams: networkParams, client: client}
 }
 
