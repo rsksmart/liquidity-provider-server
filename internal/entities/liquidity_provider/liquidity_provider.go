@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
@@ -52,6 +53,7 @@ type LiquidityProvider interface {
 type PeginLiquidityProvider interface {
 	HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
 	PeginConfiguration(ctx context.Context) PeginConfiguration
+	CalculateAvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error)
 }
 
 type PegoutLiquidityProvider interface {
