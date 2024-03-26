@@ -59,6 +59,11 @@ components:
         status:
           type: boolean
       type: object
+    ConfirmationsPerAmount:
+      properties:
+        key:
+          type: integer
+      type: object
     DepositEventDTO:
       properties:
         amount:
@@ -77,6 +82,21 @@ components:
           example: "10000"
           format: date-time
           type: string
+      type: object
+    GeneralConfiguration:
+      properties:
+        btcConfirmations:
+          $ref: '#/components/schemas/ConfirmationsPerAmount'
+          type: object
+        rskConfirmations:
+          $ref: '#/components/schemas/ConfirmationsPerAmount'
+          type: object
+      type: object
+    GeneralConfigurationRequest:
+      properties:
+        configuration:
+          $ref: '#/components/schemas/GeneralConfiguration'
+          type: object
       type: object
     GetCollateralResponse:
       properties:
@@ -161,6 +181,27 @@ components:
       - apiBaseUrl
       - status
       - providerType
+      type: object
+    PeginConfiguration:
+      properties:
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        callTime:
+          type: integer
+        maxValue:
+          $ref: '#/components/schemas/Wei'
+        minValue:
+          $ref: '#/components/schemas/Wei'
+        penaltyFee:
+          $ref: '#/components/schemas/Wei'
+        timeForDeposit:
+          type: integer
+      type: object
+    PeginConfigurationRequest:
+      properties:
+        configuration:
+          $ref: '#/components/schemas/PeginConfiguration'
+          type: object
       type: object
     PeginQuoteDTO:
       properties:
@@ -281,6 +322,29 @@ components:
       - valueToTransfer
       - rskRefundAddress
       - bitcoinRefundAddress
+      type: object
+    PegoutConfiguration:
+      properties:
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        callTime:
+          type: integer
+        expireBlocks:
+          type: integer
+        maxValue:
+          $ref: '#/components/schemas/Wei'
+        minValue:
+          $ref: '#/components/schemas/Wei'
+        penaltyFee:
+          $ref: '#/components/schemas/Wei'
+        timeForDeposit:
+          type: integer
+      type: object
+    PegoutConfigurationRequest:
+      properties:
+        configuration:
+          $ref: '#/components/schemas/PegoutConfiguration'
+          type: object
       type: object
     PegoutQuoteDTO:
       properties:
@@ -410,6 +474,8 @@ components:
         rsk:
           type: string
       type: object
+    Wei: {}
+    entities.Wei: {}
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -447,6 +513,27 @@ info:
   version: 1.2.1
 openapi: 3.0.0
 paths:
+  /configuration:
+    get:
+      description: ' Get all the configurations for the liquidity provider. Included
+        in the management API.'
+      responses:
+        "200":
+          description: ""
+      summary: Get configurations
+    post:
+      description: ' Set general configurations of the server. Included in the management
+        API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralConfigurationRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Set General Config
   /getProviders:
     get:
       description: ' Returns a list of providers.'
@@ -514,6 +601,20 @@ paths:
                 $ref: '#/components/schemas/GetCollateralResponse'
           description: ""
       summary: Get PegIn Collateral
+  /pegin/configuration:
+    post:
+      description: ' Set the configuration for the Pegin service. Included in the
+        management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeginConfigurationRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Set Pegin Config
   /pegin/getQuote:
     post:
       description: ' Gets Pegin Quote'
@@ -583,6 +684,20 @@ paths:
                 $ref: '#/components/schemas/GetCollateralResponse'
           description: ""
       summary: Get PegOut Collateral
+  /pegout/configuration:
+    post:
+      description: ' Set the configuration for the Pegout service. Included in the
+        management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PegoutConfigurationRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Set Pegout Config
   /pegout/getQuotes:
     post:
       description: ' Gets Pegout Quote'
