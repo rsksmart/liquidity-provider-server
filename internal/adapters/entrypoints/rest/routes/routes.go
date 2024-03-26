@@ -31,7 +31,7 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 	)
 	router.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(handlers.NewGetUserQuotesHandler(useCaseRegistry.GetUserDepositsUseCase()))
 	router.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(handlers.NewProviderDetailsHandler(useCaseRegistry.GetProviderDetailUseCase()))
-	router.Path("/liquidity/status").Methods(http.MethodGet).HandlerFunc(handlers.NewGetLiquidityStatusHandler(useCaseRegistry.GetLiquidityStatusUseCase()))
+	router.Path("/providers/liquidity").Methods(http.MethodGet).HandlerFunc(handlers.NewGetLiquidityStatusHandler(useCaseRegistry.GetLiquidityStatusUseCase()))
 
 	if env.EnableManagementApi {
 		log.Warn(

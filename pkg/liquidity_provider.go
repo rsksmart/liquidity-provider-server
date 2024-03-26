@@ -1,6 +1,9 @@
 package pkg
 
-import "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+)
 
 type ProviderDetail struct {
 	Fee                   uint64 `json:"fee"  required:""`
@@ -22,6 +25,15 @@ type LiquidityProvider struct {
 	ApiBaseUrl   string `json:"apiBaseUrl" example:"https://api.example.com" description:"API base URL"  required:""`
 	Status       bool   `json:"status" example:"true" description:"Provider status"  required:""`
 	ProviderType string `json:"providerType" example:"pegin" description:"Provider type"  required:""`
+}
+
+type LiquidityStatus struct {
+	Available Available `json:"available" required:""`
+}
+
+type Available struct {
+	Pegin  *entities.Wei `json:"pegin"  required:""`
+	Pegout *entities.Wei `json:"pegout"  required:""`
 }
 
 type ChangeStatusRequest struct {

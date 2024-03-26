@@ -64,14 +64,14 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 	}
 }
 
-func DefaultBalanceCheck() CheckBalance {
-	return true
+func DefaultBalanceCheck() bool {
+	return false
 }
 
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
 		RskConfirmations: DefaultRskConfirmationsPerAmount(),
 		BtcConfirmations: DefaultBtcConfirmationsPerAmount(),
-		BalanceCheck: DefaultBalanceCheck(),
+		PublicLiquidityCheck: DefaultBalanceCheck(),
 	}
 }

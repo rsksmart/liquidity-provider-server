@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -101,29 +102,37 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 	}
 }
 
-func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
+func (lp *LocalLiquidityProvider) CalculateAvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error) {
 	liquidity := new(entities.Wei)
 	lockedLiquidity := new(entities.Wei)
 	log.Debug("Verifying if has liquidity")
 	lpRskBalance, err := lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	lpLbcBalance, err := lp.contracts.Lbc.GetBalance(lp.RskAddress())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
 	log.Debugf("Liquidity: %s wei\n", liquidity.String())
 	quotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserFailed)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, retainedQuote := range quotes {
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s wei\n", lockedLiquidity.String())
 	availableLiquidity := new(entities.Wei).Sub(liquidity, lockedLiquidity)
+	return availableLiquidity, nil
+}
+
+func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
+	availableLiquidity, err := lp.CalculateAvailablePeginLiquidity(ctx)
+	if err != nil {
+		return err
+	}
 	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
 		return nil
 	} else {
