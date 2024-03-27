@@ -70,8 +70,8 @@ func DefaultBalanceCheck() bool {
 
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
-		RskConfirmations: DefaultRskConfirmationsPerAmount(),
-		BtcConfirmations: DefaultBtcConfirmationsPerAmount(),
+		RskConfirmations:     DefaultRskConfirmationsPerAmount(),
+		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
 		PublicLiquidityCheck: DefaultBalanceCheck(),
 	}
 }

@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	log "github.com/sirupsen/logrus"
 )
 
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
@@ -91,7 +92,7 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	}
 	details := make(ErrorDetails)
 	for _, field := range *validationErrors {
-		details[field.Field()] = fmt.Sprintf("validation failed: %s", field.Tag())
+		details[field.Field()] = errors.New("validation failed: " + field.Tag())
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)

@@ -18,7 +18,7 @@ func NewGetLiquidityStatusHandler(useCase *liquidity_provider.LiquidityStatusUse
 		status, err := useCase.Run(req.Context())
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("failed to fetch liquidity status", rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			rest.JsonErrorResponse(w, http.StatusForbidden, jsonErr)
 			return
 		}
 		response := pkg.LiquidityStatus{

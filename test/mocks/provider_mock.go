@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +18,15 @@ type ProviderMock struct {
 func (m *ProviderMock) RskAddress() string {
 	args := m.Called()
 	return args.String(0)
+}
+
+func (m *ProviderMock) CalculateAvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+func (m *ProviderMock) CalculateAvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 
 func (m *ProviderMock) BtcAddress() string {

@@ -73,39 +73,49 @@ func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
 	return hex.EncodeToString(signatureBytes), nil
 }
 
-func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
+func (lp *LocalLiquidityProvider) CalculateLockedPegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
 	lockedLiquidity := new(entities.Wei)
-	log.Debug("Verifying if has liquidity")
-	liquidity, err := lp.btc.GetBalance()
-	if err != nil {
-		return err
-	}
-	log.Debugf("Liquidity: %s satoshi\n", liquidity.ToSatoshi().String())
 	quotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx,
 		quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations, quote.PegoutStateSendPegoutFailed,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, retainedQuote := range quotes {
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
-	log.Debugf("Locked Liquidity: %s satoshi\n", lockedLiquidity.ToSatoshi().String())
+	return lockedLiquidity, nil
+}
+
+func (lp *LocalLiquidityProvider) CalculateAvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
+	liquidity, err := lp.btc.GetBalance()
+	if err != nil {
+		return nil, err
+	}
+	lockedLiquidity, err := lp.CalculateLockedPegoutLiquidity(ctx)
+	if err != nil {
+		return nil, err
+	}
 	availableLiquidity := new(entities.Wei).Sub(liquidity, lockedLiquidity)
+	return availableLiquidity, nil
+}
+
+func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
+	log.Debug("Verifying if has pegout liquidity")
+	availableLiquidity, err := lp.CalculateAvailablePegoutLiquidity(ctx)
+	if err != nil {
+		return err
+	}
 	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
 		return nil
 	} else {
-		return fmt.Errorf(
-			"not enough liquidity, missing %s satoshi\n",
-			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
-		)
+		return fmt.Errorf("not enough liquidity, missing %s satoshi\n", requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String())
 	}
 }
 
 func (lp *LocalLiquidityProvider) CalculateAvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error) {
 	liquidity := new(entities.Wei)
 	lockedLiquidity := new(entities.Wei)
-	log.Debug("Verifying if has liquidity")
 	lpRskBalance, err := lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
 	if err != nil {
 		return nil, err
@@ -115,7 +125,6 @@ func (lp *LocalLiquidityProvider) CalculateAvailablePeginLiquidity(ctx context.C
 		return nil, err
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
-	log.Debugf("Liquidity: %s wei\n", liquidity.String())
 	quotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserFailed)
 	if err != nil {
 		return nil, err
@@ -123,12 +132,12 @@ func (lp *LocalLiquidityProvider) CalculateAvailablePeginLiquidity(ctx context.C
 	for _, retainedQuote := range quotes {
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
-	log.Debugf("Locked Liquidity: %s wei\n", lockedLiquidity.String())
 	availableLiquidity := new(entities.Wei).Sub(liquidity, lockedLiquidity)
 	return availableLiquidity, nil
 }
 
 func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
+	log.Debug("Verifying if has liquidity")
 	availableLiquidity, err := lp.CalculateAvailablePeginLiquidity(ctx)
 	if err != nil {
 		return err
