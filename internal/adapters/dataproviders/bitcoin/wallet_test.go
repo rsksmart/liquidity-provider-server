@@ -26,6 +26,7 @@ import (
 const (
 	mockPassword      = "pwd"
 	mockFeeRate       = 0.0001
+	mockAddress       = "mx5ySMGiiDd9rjkfwcZkSCo3ATQ16PEiJM"
 	testnetAddress    = "mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5"
 	mainnetAddress    = "141dsd6YZxdKcmTZckG4Q9qGzJbR1Jc9kv"
 	expiredTime       = 1711098457 // 2024-03-22
@@ -44,7 +45,7 @@ func TestBitcoindWallet_Unlock(t *testing.T) {
 		UnlockedUntil: &nonExpiredLockUntil,
 	}, nil).Once()
 	client.On("WalletPassphrase", mockPassword, int64(bitcoin.WalletUnlockSeconds)).Return(nil).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(nil, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(nil, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.Unlock()
 	require.NoError(t, err)
 	err = rpc.Unlock()
@@ -55,7 +56,7 @@ func TestBitcoindWallet_Unlock(t *testing.T) {
 func TestBitcoindWallet_Unlock_ErrorHandling(t *testing.T) {
 	client := &mocks.RpcClientMock{}
 	client.On("GetWalletInfo").Return(nil, assert.AnError).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(nil, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(nil, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.Unlock()
 	require.Error(t, err)
 }
@@ -63,14 +64,14 @@ func TestBitcoindWallet_Unlock_ErrorHandling(t *testing.T) {
 func TestBitcoindWallet_ImportAddress(t *testing.T) {
 	client := &mocks.RpcClientMock{}
 	client.On("ImportAddressRescan", testnetAddress, "", false).Return(nil).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.ImportAddress(testnetAddress)
 	require.NoError(t, err)
 	client.AssertExpectations(t)
 
 	client = &mocks.RpcClientMock{}
 	client.On("ImportAddressRescan", mainnetAddress, "", false).Return(nil).Once()
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockFeeRate, true, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockAddress, mockFeeRate, true, mockPassword)
 	err = rpc.ImportAddress(mainnetAddress)
 	require.NoError(t, err)
 	client.AssertExpectations(t)
@@ -78,11 +79,11 @@ func TestBitcoindWallet_ImportAddress(t *testing.T) {
 
 func TestBitcoindWallet_ImportAddress_ErrorHandling(t *testing.T) {
 	client := &mocks.RpcClientMock{}
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.ImportAddress(testnetAddress)
 	require.Error(t, err)
 
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	err = rpc.ImportAddress(mainnetAddress)
 	require.Error(t, err)
 }
@@ -111,7 +112,7 @@ func TestBitcoindWallet_EstimateTxFees(t *testing.T) {
 	).Return(&btcjson.WalletCreateFundedPsbtResult{
 		Fee: 0.0006,
 	}, nil).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	fee, err := rpc.EstimateTxFees(testnetAddress, amount)
 	require.NoError(t, err)
 	assert.Equal(t, entities.NewWei(600000000000000), fee)
@@ -120,7 +121,7 @@ func TestBitcoindWallet_EstimateTxFees(t *testing.T) {
 
 func TestBitcoindWallet_EstimateTxFees_ErrorHandling(t *testing.T) {
 	client := &mocks.RpcClientMock{}
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	fee, err := rpc.EstimateTxFees(mainnetAddress, entities.NewWei(1))
 	require.Error(t, err)
 	assert.Nil(t, fee)
@@ -132,7 +133,7 @@ func TestBitcoindWallet_EstimateTxFees_ErrorHandling(t *testing.T) {
 		mock.Anything,
 		mock.Anything,
 	).Return(nil, assert.AnError).Once()
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	fee, err = rpc.EstimateTxFees(testnetAddress, entities.NewWei(1))
 	require.Error(t, err)
 	assert.Nil(t, fee)
@@ -144,7 +145,7 @@ func TestBitcoindWallet_EstimateTxFees_ErrorHandling(t *testing.T) {
 		mock.Anything,
 		mock.Anything,
 	).Return(&btcjson.WalletCreateFundedPsbtResult{Fee: math.NaN()}, nil).Once()
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	fee, err = rpc.EstimateTxFees(testnetAddress, entities.NewWei(1))
 	require.Error(t, err)
 	assert.Nil(t, fee)
@@ -160,7 +161,7 @@ func TestBitcoindWallet_GetBalance(t *testing.T) {
 	require.NoError(t, err)
 	client := &mocks.RpcClientMock{}
 	client.On("ListUnspent").Return(result, nil).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	balance, err := rpc.GetBalance()
 	require.NoError(t, err)
 	assert.Equal(t, entities.NewWei(57962080000000000), balance)
@@ -170,13 +171,13 @@ func TestBitcoindWallet_GetBalance(t *testing.T) {
 func TestBitcoindWallet_GetBalance_ErrorHandling(t *testing.T) {
 	client := &mocks.RpcClientMock{}
 	client.On("ListUnspent").Return(nil, assert.AnError).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	balance, err := rpc.GetBalance()
 	require.Error(t, err)
 	assert.Nil(t, balance)
 
 	client.On("ListUnspent").Return([]btcjson.ListUnspentResult{{Amount: math.NaN(), Spendable: true}}, nil).Once()
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	balance, err = rpc.GetBalance()
 	require.Error(t, err)
 	assert.Nil(t, balance)
@@ -240,7 +241,7 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 
 	client := &mocks.RpcClientMock{}
 	setupSendWithOpReturnTest(t, client, true)
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockAddress, mockFeeRate, true, mockPassword)
 	txHash, err := rpc.SendWithOpReturn(testnetAddress, entities.NewWei(500000000000000000), data)
 	require.NoError(t, err)
 	assert.NotEmpty(t, txHash)
@@ -249,7 +250,7 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 
 	client = &mocks.RpcClientMock{}
 	setupSendWithOpReturnTest(t, client, false)
-	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockFeeRate, false, mockPassword)
+	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockAddress, mockFeeRate, false, mockPassword)
 	txHash, err = rpc.SendWithOpReturn(testnetAddress, entities.NewWei(500000000000000000), data)
 	require.NoError(t, err)
 	assert.NotEmpty(t, txHash)
@@ -263,7 +264,7 @@ func TestBitcoindWallet_SendWithOpReturn_ErrorHandling(t *testing.T) {
 		client := &mocks.RpcClientMock{}
 		data := []byte{2, 1, 0, 7, 2, 0, 0, 0}
 		setup(client, &data)
-		rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+		rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 		txHash, err := rpc.SendWithOpReturn(testnetAddress, entities.NewWei(500000000000000000), data)
 		require.Error(t, err)
 		assert.Empty(t, txHash)
@@ -357,7 +358,7 @@ func TestBitcoindWallet_GetTransactions(t *testing.T) {
 	parsedAddress, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
 	require.NoError(t, err)
 	client.On("ListUnspentMinMaxAddresses", 0, 9999999, []btcutil.Address{parsedAddress}).Return(result, nil).Once()
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	transactions, err := rpc.GetTransactions(testnetAddress)
 	require.NoError(t, err)
 	slices.SortFunc(transactions, func(i, j blockchain.BitcoinTransactionInformation) int {
@@ -398,7 +399,7 @@ func TestBitcoindWallet_GetTransactions(t *testing.T) {
 
 func TestBitcoindWallet_GetTransactions_ErrorHandling(t *testing.T) {
 	client := &mocks.RpcClientMock{}
-	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockFeeRate, true, mockPassword)
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	transactions, err := rpc.GetTransactions("invalidAddress")
 	require.Error(t, err)
 	assert.Nil(t, transactions)
