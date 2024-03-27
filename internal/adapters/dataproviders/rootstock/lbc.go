@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -16,9 +20,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"strings"
-	"time"
 )
 
 // registerPeginGasLimit Fixed gas limit for registerPegin function, should change only if the function does
@@ -230,9 +231,9 @@ func (lbc *liquidityBridgeContractImpl) AddCollateral(amount *entities.Wei) erro
 	})
 
 	if err != nil {
-		return fmt.Errorf("error adding collateral: %w", err)
+		return errors.New("error adding collateral: " + err.Error())
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("error adding pegin collateral")
+		return errors.New("error adding pegin collateral")
 	}
 	return nil
 }
@@ -251,9 +252,9 @@ func (lbc *liquidityBridgeContractImpl) AddPegoutCollateral(amount *entities.Wei
 	})
 
 	if err != nil {
-		return fmt.Errorf("error adding collateral: %w", err)
+		return errors.New("error adding collateral: " + err.Error())
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("error adding pegout collateral")
+		return errors.New("error adding pegout collateral")
 	}
 	return nil
 }
@@ -273,7 +274,7 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 	if err != nil {
 		return fmt.Errorf("withdraw pegin collateral error: %w", err)
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("withdraw pegin collateral error")
+		return errors.New("withdraw pegin collateral error")
 	}
 	return nil
 }
@@ -291,9 +292,9 @@ func (lbc *liquidityBridgeContractImpl) WithdrawPegoutCollateral() error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("withdraw pegout collateral error: %w", err)
+		return errors.New("withdraw pegout collateral error: " + err.Error())
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("withdraw pegout collateral error")
+		return errors.New("withdraw pegout collateral error: " + err.Error())
 	}
 	return nil
 }

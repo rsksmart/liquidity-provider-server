@@ -47,7 +47,7 @@ type UseCaseRegistry struct {
 	setPegoutConfigUseCase          *liquidity_provider.SetPegoutConfigUseCase
 	setGeneralConfigUseCase         *liquidity_provider.SetGeneralConfigUseCase
 	getConfigurationUseCase         *liquidity_provider.GetConfigUseCase
-	liquidityStatusUseCase			*liquidity_provider.LiquidityStatusUseCase
+	liquidityStatusUseCase          *liquidity_provider.LiquidityStatusUseCase
 }
 
 // NewUseCaseRegistry
@@ -176,7 +176,7 @@ func NewUseCaseRegistry(
 		withdrawPeginCollateralUseCase:  pegin.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
 		withdrawPegoutCollateralUseCase: pegout.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
 		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.Connection, databaseRegistry.Connection),
-		liquidityStatusUseCase:		 	 liquidity_provider.NewLiquidityStatusUseCase(rskRegistry.Contracts, liquidityProvider, messaging.Rpc,btcRegistry.Wallet, liquidityProvider),
+		liquidityStatusUseCase:          liquidity_provider.NewLiquidityStatusUseCase(rskRegistry.Contracts, liquidityProvider, messaging.Rpc, btcRegistry.Wallet, liquidityProvider, liquidityProvider),
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
@@ -280,5 +280,5 @@ func (registry *UseCaseRegistry) GetConfigurationUseCase() *liquidity_provider.G
 	return registry.getConfigurationUseCase
 }
 func (registry *UseCaseRegistry) GetLiquidityStatusUseCase() *liquidity_provider.LiquidityStatusUseCase {
-    return registry.liquidityStatusUseCase
+	return registry.liquidityStatusUseCase
 }

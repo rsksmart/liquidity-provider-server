@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math"
-	"math/big"
 )
 
 // used for error logging
@@ -50,22 +51,24 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
+	CheckLiquidity             UseCaseId = "GetLiquidityStatusUseCase"
 )
 
 var (
-	NonRecoverableError         = errors.New("non recoverable")
-	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	RskAddressNotSupportedError = errors.New("rsk address not supported")
-	QuoteNotFoundError          = errors.New("quote not found")
-	ExpiredQuoteError           = errors.New("expired quote")
-	NoLiquidityError            = errors.New("not enough liquidity")
-	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	ProviderNotFoundError       = errors.New("liquidity provider not found")
-	WrongStateError             = errors.New("quote with wrong state")
-	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
-	InsufficientAmountError     = errors.New("insufficient amount")
-	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
-	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
+	NonRecoverableError               = errors.New("non recoverable")
+	TxBelowMinimumError               = errors.New("requested amount below bridge's min transaction value")
+	RskAddressNotSupportedError       = errors.New("rsk address not supported")
+	QuoteNotFoundError                = errors.New("quote not found")
+	ExpiredQuoteError                 = errors.New("expired quote")
+	NoLiquidityError                  = errors.New("not enough liquidity")
+	ProviderConfigurationError        = errors.New("pegin and pegout providers are not using the same account")
+	ProviderNotFoundError             = errors.New("liquidity provider not found")
+	WrongStateError                   = errors.New("quote with wrong state")
+	NoEnoughConfirmationsError        = errors.New("not enough confirmations for transaction")
+	InsufficientAmountError           = errors.New("insufficient amount")
+	AlreadyRegisteredError            = errors.New("liquidity provider already registered")
+	ProviderNotResignedError          = errors.New("provided hasn't completed resignation process")
+	PublicLiquidityCheckDisabledError = errors.New("balance checking is disabled")
 )
 
 type ErrorArgs map[string]string
