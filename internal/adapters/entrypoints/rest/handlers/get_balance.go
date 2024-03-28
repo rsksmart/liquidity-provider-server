@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
@@ -17,8 +19,13 @@ func NewGetLiquidityStatusHandler(useCase *liquidity_provider.LiquidityStatusUse
 	return func(w http.ResponseWriter, req *http.Request) {
 		status, err := useCase.Run(req.Context())
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("failed to fetch liquidity status", rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusForbidden, jsonErr)
+			if errors.Is(err, usecases.PublicLiquidityCheckDisabledError) {
+				jsonErr := rest.NewErrorResponseWithDetails(usecases.PublicLiquidityCheckDisabledError.Error(), rest.DetailsFromError(err), false)
+				rest.JsonErrorResponse(w, http.StatusForbidden, jsonErr)
+			} else {
+				jsonErr := rest.NewErrorResponseWithDetails(usecases.PublicLiquidityCheckError.Error(), rest.DetailsFromError(err), false)
+				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			}
 			return
 		}
 		response := pkg.LiquidityStatus{

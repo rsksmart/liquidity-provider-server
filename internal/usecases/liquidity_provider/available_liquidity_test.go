@@ -2,56 +2,54 @@ package liquidity_provider_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLiquidityStatusUseCase_Run_PublicLiquidityCheckDisabled(t *testing.T) {
+func setupMocks(publicLiquidityCheck bool, peginLiquidity *entities.Wei, peginErr error, pegoutLiquidity *entities.Wei, pegoutErr error) *liquidity_provider.LiquidityStatusUseCase {
 	providerMock := &mocks.ProviderMock{}
-	providerMock.On("GeneralConfiguration", mock.Anything).Return(lp.GeneralConfiguration{PublicLiquidityCheck: false})
+	rpcMocks := blockchain.Rpc{Btc: new(mocks.BtcRpcMock), Rsk: new(mocks.RskRpcMock)}
+	providerMock.On("GeneralConfiguration", mock.Anything).Return(lp.GeneralConfiguration{PublicLiquidityCheck: publicLiquidityCheck})
+	if peginLiquidity != nil || peginErr != nil {
+		providerMock.On("CalculateAvailablePeginLiquidity", mock.Anything).Return(peginLiquidity, peginErr)
+	}
+	if pegoutLiquidity != nil || pegoutErr != nil {
+		providerMock.On("CalculateAvailablePegoutLiquidity", mock.Anything).Return(pegoutLiquidity, pegoutErr)
+	}
+	return liquidity_provider.NewLiquidityStatusUseCase(blockchain.RskContracts{Lbc: new(mocks.LbcMock), FeeCollector: new(mocks.FeeCollectorMock), Bridge: new(mocks.BridgeMock)}, providerMock, rpcMocks, new(mocks.BtcWalletMock), providerMock, providerMock)
+}
 
-	useCase := liquidity_provider.NewLiquidityStatusUseCase(blockchain.RskContracts{}, providerMock, blockchain.Rpc{Btc: new(mocks.BtcRpcMock), Rsk: new(mocks.RskRpcMock)}, &mocks.BtcWalletMock{}, providerMock.PeginLiquidityProvider, providerMock.PegoutLiquidityProvider)
+func TestLiquidityStatusUseCase_Run_PublicLiquidityCheckDisabled(t *testing.T) {
+	useCase := setupMocks(false, nil, nil, nil, nil)
 	status, err := useCase.Run(context.Background())
-
 	require.Nil(t, status)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "GetLiquidityStatusUseCase: balance checking is disabled")
+	require.ErrorIs(t, err, usecases.PublicLiquidityCheckDisabledError)
 }
 
 func TestLiquidityStatusUseCase_Run_ErrorFetchingPeginLiquidity(t *testing.T) {
-	providerMock := &mocks.ProviderMock{}
-	peginProviderMock := &mocks.ProviderMock{}
-
-	providerMock.On("GeneralConfiguration", mock.Anything).Return(lp.GeneralConfiguration{PublicLiquidityCheck: false})
-	peginProviderMock.On("CalculateAvailablePeginLiquidity", mock.Anything).Return(0, errors.New("network error"))
-
-	useCase := liquidity_provider.NewLiquidityStatusUseCase(blockchain.RskContracts{}, providerMock, blockchain.Rpc{Btc: new(mocks.BtcRpcMock), Rsk: new(mocks.RskRpcMock)}, &mocks.BtcWalletMock{}, providerMock.PeginLiquidityProvider, providerMock.PegoutLiquidityProvider)
+	useCase := setupMocks(true, nil, usecases.PublicLiquidityPeginCheckError, nil, nil)
 	status, err := useCase.Run(context.Background())
-
 	require.Nil(t, status)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "GetLiquidityStatusUseCase: balance checking is disabled")
+	require.ErrorIs(t, err, usecases.PublicLiquidityPeginCheckError)
+}
+
+func TestLiquidityStatusUseCase_Run_ErrorFetchingPegoutLiquidity(t *testing.T) {
+	useCase := setupMocks(true, entities.NewWei(0), nil, nil, usecases.PublicLiquidityPegoutCheckError)
+	status, err := useCase.Run(context.Background())
+	require.Nil(t, status)
+	require.ErrorIs(t, err, usecases.PublicLiquidityPegoutCheckError)
 }
 
 func TestLiquidityStatusUseCase_Run_Success(t *testing.T) {
-	providerMock := &mocks.ProviderMock{}
-
-	providerMock.On("GeneralConfiguration", test.AnyCtx).Return(lp.GeneralConfiguration{PublicLiquidityCheck: true})
-	providerMock.On("CalculateAvailablePeginLiquidity", test.AnyCtx).Return(entities.NewWei(10000), nil)
-	providerMock.On("CalculateAvailablePegoutLiquidity", test.AnyCtx).Return(entities.NewWei(10000), nil)
-	lbc := new(mocks.LbcMock)
-	feeCollector := new(mocks.FeeCollectorMock)
-	bridge := new(mocks.BridgeMock)
-	useCase := liquidity_provider.NewLiquidityStatusUseCase(blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}, providerMock, blockchain.Rpc{Btc: new(mocks.BtcRpcMock), Rsk: new(mocks.RskRpcMock)}, new(mocks.BtcWalletMock), providerMock, providerMock)
+	useCase := setupMocks(true, entities.NewWei(10000), nil, entities.NewWei(10000), nil)
 	status, err := useCase.Run(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, status)

@@ -69,6 +69,9 @@ var (
 	AlreadyRegisteredError            = errors.New("liquidity provider already registered")
 	ProviderNotResignedError          = errors.New("provided hasn't completed resignation process")
 	PublicLiquidityCheckDisabledError = errors.New("balance checking is disabled")
+	PublicLiquidityPeginCheckError    = errors.New("error checking available pegin liquidity")
+	PublicLiquidityPegoutCheckError   = errors.New("error checking available pegout liquidity")
+	PublicLiquidityCheckError         = errors.New("error checking available liquidity")
 )
 
 type ErrorArgs map[string]string
