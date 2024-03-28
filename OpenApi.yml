@@ -54,6 +54,16 @@ components:
           example: 100000000000
           type: integer
       type: object
+    Available:
+      properties:
+        pegin:
+          $ref: '#/components/schemas/Wei'
+        pegout:
+          $ref: '#/components/schemas/Wei'
+      required:
+      - pegin
+      - pegout
+      type: object
     ChangeStatusRequest:
       properties:
         status:
@@ -88,6 +98,8 @@ components:
         btcConfirmations:
           $ref: '#/components/schemas/ConfirmationsPerAmount'
           type: object
+        publicLiquidityCheck:
+          type: boolean
         rskConfirmations:
           $ref: '#/components/schemas/ConfirmationsPerAmount'
           type: object
@@ -181,6 +193,14 @@ components:
       - apiBaseUrl
       - status
       - providerType
+      type: object
+    LiquidityStatus:
+      properties:
+        available:
+          $ref: '#/components/schemas/Available'
+          type: object
+      required:
+      - available
       type: object
     PeginConfiguration:
       properties:
@@ -556,6 +576,17 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
           description: ""
       summary: Health
+  /liquidity/status:
+    get:
+      description: ' Fetches the available liquidity for both pegin & pegout'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiquidityStatus'
+          description: ""
+      summary: Fetch Liquidity Status
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'

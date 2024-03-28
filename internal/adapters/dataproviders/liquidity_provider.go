@@ -125,7 +125,7 @@ func (lp *LocalLiquidityProvider) CalculateAvailablePeginLiquidity(ctx context.C
 		return nil, err
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
-	quotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserFailed)
+	quotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,6 @@ package liquidity_provider
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -32,15 +31,15 @@ func NewLiquidityStatusUseCase(contracts blockchain.RskContracts, provider liqui
 
 func (useCase *LiquidityStatusUseCase) Run(ctx context.Context) (*pkg.LiquidityStatus, error) {
 	if !useCase.provider.GeneralConfiguration(ctx).PublicLiquidityCheck {
-		return nil, usecases.WrapUseCaseErrorArgs(usecases.CheckLiquidity, usecases.PublicLiquidityCheckDisabledError, usecases.ErrorArgs{})
+		return nil, usecases.WrapUseCaseError(usecases.CheckLiquidity, usecases.PublicLiquidityCheckDisabledError)
 	}
 	peginLiquidity, err := useCase.peginProvider.CalculateAvailablePeginLiquidity(ctx)
 	if err != nil {
-		return nil, errors.New("error fetching pegin balance: " + err.Error())
+		return nil, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.PublicLiquidityPeginCheckError.Error()), err)
 	}
 	pegoutLiquidity, err := useCase.pegoutProvider.CalculateAvailablePegoutLiquidity(ctx)
 	if err != nil {
-		return nil, errors.New("error fetching pegin balance: " + err.Error())
+		return nil, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.PublicLiquidityPegoutCheckError.Error()), err)
 	}
 	return &pkg.LiquidityStatus{
 		Available: pkg.Available{
