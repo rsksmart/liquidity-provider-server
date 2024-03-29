@@ -76,7 +76,7 @@ func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
 func (lp *LocalLiquidityProvider) CalculateLockedPegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
 	lockedLiquidity := new(entities.Wei)
 	quotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx,
-		quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations, quote.PegoutStateSendPegoutFailed,
+		quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations,
 	)
 	if err != nil {
 		return nil, err

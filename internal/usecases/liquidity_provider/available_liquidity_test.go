@@ -9,6 +9,7 @@ import (
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,21 +31,21 @@ func setupMocks(publicLiquidityCheck bool, peginLiquidity *entities.Wei, peginEr
 func TestLiquidityStatusUseCase_Run_PublicLiquidityCheckDisabled(t *testing.T) {
 	useCase := setupMocks(false, nil, nil, nil, nil)
 	status, err := useCase.Run(context.Background())
-	require.Nil(t, status)
+	require.Equal(t, pkg.LiquidityStatus{}, status)
 	require.ErrorIs(t, err, usecases.PublicLiquidityCheckDisabledError)
 }
 
 func TestLiquidityStatusUseCase_Run_ErrorFetchingPeginLiquidity(t *testing.T) {
 	useCase := setupMocks(true, nil, usecases.PublicLiquidityPeginCheckError, nil, nil)
 	status, err := useCase.Run(context.Background())
-	require.Nil(t, status)
+	require.Equal(t, pkg.LiquidityStatus{}, status)
 	require.ErrorIs(t, err, usecases.PublicLiquidityPeginCheckError)
 }
 
 func TestLiquidityStatusUseCase_Run_ErrorFetchingPegoutLiquidity(t *testing.T) {
 	useCase := setupMocks(true, entities.NewWei(0), nil, nil, usecases.PublicLiquidityPegoutCheckError)
 	status, err := useCase.Run(context.Background())
-	require.Nil(t, status)
+	require.Equal(t, pkg.LiquidityStatus{}, status)
 	require.ErrorIs(t, err, usecases.PublicLiquidityPegoutCheckError)
 }
 
