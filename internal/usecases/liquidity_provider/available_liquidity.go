@@ -29,22 +29,23 @@ func NewLiquidityStatusUseCase(contracts blockchain.RskContracts, provider liqui
 	}
 }
 
-func (useCase *LiquidityStatusUseCase) Run(ctx context.Context) (*pkg.LiquidityStatus, error) {
+func (useCase *LiquidityStatusUseCase) Run(ctx context.Context) (pkg.LiquidityStatus, error) {
 	if !useCase.provider.GeneralConfiguration(ctx).PublicLiquidityCheck {
-		return nil, usecases.WrapUseCaseError(usecases.CheckLiquidity, usecases.PublicLiquidityCheckDisabledError)
+		return pkg.LiquidityStatus{}, usecases.WrapUseCaseError(usecases.CheckLiquidity, usecases.PublicLiquidityCheckDisabledError)
 	}
 	peginLiquidity, err := useCase.peginProvider.CalculateAvailablePeginLiquidity(ctx)
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.PublicLiquidityPeginCheckError.Error()), err)
+		return pkg.LiquidityStatus{}, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.CheckLiquidity), err)
 	}
 	pegoutLiquidity, err := useCase.pegoutProvider.CalculateAvailablePegoutLiquidity(ctx)
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.PublicLiquidityPegoutCheckError.Error()), err)
+		return pkg.LiquidityStatus{}, usecases.WrapUseCaseError(usecases.UseCaseId(usecases.CheckLiquidity), err)
 	}
-	return &pkg.LiquidityStatus{
+	response := pkg.LiquidityStatus{
 		Available: pkg.Available{
 			Pegin:  peginLiquidity,
 			Pegout: pegoutLiquidity,
 		},
-	}, nil
+	}
+	return response, nil
 }
