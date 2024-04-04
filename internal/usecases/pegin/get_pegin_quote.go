@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"time"
 )
@@ -154,7 +155,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 	var err error
 	var nonce int64
 
-	if nonce, err = usecases.GetRandomInt(); err != nil {
+	if nonce, err = utils.GetRandomInt(); err != nil {
 		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 

@@ -7,19 +7,19 @@ import (
 )
 
 type Environment struct {
-	LpsStage            string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
-	Port                uint   `env:"SERVER_PORT" validate:"required"`
-	LogLevel            string `env:"LOG_LEVEL" validate:"required"`
-	LogFile             string `env:"LOG_FILE"`
-	EnableManagementApi bool   `env:"ENABLE_MANAGEMENT_API"`
-	AwsLocalEndpoint    string `env:"AWS_LOCAL_ENDPOINT"`
-	Mongo               MongoEnv
-	Rsk                 RskEnv
-	Btc                 BtcEnv
-	Provider            ProviderEnv
-	Pegin               PeginEnv
-	Pegout              PegoutEnv
-	Captcha             CaptchaEnv
+	LpsStage         string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
+	Port             uint   `env:"SERVER_PORT" validate:"required"`
+	LogLevel         string `env:"LOG_LEVEL" validate:"required"`
+	LogFile          string `env:"LOG_FILE"`
+	AwsLocalEndpoint string `env:"AWS_LOCAL_ENDPOINT"`
+	Management       ManagementEnv
+	Mongo            MongoEnv
+	Rsk              RskEnv
+	Btc              BtcEnv
+	Provider         ProviderEnv
+	Pegin            PeginEnv
+	Pegout           PegoutEnv
+	Captcha          CaptchaEnv
 }
 
 type MongoEnv struct {
@@ -75,6 +75,14 @@ type CaptchaEnv struct {
 	Threshold float32 `env:"CAPTCHA_THRESHOLD"`
 	Disabled  bool    `env:"DISABLE_CAPTCHA"`
 	Url       string  `env:"CAPTCHA_URL"`
+}
+
+type ManagementEnv struct {
+	EnableManagementApi  bool   `env:"ENABLE_MANAGEMENT_API"`
+	SessionAuthKey       string `env:"MANAGEMENT_AUTH_KEY"`
+	SessionEncryptionKey string `env:"MANAGEMENT_ENCRYPTION_KEY"`
+	SessionTokenAuthKey  string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
+	UseHttps             bool   `env:"MANAGEMENT_USE_HTTPS"`
 }
 
 func LoadEnv() *Environment {

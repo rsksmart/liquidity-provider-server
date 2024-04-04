@@ -10,7 +10,7 @@ func NewCorsMiddleware() func(next http.Handler) http.Handler {
 			headers.Add("Vary", "Origin")
 			headers.Add("Vary", "Access-Control-Request-Method")
 			headers.Add("Vary", "Access-Control-Request-Headers")
-			headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token")
+			headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token")
 			headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			next.ServeHTTP(w, r)
 		})

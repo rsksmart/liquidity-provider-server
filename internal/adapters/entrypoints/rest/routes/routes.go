@@ -5,63 +5,77 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
+type Endpoint struct {
+	Path    string
+	Method  string
+	Handler http.Handler
+}
+
 func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
 	router.Use(middlewares.NewCorsMiddleware())
-	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 
-	router.Path("/health").Methods(http.MethodGet).HandlerFunc(handlers.NewHealthCheckHandler(useCaseRegistry.HealthUseCase()))
-	router.Path("/getProviders").Methods(http.MethodGet).HandlerFunc(handlers.NewGetProvidersHandler(useCaseRegistry.GetProvidersUseCase()))
-	router.Path("/pegin/getQuote").Methods(http.MethodPost).HandlerFunc(handlers.NewGetPeginQuoteHandler(useCaseRegistry.GetPeginQuoteUseCase()))
-	router.Path("/pegin/acceptQuote").Methods(http.MethodPost).Handler(
-		captchaMiddleware(
-			handlers.NewAcceptPeginQuoteHandler(useCaseRegistry.GetAcceptPeginQuoteUseCase()),
-		),
-	)
-	router.Path("/pegout/getQuotes").Methods(http.MethodPost).HandlerFunc(handlers.NewGetPegoutQuoteHandler(useCaseRegistry.GetPegoutQuoteUseCase()))
-	router.Path("/pegout/acceptQuote").Methods(http.MethodPost).Handler(
-		captchaMiddleware(
-			handlers.NewAcceptPegoutQuoteHandler(useCaseRegistry.GetAcceptPegoutQuoteUseCase()),
-		),
-	)
-	router.Path("/userQuotes").Methods(http.MethodGet).HandlerFunc(handlers.NewGetUserQuotesHandler(useCaseRegistry.GetUserDepositsUseCase()))
-	router.Path("/providers/details").Methods(http.MethodGet).HandlerFunc(handlers.NewProviderDetailsHandler(useCaseRegistry.GetProviderDetailUseCase()))
-
-	if env.EnableManagementApi {
-		log.Warn(
-			"Server is running with the management API exposed. This interface " +
-				"includes endpoints that must remain private at all cost. Please shut down " +
-				"the server if you haven't configured the WAF properly as explained in documentation.",
+	// TODO this handler is temporary, it is only to provide the CSRF token to the client, in further tasks, this
+	// token should be provided inside the login template
+	// ---
+	router.Path("/csrf").Methods(http.MethodGet).
+		Handler(
+			middlewares.NewDummyCsrfTokenHandler(env.Management),
 		)
-		router.Path("/pegin/collateral").Methods(http.MethodGet).
-			HandlerFunc(handlers.NewGetPeginCollateralHandler(useCaseRegistry.GetPeginCollateralUseCase()))
-		router.Path("/pegin/addCollateral").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewAddPeginCollateralHandler(useCaseRegistry.AddPeginCollateralUseCase()))
-		router.Path("/pegin/withdrawCollateral").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewWithdrawPeginCollateralHandler(useCaseRegistry.WithdrawPeginCollateralUseCase()))
-		router.Path("/pegout/collateral").Methods(http.MethodGet).
-			HandlerFunc(handlers.NewGetPegoutCollateralHandler(useCaseRegistry.GetPegoutCollateralUseCase()))
-		router.Path("/pegout/addCollateral").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewAddPegoutCollateralHandler(useCaseRegistry.AddPegoutCollateralUseCase()))
-		router.Path("/pegout/withdrawCollateral").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewWithdrawPegoutCollateralHandler(useCaseRegistry.WithdrawPegoutCollateralUseCase()))
-		router.Path("/providers/changeStatus").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewChangeStatusHandler(useCaseRegistry.ChangeStatusUseCase()))
-		router.Path("/providers/resignation").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewResignationHandler(useCaseRegistry.ResignationUseCase()))
-		router.Path("/configuration").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewSetGeneralConfigHandler(useCaseRegistry.SetGeneralConfigUseCase()))
-		router.Path("/configuration").Methods(http.MethodGet).
-			HandlerFunc(handlers.NewGetConfigurationHandler(useCaseRegistry.GetConfigurationUseCase()))
-		router.Path("/pegin/configuration").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewSetPeginConfigHandler(useCaseRegistry.SetPeginConfigUseCase()))
-		router.Path("/pegout/configuration").Methods(http.MethodPost).
-			HandlerFunc(handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()))
+	// ---
+
+	registerPublicRoutes(router, env, useCaseRegistry)
+
+	if env.Management.EnableManagementApi {
+		registerManagementRoutes(router, env, useCaseRegistry)
 	}
 
 	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())
+}
+
+func registerPublicRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
+	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
+	for _, endpoint := range getPublicEndpoints(useCaseRegistry) {
+		handler := endpoint.Handler
+		if endpoint.RequiresCaptcha {
+			handler = useMiddlewares(endpoint.Handler, captchaMiddleware)
+		}
+		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+	}
+}
+
+func registerManagementRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
+	log.Warn(
+		"Server is running with the management API exposed. This interface " +
+			"includes endpoints that must remain private at all cost. Please shut down " +
+			"the server if you haven't configured the WAF properly as explained in documentation.",
+	)
+
+	store, err := cookies.GetSessionCookieStore(env.Management)
+	if err != nil {
+		log.Fatal("Error registering management routes: ", err)
+	}
+	sessionMiddlewares := middlewares.NewSessionMiddlewares(env.Management, store)
+	managementEndpoints := getManagementEndpoints(env, useCaseRegistry)
+	var handler http.Handler
+	for _, endpoint := range managementEndpoints {
+		if endpoint.Path == LOGIN_PATH {
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
+		} else {
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
+		}
+		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+	}
+}
+
+func useMiddlewares(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+	return handler
 }
