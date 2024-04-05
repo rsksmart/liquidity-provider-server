@@ -67,6 +67,10 @@ services:
       - AWS_SECRET_ACCESS_KEY
       - AWS_REGION
       - AWS_LOCAL_ENDPOINT
+      - MANAGEMENT_AUTH_KEY
+      - MANAGEMENT_ENCRYPTION_KEY
+      - MANAGEMENT_TOKEN_AUTH_KEY
+      - MANAGEMENT_USE_HTTPS
     ports:
       - "8080:8080"
     volumes:
