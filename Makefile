@@ -37,21 +37,21 @@ api:
 	--generate-yaml true
 
 coverage: clean
-	mkdir coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out ./pkg/... ./internal/... ./cmd/...
-	go tool cover -func "coverage/cover.out"
-	go tool cover -html="coverage/cover.out"
-	rm coverage/cover.out
+	mkdir -p coverage
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out.temp ./pkg/... ./internal/... ./cmd/...
+	go tool cover -func "coverage/cover.out.temp"
+	go tool cover -html="coverage/cover.out.temp"
+	rm coverage/cover.out.temp
 
 coverage-report: clean
-	mkdir coverage
+	mkdir -p coverage
 	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out ./pkg/... ./internal/... ./cmd/...
 
 test: clean
-	mkdir coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out  ./pkg/... ./internal/... ./cmd/...
-	go tool cover -func "coverage/cover.out"
-	rm coverage/cover.out
+	mkdir -p coverage
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out.temp  ./pkg/... ./internal/... ./cmd/...
+	go tool cover -func "coverage/cover.out.temp"
+	rm coverage/cover.out.temp
 
 clean:
-	rm -rf build coverage
+	rm -rf build coverage/cover.out.temp

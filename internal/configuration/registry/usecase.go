@@ -47,6 +47,7 @@ type UseCaseRegistry struct {
 	setPegoutConfigUseCase          *liquidity_provider.SetPegoutConfigUseCase
 	setGeneralConfigUseCase         *liquidity_provider.SetGeneralConfigUseCase
 	getConfigurationUseCase         *liquidity_provider.GetConfigUseCase
+	loginUseCase                    *liquidity_provider.LoginUseCase
 }
 
 // NewUseCaseRegistry
@@ -191,6 +192,7 @@ func NewUseCaseRegistry(
 			crypto.Keccak256,
 		),
 		getConfigurationUseCase: liquidity_provider.NewGetConfigUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
+		loginUseCase:            liquidity_provider.NewLoginUseCase(),
 	}
 }
 
@@ -276,4 +278,8 @@ func (registry *UseCaseRegistry) SetGeneralConfigUseCase() *liquidity_provider.S
 
 func (registry *UseCaseRegistry) GetConfigurationUseCase() *liquidity_provider.GetConfigUseCase {
 	return registry.getConfigurationUseCase
+}
+
+func (registry *UseCaseRegistry) LoginUseCase() *liquidity_provider.LoginUseCase {
+	return registry.loginUseCase
 }

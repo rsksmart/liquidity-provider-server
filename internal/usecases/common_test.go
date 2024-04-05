@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"slices"
 	"testing"
 )
 
@@ -94,19 +93,6 @@ func TestCalculateDaoAmounts_Fail(t *testing.T) {
 	result, err := u.CalculateDaoAmounts(ctx, &rpc, entities.NewUWei(500000000000000), 1, "0x1234")
 	require.Equal(t, u.DaoAmounts{}, result)
 	require.Error(t, err)
-}
-
-func TestGetRandomInt(t *testing.T) {
-	var numbers []int64
-	var number int64
-	var err error
-	for i := 0; i < 100; i++ {
-		number, err = u.GetRandomInt()
-		assert.Positive(t, number)
-		assert.False(t, slices.Contains(numbers, number))
-		require.NoError(t, err)
-		numbers = append(numbers, number)
-	}
 }
 
 func TestValidateMinLockValue(t *testing.T) {

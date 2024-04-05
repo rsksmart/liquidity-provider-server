@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,7 +9,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math"
 	"math/big"
 )
 
@@ -140,14 +138,6 @@ func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, 
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
 	}
 	return nil
-}
-
-func GetRandomInt() (int64, error) {
-	random, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt))
-	if err != nil {
-		return 0, err
-	}
-	return random.Int64(), nil
 }
 
 func SignConfiguration[C liquidity_provider.ConfigurationType](
