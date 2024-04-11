@@ -17,7 +17,7 @@ import (
 
 // not a password, only a random hash
 // nolint:gosec
-const mockDefaultPassword = "2071bae7f92c6272f614e40d57272518480c48fb4c7a4c39525fdc14e6c97c1d"
+const mockDefaultFakePassword = "2071bae7f92c6272f614e40d57272518480c48fb4c7a4c39525fdc14e6c97c1d"
 
 func TestValidateConfiguredProvider(t *testing.T) {
 	lbc := &mocks.LbcMock{}
@@ -94,15 +94,15 @@ func TestReadDefaultPassword_NotRead(t *testing.T) {
 	passwordChannel := make(chan entities.Event, 1)
 	passwordChannel <- lpEntity.DefaultCredentialsSetEvent{
 		Event:    entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
-		Password: mockDefaultPassword,
+		Password: mockDefaultFakePassword,
 	}
 	passwordProvider := &mocks.DefaultPasswordProviderMock{}
 	passwordProvider.On("DefaultPassword").Return("").Once()
 	passwordProvider.On("GetDefaultPasswordChannel").Return((<-chan entities.Event)(passwordChannel)).Once()
-	passwordProvider.On("SetDefaultPassword", mockDefaultPassword).Return().Once()
-	passwordProvider.On("DefaultPassword").Return(mockDefaultPassword).Once()
+	passwordProvider.On("SetDefaultPassword", mockDefaultFakePassword).Return().Once()
+	passwordProvider.On("DefaultPassword").Return(mockDefaultFakePassword).Once()
 	password, err := liquidity_provider.ReadDefaultPassword(passwordProvider)
-	assert.Equal(t, mockDefaultPassword, password)
+	assert.Equal(t, mockDefaultFakePassword, password)
 	require.NoError(t, err)
 	passwordProvider.AssertExpectations(t)
 }
@@ -138,7 +138,7 @@ func TestReadDefaultPassword_ErroHandling(t *testing.T) {
 func TestValidateCredentials_DefaultCredentials(t *testing.T) {
 	credentials := lpEntity.Credentials{
 		Username: "admin",
-		Password: mockDefaultPassword,
+		Password: mockDefaultFakePassword,
 	}
 	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	passwordProvider := &mocks.DefaultPasswordProviderMock{}
@@ -256,12 +256,12 @@ func useDefaultPasswordSetUp(
 	passwordChannel := make(chan entities.Event, 1)
 	passwordChannel <- lpEntity.DefaultCredentialsSetEvent{
 		Event:    entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
-		Password: mockDefaultPassword,
+		Password: mockDefaultFakePassword,
 	}
 	passwordProvider.On("DefaultPassword").Return("").Once()
 	passwordProvider.On("GetDefaultPasswordChannel").Return((<-chan entities.Event)(passwordChannel)).Once()
-	passwordProvider.On("SetDefaultPassword", mockDefaultPassword).Return().Once()
-	passwordProvider.On("DefaultPassword").Return(mockDefaultPassword).Once()
+	passwordProvider.On("SetDefaultPassword", mockDefaultFakePassword).Return().Once()
+	passwordProvider.On("DefaultPassword").Return(mockDefaultFakePassword).Once()
 	passwordProvider.On("LiquidityProviderRepository").Return(lpRepository).Once()
 }
 

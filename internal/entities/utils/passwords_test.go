@@ -140,29 +140,29 @@ func TestPasswordDigitRule(t *testing.T) {
 func TestCheckPasswordComplexity(t *testing.T) {
 	rules := utils.DefaultPasswordValidationRuleset()
 
-	noDigitPassword := "NoDigitPassword!"
-	noSpecialCharPassword := "NoSpecialCharPassword1"
-	noUpperCasePassword := "nouppercasepassword1!"
-	noLowerCasePassword := "NOLOWERCASEPASSWORD1!"
-	tooShortPassword := "Short1!"
+	noDigitFakePassword := "NoDigitPassword!"
+	noSpecialCharFakePassword := "NoSpecialCharPassword1"
+	noUpperCaseFakePassword := "nouppercasepassword1!"
+	noLowerCaseFakePassword := "NOLOWERCASEPASSWORD1!"
+	tooShortFakePassword := "Short1!"
 	// this is not a credential of anything, they are two sha256 hashes concatenated + 1 extra char
 	// nolint:gosec
-	tooLongPassword := "E7930fa7a7891cfb9c9338f38de6086705801a1ce64d540ea8d3fcb5ab1e3068e7930fa7a7891cfb9c9338f38de6086705801a1ce64d540ea8d3fcb5ab1e3068!"
-	validPassword := "ValidPassword1!"
+	tooLongFakePassword := "E7930fa7a7891cfb9c9338f38de6086705801a1ce64d540ea8d3fcb5ab1e3068e7930fa7a7891cfb9c9338f38de6086705801a1ce64d540ea8d3fcb5ab1e3068!"
+	validFakePassword := "ValidPassword1!"
 
-	err := utils.CheckPasswordComplexity(noDigitPassword, rules...)
+	err := utils.CheckPasswordComplexity(noDigitFakePassword, rules...)
 	require.ErrorContains(t, err, "password must contain at least one digit")
-	err = utils.CheckPasswordComplexity(noSpecialCharPassword, rules...)
+	err = utils.CheckPasswordComplexity(noSpecialCharFakePassword, rules...)
 	require.ErrorContains(t, err, "password must contain at least one special character")
-	err = utils.CheckPasswordComplexity(noUpperCasePassword, rules...)
+	err = utils.CheckPasswordComplexity(noUpperCaseFakePassword, rules...)
 	require.ErrorContains(t, err, "password must contain at least one uppercase character")
-	err = utils.CheckPasswordComplexity(noLowerCasePassword, rules...)
+	err = utils.CheckPasswordComplexity(noLowerCaseFakePassword, rules...)
 	require.ErrorContains(t, err, "password must contain at least one lowercase character")
-	err = utils.CheckPasswordComplexity(tooShortPassword, rules...)
+	err = utils.CheckPasswordComplexity(tooShortFakePassword, rules...)
 	require.ErrorContains(t, err, "password is too short")
-	err = utils.CheckPasswordComplexity(tooLongPassword, rules...)
+	err = utils.CheckPasswordComplexity(tooLongFakePassword, rules...)
 	require.ErrorContains(t, err, "password is too long")
-	err = utils.CheckPasswordComplexity(validPassword, rules...)
+	err = utils.CheckPasswordComplexity(validFakePassword, rules...)
 	require.NoError(t, err)
 	require.Len(t, rules, 5)
 }
