@@ -556,6 +556,27 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
           description: ""
       summary: Health
+  /management/credentials:
+    post:
+      description: ' Set new credentials to log into the Management API'
+      responses:
+        "200":
+          description: ""
+      summary: Set Login Credentials
+  /management/login:
+    post:
+      description: ' Authenticate to start a Management API session'
+      responses:
+        "200":
+          description: ""
+      summary: Management Login
+  /management/logout:
+    post:
+      description: ' Logout from the Management API session'
+      responses:
+        "204":
+          description: ""
+      summary: Management Logout
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'

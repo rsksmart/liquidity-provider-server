@@ -37,8 +37,15 @@ type GeneralConfiguration struct {
 	BtcConfirmations ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
 }
 
+type HashedCredentials struct {
+	HashedUsername string `bson:"hashed_username"`
+	HashedPassword string `bson:"hashed_password"`
+	UsernameSalt   string `bson:"username_salt"`
+	PasswordSalt   string `bson:"password_salt"`
+}
+
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials
 }
 
 func (config PeginConfiguration) ValidateAmount(amount *entities.Wei) error {
