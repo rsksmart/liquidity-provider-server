@@ -48,6 +48,9 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
+	LoginId                    UseCaseId = "Login"
+	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
+	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
 )
 
 var (

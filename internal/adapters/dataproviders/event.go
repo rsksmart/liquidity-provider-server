@@ -11,6 +11,8 @@ var (
 	eventBusSingleton *localEventBus
 )
 
+const subscriptionBufferSize = 20
+
 type localEventBus struct {
 	topics         map[entities.EventId][]chan<- entities.Event
 	subscribeMutex sync.Mutex
@@ -39,7 +41,7 @@ func (bus *localEventBus) Subscribe(id entities.EventId) <-chan entities.Event {
 		topics = make([]chan<- entities.Event, 0)
 		bus.topics[id] = topics
 	}
-	subscription := make(chan entities.Event)
+	subscription := make(chan entities.Event, subscriptionBufferSize)
 	bus.topics[id] = append(topics, subscription)
 	return subscription
 }

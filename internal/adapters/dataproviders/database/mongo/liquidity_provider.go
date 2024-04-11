@@ -19,6 +19,7 @@ const (
 	peginConfigId   configurationName = "pegin"
 	pegoutConfigId  configurationName = "pegout"
 	generalConfigId configurationName = "general"
+	credentialsId   configurationName = "credentials"
 )
 
 type lpMongoRepository struct {
@@ -37,19 +38,19 @@ func NewLiquidityProviderRepository(conn *Connection) liquidity_provider.Liquidi
 func (repo *lpMongoRepository) GetPeginConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	return getConfiguration[liquidity_provider.PeginConfiguration](dbCtx, repo, peginConfigId)
+	return getConfigurationVerbose[liquidity_provider.PeginConfiguration](dbCtx, repo, peginConfigId)
 }
 
 func (repo *lpMongoRepository) GetPegoutConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	return getConfiguration[liquidity_provider.PegoutConfiguration](dbCtx, repo, pegoutConfigId)
+	return getConfigurationVerbose[liquidity_provider.PegoutConfiguration](dbCtx, repo, pegoutConfigId)
 }
 
 func (repo *lpMongoRepository) GetGeneralConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	return getConfiguration[liquidity_provider.GeneralConfiguration](dbCtx, repo, generalConfigId)
+	return getConfigurationVerbose[liquidity_provider.GeneralConfiguration](dbCtx, repo, generalConfigId)
 }
 
 func (repo *lpMongoRepository) UpsertPeginConfiguration(ctx context.Context, signedConfig entities.Signed[liquidity_provider.PeginConfiguration]) error {
@@ -59,7 +60,7 @@ func (repo *lpMongoRepository) UpsertPeginConfiguration(ctx context.Context, sig
 		Signed: signedConfig,
 		Name:   peginConfigId,
 	}
-	return upsertConfiguration(dbCtx, repo, configToStore)
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
 }
 
 func (repo *lpMongoRepository) UpsertPegoutConfiguration(ctx context.Context, signedConfig entities.Signed[liquidity_provider.PegoutConfiguration]) error {
@@ -69,7 +70,7 @@ func (repo *lpMongoRepository) UpsertPegoutConfiguration(ctx context.Context, si
 		Signed: signedConfig,
 		Name:   pegoutConfigId,
 	}
-	return upsertConfiguration(dbCtx, repo, configToStore)
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
 }
 
 func (repo *lpMongoRepository) UpsertGeneralConfiguration(ctx context.Context, signedConfig entities.Signed[liquidity_provider.GeneralConfiguration]) error {
@@ -79,13 +80,46 @@ func (repo *lpMongoRepository) UpsertGeneralConfiguration(ctx context.Context, s
 		Signed: signedConfig,
 		Name:   generalConfigId,
 	}
-	return upsertConfiguration(dbCtx, repo, configToStore)
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
+}
+
+func (repo *lpMongoRepository) GetCredentials(ctx context.Context) (*entities.Signed[liquidity_provider.HashedCredentials], error) {
+	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	defer cancel()
+	return getConfiguration[liquidity_provider.HashedCredentials](dbCtx, repo, credentialsId, false)
+}
+
+func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credentials entities.Signed[liquidity_provider.HashedCredentials]) error {
+	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	defer cancel()
+	configToStore := storedConfiguration[liquidity_provider.HashedCredentials]{
+		Signed: credentials,
+		Name:   credentialsId,
+	}
+	return upsertConfiguration(dbCtx, repo, configToStore, false)
+}
+
+func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](
+	ctx context.Context,
+	repo *lpMongoRepository,
+	config storedConfiguration[C],
+) error {
+	return upsertConfiguration(ctx, repo, config, true)
+}
+
+func getConfigurationVerbose[C liquidity_provider.ConfigurationType](
+	ctx context.Context,
+	repo *lpMongoRepository,
+	name configurationName,
+) (*entities.Signed[C], error) {
+	return getConfiguration[C](ctx, repo, name, true)
 }
 
 func upsertConfiguration[C liquidity_provider.ConfigurationType](
 	ctx context.Context,
 	repo *lpMongoRepository,
 	config storedConfiguration[C],
+	logInteraction bool,
 ) error {
 	collection := repo.conn.Collection(liquidityProviderCollection)
 	options := options.Replace().SetUpsert(true)
@@ -93,16 +127,18 @@ func upsertConfiguration[C liquidity_provider.ConfigurationType](
 	_, err := collection.ReplaceOne(ctx, filter, config, options)
 	if err != nil {
 		return err
-	} else {
-		logDbInteraction(insert, config)
-		return nil
 	}
+	if logInteraction {
+		logDbInteraction(insert, config)
+	}
+	return nil
 }
 
 func getConfiguration[C liquidity_provider.ConfigurationType](
 	ctx context.Context,
 	repo *lpMongoRepository,
 	name configurationName,
+	logInteraction bool,
 ) (*entities.Signed[C], error) {
 	config := &storedConfiguration[C]{}
 	collection := repo.conn.Collection(liquidityProviderCollection)
@@ -114,6 +150,8 @@ func getConfiguration[C liquidity_provider.ConfigurationType](
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, config.Signed)
+	if logInteraction {
+		logDbInteraction(read, config.Signed)
+	}
 	return &config.Signed, nil
 }

@@ -10,3 +10,9 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin:
     interfaces:
       rpcClient:
+  github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
+    interfaces:
+      DefaultPasswordProvider:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
+    interfaces:
+      LiquidityProviderRepository:

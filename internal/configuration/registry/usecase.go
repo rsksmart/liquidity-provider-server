@@ -12,6 +12,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 )
 
+var signingHashFunction = crypto.Keccak256
+
 type UseCaseRegistry struct {
 	getPeginQuoteUseCase            *pegin.GetQuoteUseCase
 	registerProviderUseCase         *liquidity_provider.RegistrationUseCase
@@ -48,6 +50,8 @@ type UseCaseRegistry struct {
 	setGeneralConfigUseCase         *liquidity_provider.SetGeneralConfigUseCase
 	getConfigurationUseCase         *liquidity_provider.GetConfigUseCase
 	loginUseCase                    *liquidity_provider.LoginUseCase
+	setCredentialsUseCase           *liquidity_provider.SetCredentialsUseCase
+	defaultCredentialsUseCase       *liquidity_provider.GenerateDefaultCredentialsUseCase
 }
 
 // NewUseCaseRegistry
@@ -179,20 +183,30 @@ func NewUseCaseRegistry(
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
-			crypto.Keccak256,
+			signingHashFunction,
 		),
 		setPeginConfigUseCase: liquidity_provider.NewSetPeginConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
-			crypto.Keccak256,
+			signingHashFunction,
 		),
 		setPegoutConfigUseCase: liquidity_provider.NewSetPegoutConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
-			crypto.Keccak256,
+			signingHashFunction,
 		),
 		getConfigurationUseCase: liquidity_provider.NewGetConfigUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
-		loginUseCase:            liquidity_provider.NewLoginUseCase(),
+		loginUseCase:            liquidity_provider.NewLoginUseCase(databaseRegistry.LiquidityProviderRepository, messaging.EventBus),
+		setCredentialsUseCase: liquidity_provider.NewSetCredentialsUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+			messaging.EventBus,
+		),
+		defaultCredentialsUseCase: liquidity_provider.NewGenerateDefaultCredentialsUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			messaging.EventBus,
+		),
 	}
 }
 
@@ -282,4 +296,12 @@ func (registry *UseCaseRegistry) GetConfigurationUseCase() *liquidity_provider.G
 
 func (registry *UseCaseRegistry) LoginUseCase() *liquidity_provider.LoginUseCase {
 	return registry.loginUseCase
+}
+
+func (registry *UseCaseRegistry) SetCredentialsUseCase() *liquidity_provider.SetCredentialsUseCase {
+	return registry.setCredentialsUseCase
+}
+
+func (registry *UseCaseRegistry) GenerateDefaultCredentialsUseCase() *liquidity_provider.GenerateDefaultCredentialsUseCase {
+	return registry.defaultCredentialsUseCase
 }
