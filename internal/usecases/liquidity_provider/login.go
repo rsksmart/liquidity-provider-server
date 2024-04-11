@@ -10,7 +10,7 @@ import (
 type LoginUseCase struct {
 	lpRepository           liquidity_provider.LiquidityProviderRepository
 	defaultPasswordChannel <-chan entities.Event
-	defaultPassword        string
+	defaultCredentials     *liquidity_provider.HashedCredentials
 }
 
 func NewLoginUseCase(
@@ -32,14 +32,14 @@ func (useCase *LoginUseCase) LiquidityProviderRepository() liquidity_provider.Li
 	return useCase.lpRepository
 }
 
-func (useCase *LoginUseCase) GetDefaultPasswordChannel() <-chan entities.Event {
+func (useCase *LoginUseCase) GetDefaultCredentialsChannel() <-chan entities.Event {
 	return useCase.defaultPasswordChannel
 }
 
-func (useCase *LoginUseCase) SetDefaultPassword(password string) {
-	useCase.defaultPassword = password
+func (useCase *LoginUseCase) SetDefaultCredentials(credentials *liquidity_provider.HashedCredentials) {
+	useCase.defaultCredentials = credentials
 }
 
-func (useCase *LoginUseCase) DefaultPassword() string {
-	return useCase.defaultPassword
+func (useCase *LoginUseCase) DefaultCredentials() *liquidity_provider.HashedCredentials {
+	return useCase.defaultCredentials
 }

@@ -12,7 +12,7 @@ packages:
       rpcClient:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
-      DefaultPasswordProvider:
+      DefaultCredentialsProvider:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
