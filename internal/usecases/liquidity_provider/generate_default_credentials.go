@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"encoding/base32"
+	"encoding/hex"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -45,9 +46,24 @@ func (useCase *GenerateDefaultCredentialsUseCase) Run(ctx context.Context, targe
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.DefaultCredentialsId, fmt.Errorf("error writing password file: %w", err))
 	}
+
+	hashedUsername, usernameSalt, err := utils.HashAndSaltArgon2(defaultUsername, credentialSaltSize)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.DefaultCredentialsId, err)
+	}
+	hashedPassword, passwordSalt, err := utils.HashAndSaltArgon2(stringPassword, credentialSaltSize)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.DefaultCredentialsId, err)
+	}
+
 	useCase.eventBus.Publish(liquidity_provider.DefaultCredentialsSetEvent{
-		Event:    entities.NewBaseEvent(liquidity_provider.DefaultCredentialsSetEventId),
-		Password: stringPassword,
+		Event: entities.NewBaseEvent(liquidity_provider.DefaultCredentialsSetEventId),
+		Credentials: &liquidity_provider.HashedCredentials{
+			HashedUsername: hex.EncodeToString(hashedUsername),
+			HashedPassword: hex.EncodeToString(hashedPassword),
+			UsernameSalt:   usernameSalt,
+			PasswordSalt:   passwordSalt,
+		},
 	})
 	log.Infof("There was no password detected in the database. A new password has been generated and saved in the file %s."+
 		"Please keep this file safe. The first time you open the management interface, you will be asked to change this password.", passwordFile)

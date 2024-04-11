@@ -21,11 +21,16 @@ func TestLoginUseCase_DefaultPassword(t *testing.T) {
 	mockChannel := make(chan entities.Event)
 	eventBus.On("Subscribe", mock.Anything).Return((<-chan entities.Event)(mockChannel)).Once()
 	useCase := liquidity_provider.NewLoginUseCase(lpRepository, eventBus)
-	const password = test.AnyString
+	var credentials = &lpEntity.HashedCredentials{
+		HashedUsername: test.AnyString,
+		HashedPassword: test.AnyString,
+		UsernameSalt:   test.AnyString,
+		PasswordSalt:   test.AnyString,
+	}
 
-	assert.Empty(t, useCase.DefaultPassword())
-	useCase.SetDefaultPassword(password)
-	assert.Equal(t, password, useCase.DefaultPassword())
+	assert.Nil(t, useCase.DefaultCredentials())
+	useCase.SetDefaultCredentials(credentials)
+	assert.Equal(t, credentials, useCase.DefaultCredentials())
 }
 
 func TestLoginUseCase_GetDefaultPasswordChannel(t *testing.T) {
@@ -33,23 +38,19 @@ func TestLoginUseCase_GetDefaultPasswordChannel(t *testing.T) {
 	eventBus := dataproviders.NewLocalEventBus()
 	useCase := liquidity_provider.NewLoginUseCase(lpRepository, eventBus)
 	eventBus.Publish(lpEntity.DefaultCredentialsSetEvent{
-		Event:    entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
-		Password: test.AnyString,
+		Event:       entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
+		Credentials: hashedDefaultCredentialsMock,
 	})
-	assert.NotNil(t, useCase.GetDefaultPasswordChannel())
+	assert.NotNil(t, useCase.GetDefaultCredentialsChannel())
 	select {
-	case content := <-useCase.GetDefaultPasswordChannel():
-		assert.Equal(t, test.AnyString, content.(lpEntity.DefaultCredentialsSetEvent).Password)
+	case content := <-useCase.GetDefaultCredentialsChannel():
+		assert.Equal(t, hashedDefaultCredentialsMock, content.(lpEntity.DefaultCredentialsSetEvent).Credentials)
 	default:
 		assert.Fail(t, "expected to receive an event")
 	}
 }
 
 func TestLoginUseCase_Run_UseDefaultPassword(t *testing.T) {
-	const (
-		username = "admin"
-		password = "login password"
-	)
 	var waitGroup sync.WaitGroup
 	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, nil).Twice()
@@ -59,19 +60,16 @@ func TestLoginUseCase_Run_UseDefaultPassword(t *testing.T) {
 	go func(wg *sync.WaitGroup, bus entities.EventBus) {
 		defer wg.Done()
 		bus.Publish(lpEntity.DefaultCredentialsSetEvent{
-			Event:    entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
-			Password: password,
+			Event:       entities.NewBaseEvent(lpEntity.DefaultCredentialsSetEventId),
+			Credentials: hashedDefaultCredentialsMock,
 		})
 	}(&waitGroup, eventBus)
 	waitGroup.Wait()
-	err := useCase.Run(context.Background(), lpEntity.Credentials{
-		Username: username,
-		Password: password,
-	})
+	err := useCase.Run(context.Background(), defaultCredentialsMock)
 	require.NoError(t, err)
 	err = useCase.Run(context.Background(), lpEntity.Credentials{
-		Username: username,
-		Password: "wrong password",
+		Username: defaultCredentialsMock.Username,
+		Password: defaultCredentialsMock.Password + "1234",
 	})
 	require.ErrorIs(t, err, liquidity_provider.BadLoginError)
 	lpRepository.AssertExpectations(t)

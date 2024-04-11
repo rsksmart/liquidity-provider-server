@@ -103,5 +103,5 @@ type Credentials struct {
 
 type DefaultCredentialsSetEvent struct {
 	entities.Event
-	Password string
+	Credentials *HashedCredentials
 }

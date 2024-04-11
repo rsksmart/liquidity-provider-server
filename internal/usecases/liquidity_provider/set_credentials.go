@@ -9,13 +9,11 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-const credentialSaltSize = 32
-
 type SetCredentialsUseCase struct {
 	lpRepository           liquidity_provider.LiquidityProviderRepository
 	signer                 entities.Signer
 	hashFunc               entities.HashFunction
-	defaultPassword        string
+	defaultCredentials     *liquidity_provider.HashedCredentials
 	defaultPasswordChannel <-chan entities.Event
 }
 
@@ -73,14 +71,14 @@ func (useCase *SetCredentialsUseCase) LiquidityProviderRepository() liquidity_pr
 	return useCase.lpRepository
 }
 
-func (useCase *SetCredentialsUseCase) GetDefaultPasswordChannel() <-chan entities.Event {
+func (useCase *SetCredentialsUseCase) GetDefaultCredentialsChannel() <-chan entities.Event {
 	return useCase.defaultPasswordChannel
 }
 
-func (useCase *SetCredentialsUseCase) SetDefaultPassword(password string) {
-	useCase.defaultPassword = password
+func (useCase *SetCredentialsUseCase) SetDefaultCredentials(credentials *liquidity_provider.HashedCredentials) {
+	useCase.defaultCredentials = credentials
 }
 
-func (useCase *SetCredentialsUseCase) DefaultPassword() string {
-	return useCase.defaultPassword
+func (useCase *SetCredentialsUseCase) DefaultCredentials() *liquidity_provider.HashedCredentials {
+	return useCase.defaultCredentials
 }

@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	defaultUsername = "admin"
+	defaultUsername    = "admin"
+	credentialSaltSize = 32
 )
 
 var BadLoginError = errors.New("incorrect username or credentials")
@@ -44,73 +45,64 @@ func ValidateConfiguredProvider(
 	return providers[index].Id, nil
 }
 
-// DefaultPasswordProvider this is an interface to be implemented by those use case that require to use ValidateCredentials,
+// DefaultCredentialsProvider this is an interface to be implemented by those use case that require to use ValidateCredentials,
 // since that function requires a way to access to the default password set by the application
-type DefaultPasswordProvider interface {
+type DefaultCredentialsProvider interface {
 	LiquidityProviderRepository() liquidity_provider.LiquidityProviderRepository
-	GetDefaultPasswordChannel() <-chan entities.Event
-	SetDefaultPassword(password string)
-	DefaultPassword() string
+	GetDefaultCredentialsChannel() <-chan entities.Event
+	SetDefaultCredentials(password *liquidity_provider.HashedCredentials)
+	DefaultCredentials() *liquidity_provider.HashedCredentials
 }
 
 func ValidateCredentials(
 	ctx context.Context,
-	useCase DefaultPasswordProvider,
+	useCase DefaultCredentialsProvider,
 	credentials liquidity_provider.Credentials,
 ) error {
+	var credentialsToCompare liquidity_provider.HashedCredentials
+	var err error
+
 	storedCredentials, err := useCase.LiquidityProviderRepository().GetCredentials(ctx)
 	if err != nil {
 		return err
 	}
 	if storedCredentials == nil {
-		return validateDefaultCredentials(useCase, credentials)
+		if credentialsToCompare, err = ReadDefaultCredentials(useCase); err != nil {
+			return err
+		}
+	} else {
+		credentialsToCompare = storedCredentials.Value
 	}
 
-	usernameHash, err := utils.HashArgon2(credentials.Username, storedCredentials.Value.UsernameSalt)
+	usernameHash, err := utils.HashArgon2(credentials.Username, credentialsToCompare.UsernameSalt)
 	if err != nil {
 		return err
 	}
-	passwordHash, err := utils.HashArgon2(credentials.Password, storedCredentials.Value.PasswordSalt)
+	passwordHash, err := utils.HashArgon2(credentials.Password, credentialsToCompare.PasswordSalt)
 	if err != nil {
 		return err
 	}
-	err = compareCredentials(usernameHash, passwordHash, storedCredentials.Value)
+	err = compareCredentials(usernameHash, passwordHash, credentialsToCompare)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func ReadDefaultPassword(useCase DefaultPasswordProvider) (string, error) {
-	if useCase.DefaultPassword() != "" {
-		return useCase.DefaultPassword(), nil
+func ReadDefaultCredentials(useCase DefaultCredentialsProvider) (liquidity_provider.HashedCredentials, error) {
+	if useCase.DefaultCredentials() != nil {
+		return *useCase.DefaultCredentials(), nil
 	}
 	select {
-	case event := <-useCase.GetDefaultPasswordChannel():
+	case event := <-useCase.GetDefaultCredentialsChannel():
 		parsedEvent, ok := event.(liquidity_provider.DefaultCredentialsSetEvent)
 		if !ok {
-			return "", errors.New("wrong event error")
+			return liquidity_provider.HashedCredentials{}, errors.New("wrong event error")
 		}
-		useCase.SetDefaultPassword(parsedEvent.Password)
-		return useCase.DefaultPassword(), nil
+		useCase.SetDefaultCredentials(parsedEvent.Credentials)
+		return *useCase.DefaultCredentials(), nil
 	default:
-		return "", errors.New("default password not set")
-	}
-}
-
-func validateDefaultCredentials(
-	useCase DefaultPasswordProvider,
-	credentials liquidity_provider.Credentials,
-) error {
-	var defaultPassword string
-	var err error
-	if defaultPassword, err = ReadDefaultPassword(useCase); err != nil {
-		return err
-	}
-	if credentials.Username == defaultUsername && credentials.Password == defaultPassword {
-		return nil
-	} else {
-		return BadLoginError
+		return liquidity_provider.HashedCredentials{}, errors.New("default password not set")
 	}
 }
 
