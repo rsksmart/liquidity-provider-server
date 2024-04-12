@@ -1,4 +1,4 @@
-package rootstock
+package federation
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
-func getFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) ([]byte, error) {
+func GetFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) ([]byte, error) {
 	var buf *bytes.Buffer
 	var err error
 
@@ -30,7 +30,7 @@ func getFedRedeemScriptAfterIrisActivation(fedInfo blockchain.FederationInfo, bt
 		return nil, err
 	}
 
-	err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
+	err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -43,14 +43,14 @@ func getFedRedeemScriptBeforeIrisActivation(fedInfo blockchain.FederationInfo, b
 		return nil, err
 	}
 
-	err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
+	err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
 	if err != nil { // ok, it could be that ERP is not yet activated, falling back to redeem Script
 		buf, err = getRedeemScriptBuf(fedInfo, true)
 		if err != nil {
 			return nil, err
 		}
 
-		err = validateRedeemScript(fedInfo, btcParams, buf.Bytes())
+		err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func addStdNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.S
 	return nil
 }
 
-func validateRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params, script []byte) error {
+func ValidateRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params, script []byte) error {
 	addr, err := btcutil.NewAddressScriptHash(script, &btcParams)
 	if err != nil {
 		return err
@@ -188,7 +188,7 @@ func addErpNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.S
 	return nil
 }
 
-func getFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) []byte {
+func GetFlyoverRedeemScript(derivationValue []byte, fedRedeemScript []byte) []byte {
 	var buf bytes.Buffer
 	hashPrefix, _ := hex.DecodeString("20")
 	buf.Write(hashPrefix)
