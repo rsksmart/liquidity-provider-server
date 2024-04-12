@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"math/big"
@@ -85,16 +86,16 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.Flyover
 	}
 
 	if len(fedRedeemScript) == 0 {
-		if fedRedeemScript, err = getFedRedeemScript(args.FedInfo, *bridge.btcParams); err != nil {
+		if fedRedeemScript, err = federation.GetFedRedeemScript(args.FedInfo, *bridge.btcParams); err != nil {
 			return blockchain.FlyoverDerivation{}, fmt.Errorf("error generating fed redeem script: %w", err)
 		}
 	} else {
-		if err = validateRedeemScript(args.FedInfo, *bridge.btcParams, fedRedeemScript); err != nil {
+		if err = federation.ValidateRedeemScript(args.FedInfo, *bridge.btcParams, fedRedeemScript); err != nil {
 			return blockchain.FlyoverDerivation{}, fmt.Errorf("error validating fed redeem script: %w", err)
 		}
 	}
 
-	flyoverScript = getFlyoverRedeemScript(derivationValue, fedRedeemScript)
+	flyoverScript = federation.GetFlyoverRedeemScript(derivationValue, fedRedeemScript)
 	if addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, bridge.btcParams); err != nil {
 		return blockchain.FlyoverDerivation{}, err
 	}
