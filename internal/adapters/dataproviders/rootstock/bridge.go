@@ -1,13 +1,10 @@
 package rootstock
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
@@ -71,12 +68,8 @@ func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 
 func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.FlyoverDerivationArgs) (blockchain.FlyoverDerivation, error) {
 	var err error
-	var fedRedeemScript, derivationValue, flyoverScript []byte
-	var addressScriptHash *btcutil.AddressScriptHash
-
-	if derivationValue = bridge.getDerivationValueHash(args); err != nil {
-		return blockchain.FlyoverDerivation{}, fmt.Errorf("error computing derivation value: %w", err)
-	}
+	var fedRedeemScript, derivationValue []byte
+	derivationValue = federation.GetDerivationValueHash(args)
 	opts := &bind.CallOpts{}
 	fedRedeemScript, err = rskRetry(func() ([]byte, error) {
 		return bridge.contract.GetActivePowpegRedeemScript(opts)
@@ -85,24 +78,7 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.Flyover
 		return blockchain.FlyoverDerivation{}, fmt.Errorf("error retreiving fed redeem script from bridge: %w", err)
 	}
 
-	if len(fedRedeemScript) == 0 {
-		if fedRedeemScript, err = federation.GetFedRedeemScript(args.FedInfo, *bridge.btcParams); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error generating fed redeem script: %w", err)
-		}
-	} else {
-		if err = federation.ValidateRedeemScript(args.FedInfo, *bridge.btcParams, fedRedeemScript); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error validating fed redeem script: %w", err)
-		}
-	}
-
-	flyoverScript = federation.GetFlyoverRedeemScript(derivationValue, fedRedeemScript)
-	if addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, bridge.btcParams); err != nil {
-		return blockchain.FlyoverDerivation{}, err
-	}
-	return blockchain.FlyoverDerivation{
-		Address:      addressScriptHash.EncodeAddress(),
-		RedeemScript: hex.EncodeToString(flyoverScript),
-	}, nil
+	return federation.CalculateFlyoverDerivationAddress(args.FedInfo, *bridge.btcParams, fedRedeemScript, derivationValue)
 }
 
 func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
@@ -164,16 +140,4 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 		IrisActivationHeight: bridge.irisActivationHeight,
 		ErpKeys:              bridge.erpKeys,
 	}, nil
-}
-
-func (bridge *rskBridgeImpl) getDerivationValueHash(args blockchain.FlyoverDerivationArgs) []byte {
-	var buf bytes.Buffer
-	buf.Write(args.QuoteHash)
-	buf.Write(args.UserBtcRefundAddress)
-	buf.Write(args.LbcAdress)
-	buf.Write(args.LpBtcAddress)
-
-	derivationValueHash := crypto.Keccak256(buf.Bytes())
-
-	return derivationValueHash
 }
