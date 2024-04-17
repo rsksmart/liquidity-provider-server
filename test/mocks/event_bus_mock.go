@@ -27,3 +27,12 @@ type EventBusMock struct {
 func (m *EventBusMock) Publish(event entities.Event) {
 	m.Called(event)
 }
+
+func (m *EventBusMock) Subscribe(eventId entities.EventId) <-chan entities.Event {
+	args := m.Called(eventId)
+	return args.Get(0).(<-chan entities.Event)
+}
+
+func (m *EventBusMock) Shutdown(shutdownChannel chan<- bool) {
+	m.Called(shutdownChannel)
+}

@@ -14,6 +14,10 @@ const (
 	FullProvider   ProviderType = "both"
 )
 
+const (
+	DefaultCredentialsSetEventId entities.EventId = "CredentialsSet"
+)
+
 var InvalidProviderTypeError = errors.New("invalid liquidity provider type")
 
 func (p ProviderType) IsValid() bool {
@@ -66,6 +70,8 @@ type LiquidityProviderRepository interface {
 	UpsertPegoutConfiguration(ctx context.Context, configuration entities.Signed[PegoutConfiguration]) error
 	GetGeneralConfiguration(ctx context.Context) (*entities.Signed[GeneralConfiguration], error)
 	UpsertGeneralConfiguration(ctx context.Context, configuration entities.Signed[GeneralConfiguration]) error
+	GetCredentials(ctx context.Context) (*entities.Signed[HashedCredentials], error)
+	UpsertCredentials(ctx context.Context, credentials entities.Signed[HashedCredentials]) error
 }
 
 type RegisteredLiquidityProvider struct {
@@ -88,4 +94,14 @@ type PunishmentEvent struct {
 	LiquidityProvider string
 	Penalty           *entities.Wei
 	QuoteHash         string
+}
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+type DefaultCredentialsSetEvent struct {
+	entities.Event
+	Credentials *HashedCredentials
 }

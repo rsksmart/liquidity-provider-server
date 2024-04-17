@@ -23,7 +23,7 @@ func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 		Hash:      "040506",
 	}
 
-	lpRepository := &mocks.LpRepositoryMock{}
+	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	lpRepository.On("UpsertGeneralConfiguration", test.AnyCtx, config).Return(nil)
 	walletMock := &mocks.RskWalletMock{}
 	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
@@ -52,18 +52,18 @@ func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
-	errorSetups := []func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock){
-		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
+	errorSetups := []func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock){
+		func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
 		},
-		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
+		func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
 			lpRepository.On("UpsertGeneralConfiguration", test.AnyCtx, config).Return(assert.AnError)
 		},
 	}
 
 	for _, errorSetup := range errorSetups {
-		lpRepository := &mocks.LpRepositoryMock{}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		walletMock := &mocks.RskWalletMock{}
 		errorSetup(lpRepository, walletMock)
 		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, walletMock, hashMock.Hash)

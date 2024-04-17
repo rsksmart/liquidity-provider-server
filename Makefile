@@ -1,5 +1,10 @@
 .PHONY: test
 
+COVER_FILE = coverage/cover.out
+TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
+
+filter_coverage_file = grep -v "internal/adapters/dataproviders/rootstock/bindings" $(1) > coverage/temp.txt && mv coverage/temp.txt $(1)
+
 tools: download
 	go install github.com/parvez3019/go-swagger3@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -38,20 +43,23 @@ api:
 
 coverage: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out.temp ./pkg/... ./internal/... ./cmd/...
-	go tool cover -func "coverage/cover.out.temp"
-	go tool cover -html="coverage/cover.out.temp"
-	rm coverage/cover.out.temp
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
+	go tool cover -func "$(TEMPORAL_COVER_FILE)"
+	go tool cover -html="$(TEMPORAL_COVER_FILE)"
+	rm $(TEMPORAL_COVER_FILE)
 
 coverage-report: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out ./pkg/... ./internal/... ./cmd/...
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	$(call filter_coverage_file, $(COVER_FILE))
 
 test: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=coverage/cover.out.temp  ./pkg/... ./internal/... ./cmd/...
-	go tool cover -func "coverage/cover.out.temp"
-	rm coverage/cover.out.temp
+	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
+	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
+	go tool cover -func $(TEMPORAL_COVER_FILE)
+	rm $(TEMPORAL_COVER_FILE)
 
 clean:
-	rm -rf build coverage/cover.out.temp
+	rm -rf build $(TEMPORAL_COVER_FILE)

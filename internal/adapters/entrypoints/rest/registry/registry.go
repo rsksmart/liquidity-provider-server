@@ -29,4 +29,6 @@ type UseCaseRegistry interface {
 	SetGeneralConfigUseCase() *liquidity_provider.SetGeneralConfigUseCase
 	GetConfigurationUseCase() *liquidity_provider.GetConfigUseCase
 	LoginUseCase() *liquidity_provider.LoginUseCase
+	SetCredentialsUseCase() *liquidity_provider.SetCredentialsUseCase
+	GenerateDefaultCredentialsUseCase() *liquidity_provider.GenerateDefaultCredentialsUseCase
 }
