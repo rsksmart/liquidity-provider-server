@@ -82,5 +82,10 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Method:  http.MethodPost,
 			Handler: handlers.NewManagementLogoutHandler(env.Management),
 		},
+		{
+			Path:    "/management/credentials",
+			Method:  http.MethodPost,
+			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
+		},
 	}
 }

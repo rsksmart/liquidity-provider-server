@@ -28,7 +28,7 @@ var pegoutConfigMock = entities.Signed[lp.PegoutConfiguration]{
 }
 
 func TestSetPegoutConfigUseCase_Run(t *testing.T) {
-	lpRepository := &mocks.LpRepositoryMock{}
+	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	lpRepository.On("UpsertPegoutConfiguration", test.AnyCtx, pegoutConfigMock).Return(nil)
 	walletMock := &mocks.RskWalletMock{}
 	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
@@ -48,18 +48,18 @@ func TestSetPegoutConfigUseCase_Run_ErrorHandling(t *testing.T) {
 	hashMock := &mocks.HashMock{}
 	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
 
-	errorSetups := []func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock){
-		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
+	errorSetups := []func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock){
+		func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
 		},
-		func(lpRepository *mocks.LpRepositoryMock, walletMock *mocks.RskWalletMock) {
+		func(lpRepository *mocks.LiquidityProviderRepositoryMock, walletMock *mocks.RskWalletMock) {
 			walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
 			lpRepository.On("UpsertPegoutConfiguration", test.AnyCtx, pegoutConfigMock).Return(assert.AnError)
 		},
 	}
 
 	for _, errorSetup := range errorSetups {
-		lpRepository := &mocks.LpRepositoryMock{}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		walletMock := &mocks.RskWalletMock{}
 		errorSetup(lpRepository, walletMock)
 		useCase := liquidity_provider.NewSetPegoutConfigUseCase(lpRepository, walletMock, hashMock.Hash)

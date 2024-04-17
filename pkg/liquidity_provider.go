@@ -39,3 +39,15 @@ type PegoutConfigurationRequest struct {
 type GeneralConfigurationRequest struct {
 	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
 }
+
+type LoginRequest struct {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+type CredentialsUpdateRequest struct {
+	OldUsername string `json:"oldUsername" validate:"required"`
+	OldPassword string `json:"oldPassword" validate:"required"`
+	NewUsername string `json:"newUsername" validate:"required"`
+	NewPassword string `json:"newPassword" validate:"required"`
+}

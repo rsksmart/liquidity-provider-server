@@ -105,6 +105,11 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 		log.Info("Provider registered with ID ", id)
 	}
 
+	err = app.useCaseRegistry.GenerateDefaultCredentialsUseCase().Run(context.Background(), os.TempDir())
+	if err != nil {
+		log.Fatal("Error generating default password for management interface: ", err)
+	}
+
 	watchers, err := app.prepareWatchers()
 	if err != nil {
 		log.Fatal("Error initializing watchers: ", err)

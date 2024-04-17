@@ -10,6 +10,7 @@ var AnyCtx = mock.AnythingOfType("context.backgroundCtx")
 
 const (
 	AnyAddress = "any address"
+	AnyString  = "any value"
 )
 
 type Case[V, R any] struct {
