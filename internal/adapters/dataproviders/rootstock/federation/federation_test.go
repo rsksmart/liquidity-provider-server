@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
@@ -50,7 +51,7 @@ var testQuotes = []testQuote{
 		ExpectedAddressHash:         "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
 		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
 		NetworkParams:               &chaincfg.TestNet3Params,
-		FedInfo:                     getFakeFedInfo(),
+		FedInfo:                     mocks.GetFakeFedInfo(),
 	},
 	{
 		LpBtcAddress:                "2NDjJznHgtH1rzq63eeFG3SiDi5wxE25FSz",
@@ -60,7 +61,7 @@ var testQuotes = []testQuote{
 		ExpectedAddressHash:         "2N6LxcNDYkKzeyXh7xjZUNZnS9G4Sq3mysi",
 		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
 		NetworkParams:               &chaincfg.TestNet3Params,
-		FedInfo:                     getFakeFedInfo(),
+		FedInfo:                     mocks.GetFakeFedInfo(),
 	},
 	{
 		LpBtcAddress:                "17VZNX1SN5NtKa8UQFxwQbFeFc3iqRYhem",
@@ -70,7 +71,7 @@ var testQuotes = []testQuote{
 		ExpectedAddressHash:         "38r8PQdgw5vdebE9h12Eum6saVnWEXxbve",
 		ExpectedDerivationValueHash: "f07f644aa9123cd339f232be7f02ec536d40247f6f0c89a93d625ee57918c544",
 		NetworkParams:               &chaincfg.MainNetParams,
-		FedInfo:                     getFakeFedInfo(),
+		FedInfo:                     mocks.GetFakeFedInfo(),
 	},
 	{
 		LpBtcAddress:                "3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX",
@@ -80,30 +81,8 @@ var testQuotes = []testQuote{
 		ExpectedAddressHash:         "33P85aACtqezxcGjhrferYkpg6djBtvstk",
 		ExpectedDerivationValueHash: "edb9cfe28705fa1619fe1c1bc70e55d5eee4965aea0de631bcf56434a7c454cc",
 		NetworkParams:               &chaincfg.MainNetParams,
-		FedInfo:                     getFakeFedInfo(),
+		FedInfo:                     mocks.GetFakeFedInfo(),
 	},
-}
-
-func getFakeFedInfo() blockchain.FederationInfo {
-	var keys []string
-	keys = append(keys, "02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1")
-	keys = append(keys, "0362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a124")
-	keys = append(keys, "03c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db")
-
-	var erpPubKeys []string
-	erpPubKeys = append(erpPubKeys, "0257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d4")
-	erpPubKeys = append(erpPubKeys, "03c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f9")
-	erpPubKeys = append(erpPubKeys, "03cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b3")
-	erpPubKeys = append(erpPubKeys, "02370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec80")
-
-	return blockchain.FederationInfo{
-		ActiveFedBlockHeight: 0,
-		ErpKeys:              erpPubKeys,
-		FedSize:              int64(len(keys)),
-		FedThreshold:         int64(len(keys)/2 + 1),
-		PubKeys:              keys,
-		IrisActivationHeight: 0,
-	}
 }
 
 func TestDerivationComplete(t *testing.T) {
@@ -127,7 +106,7 @@ func TestDerivationComplete(t *testing.T) {
 		}
 		derivationHash := federation.GetDerivationValueHash(args)
 
-		fedInfo := getFakeFedInfo()
+		fedInfo := mocks.GetFakeFedInfo()
 		if test.NetworkParams.Name == chaincfg.TestNet3Params.Name {
 			fedInfo.FedAddress = federationTestnetAddress
 		} else {
@@ -169,7 +148,7 @@ func TestGetDerivationValueHash(t *testing.T) {
 }
 
 func TestBuildPowPegRedeemScript(t *testing.T) {
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedRedeemScript, err := federation.GetRedeemScriptBuf(fedInfo, true)
 	require.NoError(t, err)
 
@@ -195,7 +174,7 @@ func TestBuildPowPegRedeemScript(t *testing.T) {
 
 func TestBuildErpRedeemScript(t *testing.T) {
 	networkParams := chaincfg.MainNetParams
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedRedeemScript, err := federation.GetErpRedeemScriptBuf(fedInfo, networkParams)
 	require.NoError(t, err)
 
@@ -206,7 +185,7 @@ func TestBuildErpRedeemScript(t *testing.T) {
 
 func TestBuildFlyoverRedeemScript(t *testing.T) {
 	params := chaincfg.MainNetParams
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = federationMainnetAddress
 	fedInfo.IrisActivationHeight = -1
 
@@ -225,7 +204,7 @@ func TestBuildFlyoverRedeemScript(t *testing.T) {
 func TestBuildFlyoverErpRedeemScript(t *testing.T) {
 	params := chaincfg.MainNetParams
 
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	fedInfo.IrisActivationHeight = 1
 
@@ -245,7 +224,7 @@ func TestBuildFlyoverErpRedeemScript(t *testing.T) {
 func TestBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
 	params := chaincfg.MainNetParams
 
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = federationMainnetAddress
 	fedInfo.IrisActivationHeight = 1
 
@@ -262,7 +241,7 @@ func TestBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
 }
 
 func TestBuildPowPegAddressHash(t *testing.T) {
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.IrisActivationHeight = -1
 
 	buf, err := federation.GetRedeemScriptBuf(fedInfo, true)
@@ -281,7 +260,7 @@ func TestBuildPowPegAddressHash(t *testing.T) {
 func TestBuildFlyoverPowPegAddressHash(t *testing.T) {
 	params := chaincfg.MainNetParams
 
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = federationMainnetAddress
 	fedInfo.IrisActivationHeight = -1
 
@@ -304,7 +283,7 @@ func TestBuildFlyoverPowPegAddressHash(t *testing.T) {
 
 func TestBuildFlyoverErpAddressHash(t *testing.T) {
 	params := chaincfg.MainNetParams
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = "3C8e41MpbE2MB8XDqaYnQ2FbtRwPYLJtto"
 	fedInfo.IrisActivationHeight = 1
 
@@ -328,7 +307,7 @@ func TestBuildFlyoverErpAddressHash(t *testing.T) {
 
 func TestBuildFlyoverErpAddressHashFallback(t *testing.T) {
 	params := chaincfg.MainNetParams
-	fedInfo := getFakeFedInfo()
+	fedInfo := mocks.GetFakeFedInfo()
 	fedInfo.FedAddress = federationMainnetAddress
 	fedInfo.IrisActivationHeight = 1
 
@@ -353,7 +332,7 @@ func TestBuildFlyoverErpAddressHashFallback(t *testing.T) {
 func TestGetDerivedBitcoinAddress(t *testing.T) {
 	for _, test := range testQuotes {
 		params := test.NetworkParams
-		fedInfo := getFakeFedInfo()
+		fedInfo := mocks.GetFakeFedInfo()
 		fedInfo.IrisActivationHeight = -1
 
 		if params.Name == chaincfg.TestNet3Params.Name {
@@ -388,14 +367,14 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 
 func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 	t.Run("malformed redeem script", func(t *testing.T) {
-		derivation, err := federation.CalculateFlyoverDerivationAddress(getFakeFedInfo(), chaincfg.TestNet3Params, []byte{1}, []byte{1})
+		derivation, err := federation.CalculateFlyoverDerivationAddress(mocks.GetFakeFedInfo(), chaincfg.TestNet3Params, []byte{1}, []byte{1})
 		assert.Equal(t, blockchain.FlyoverDerivation{}, derivation)
 		require.Error(t, err)
 	})
 	t.Run("empty redeem script", func(t *testing.T) {
 		derivationBytes, err := hex.DecodeString(flyoverDerivationHash)
 		require.NoError(t, err)
-		fedInfo := getFakeFedInfo()
+		fedInfo := mocks.GetFakeFedInfo()
 		fedInfo.FedAddress = federationMainnetAddress
 		fedInfo.IrisActivationHeight = -1
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, chaincfg.MainNetParams, []byte{}, derivationBytes)
@@ -406,7 +385,7 @@ func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 	t.Run("invalid address", func(t *testing.T) {
 		derivationBytes, err := hex.DecodeString(flyoverDerivationHash)
 		require.NoError(t, err)
-		fedInfo := getFakeFedInfo()
+		fedInfo := mocks.GetFakeFedInfo()
 		fedInfo.FedAddress = "invalid"
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, chaincfg.MainNetParams, []byte{}, derivationBytes)
 		assert.Equal(t, blockchain.FlyoverDerivation{}, derivation)
@@ -416,10 +395,10 @@ func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 
 func TestValidateRedeemScript_ErrorHandling(t *testing.T) {
 	t.Run("fail on invalid fed info", func(t *testing.T) {
-		require.Error(t, federation.ValidateRedeemScript(getFakeFedInfo(), chaincfg.MainNetParams, []byte{1}))
+		require.Error(t, federation.ValidateRedeemScript(mocks.GetFakeFedInfo(), chaincfg.MainNetParams, []byte{1}))
 	})
 	t.Run("fail on invalid script", func(t *testing.T) {
-		require.Error(t, federation.ValidateRedeemScript(getFakeFedInfo(), chaincfg.MainNetParams, nil))
+		require.Error(t, federation.ValidateRedeemScript(mocks.GetFakeFedInfo(), chaincfg.MainNetParams, nil))
 	})
 }
 

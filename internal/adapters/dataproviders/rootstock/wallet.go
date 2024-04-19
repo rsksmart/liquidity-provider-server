@@ -9,14 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
 )
 
 type RskWalletImpl struct {
-	client  *ethclient.Client
+	client  RpcClientBinding
 	account *RskAccount
 	chainId uint64
 }
@@ -94,6 +93,8 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	if signedTx, err = wallet.Sign(wallet.Address(), tx); err != nil {
 		return "", err
 	}
-	err = wallet.client.SendTransaction(newCtx, signedTx)
-	return tx.Hash().String(), err
+	if err = wallet.client.SendTransaction(newCtx, signedTx); err != nil {
+		return "", err
+	}
+	return signedTx.Hash().String(), nil
 }

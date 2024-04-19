@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -25,23 +24,26 @@ import (
 const registerPeginGasLimit = 2500000
 
 type liquidityBridgeContractImpl struct {
-	client   *ethclient.Client
-	address  string
-	contract *bindings.LiquidityBridgeContract
-	signer   TransactionSigner
+	client      RpcClientBinding
+	address     string
+	contract    LbcAdapter
+	signer      TransactionSigner
+	retryParams RetryParams
 }
 
 func NewLiquidityBridgeContractImpl(
 	client *RskClient,
 	address string,
-	contract *bindings.LiquidityBridgeContract,
+	contract LbcAdapter,
 	signer TransactionSigner,
+	retryParams RetryParams,
 ) blockchain.LiquidityBridgeContract {
 	return &liquidityBridgeContractImpl{
-		client:   client.client,
-		address:  address,
-		contract: contract,
-		signer:   signer,
+		client:      client.client,
+		address:     address,
+		contract:    contract,
+		signer:      signer,
+		retryParams: retryParams,
 	}
 }
 
@@ -58,9 +60,10 @@ func (lbc *liquidityBridgeContractImpl) HashPeginQuote(peginQuote quote.PeginQuo
 		return "", err
 	}
 
-	results, err = rskRetry(func() ([32]byte, error) {
-		return lbc.contract.HashQuote(&opts, parsedQuote)
-	})
+	results, err = rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() ([32]byte, error) {
+			return lbc.contract.HashQuote(&opts, parsedQuote)
+		})
 	if err != nil {
 		return "", err
 	}
@@ -76,9 +79,10 @@ func (lbc *liquidityBridgeContractImpl) HashPegoutQuote(pegoutQuote quote.Pegout
 		return "", err
 	}
 
-	results, err = rskRetry(func() ([32]byte, error) {
-		return lbc.contract.HashPegoutQuote(&opts, parsedQuote)
-	})
+	results, err = rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() ([32]byte, error) {
+			return lbc.contract.HashPegoutQuote(&opts, parsedQuote)
+		})
 	if err != nil {
 		return "", err
 	}
@@ -92,9 +96,10 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.Reg
 	var provider bindings.LiquidityBridgeContractLiquidityProvider
 
 	opts := &bind.CallOpts{}
-	maxId, err := rskRetry(func() (*big.Int, error) {
-		return lbc.contract.GetProviderIds(opts)
-	})
+	maxId, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return lbc.contract.GetProviderIds(opts)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +111,15 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.Reg
 		providerIds = append(providerIds, big.NewInt(i))
 	}
 
-	providers, err = rskRetry(func() ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
-		return lbc.contract.GetProviders(opts, providerIds)
-	})
+	providers, err = rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
+			return lbc.contract.GetProviders(opts, providerIds)
+		})
 	if err != nil {
 		return nil, err
 	}
 	parsedProviders := make([]liquidity_provider.RegisteredLiquidityProvider, 0)
-	for i = 0; i < maxProviderId+1; i++ {
+	for i = 0; i < maxProviderId; i++ {
 		provider = providers[i]
 		providerType = liquidity_provider.ProviderType(provider.ProviderType)
 		if !providerType.IsValid() {
@@ -136,11 +142,12 @@ func (lbc *liquidityBridgeContractImpl) ProviderResign() error {
 		From:   lbc.signer.Address(),
 		Signer: lbc.signer.Sign,
 	}
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "Resign", func() (*geth.Transaction, error) {
-			return lbc.contract.Resign(opts)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "Resign", func() (*geth.Transaction, error) {
+				return lbc.contract.Resign(opts)
+			})
 		})
-	})
 
 	if err != nil {
 		return err
@@ -151,23 +158,24 @@ func (lbc *liquidityBridgeContractImpl) ProviderResign() error {
 }
 
 func (lbc *liquidityBridgeContractImpl) SetProviderStatus(id uint64, newStatus bool) error {
-	var parsedId *big.Int
+	parsedId := new(big.Int)
 	parsedId.SetUint64(id)
 	opts := &bind.TransactOpts{
 		From:   lbc.signer.Address(),
 		Signer: lbc.signer.Sign,
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "SetProviderStatus", func() (*geth.Transaction, error) {
-			return lbc.contract.SetProviderStatus(opts, parsedId, newStatus)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "SetProviderStatus", func() (*geth.Transaction, error) {
+				return lbc.contract.SetProviderStatus(opts, parsedId, newStatus)
+			})
 		})
-	})
 
 	if err != nil {
 		return err
 	} else if receipt == nil || receipt.Status == 0 {
-		return errors.New("resign transaction failed")
+		return errors.New("setProviderStatus transaction failed")
 	}
 	return nil
 }
@@ -179,9 +187,10 @@ func (lbc *liquidityBridgeContractImpl) GetCollateral(address string) (*entities
 	if err = ParseAddress(&parsedAddress, address); err != nil {
 		return nil, err
 	}
-	collateral, err := rskRetry(func() (*big.Int, error) {
-		return lbc.contract.GetCollateral(opts, parsedAddress)
-	})
+	collateral, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return lbc.contract.GetCollateral(opts, parsedAddress)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -195,9 +204,10 @@ func (lbc *liquidityBridgeContractImpl) GetPegoutCollateral(address string) (*en
 	if err = ParseAddress(&parsedAddress, address); err != nil {
 		return nil, err
 	}
-	collateral, err := rskRetry(func() (*big.Int, error) {
-		return lbc.contract.GetPegoutCollateral(opts, parsedAddress)
-	})
+	collateral, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return lbc.contract.GetPegoutCollateral(opts, parsedAddress)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -207,9 +217,10 @@ func (lbc *liquidityBridgeContractImpl) GetPegoutCollateral(address string) (*en
 func (lbc *liquidityBridgeContractImpl) GetMinimumCollateral() (*entities.Wei, error) {
 	var err error
 	opts := &bind.CallOpts{}
-	collateral, err := rskRetry(func() (*big.Int, error) {
-		return lbc.contract.GetMinCollateral(opts)
-	})
+	collateral, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return lbc.contract.GetMinCollateral(opts)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -223,11 +234,12 @@ func (lbc *liquidityBridgeContractImpl) AddCollateral(amount *entities.Wei) erro
 		Value:  amount.AsBigInt(),
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "AddCollateral", func() (*geth.Transaction, error) {
-			return lbc.contract.AddCollateral(opts)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "AddCollateral", func() (*geth.Transaction, error) {
+				return lbc.contract.AddCollateral(opts)
+			})
 		})
-	})
 
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %w", err)
@@ -244,11 +256,12 @@ func (lbc *liquidityBridgeContractImpl) AddPegoutCollateral(amount *entities.Wei
 		Value:  amount.AsBigInt(),
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "AddPegoutCollateral", func() (*geth.Transaction, error) {
-			return lbc.contract.AddPegoutCollateral(opts)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "AddPegoutCollateral", func() (*geth.Transaction, error) {
+				return lbc.contract.AddPegoutCollateral(opts)
+			})
 		})
-	})
 
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %w", err)
@@ -264,11 +277,12 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 		Signer: lbc.signer.Sign,
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "WithdrawCollateral", func() (*geth.Transaction, error) {
-			return lbc.contract.WithdrawCollateral(opts)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "WithdrawCollateral", func() (*geth.Transaction, error) {
+				return lbc.contract.WithdrawCollateral(opts)
+			})
 		})
-	})
 
 	if err != nil {
 		return fmt.Errorf("withdraw pegin collateral error: %w", err)
@@ -284,11 +298,12 @@ func (lbc *liquidityBridgeContractImpl) WithdrawPegoutCollateral() error {
 		Signer: lbc.signer.Sign,
 	}
 
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "WithdrawPegoutCollateral", func() (*geth.Transaction, error) {
-			return lbc.contract.WithdrawPegoutCollateral(opts)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "WithdrawPegoutCollateral", func() (*geth.Transaction, error) {
+				return lbc.contract.WithdrawPegoutCollateral(opts)
+			})
 		})
-	})
 
 	if err != nil {
 		return fmt.Errorf("withdraw pegout collateral error: %w", err)
@@ -305,9 +320,10 @@ func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.We
 	if err = ParseAddress(&parsedAddress, address); err != nil {
 		return nil, err
 	}
-	balance, err := rskRetry(func() (*big.Int, error) {
-		return lbc.contract.GetBalance(opts, parsedAddress)
-	})
+	balance, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return lbc.contract.GetBalance(opts, parsedAddress)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -315,6 +331,11 @@ func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.We
 }
 
 func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (string, error) {
+	parsedQuote, err := parsePeginQuote(peginQuote)
+	if err != nil {
+		return "", err
+	}
+
 	opts := &bind.TransactOpts{
 		GasLimit: *txConfig.GasLimit,
 		Value:    txConfig.Value.AsBigInt(),
@@ -322,21 +343,20 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		Signer:   lbc.signer.Sign,
 	}
 
-	parsedQuote, err := parsePeginQuote(peginQuote)
-	if err != nil {
-		return "", err
-	}
-
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "CallForUser", func() (*geth.Transaction, error) {
-			return lbc.contract.CallForUser(opts, parsedQuote)
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "CallForUser", func() (*geth.Transaction, error) {
+				return lbc.contract.CallForUser(opts, parsedQuote)
+			})
 		})
-	})
 
 	if err != nil {
 		return "", fmt.Errorf("call for user error: %w", err)
-	} else if receipt == nil || receipt.Status == 0 {
-		return "", errors.New("callfor user error: incomplete receipt")
+	} else if receipt == nil {
+		return "", errors.New("call for user error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("call for user error: transaction reverted (%s)", txHash)
 	}
 	return receipt.TxHash.String(), nil
 }
@@ -345,10 +365,10 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	var res []any
 	var err error
 	var parsedQuote bindings.QuotesPeginQuote
-	lbcCaller := &bindings.LiquidityBridgeContractCallerRaw{Contract: &lbc.contract.LiquidityBridgeContractCaller}
 	if parsedQuote, err = parsePeginQuote(params.Quote); err != nil {
 		return "", err
 	}
+	lbcCaller := lbc.contract.Caller()
 	log.Infof("Executing RegisterPegIn with params: %s\n", params.String())
 	err = lbcCaller.Call(
 		&bind.CallOpts{}, &res, "registerPegIn",
@@ -379,8 +399,11 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 
 	if err != nil {
 		return "", fmt.Errorf("register pegin error: %w", err)
-	} else if receipt == nil || receipt.Status == 0 {
+	} else if receipt == nil {
 		return "", errors.New("register pegin error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("register pegin error: transaction reverted (%s)", txHash)
 	}
 	return receipt.TxHash.String(), nil
 }
@@ -403,8 +426,11 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 		return "", blockchain.WaitingForBridgeError
 	} else if err != nil {
 		return "", fmt.Errorf("refund pegout error: %w", err)
-	} else if receipt == nil || receipt.Status == 0 {
+	} else if receipt == nil {
 		return "", errors.New("refund pegout error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("refund pegout error: transaction reverted (%s)", txHash)
 	}
 	return receipt.TxHash.String(), nil
 }
@@ -418,9 +444,10 @@ func (lbc *liquidityBridgeContractImpl) IsOperationalPegin(address string) (bool
 		return false, err
 	}
 
-	return rskRetry(func() (bool, error) {
-		return lbc.contract.IsOperational(opts, parsedAddress)
-	})
+	return rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (bool, error) {
+			return lbc.contract.IsOperational(opts, parsedAddress)
+		})
 }
 
 func (lbc *liquidityBridgeContractImpl) IsOperationalPegout(address string) (bool, error) {
@@ -432,33 +459,36 @@ func (lbc *liquidityBridgeContractImpl) IsOperationalPegout(address string) (boo
 		return false, err
 	}
 
-	return rskRetry(func() (bool, error) {
-		return lbc.contract.IsOperationalForPegout(opts, parsedAddress)
-	})
+	return rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (bool, error) {
+			return lbc.contract.IsOperationalForPegout(opts, parsedAddress)
+		})
 }
 
 func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error) {
 	var lbcEvent *bindings.LiquidityBridgeContractPegOutDeposit
 	result := make([]quote.PegoutDeposit, 0)
 
-	iterator, err := lbc.contract.FilterPegOutDeposit(&bind.FilterOpts{
+	rawIterator, err := lbc.contract.FilterPegOutDeposit(&bind.FilterOpts{
 		Start:   fromBlock,
 		End:     toBlock,
 		Context: ctx,
 	}, nil, nil)
+	// The adapter is to be able to mock the iterator in tests
+	iterator := lbc.contract.DepositEventIteratorAdapter(rawIterator)
 	defer func() {
-		if iterator != nil {
+		if rawIterator != nil {
 			if iteratorError := iterator.Close(); iteratorError != nil {
 				log.Error("Error closing PegOutDeposit event iterator: ", err)
 			}
 		}
 	}()
-	if err != nil || iterator == nil {
-		return result, err
+	if err != nil || rawIterator == nil {
+		return nil, err
 	}
 
 	for iterator.Next() {
-		lbcEvent = iterator.Event
+		lbcEvent = iterator.Event()
 		result = append(result, quote.PegoutDeposit{
 			TxHash:      lbcEvent.Raw.TxHash.String(),
 			QuoteHash:   hex.EncodeToString(lbcEvent.QuoteHash[:]),
@@ -468,7 +498,7 @@ func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fr
 			From:        lbcEvent.Sender.String(),
 		})
 	}
-	if iterator.Error() != nil {
+	if err = iterator.Error(); err != nil {
 		return nil, err
 	}
 
@@ -479,31 +509,32 @@ func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Con
 	var lbcEvent *bindings.LiquidityBridgeContractPenalized
 	result := make([]liquidity_provider.PunishmentEvent, 0)
 
-	iterator, err := lbc.contract.FilterPenalized(&bind.FilterOpts{
+	rawIterator, err := lbc.contract.FilterPenalized(&bind.FilterOpts{
 		Start:   fromBlock,
 		End:     toBlock,
 		Context: ctx,
 	})
+	iterator := lbc.contract.PenalizedEventIteratorAdapter(rawIterator)
 	defer func() {
-		if iterator != nil {
+		if rawIterator != nil {
 			if iteratorError := iterator.Close(); iteratorError != nil {
 				log.Error("Error closing Penalized event iterator: ", err)
 			}
 		}
 	}()
-	if err != nil || iterator == nil {
-		return result, err
+	if err != nil || rawIterator == nil {
+		return nil, err
 	}
 
 	for iterator.Next() {
-		lbcEvent = iterator.Event
+		lbcEvent = iterator.Event()
 		result = append(result, liquidity_provider.PunishmentEvent{
 			LiquidityProvider: lbcEvent.LiquidityProvider.String(),
 			Penalty:           entities.NewBigWei(lbcEvent.Penalty),
 			QuoteHash:         hex.EncodeToString(lbcEvent.QuoteHash[:]),
 		})
 	}
-	if iterator.Error() != nil {
+	if err = iterator.Error(); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -517,11 +548,12 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 		From:   lbc.signer.Address(),
 		Signer: lbc.signer.Sign,
 	}
-	receipt, err := rskRetry(func() (*geth.Receipt, error) {
-		return awaitTx(lbc.client, "Register", func() (*geth.Transaction, error) {
-			return lbc.contract.Register(opts, params.Name, params.ApiBaseUrl, params.Status, string(params.Type))
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, "Register", func() (*geth.Transaction, error) {
+				return lbc.contract.Register(opts, params.Name, params.ApiBaseUrl, params.Status, string(params.Type))
+			})
 		})
-	})
 
 	if err != nil {
 		return 0, fmt.Errorf("error registering provider: %w", err)
@@ -531,7 +563,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 
 	registerEvent, err := lbc.contract.ParseRegister(*receipt.Logs[0])
 	if err != nil {
-		return 0, fmt.Errorf("error registering provider: %w", err)
+		return 0, fmt.Errorf("error parsing register event: %w", err)
 	}
 	return registerEvent.Id.Int64(), nil
 }
@@ -587,6 +619,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	parsedQuote.ProductFeeAmount = new(big.Int)
 	parsedQuote.ProductFeeAmount.SetUint64(peginQuote.ProductFeeAmount)
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
+	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
 	return parsedQuote, nil
 }
 
