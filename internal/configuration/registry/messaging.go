@@ -24,7 +24,7 @@ func NewMessagingRegistry(
 	return &Messaging{
 		Rpc: blockchain.Rpc{
 			Btc: bitcoin.NewBitcoindRpc(btcConn),
-			Rsk: rootstock.NewRskjRpcServer(rskClient),
+			Rsk: rootstock.NewRskjRpcServer(rskClient, rootstock.DefaultRetryParams),
 		},
 		EventBus:    NewEventBus(),
 		AlertSender: NewAlertSender(ctx, env),

@@ -7,6 +7,15 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/alerting:
     interfaces:
       sesClient:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock:
+    interfaces:
+      LbcBinding:
+      RskBridgeBinding:
+      TransactionSigner:
+      RpcClientBinding:
+      LbcCallerBinding:
+      LbcAdapter:
+      EventIteratorAdapter:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin:
     interfaces:
       rpcClient:
