@@ -24,6 +24,11 @@ import (
 	"time"
 )
 
+const (
+	penalizedIteratorString = "*bindings.LiquidityBridgeContractPenalizedIterator"
+	depositIteratorString   = "*bindings.LiquidityBridgeContractPegOutDepositIterator"
+)
+
 var peginQuote = quote.PeginQuote{
 	FedBtcAddress:      "2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc",
 	LbcAddress:         "0xd5f00ABfbEA7A0B193836CAc6833c2Ad9D06cEa8",
@@ -231,7 +236,7 @@ func TestLiquidityBridgeContractImpl_HashPeginQuote(t *testing.T) {
 		assert.Equal(t, hex.EncodeToString(hash[:]), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on HashQuote call fail", func(t *testing.T) {
 		lbcMock.On("HashQuote", mock.Anything, parsedPeginQuote).Return(nil, assert.AnError).Once()
 		result, err := lbc.HashPeginQuote(peginQuote)
 		require.Error(t, err)
@@ -310,7 +315,7 @@ func TestLiquidityBridgeContractImpl_HashPegoutQuote(t *testing.T) {
 		assert.Equal(t, hex.EncodeToString(hash[:]), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on HashPegoutQuote fail", func(t *testing.T) {
 		lbcMock.On("HashPegoutQuote", mock.Anything, parsedPegoutQuote).Return(nil, assert.AnError).Once()
 		result, err := lbc.HashPegoutQuote(pegoutQuote)
 		require.Error(t, err)
@@ -426,14 +431,14 @@ func TestLiquidityBridgeContractImpl_ProviderResign(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending resign tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("Resign", mock.Anything).Return(nil, assert.AnError).Once()
 		err := lbc.ProviderResign()
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (resign tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("Resign", mock.Anything).Return(tx, nil).Once()
 		err := lbc.ProviderResign()
@@ -460,14 +465,14 @@ func TestLiquidityBridgeContractImpl_SetProviderStatus(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending setProviderStatus tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("SetProviderStatus", mock.Anything, big.NewInt(1), true).Return(nil, assert.AnError).Once()
 		err := lbc.SetProviderStatus(1, true)
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (setProviderStatus tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("SetProviderStatus", mock.Anything, big.NewInt(1), false).Return(tx, nil).Once()
 		err := lbc.SetProviderStatus(1, false)
@@ -486,13 +491,13 @@ func TestLiquidityBridgeContractImpl_GetCollateral(t *testing.T) {
 		assert.Equal(t, entities.NewWei(500), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling on call error", func(t *testing.T) {
+	t.Run("Error handling on GetCollateral call error", func(t *testing.T) {
 		lbcMock.On("GetCollateral", mock.Anything, parsedAddress).Return(nil, assert.AnError).Once()
 		result, err := lbc.GetCollateral(parsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("Error handling on invalid address", func(t *testing.T) {
+	t.Run("Error handling on invalid address for getting collateral", func(t *testing.T) {
 		result, err := lbc.GetCollateral(test.AnyString)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -509,13 +514,13 @@ func TestLiquidityBridgeContractImpl_GetPegoutCollateral(t *testing.T) {
 		assert.Equal(t, entities.NewWei(500), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling on call error", func(t *testing.T) {
+	t.Run("Error handling on GetPegoutCollateral call error", func(t *testing.T) {
 		lbcMock.On("GetPegoutCollateral", mock.Anything, parsedAddress).Return(nil, assert.AnError).Once()
 		result, err := lbc.GetPegoutCollateral(parsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("Error handling on invalid address", func(t *testing.T) {
+	t.Run("Error handling on invalid address for getting pegout collateral", func(t *testing.T) {
 		result, err := lbc.GetPegoutCollateral(test.AnyString)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -532,7 +537,7 @@ func TestLiquidityBridgeContractImpl_GetMinimumCollateral(t *testing.T) {
 		assert.Equal(t, entities.NewWei(500), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on GetMinCollateral call fail", func(t *testing.T) {
 		lbcMock.On("GetMinCollateral", mock.Anything).Return(nil, assert.AnError).Once()
 		result, err := lbc.GetMinimumCollateral()
 		require.Error(t, err)
@@ -561,14 +566,14 @@ func TestLiquidityBridgeContractImpl_AddCollateral(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending addCollateral tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("AddCollateral", txMatchFunction).Return(nil, assert.AnError).Once()
 		err := lbc.AddCollateral(entities.NewWei(500))
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (addCollateral tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, valueModifier(big.NewInt(500)))
 		lbcMock.On("AddCollateral", txMatchFunction).Return(tx, nil).Once()
 		err := lbc.AddCollateral(entities.NewWei(500))
@@ -598,14 +603,14 @@ func TestLiquidityBridgeContractImpl_AddPegoutCollateral(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending addPegoutCollateral tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("AddPegoutCollateral", txMatchFunction).Return(nil, assert.AnError).Once()
 		err := lbc.AddPegoutCollateral(entities.NewWei(777))
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (addPegoutCollateral tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, valueModifier(big.NewInt(777)))
 		lbcMock.On("AddPegoutCollateral", txMatchFunction).Return(tx, nil).Once()
 		err := lbc.AddPegoutCollateral(entities.NewWei(777))
@@ -632,14 +637,14 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending withdrawCollateral tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("WithdrawCollateral", mock.Anything).Return(nil, assert.AnError).Once()
 		err := lbc.WithdrawCollateral()
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (withdrawCollateral tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("WithdrawCollateral", mock.Anything).Return(tx, nil).Once()
 		err := lbc.WithdrawCollateral()
@@ -666,14 +671,14 @@ func TestLiquidityBridgeContractImpl_WithdrawPegoutCollateral(t *testing.T) {
 		require.NoError(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending withdrawPegoutCollateral tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(nil, assert.AnError).Once()
 		err := lbc.WithdrawPegoutCollateral()
 		require.Error(t, err)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (withdrawPegoutCollateral tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(tx, nil).Once()
 		err := lbc.WithdrawPegoutCollateral()
@@ -692,13 +697,13 @@ func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 		assert.Equal(t, entities.NewWei(600), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling on call error", func(t *testing.T) {
+	t.Run("Error handling on GetBalance call error", func(t *testing.T) {
 		lbcMock.On("GetBalance", mock.Anything, parsedAddress).Return(nil, assert.AnError).Once()
 		result, err := lbc.GetBalance(parsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("Error handling on invalid address", func(t *testing.T) {
+	t.Run("Error handling on invalid address for getting balance", func(t *testing.T) {
 		result, err := lbc.GetBalance(test.AnyString)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -730,14 +735,14 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		assert.Equal(t, tx.Hash().String(), result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling (sending tx)", func(t *testing.T) {
+	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(nil, assert.AnError).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
-	t.Run("Error handling (tx reverted)", func(t *testing.T) {
+	t.Run("Error handling (callForUser tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, modifiers...)
 		lbcMock.On("CallForUser", mock.Anything, parsedPeginQuote).Return(tx, nil).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
@@ -948,7 +953,7 @@ func TestLiquidityBridgeContractImpl_IsOperationalPegin(t *testing.T) {
 		assert.True(t, result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on IsOperational call fail", func(t *testing.T) {
 		lbcMock.On("IsOperational", mock.Anything, parsedAddress).Return(true, assert.AnError).Once()
 		_, err := lbc.IsOperationalPegin(parsedAddress.String())
 		require.Error(t, err)
@@ -970,7 +975,7 @@ func TestLiquidityBridgeContractImpl_IsOperationalPegout(t *testing.T) {
 		assert.True(t, result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on IsOperationalForPegout call fail", func(t *testing.T) {
 		lbcMock.On("IsOperationalForPegout", mock.Anything, parsedAddress).Return(true, assert.AnError).Once()
 		_, err := lbc.IsOperationalPegout(parsedAddress.String())
 		require.Error(t, err)
@@ -1110,7 +1115,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 		var to uint64 = 1000
 		lbcMock.On("FilterPegOutDeposit", mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil)).
 			Return(&bindings.LiquidityBridgeContractPegOutDepositIterator{}, nil).Once()
-		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPegOutDepositIterator")).
+		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
 			Return(iteratorMock)
 		iteratorMock.On("Next").Return(true).Times(len(deposits))
 		iteratorMock.On("Next").Return(false).Once()
@@ -1130,7 +1135,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 		var to uint64 = 1100
 		lbcMock.On("FilterPegOutDeposit", mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil)).
 			Return(nil, assert.AnError).Once()
-		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPegOutDepositIterator")).
+		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
 			Return(nil)
 		result, err := lbc.GetDepositEvents(context.Background(), from, &to)
 		require.Error(t, err)
@@ -1142,7 +1147,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 		var to uint64 = 1200
 		lbcMock.On("FilterPegOutDeposit", mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil)).
 			Return(&bindings.LiquidityBridgeContractPegOutDepositIterator{}, nil).Once()
-		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPegOutDepositIterator")).
+		lbcMock.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
 			Return(iteratorMock)
 		iteratorMock.On("Next").Return(false).Once()
 		iteratorMock.On("Error").Return(assert.AnError).Once()
@@ -1169,7 +1174,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		var to uint64 = 1000
 		lbcMock.On("FilterPenalized", mock.MatchedBy(filterMatchFunc(from, to))).
 			Return(&bindings.LiquidityBridgeContractPenalizedIterator{}, nil).Once()
-		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPenalizedIterator")).
+		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType(penalizedIteratorString)).
 			Return(iteratorMock)
 		iteratorMock.On("Next").Return(true).Times(len(penalizations))
 		iteratorMock.On("Next").Return(false).Once()
@@ -1189,7 +1194,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		var to uint64 = 1100
 		lbcMock.On("FilterPenalized", mock.MatchedBy(filterMatchFunc(from, to))).
 			Return(nil, assert.AnError).Once()
-		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPenalizedIterator")).
+		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType(penalizedIteratorString)).
 			Return(nil)
 		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
 		require.Error(t, err)
@@ -1201,7 +1206,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		var to uint64 = 1200
 		lbcMock.On("FilterPenalized", mock.MatchedBy(filterMatchFunc(from, to))).
 			Return(&bindings.LiquidityBridgeContractPenalizedIterator{}, nil).Once()
-		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType("*bindings.LiquidityBridgeContractPenalizedIterator")).
+		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType(penalizedIteratorString)).
 			Return(iteratorMock)
 		iteratorMock.On("Next").Return(false).Once()
 		iteratorMock.On("Error").Return(assert.AnError).Once()

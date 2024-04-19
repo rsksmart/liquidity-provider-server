@@ -19,7 +19,7 @@ func TestFeeCollectorImpl_DaoFeePercentage(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), percentage)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
 		lbcMock.On("ProductFeePercentage", mock.Anything).Return(nil, assert.AnError).Once()
 		feeCollector := rootstock.NewFeeCollectorImpl(lbcMock, rootstock.RetryParams{Retries: 0, Sleep: 0})
 		percentage, err := feeCollector.DaoFeePercentage()
