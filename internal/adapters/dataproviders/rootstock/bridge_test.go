@@ -38,7 +38,7 @@ func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 		require.NoError(t, err)
 		bridgeMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on GetFederationAddress call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return("", assert.AnError)
 		bridge := rootstock.NewRskBridgeImpl("", 0, 100, nil, bridgeMock, dummyClient, nil, rootstock.RetryParams{})
@@ -59,7 +59,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 		require.NoError(t, err)
 		bridgeMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on GetMinimumLockTxValue call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetMinimumLockTxValue", mock.Anything).Return(nil, assert.AnError)
 		bridge := rootstock.NewRskBridgeImpl("", 0, 100, nil, bridgeMock, dummyClient, nil, rootstock.RetryParams{})
@@ -104,7 +104,7 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		require.NoError(t, testError)
 		bridgeMock.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Error handling on GetActivePowpegRedeemScript call fail", func(t *testing.T) {
 		var testError error
 		var result blockchain.FlyoverDerivation
 		bridgeMock := &mocks.RskBridgeBindingMock{}

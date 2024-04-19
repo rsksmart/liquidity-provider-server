@@ -42,6 +42,8 @@ const (
 	flyoverDerivationHash  = "ffe4766f7b5f2fdf374f8ae02270d713c4dcb4b1c5d42bffda61b7f4c1c4c6c9"
 )
 
+const invalidFailInfoTestName = "fail on invalid fed info"
+
 var testQuotes = []testQuote{
 	{
 		LpBtcAddress:                "mnxKdPFrYqLSUy2oP1eno8n5X8AwkcnPjk",
@@ -394,7 +396,7 @@ func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 }
 
 func TestValidateRedeemScript_ErrorHandling(t *testing.T) {
-	t.Run("fail on invalid fed info", func(t *testing.T) {
+	t.Run(invalidFailInfoTestName, func(t *testing.T) {
 		require.Error(t, federation.ValidateRedeemScript(mocks.GetFakeFedInfo(), chaincfg.MainNetParams, []byte{1}))
 	})
 	t.Run("fail on invalid script", func(t *testing.T) {
@@ -403,7 +405,7 @@ func TestValidateRedeemScript_ErrorHandling(t *testing.T) {
 }
 
 func TestGetFedRedeemScript_ErrorHandling(t *testing.T) {
-	t.Run("fail on invalid fed info", func(t *testing.T) {
+	t.Run(invalidFailInfoTestName, func(t *testing.T) {
 		script, err := federation.GetFedRedeemScript(blockchain.FederationInfo{}, chaincfg.MainNetParams)
 		assert.Nil(t, script)
 		require.Error(t, err)
@@ -411,7 +413,7 @@ func TestGetFedRedeemScript_ErrorHandling(t *testing.T) {
 }
 
 func TestGetErpRedeemScriptBuf_ErrorHandling(t *testing.T) {
-	t.Run("fail on invalid fed info", func(t *testing.T) {
+	t.Run(invalidFailInfoTestName, func(t *testing.T) {
 		script, err := federation.GetErpRedeemScriptBuf(blockchain.FederationInfo{
 			ErpKeys: []string{invalidKey},
 		}, chaincfg.MainNetParams)
@@ -421,7 +423,7 @@ func TestGetErpRedeemScriptBuf_ErrorHandling(t *testing.T) {
 }
 
 func TestGetRedeemScriptBuf_ErrorHandling(t *testing.T) {
-	t.Run("fail on invalid fed info", func(t *testing.T) {
+	t.Run(invalidFailInfoTestName, func(t *testing.T) {
 		script, err := federation.GetRedeemScriptBuf(blockchain.FederationInfo{PubKeys: []string{invalidKey}}, true)
 		assert.Nil(t, script)
 		require.Error(t, err)

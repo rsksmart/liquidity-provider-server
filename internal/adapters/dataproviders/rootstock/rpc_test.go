@@ -135,7 +135,7 @@ func TestRskjRpcServer_GasPrice(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(200), gasPrice)
 	})
-	t.Run("Error calling rpc", func(t *testing.T) {
+	t.Run("Error calling SuggestGasPrice", func(t *testing.T) {
 		client.On("SuggestGasPrice", test.AnyCtx).Return(nil, assert.AnError).Once()
 		gasPrice, err := rpc.GasPrice(context.Background())
 		require.Error(t, err)
@@ -153,7 +153,7 @@ func TestRskjRpcServer_GetBalance(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(100), balance)
 	})
-	t.Run("Error calling rpc", func(t *testing.T) {
+	t.Run("Error calling BalanceAt", func(t *testing.T) {
 		client.On("BalanceAt", test.AnyCtx, parsedAddress, blockNumber).Return(nil, assert.AnError).Once()
 		balance, err := rpc.GetBalance(context.Background(), parsedAddress.String())
 		require.Error(t, err)
@@ -175,7 +175,7 @@ func TestRskjRpcServer_GetHeight(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint64(50), blockNumber)
 	})
-	t.Run("Error calling rpc", func(t *testing.T) {
+	t.Run("Error calling BlockNumber", func(t *testing.T) {
 		client.On("BlockNumber", test.AnyCtx).Return(uint64(0), assert.AnError).Once()
 		blockNumber, err := rpc.GetHeight(context.Background())
 		require.Error(t, err)

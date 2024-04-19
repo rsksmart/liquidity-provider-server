@@ -22,7 +22,10 @@ import (
 	"time"
 )
 
-const chainId = 31
+const (
+	chainId            = 31
+	timerContextString = "*context.timerCtx"
+)
 
 var (
 	walletAddress = common.HexToAddress("0x9D93929A9099be4355fC2389FbF253982F9dF47c")
@@ -73,7 +76,7 @@ func createSendRbtcTest(account *rootstock.RskAccount) func(t *testing.T) {
 				v, r, s := tx.RawSignatureValues()
 				return assert.NotNil(t, v) && assert.NotNil(t, r) && assert.NotNil(t, s)
 			})).Return(nil)
-			clientMock.On("PendingNonceAt", mock.AnythingOfType("*context.timerCtx"), walletAddress).Return(uint64(54), nil)
+			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(54), nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(89607151182921727),
@@ -122,7 +125,7 @@ func createSendRbtcErrorHandlingTest(account *rootstock.RskAccount) func(t *test
 		})
 		t.Run("Handle error on failure when getting nonce", func(t *testing.T) {
 			clientMock := &mocks.RpcClientBindingMock{}
-			clientMock.On("PendingNonceAt", mock.AnythingOfType("*context.timerCtx"), walletAddress).Return(uint64(0), assert.AnError)
+			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(0), assert.AnError)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(1),
@@ -135,7 +138,7 @@ func createSendRbtcErrorHandlingTest(account *rootstock.RskAccount) func(t *test
 		t.Run("Handle error on failure when broadcasting tx", func(t *testing.T) {
 			clientMock := &mocks.RpcClientBindingMock{}
 			clientMock.On("SendTransaction", mock.Anything, mock.Anything).Return(assert.AnError)
-			clientMock.On("PendingNonceAt", mock.AnythingOfType("*context.timerCtx"), walletAddress).Return(uint64(54), nil)
+			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(54), nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(1),
