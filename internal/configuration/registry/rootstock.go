@@ -46,10 +46,12 @@ func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, a
 	return &Rootstock{
 		Contracts: blockchain.RskContracts{
 			Bridge: rootstock.NewRskBridgeImpl(
-				env.BridgeAddress,
-				env.BridgeRequiredConfirmations,
-				env.IrisActivationHeight,
-				env.ErpKeys,
+				rootstock.RskBridgeConfig{
+					Address:               env.BridgeAddress,
+					RequiredConfirmations: env.BridgeRequiredConfirmations,
+					IrisActivationHeight:  env.IrisActivationHeight,
+					ErpKeys:               env.ErpKeys,
+				},
 				bridge,
 				client,
 				bitcoinConn.NetworkParams,
