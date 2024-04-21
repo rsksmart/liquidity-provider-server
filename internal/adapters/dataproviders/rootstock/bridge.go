@@ -22,21 +22,25 @@ type rskBridgeImpl struct {
 	retryParams           RetryParams
 }
 
+type RskBridgeConfig struct {
+	Address               string
+	RequiredConfirmations uint64
+	IrisActivationHeight  int64
+	ErpKeys               []string
+}
+
 func NewRskBridgeImpl(
-	address string,
-	requiredConfirmations uint64,
-	irisActivationHeight int64,
-	erpKeys []string,
+	config RskBridgeConfig,
 	contract RskBridgeBinding,
 	client *RskClient,
 	btcParams *chaincfg.Params,
 	retryParams RetryParams,
 ) blockchain.RootstockBridge {
 	return &rskBridgeImpl{
-		address:               address,
-		requiredConfirmations: requiredConfirmations,
-		irisActivationHeight:  irisActivationHeight,
-		erpKeys:               erpKeys,
+		address:               config.Address,
+		requiredConfirmations: config.RequiredConfirmations,
+		irisActivationHeight:  config.IrisActivationHeight,
+		erpKeys:               config.ErpKeys,
 		contract:              contract,
 		client:                client.client,
 		btcParams:             btcParams,
