@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-const testEventId entities.EventId = "test_event"
+const (
+	testEventId         entities.EventId = "test_event"
+	channelNotClosedMsg string           = "Channel was not closed"
+)
 
 type testEvent struct {
 	entities.Event
@@ -39,7 +42,7 @@ func TestLocalEventBus_Shutdown(t *testing.T) {
 		case result := <-closeChannel:
 			assert.True(t, result)
 		default:
-			assert.Fail(t, "Channel was not closed")
+			assert.Fail(t, channelNotClosedMsg)
 		}
 	})
 
@@ -53,7 +56,7 @@ func TestLocalEventBus_Shutdown(t *testing.T) {
 		case <-closeChannel:
 			assert.Empty(t, bus.(*dataproviders.LocalEventBus).Topics)
 		default:
-			assert.Fail(t, "Channel was not closed")
+			assert.Fail(t, channelNotClosedMsg)
 		}
 	})
 
@@ -69,7 +72,7 @@ func TestLocalEventBus_Shutdown(t *testing.T) {
 		case <-closeChannel:
 			assert.Empty(t, bus.(*dataproviders.LocalEventBus).Topics)
 		default:
-			assert.Fail(t, "Channel was not closed")
+			assert.Fail(t, channelNotClosedMsg)
 		}
 		require.NotPanics(t, func() {
 			result := bus.Subscribe(testEventId)
