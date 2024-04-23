@@ -3,7 +3,6 @@ package rootstock_test
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -14,12 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"io"
 	"math/big"
-	"os"
-	"path/filepath"
 	"testing"
-	"time"
 )
 
 const (
@@ -44,20 +39,7 @@ var (
 
 // TestRskWalletImpl we use this function to run all the test related to the wallet to open the account only once
 func TestRskWalletImpl(t *testing.T) {
-	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-wallet-%d", time.Now().UnixNano()))
-	keyFile, err := os.Open(keyPath)
-	require.NoError(t, err)
-
-	defer func(file *os.File) {
-		closingErr := file.Close()
-		require.NoError(t, closingErr)
-	}(keyFile)
-
-	keyBytes, err := io.ReadAll(keyFile)
-	require.NoError(t, err)
-	account, err := rootstock.GetAccount(testDir, 0, string(keyBytes), keyPassword)
-	require.NoError(t, err)
-
+	account := test.OpenWalletForTest(t, "wallet")
 	t.Run("Address", createAddressTest(account))
 	t.Run("Sign", creteSignTest(account))
 	t.Run("SignBytes", createSignBytesTest(account))

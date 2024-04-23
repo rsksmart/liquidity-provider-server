@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -29,10 +30,10 @@ var peginQuotes = []quote.PeginQuote{
 
 func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), []quote.PeginState{quote.PeginStateWaitingForDeposit}).
+	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit).
 		Return([]quote.RetainedPeginQuote{retainedQuotes[0], retainedQuotes[2]}, nil)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuotes[0].QuoteHash).Return(&peginQuotes[0], nil)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuotes[2].QuoteHash).Return(&peginQuotes[2], nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[0].QuoteHash).Return(&peginQuotes[0], nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[2].QuoteHash).Return(&peginQuotes[2], nil)
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateWaitingForDeposit)
 	quoteRepository.AssertExpectations(t)
@@ -49,9 +50,9 @@ func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 
 func TestGetWatchedPeginQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), []quote.PeginState{quote.PeginStateCallForUserSucceeded}).
+	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateCallForUserSucceeded).
 		Return([]quote.RetainedPeginQuote{retainedQuotes[1]}, nil)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuotes[1].QuoteHash).Return(&peginQuotes[3], nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[1].QuoteHash).Return(&peginQuotes[3], nil)
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateCallForUserSucceeded)
 	quoteRepository.AssertExpectations(t)
