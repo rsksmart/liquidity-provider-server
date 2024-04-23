@@ -1,16 +1,26 @@
 package test
 
 import (
+	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 )
 
 var AnyCtx = mock.AnythingOfType("context.backgroundCtx")
 
 const (
-	AnyAddress = "any address"
-	AnyString  = "any value"
+	AnyAddress  = "any address"
+	AnyString   = "any value"
+	keyPath     = "../../docker-compose/localstack/local-key.json"
+	KeyPassword = "test"
 )
 
 type Case[V, R any] struct {
@@ -26,4 +36,22 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 		result = validationFunction(testCase.Value)
 		assert.Equal(t, testCase.Result, result)
 	}
+}
+
+func OpenWalletForTest(t *testing.T, testRef string) *rootstock.RskAccount {
+	_, currentPackageDir, _, _ := runtime.Caller(0)
+	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%s-%d", testRef, time.Now().UnixNano()))
+	keyFile, err := os.Open(filepath.Join(currentPackageDir, keyPath))
+	require.NoError(t, err)
+
+	defer func(file *os.File) {
+		closingErr := file.Close()
+		require.NoError(t, closingErr)
+	}(keyFile)
+
+	keyBytes, err := io.ReadAll(keyFile)
+	require.NoError(t, err)
+	account, err := rootstock.GetAccount(testDir, 0, string(keyBytes), KeyPassword)
+	require.NoError(t, err)
+	return account
 }

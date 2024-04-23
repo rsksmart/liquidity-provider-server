@@ -14,6 +14,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type LocalLiquidityProvider struct {
@@ -47,7 +48,7 @@ func NewLocalLiquidityProvider(
 }
 
 func (lp *LocalLiquidityProvider) RskAddress() string {
-	return lp.signer.Address().String()
+	return strings.ToLower(lp.signer.Address().String())
 }
 
 func (lp *LocalLiquidityProvider) BtcAddress() string {

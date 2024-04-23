@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -21,20 +20,30 @@ const (
 	txMiningWaitTimeout = 2 * time.Minute
 )
 
+var DefaultRetryParams = RetryParams{
+	Retries: rpcCallRetryMax,
+	Sleep:   rpcCallRetrySleep,
+}
+
 type RskAccount struct {
 	Account  *accounts.Account
 	Keystore *keystore.KeyStore
 }
 
 type RskClient struct {
-	client *ethclient.Client
+	client RpcClientBinding
 }
 
-func NewRskClient(client *ethclient.Client) *RskClient {
+type RetryParams struct {
+	Retries uint
+	Sleep   time.Duration
+}
+
+func NewRskClient(client RpcClientBinding) *RskClient {
 	return &RskClient{client: client}
 }
 
-func (c *RskClient) Rpc() *ethclient.Client {
+func (c *RskClient) Rpc() RpcClientBinding {
 	return c.client
 }
 
@@ -66,20 +75,26 @@ func ParseAddress(address *common.Address, textAddress string) error {
 	return nil
 }
 
-func rskRetry[R any](call func() (R, error)) (R, error) {
+func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, error)) (R, error) {
 	var result R
 	var err error
-	for i := 0; i < rpcCallRetryMax; i++ {
+	var i uint
+
+	if retries == 0 {
+		return call()
+	}
+
+	for i = 0; i < retries; i++ {
 		result, err = call()
 		if err == nil {
 			return result, nil
 		}
-		time.Sleep(rpcCallRetrySleep)
+		time.Sleep(retrySleep)
 	}
 	return result, err
 }
 
-func awaitTx(client *ethclient.Client, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
 	var tx *geth.Transaction
 	var err error
 

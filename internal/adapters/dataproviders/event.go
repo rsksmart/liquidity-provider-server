@@ -8,13 +8,16 @@ import (
 
 var (
 	singletonLock     = &sync.Mutex{}
-	eventBusSingleton *localEventBus
+	eventBusSingleton *LocalEventBus
 )
 
-const subscriptionBufferSize = 20
+const (
+	subscriptionBufferSize = 20
+	closedBusMessage       = "Trying to interact with closed bus"
+)
 
-type localEventBus struct {
-	topics         map[entities.EventId][]chan<- entities.Event
+type LocalEventBus struct {
+	Topics         map[entities.EventId][]chan<- entities.Event
 	subscribeMutex sync.Mutex
 	publishMutex   sync.Mutex
 }
@@ -26,40 +29,56 @@ func NewLocalEventBus() entities.EventBus {
 		// we need to check if it still not created after the getting into the critical section
 		if eventBusSingleton == nil {
 			topics := make(map[entities.EventId][]chan<- entities.Event)
-			eventBusSingleton = &localEventBus{topics: topics}
+			eventBusSingleton = &LocalEventBus{Topics: topics}
 		}
 	}
 	return eventBusSingleton
 }
 
-func (bus *localEventBus) Subscribe(id entities.EventId) <-chan entities.Event {
+func (bus *LocalEventBus) Subscribe(id entities.EventId) <-chan entities.Event {
+	if eventBusSingleton == nil {
+		log.Error(closedBusMessage)
+		return nil
+	}
 	var topics []chan<- entities.Event
 	var ok bool
 	bus.subscribeMutex.Lock()
 	defer bus.subscribeMutex.Unlock()
-	if topics, ok = bus.topics[id]; !ok {
+	if topics, ok = bus.Topics[id]; !ok {
 		topics = make([]chan<- entities.Event, 0)
-		bus.topics[id] = topics
+		bus.Topics[id] = topics
 	}
 	subscription := make(chan entities.Event, subscriptionBufferSize)
-	bus.topics[id] = append(topics, subscription)
+	bus.Topics[id] = append(topics, subscription)
 	return subscription
 }
 
-func (bus *localEventBus) Shutdown(closeChannel chan<- bool) {
-	for _, topic := range bus.topics {
+func (bus *LocalEventBus) Shutdown(closeChannel chan<- bool) {
+	if eventBusSingleton == nil {
+		log.Error(closedBusMessage)
+		return
+	}
+	for key, topic := range bus.Topics {
 		for _, subscription := range topic {
 			close(subscription)
 		}
+		delete(bus.Topics, key)
 	}
+	singletonLock.Lock()
+	defer singletonLock.Unlock()
+	eventBusSingleton = nil
 	closeChannel <- true
 	log.Debug("Event bus shut down")
 }
 
-func (bus *localEventBus) Publish(event entities.Event) {
+func (bus *LocalEventBus) Publish(event entities.Event) {
+	if eventBusSingleton == nil {
+		log.Error(closedBusMessage)
+		return
+	}
 	bus.publishMutex.Lock()
 	defer bus.publishMutex.Unlock()
-	topic, ok := bus.topics[event.Id()]
+	topic, ok := bus.Topics[event.Id()]
 	if !ok {
 		return
 	}
