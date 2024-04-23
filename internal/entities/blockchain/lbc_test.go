@@ -1,7 +1,8 @@
-package blockchain
+package blockchain_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestRefundPegoutParams_String(t *testing.T) {
-	params := RefundPegoutParams{
+	params := blockchain.RefundPegoutParams{
 		QuoteHash:          [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
 		BtcRawTx:           []byte{0x01, 0x02, 0x03},
 		BtcBlockHeaderHash: [32]byte{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
@@ -32,7 +33,7 @@ func TestRefundPegoutParams_String(t *testing.T) {
 }
 
 func TestRegisterPeginParams_String(t *testing.T) {
-	params := RegisterPeginParams{
+	params := blockchain.RegisterPeginParams{
 		QuoteSignature:        []byte{0x01, 0x02, 0x03},
 		BitcoinRawTransaction: []byte{0x04, 0x05, 0x06},
 		PartialMerkleTree:     []byte{0x07, 0x08, 0x09},

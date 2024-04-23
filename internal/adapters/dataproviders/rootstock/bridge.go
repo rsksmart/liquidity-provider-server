@@ -1,15 +1,11 @@
 package rootstock
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"math/big"
@@ -20,28 +16,35 @@ type rskBridgeImpl struct {
 	requiredConfirmations uint64
 	irisActivationHeight  int64
 	erpKeys               []string
-	contract              *bindings.RskBridge
-	client                *ethclient.Client
+	contract              RskBridgeBinding
+	client                RpcClientBinding
 	btcParams             *chaincfg.Params
+	retryParams           RetryParams
+}
+
+type RskBridgeConfig struct {
+	Address               string
+	RequiredConfirmations uint64
+	IrisActivationHeight  int64
+	ErpKeys               []string
 }
 
 func NewRskBridgeImpl(
-	address string,
-	requiredConfirmations uint64,
-	irisActivationHeight int64,
-	erpKeys []string,
-	contract *bindings.RskBridge,
+	config RskBridgeConfig,
+	contract RskBridgeBinding,
 	client *RskClient,
 	btcParams *chaincfg.Params,
+	retryParams RetryParams,
 ) blockchain.RootstockBridge {
 	return &rskBridgeImpl{
-		address:               address,
-		requiredConfirmations: requiredConfirmations,
-		irisActivationHeight:  irisActivationHeight,
-		erpKeys:               erpKeys,
+		address:               config.Address,
+		requiredConfirmations: config.RequiredConfirmations,
+		irisActivationHeight:  config.IrisActivationHeight,
+		erpKeys:               config.ErpKeys,
 		contract:              contract,
 		client:                client.client,
 		btcParams:             btcParams,
+		retryParams:           retryParams,
 	}
 }
 
@@ -51,16 +54,18 @@ func (bridge *rskBridgeImpl) GetAddress() string {
 
 func (bridge *rskBridgeImpl) GetFedAddress() (string, error) {
 	opts := &bind.CallOpts{}
-	return rskRetry(func() (string, error) {
-		return bridge.contract.GetFederationAddress(opts)
-	})
+	return rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (string, error) {
+			return bridge.contract.GetFederationAddress(opts)
+		})
 }
 
 func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 	opts := &bind.CallOpts{}
-	result, err := rskRetry(func() (*big.Int, error) {
-		return bridge.contract.GetMinimumLockTxValue(opts)
-	})
+	result, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetMinimumLockTxValue(opts)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -70,38 +75,18 @@ func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 
 func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.FlyoverDerivationArgs) (blockchain.FlyoverDerivation, error) {
 	var err error
-	var fedRedeemScript, derivationValue, flyoverScript []byte
-	var addressScriptHash *btcutil.AddressScriptHash
-
-	if derivationValue = bridge.getDerivationValueHash(args); err != nil {
-		return blockchain.FlyoverDerivation{}, fmt.Errorf("error computing derivation value: %w", err)
-	}
+	var fedRedeemScript, derivationValue []byte
+	derivationValue = federation.GetDerivationValueHash(args)
 	opts := &bind.CallOpts{}
-	fedRedeemScript, err = rskRetry(func() ([]byte, error) {
-		return bridge.contract.GetActivePowpegRedeemScript(opts)
-	})
+	fedRedeemScript, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() ([]byte, error) {
+			return bridge.contract.GetActivePowpegRedeemScript(opts)
+		})
 	if err != nil {
 		return blockchain.FlyoverDerivation{}, fmt.Errorf("error retreiving fed redeem script from bridge: %w", err)
 	}
 
-	if len(fedRedeemScript) == 0 {
-		if fedRedeemScript, err = getFedRedeemScript(args.FedInfo, *bridge.btcParams); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error generating fed redeem script: %w", err)
-		}
-	} else {
-		if err = validateRedeemScript(args.FedInfo, *bridge.btcParams, fedRedeemScript); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error validating fed redeem script: %w", err)
-		}
-	}
-
-	flyoverScript = getFlyoverRedeemScript(derivationValue, fedRedeemScript)
-	if addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, bridge.btcParams); err != nil {
-		return blockchain.FlyoverDerivation{}, err
-	}
-	return blockchain.FlyoverDerivation{
-		Address:      addressScriptHash.EncodeAddress(),
-		RedeemScript: hex.EncodeToString(flyoverScript),
-	}, nil
+	return federation.CalculateFlyoverDerivationAddress(args.FedInfo, *bridge.btcParams, fedRedeemScript, derivationValue)
 }
 
 func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
@@ -115,41 +100,46 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 	var i, federationSize int64
 
 	opts := &bind.CallOpts{}
-	fedSize, err := rskRetry(func() (*big.Int, error) {
-		return bridge.contract.GetFederationSize(opts)
-	})
+	fedSize, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetFederationSize(opts)
+		})
 	if err != nil {
 		return blockchain.FederationInfo{}, err
 	}
 	federationSize = fedSize.Int64()
 
 	for i = 0; i < federationSize; i++ {
-		pubKey, err = rskRetry(func() ([]byte, error) {
-			return bridge.contract.GetFederatorPublicKeyOfType(opts, big.NewInt(i), "btc")
-		})
+		pubKey, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+			func() ([]byte, error) {
+				return bridge.contract.GetFederatorPublicKeyOfType(opts, big.NewInt(i), "btc")
+			})
 		if err != nil {
 			return blockchain.FederationInfo{}, fmt.Errorf("error fetching fed public key: %w", err)
 		}
 		pubKeys = append(pubKeys, hex.EncodeToString(pubKey))
 	}
 
-	fedThreshold, err := rskRetry(func() (*big.Int, error) {
-		return bridge.contract.GetFederationThreshold(opts)
-	})
+	fedThreshold, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetFederationThreshold(opts)
+		})
 	if err != nil {
 		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation size: %w", err)
 	}
 
-	fedAddress, err := rskRetry(func() (string, error) {
-		return bridge.contract.GetFederationAddress(opts)
-	})
+	fedAddress, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (string, error) {
+			return bridge.contract.GetFederationAddress(opts)
+		})
 	if err != nil {
 		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation address: %w", err)
 	}
 
-	activeFedBlockHeight, err := rskRetry(func() (*big.Int, error) {
-		return bridge.contract.GetActiveFederationCreationBlockHeight(opts)
-	})
+	activeFedBlockHeight, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetActiveFederationCreationBlockHeight(opts)
+		})
 	if err != nil {
 		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
 	}
@@ -163,16 +153,4 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 		IrisActivationHeight: bridge.irisActivationHeight,
 		ErpKeys:              bridge.erpKeys,
 	}, nil
-}
-
-func (bridge *rskBridgeImpl) getDerivationValueHash(args blockchain.FlyoverDerivationArgs) []byte {
-	var buf bytes.Buffer
-	buf.Write(args.QuoteHash)
-	buf.Write(args.UserBtcRefundAddress)
-	buf.Write(args.LbcAdress)
-	buf.Write(args.LpBtcAddress)
-
-	derivationValueHash := crypto.Keccak256(buf.Bytes())
-
-	return derivationValueHash
 }

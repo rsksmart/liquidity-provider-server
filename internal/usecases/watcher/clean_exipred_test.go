@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -33,20 +34,20 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 	peginRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginRepository.On(
 		"GetRetainedQuoteByState",
-		mock.AnythingOfType("context.backgroundCtx"),
-		[]quote.PeginState{quote.PeginStateTimeForDepositElapsed},
+		test.AnyCtx,
+		quote.PeginStateTimeForDepositElapsed,
 	).Return([]quote.RetainedPeginQuote{peginExpiredQuotes[0], peginExpiredQuotes[1], peginExpiredQuotes[3]}, nil)
 	peginRepository.On(
 		"DeleteQuotes",
-		mock.AnythingOfType("context.backgroundCtx"),
+		test.AnyCtx,
 		[]string{"peginHash1", "peginHash2", "peginHash4"},
 	).Return(uint(3), nil)
 
 	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutRepository.On(
 		"GetRetainedQuoteByState",
-		mock.AnythingOfType("context.backgroundCtx"),
-		[]quote.PegoutState{quote.PegoutStateTimeForDepositElapsed},
+		test.AnyCtx,
+		quote.PegoutStateTimeForDepositElapsed,
 	).Return([]quote.RetainedPegoutQuote{pegoutExpiredQuotes[2], pegoutExpiredQuotes[4], pegoutExpiredQuotes[5]}, nil)
 	pegoutRepository.On(
 		"DeleteQuotes",

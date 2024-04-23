@@ -37,7 +37,7 @@ func TestGenerateDefaultCredentialsUseCase_Run(t *testing.T) {
 			assert.NotEmpty(t, event.Credentials.UsernameSalt)
 	})).Once()
 	useCase := liquidity_provider.NewGenerateDefaultCredentialsUseCase(lpRepository, eventBus)
-	dir := os.TempDir()
+	dir := t.TempDir()
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
 	err := useCase.Run(context.Background(), dir)
@@ -74,7 +74,7 @@ func TestGenerateDefaultCredentialsUseCase_Run_StoredCredentials(t *testing.T) {
 		},
 	}, nil)
 	useCase := liquidity_provider.NewGenerateDefaultCredentialsUseCase(lpRepository, eventBus)
-	dir := os.TempDir()
+	dir := t.TempDir()
 	err := useCase.Run(context.Background(), dir)
 	require.NoError(t, err)
 	eventBus.AssertNotCalled(t, "Publish")
@@ -87,7 +87,7 @@ func TestGenerateDefaultCredentialsUseCase_Run_ErrorHandling(t *testing.T) {
 		eventBus := &mocks.EventBusMock{}
 		lpRepository.On("GetCredentials", context.Background()).Return(nil, assert.AnError)
 		useCase := liquidity_provider.NewGenerateDefaultCredentialsUseCase(lpRepository, eventBus)
-		dir := os.TempDir()
+		dir := t.TempDir()
 		err := useCase.Run(context.Background(), dir)
 		require.Error(t, err)
 		eventBus.AssertNotCalled(t, "Publish")
