@@ -1,14 +1,15 @@
-package rootstock
+package account
 
 import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-func GetAccount(keyDir string, accountNum int, encryptedJson, password string) (*RskAccount, error) {
+func GetRskAccount(keyDir string, accountNum int, encryptedJson, password string) (*rootstock.RskAccount, error) {
 	if err := os.MkdirAll(keyDir, 0700); err != nil {
 		return nil, err
 	}
@@ -17,7 +18,7 @@ func GetAccount(keyDir string, accountNum int, encryptedJson, password string) (
 	if account, err := retrieveOrCreateAccount(ks, accountNum, encryptedJson, password); err != nil {
 		return nil, err
 	} else {
-		return &RskAccount{
+		return &rootstock.RskAccount{
 			Account:  account,
 			Keystore: ks,
 		}, nil

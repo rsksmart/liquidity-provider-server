@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	environment2 "github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -54,7 +55,7 @@ func Rootstock(ctx context.Context, env environment2.RskEnv) (*rootstock.RskClie
 }
 
 func RootstockAccount(env environment2.RskEnv, secrets environment2.ApplicationSecrets) (*rootstock.RskAccount, error) {
-	return rootstock.GetAccount(
+	return account.GetRskAccount(
 		"geth_keystore",
 		env.AccountNumber,
 		secrets.EncryptedJson,

@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func OpenWalletForTest(t *testing.T, testRef string) *rootstock.RskAccount {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
-	account, err := rootstock.GetAccount(testDir, 0, string(keyBytes), KeyPassword)
+	account, err := account.GetRskAccount(testDir, 0, string(keyBytes), KeyPassword)
 	require.NoError(t, err)
 	return account
 }
