@@ -54,7 +54,7 @@ func Rootstock(ctx context.Context, env environment2.RskEnv) (*rootstock.RskClie
 	return rootstock.NewRskClient(client), nil
 }
 
-func RootstockAccount(env environment2.RskEnv, secrets environment2.ApplicationSecrets) (*rootstock.RskAccount, error) {
+func RootstockAccount(env environment2.RskEnv, secrets environment2.ApplicationSecrets) (*account.RskAccount, error) {
 	return account.GetRskAccount(
 		"geth_keystore",
 		env.AccountNumber,
