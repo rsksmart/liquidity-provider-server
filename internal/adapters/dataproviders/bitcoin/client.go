@@ -18,13 +18,14 @@ type rpcWallet interface {
 	WalletPassphrase(passphrase string, timeoutSecs int64) error
 	ImportAddressRescan(address string, account string, rescan bool) error
 	ListUnspentMinMaxAddresses(minConf int, maxConf int, addrs []btcutil.Address) ([]btcjson.ListUnspentResult, error)
+	GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error)
 }
 
 type rpcClient interface {
 	rpcWallet
 	Ping() error
 	Disconnect()
-	GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error)
+	GetRawTransactionVerbose(txHash *chainhash.Hash) (*btcjson.TxRawResult, error)
 	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
 	GetBlockChainInfo() (*btcjson.GetBlockChainInfoResult, error)
 	GetBlockVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockVerboseResult, error)

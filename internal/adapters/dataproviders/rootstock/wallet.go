@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
@@ -16,11 +17,11 @@ import (
 
 type RskWalletImpl struct {
 	client  RpcClientBinding
-	account *RskAccount
+	account *account.RskAccount
 	chainId uint64
 }
 
-func NewRskWalletImpl(client *RskClient, account *RskAccount, chainId uint64) *RskWalletImpl {
+func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64) *RskWalletImpl {
 	return &RskWalletImpl{client: client.client, account: account, chainId: chainId}
 }
 

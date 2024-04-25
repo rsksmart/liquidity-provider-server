@@ -54,7 +54,10 @@ func (rpc *bitcoindRpc) DecodeAddress(address string, keepVersion bool) ([]byte,
 }
 
 func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTransactionInformation, error) {
+	// nolint:prealloc
+	// false positive
 	var amounts []*entities.Wei
+	var btcAmount btcutil.Amount
 	var ok bool
 
 	parsedHash, err := chainhash.NewHashFromStr(hash)
@@ -62,27 +65,26 @@ func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTrans
 		return blockchain.BitcoinTransactionInformation{}, err
 	}
 
-	tx, err := rpc.conn.client.GetTransaction(parsedHash)
+	tx, err := rpc.conn.client.GetRawTransactionVerbose(parsedHash)
 	if err != nil {
 		return blockchain.BitcoinTransactionInformation{}, err
 	}
 
 	outputs := make(map[string][]*entities.Wei)
-	for _, output := range tx.Details {
-		amounts, ok = outputs[output.Address]
+	for _, output := range tx.Vout {
+		amounts, ok = outputs[output.ScriptPubKey.Address]
 		if !ok {
 			amounts = make([]*entities.Wei, 0)
 		}
-		if output.Category == "send" { //  send category has a negative value
-			amounts = append(amounts, entities.SatoshiToWei(uint64(output.Amount*BtcToSatoshi*-1)))
-		} else {
-			amounts = append(amounts, entities.SatoshiToWei(uint64(output.Amount*BtcToSatoshi)))
+		if btcAmount, err = btcutil.NewAmount(output.Value); err != nil {
+			return blockchain.BitcoinTransactionInformation{}, err
 		}
-		outputs[output.Address] = amounts
+		amounts = append(amounts, entities.SatoshiToWei(uint64(btcAmount.ToUnit(btcutil.AmountSatoshi))))
+		outputs[output.ScriptPubKey.Address] = amounts
 	}
 	return blockchain.BitcoinTransactionInformation{
-		Hash:          tx.TxID,
-		Confirmations: uint64(tx.Confirmations),
+		Hash:          tx.Hash,
+		Confirmations: tx.Confirmations,
 		Outputs:       outputs,
 	}, nil
 }
@@ -160,7 +162,7 @@ func (rpc *bitcoindRpc) GetTransactionBlockInfo(transactionHash string) (blockch
 	if err != nil {
 		return blockchain.BitcoinBlockInformation{}, err
 	}
-	tx, err := rpc.conn.client.GetTransaction(parsedTxHash)
+	tx, err := rpc.conn.client.GetRawTransactionVerbose(parsedTxHash)
 	if err != nil {
 		return blockchain.BitcoinBlockInformation{}, err
 	}
@@ -187,7 +189,7 @@ func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Ha
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := rpc.conn.client.GetTransaction(parsedTxHash)
+	tx, err := rpc.conn.client.GetRawTransactionVerbose(parsedTxHash)
 	if err != nil {
 		return nil, nil, err
 	}

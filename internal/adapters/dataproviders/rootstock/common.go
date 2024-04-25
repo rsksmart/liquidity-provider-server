@@ -2,9 +2,7 @@ package rootstock
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -23,11 +21,6 @@ const (
 var DefaultRetryParams = RetryParams{
 	Retries: rpcCallRetryMax,
 	Sleep:   rpcCallRetrySleep,
-}
-
-type RskAccount struct {
-	Account  *accounts.Account
-	Keystore *keystore.KeyStore
 }
 
 type RskClient struct {

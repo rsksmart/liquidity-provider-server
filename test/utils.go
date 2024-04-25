@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -39,7 +38,7 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 	}
 }
 
-func OpenWalletForTest(t *testing.T, testRef string) *rootstock.RskAccount {
+func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 	_, currentPackageDir, _, _ := runtime.Caller(0)
 	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%s-%d", testRef, time.Now().UnixNano()))
 	keyFile, err := os.Open(filepath.Join(currentPackageDir, keyPath))

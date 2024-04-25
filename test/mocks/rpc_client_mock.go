@@ -409,6 +409,64 @@ func (_c *RpcClientMock_GetRawTransaction_Call) RunAndReturn(run func(*chainhash
 	return _c
 }
 
+// GetRawTransactionVerbose provides a mock function with given fields: txHash
+func (_m *RpcClientMock) GetRawTransactionVerbose(txHash *chainhash.Hash) (*btcjson.TxRawResult, error) {
+	ret := _m.Called(txHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRawTransactionVerbose")
+	}
+
+	var r0 *btcjson.TxRawResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*chainhash.Hash) (*btcjson.TxRawResult, error)); ok {
+		return rf(txHash)
+	}
+	if rf, ok := ret.Get(0).(func(*chainhash.Hash) *btcjson.TxRawResult); ok {
+		r0 = rf(txHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.TxRawResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*chainhash.Hash) error); ok {
+		r1 = rf(txHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientMock_GetRawTransactionVerbose_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRawTransactionVerbose'
+type RpcClientMock_GetRawTransactionVerbose_Call struct {
+	*mock.Call
+}
+
+// GetRawTransactionVerbose is a helper method to define mock.On call
+//   - txHash *chainhash.Hash
+func (_e *RpcClientMock_Expecter) GetRawTransactionVerbose(txHash interface{}) *RpcClientMock_GetRawTransactionVerbose_Call {
+	return &RpcClientMock_GetRawTransactionVerbose_Call{Call: _e.mock.On("GetRawTransactionVerbose", txHash)}
+}
+
+func (_c *RpcClientMock_GetRawTransactionVerbose_Call) Run(run func(txHash *chainhash.Hash)) *RpcClientMock_GetRawTransactionVerbose_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*chainhash.Hash))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_GetRawTransactionVerbose_Call) Return(_a0 *btcjson.TxRawResult, _a1 error) *RpcClientMock_GetRawTransactionVerbose_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientMock_GetRawTransactionVerbose_Call) RunAndReturn(run func(*chainhash.Hash) (*btcjson.TxRawResult, error)) *RpcClientMock_GetRawTransactionVerbose_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTransaction provides a mock function with given fields: txHash
 func (_m *RpcClientMock) GetTransaction(txHash *chainhash.Hash) (*btcjson.GetTransactionResult, error) {
 	ret := _m.Called(txHash)
