@@ -64,7 +64,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -125,7 +125,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(80000), nil).Once()
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
@@ -159,7 +159,7 @@ func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 		lbc := new(mocks.LbcMock)
 		btc := new(mocks.BtcRpcMock)
 		eventBus := new(mocks.EventBusMock)
-		rsk := new(mocks.RskRpcMock)
+		rsk := new(mocks.RootstockRpcServerMock)
 		mutex := new(mocks.MutexMock)
 		mutex.On("Lock").Return().Once()
 		mutex.On("Unlock").Return().Once()
@@ -176,7 +176,7 @@ func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 	}
 }
 
-func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 	now := uint32(time.Now().Unix())
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      "fed address",
@@ -200,19 +200,19 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 		GasFee:             entities.NewWei(500),
 		ProductFeeAmount:   100,
 	}
-	return []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock){
-		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+	return []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock){
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 			caseRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 		},
-		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(nil, assert.AnError).Once()
 		},
-		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
 				Return(&peginQuote, nil).Once()
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 		},
-		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
 				Return(&peginQuote, nil).Once()
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
@@ -222,7 +222,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			}, nil).Once()
 			lbc.On("GetBalance", mock.Anything).Return(nil, assert.AnError).Once()
 		},
-		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RskRpcMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
 				Return(&peginQuote, nil).Once()
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
@@ -262,7 +262,7 @@ func TestCallForUserUseCase_Run_NoConfirmations(t *testing.T) {
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).
 		Return(&testPeginQuote, nil).Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -314,7 +314,7 @@ func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 			assert.Equal(t, quote.CallForUserCompletedEventId, event.Event.Id())
 	})).Return().Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -359,7 +359,7 @@ func TestCallForUserUseCase_Run_QuoteNotFound(t *testing.T) {
 			assert.Equal(t, quote.CallForUserCompletedEventId, event.Event.Id())
 	})).Return().Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -415,7 +415,7 @@ func TestCallForUserUseCase_Run_InsufficientAmount(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).
 		Return(nil).Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -470,7 +470,7 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(20000), nil).Once()
 
 	contracts := blockchain.RskContracts{Lbc: lbc}
@@ -534,7 +534,7 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
 
-	rsk := new(mocks.RskRpcMock)
+	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(80000), nil).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}

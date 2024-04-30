@@ -37,7 +37,7 @@ const (
 func TestBitcoindWallet_Unlock(t *testing.T) {
 	expiredLockUntil := expiredTime
 	nonExpiredLockUntil := unexpiredTime
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{
 		UnlockedUntil: &expiredLockUntil,
 	}, nil).Once()
@@ -54,7 +54,7 @@ func TestBitcoindWallet_Unlock(t *testing.T) {
 }
 
 func TestBitcoindWallet_Unlock_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(nil, assert.AnError).Once()
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(nil, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.Unlock()
@@ -62,14 +62,14 @@ func TestBitcoindWallet_Unlock_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindWallet_ImportAddress(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("ImportAddressRescan", testnetAddress, "", false).Return(nil).Once()
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.ImportAddress(testnetAddress)
 	require.NoError(t, err)
 	client.AssertExpectations(t)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("ImportAddressRescan", mainnetAddress, "", false).Return(nil).Once()
 	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockAddress, mockFeeRate, true, mockPassword)
 	err = rpc.ImportAddress(mainnetAddress)
@@ -78,7 +78,7 @@ func TestBitcoindWallet_ImportAddress(t *testing.T) {
 }
 
 func TestBitcoindWallet_ImportAddress_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.MainNetParams, client), mockAddress, mockFeeRate, true, mockPassword)
 	err := rpc.ImportAddress(testnetAddress)
 	require.Error(t, err)
@@ -89,7 +89,7 @@ func TestBitcoindWallet_ImportAddress_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindWallet_EstimateTxFees(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	amount := entities.NewWei(5000000000000000)
 	var changePosition int64 = 2
 	var input []btcjson.PsbtInput
@@ -120,7 +120,7 @@ func TestBitcoindWallet_EstimateTxFees(t *testing.T) {
 }
 
 func TestBitcoindWallet_EstimateTxFees_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	fee, err := rpc.EstimateTxFees(mainnetAddress, entities.NewWei(1))
 	require.Error(t, err)
@@ -159,7 +159,7 @@ func TestBitcoindWallet_GetBalance(t *testing.T) {
 	var result []btcjson.ListUnspentResult
 	err = json.Unmarshal(rpcResponse, &result)
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("ListUnspent").Return(result, nil).Once()
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	balance, err := rpc.GetBalance()
@@ -169,7 +169,7 @@ func TestBitcoindWallet_GetBalance(t *testing.T) {
 }
 
 func TestBitcoindWallet_GetBalance_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("ListUnspent").Return(nil, assert.AnError).Once()
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	balance, err := rpc.GetBalance()
@@ -183,7 +183,7 @@ func TestBitcoindWallet_GetBalance_ErrorHandling(t *testing.T) {
 	assert.Nil(t, balance)
 }
 
-func setupSendWithOpReturnTest(t *testing.T, client *mocks.RpcClientMock, encrypted bool) {
+func setupSendWithOpReturnTest(t *testing.T, client *mocks.ClientAdapterMock, encrypted bool) {
 	var input []btcjson.TransactionInput
 	var lockTime *int64
 	satoshis := 50000000
@@ -239,7 +239,7 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 	data := []byte{2, 1, 0, 7, 2, 0, 0, 0}
 	params := &chaincfg.TestNet3Params
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	setupSendWithOpReturnTest(t, client, true)
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockAddress, mockFeeRate, true, mockPassword)
 	txHash, err := rpc.SendWithOpReturn(testnetAddress, entities.NewWei(500000000000000000), data)
@@ -248,7 +248,7 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 	assert.Equal(t, testnetTestTxHash, txHash)
 	client.AssertExpectations(t)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	setupSendWithOpReturnTest(t, client, false)
 	rpc = bitcoin.NewBitcoindWallet(bitcoin.NewConnection(params, client), mockAddress, mockFeeRate, false, mockPassword)
 	txHash, err = rpc.SendWithOpReturn(testnetAddress, entities.NewWei(500000000000000000), data)
@@ -261,7 +261,7 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 func TestBitcoindWallet_SendWithOpReturn_ErrorHandling(t *testing.T) {
 	setups := sendWithOpReturnErrorSetups()
 	for _, setup := range setups {
-		client := &mocks.RpcClientMock{}
+		client := &mocks.ClientAdapterMock{}
 		data := []byte{2, 1, 0, 7, 2, 0, 0, 0}
 		setup(client, &data)
 		rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
@@ -273,12 +273,12 @@ func TestBitcoindWallet_SendWithOpReturn_ErrorHandling(t *testing.T) {
 }
 
 // nolint:funlen
-func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]byte) {
-	return []func(client *mocks.RpcClientMock, data *[]byte){
-		func(client *mocks.RpcClientMock, data *[]byte) {
+func sendWithOpReturnErrorSetups() []func(client *mocks.ClientAdapterMock, data *[]byte) {
+	return []func(client *mocks.ClientAdapterMock, data *[]byte){
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		},
-		func(client *mocks.RpcClientMock, data *[]byte) {
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
@@ -287,7 +287,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			}, nil).Once()
 			client.On("GetWalletInfo").Return(nil, assert.AnError).Once()
 		},
-		func(client *mocks.RpcClientMock, data *[]byte) {
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
@@ -298,7 +298,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 				*data = append(*data, byte(i))
 			}
 		},
-		func(client *mocks.RpcClientMock, data *[]byte) {
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
@@ -312,7 +312,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			var isWitness *bool
 			client.On("FundRawTransaction", mock.Anything, mock.Anything, isWitness).Return(nil, assert.AnError).Once()
 		},
-		func(client *mocks.RpcClientMock, data *[]byte) {
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
@@ -327,7 +327,7 @@ func sendWithOpReturnErrorSetups() []func(client *mocks.RpcClientMock, data *[]b
 			client.On("FundRawTransaction", mock.Anything, mock.Anything, isWitness).Return(&btcjson.FundRawTransactionResult{}, nil).Once()
 			client.On("SignRawTransactionWithWallet", mock.Anything).Return(nil, false, assert.AnError).Once()
 		},
-		func(client *mocks.RpcClientMock, data *[]byte) {
+		func(client *mocks.ClientAdapterMock, data *[]byte) {
 			client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{
 				Version:  0,
 				TxIn:     nil,
@@ -354,7 +354,7 @@ func TestBitcoindWallet_GetTransactions(t *testing.T) {
 	var result []btcjson.ListUnspentResult
 	err = json.Unmarshal(rpcResponse, &result)
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	parsedAddress, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
 	require.NoError(t, err)
 	client.On("ListUnspentMinMaxAddresses", 0, 9999999, []btcutil.Address{parsedAddress}).Return(result, nil).Once()
@@ -398,7 +398,7 @@ func TestBitcoindWallet_GetTransactions(t *testing.T) {
 }
 
 func TestBitcoindWallet_GetTransactions_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
 	transactions, err := rpc.GetTransactions("invalidAddress")
 	require.Error(t, err)

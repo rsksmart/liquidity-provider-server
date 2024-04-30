@@ -32,7 +32,12 @@ func TestGetAccount(t *testing.T) {
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
 	t.Run("Create new account", func(t *testing.T) {
-		account, testError := account.GetRskAccount(testDir, 0, string(keyBytes), test.KeyPassword)
+		account, testError := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      test.KeyPassword,
+		})
 		_, noExistError := os.Stat(testDir)
 		assert.Falsef(t, os.IsNotExist(noExistError), "Key directory not created")
 		require.NoError(t, testError)
@@ -40,7 +45,12 @@ func TestGetAccount(t *testing.T) {
 		assert.NotNil(t, 1, len(account.Keystore.Accounts()))
 	})
 	t.Run("Retrieve created account new account", func(t *testing.T) {
-		otherAccount, otherError := account.GetRskAccount(testDir, 0, string(keyBytes), test.KeyPassword)
+		otherAccount, otherError := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      test.KeyPassword,
+		})
 		require.NoError(t, otherError)
 		assert.Equal(t, common.HexToAddress(keyAddress), otherAccount.Account.Address)
 		assert.NotNil(t, 1, len(otherAccount.Keystore.Accounts()))
@@ -60,25 +70,50 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 	keyBytes, setupErr := io.ReadAll(keyFile)
 	require.NoError(t, setupErr)
 	t.Run("Invalid dir", func(t *testing.T) {
-		account, err := account.GetRskAccount("/test", 0, string(keyBytes), test.KeyPassword)
+		account, err := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        "/test",
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      test.KeyPassword,
+		})
 		assert.Nil(t, account)
 		require.Error(t, err)
 	})
 	t.Run("Invalid key", func(t *testing.T) {
-		account, err := account.GetRskAccount(testDir, 0, "any key", test.KeyPassword)
+		account, err := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: "any key",
+			Password:      test.KeyPassword,
+		})
 		assert.Nil(t, account)
 		require.Error(t, err)
 	})
 	t.Run("Invalid password", func(t *testing.T) {
-		account, err := account.GetRskAccount(testDir, 0, string(keyBytes), "incorrect")
+		account, err := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      "incorrect",
+		})
 		assert.Nil(t, account)
 		require.Error(t, err)
 	})
 	t.Run("Invalid account number", func(t *testing.T) {
 		// we create a keystore first so in the second call we can try to get an account that doesn't exist
-		_, err := account.GetRskAccount(testDir, 0, string(keyBytes), test.KeyPassword)
+		_, err := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      test.KeyPassword,
+		})
 		require.NoError(t, err)
-		account, err := account.GetRskAccount(testDir, 1, string(keyBytes), test.KeyPassword)
+		account, err := account.GetRskAccount(account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    1,
+			EncryptedJson: string(keyBytes),
+			Password:      test.KeyPassword,
+		})
 		assert.Nil(t, account)
 		require.Error(t, err)
 	})
