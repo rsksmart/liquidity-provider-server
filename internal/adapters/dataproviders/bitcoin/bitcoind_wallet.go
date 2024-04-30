@@ -161,46 +161,7 @@ func (wallet *bitcoindWallet) ImportAddress(address string) error {
 }
 
 func (wallet *bitcoindWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
-	var ok bool
-	var tx blockchain.BitcoinTransactionInformation
-	var btcAmount btcutil.Amount
-	const maxConfirmationsForUtxos = 9999999
-	result := make([]blockchain.BitcoinTransactionInformation, 0)
-	parsedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
-	if err != nil {
-		return nil, err
-	}
-	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(0, maxConfirmationsForUtxos, []btcutil.Address{parsedAddress})
-	if err != nil {
-		return nil, err
-	}
-
-	txs := make(map[string]blockchain.BitcoinTransactionInformation)
-	for _, utxo := range utxos {
-		tx, ok = txs[utxo.TxID]
-		if !ok {
-			tx = blockchain.BitcoinTransactionInformation{
-				Hash:          utxo.TxID,
-				Confirmations: uint64(utxo.Confirmations),
-				Outputs:       make(map[string][]*entities.Wei),
-			}
-			txs[utxo.TxID] = tx
-		}
-		if _, ok = tx.Outputs[utxo.Address]; !ok {
-			tx.Outputs[utxo.Address] = make([]*entities.Wei, 0)
-		}
-		btcAmount, err = btcutil.NewAmount(utxo.Amount)
-		if err != nil {
-			return nil, err
-		}
-		tx.Outputs[utxo.Address] = append(tx.Outputs[utxo.Address], entities.SatoshiToWei(uint64(btcAmount.ToUnit(btcutil.AmountSatoshi))))
-	}
-
-	for key, value := range txs {
-		result = append(result, value)
-		delete(txs, key)
-	}
-	return result, nil
+	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
 }
 
 func (wallet *bitcoindWallet) Unlock() error {

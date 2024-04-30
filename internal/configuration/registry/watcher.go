@@ -29,7 +29,7 @@ func NewWatcherRegistry(
 			useCaseRegistry.callForUserUseCase,
 			useCaseRegistry.getWatchedPeginQuoteUseCase,
 			useCaseRegistry.expiredPeginQuoteUseCase,
-			btcRegistry.Wallet,
+			btcRegistry.MonitoringWallet,
 			messaging.Rpc,
 			messaging.EventBus,
 		),

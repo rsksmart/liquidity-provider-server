@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
@@ -36,12 +37,25 @@ type Application struct {
 }
 
 func NewApplication(initCtx context.Context, env environment.Environment, secrets environment.ApplicationSecrets) *Application {
-	btcConnection, err := bootstrap.Bitcoin(env.Btc)
+	account, err := bootstrap.RootstockAccount(env.Rsk, env.Btc, secrets)
 	if err != nil {
-		log.Fatal("Error connecting to BTC node:", err)
+		log.Fatal("Error connecting to RSK account:", err)
 	}
-	log.Debug("Connected to BTC node")
-	btcRegistry, err := registry.NewBitcoinRegistry(env.Btc, secrets, btcConnection)
+	log.Debug("Connected to RSK account")
+
+	monitoringConnection, err := bootstrap.BitcoinWallet(env.Btc, "main")
+	if err != nil {
+		log.Fatal("Error creating BTC monitoring connection:", err)
+	}
+	log.Debug("Connected to BTC node for monitoring")
+
+	paymentConnection, err := bootstrap.BitcoinWallet(env.Btc, bitcoin.DerivativeWalletId)
+	if err != nil {
+		log.Fatal("Error creating BTC payment connection:", err)
+	}
+	log.Debug("Connected to BTC node for payments")
+
+	btcRegistry, err := registry.NewBitcoinRegistry(env.Btc, secrets, monitoringConnection, paymentConnection, account)
 	if err != nil {
 		log.Fatal("Error creating BTC registry:", err)
 	}
@@ -53,22 +67,17 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	dbRegistry := registry.NewDatabaseRegistry(connection)
 	log.Debug("Connected to MongoDB")
 
-	account, err := bootstrap.RootstockAccount(env.Rsk, secrets)
-	if err != nil {
-		log.Fatal("Error connecting to RSK account:", err)
-	}
-	log.Debug("Connected to RSK account")
 	rskClient, err := bootstrap.Rootstock(initCtx, env.Rsk)
 	if err != nil {
 		log.Fatal("Error connecting to RSK node:", err)
 	}
-	rootstockRegistry, err := registry.NewRootstockRegistry(env.Rsk, rskClient, account, btcConnection)
+	rootstockRegistry, err := registry.NewRootstockRegistry(env.Rsk, rskClient, account, monitoringConnection)
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
 	log.Debug("Connected to RSK node")
 
-	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection)
+	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, monitoringConnection)
 	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
 	mutexes := environment.NewApplicationMutexes()
 
@@ -92,7 +101,8 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.dbRegistry.Connection)
 	app.addRunningService(app.rskRegistry.Client)
-	app.addRunningService(app.btcRegistry.Connection)
+	app.addRunningService(app.btcRegistry.MonitoringWalletConnection)
+	app.addRunningService(app.btcRegistry.PaymentWalletConnection)
 	app.addRunningService(app.messagingRegistry.EventBus)
 
 	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType)

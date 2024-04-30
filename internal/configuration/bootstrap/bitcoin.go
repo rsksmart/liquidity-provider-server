@@ -7,6 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 )
@@ -15,23 +16,44 @@ const (
 	unknownBtcdVersion = -1
 )
 
-func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
-	var params chaincfg.Params
-	log.Info("Connecting to BTC node")
+type CreatedClient struct {
+	Client btcclient.ClientAdapter
+	Params *chaincfg.Params
+	Config rpcclient.ConnConfig
+}
 
-	switch env.Network {
-	case "mainnet":
-		params = chaincfg.MainNetParams
-	case "testnet":
-		params = chaincfg.TestNet3Params
-	case "regtest":
-		params = chaincfg.RegressionNetParams
-	default:
-		return nil, fmt.Errorf("invalid network name: %v", env.Network)
+func BitcoinWallet(env environment.BtcEnv, walletId string) (*bitcoin.Connection, error) {
+	if walletId == "" {
+		return nil, errors.New("walletId cannot be empty")
+	}
+	endpoint := fmt.Sprintf("%s/wallet/%s", env.Endpoint, walletId)
+	createdClient, err := createBitcoinClient(env, endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return bitcoin.NewWalletConnection(createdClient.Params, createdClient.Client, walletId), nil
+}
+
+func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
+	createdClient, err := createBitcoinClient(env, env.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+	conn := bitcoin.NewConnection(createdClient.Params, createdClient.Client)
+	return conn, nil
+}
+
+func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, error) {
+	var params *chaincfg.Params
+	log.Info("Connecting to BTC node at ", host, "...")
+
+	params, err := env.GetNetworkParams()
+	if err != nil {
+		return CreatedClient{}, err
 	}
 
 	config := rpcclient.ConnConfig{
-		Host:         env.Endpoint,
+		Host:         host,
 		User:         env.Username,
 		Pass:         env.Password,
 		Params:       params.Name,
@@ -41,12 +63,12 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 
 	client, err := rpcclient.New(&config, nil)
 	if err != nil {
-		return nil, fmt.Errorf("RPC client error: %w", err)
+		return CreatedClient{}, fmt.Errorf("RPC client error: %w", err)
 	}
 
 	version, err := checkBtcdVersion(client)
 	if err != nil {
-		return nil, err
+		return CreatedClient{}, err
 	}
 
 	if version == unknownBtcdVersion {
@@ -54,8 +76,11 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 	} else {
 		log.Debugf("detected btcd version: %v\n", version)
 	}
-	conn := bitcoin.NewConnection(&params, client)
-	return conn, nil
+	return CreatedClient{
+		Client: btcclient.NewBtcSuiteClientAdapter(config, client),
+		Params: params,
+		Config: config,
+	}, nil
 }
 
 func checkBtcdVersion(c *rpcclient.Client) (int32, error) {

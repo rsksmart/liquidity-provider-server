@@ -139,7 +139,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			liquidityProvider,
 			liquidityProvider,
-			btcRegistry.Wallet,
+			btcRegistry.MonitoringWallet,
 			env.Rsk.FeeCollectorAddress,
 		),
 		acceptPegoutQuoteUseCase: pegout.NewAcceptQuoteUseCase(
@@ -151,7 +151,7 @@ func NewUseCaseRegistry(
 			mutexes.PegoutLiquidityMutex(),
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
-			btcRegistry.Wallet,
+			btcRegistry.PaymentWallet,
 			databaseRegistry.PegoutRepository,
 			messaging.Rpc,
 			messaging.EventBus,
@@ -179,7 +179,7 @@ func NewUseCaseRegistry(
 		getPegoutCollateralUseCase:      pegout.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
 		withdrawPeginCollateralUseCase:  pegin.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
 		withdrawPegoutCollateralUseCase: pegout.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
-		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.Connection, databaseRegistry.Connection),
+		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.MonitoringWalletConnection, databaseRegistry.Connection),
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,

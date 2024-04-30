@@ -51,7 +51,12 @@ func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
-	account, err := account.GetRskAccount(testDir, 0, string(keyBytes), KeyPassword)
+	account, err := account.GetRskAccount(account.CreationArgs{
+		KeyDir:        testDir,
+		AccountNum:    0,
+		EncryptedJson: string(keyBytes),
+		Password:      KeyPassword,
+	})
 	require.NoError(t, err)
 	return account
 }
