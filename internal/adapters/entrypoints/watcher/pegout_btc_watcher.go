@@ -128,7 +128,7 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 		return
 	}
 	if parsedEvent.RetainedQuote.State != quote.PegoutStateSendPegoutSucceeded || parsedEvent.RetainedQuote.LpBtcTxHash == "" {
-		log.Info(pegoutBtcWatcherLog("Quote %s doesn't have btc tx hash to watch", quoteHash))
+		log.Warn(pegoutBtcWatcherLog("Quote %s doesn't have btc tx hash to watch", quoteHash))
 		return
 	}
 	watcher.quotes[quoteHash] = w.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote)

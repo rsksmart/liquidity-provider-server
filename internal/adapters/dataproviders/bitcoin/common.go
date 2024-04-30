@@ -2,7 +2,6 @@ package bitcoin
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
@@ -11,37 +10,17 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	log "github.com/sirupsen/logrus"
 	"math/big"
 )
 
 const (
-	BtcToSatoshi = 100000000
+	BtcToSatoshi             = 100000000
+	maxConfirmationsForUtxos = 9999999
+	minConfirmationsForUtxos = 1
 )
-
-type Connection struct {
-	NetworkParams *chaincfg.Params
-	client        rpcClient
-}
-
-func NewConnection(networkParams *chaincfg.Params, client rpcClient) *Connection {
-	return &Connection{NetworkParams: networkParams, client: client}
-}
-
-func (c *Connection) Shutdown(endChannel chan<- bool) {
-	c.client.Disconnect()
-	endChannel <- true
-	log.Debug("Disconnected from BTC node")
-}
-
-func (c *Connection) CheckConnection(ctx context.Context) bool {
-	err := c.client.Ping()
-	if err != nil {
-		log.Error("Error checking BTC node connection: ", err)
-	}
-	return err == nil
-}
 
 func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	var buff bytes.Buffer
@@ -133,4 +112,46 @@ func serializePartialMerkleTree(txHash *chainhash.Hash, block *btcutil.Block) ([
 
 	buf.Write(msg.Flags)
 	return buf.Bytes(), nil
+}
+
+func getTransactionsToAddress(address string, params *chaincfg.Params, client btcclient.RpcClient) ([]blockchain.BitcoinTransactionInformation, error) {
+	var ok bool
+	var tx blockchain.BitcoinTransactionInformation
+	var btcAmount btcutil.Amount
+	result := make([]blockchain.BitcoinTransactionInformation, 0)
+	parsedAddress, err := btcutil.DecodeAddress(address, params)
+	if err != nil {
+		return nil, err
+	}
+	utxos, err := client.ListUnspentMinMaxAddresses(0, maxConfirmationsForUtxos, []btcutil.Address{parsedAddress})
+	if err != nil {
+		return nil, err
+	}
+
+	txs := make(map[string]blockchain.BitcoinTransactionInformation)
+	for _, utxo := range utxos {
+		tx, ok = txs[utxo.TxID]
+		if !ok {
+			tx = blockchain.BitcoinTransactionInformation{
+				Hash:          utxo.TxID,
+				Confirmations: uint64(utxo.Confirmations),
+				Outputs:       make(map[string][]*entities.Wei),
+			}
+			txs[utxo.TxID] = tx
+		}
+		if _, ok = tx.Outputs[utxo.Address]; !ok {
+			tx.Outputs[utxo.Address] = make([]*entities.Wei, 0)
+		}
+		btcAmount, err = btcutil.NewAmount(utxo.Amount)
+		if err != nil {
+			return nil, err
+		}
+		tx.Outputs[utxo.Address] = append(tx.Outputs[utxo.Address], entities.SatoshiToWei(uint64(btcAmount.ToUnit(btcutil.AmountSatoshi))))
+	}
+
+	for key, value := range txs {
+		result = append(result, value)
+		delete(txs, key)
+	}
+	return result, nil
 }

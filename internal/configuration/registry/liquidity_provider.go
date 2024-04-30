@@ -14,7 +14,7 @@ func NewLiquidityProvider(
 		databaseRegistry.LiquidityProviderRepository,
 		messaging.Rpc,
 		rskRegistry.Wallet,
-		btcRegistry.Wallet,
+		btcRegistry.PaymentWallet,
 		rskRegistry.Contracts,
 	)
 }

@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -50,6 +51,13 @@ type TransactionReceipt struct {
 	Value             *entities.Wei
 }
 
+type BlockInfo struct {
+	Hash      string
+	Number    uint64
+	Timestamp time.Time
+	Nonce     uint64
+}
+
 func NewTransactionConfig(value *entities.Wei, gasLimit uint64, gasPrice *entities.Wei) TransactionConfig {
 	var gas *uint64
 	if gasLimit != 0 {
@@ -64,6 +72,7 @@ type RootstockRpcServer interface {
 	GetHeight(ctx context.Context) (uint64, error)
 	GetTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
+	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 }
 
 type RootstockWallet interface {

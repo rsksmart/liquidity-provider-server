@@ -108,10 +108,7 @@ func (useCase *SendPegoutUseCase) validateQuote(
 	var err error
 	var chainHeight uint64
 	var receipt blockchain.TransactionReceipt
-
-	if pegoutQuote.IsExpired() {
-		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
-	}
+	var block blockchain.BlockInfo
 
 	if chainHeight, err = useCase.rpc.Rsk.GetHeight(ctx); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
@@ -124,6 +121,10 @@ func (useCase *SendPegoutUseCase) validateQuote(
 	} else if receipt.Value.Cmp(pegoutQuote.Total()) < 0 {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.InsufficientAmountError, false)
+	} else if block, err = useCase.rpc.Rsk.GetBlockByHash(ctx, receipt.BlockHash); err != nil {
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
+	} else if pegoutQuote.ExpireTime().Before(block.Timestamp) {
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 	return receipt, nil
 }

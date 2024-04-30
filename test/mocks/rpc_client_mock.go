@@ -10,6 +10,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	rpcclient "github.com/btcsuite/btcd/rpcclient"
+
 	wire "github.com/btcsuite/btcd/wire"
 )
 
@@ -86,6 +88,79 @@ func (_c *RpcClientMock_CreateRawTransaction_Call) RunAndReturn(run func([]btcjs
 	return _c
 }
 
+// CreateWallet provides a mock function with given fields: name, opts
+func (_m *RpcClientMock) CreateWallet(name string, opts ...rpcclient.CreateWalletOpt) (*btcjson.CreateWalletResult, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, name)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateWallet")
+	}
+
+	var r0 *btcjson.CreateWalletResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, ...rpcclient.CreateWalletOpt) (*btcjson.CreateWalletResult, error)); ok {
+		return rf(name, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(string, ...rpcclient.CreateWalletOpt) *btcjson.CreateWalletResult); ok {
+		r0 = rf(name, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.CreateWalletResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, ...rpcclient.CreateWalletOpt) error); ok {
+		r1 = rf(name, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientMock_CreateWallet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateWallet'
+type RpcClientMock_CreateWallet_Call struct {
+	*mock.Call
+}
+
+// CreateWallet is a helper method to define mock.On call
+//   - name string
+//   - opts ...rpcclient.CreateWalletOpt
+func (_e *RpcClientMock_Expecter) CreateWallet(name interface{}, opts ...interface{}) *RpcClientMock_CreateWallet_Call {
+	return &RpcClientMock_CreateWallet_Call{Call: _e.mock.On("CreateWallet",
+		append([]interface{}{name}, opts...)...)}
+}
+
+func (_c *RpcClientMock_CreateWallet_Call) Run(run func(name string, opts ...rpcclient.CreateWalletOpt)) *RpcClientMock_CreateWallet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]rpcclient.CreateWalletOpt, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(rpcclient.CreateWalletOpt)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_CreateWallet_Call) Return(_a0 *btcjson.CreateWalletResult, _a1 error) *RpcClientMock_CreateWallet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientMock_CreateWallet_Call) RunAndReturn(run func(string, ...rpcclient.CreateWalletOpt) (*btcjson.CreateWalletResult, error)) *RpcClientMock_CreateWallet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Disconnect provides a mock function with given fields:
 func (_m *RpcClientMock) Disconnect() {
 	_m.Called()
@@ -114,6 +189,65 @@ func (_c *RpcClientMock_Disconnect_Call) Return() *RpcClientMock_Disconnect_Call
 }
 
 func (_c *RpcClientMock_Disconnect_Call) RunAndReturn(run func()) *RpcClientMock_Disconnect_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// EstimateSmartFee provides a mock function with given fields: confTarget, mode
+func (_m *RpcClientMock) EstimateSmartFee(confTarget int64, mode *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error) {
+	ret := _m.Called(confTarget, mode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateSmartFee")
+	}
+
+	var r0 *btcjson.EstimateSmartFeeResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int64, *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error)); ok {
+		return rf(confTarget, mode)
+	}
+	if rf, ok := ret.Get(0).(func(int64, *btcjson.EstimateSmartFeeMode) *btcjson.EstimateSmartFeeResult); ok {
+		r0 = rf(confTarget, mode)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.EstimateSmartFeeResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(int64, *btcjson.EstimateSmartFeeMode) error); ok {
+		r1 = rf(confTarget, mode)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientMock_EstimateSmartFee_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateSmartFee'
+type RpcClientMock_EstimateSmartFee_Call struct {
+	*mock.Call
+}
+
+// EstimateSmartFee is a helper method to define mock.On call
+//   - confTarget int64
+//   - mode *btcjson.EstimateSmartFeeMode
+func (_e *RpcClientMock_Expecter) EstimateSmartFee(confTarget interface{}, mode interface{}) *RpcClientMock_EstimateSmartFee_Call {
+	return &RpcClientMock_EstimateSmartFee_Call{Call: _e.mock.On("EstimateSmartFee", confTarget, mode)}
+}
+
+func (_c *RpcClientMock_EstimateSmartFee_Call) Run(run func(confTarget int64, mode *btcjson.EstimateSmartFeeMode)) *RpcClientMock_EstimateSmartFee_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int64), args[1].(*btcjson.EstimateSmartFeeMode))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_EstimateSmartFee_Call) Return(_a0 *btcjson.EstimateSmartFeeResult, _a1 error) *RpcClientMock_EstimateSmartFee_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientMock_EstimateSmartFee_Call) RunAndReturn(run func(int64, *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error)) *RpcClientMock_EstimateSmartFee_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -174,6 +308,64 @@ func (_c *RpcClientMock_FundRawTransaction_Call) Return(_a0 *btcjson.FundRawTran
 }
 
 func (_c *RpcClientMock_FundRawTransaction_Call) RunAndReturn(run func(*wire.MsgTx, btcjson.FundRawTransactionOpts, *bool) (*btcjson.FundRawTransactionResult, error)) *RpcClientMock_FundRawTransaction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAddressInfo provides a mock function with given fields: address
+func (_m *RpcClientMock) GetAddressInfo(address string) (*btcjson.GetAddressInfoResult, error) {
+	ret := _m.Called(address)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAddressInfo")
+	}
+
+	var r0 *btcjson.GetAddressInfoResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*btcjson.GetAddressInfoResult, error)); ok {
+		return rf(address)
+	}
+	if rf, ok := ret.Get(0).(func(string) *btcjson.GetAddressInfoResult); ok {
+		r0 = rf(address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.GetAddressInfoResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientMock_GetAddressInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAddressInfo'
+type RpcClientMock_GetAddressInfo_Call struct {
+	*mock.Call
+}
+
+// GetAddressInfo is a helper method to define mock.On call
+//   - address string
+func (_e *RpcClientMock_Expecter) GetAddressInfo(address interface{}) *RpcClientMock_GetAddressInfo_Call {
+	return &RpcClientMock_GetAddressInfo_Call{Call: _e.mock.On("GetAddressInfo", address)}
+}
+
+func (_c *RpcClientMock_GetAddressInfo_Call) Run(run func(address string)) *RpcClientMock_GetAddressInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_GetAddressInfo_Call) Return(_a0 *btcjson.GetAddressInfoResult, _a1 error) *RpcClientMock_GetAddressInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientMock_GetAddressInfo_Call) RunAndReturn(run func(string) (*btcjson.GetAddressInfoResult, error)) *RpcClientMock_GetAddressInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -630,6 +822,53 @@ func (_c *RpcClientMock_ImportAddressRescan_Call) RunAndReturn(run func(string, 
 	return _c
 }
 
+// ImportPubKeyRescan provides a mock function with given fields: pubKey, rescan
+func (_m *RpcClientMock) ImportPubKeyRescan(pubKey string, rescan bool) error {
+	ret := _m.Called(pubKey, rescan)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ImportPubKeyRescan")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
+		r0 = rf(pubKey, rescan)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RpcClientMock_ImportPubKeyRescan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ImportPubKeyRescan'
+type RpcClientMock_ImportPubKeyRescan_Call struct {
+	*mock.Call
+}
+
+// ImportPubKeyRescan is a helper method to define mock.On call
+//   - pubKey string
+//   - rescan bool
+func (_e *RpcClientMock_Expecter) ImportPubKeyRescan(pubKey interface{}, rescan interface{}) *RpcClientMock_ImportPubKeyRescan_Call {
+	return &RpcClientMock_ImportPubKeyRescan_Call{Call: _e.mock.On("ImportPubKeyRescan", pubKey, rescan)}
+}
+
+func (_c *RpcClientMock_ImportPubKeyRescan_Call) Run(run func(pubKey string, rescan bool)) *RpcClientMock_ImportPubKeyRescan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(bool))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_ImportPubKeyRescan_Call) Return(_a0 error) *RpcClientMock_ImportPubKeyRescan_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RpcClientMock_ImportPubKeyRescan_Call) RunAndReturn(run func(string, bool) error) *RpcClientMock_ImportPubKeyRescan_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListUnspent provides a mock function with given fields:
 func (_m *RpcClientMock) ListUnspent() ([]btcjson.ListUnspentResult, error) {
 	ret := _m.Called()
@@ -747,6 +986,64 @@ func (_c *RpcClientMock_ListUnspentMinMaxAddresses_Call) RunAndReturn(run func(i
 	return _c
 }
 
+// LoadWallet provides a mock function with given fields: walletName
+func (_m *RpcClientMock) LoadWallet(walletName string) (*btcjson.LoadWalletResult, error) {
+	ret := _m.Called(walletName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadWallet")
+	}
+
+	var r0 *btcjson.LoadWalletResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*btcjson.LoadWalletResult, error)); ok {
+		return rf(walletName)
+	}
+	if rf, ok := ret.Get(0).(func(string) *btcjson.LoadWalletResult); ok {
+		r0 = rf(walletName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.LoadWalletResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(walletName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientMock_LoadWallet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadWallet'
+type RpcClientMock_LoadWallet_Call struct {
+	*mock.Call
+}
+
+// LoadWallet is a helper method to define mock.On call
+//   - walletName string
+func (_e *RpcClientMock_Expecter) LoadWallet(walletName interface{}) *RpcClientMock_LoadWallet_Call {
+	return &RpcClientMock_LoadWallet_Call{Call: _e.mock.On("LoadWallet", walletName)}
+}
+
+func (_c *RpcClientMock_LoadWallet_Call) Run(run func(walletName string)) *RpcClientMock_LoadWallet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_LoadWallet_Call) Return(_a0 *btcjson.LoadWalletResult, _a1 error) *RpcClientMock_LoadWallet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientMock_LoadWallet_Call) RunAndReturn(run func(string) (*btcjson.LoadWalletResult, error)) *RpcClientMock_LoadWallet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Ping provides a mock function with given fields:
 func (_m *RpcClientMock) Ping() error {
 	ret := _m.Called()
@@ -847,6 +1144,73 @@ func (_c *RpcClientMock_SendRawTransaction_Call) Return(_a0 *chainhash.Hash, _a1
 }
 
 func (_c *RpcClientMock_SendRawTransaction_Call) RunAndReturn(run func(*wire.MsgTx, bool) (*chainhash.Hash, error)) *RpcClientMock_SendRawTransaction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SignRawTransaction3 provides a mock function with given fields: tx, inputs, privKeysWIF
+func (_m *RpcClientMock) SignRawTransaction3(tx *wire.MsgTx, inputs []btcjson.RawTxInput, privKeysWIF []string) (*wire.MsgTx, bool, error) {
+	ret := _m.Called(tx, inputs, privKeysWIF)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SignRawTransaction3")
+	}
+
+	var r0 *wire.MsgTx
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(*wire.MsgTx, []btcjson.RawTxInput, []string) (*wire.MsgTx, bool, error)); ok {
+		return rf(tx, inputs, privKeysWIF)
+	}
+	if rf, ok := ret.Get(0).(func(*wire.MsgTx, []btcjson.RawTxInput, []string) *wire.MsgTx); ok {
+		r0 = rf(tx, inputs, privKeysWIF)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*wire.MsgTx)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*wire.MsgTx, []btcjson.RawTxInput, []string) bool); ok {
+		r1 = rf(tx, inputs, privKeysWIF)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	if rf, ok := ret.Get(2).(func(*wire.MsgTx, []btcjson.RawTxInput, []string) error); ok {
+		r2 = rf(tx, inputs, privKeysWIF)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// RpcClientMock_SignRawTransaction3_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SignRawTransaction3'
+type RpcClientMock_SignRawTransaction3_Call struct {
+	*mock.Call
+}
+
+// SignRawTransaction3 is a helper method to define mock.On call
+//   - tx *wire.MsgTx
+//   - inputs []btcjson.RawTxInput
+//   - privKeysWIF []string
+func (_e *RpcClientMock_Expecter) SignRawTransaction3(tx interface{}, inputs interface{}, privKeysWIF interface{}) *RpcClientMock_SignRawTransaction3_Call {
+	return &RpcClientMock_SignRawTransaction3_Call{Call: _e.mock.On("SignRawTransaction3", tx, inputs, privKeysWIF)}
+}
+
+func (_c *RpcClientMock_SignRawTransaction3_Call) Run(run func(tx *wire.MsgTx, inputs []btcjson.RawTxInput, privKeysWIF []string)) *RpcClientMock_SignRawTransaction3_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*wire.MsgTx), args[1].([]btcjson.RawTxInput), args[2].([]string))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_SignRawTransaction3_Call) Return(_a0 *wire.MsgTx, _a1 bool, _a2 error) *RpcClientMock_SignRawTransaction3_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *RpcClientMock_SignRawTransaction3_Call) RunAndReturn(run func(*wire.MsgTx, []btcjson.RawTxInput, []string) (*wire.MsgTx, bool, error)) *RpcClientMock_SignRawTransaction3_Call {
 	_c.Call.Return(run)
 	return _c
 }

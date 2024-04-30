@@ -235,7 +235,6 @@ func (watcher *PegoutRskDepositWatcher) sendPegout(ctx context.Context, watchedQ
 func validateDepositedPegoutQuote(watchedQuote w.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {
 	return receipt.BlockNumber+uint64(watchedQuote.PegoutQuote.DepositConfirmations) < height &&
 		watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations &&
-		!watchedQuote.PegoutQuote.IsExpired() &&
 		receipt.Value.Cmp(watchedQuote.PegoutQuote.Total()) >= 0
 }
 
