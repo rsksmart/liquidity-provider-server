@@ -28,7 +28,7 @@ const (
 )
 
 func TestBitcoindRpc_ValidateAddress(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	mainnet := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	testnet := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	regtest := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.RegressionNetParams, client))
@@ -72,7 +72,7 @@ func TestBitcoindRpc_ValidateAddress(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetHeight(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 
 	client.On("GetBlockChainInfo").Return(&btcjson.GetBlockChainInfoResult{Blocks: 123}, nil).Once()
@@ -88,7 +88,7 @@ func TestBitcoindRpc_GetHeight(t *testing.T) {
 }
 
 func TestBitcoindRpc_DecodeAddress(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	cases := decodedAddresses
 	for _, c := range cases {
@@ -102,7 +102,7 @@ func TestBitcoindRpc_DecodeAddress(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	txBytes, _ := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes(txBytes)).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -115,7 +115,7 @@ func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
 	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	tx, err := mainnetBlock.Tx(0)
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(tx, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetRawTransaction(tx.Hash().String())
@@ -135,7 +135,7 @@ func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	txBytes, _ := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes(txBytes)).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -143,13 +143,13 @@ func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
 	_, err := rpc.GetRawTransaction("invalidHash")
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	_, err = rpc.GetRawTransaction(testnetTestTxHash)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes([]byte{01, 02, 03})).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	_, err = rpc.GetRawTransaction(testnetTestTxHash)
@@ -157,7 +157,7 @@ func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetTransactionBlockInfo(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlockVerbose", mock.Anything).Return(&btcjson.GetBlockVerboseResult{Height: 123}, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -168,20 +168,20 @@ func TestBitcoindRpc_GetTransactionBlockInfo(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionBlockInfo("txhash")
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionBlockInfo(testnetTestTxHash)
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlockVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -189,7 +189,7 @@ func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: "blk"}, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionBlockInfo(testnetTestTxHash)
@@ -200,7 +200,7 @@ func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
 func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -225,19 +225,19 @@ func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
 }
 
 func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.RpcClientMock{}))
+	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
 	branch, err := rpc.BuildMerkleBranch("txhash")
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err = rpc.BuildMerkleBranch(testnetTestTxHash)
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(&wire.MsgBlock{}, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -245,7 +245,7 @@ func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: "blkhash"}, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err = rpc.BuildMerkleBranch(testnetTestTxHash)
@@ -256,7 +256,7 @@ func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
 func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -268,7 +268,7 @@ func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
 
 func TestBitcoindRpc_GetPartialMerkleTree(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -340,7 +340,7 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 	}
 	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	for _, c := range cases {
-		client := &mocks.RpcClientMock{}
+		client := &mocks.ClientAdapterMock{}
 		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 		client.On("GetBlock", mock.Anything).Return(mainnetBlock.MsgBlock(), nil).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -352,12 +352,12 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetPartialMerkleTree_ErrorHandling(t *testing.T) {
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.RpcClientMock{}))
+	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
 	pmt, err := rpc.GetPartialMerkleTree("txhash")
 	require.Error(t, err)
 	require.Nil(t, pmt)
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	block := getTestBlock(t, testnetBlockFile)
 	msgBlock := block.MsgBlock()
 	msgBlock.Transactions = append(msgBlock.Transactions, msgBlock.Transactions...)
@@ -378,7 +378,7 @@ func TestBitcoindRpc_GetTransactionInfo(t *testing.T) {
 	txReceiveDetails := btcjson.TxRawResult{}
 	err = json.Unmarshal(receivedTxResponse, &txReceiveDetails)
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&txReceiveDetails, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	result, err := rpc.GetTransactionInfo(testnetTestTxHash)
@@ -400,7 +400,7 @@ func TestBitcoindRpc_GetTransactionInfo(t *testing.T) {
 	txSendDetails := btcjson.TxRawResult{}
 	err = json.Unmarshal(sentTxResponse, &txSendDetails)
 	require.NoError(t, err)
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&txSendDetails, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	result, err = rpc.GetTransactionInfo(sendTxHash)
@@ -417,13 +417,13 @@ func TestBitcoindRpc_GetTransactionInfo(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetTransactionInfo_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionInfo("txhash")
 	assert.Equal(t, blockchain.BitcoinTransactionInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionInfo(testnetTestTxHash)

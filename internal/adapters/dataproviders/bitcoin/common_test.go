@@ -12,7 +12,7 @@ import (
 
 func TestConnection_CheckConnection(t *testing.T) {
 	networkParams := &chaincfg.Params{}
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("Ping").Return(assert.AnError).Once()
 	client.On("Ping").Return(nil).Once()
 	conn := bitcoin.NewConnection(networkParams, client)
@@ -23,7 +23,7 @@ func TestConnection_CheckConnection(t *testing.T) {
 
 func TestConnection_Shutdown(t *testing.T) {
 	endChannel := make(chan bool)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("Disconnect").Once()
 	conn := bitcoin.NewConnection(&chaincfg.Params{}, client)
 	go conn.Shutdown(endChannel)
