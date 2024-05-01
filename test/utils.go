@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,6 +37,29 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 		result = validationFunction(testCase.Value)
 		assert.Equal(t, testCase.Result, result)
 	}
+}
+
+func OpenDerivativeWalletForTest(t *testing.T, testRef string) *account.RskAccount {
+	_, currentPackageDir, _, _ := runtime.Caller(0)
+	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-derivative-%s-%d", testRef, time.Now().UnixNano()))
+	keyFile, err := os.Open(filepath.Join(currentPackageDir, keyPath))
+	require.NoError(t, err)
+
+	defer func(file *os.File) { closingErr := file.Close(); require.NoError(t, closingErr) }(keyFile)
+
+	keyBytes, err := io.ReadAll(keyFile)
+	require.NoError(t, err)
+	account, err := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
+		CreationArgs: account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      KeyPassword,
+		},
+		BtcParams: &chaincfg.TestNet3Params,
+	})
+	require.NoError(t, err)
+	return account
 }
 
 func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {

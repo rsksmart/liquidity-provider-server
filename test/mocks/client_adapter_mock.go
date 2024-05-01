@@ -1138,6 +1138,51 @@ func (_c *ClientAdapterMock_LoadWallet_Call) RunAndReturn(run func(string) (*btc
 	return _c
 }
 
+// NextID provides a mock function with given fields:
+func (_m *ClientAdapterMock) NextID() uint64 {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NextID")
+	}
+
+	var r0 uint64
+	if rf, ok := ret.Get(0).(func() uint64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	return r0
+}
+
+// ClientAdapterMock_NextID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NextID'
+type ClientAdapterMock_NextID_Call struct {
+	*mock.Call
+}
+
+// NextID is a helper method to define mock.On call
+func (_e *ClientAdapterMock_Expecter) NextID() *ClientAdapterMock_NextID_Call {
+	return &ClientAdapterMock_NextID_Call{Call: _e.mock.On("NextID")}
+}
+
+func (_c *ClientAdapterMock_NextID_Call) Run(run func()) *ClientAdapterMock_NextID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ClientAdapterMock_NextID_Call) Return(_a0 uint64) *ClientAdapterMock_NextID_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ClientAdapterMock_NextID_Call) RunAndReturn(run func() uint64) *ClientAdapterMock_NextID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Ping provides a mock function with given fields:
 func (_m *ClientAdapterMock) Ping() error {
 	ret := _m.Called()
@@ -1179,6 +1224,54 @@ func (_c *ClientAdapterMock_Ping_Call) Return(_a0 error) *ClientAdapterMock_Ping
 }
 
 func (_c *ClientAdapterMock_Ping_Call) RunAndReturn(run func() error) *ClientAdapterMock_Ping_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SendCmd provides a mock function with given fields: cmd
+func (_m *ClientAdapterMock) SendCmd(cmd interface{}) chan *rpcclient.Response {
+	ret := _m.Called(cmd)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SendCmd")
+	}
+
+	var r0 chan *rpcclient.Response
+	if rf, ok := ret.Get(0).(func(interface{}) chan *rpcclient.Response); ok {
+		r0 = rf(cmd)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(chan *rpcclient.Response)
+		}
+	}
+
+	return r0
+}
+
+// ClientAdapterMock_SendCmd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendCmd'
+type ClientAdapterMock_SendCmd_Call struct {
+	*mock.Call
+}
+
+// SendCmd is a helper method to define mock.On call
+//   - cmd interface{}
+func (_e *ClientAdapterMock_Expecter) SendCmd(cmd interface{}) *ClientAdapterMock_SendCmd_Call {
+	return &ClientAdapterMock_SendCmd_Call{Call: _e.mock.On("SendCmd", cmd)}
+}
+
+func (_c *ClientAdapterMock_SendCmd_Call) Run(run func(cmd interface{})) *ClientAdapterMock_SendCmd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ClientAdapterMock_SendCmd_Call) Return(_a0 chan *rpcclient.Response) *ClientAdapterMock_SendCmd_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ClientAdapterMock_SendCmd_Call) RunAndReturn(run func(interface{}) chan *rpcclient.Response) *ClientAdapterMock_SendCmd_Call {
 	_c.Call.Return(run)
 	return _c
 }

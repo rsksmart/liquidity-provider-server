@@ -18,8 +18,8 @@ import (
 
 const (
 	BtcToSatoshi             = 100000000
-	maxConfirmationsForUtxos = 9999999
-	minConfirmationsForUtxos = 1
+	MaxConfirmationsForUtxos = 9999999
+	MinConfirmationsForUtxos = 1
 )
 
 func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
@@ -123,7 +123,7 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 	if err != nil {
 		return nil, err
 	}
-	utxos, err := client.ListUnspentMinMaxAddresses(0, maxConfirmationsForUtxos, []btcutil.Address{parsedAddress})
+	utxos, err := client.ListUnspentMinMaxAddresses(0, MaxConfirmationsForUtxos, []btcutil.Address{parsedAddress})
 	if err != nil {
 		return nil, err
 	}

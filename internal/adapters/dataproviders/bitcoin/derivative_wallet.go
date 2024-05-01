@@ -55,7 +55,7 @@ func (wallet *DerivativeWallet) initWallet() error {
 			return err
 		}
 	}
-	_, ok := any(info.Scanning).(btcjson.ScanProgress)
+	_, ok := info.Scanning.Value.(btcjson.ScanProgress)
 	if ok {
 		return errors.New("wallet is still scanning, please wait for the scan to finish before initializing the server again")
 	}
@@ -160,8 +160,8 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 	}
 
 	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(
-		minConfirmationsForUtxos,
-		maxConfirmationsForUtxos,
+		MinConfirmationsForUtxos,
+		MaxConfirmationsForUtxos,
 		[]btcutil.Address{btcAddress},
 	)
 	if err != nil {
@@ -172,7 +172,9 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 		if amount, err = btcutil.NewAmount(utxo.Amount); err != nil {
 			return nil, err
 		}
-		balance.Add(balance, entities.SatoshiToWei(uint64(amount.ToUnit(btcutil.AmountSatoshi))))
+		if utxo.Confirmations > 0 {
+			balance.Add(balance, entities.SatoshiToWei(uint64(amount.ToUnit(btcutil.AmountSatoshi))))
+		}
 	}
 	return balance, nil
 }
@@ -250,12 +252,19 @@ func (wallet *DerivativeWallet) Unlock() error {
 }
 
 func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
-	const confirmationTargetForEstimation = 1
+	const (
+		confirmationTargetForEstimation = 1
+		extraFeeMultiplier              = 0.1
+	)
 	estimationResult, err := wallet.conn.client.EstimateSmartFee(confirmationTargetForEstimation, &btcjson.EstimateModeConservative)
 	if err != nil {
 		return nil, err
 	} else if len(estimationResult.Errors) != 0 {
 		return nil, errors.New(estimationResult.Errors[0])
+	}
+	// add 10% to the fee rate if result still over the target for the estimation
+	if estimationResult.Blocks > confirmationTargetForEstimation {
+		return btcjson.Float64(*estimationResult.FeeRate + *estimationResult.FeeRate*extraFeeMultiplier), nil
 	}
 	return estimationResult.FeeRate, nil
 }
