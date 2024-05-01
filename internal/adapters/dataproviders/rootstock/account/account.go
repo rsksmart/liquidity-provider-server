@@ -9,10 +9,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"unsafe"
 )
 
 var NoDerivationError = fmt.Errorf("btc derivation wasn't enabled for this account")
@@ -24,9 +22,10 @@ type RskAccount struct {
 }
 
 type btcDerivationInfo struct {
-	pubKey       *btcec.PublicKey
-	address      btcutil.Address
-	protectedWif *memguard.Enclave
+	params           *chaincfg.Params
+	pubKey           *btcec.PublicKey
+	address          btcutil.Address
+	protectedPrivKey *memguard.Enclave
 }
 
 type CreationArgs struct {
@@ -65,27 +64,29 @@ func GetRskAccountWithDerivation(args CreationWithDerivationArgs) (*RskAccount, 
 	}
 
 	key, err := keystore.DecryptKey([]byte(args.EncryptedJson), args.Password)
+	defer func() {
+		if key != nil {
+			*key = keystore.Key{}
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
 
 	privateKey, pubKey := btcec.PrivKeyFromBytes(key.PrivateKey.D.Bytes())
+	defer func() { privateKey.Zero() }()
 	address, err := btcutil.NewAddressPubKey(pubKey.SerializeCompressed(), args.BtcParams)
 	if err != nil {
 		return nil, err
 	}
 
-	protectedWifBuffer, protectedWif := utils.GetSecurePointer[btcutil.WIF]()
-	unprotectedWif, err := btcutil.NewWIF(privateKey, args.BtcParams, true)
-	if err != nil {
-		return nil, err
+	protectedPrivKey := memguard.NewEnclave(privateKey.Serialize())
+	account.btc = &btcDerivationInfo{
+		pubKey:           pubKey,
+		address:          address,
+		protectedPrivKey: protectedPrivKey,
+		params:           args.BtcParams,
 	}
-
-	// this line is to write the content of the unprotectedWif to the protected memory address inside the locked buffer, the protectedWif
-	// variable is just to allow us to write inside buffer's memory address, then we set unprotectedWif to its zero value
-	*protectedWif = *unprotectedWif
-	*unprotectedWif = btcutil.WIF{}
-	account.btc = &btcDerivationInfo{pubKey: pubKey, address: address, protectedWif: protectedWifBuffer.Seal()}
 	return account, nil
 }
 
@@ -108,7 +109,7 @@ func (account *RskAccount) UsePrivateKeyWif(usageFunc func(wif *btcutil.WIF) err
 	if account.btc == nil {
 		return NoDerivationError
 	}
-	buffer, err := account.btc.protectedWif.Open()
+	buffer, err := account.btc.protectedPrivKey.Open()
 	defer func(b *memguard.LockedBuffer) {
 		if b != nil {
 			b.Destroy()
@@ -117,7 +118,18 @@ func (account *RskAccount) UsePrivateKeyWif(usageFunc func(wif *btcutil.WIF) err
 	if err != nil {
 		return err
 	}
-	wif := (*btcutil.WIF)(unsafe.Pointer(&buffer.Bytes()[0]))
+
+	privKey, _ := btcec.PrivKeyFromBytes(buffer.Bytes())
+	wif, err := btcutil.NewWIF(privKey, account.btc.params, true)
+	defer func() {
+		privKey.Zero()
+		if wif != nil {
+			*wif = btcutil.WIF{}
+		}
+	}()
+	if err != nil {
+		return err
+	}
 	return usageFunc(wif)
 }
 
