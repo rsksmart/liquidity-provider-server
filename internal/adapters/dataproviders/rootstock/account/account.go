@@ -90,7 +90,7 @@ func GetRskAccountWithDerivation(args CreationWithDerivationArgs) (*RskAccount, 
 }
 
 func (account *RskAccount) BtcPubKey() (string, error) {
-	if account.btc.pubKey == nil {
+	if account.btc == nil || account.btc.pubKey == nil {
 		return "", NoDerivationError
 	}
 	pubKeyBytes := account.btc.pubKey.SerializeCompressed()
@@ -98,7 +98,7 @@ func (account *RskAccount) BtcPubKey() (string, error) {
 }
 
 func (account *RskAccount) BtcAddress() (btcutil.Address, error) {
-	if account.btc == nil {
+	if account.btc == nil || account.btc.address == nil {
 		return nil, NoDerivationError
 	}
 	return account.btc.address, nil

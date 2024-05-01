@@ -34,3 +34,6 @@ packages:
     interfaces:
       BitcoinWallet:
       RootstockRpcServer:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
+    interfaces:
+      HttpClient:

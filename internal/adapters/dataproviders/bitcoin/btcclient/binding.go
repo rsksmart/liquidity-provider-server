@@ -38,6 +38,8 @@ type RpcWallet interface {
 
 type RpcClient interface {
 	RpcWallet
+	SendCmd(cmd interface{}) chan *rpcclient.Response
+	NextID() uint64
 	Ping() error
 	Disconnect()
 	GetRawTransactionVerbose(txHash *chainhash.Hash) (*btcjson.TxRawResult, error)

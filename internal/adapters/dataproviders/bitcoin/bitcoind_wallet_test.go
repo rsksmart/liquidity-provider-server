@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -256,6 +257,18 @@ func TestBitcoindWallet_SendWithOpReturn(t *testing.T) {
 	assert.NotEmpty(t, txHash)
 	assert.Equal(t, testnetTestTxHash, txHash)
 	client.AssertExpectations(t)
+}
+
+func TestBitcoindWallet_SendWithOpReturn_InvalidAddress(t *testing.T) {
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, &mocks.ClientAdapterMock{}), mockAddress, mockFeeRate, true, mockPassword)
+	txHash, err := rpc.SendWithOpReturn(test.AnyString, entities.NewWei(500000000000000000), []byte{})
+	require.Error(t, err)
+	assert.Empty(t, txHash)
+}
+
+func TestBitcoindWallet_Address(t *testing.T) {
+	rpc := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, &mocks.ClientAdapterMock{}), mockAddress, mockFeeRate, true, mockPassword)
+	assert.Equal(t, mockAddress, rpc.Address())
 }
 
 func TestBitcoindWallet_SendWithOpReturn_ErrorHandling(t *testing.T) {

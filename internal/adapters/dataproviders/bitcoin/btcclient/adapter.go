@@ -9,18 +9,25 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
 
 type BtcSuiteClientAdapter struct {
-	*rpcclient.Client
-	config rpcclient.ConnConfig
+	RpcClient
+	config     rpcclient.ConnConfig
+	httpClient utils.HttpClient
 }
 
-func NewBtcSuiteClientAdapter(config rpcclient.ConnConfig, client *rpcclient.Client) *BtcSuiteClientAdapter {
-	return &BtcSuiteClientAdapter{config: config, Client: client}
+func NewBtcSuiteClientAdapter(config rpcclient.ConnConfig, client RpcClient) *BtcSuiteClientAdapter {
+	return &BtcSuiteClientAdapter{config: config, RpcClient: client}
+}
+
+// SetClient sets the http client to be used by the adapter, only for testing purposes
+func (c *BtcSuiteClientAdapter) SetClient(httpClient utils.HttpClient) {
+	c.httpClient = httpClient
 }
 
 func (c *BtcSuiteClientAdapter) signRawTransactionWithKeyAsync(tx *wire.MsgTx, privateKeysWIFs []string) FutureSignRawTransactionWithKeyResult {
@@ -54,7 +61,7 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 		Jsonrpc: btcjson.RpcVersion1,
 		Method:  "createwallet",
 		Params:  bodyParams,
-		ID:      c.Client.NextID(),
+		ID:      c.NextID(),
 	}
 
 	bodyBytes, err = json.Marshal(body)
@@ -70,16 +77,22 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 	}
 	req.SetBasicAuth(c.config.User, c.config.Pass)
 
-	res, err := http.DefaultClient.Do(req)
+	if c.httpClient == nil {
+		c.httpClient = http.DefaultClient
+	}
+
+	// we're alreay closing the body in utils.CloseBodyIfExists
+	// nolint:bodyclose
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		if err = res.Body.Close(); err != nil {
-			log.Error("Error closing response body: ", err)
-		}
-	}()
+	defer utils.CloseBodyIfExists(res)
+
+	if res == nil || res.Body == nil {
+		return fmt.Errorf("received emtpy response from RPC server on createwallet")
+	}
 
 	err = json.NewDecoder(res.Body).Decode(&response)
 	if err != nil {
