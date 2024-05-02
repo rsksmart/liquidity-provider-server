@@ -84,7 +84,7 @@ func TestNewDerivativeWallet(t *testing.T) {
 		assert.NotNil(t, wallet)
 		client.AssertExpectations(t)
 	})
-	t.Run("Error handling", func(t *testing.T) { derivativeWalleCreationtErrorHandlingTests(t, rskAccount, nonExistingAddressInfo) })
+	t.Run("Error handling on derivative wallet creation", func(t *testing.T) { derivativeWalleCreationtErrorHandlingTests(t, rskAccount, nonExistingAddressInfo) })
 }
 
 func derivativeWalleCreationtErrorHandlingTests(t *testing.T, rskAccount *account.RskAccount, nonExistingAddressInfo *btcjson.GetAddressInfoResult) {
@@ -204,7 +204,7 @@ func TestDerivativeWallet(t *testing.T) {
 	t.Run("EstimateTxFees", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testEstimateFees(t, rskAccount, existingAddressInfo) })
 		t.Run("Add extra value if estimation blocks is higher than the target", func(t *testing.T) { testEstimateFeesExtra(t, rskAccount, existingAddressInfo) })
-		t.Run("Error handling", func(t *testing.T) {
+		t.Run("Error handling tx fees estimation", func(t *testing.T) {
 			cases := derivativeWalletEstimateTxFeesErrorSetups(rskAccount)
 			for _, testCase := range cases {
 				client := &mocks.ClientAdapterMock{}
@@ -219,7 +219,7 @@ func TestDerivativeWallet(t *testing.T) {
 
 	t.Run("SendWithOpReturn", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testSendWithOpReturn(t, rskAccount, existingAddressInfo) })
-		t.Run("Error handling", func(t *testing.T) {
+		t.Run("Error handling on btc tx sending", func(t *testing.T) {
 			cases := derivativeWalletSendWithOpReturnErrorSetups(rskAccount)
 			for _, testCase := range cases {
 				client := &mocks.ClientAdapterMock{}
