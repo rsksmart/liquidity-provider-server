@@ -5,6 +5,7 @@ import (
 	"fmt"
 	merkle "github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -181,6 +182,7 @@ func (rpc *bitcoindRpc) GetTransactionBlockInfo(transactionHash string) (blockch
 	return blockchain.BitcoinBlockInformation{
 		Hash:   blockHashBytes,
 		Height: big.NewInt(block.Height),
+		Time:   time.Unix(block.Time, 0),
 	}, nil
 }
 

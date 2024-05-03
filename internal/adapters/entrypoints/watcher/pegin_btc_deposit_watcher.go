@@ -168,7 +168,6 @@ func (watcher *PeginDepositAddressWatcher) callForUser(watchedQuote w.WatchedPeg
 func validatePeginQuote(watchedQuote w.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return tx.Confirmations >= uint64(watchedQuote.PeginQuote.Confirmations) &&
 		watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit &&
-		!watchedQuote.PeginQuote.IsExpired() &&
 		tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
 }
 

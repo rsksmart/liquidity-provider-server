@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 const (
@@ -158,13 +159,15 @@ func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
 
 func TestBitcoindRpc_GetTransactionBlockInfo(t *testing.T) {
 	client := &mocks.ClientAdapterMock{}
+	now := time.Now()
 	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
-	client.On("GetBlockVerbose", mock.Anything).Return(&btcjson.GetBlockVerboseResult{Height: 123}, nil).Once()
+	client.On("GetBlockVerbose", mock.Anything).Return(&btcjson.GetBlockVerboseResult{Height: 123, Time: now.Unix()}, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionBlockInfo(testnetTestTxHash)
 	require.NoError(t, err)
 	assert.Equal(t, [32]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x1e, 0x94, 0xd8, 0x5c, 0x3e, 0x73, 0x6a, 0xa4, 0x7, 0x1d, 0x36, 0xd2, 0x65, 0x47, 0x71, 0x38, 0x20, 0xa2, 0x7a, 0xf9, 0xed, 0xbe, 0x97, 0x48, 0x9c, 0x69, 0x6f}, result.Hash)
 	assert.Equal(t, big.NewInt(123), result.Height)
+	assert.WithinDuration(t, now, result.Time, 1*time.Second)
 }
 
 func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
