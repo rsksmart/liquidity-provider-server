@@ -16,6 +16,10 @@ const (
 	WalletUnlockSeconds = 10
 )
 
+// Deprecated: this implementation of the BitcoinWallet is considered insecure as it uses the wallet
+// that is inside the bitcoin node. This means that it expects the private keys to live inside a node
+// that is supposed to be used for monitoring purposes only. Prefer using DerivativeWallet instead or
+// any other implementation that stores the PK in a safer place.
 type bitcoindWallet struct {
 	conn           *Connection
 	address        string
@@ -24,6 +28,7 @@ type bitcoindWallet struct {
 	password       string
 }
 
+// Deprecated: this constructor is deprecated since the structure it creates is deprecated
 func NewBitcoindWallet(
 	conn *Connection,
 	address string,
