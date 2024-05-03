@@ -43,7 +43,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	}
 	log.Debug("Connected to RSK account")
 
-	monitoringConnection, err := bootstrap.BitcoinWallet(env.Btc, "main")
+	monitoringConnection, err := bootstrap.BitcoinWallet(env.Btc, bitcoin.PeginWalletId)
 	if err != nil {
 		log.Fatal("Error creating BTC monitoring connection:", err)
 	}
@@ -55,7 +55,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, secret
 	}
 	log.Debug("Connected to BTC node for payments")
 
-	btcRegistry, err := registry.NewBitcoinRegistry(env.Btc, secrets, monitoringConnection, paymentConnection, account)
+	btcRegistry, err := registry.NewBitcoinRegistry(monitoringConnection, paymentConnection, account)
 	if err != nil {
 		log.Fatal("Error creating BTC registry:", err)
 	}
