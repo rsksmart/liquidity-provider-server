@@ -28,7 +28,7 @@ const (
 )
 
 func TestBitcoindRpc_ValidateAddress(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	mainnet := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	testnet := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	regtest := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.RegressionNetParams, client))
@@ -72,7 +72,7 @@ func TestBitcoindRpc_ValidateAddress(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetHeight(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 
 	client.On("GetBlockChainInfo").Return(&btcjson.GetBlockChainInfoResult{Blocks: 123}, nil).Once()
@@ -88,7 +88,7 @@ func TestBitcoindRpc_GetHeight(t *testing.T) {
 }
 
 func TestBitcoindRpc_DecodeAddress(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	cases := decodedAddresses
 	for _, c := range cases {
@@ -102,7 +102,7 @@ func TestBitcoindRpc_DecodeAddress(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	txBytes, _ := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes(txBytes)).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -115,7 +115,7 @@ func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
 	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	tx, err := mainnetBlock.Tx(0)
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(tx, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetRawTransaction(tx.Hash().String())
@@ -135,7 +135,7 @@ func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	txBytes, _ := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes(txBytes)).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -143,13 +143,13 @@ func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
 	_, err := rpc.GetRawTransaction("invalidHash")
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	_, err = rpc.GetRawTransaction(testnetTestTxHash)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
+	client = &mocks.ClientAdapterMock{}
 	client.On("GetRawTransaction", mock.Anything).Return(btcutil.NewTxFromBytes([]byte{01, 02, 03})).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	_, err = rpc.GetRawTransaction(testnetTestTxHash)
@@ -157,8 +157,8 @@ func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetTransactionBlockInfo(t *testing.T) {
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlockVerbose", mock.Anything).Return(&btcjson.GetBlockVerboseResult{Height: 123}, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionBlockInfo(testnetTestTxHash)
@@ -168,29 +168,29 @@ func TestBitcoindRpc_GetTransactionBlockInfo(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionBlockInfo("txhash")
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(nil, assert.AnError).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionBlockInfo(testnetTestTxHash)
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlockVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionBlockInfo(testnetTestTxHash)
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: "blk"}, nil).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: "blk"}, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionBlockInfo(testnetTestTxHash)
 	assert.Equal(t, blockchain.BitcoinBlockInformation{}, result)
@@ -200,8 +200,8 @@ func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
 func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
 
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err := rpc.BuildMerkleBranch(testnetTestTxHash)
@@ -225,28 +225,28 @@ func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
 }
 
 func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.RpcClientMock{}))
+	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
 	branch, err := rpc.BuildMerkleBranch("txhash")
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(nil, assert.AnError).Once()
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err = rpc.BuildMerkleBranch(testnetTestTxHash)
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(&wire.MsgBlock{}, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err = rpc.BuildMerkleBranch(testnetTestTxHash)
 	require.Error(t, err)
 	require.Equal(t, blockchain.MerkleBranch{}, branch)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: "blkhash"}, nil).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: "blkhash"}, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err = rpc.BuildMerkleBranch(testnetTestTxHash)
 	require.Error(t, err)
@@ -256,8 +256,8 @@ func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
 func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
 
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	branch, err := rpc.BuildMerkleBranch("9dd8911176857dff8244f75f7c95782b3495048ad75632f0a58c8e942cefb223")
@@ -268,8 +268,8 @@ func TestBitcoindRpc_BuildMerkleBranch_TxNotFound(t *testing.T) {
 
 func TestBitcoindRpc_GetPartialMerkleTree(t *testing.T) {
 	block := getTestBlock(t, testnetBlockFile)
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	pmt, err := rpc.GetPartialMerkleTree(testnetTestTxHash)
@@ -340,8 +340,8 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 	}
 	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	for _, c := range cases {
-		client := &mocks.RpcClientMock{}
-		client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 		client.On("GetBlock", mock.Anything).Return(mainnetBlock.MsgBlock(), nil).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 		serializedPMT, err := rpc.GetPartialMerkleTree(c.tx)
@@ -352,16 +352,16 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetPartialMerkleTree_ErrorHandling(t *testing.T) {
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.RpcClientMock{}))
+	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
 	pmt, err := rpc.GetPartialMerkleTree("txhash")
 	require.Error(t, err)
 	require.Nil(t, pmt)
 
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	block := getTestBlock(t, testnetBlockFile)
 	msgBlock := block.MsgBlock()
 	msgBlock.Transactions = append(msgBlock.Transactions, msgBlock.Transactions...)
-	client.On("GetTransaction", mock.Anything).Return(&btcjson.GetTransactionResult{BlockHash: testnetTestBlockHash}, nil).Once()
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 	client.On("GetBlock", mock.Anything).Return(msgBlock, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetPartialMerkleTree(testnetTestTxHash)
@@ -370,115 +370,61 @@ func TestBitcoindRpc_GetPartialMerkleTree_ErrorHandling(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-var rpcServerReceiveTx = `
-		{
-			"amount": 0.00500000,
-			"confirmations": 163,
-			"blockhash": "00000000001e94d85c3e736aa4071d36d26547713820a27af9edbe97489c696f",
-			"blockheight": 2582756,
-			"blockindex": 406,
-			"blocktime": 1710931198,
-			"txid": "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29",
-			"wtxid": "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29",
-			"walletconflicts": [],
-			"time": 1710930012,
-			"timereceived": 1710930012,
-			"bip125-replaceable": "no",
-			"details": [
-				{
-				  "address": "mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5",
-				  "parent_descs": [],
-				  "category": "receive",
-				  "amount": 0.00500000,
-				  "label": "dev",
-				  "vout": 1
-				}
-			],
-			"hex": "0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700"
-		}
-	`
-
-var rpcServerSendTx = `
-		{
-		  "amount": -0.00500000,
-		  "fee": -0.00006700,
-		  "confirmations": 1649,
-		  "blockhash": "0000000000002d82f47f76d9b877af8f264504d6e0f89b82e89d2d84f64f269a",
-		  "blockheight": 2581763,
-		  "blockindex": 9,
-		  "blocktime": 1710330877,
-		  "txid": "9b0c48b79fe40c67f7a2837e6e59a138a16671caf7685dcd831bd3c51b9f6d21",
-		  "wtxid": "9b0c48b79fe40c67f7a2837e6e59a138a16671caf7685dcd831bd3c51b9f6d21",
-		  "walletconflicts": [],
-		  "time": 1710330592,
-		  "timereceived": 1710330592,
-		  "bip125-replaceable": "no",
-		  "details": [
-			{
-			  "address": "mqbKtarYKnoEdPheFFDGRjksvEpb2vJGNh",
-			  "category": "send",
-			  "amount": -0.00500000,
-			  "vout": 0,
-			  "fee": -0.00006700,
-			  "abandoned": false
-			},
-			{
-			  "category": "send",
-			  "amount": 0.00000000,
-			  "vout": 1,
-			  "fee": -0.00006700,
-			  "abandoned": false
-			}
-		  ],
-		  "hex": "020000000187bc0ecbe7c384a5c9ed76ed212395718f2e305e805151067a27fc056f27a242020000006a47304402204992bb143d814f6b560198300ae0e4b0b1223c57a525cedd1a8d71238d8efd7802202f928d3a53f8a263528e7131c0cd5cb25715aad87769d5e47e99ee4876ee181a0121029e17dc44ad33f0f6f54d404d87441ef108873b451d4f236833ea9bb03ea2b04cfdffffff0320a10700000000001976a9146e84f2d601c6742a94bf9ba32bea7e3f3e377fbb88ac0000000000000000226a20ef4f66bcf4f55bc72c2c8e01894fe944a5fa3be3a8b2a2a474f0447838ddc1c2f8da1d00000000001976a9145c6dbcd0321aadc2b51b564825aa444c886030b988ac00000000"
-		}
-	`
-
 func TestBitcoindRpc_GetTransactionInfo(t *testing.T) {
-	txReceiveDetails := btcjson.GetTransactionResult{}
-	err := json.Unmarshal([]byte(rpcServerReceiveTx), &txReceiveDetails)
+	receivedTxPath, err := filepath.Abs("../../../../test/mocks/getRawTransactionVerboseReceived.json")
 	require.NoError(t, err)
-	client := &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&txReceiveDetails, nil).Once()
+	receivedTxResponse, err := os.ReadFile(receivedTxPath)
+	require.NoError(t, err)
+	txReceiveDetails := btcjson.TxRawResult{}
+	err = json.Unmarshal(receivedTxResponse, &txReceiveDetails)
+	require.NoError(t, err)
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&txReceiveDetails, nil).Once()
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	result, err := rpc.GetTransactionInfo(testnetTestTxHash)
 	require.NoError(t, err)
 	assert.Equal(t, blockchain.BitcoinTransactionInformation{
 		Hash:          testnetTestTxHash,
-		Confirmations: uint64(163),
+		Confirmations: uint64(105277),
 		Outputs: map[string][]*entities.Wei{
+			"mr5FSft4PQvoWbf9Sf5iQXbw1u445iNksp": {entities.NewWei(0.004886 * 1e18)},
 			"mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5": {entities.NewWei(0.005 * 1e18)},
 		},
 	}, result)
 
-	const sendTxHash = "9b0c48b79fe40c67f7a2837e6e59a138a16671caf7685dcd831bd3c51b9f6d21"
-	txSendDetails := btcjson.GetTransactionResult{}
-	err = json.Unmarshal([]byte(rpcServerSendTx), &txSendDetails)
+	sentTxPath, err := filepath.Abs("../../../../test/mocks/getRawTransactionVerboseSent.json")
 	require.NoError(t, err)
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(&txSendDetails, nil).Once()
+	sentTxResponse, err := os.ReadFile(sentTxPath)
+	require.NoError(t, err)
+	const sendTxHash = "9b0c48b79fe40c67f7a2837e6e59a138a16671caf7685dcd831bd3c51b9f6d21"
+	txSendDetails := btcjson.TxRawResult{}
+	err = json.Unmarshal(sentTxResponse, &txSendDetails)
+	require.NoError(t, err)
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(&txSendDetails, nil).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
 	result, err = rpc.GetTransactionInfo(sendTxHash)
 	require.NoError(t, err)
 	assert.Equal(t, blockchain.BitcoinTransactionInformation{
 		Hash:          sendTxHash,
-		Confirmations: uint64(1649),
+		Confirmations: uint64(106306),
 		Outputs: map[string][]*entities.Wei{
 			"mqbKtarYKnoEdPheFFDGRjksvEpb2vJGNh": {entities.NewWei(0.005 * 1e18)},
+			"mowfvQDraTDvRgZowL4tx5EatL1u78w65v": {entities.NewWei(0.01956600 * 1e18)},
 			"":                                   {entities.NewWei(0)}, // Null data script output
 		},
 	}, result)
 }
 
 func TestBitcoindRpc_GetTransactionInfo_ErrorHandling(t *testing.T) {
-	client := &mocks.RpcClientMock{}
+	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err := rpc.GetTransactionInfo("txhash")
 	assert.Equal(t, blockchain.BitcoinTransactionInformation{}, result)
 	require.Error(t, err)
 
-	client = &mocks.RpcClientMock{}
-	client.On("GetTransaction", mock.Anything).Return(nil, assert.AnError).Once()
+	client = &mocks.ClientAdapterMock{}
+	client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 	rpc = bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	result, err = rpc.GetTransactionInfo(testnetTestTxHash)
 	assert.Equal(t, blockchain.BitcoinTransactionInformation{}, result)

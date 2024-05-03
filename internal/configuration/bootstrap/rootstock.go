@@ -7,13 +7,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	environment2 "github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 )
 
-func Rootstock(ctx context.Context, env environment2.RskEnv) (*rootstock.RskClient, error) {
+func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClient, error) {
 	var err error
 	var parsedUrl *url.URL
 	var client *ethclient.Client
@@ -53,11 +54,21 @@ func Rootstock(ctx context.Context, env environment2.RskEnv) (*rootstock.RskClie
 	return rootstock.NewRskClient(client), nil
 }
 
-func RootstockAccount(env environment2.RskEnv, secrets environment2.ApplicationSecrets) (*rootstock.RskAccount, error) {
-	return rootstock.GetAccount(
-		"geth_keystore",
-		env.AccountNumber,
-		secrets.EncryptedJson,
-		secrets.EncryptedJsonPassword,
-	)
+func RootstockAccount(
+	rskEnv environment.RskEnv,
+	btcEnv environment.BtcEnv,
+	secrets environment.ApplicationSecrets) (*account.RskAccount, error) {
+	networkParams, err := btcEnv.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	return account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
+		CreationArgs: account.CreationArgs{
+			KeyDir:        "geth_keystore",
+			AccountNum:    rskEnv.AccountNumber,
+			EncryptedJson: secrets.EncryptedJson,
+			Password:      secrets.EncryptedJsonPassword,
+		},
+		BtcParams: networkParams,
+	})
 }

@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	log "github.com/sirupsen/logrus"
@@ -52,6 +54,19 @@ type BtcEnv struct {
 	WalletEncrypted      bool    `env:"BTC_ENCRYPTED_WALLET" validate:"required"`
 	WalletPasswordSecret string  `env:"BTC_WALLET_PASSWORD"`
 	BtcAddress           string  `env:"BTC_ADDR"  validate:"required"`
+}
+
+func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
+	switch env.Network {
+	case "mainnet":
+		return &chaincfg.MainNetParams, nil
+	case "testnet":
+		return &chaincfg.TestNet3Params, nil
+	case "regtest":
+		return &chaincfg.RegressionNetParams, nil
+	default:
+		return nil, fmt.Errorf("invalid network name: %v", env.Network)
+	}
 }
 
 type ProviderEnv struct {

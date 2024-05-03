@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -48,7 +49,7 @@ func TestRskWalletImpl(t *testing.T) {
 	t.Run("SendRbtc error handling", createSendRbtcErrorHandlingTest(account))
 }
 
-func createSendRbtcTest(account *rootstock.RskAccount) func(t *testing.T) {
+func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		const toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
 		var gasLimit uint64 = 21000
@@ -71,7 +72,7 @@ func createSendRbtcTest(account *rootstock.RskAccount) func(t *testing.T) {
 	}
 }
 
-func createSendRbtcErrorHandlingTest(account *rootstock.RskAccount) func(t *testing.T) {
+func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		const toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
 		var gasLimit uint64 = 21000
@@ -133,7 +134,7 @@ func createSendRbtcErrorHandlingTest(account *rootstock.RskAccount) func(t *test
 	}
 }
 
-func createAddressTest(account *rootstock.RskAccount) func(t *testing.T) {
+func createAddressTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
@@ -142,7 +143,7 @@ func createAddressTest(account *rootstock.RskAccount) func(t *testing.T) {
 	}
 }
 
-func creteSignTest(account *rootstock.RskAccount) func(t *testing.T) {
+func creteSignTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
@@ -170,7 +171,7 @@ func creteSignTest(account *rootstock.RskAccount) func(t *testing.T) {
 	}
 }
 
-func createSignBytesTest(account *rootstock.RskAccount) func(t *testing.T) {
+func createSignBytesTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
@@ -180,7 +181,7 @@ func createSignBytesTest(account *rootstock.RskAccount) func(t *testing.T) {
 	}
 }
 
-func createValidateTest(account *rootstock.RskAccount) func(t *testing.T) {
+func createValidateTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		const noHex = "no hex"
 		clientMock := &mocks.RpcClientBindingMock{}

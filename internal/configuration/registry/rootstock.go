@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -17,7 +18,7 @@ type Rootstock struct {
 	Client    *rootstock.RskClient
 }
 
-func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, account *rootstock.RskAccount, bitcoinConn *bitcoin.Connection) (*Rootstock, error) {
+func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, account *account.RskAccount, bitcoinConn *bitcoin.Connection) (*Rootstock, error) {
 	var bridgeAddress, lbcAddress common.Address
 	var err error
 

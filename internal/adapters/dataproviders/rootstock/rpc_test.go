@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+	"time"
 )
 
 const (
@@ -23,6 +24,7 @@ const (
 	estimationBaseGas       uint64 = 57000
 	estimationNewAccountGas uint64 = 25000
 	txHash                         = "0x0e5a74de4d3f7eceff661d953f75270041c82ba0b0b787ec8daf7d566a53baa5"
+	blockHash                      = "0x010203"
 )
 
 var (
@@ -196,7 +198,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			GasUsed:           456,
 			CumulativeGasUsed: 123,
 			TxHash:            common.HexToHash(txHash),
-			BlockHash:         common.HexToHash("0x010203"),
+			BlockHash:         common.HexToHash(blockHash),
 			BlockNumber:       big.NewInt(500),
 		}, nil).Once()
 		parsedToAddress := common.HexToAddress("0x462d7082F3671a3be160638Be3F8c23cA354f48a")
@@ -247,7 +249,7 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 			GasUsed:           456,
 			CumulativeGasUsed: 123,
 			TxHash:            common.HexToHash(txHash),
-			BlockHash:         common.HexToHash("0x010203"),
+			BlockHash:         common.HexToHash(blockHash),
 			BlockNumber:       big.NewInt(500),
 		}, nil).Once()
 		client.On("TransactionByHash", test.AnyCtx, common.HexToHash(txHash)).
@@ -260,5 +262,42 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 		receipt, err := rpc.GetTransactionReceipt(context.Background(), test.AnyString)
 		require.Error(t, err)
 		assert.Empty(t, receipt)
+	})
+}
+
+func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
+	client := &mocks.RpcClientBindingMock{}
+	var now int64 = 1714471719922
+	client.On("BlockByHash", test.AnyCtx, common.HexToHash(blockHash)).Return(types.NewBlock(
+		&types.Header{
+			Number: big.NewInt(123),
+			Time:   uint64(now),
+			Nonce:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		}, nil, nil, nil, nil), nil).Once()
+	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+	block, err := rpc.GetBlockByHash(context.Background(), blockHash)
+	require.NoError(t, err)
+	assert.Equal(t, blockchain.BlockInfo{
+		Hash:      "0xde378ac47c11cdc8182c05f10edd90899fced079aa2b141f4f548b354deac5d8",
+		Number:    123,
+		Timestamp: time.Unix(now, 0),
+		Nonce:     72623859790382856,
+	}, block)
+	client.AssertExpectations(t)
+}
+
+func TestRskjRpcServer_GetBlockByHash_ErrorHandling(t *testing.T) {
+	client := &mocks.RpcClientBindingMock{}
+	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+	t.Run("Error error getting block", func(t *testing.T) {
+		client.On("BlockByHash", test.AnyCtx, common.HexToHash(blockHash)).Return(nil, assert.AnError).Once()
+		block, err := rpc.GetBlockByHash(context.Background(), blockHash)
+		require.Error(t, err)
+		assert.Empty(t, block)
+	})
+	t.Run("Invalid tx hash", func(t *testing.T) {
+		block, err := rpc.GetBlockByHash(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, block)
 	})
 }
