@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"math/big"
 	"strings"
+	"time"
 )
 
 // newAccountGasCost fixed gas amount to add to the estimation if the destination address is a new account
@@ -175,4 +176,24 @@ func (rpc *rskjRpcServer) isNewAccount(ctx context.Context, address common.Addre
 	}
 
 	return len(code) == 0 && balance.Cmp(common.Big0) == 0 && nonce == 0, nil
+}
+
+func (rpc *rskjRpcServer) GetBlockByHash(ctx context.Context, hash string) (blockchain.BlockInfo, error) {
+	if _, err := hex.DecodeString(strings.TrimPrefix(hash, "0x")); err != nil {
+		return blockchain.BlockInfo{}, errors.New("invalid block hash")
+	}
+	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (*types.Block, error) {
+			return rpc.client.BlockByHash(ctx, common.HexToHash(hash))
+		})
+	if err != nil {
+		return blockchain.BlockInfo{}, err
+	}
+
+	return blockchain.BlockInfo{
+		Hash:      result.Hash().String(),
+		Number:    result.NumberU64(),
+		Timestamp: time.Unix(int64(result.Time()), 0),
+		Nonce:     result.Nonce(),
+	}, nil
 }

@@ -16,9 +16,10 @@ packages:
       LbcCallerBinding:
       LbcAdapter:
       EventIteratorAdapter:
-  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient:
     interfaces:
-      rpcClient:
+      RpcClient:
+      ClientAdapter:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
       DefaultCredentialsProvider:
@@ -32,3 +33,7 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain:
     interfaces:
       BitcoinWallet:
+      RootstockRpcServer:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
+    interfaces:
+      HttpClient:

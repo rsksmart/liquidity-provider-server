@@ -2,7 +2,8 @@ package test
 
 import (
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,30 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 	}
 }
 
-func OpenWalletForTest(t *testing.T, testRef string) *rootstock.RskAccount {
+func OpenDerivativeWalletForTest(t *testing.T, testRef string) *account.RskAccount {
+	_, currentPackageDir, _, _ := runtime.Caller(0)
+	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-derivative-%s-%d", testRef, time.Now().UnixNano()))
+	keyFile, err := os.Open(filepath.Join(currentPackageDir, keyPath))
+	require.NoError(t, err)
+
+	defer func(file *os.File) { closingErr := file.Close(); require.NoError(t, closingErr) }(keyFile)
+
+	keyBytes, err := io.ReadAll(keyFile)
+	require.NoError(t, err)
+	account, err := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
+		CreationArgs: account.CreationArgs{
+			KeyDir:        testDir,
+			AccountNum:    0,
+			EncryptedJson: string(keyBytes),
+			Password:      KeyPassword,
+		},
+		BtcParams: &chaincfg.TestNet3Params,
+	})
+	require.NoError(t, err)
+	return account
+}
+
+func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 	_, currentPackageDir, _, _ := runtime.Caller(0)
 	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%s-%d", testRef, time.Now().UnixNano()))
 	keyFile, err := os.Open(filepath.Join(currentPackageDir, keyPath))
@@ -51,7 +75,12 @@ func OpenWalletForTest(t *testing.T, testRef string) *rootstock.RskAccount {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
-	account, err := rootstock.GetAccount(testDir, 0, string(keyBytes), KeyPassword)
+	account, err := account.GetRskAccount(account.CreationArgs{
+		KeyDir:        testDir,
+		AccountNum:    0,
+		EncryptedJson: string(keyBytes),
+		Password:      KeyPassword,
+	})
 	require.NoError(t, err)
 	return account
 }

@@ -88,6 +88,65 @@ func (_c *RpcClientBindingMock_BalanceAt_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// BlockByHash provides a mock function with given fields: ctx, hash
+func (_m *RpcClientBindingMock) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	ret := _m.Called(ctx, hash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BlockByHash")
+	}
+
+	var r0 *types.Block
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) (*types.Block, error)); ok {
+		return rf(ctx, hash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) *types.Block); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Block)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_BlockByHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockByHash'
+type RpcClientBindingMock_BlockByHash_Call struct {
+	*mock.Call
+}
+
+// BlockByHash is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hash common.Hash
+func (_e *RpcClientBindingMock_Expecter) BlockByHash(ctx interface{}, hash interface{}) *RpcClientBindingMock_BlockByHash_Call {
+	return &RpcClientBindingMock_BlockByHash_Call{Call: _e.mock.On("BlockByHash", ctx, hash)}
+}
+
+func (_c *RpcClientBindingMock_BlockByHash_Call) Run(run func(ctx context.Context, hash common.Hash)) *RpcClientBindingMock_BlockByHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(common.Hash))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_BlockByHash_Call) Return(_a0 *types.Block, _a1 error) *RpcClientBindingMock_BlockByHash_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_BlockByHash_Call) RunAndReturn(run func(context.Context, common.Hash) (*types.Block, error)) *RpcClientBindingMock_BlockByHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockNumber provides a mock function with given fields: ctx
 func (_m *RpcClientBindingMock) BlockNumber(ctx context.Context) (uint64, error) {
 	ret := _m.Called(ctx)

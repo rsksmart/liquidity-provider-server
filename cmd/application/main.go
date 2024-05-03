@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/awnumar/memguard"
 	"github.com/rsksmart/liquidity-provider-server/cmd/application/lps"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
@@ -21,6 +22,7 @@ var (
 )
 
 func main() {
+	memguard.CatchInterrupt()
 	initCtx, cancel := context.WithTimeout(context.Background(), lps.BootstrapTimeout)
 
 	env := environment.LoadEnv()

@@ -155,7 +155,7 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 	}, nil).Times(3)
 	lbcMock := new(mocks.LbcMock)
 	lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(200), nil).Times(3)
-	rpcMock := new(mocks.RskRpcMock)
+	rpcMock := new(mocks.RootstockRpcServerMock)
 	rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(300), nil).Times(3)
 	lp := dataproviders.NewLocalLiquidityProvider(peginRepository, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 	testCases := []struct {
@@ -185,14 +185,14 @@ func TestLocalLiquidityProvider_HasPeginLiquidity_ErrorHandling(t *testing.T) {
 	signer := new(mocks.TransactionSignerMock)
 	signer.On("Address").Return(common.HexToAddress(rskTestAddress))
 	t.Run("Error getting balance from RSK RPC server", func(t *testing.T) {
-		rpcMock := new(mocks.RskRpcMock)
+		rpcMock := new(mocks.RootstockRpcServerMock)
 		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(nil, assert.AnError).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{})
 		err := lp.HasPeginLiquidity(context.Background(), entities.NewWei(1))
 		require.Error(t, err)
 	})
 	t.Run("Error getting balance from LBC", func(t *testing.T) {
-		rpcMock := new(mocks.RskRpcMock)
+		rpcMock := new(mocks.RootstockRpcServerMock)
 		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(100), nil).Once()
 		lbcMock := new(mocks.LbcMock)
 		lbcMock.On("GetBalance", rskTestAddress).Return(nil, assert.AnError).Once()
@@ -201,7 +201,7 @@ func TestLocalLiquidityProvider_HasPeginLiquidity_ErrorHandling(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("Error pegin quotes from db", func(t *testing.T) {
-		rpcMock := new(mocks.RskRpcMock)
+		rpcMock := new(mocks.RootstockRpcServerMock)
 		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(100), nil).Once()
 		lbcMock := new(mocks.LbcMock)
 		lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(200), nil).Once()
