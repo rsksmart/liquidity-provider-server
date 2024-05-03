@@ -145,7 +145,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
-		DepositAddress:    "deposit address",
+		DepositAddress:    test.AnyAddress,
 		Signature:         "signature",
 		RequiredLiquidity: entities.NewWei(1500),
 		State:             quote.PeginStateWaitingForDeposit,
@@ -219,7 +219,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          "0x1d1e",
 				Confirmations: 10,
-				Outputs:       map[string][]*entities.Wei{"deposit address": {entities.NewWei(1700)}},
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
 			}, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
 		},
@@ -229,7 +229,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          "0x1d1e",
 				Confirmations: 10,
-				Outputs:       map[string][]*entities.Wei{"deposit address": {entities.NewWei(1700)}},
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
 			}, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{
 				Hash:   [32]byte{1, 2, 3},
@@ -244,7 +244,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          "0x1d1e",
 				Confirmations: 10,
-				Outputs:       map[string][]*entities.Wei{"deposit address": {entities.NewWei(1700)}},
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
 			}, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{
 				Hash:   [32]byte{1, 2, 3},
