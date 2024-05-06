@@ -7,9 +7,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.25
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.19.8
 	github.com/aws/aws-sdk-go-v2/service/ses v1.16.4
-	github.com/btcsuite/btcd v0.23.4
-	github.com/btcsuite/btcd/btcutil v1.1.3
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2
+	github.com/btcsuite/btcd v0.24.0
+	github.com/btcsuite/btcd/btcutil v1.1.5
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/ethereum/go-ethereum v1.11.6
 	github.com/go-playground/validator/v10 v10.13.0
