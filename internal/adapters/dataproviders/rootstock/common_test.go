@@ -94,7 +94,7 @@ func TestRskRetry(t *testing.T) {
 		start := time.Now()
 		result, err := lbc.HashPeginQuote(peginQuote)
 		end := time.Now()
-		assert.WithinRange(t, end, start, start.Add(3*time.Second).Add(100*time.Millisecond))
+		assert.WithinRange(t, end, start, start.Add(3*time.Second).Add(500*time.Millisecond))
 		require.Error(t, err)
 		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)

@@ -40,13 +40,13 @@ var (
 
 // TestRskWalletImpl we use this function to run all the test related to the wallet to open the account only once
 func TestRskWalletImpl(t *testing.T) {
-	account := test.OpenWalletForTest(t, "wallet")
-	t.Run("Address", createAddressTest(account))
-	t.Run("Sign", creteSignTest(account))
-	t.Run("SignBytes", createSignBytesTest(account))
-	t.Run("Validate", createValidateTest(account))
-	t.Run("SendRbtc", createSendRbtcTest(account))
-	t.Run("SendRbtc error handling", createSendRbtcErrorHandlingTest(account))
+	testAccount := test.OpenWalletForTest(t, "wallet")
+	t.Run("Address", createAddressTest(testAccount))
+	t.Run("Sign", creteSignTest(testAccount))
+	t.Run("SignBytes", createSignBytesTest(testAccount))
+	t.Run("Validate", createValidateTest(testAccount))
+	t.Run("SendRbtc", createSendRbtcTest(testAccount))
+	t.Run("SendRbtc error handling", createSendRbtcErrorHandlingTest(testAccount))
 }
 
 func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
