@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
@@ -16,8 +15,6 @@ type Bitcoin struct {
 }
 
 func NewBitcoinRegistry(
-	env environment.BtcEnv,
-	secrets environment.ApplicationSecrets,
 	monitoringWalletConnection *bitcoin.Connection,
 	paymentWalletConnection *bitcoin.Connection,
 	rskAccount *account.RskAccount,
@@ -28,8 +25,8 @@ func NewBitcoinRegistry(
 	if paymentWalletConnection.WalletId == "" {
 		return nil, errors.New("paymentWalletConnection must be a wallet connection to the RPC server")
 	}
-	bitcoind := bitcoin.NewBitcoindWallet(monitoringWalletConnection, env.BtcAddress, env.FixedTxFeeRate, env.WalletEncrypted, secrets.BtcWalletPassword)
-	if err := bitcoind.Unlock(); err != nil {
+	peginWatchOnly, err := bitcoin.NewWatchOnlyWallet(monitoringWalletConnection)
+	if err != nil {
 		return nil, err
 	}
 	derivative, err := bitcoin.NewDerivativeWallet(paymentWalletConnection, rskAccount)
@@ -37,7 +34,7 @@ func NewBitcoinRegistry(
 		return nil, err
 	}
 	return &Bitcoin{
-		MonitoringWallet:           bitcoind,
+		MonitoringWallet:           peginWatchOnly,
 		PaymentWallet:              derivative,
 		MonitoringWalletConnection: monitoringWalletConnection,
 		PaymentWalletConnection:    paymentWalletConnection,

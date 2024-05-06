@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -27,7 +28,6 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 		RequiredLiquidity: entities.NewWei(1500),
 		State:             quote.PeginStateWaitingForDeposit,
 	}
-
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 	expectedRetainedQuote.CallForUserTxHash = callForUser
@@ -35,7 +35,6 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return(lpRskAddress).Once()
-
 	lbc := new(mocks.LbcMock)
 	lbc.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(50000), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(0), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
@@ -47,6 +46,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 		Confirmations: 10,
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
 	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{1, 2, 3}, Height: big.NewInt(5), Time: time.Now()}, nil).Once()
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.CallForUserCompletedEvent) bool {
@@ -108,6 +108,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 		Confirmations: 10,
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
 	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{1, 2, 3}, Height: big.NewInt(5), Time: time.Now()}, nil).Once()
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.CallForUserCompletedEvent) bool {
@@ -118,7 +119,6 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
-
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
@@ -145,7 +145,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
-		DepositAddress:    "deposit address",
+		DepositAddress:    test.AnyAddress,
 		Signature:         "signature",
 		RequiredLiquidity: entities.NewWei(1500),
 		State:             quote.PeginStateWaitingForDeposit,
@@ -176,6 +176,7 @@ func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 	}
 }
 
+// nolint:funlen
 func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
 	now := uint32(time.Now().Unix())
 	peginQuote := quote.PeginQuote{
@@ -218,7 +219,22 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          "0x1d1e",
 				Confirmations: 10,
-				Outputs:       map[string][]*entities.Wei{"deposit address": {entities.NewWei(1700)}},
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
+			}, nil).Once()
+			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
+		},
+		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
+				Return(&peginQuote, nil).Once()
+			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
+				Hash:          "0x1d1e",
+				Confirmations: 10,
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
+			}, nil).Once()
+			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{
+				Hash:   [32]byte{1, 2, 3},
+				Height: big.NewInt(5),
+				Time:   time.Now(),
 			}, nil).Once()
 			lbc.On("GetBalance", mock.Anything).Return(nil, assert.AnError).Once()
 		},
@@ -228,7 +244,12 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 			btc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          "0x1d1e",
 				Confirmations: 10,
-				Outputs:       map[string][]*entities.Wei{"deposit address": {entities.NewWei(1700)}},
+				Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1700)}},
+			}, nil).Once()
+			btc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{
+				Hash:   [32]byte{1, 2, 3},
+				Height: big.NewInt(5),
+				Time:   time.Now(),
 			}, nil).Once()
 			lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(500), nil).Once()
 			rsk.On("GetBalance", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
@@ -299,6 +320,18 @@ func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 		State:             quote.PeginStateWaitingForDeposit,
 	}
 
+	btcTx := test.AnyString
+	btc.On("GetTransactionInfo", btcTx).Return(blockchain.BitcoinTransactionInformation{
+		Hash:          btcTx,
+		Confirmations: 10,
+		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
+	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{
+		Hash:   [32]byte{1, 2, 3},
+		Height: big.NewInt(5),
+		Time:   time.Now().Add(time.Hour * 10),
+	}, nil).Once()
+
 	expiredQuote := testPeginQuote
 	expiredQuote.AgreementTimestamp -= 1000
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&expiredQuote, nil).Once()
@@ -319,7 +352,7 @@ func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, rpc, lp, eventBus, mutex)
-	err := useCase.Run(context.Background(), "bitcoin tx", retainedPeginQuote)
+	err := useCase.Run(context.Background(), btcTx, retainedPeginQuote)
 	require.ErrorIs(t, err, usecases.ExpiredQuoteError)
 	quoteRepository.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
@@ -388,13 +421,13 @@ func TestCallForUserUseCase_Run_InsufficientAmount(t *testing.T) {
 
 	lp := new(mocks.ProviderMock)
 	lbc := new(mocks.LbcMock)
-
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", btcTx).Return(blockchain.BitcoinTransactionInformation{
 		Hash:          btcTx,
 		Confirmations: 10,
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(900)}},
 	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{1, 2, 3}, Height: big.NewInt(5), Time: time.Now()}, nil).Once()
 
 	updatedQuote := retainedPeginQuote
 	updatedQuote.UserBtcTxHash = btcTx
@@ -416,7 +449,6 @@ func TestCallForUserUseCase_Run_InsufficientAmount(t *testing.T) {
 		Return(nil).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
-
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, rpc, lp, eventBus, mutex)
@@ -459,6 +491,11 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 		Hash:          btcTx,
 		Confirmations: 10,
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
+	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{
+		Hash:   [32]byte{1, 2, 3},
+		Height: big.NewInt(5),
+		Time:   time.Now(),
 	}, nil).Once()
 
 	eventBus := new(mocks.EventBusMock)
@@ -517,6 +554,7 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 		Confirmations: 10,
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
 	}, nil).Once()
+	btc.On("GetTransactionBlockInfo", btcTx).Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{1, 2, 3}, Height: big.NewInt(5), Time: time.Now()}, nil).Once()
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.CallForUserCompletedEvent) bool {
@@ -527,7 +565,6 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
-
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
