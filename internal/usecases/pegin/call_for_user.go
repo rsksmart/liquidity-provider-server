@@ -55,10 +55,6 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, usecases.QuoteNotFoundError, false)
 	}
 
-	if peginQuote.IsExpired() {
-		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.ExpiredQuoteError, false)
-	}
-
 	if err = useCase.validateBitcoinTx(ctx, bitcoinTx, peginQuote, retainedQuote); err != nil {
 		return err
 	}
@@ -169,6 +165,7 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	retainedQuote quote.RetainedPeginQuote,
 ) error {
 	var txInfo blockchain.BitcoinTransactionInformation
+	var txBlock blockchain.BitcoinBlockInformation
 	var txConfirmations big.Int
 	var err error
 
@@ -178,6 +175,12 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	txConfirmations.SetUint64(txInfo.Confirmations)
 	if txConfirmations.Cmp(big.NewInt(int64(peginQuote.Confirmations))) < 0 {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+
+	if txBlock, err = useCase.rpc.Btc.GetTransactionBlockInfo(bitcoinTx); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
+	} else if peginQuote.ExpireTime().Before(txBlock.Time) {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.ExpiredQuoteError, false)
 	}
 
 	sentAmount := txInfo.AmountToAddress(retainedQuote.DepositAddress)

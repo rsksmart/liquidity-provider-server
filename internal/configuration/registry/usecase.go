@@ -139,7 +139,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			liquidityProvider,
 			liquidityProvider,
-			btcRegistry.MonitoringWallet,
+			btcRegistry.PaymentWallet,
 			env.Rsk.FeeCollectorAddress,
 		),
 		acceptPegoutQuoteUseCase: pegout.NewAcceptQuoteUseCase(

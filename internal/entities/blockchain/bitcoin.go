@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"math/big"
 	"regexp"
+	"time"
 )
 
 var (
@@ -98,6 +99,7 @@ func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entiti
 type BitcoinBlockInformation struct {
 	Hash   [32]byte
 	Height *big.Int
+	Time   time.Time
 }
 
 type MerkleBranch struct {
