@@ -17,7 +17,7 @@
 </form>
 </body>
 </html>
-<script>
+<script nonce="{{ .ScriptNonce }}">
     addEventListener('load', function (){
         const form = document.getElementById('login-form');
         const baseUrl = {{.BaseUrl}};
