@@ -9,7 +9,7 @@
 <p>Configuration: {{ .Configuration }}</p>
 </body>
 </html>
-<script>
+<script nonce="{{ .ScriptNonce }}">
     addEventListener('load', function (){
         console.log('Page loaded');
     });
