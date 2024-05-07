@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"net/http"
@@ -8,11 +9,12 @@ import (
 
 type PublicEndpoint struct {
 	Endpoint
-	RequiresCaptcha bool
+	RequiresCaptcha        bool
+	RequiresCsrfProtection bool
 }
 
 // nolint:funlen
-func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint {
+func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []PublicEndpoint {
 	return []PublicEndpoint{
 		{
 			Endpoint: Endpoint{
@@ -71,6 +73,14 @@ func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Method:  http.MethodGet,
 				Handler: handlers.NewProviderDetailsHandler(useCaseRegistry.GetProviderDetailUseCase()),
 			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/management",
+				Method:  http.MethodGet,
+				Handler: handlers.NewManagementInterfaceHandler(store, useCaseRegistry.GetManagementUiDataUseCase()),
+			},
+			RequiresCsrfProtection: true,
 		},
 	}
 }
