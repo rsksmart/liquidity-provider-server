@@ -51,6 +51,7 @@ const (
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
+	GetManagementUiId          UseCaseId = "GetManagementUi"
 )
 
 var (
