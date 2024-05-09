@@ -32,13 +32,14 @@ func TestDefaultRskConfirmationsPerAmount(t *testing.T) {
 func TestDefaultPegoutConfiguration(t *testing.T) {
 	config := liquidity_provider.DefaultPegoutConfiguration()
 	assert.Equal(t, liquidity_provider.PegoutConfiguration{
-		TimeForDeposit: 3600,
-		CallTime:       7200,
-		PenaltyFee:     entities.NewWei(10000000000000),
-		CallFee:        entities.NewWei(100000000000000),
-		MaxValue:       entities.NewWei(100000000000000000),
-		MinValue:       entities.NewWei(6000000000000000),
-		ExpireBlocks:   500,
+		TimeForDeposit:       3600,
+		CallTime:             7200,
+		PenaltyFee:           entities.NewWei(10000000000000),
+		CallFee:              entities.NewWei(100000000000000),
+		MaxValue:             entities.NewWei(100000000000000000),
+		MinValue:             entities.NewWei(5000000000000000),
+		ExpireBlocks:         500,
+		BridgeTransactionMin: entities.NewWei(15000000000000000),
 	}, config)
 }
 
@@ -50,7 +51,7 @@ func TestDefaultPeginConfiguration(t *testing.T) {
 		PenaltyFee:     entities.NewWei(10000000000000),
 		CallFee:        entities.NewWei(100000000000000),
 		MaxValue:       entities.NewWei(100000000000000000),
-		MinValue:       entities.NewWei(6000000000000000),
+		MinValue:       entities.NewWei(5000000000000000),
 	}, config)
 }
 

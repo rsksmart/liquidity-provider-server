@@ -52,6 +52,7 @@ const (
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
 	GetManagementUiId          UseCaseId = "GetManagementUi"
+	BridgePegoutId             UseCaseId = "BridgePegout"
 )
 
 var (

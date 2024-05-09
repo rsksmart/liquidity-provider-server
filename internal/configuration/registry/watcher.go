@@ -14,6 +14,7 @@ type WatcherRegistry struct {
 	PegoutBtcTransferWatcher   *watcher.PegoutBtcTransferWatcher
 	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
 	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
+	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
 }
 
 func NewWatcherRegistry(
@@ -67,6 +68,10 @@ func NewWatcherRegistry(
 		PenalizationAlertWatcher: watcher.NewPenalizationAlertWatcher(
 			messaging.Rpc,
 			useCaseRegistry.penalizationAlertUseCase,
+		),
+		PegoutBridgeWatcher: watcher.NewPegoutBridgeWatcher(
+			useCaseRegistry.getWatchedPegoutQuoteUseCase,
+			useCaseRegistry.bridgePegoutUseCase,
 		),
 	}
 }

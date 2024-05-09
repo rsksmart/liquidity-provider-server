@@ -471,6 +471,53 @@ func (_c *PegoutQuoteRepositoryMock_UpdateRetainedQuote_Call) RunAndReturn(run f
 	return _c
 }
 
+// UpdateRetainedQuotes provides a mock function with given fields: ctx, quotes
+func (_m *PegoutQuoteRepositoryMock) UpdateRetainedQuotes(ctx context.Context, quotes []quote.RetainedPegoutQuote) error {
+	ret := _m.Called(ctx, quotes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateRetainedQuotes")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []quote.RetainedPegoutQuote) error); ok {
+		r0 = rf(ctx, quotes)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateRetainedQuotes'
+type PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call struct {
+	*mock.Call
+}
+
+// UpdateRetainedQuotes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - quotes []quote.RetainedPegoutQuote
+func (_e *PegoutQuoteRepositoryMock_Expecter) UpdateRetainedQuotes(ctx interface{}, quotes interface{}) *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call {
+	return &PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call{Call: _e.mock.On("UpdateRetainedQuotes", ctx, quotes)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call) Run(run func(ctx context.Context, quotes []quote.RetainedPegoutQuote)) *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]quote.RetainedPegoutQuote))
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call) Return(_a0 error) *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call) RunAndReturn(run func(context.Context, []quote.RetainedPegoutQuote) error) *PegoutQuoteRepositoryMock_UpdateRetainedQuotes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertPegoutDeposit provides a mock function with given fields: ctx, deposit
 func (_m *PegoutQuoteRepositoryMock) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {
 	ret := _m.Called(ctx, deposit)

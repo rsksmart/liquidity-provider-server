@@ -39,3 +39,8 @@ func (m *RskWalletMock) Validate(signature, hash string) bool {
 	args := m.Called(signature, hash)
 	return args.Bool(0)
 }
+
+func (m *RskWalletMock) GetBalance(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}

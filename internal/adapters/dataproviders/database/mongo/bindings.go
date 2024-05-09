@@ -9,10 +9,17 @@ import (
 
 // The wrapper structs defined in this class are meant to ease the mocking of the mongo driver structs
 
+type SessionBinding interface {
+	WithTransaction(ctx context.Context, fn func(ctx mongo.SessionContext) (interface{}, error),
+		opts ...*options.TransactionOptions) (interface{}, error)
+	EndSession(context.Context)
+}
+
 type DbClientBinding interface {
 	Database(name string, opts ...*options.DatabaseOptions) DbBinding
 	Disconnect(ctx context.Context) error
 	Ping(ctx context.Context, rp *readpref.ReadPref) error
+	StartSession(opts ...*options.SessionOptions) (SessionBinding, error)
 }
 
 type ClientWrapper struct {
@@ -29,6 +36,10 @@ func (c *ClientWrapper) Database(name string, opts ...*options.DatabaseOptions) 
 		c.db = NewDatabaseWrapper(c.Client.Database(name, opts...))
 	}
 	return c.db
+}
+
+func (c *ClientWrapper) StartSession(opts ...*options.SessionOptions) (SessionBinding, error) {
+	return c.Client.StartSession(opts...)
 }
 
 type DbBinding interface {

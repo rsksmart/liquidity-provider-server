@@ -32,13 +32,14 @@ var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
 
 var pegoutTestConfig = &entities.Signed[liquidity_provider.PegoutConfiguration]{
 	Value: liquidity_provider.PegoutConfiguration{
-		TimeForDeposit: 1,
-		CallTime:       2,
-		PenaltyFee:     entities.NewWei(3),
-		CallFee:        entities.NewWei(4),
-		MaxValue:       entities.NewWei(5),
-		MinValue:       entities.NewWei(6),
-		ExpireBlocks:   7,
+		TimeForDeposit:       1,
+		CallTime:             2,
+		PenaltyFee:           entities.NewWei(3),
+		CallFee:              entities.NewWei(4),
+		MaxValue:             entities.NewWei(5),
+		MinValue:             entities.NewWei(6),
+		ExpireBlocks:         7,
+		BridgeTransactionMin: entities.NewWei(8),
 	},
 	Signature: "pegout signature",
 	Hash:      "pegout hash",

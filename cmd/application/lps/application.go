@@ -149,6 +149,7 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.PegoutBtcTransferWatcher,
 		app.watcherRegistry.LiquidityCheckWatcher,
 		app.watcherRegistry.PenalizationAlertWatcher,
+		app.watcherRegistry.PegoutBridgeWatcher,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), watcherPreparationTimeout)

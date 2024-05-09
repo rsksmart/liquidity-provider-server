@@ -153,18 +153,25 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 		{RequiredLiquidity: entities.NewWei(200)},
 		{RequiredLiquidity: entities.NewWei(150)},
 	}, nil).Times(3)
+	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+		quote.PegoutStateRefundPegOutSucceeded,
+	).Return([]quote.RetainedPegoutQuote{
+		{RequiredLiquidity: entities.NewWei(30)},
+		{RequiredLiquidity: entities.NewWei(50)},
+	}, nil).Times(3)
 	lbcMock := new(mocks.LbcMock)
-	lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(200), nil).Times(3)
+	lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(400), nil).Times(3)
 	rpcMock := new(mocks.RootstockRpcServerMock)
 	rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(300), nil).Times(3)
-	lp := dataproviders.NewLocalLiquidityProvider(peginRepository, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
+	lp := dataproviders.NewLocalLiquidityProvider(peginRepository, pegoutRepository, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 	testCases := []struct {
 		amount        *entities.Wei
 		expectedError string
 	}{
+		{amount: entities.NewWei(170), expectedError: ""},
+		{amount: entities.NewWei(200), expectedError: "not enough liquidity"},
 		{amount: entities.NewWei(50), expectedError: ""},
-		{amount: entities.NewWei(150), expectedError: "not enough liquidity"},
-		{amount: entities.NewWei(20), expectedError: ""},
 	}
 	for _, tc := range testCases {
 		err := lp.HasPeginLiquidity(context.Background(), tc.amount)
@@ -178,6 +185,7 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 	lbcMock.AssertExpectations(t)
 	rpcMock.AssertExpectations(t)
 	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
 	signer.AssertExpectations(t)
 }
 
@@ -447,15 +455,16 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 	maxBigInt.SetString("10000000000000000000", 10)
 	return &entities.Signed[liquidity_provider.PegoutConfiguration]{
 		Value: liquidity_provider.PegoutConfiguration{
-			TimeForDeposit: 3655,
-			CallTime:       7200,
-			PenaltyFee:     entities.NewWei(1000000000000000),
-			CallFee:        entities.NewWei(10000000000000000),
-			MaxValue:       entities.NewBigWei(maxBigInt),
-			MinValue:       entities.NewWei(600000000000000000),
-			ExpireBlocks:   500,
+			TimeForDeposit:       3655,
+			CallTime:             7200,
+			PenaltyFee:           entities.NewWei(1000000000000000),
+			CallFee:              entities.NewWei(10000000000000000),
+			MaxValue:             entities.NewBigWei(maxBigInt),
+			MinValue:             entities.NewWei(600000000000000000),
+			ExpireBlocks:         500,
+			BridgeTransactionMin: entities.NewWei(1500000000000000000),
 		},
-		Signature: "db7443b405af8eaa37623e60fed1b0d39f63a04d1c207d2a178abf53463dda101fd59f5bec92ebd09b4158fe6a567fc545682ad43ceca69583104929b40d929f01",
-		Hash:      "3a79c7a1d2f981ef13fa29b385ed0a1b63dc9ffdb251fb9e183314a2bf999305",
+		Signature: "9107bbb5addba09564b16d555279dbe226b6afbc3f026d64b3acbe9d0e7893f65c764592d23de3841454f3561d74c40f31d1caee97962da21a5f930914aee75400",
+		Hash:      "7d0b4dad0f4c5b1f0bc2481f182aae00f93daafd867df0b2036778638babb381",
 	}
 }
