@@ -16,6 +16,11 @@ packages:
       LbcCallerBinding:
       LbcAdapter:
       EventIteratorAdapter:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
+    interfaces:
+      DbClientBinding:
+      DbBinding:
+      CollectionBinding:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient:
     interfaces:
       RpcClient:
