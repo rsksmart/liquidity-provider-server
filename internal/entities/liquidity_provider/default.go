@@ -7,18 +7,19 @@ const (
 	PeginCallTime       = 7200
 	PeginPenaltyFee     = 10000000000000
 	PeginCallFee        = 100000000000000
-	PeginMinValue       = 6000000000000000
+	PeginMinValue       = 5000000000000000
 	PeginMaxValue       = 100000000000000000
 )
 
 const (
-	PegoutTimeForDeposit = 3600
-	PegoutCallTime       = 7200
-	PegoutPenaltyFee     = 10000000000000
-	PegoutCallFee        = 100000000000000
-	PegoutMinValue       = 6000000000000000
-	PegoutMaxValue       = 100000000000000000
-	PegoutExpireBlocks   = 500
+	PegoutTimeForDeposit       = 3600
+	PegoutCallTime             = 7200
+	PegoutPenaltyFee           = 10000000000000
+	PegoutCallFee              = 100000000000000
+	PegoutMinValue             = 5000000000000000
+	PegoutMaxValue             = 100000000000000000
+	PegoutExpireBlocks         = 500
+	PegoutBridgeTransactionMin = 15000000000000000
 )
 
 func DefaultRskConfirmationsPerAmount() ConfirmationsPerAmount {
@@ -54,13 +55,14 @@ func DefaultPeginConfiguration() PeginConfiguration {
 
 func DefaultPegoutConfiguration() PegoutConfiguration {
 	return PegoutConfiguration{
-		TimeForDeposit: PegoutTimeForDeposit,
-		CallTime:       PegoutCallTime,
-		PenaltyFee:     entities.NewWei(PegoutPenaltyFee),
-		CallFee:        entities.NewWei(PegoutCallFee),
-		MaxValue:       entities.NewWei(PegoutMaxValue),
-		MinValue:       entities.NewWei(PegoutMinValue),
-		ExpireBlocks:   PegoutExpireBlocks,
+		TimeForDeposit:       PegoutTimeForDeposit,
+		CallTime:             PegoutCallTime,
+		PenaltyFee:           entities.NewWei(PegoutPenaltyFee),
+		CallFee:              entities.NewWei(PegoutCallFee),
+		MaxValue:             entities.NewWei(PegoutMaxValue),
+		MinValue:             entities.NewWei(PegoutMinValue),
+		ExpireBlocks:         PegoutExpireBlocks,
+		BridgeTransactionMin: entities.NewWei(PegoutBridgeTransactionMin),
 	}
 }
 

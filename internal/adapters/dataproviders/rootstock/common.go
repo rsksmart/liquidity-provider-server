@@ -88,6 +88,10 @@ func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, err
 }
 
 func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+	return awaitTxWithCtx(client, logName, context.Background(), txCall)
+}
+
+func awaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
 	var tx *geth.Transaction
 	var err error
 
@@ -96,7 +100,7 @@ func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Trans
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), txMiningWaitTimeout)
+	ctx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
 	defer func() {
 		cancel()
 		if r.Status == 1 {

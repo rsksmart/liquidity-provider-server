@@ -145,10 +145,11 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	retainedResult, err := repo.conn.Collection(RetainedPeginQuoteCollection).DeleteMany(dbCtx, filter)
 	if err != nil {
 		return 0, err
-	} else if peginResult.DeletedCount != retainedResult.DeletedCount {
-		return 0, errors.New("pegin quote collections didn't match")
 	}
 	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", peginResult.DeletedCount, PeginQuoteCollection))
 	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPeginQuoteCollection))
+	if peginResult.DeletedCount != retainedResult.DeletedCount {
+		return 0, errors.New("pegin quote collections didn't match")
+	}
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount), nil
 }

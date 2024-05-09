@@ -53,6 +53,7 @@ type UseCaseRegistry struct {
 	setCredentialsUseCase           *liquidity_provider.SetCredentialsUseCase
 	defaultCredentialsUseCase       *liquidity_provider.GenerateDefaultCredentialsUseCase
 	getManagementUiDataUseCase      *liquidity_provider.GetManagementUiDataUseCase
+	bridgePegoutUseCase             *pegout.BridgePegoutUseCase
 }
 
 // NewUseCaseRegistry
@@ -131,8 +132,6 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.EventBus,
 			messaging.Rpc,
-			rskRegistry.Wallet,
-			mutexes.RskWalletMutex(),
 		),
 		getPegoutQuoteUseCase: pegout.NewGetQuoteUseCase(
 			messaging.Rpc,
@@ -214,6 +213,13 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			liquidityProvider,
 			env.Provider.ApiBaseUrl,
+		),
+		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(
+			databaseRegistry.PegoutRepository,
+			liquidityProvider,
+			rskRegistry.Wallet,
+			rskRegistry.Contracts,
+			mutexes.RskWalletMutex(),
 		),
 	}
 }

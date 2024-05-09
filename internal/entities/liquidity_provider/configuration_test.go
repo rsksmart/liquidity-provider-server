@@ -62,11 +62,11 @@ func TestPeginConfiguration_ValidateAmount(t *testing.T) {
 			Result: liquidity_provider.AmountOutOfRangeError,
 		},
 		{
-			Value:  entities.NewWei(5999999999999999),
+			Value:  entities.NewWei(4999999999999999),
 			Result: liquidity_provider.AmountOutOfRangeError,
 		},
 		{
-			Value:  entities.NewWei(6000000000000000),
+			Value:  entities.NewWei(5000000000000000),
 			Result: nil,
 		},
 		{
@@ -96,11 +96,11 @@ func TestPegoutConfiguration_ValidateAmount(t *testing.T) {
 			Result: liquidity_provider.AmountOutOfRangeError,
 		},
 		{
-			Value:  entities.NewWei(5999999999999999),
+			Value:  entities.NewWei(4999999999999999),
 			Result: liquidity_provider.AmountOutOfRangeError,
 		},
 		{
-			Value:  entities.NewWei(6000000000000000),
+			Value:  entities.NewWei(5000000000000000),
 			Result: nil,
 		},
 		{
