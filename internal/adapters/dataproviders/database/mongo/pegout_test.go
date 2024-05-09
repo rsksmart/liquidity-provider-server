@@ -245,7 +245,7 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 		retainedCollection := &mocks.CollectionBindingMock{}
 		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		quoteCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything,
 			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},

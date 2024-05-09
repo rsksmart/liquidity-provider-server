@@ -194,12 +194,13 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout*2)
 	defer cancel()
 
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	retainedFilter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, quoteFilter)
 	if err != nil {
 		return 0, err
 	}
-	retainedResult, err := repo.conn.Collection(RetainedPegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	retainedResult, err := repo.conn.Collection(RetainedPegoutQuoteCollection).DeleteMany(dbCtx, retainedFilter)
 	if err != nil {
 		return 0, err
 	}
