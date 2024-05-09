@@ -37,7 +37,7 @@ func TestGetAccount(t *testing.T) {
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
 	t.Run("Create new account", func(t *testing.T) {
-		account, testError := account.GetRskAccount(account.CreationArgs{
+		testAccount, testError := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
 			EncryptedJson: string(keyBytes),
@@ -46,8 +46,8 @@ func TestGetAccount(t *testing.T) {
 		_, noExistError := os.Stat(testDir)
 		assert.Falsef(t, os.IsNotExist(noExistError), "Key directory not created")
 		require.NoError(t, testError)
-		assert.Equal(t, common.HexToAddress(keyAddress), account.Account.Address)
-		assert.NotNil(t, 1, len(account.Keystore.Accounts()))
+		assert.Equal(t, common.HexToAddress(keyAddress), testAccount.Account.Address)
+		assert.NotNil(t, 1, len(testAccount.Keystore.Accounts()))
 	})
 	t.Run("Retrieve created account new account", func(t *testing.T) {
 		otherAccount, otherError := account.GetRskAccount(account.CreationArgs{
@@ -91,7 +91,7 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
 	t.Run("Create new account", func(t *testing.T) {
-		account, testError := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
+		testAccount, testError := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
 			CreationArgs: account.CreationArgs{
 				KeyDir:        testDir,
 				AccountNum:    0,
@@ -103,8 +103,8 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 		_, noExistError := os.Stat(testDir)
 		assert.Falsef(t, os.IsNotExist(noExistError), "Key directory not created")
 		require.NoError(t, testError)
-		assert.Equal(t, common.HexToAddress(keyAddress), account.Account.Address)
-		assert.NotNil(t, 1, len(account.Keystore.Accounts()))
+		assert.Equal(t, common.HexToAddress(keyAddress), testAccount.Account.Address)
+		assert.NotNil(t, 1, len(testAccount.Keystore.Accounts()))
 	})
 	t.Run("Retrieve created account", func(t *testing.T) {
 		otherAccount, otherError := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
@@ -155,33 +155,33 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 	keyBytes, setupErr := io.ReadAll(keyFile)
 	require.NoError(t, setupErr)
 	t.Run("Invalid dir", func(t *testing.T) {
-		account, err := account.GetRskAccount(account.CreationArgs{
+		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        "/test",
 			AccountNum:    0,
 			EncryptedJson: string(keyBytes),
 			Password:      test.KeyPassword,
 		})
-		assert.Nil(t, account)
+		assert.Nil(t, testAccount)
 		require.Error(t, err)
 	})
 	t.Run("Invalid key", func(t *testing.T) {
-		account, err := account.GetRskAccount(account.CreationArgs{
+		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
 			EncryptedJson: "any key",
 			Password:      test.KeyPassword,
 		})
-		assert.Nil(t, account)
+		assert.Nil(t, testAccount)
 		require.Error(t, err)
 	})
 	t.Run("Invalid password", func(t *testing.T) {
-		account, err := account.GetRskAccount(account.CreationArgs{
+		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
 			EncryptedJson: string(keyBytes),
 			Password:      "incorrect",
 		})
-		assert.Nil(t, account)
+		assert.Nil(t, testAccount)
 		require.Error(t, err)
 	})
 	t.Run("Invalid account number", func(t *testing.T) {
@@ -193,13 +193,13 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 			Password:      test.KeyPassword,
 		})
 		require.NoError(t, err)
-		account, err := account.GetRskAccount(account.CreationArgs{
+		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    1,
 			EncryptedJson: string(keyBytes),
 			Password:      test.KeyPassword,
 		})
-		assert.Nil(t, account)
+		assert.Nil(t, testAccount)
 		require.Error(t, err)
 	})
 }

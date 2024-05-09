@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	peginQuoteCollection         = "peginQuote"
-	retainedPeginQuoteCollection = "retainedPeginQuote"
+	PeginQuoteCollection         = "peginQuote"
+	RetainedPeginQuoteCollection = "retainedPeginQuote"
 )
 
 type peginMongoRepository struct {
@@ -24,7 +24,7 @@ func NewPeginMongoRepository(conn *Connection) quote.PeginQuoteRepository {
 	return &peginMongoRepository{conn: conn}
 }
 
-type storedPeginQuote struct {
+type StoredPeginQuote struct {
 	quote.PeginQuote `bson:",inline"`
 	Hash             string `json:"hash" bson:"hash"`
 }
@@ -32,8 +32,8 @@ type storedPeginQuote struct {
 func (repo *peginMongoRepository) InsertQuote(ctx context.Context, hash string, peginQuote quote.PeginQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	collection := repo.conn.Collection(peginQuoteCollection)
-	storedQuote := storedPeginQuote{
+	collection := repo.conn.Collection(PeginQuoteCollection)
+	storedQuote := StoredPeginQuote{
 		PeginQuote: peginQuote,
 		Hash:       hash,
 	}
@@ -41,17 +41,17 @@ func (repo *peginMongoRepository) InsertQuote(ctx context.Context, hash string, 
 	if err != nil {
 		return err
 	} else {
-		logDbInteraction(insert, storedQuote)
+		logDbInteraction(Insert, storedQuote)
 		return nil
 	}
 }
 
 func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PeginQuote, error) {
-	var result storedPeginQuote
+	var result StoredPeginQuote
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(peginQuoteCollection)
+	collection := repo.conn.Collection(PeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
@@ -60,7 +60,7 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result.PeginQuote)
+	logDbInteraction(Read, result.PeginQuote)
 	return &result.PeginQuote, nil
 }
 
@@ -69,7 +69,7 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPeginQuoteCollection)
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
@@ -78,19 +78,19 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result)
+	logDbInteraction(Read, result)
 	return &result, nil
 }
 
 func (repo *peginMongoRepository) InsertRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	collection := repo.conn.Collection(retainedPeginQuoteCollection)
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	_, err := collection.InsertOne(dbCtx, retainedQuote)
 	if err != nil {
 		return err
 	} else {
-		logDbInteraction(insert, retainedQuote)
+		logDbInteraction(Insert, retainedQuote)
 		return nil
 	}
 }
@@ -99,7 +99,7 @@ func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retai
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPeginQuoteCollection)
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
 	updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
 
@@ -111,7 +111,7 @@ func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retai
 	} else if result.ModifiedCount > 1 {
 		return errors.New("multiple documents updated")
 	}
-	logDbInteraction(update, retainedQuote)
+	logDbInteraction(Update, retainedQuote)
 	return nil
 }
 
@@ -120,7 +120,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPeginQuoteCollection)
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}}
 	rows, err := collection.Find(dbCtx, query)
 	if err != nil {
@@ -129,7 +129,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result)
+	logDbInteraction(Read, result)
 	return result, nil
 }
 
@@ -138,17 +138,17 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	defer cancel()
 
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	peginResult, err := repo.conn.Collection(peginQuoteCollection).DeleteMany(dbCtx, filter)
+	peginResult, err := repo.conn.Collection(PeginQuoteCollection).DeleteMany(dbCtx, filter)
 	if err != nil {
 		return 0, err
 	}
-	retainedResult, err := repo.conn.Collection(retainedPeginQuoteCollection).DeleteMany(dbCtx, filter)
+	retainedResult, err := repo.conn.Collection(RetainedPeginQuoteCollection).DeleteMany(dbCtx, filter)
 	if err != nil {
 		return 0, err
 	} else if peginResult.DeletedCount != retainedResult.DeletedCount {
 		return 0, errors.New("pegin quote collections didn't match")
 	}
-	logDbInteraction(delete, fmt.Sprintf("removed %d records from %s collection", peginResult.DeletedCount, pegoutQuoteCollection))
-	logDbInteraction(delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, retainedPegoutQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", peginResult.DeletedCount, PeginQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPeginQuoteCollection))
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount), nil
 }

@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	pegoutQuoteCollection         = "pegoutQuote"
-	retainedPegoutQuoteCollection = "retainedPegoutQuote"
-	depositEventsCollection       = "depositEvents"
+	PegoutQuoteCollection         = "pegoutQuote"
+	RetainedPegoutQuoteCollection = "retainedPegoutQuote"
+	DepositEventsCollection       = "depositEvents"
 )
 
-type storedPegoutQuote struct {
+type StoredPegoutQuote struct {
 	quote.PegoutQuote `bson:",inline"`
 	Hash              string `json:"hash" bson:"hash"`
 }
@@ -34,8 +34,8 @@ func NewPegoutMongoRepository(conn *Connection) quote.PegoutQuoteRepository {
 func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, hash string, pegoutQuote quote.PegoutQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	collection := repo.conn.Collection(pegoutQuoteCollection)
-	storedQuote := storedPegoutQuote{
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+	storedQuote := StoredPegoutQuote{
 		PegoutQuote: pegoutQuote,
 		Hash:        hash,
 	}
@@ -43,17 +43,17 @@ func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, hash string,
 	if err != nil {
 		return err
 	} else {
-		logDbInteraction(insert, storedQuote)
+		logDbInteraction(Insert, storedQuote)
 		return nil
 	}
 }
 
 func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PegoutQuote, error) {
-	var result storedPegoutQuote
+	var result StoredPegoutQuote
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(pegoutQuoteCollection)
+	collection := repo.conn.Collection(PegoutQuoteCollection)
 	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
@@ -62,7 +62,7 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result.PegoutQuote)
+	logDbInteraction(Read, result.PegoutQuote)
 	return &result.PegoutQuote, nil
 }
 
@@ -71,7 +71,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPegoutQuoteCollection)
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
@@ -80,19 +80,19 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result)
+	logDbInteraction(Read, result)
 	return &result, nil
 }
 
 func (repo *pegoutMongoRepository) InsertRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
-	collection := repo.conn.Collection(retainedPegoutQuoteCollection)
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	_, err := collection.InsertOne(dbCtx, retainedQuote)
 	if err != nil {
 		return err
 	} else {
-		logDbInteraction(insert, retainedQuote)
+		logDbInteraction(Insert, retainedQuote)
 		return nil
 	}
 }
@@ -103,7 +103,7 @@ func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Conte
 
 	filter := bson.M{"from": bson.M{"$regex": address, "$options": "i"}}
 	sort := options.Find().SetSort(bson.M{"timestamp": -1})
-	cursor, err := repo.conn.Collection(depositEventsCollection).Find(dbCtx, filter, sort)
+	cursor, err := repo.conn.Collection(DepositEventsCollection).Find(dbCtx, filter, sort)
 	if err != nil {
 		return make([]quote.PegoutDeposit, 0), err
 	}
@@ -112,7 +112,7 @@ func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Conte
 	if err = cursor.All(ctx, &documents); err != nil {
 		return make([]quote.PegoutDeposit, 0), err
 	}
-	logDbInteraction(read, fmt.Sprintf("%d pegout deposits", len(documents)))
+	logDbInteraction(Read, fmt.Sprintf("%d pegout deposits", len(documents)))
 	return documents, nil
 }
 
@@ -120,7 +120,7 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, reta
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPegoutQuoteCollection)
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
 	updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
 
@@ -132,7 +132,7 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, reta
 	} else if result.ModifiedCount > 1 {
 		return errors.New("multiple documents updated")
 	}
-	logDbInteraction(update, retainedQuote)
+	logDbInteraction(Update, retainedQuote)
 	return nil
 }
 
@@ -141,7 +141,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	collection := repo.conn.Collection(retainedPegoutQuoteCollection)
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}}
 	rows, err := collection.Find(dbCtx, query)
 	if err != nil {
@@ -150,7 +150,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
 	}
-	logDbInteraction(read, result)
+	logDbInteraction(Read, result)
 	return result, nil
 }
 
@@ -159,18 +159,18 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 	defer cancel()
 
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	pegoutResult, err := repo.conn.Collection(pegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, filter)
 	if err != nil {
 		return 0, err
 	}
-	retainedResult, err := repo.conn.Collection(retainedPegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	retainedResult, err := repo.conn.Collection(RetainedPegoutQuoteCollection).DeleteMany(dbCtx, filter)
 	if err != nil {
 		return 0, err
 	} else if pegoutResult.DeletedCount != retainedResult.DeletedCount {
 		return 0, errors.New("pegout quote collections didn't match")
 	}
-	logDbInteraction(delete, fmt.Sprintf("removed %d records from %s collection", pegoutResult.DeletedCount, pegoutQuoteCollection))
-	logDbInteraction(delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, retainedPegoutQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", pegoutResult.DeletedCount, PegoutQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPegoutQuoteCollection))
 	return uint(pegoutResult.DeletedCount + retainedResult.DeletedCount), nil
 }
 
@@ -178,15 +178,18 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, depo
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(depositEventsCollection).ReplaceOne(
+	result, err := repo.conn.Collection(DepositEventsCollection).ReplaceOne(
 		dbCtx,
 		bson.M{"tx_hash": deposit.TxHash},
 		deposit,
 		options.Replace().SetUpsert(true),
 	)
-	if err == nil {
-		logDbInteraction(upsert, deposit)
+	if err != nil {
+		return err
+	} else if result.ModifiedCount > 1 {
+		return errors.New("multiple deposits updated")
 	}
+	logDbInteraction(Upsert, deposit)
 	return err
 }
 
@@ -209,12 +212,12 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		documents = append(documents, replaceModel)
 	}
 
-	_, err := repo.conn.Collection(depositEventsCollection).BulkWrite(
+	_, err := repo.conn.Collection(DepositEventsCollection).BulkWrite(
 		dbCtx,
 		documents,
 	)
 	if err == nil {
-		logDbInteraction(upsert, deposits)
+		logDbInteraction(Upsert, deposits)
 	}
 	return err
 }

@@ -29,7 +29,7 @@ func Connect(ctx context.Context, username, password, host string, port uint) (*
 	if client, err = mongo.Connect(ctx, clientOptions); err != nil {
 		return nil, err
 	}
-	db := client.Database(dbName)
+	db := client.Database(DbName)
 	if err = createIndexes(ctx, db); err == nil {
 		return client, nil
 	} else {
@@ -38,7 +38,7 @@ func Connect(ctx context.Context, username, password, host string, port uint) (*
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	_, err := db.Collection(depositEventsCollection).Indexes().CreateOne(
+	_, err := db.Collection(DepositEventsCollection).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: "tx_hash", Value: 1}},

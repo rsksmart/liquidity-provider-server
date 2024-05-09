@@ -3,32 +3,31 @@ package mongo
 import (
 	"context"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
 
 const (
 	dbTimeout = 3 * time.Second
-	dbName    = "flyover"
+	DbName    = "flyover"
 )
 
-type dbInteraction string
+type DbInteraction string
 
 const (
-	read   dbInteraction = "READ"
-	insert dbInteraction = "INSERT"
-	update dbInteraction = "UPDATE"
-	upsert dbInteraction = "UPSERT"
-	delete dbInteraction = "DELETE"
+	Read   DbInteraction = "READ"
+	Insert DbInteraction = "INSERT"
+	Update DbInteraction = "UPDATE"
+	Upsert DbInteraction = "UPSERT"
+	Delete DbInteraction = "DELETE"
 )
 
-func logDbInteraction(interaction dbInteraction, value any) {
+func logDbInteraction(interaction DbInteraction, value any) {
 	switch interaction {
-	case insert, update, upsert:
+	case Insert, Update, Upsert:
 		log.Infof("%s interaction with db: %#v", interaction, value)
-	case read:
+	case Read:
 		log.Debugf("%s interaction with db: %#v", interaction, value)
-	case delete:
+	case Delete:
 		log.Debugf("%s interaction with db: %v", interaction, value)
 	default:
 		log.Debug("Unknown DB interaction")
@@ -36,20 +35,20 @@ func logDbInteraction(interaction dbInteraction, value any) {
 }
 
 type Connection struct {
-	client *mongo.Client
-	db     *mongo.Database
+	client DbClientBinding
+	db     DbBinding
 }
 
-func NewConnection(client *mongo.Client) *Connection {
-	db := client.Database(dbName)
+func NewConnection(client DbClientBinding) *Connection {
+	db := client.Database(DbName)
 	return &Connection{client: client, db: db}
 }
 
-func (c *Connection) GetDb() *mongo.Database {
+func (c *Connection) GetDb() DbBinding {
 	return c.db
 }
 
-func (c *Connection) Collection(collection string) *mongo.Collection {
+func (c *Connection) Collection(collection string) CollectionBinding {
 	return c.db.Collection(collection)
 }
 
