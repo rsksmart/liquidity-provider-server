@@ -94,6 +94,15 @@ type RetainedPeginQuote struct {
 	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
 }
 
+type WatchedPeginQuote struct {
+	PeginQuote    PeginQuote
+	RetainedQuote RetainedPeginQuote
+}
+
+func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote) WatchedPeginQuote {
+	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote}
+}
+
 type AcceptedPeginQuoteEvent struct {
 	entities.Event
 	Quote         PeginQuote
