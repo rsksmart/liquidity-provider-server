@@ -52,6 +52,7 @@ type UseCaseRegistry struct {
 	loginUseCase                    *liquidity_provider.LoginUseCase
 	setCredentialsUseCase           *liquidity_provider.SetCredentialsUseCase
 	defaultCredentialsUseCase       *liquidity_provider.GenerateDefaultCredentialsUseCase
+	getManagementUiDataUseCase      *liquidity_provider.GetManagementUiDataUseCase
 }
 
 // NewUseCaseRegistry
@@ -207,6 +208,13 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			messaging.EventBus,
 		),
+		getManagementUiDataUseCase: liquidity_provider.NewGetManagementUiDataUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			liquidityProvider,
+			liquidityProvider,
+			liquidityProvider,
+			env.Provider.ApiBaseUrl,
+		),
 	}
 }
 
@@ -304,4 +312,8 @@ func (registry *UseCaseRegistry) SetCredentialsUseCase() *liquidity_provider.Set
 
 func (registry *UseCaseRegistry) GenerateDefaultCredentialsUseCase() *liquidity_provider.GenerateDefaultCredentialsUseCase {
 	return registry.defaultCredentialsUseCase
+}
+
+func (registry *UseCaseRegistry) GetManagementUiDataUseCase() *liquidity_provider.GetManagementUiDataUseCase {
+	return registry.getManagementUiDataUseCase
 }
