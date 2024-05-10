@@ -77,6 +77,7 @@ type RootstockRpcServer interface {
 
 type RootstockWallet interface {
 	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (string, error)
+	GetBalance(ctx context.Context) (*entities.Wei, error)
 }
 
 type FlyoverDerivationArgs struct {

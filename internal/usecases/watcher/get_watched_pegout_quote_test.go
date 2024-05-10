@@ -19,6 +19,7 @@ var retainedPegoutQuotes = []quote.RetainedPegoutQuote{
 	{QuoteHash: "03", State: quote.PegoutStateWaitingForDeposit},
 	{QuoteHash: "05", State: quote.PegoutStateSendPegoutFailed},
 	{QuoteHash: "06", State: quote.PegoutStateWaitingForDepositConfirmations},
+	{QuoteHash: "07", State: quote.PegoutStateRefundPegOutSucceeded},
 }
 
 var pegoutQuotes = []quote.PegoutQuote{
@@ -28,6 +29,7 @@ var pegoutQuotes = []quote.PegoutQuote{
 	{Nonce: 4},
 	{Nonce: 5},
 	{Nonce: 6},
+	{Nonce: 7},
 }
 
 func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
@@ -59,7 +61,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 	}
 }
 
-func TestGetWatchedPegoutQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
+func TestGetWatchedPegoutQuoteUseCase_Run_SendPegoutSucceed(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateSendPegoutSucceeded).
 		Return([]quote.RetainedPegoutQuote{retainedPegoutQuotes[1]}, nil)
@@ -78,12 +80,30 @@ func TestGetWatchedPegoutQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
 	}
 }
 
+func TestGetWatchedPegoutQuoteUseCase_Run_RefundPegoutSucceeded(t *testing.T) {
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateRefundPegOutSucceeded).
+		Return([]quote.RetainedPegoutQuote{retainedPegoutQuotes[5]}, nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[5].QuoteHash).Return(&pegoutQuotes[6], nil)
+	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
+	watchedQuotes, err := useCase.Run(context.Background(), quote.PegoutStateRefundPegOutSucceeded)
+	quoteRepository.AssertExpectations(t)
+	assert.Len(t, watchedQuotes, 1)
+	require.NoError(t, err)
+	var parsedHash big.Int
+	for _, watchedQuote := range watchedQuotes {
+		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
+		// this is just to validate that the watched quotes are built with the correct pairs,
+		// the nonce is not related to the hash in the business logic
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PegoutQuote.Nonce)
+	}
+}
+
 func TestGetWatchedPegoutQuoteUseCase_Run_WrongState(t *testing.T) {
 	wrongStates := []quote.PegoutState{
 		quote.PegoutStateTimeForDepositElapsed,
 		quote.PegoutStateSendPegoutFailed,
 		quote.PegoutStateRefundPegOutFailed,
-		quote.PegoutStateRefundPegOutSucceeded,
 	}
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)

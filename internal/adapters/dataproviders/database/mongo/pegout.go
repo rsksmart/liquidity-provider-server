@@ -136,6 +136,42 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, reta
 	return nil
 }
 
+func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, retainedQuotes []quote.RetainedPegoutQuote) error {
+	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	defer cancel()
+
+	session, err := repo.conn.client.StartSession()
+	defer func() {
+		if session != nil {
+			session.EndSession(dbCtx)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+	result, err := session.WithTransaction(dbCtx, func(sessionContext mongo.SessionContext) (any, error) {
+		var count int64 = 0
+		for _, retainedQuote := range retainedQuotes {
+			filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+			updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
+			result, updateErr := collection.UpdateOne(dbCtx, filter, updateStatement)
+			if updateErr != nil {
+				return int64(0), updateErr
+			}
+			count += result.ModifiedCount
+		}
+		return count, nil
+	})
+	if err != nil {
+		return err
+	} else if result.(int64) != int64(len(retainedQuotes)) {
+		return fmt.Errorf("mismatch on updated documents. Expected %d, updated %d", len(retainedQuotes), result)
+	}
+	logDbInteraction(Update, retainedQuotes)
+	return nil
+}
+
 func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
 	result := make([]quote.RetainedPegoutQuote, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
@@ -158,19 +194,21 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout*2)
 	defer cancel()
 
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	retainedFilter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, quoteFilter)
 	if err != nil {
 		return 0, err
 	}
-	retainedResult, err := repo.conn.Collection(RetainedPegoutQuoteCollection).DeleteMany(dbCtx, filter)
+	retainedResult, err := repo.conn.Collection(RetainedPegoutQuoteCollection).DeleteMany(dbCtx, retainedFilter)
 	if err != nil {
 		return 0, err
-	} else if pegoutResult.DeletedCount != retainedResult.DeletedCount {
-		return 0, errors.New("pegout quote collections didn't match")
 	}
 	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", pegoutResult.DeletedCount, PegoutQuoteCollection))
 	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPegoutQuoteCollection))
+	if pegoutResult.DeletedCount != retainedResult.DeletedCount {
+		return 0, errors.New("pegout quote collections didn't match")
+	}
 	return uint(pegoutResult.DeletedCount + retainedResult.DeletedCount), nil
 }
 

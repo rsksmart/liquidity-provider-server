@@ -181,6 +181,77 @@ func (_c *DbClientBindingMock_Ping_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// StartSession provides a mock function with given fields: opts
+func (_m *DbClientBindingMock) StartSession(opts ...*options.SessionOptions) (mongo.SessionBinding, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartSession")
+	}
+
+	var r0 mongo.SessionBinding
+	var r1 error
+	if rf, ok := ret.Get(0).(func(...*options.SessionOptions) (mongo.SessionBinding, error)); ok {
+		return rf(opts...)
+	}
+	if rf, ok := ret.Get(0).(func(...*options.SessionOptions) mongo.SessionBinding); ok {
+		r0 = rf(opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(mongo.SessionBinding)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(...*options.SessionOptions) error); ok {
+		r1 = rf(opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DbClientBindingMock_StartSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartSession'
+type DbClientBindingMock_StartSession_Call struct {
+	*mock.Call
+}
+
+// StartSession is a helper method to define mock.On call
+//   - opts ...*options.SessionOptions
+func (_e *DbClientBindingMock_Expecter) StartSession(opts ...interface{}) *DbClientBindingMock_StartSession_Call {
+	return &DbClientBindingMock_StartSession_Call{Call: _e.mock.On("StartSession",
+		append([]interface{}{}, opts...)...)}
+}
+
+func (_c *DbClientBindingMock_StartSession_Call) Run(run func(opts ...*options.SessionOptions)) *DbClientBindingMock_StartSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]*options.SessionOptions, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(*options.SessionOptions)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *DbClientBindingMock_StartSession_Call) Return(_a0 mongo.SessionBinding, _a1 error) *DbClientBindingMock_StartSession_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *DbClientBindingMock_StartSession_Call) RunAndReturn(run func(...*options.SessionOptions) (mongo.SessionBinding, error)) *DbClientBindingMock_StartSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewDbClientBindingMock creates a new instance of DbClientBindingMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewDbClientBindingMock(t interface {

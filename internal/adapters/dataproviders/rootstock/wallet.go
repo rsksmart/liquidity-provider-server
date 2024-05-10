@@ -10,6 +10,7 @@ import (
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
@@ -94,8 +95,25 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	if signedTx, err = wallet.Sign(wallet.Address(), tx); err != nil {
 		return "", err
 	}
-	if err = wallet.client.SendTransaction(newCtx, signedTx); err != nil {
+
+	sendError := wallet.client.SendTransaction(newCtx, signedTx)
+	receipt, err := awaitTxWithCtx(wallet.client, "SendRbtc", newCtx, func() (*geth.Transaction, error) {
+		return signedTx, sendError
+	})
+
+	txHash := signedTx.Hash().String()
+	if err != nil {
 		return "", err
+	} else if receipt == nil || receipt.Status == 0 {
+		return txHash, fmt.Errorf("%s transaction failed", txHash)
 	}
 	return signedTx.Hash().String(), nil
+}
+
+func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, error) {
+	balance, err := wallet.client.BalanceAt(ctx, wallet.Address(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return entities.NewBigWei(balance), nil
 }

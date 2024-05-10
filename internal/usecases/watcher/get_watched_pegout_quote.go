@@ -28,7 +28,11 @@ func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...
 	result := make([]WatchedPegoutQuote, 0)
 	for _, state := range states {
 		switch state {
-		case quote.PegoutStateWaitingForDepositConfirmations, quote.PegoutStateWaitingForDeposit, quote.PegoutStateSendPegoutSucceeded:
+		case
+			quote.PegoutStateWaitingForDepositConfirmations,
+			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateSendPegoutSucceeded,
+			quote.PegoutStateRefundPegOutSucceeded:
 			if watchedQuotes, err := useCase.getWatchedQuotes(ctx, state); err == nil {
 				result = append(result, watchedQuotes...)
 			} else {

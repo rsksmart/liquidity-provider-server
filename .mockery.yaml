@@ -21,6 +21,7 @@ packages:
       DbClientBinding:
       DbBinding:
       CollectionBinding:
+      SessionBinding:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient:
     interfaces:
       RpcClient:
