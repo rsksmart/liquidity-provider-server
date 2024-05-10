@@ -47,11 +47,15 @@ func TestRskWalletImpl(t *testing.T) {
 	t.Run("Validate", createValidateTest(testAccount))
 	t.Run("SendRbtc", createSendRbtcTest(testAccount))
 	t.Run("SendRbtc error handling", createSendRbtcErrorHandlingTest(testAccount))
+	t.Run("GetBalance", createGetBalanceTest(testAccount))
 }
 
 func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
-		const toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
+		const (
+			toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
+			txHash    = "0xa685c956bd47a5c6c9d66997a469f483447fb1366709f7374764ee597aeac266"
+		)
 		var gasLimit uint64 = 21000
 		t.Run("Success", func(t *testing.T) {
 			clientMock := &mocks.RpcClientBindingMock{}
@@ -60,6 +64,8 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				return assert.NotNil(t, v) && assert.NotNil(t, r) && assert.NotNil(t, s)
 			})).Return(nil)
 			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(54), nil)
+			clientMock.On("TransactionReceipt", mock.Anything, common.HexToHash(txHash)).
+				Return(&geth.Receipt{Status: 1}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(89607151182921727),
@@ -67,7 +73,7 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				GasPrice: entities.NewWei(65164000),
 			}, toAddress)
 			require.NoError(t, err)
-			require.Equal(t, "0xa685c956bd47a5c6c9d66997a469f483447fb1366709f7374764ee597aeac266", tx)
+			require.Equal(t, txHash, tx)
 		})
 	}
 }
@@ -88,20 +94,17 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			clientMock := &mocks.RpcClientBindingMock{}
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
 			t.Run("Missing gasPrice", func(t *testing.T) {
-				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
-					Value: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
+				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Empty(t, tx)
 			})
 			t.Run("Missing value", func(t *testing.T) {
-				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
-					GasPrice: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
+				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{GasPrice: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Empty(t, tx)
 			})
 			t.Run("Missing gasLimit", func(t *testing.T) {
-				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
-					Value: entities.NewWei(1), GasPrice: entities.NewWei(1)}, toAddress)
+				tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasPrice: entities.NewWei(1)}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Empty(t, tx)
 			})
@@ -110,11 +113,7 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			clientMock := &mocks.RpcClientBindingMock{}
 			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(0), assert.AnError)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
-				Value:    entities.NewWei(1),
-				GasLimit: &gasLimit,
-				GasPrice: entities.NewWei(5),
-			}, toAddress)
+			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.Error(t, err)
 			require.Empty(t, tx)
 		})
@@ -123,13 +122,20 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			clientMock.On("SendTransaction", mock.Anything, mock.Anything).Return(assert.AnError)
 			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(54), nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
-				Value:    entities.NewWei(1),
-				GasLimit: &gasLimit,
-				GasPrice: entities.NewWei(5),
-			}, toAddress)
+			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.Error(t, err)
 			require.Empty(t, tx)
+		})
+		t.Run("Handle error on failure when tx failed", func(t *testing.T) {
+			const txHash = "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63"
+			clientMock := &mocks.RpcClientBindingMock{}
+			clientMock.On("SendTransaction", mock.Anything, mock.Anything).Return(nil)
+			clientMock.On("PendingNonceAt", mock.AnythingOfType(timerContextString), walletAddress).Return(uint64(54), nil)
+			clientMock.On("TransactionReceipt", mock.Anything, common.HexToHash(txHash)).Return(&geth.Receipt{Status: 0}, nil)
+			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
+			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
+			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63 transaction failed")
+			require.Equal(t, txHash, tx)
 		})
 	}
 }
@@ -178,6 +184,30 @@ func createSignBytesTest(account *account.RskAccount) func(t *testing.T) {
 		signedHash, err := wallet.SignBytes(bytesToSign)
 		require.NoError(t, err)
 		assert.Equal(t, signedBytes, signedHash)
+	}
+}
+
+func createGetBalanceTest(account *account.RskAccount) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run("Success getting balance", func(t *testing.T) {
+			clientMock := &mocks.RpcClientBindingMock{}
+			value := big.NewInt(1000000000000000000)
+			clientMock.On("BalanceAt", mock.Anything, walletAddress, (*big.Int)(nil)).Return(value, nil)
+			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
+			result, err := wallet.GetBalance(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, value, result.AsBigInt())
+			clientMock.AssertExpectations(t)
+		})
+		t.Run("RPC error getting balance", func(t *testing.T) {
+			clientMock := &mocks.RpcClientBindingMock{}
+			clientMock.On("BalanceAt", mock.Anything, walletAddress, (*big.Int)(nil)).Return(nil, assert.AnError)
+			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId)
+			result, err := wallet.GetBalance(context.Background())
+			require.Error(t, err)
+			assert.Nil(t, result)
+			clientMock.AssertExpectations(t)
+		})
 	}
 }
 

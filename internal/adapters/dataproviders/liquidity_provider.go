@@ -116,11 +116,18 @@ func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, require
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
 	log.Debugf("Liquidity: %s wei\n", liquidity.String())
-	quotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserFailed)
+	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserFailed)
 	if err != nil {
 		return err
 	}
-	for _, retainedQuote := range quotes {
+	for _, retainedQuote := range peginQuotes {
+		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
+	}
+	pegoutQuotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
+	if err != nil {
+		return err
+	}
+	for _, retainedQuote := range pegoutQuotes {
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s wei\n", lockedLiquidity.String())

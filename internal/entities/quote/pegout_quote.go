@@ -24,6 +24,8 @@ const (
 	PegoutStateRefundPegOutSucceeded          PegoutState = "RefundPegOutSucceeded"
 	PegoutStateRefundPegOutFailed             PegoutState = "RefundPegOutFailed"
 	PegoutStateWaitingForDepositConfirmations PegoutState = "WaitingForDepositConfirmations"
+	PegoutStateBridgeTxSucceeded              PegoutState = "BridgeTxSucceeded"
+	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
 )
 
 type PegoutQuoteRepository interface {
@@ -33,6 +35,7 @@ type PegoutQuoteRepository interface {
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
+	UpdateRetainedQuotes(ctx context.Context, quotes []RetainedPegoutQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PegoutState) ([]RetainedPegoutQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)

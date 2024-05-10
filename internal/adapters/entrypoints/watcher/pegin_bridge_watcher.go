@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+// PeginBridgeWatcher is a watcher that checks the state of the pegin quotes and registers
+// the pegin on the bridge when the conditions are met
 type PeginBridgeWatcher struct {
 	quotes                      map[string]w.WatchedPeginQuote
 	registerPeginUseCase        *pegin.RegisterPeginUseCase

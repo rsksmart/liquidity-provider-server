@@ -23,13 +23,14 @@ type PeginConfiguration struct {
 }
 
 type PegoutConfiguration struct {
-	TimeForDeposit uint32        `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
-	CallTime       uint32        `json:"callTime" bson:"call_time" validate:"required"`
-	PenaltyFee     *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
-	CallFee        *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
-	MaxValue       *entities.Wei `json:"maxValue" bson:"max_value" validate:"required"`
-	MinValue       *entities.Wei `json:"minValue" bson:"min_value" validate:"required"`
-	ExpireBlocks   uint64        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
+	TimeForDeposit       uint32        `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
+	CallTime             uint32        `json:"callTime" bson:"call_time" validate:"required"`
+	PenaltyFee           *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
+	CallFee              *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
+	MaxValue             *entities.Wei `json:"maxValue" bson:"max_value" validate:"required"`
+	MinValue             *entities.Wei `json:"minValue" bson:"min_value" validate:"required"`
+	ExpireBlocks         uint64        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
+	BridgeTransactionMin *entities.Wei `json:"bridgeTransactionMin" bson:"bridge_transaction_min" validate:"required"`
 }
 
 type GeneralConfiguration struct {

@@ -245,7 +245,7 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 		retainedCollection := &mocks.CollectionBindingMock{}
 		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		quoteCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything,
 			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
@@ -433,5 +433,94 @@ func TestPegoutMongoRepository_UpsertPegoutDeposits(t *testing.T) {
 		err := repo.UpsertPegoutDeposits(context.Background(), []quote.PegoutDeposit{testPegoutDeposit})
 		collection.AssertExpectations(t)
 		require.Error(t, err)
+	})
+}
+
+// nolint:funlen
+func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
+	retainedQuotes := []quote.RetainedPegoutQuote{
+		{QuoteHash: "quote1", DepositAddress: test.AnyAddress, Signature: test.AnyString, RequiredLiquidity: entities.NewWei(1000), State: quote.PegoutStateSendPegoutSucceeded},
+		{QuoteHash: "quote2", DepositAddress: test.AnyAddress, Signature: test.AnyString, RequiredLiquidity: entities.NewWei(2000), State: quote.PegoutStateSendPegoutFailed},
+	}
+	t.Run("Update retained quotes successfully", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		session := &mocks.SessionBindingMock{}
+		client.On("StartSession").Return(session, nil).Once()
+		session.On("EndSession", mock.Anything).Return().Once()
+		session.On("WithTransaction", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				fn := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.NoError(t, err)
+				assert.Equal(t, int64(len(retainedQuotes)), count)
+			}).
+			Return(any(int64(len(retainedQuotes))), nil)
+		for _, q := range retainedQuotes {
+			collection.On("UpdateOne", mock.Anything,
+				bson.D{primitive.E{Key: "quote_hash", Value: q.QuoteHash}},
+				bson.D{primitive.E{Key: "$set", Value: q}},
+			).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+		}
+		conn := mongo.NewConnection(client)
+		repo := mongo.NewPegoutMongoRepository(conn)
+		defer assertDbInteractionLog(t, mongo.Update)()
+		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		collection.AssertExpectations(t)
+		client.AssertExpectations(t)
+		session.AssertExpectations(t)
+		require.NoError(t, err)
+	})
+	t.Run("Error creating session", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		session := &mocks.SessionBindingMock{}
+		client.On("StartSession").Return(session, assert.AnError).Once()
+		session.On("EndSession", mock.Anything).Return().Once()
+		conn := mongo.NewConnection(client)
+		repo := mongo.NewPegoutMongoRepository(conn)
+		defer test.AssertNoLog(t)()
+		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		collection.AssertExpectations(t)
+		client.AssertExpectations(t)
+		session.AssertExpectations(t)
+		require.Error(t, err)
+	})
+	t.Run("Error updating one quote", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		session := &mocks.SessionBindingMock{}
+		client.On("StartSession").Return(session, nil).Once()
+		session.On("EndSession", mock.Anything).Return().Once()
+		session.On("WithTransaction", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				fn := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.Error(t, err)
+				assert.Equal(t, int64(0), count)
+			}).
+			Return(int64(0), assert.AnError)
+
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		conn := mongo.NewConnection(client)
+		repo := mongo.NewPegoutMongoRepository(conn)
+		defer test.AssertNoLog(t)()
+		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		collection.AssertExpectations(t)
+		client.AssertExpectations(t)
+		session.AssertExpectations(t)
+		require.Error(t, err)
+	})
+	t.Run("Update count mismatch", func(t *testing.T) {
+		client, _ := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		session := &mocks.SessionBindingMock{}
+		client.On("StartSession").Return(session, nil).Once()
+		session.On("EndSession", mock.Anything).Return().Once()
+		session.On("WithTransaction", mock.Anything, mock.Anything).Return(any(int64(len(retainedQuotes)-1)), nil)
+		conn := mongo.NewConnection(client)
+		repo := mongo.NewPegoutMongoRepository(conn)
+		defer test.AssertNoLog(t)()
+		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		client.AssertExpectations(t)
+		session.AssertExpectations(t)
+		require.ErrorContains(t, err, "mismatch on updated documents. Expected 2, updated 1")
 	})
 }
