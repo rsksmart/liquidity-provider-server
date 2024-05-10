@@ -1,42 +1,32 @@
 package registry
 
 import (
-	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
 type Bitcoin struct {
-	MonitoringWallet           blockchain.BitcoinWallet
-	PaymentWallet              blockchain.BitcoinWallet
-	MonitoringWalletConnection *bitcoin.Connection
-	PaymentWalletConnection    *bitcoin.Connection
+	MonitoringWallet blockchain.BitcoinWallet
+	PaymentWallet    blockchain.BitcoinWallet
+	RpcConnection    *bitcoin.Connection
 }
 
 func NewBitcoinRegistry(
-	monitoringWalletConnection *bitcoin.Connection,
-	paymentWalletConnection *bitcoin.Connection,
-	rskAccount *account.RskAccount,
+	walletFactory wallet.AbstractFactory,
+	connection *bitcoin.Connection,
 ) (*Bitcoin, error) {
-	if monitoringWalletConnection.WalletId == "" {
-		return nil, errors.New("monitoringWalletConnection must be a wallet connection to the RPC server")
-	}
-	if paymentWalletConnection.WalletId == "" {
-		return nil, errors.New("paymentWalletConnection must be a wallet connection to the RPC server")
-	}
-	peginWatchOnly, err := bitcoin.NewWatchOnlyWallet(monitoringWalletConnection)
+	paymentWallet, err := walletFactory.BitcoinPaymentWallet(bitcoin.DerivativeWalletId)
 	if err != nil {
 		return nil, err
 	}
-	derivative, err := bitcoin.NewDerivativeWallet(paymentWalletConnection, rskAccount)
+	peginWatchOnly, err := walletFactory.BitcoinMonitoringWallet(bitcoin.PeginWalletId)
 	if err != nil {
 		return nil, err
 	}
 	return &Bitcoin{
-		MonitoringWallet:           peginWatchOnly,
-		PaymentWallet:              derivative,
-		MonitoringWalletConnection: monitoringWalletConnection,
-		PaymentWalletConnection:    paymentWalletConnection,
+		MonitoringWallet: peginWatchOnly,
+		PaymentWallet:    paymentWallet,
+		RpcConnection:    connection,
 	}, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -57,7 +58,7 @@ func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClien
 func RootstockAccount(
 	rskEnv environment.RskEnv,
 	btcEnv environment.BtcEnv,
-	secrets environment.ApplicationSecrets) (*account.RskAccount, error) {
+	secrets secrets.DerivativeWalletSecrets) (*account.RskAccount, error) {
 	networkParams, err := btcEnv.GetNetworkParams()
 	if err != nil {
 		return nil, err

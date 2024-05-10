@@ -22,10 +22,8 @@ func setUpLps(referenceChannel chan<- *lps.Application, hooks ...log.Hook) {
 	}
 	log.Debugf("Environment loaded: %+v", env)
 
-	secrets := environment.LoadSecrets(initCtx, *env)
-
 	log.Info("Initializing application...")
-	app := lps.NewApplication(initCtx, *env, *secrets)
+	app := lps.NewApplication(initCtx, *env)
 	log.Info("Application initialized successfully")
 	cancel()
 	log.Info("Starting application...")
