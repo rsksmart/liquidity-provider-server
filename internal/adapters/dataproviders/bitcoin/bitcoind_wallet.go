@@ -176,3 +176,7 @@ func (wallet *bitcoindWallet) Unlock() error {
 func (wallet *bitcoindWallet) Address() string {
 	return wallet.address
 }
+
+func (wallet *bitcoindWallet) Shutdown(closeChannel chan<- bool) {
+	wallet.conn.Shutdown(closeChannel)
+}

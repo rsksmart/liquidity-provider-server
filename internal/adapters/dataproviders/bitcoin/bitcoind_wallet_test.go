@@ -427,3 +427,13 @@ func TestBitcoindWallet_GetTransactions_ErrorHandling(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, transactions)
 }
+
+func TestBitcoindWallet_Shutdown(t *testing.T) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("Disconnect").Return().Once()
+	wallet := bitcoin.NewBitcoindWallet(bitcoin.NewConnection(&chaincfg.TestNet3Params, client), mockAddress, mockFeeRate, true, mockPassword)
+	shutdownChannel := make(chan bool, 1)
+	wallet.Shutdown(shutdownChannel)
+	<-shutdownChannel
+	client.AssertExpectations(t)
+}

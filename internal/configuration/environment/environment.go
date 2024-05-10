@@ -14,6 +14,8 @@ type Environment struct {
 	LogLevel         string `env:"LOG_LEVEL" validate:"required"`
 	LogFile          string `env:"LOG_FILE"`
 	AwsLocalEndpoint string `env:"AWS_LOCAL_ENDPOINT"`
+	SecretSource     string `env:"SECRET_SRC" validate:"required,oneof=aws env"`
+	WalletManagement string `env:"WALLET" validate:"required,oneof=native fireblocks"`
 	Management       ManagementEnv
 	Mongo            MongoEnv
 	Rsk              RskEnv
@@ -41,19 +43,19 @@ type RskEnv struct {
 	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
-	EncryptedJsonSecret         string   `env:"KEY_SECRET" validate:"required"`
-	EncryptedJsonPasswordSecret string   `env:"PASSWORD_SECRET" validate:"required"`
+	// Only if secret source is aws & wallet is native
+	EncryptedJsonSecret         string `env:"KEY_SECRET"`
+	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
+	// Only if secret source is env & wallet is native
+	KeystoreFile     string `env:"KEYSTORE_FILE"`
+	KeystorePassword string `env:"KEYSTORE_PWD"`
 }
 
 type BtcEnv struct {
-	Network              string  `env:"BTC_NETWORK" validate:"required"`
-	Username             string  `env:"BTC_USERNAME" validate:"required"`
-	Password             string  `env:"BTC_PASSWORD" validate:"required"`
-	Endpoint             string  `env:"BTC_ENDPOINT" validate:"required"`
-	FixedTxFeeRate       float64 `env:"BTC_TX_FEE_RATE" validate:"required"`
-	WalletEncrypted      bool    `env:"BTC_ENCRYPTED_WALLET" validate:"required"`
-	WalletPasswordSecret string  `env:"BTC_WALLET_PASSWORD"`
-	BtcAddress           string  `env:"BTC_ADDR"  validate:"required"`
+	Network  string `env:"BTC_NETWORK" validate:"required"`
+	Username string `env:"BTC_USERNAME" validate:"required"`
+	Password string `env:"BTC_PASSWORD" validate:"required"`
+	Endpoint string `env:"BTC_ENDPOINT" validate:"required"`
 }
 
 func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
