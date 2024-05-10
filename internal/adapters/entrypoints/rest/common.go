@@ -45,7 +45,7 @@ func JsonErrorResponse(w http.ResponseWriter, code int, response *ErrorResponse)
 
 func JsonResponseWithBody[T any](w http.ResponseWriter, statusCode int, body *T) {
 	var err error
-	w.Header().Set("Content-Type", "lps/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if body == nil {
 		return
