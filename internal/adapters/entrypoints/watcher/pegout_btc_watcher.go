@@ -16,7 +16,7 @@ import (
 )
 
 type PegoutBtcTransferWatcher struct {
-	quotes                       map[string]w.WatchedPegoutQuote
+	quotes                       map[string]quote.WatchedPegoutQuote
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	refundPegoutUseCase          *pegout.RefundPegoutUseCase
 	rpc                          blockchain.Rpc
@@ -32,7 +32,7 @@ func NewPegoutBtcTransferWatcher(
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PegoutBtcTransferWatcher {
-	quotes := make(map[string]w.WatchedPegoutQuote)
+	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
 	currentBlock := big.NewInt(0)
 	return &PegoutBtcTransferWatcher{
@@ -102,7 +102,7 @@ func (watcher *PegoutBtcTransferWatcher) checkQuotes() {
 	}
 }
 
-func (watcher *PegoutBtcTransferWatcher) refundPegout(watchedQuote w.WatchedPegoutQuote) {
+func (watcher *PegoutBtcTransferWatcher) refundPegout(watchedQuote quote.WatchedPegoutQuote) {
 	var err error
 	const refundPegoutErrorMsgTemplate = "Error executing refund pegout on quote %s: %v"
 	if err = watcher.refundPegoutUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
@@ -131,10 +131,10 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 		log.Warn(pegoutBtcWatcherLog("Quote %s doesn't have btc tx hash to watch", quoteHash))
 		return
 	}
-	watcher.quotes[quoteHash] = w.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote)
+	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote)
 }
 
-func (watcher *PegoutBtcTransferWatcher) validateQuote(watchedQuote w.WatchedPegoutQuote, tx blockchain.BitcoinTransactionInformation) bool {
+func (watcher *PegoutBtcTransferWatcher) validateQuote(watchedQuote quote.WatchedPegoutQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PegoutStateSendPegoutSucceeded &&
 		tx.Confirmations >= uint64(watchedQuote.PegoutQuote.TransferConfirmations)
 }
