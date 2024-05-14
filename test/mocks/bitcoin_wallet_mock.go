@@ -345,6 +345,39 @@ func (_c *BitcoinWalletMock_SendWithOpReturn_Call) RunAndReturn(run func(string,
 	return _c
 }
 
+// Shutdown provides a mock function with given fields: closeChannel
+func (_m *BitcoinWalletMock) Shutdown(closeChannel chan<- bool) {
+	_m.Called(closeChannel)
+}
+
+// BitcoinWalletMock_Shutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Shutdown'
+type BitcoinWalletMock_Shutdown_Call struct {
+	*mock.Call
+}
+
+// Shutdown is a helper method to define mock.On call
+//   - closeChannel chan<- bool
+func (_e *BitcoinWalletMock_Expecter) Shutdown(closeChannel interface{}) *BitcoinWalletMock_Shutdown_Call {
+	return &BitcoinWalletMock_Shutdown_Call{Call: _e.mock.On("Shutdown", closeChannel)}
+}
+
+func (_c *BitcoinWalletMock_Shutdown_Call) Run(run func(closeChannel chan<- bool)) *BitcoinWalletMock_Shutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(chan<- bool))
+	})
+	return _c
+}
+
+func (_c *BitcoinWalletMock_Shutdown_Call) Return() *BitcoinWalletMock_Shutdown_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *BitcoinWalletMock_Shutdown_Call) RunAndReturn(run func(chan<- bool)) *BitcoinWalletMock_Shutdown_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unlock provides a mock function with given fields:
 func (_m *BitcoinWalletMock) Unlock() error {
 	ret := _m.Called()

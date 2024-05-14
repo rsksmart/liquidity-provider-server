@@ -4,27 +4,26 @@ import (
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
 type Rootstock struct {
 	Contracts blockchain.RskContracts
-	Wallet    *rootstock.RskWalletImpl
+	Wallet    rootstock.RskSignerWallet
 	Client    *rootstock.RskClient
 }
 
-func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, account *account.RskAccount, bitcoinConn *bitcoin.Connection) (*Rootstock, error) {
+func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory) (*Rootstock, error) {
 	var bridgeAddress, lbcAddress common.Address
 	var err error
 
-	if err = rootstock.ParseAddress(&lbcAddress, env.LbcAddress); err != nil {
+	if err = rootstock.ParseAddress(&lbcAddress, env.Rsk.LbcAddress); err != nil {
 		return nil, err
-	} else if err = rootstock.ParseAddress(&bridgeAddress, env.BridgeAddress); err != nil {
+	} else if err = rootstock.ParseAddress(&bridgeAddress, env.Rsk.BridgeAddress); err != nil {
 		return nil, err
 	}
 
@@ -42,25 +41,33 @@ func NewRootstockRegistry(env environment.RskEnv, client *rootstock.RskClient, a
 	if err != nil {
 		return nil, err
 	}
-	wallet := rootstock.NewRskWalletImpl(client, account, env.ChainId)
+	wallet, err := walletFactory.RskWallet()
+	if err != nil {
+		return nil, err
+	}
+
+	btcParams, err := env.Btc.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
 
 	return &Rootstock{
 		Contracts: blockchain.RskContracts{
 			Bridge: rootstock.NewRskBridgeImpl(
 				rootstock.RskBridgeConfig{
-					Address:               env.BridgeAddress,
-					RequiredConfirmations: env.BridgeRequiredConfirmations,
-					IrisActivationHeight:  env.IrisActivationHeight,
-					ErpKeys:               env.ErpKeys,
+					Address:               env.Rsk.BridgeAddress,
+					RequiredConfirmations: env.Rsk.BridgeRequiredConfirmations,
+					IrisActivationHeight:  env.Rsk.IrisActivationHeight,
+					ErpKeys:               env.Rsk.ErpKeys,
 				},
 				bridge,
 				client,
-				bitcoinConn.NetworkParams,
+				btcParams,
 				rootstock.DefaultRetryParams,
 			),
 			Lbc: rootstock.NewLiquidityBridgeContractImpl(
 				client,
-				env.LbcAddress,
+				env.Rsk.LbcAddress,
 				rootstock.NewLbcAdapter(lbc),
 				wallet,
 				rootstock.DefaultRetryParams,

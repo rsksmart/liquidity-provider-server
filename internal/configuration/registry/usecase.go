@@ -179,7 +179,7 @@ func NewUseCaseRegistry(
 		getPegoutCollateralUseCase:      pegout.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
 		withdrawPeginCollateralUseCase:  pegin.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
 		withdrawPegoutCollateralUseCase: pegout.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
-		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.MonitoringWalletConnection, databaseRegistry.Connection),
+		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.RpcConnection, databaseRegistry.Connection),
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,

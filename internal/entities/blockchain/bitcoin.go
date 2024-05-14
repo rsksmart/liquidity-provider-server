@@ -58,6 +58,7 @@ func IsMainnetBtcAddress(address string) bool {
 }
 
 type BitcoinWallet interface {
+	entities.Closeable
 	EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error)
 	GetBalance() (*entities.Wei, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error)

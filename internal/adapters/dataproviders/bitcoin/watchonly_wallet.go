@@ -85,3 +85,7 @@ func (wallet *WatchOnlyWallet) Address() string {
 func (wallet *WatchOnlyWallet) Unlock() error {
 	return errors.New("watch-only wallet does not support unlocking as it only has monitoring purposes")
 }
+
+func (wallet *WatchOnlyWallet) Shutdown(closeChannel chan<- bool) {
+	wallet.conn.Shutdown(closeChannel)
+}

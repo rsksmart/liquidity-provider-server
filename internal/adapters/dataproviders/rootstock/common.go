@@ -60,6 +60,11 @@ type TransactionSigner interface {
 	Sign(common.Address, *types.Transaction) (*types.Transaction, error)
 }
 
+type RskSignerWallet interface {
+	blockchain.RootstockWallet
+	TransactionSigner
+}
+
 func ParseAddress(address *common.Address, textAddress string) error {
 	if !common.IsHexAddress(textAddress) {
 		return blockchain.InvalidAddressError

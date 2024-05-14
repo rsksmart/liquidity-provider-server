@@ -231,6 +231,20 @@ func TestDerivativeWallet(t *testing.T) {
 			}
 		})
 	})
+	t.Run("Shutdown", func(t *testing.T) { testDerivativeWalletShutdown(t, rskAccount, existingAddressInfo) })
+}
+
+func testDerivativeWalletShutdown(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("Disconnect").Return().Once()
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
+	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+	require.NoError(t, err)
+	shutdownChannel := make(chan bool, 1)
+	wallet.Shutdown(shutdownChannel)
+	<-shutdownChannel
+	client.AssertExpectations(t)
 }
 
 func testUnlock(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {

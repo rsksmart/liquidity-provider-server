@@ -287,3 +287,7 @@ func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTr
 		Replaceable:     btcjson.Bool(true),
 	}, nil
 }
+
+func (wallet *DerivativeWallet) Shutdown(closeChannel chan<- bool) {
+	wallet.conn.Shutdown(closeChannel)
+}

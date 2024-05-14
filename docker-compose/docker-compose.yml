@@ -80,13 +80,9 @@ services:
       - BTC_USERNAME
       - BTC_PASSWORD
       - BTC_ENDPOINT
-      - BTC_TX_FEE_RATE
-      - BTC_ENCRYPTED_WALLET
-      - BTC_WALLET_PASSWORD
       - BTC_CONFIRMATIONS
       - ALERT_SENDER_EMAIL
       - ALERT_RECIPIENT_EMAIL
-      - BTC_ADDR
       - PROVIDER_NAME
       - BASE_URL
       - PROVIDER_TYPE
@@ -116,6 +112,10 @@ services:
       - MANAGEMENT_ENCRYPTION_KEY
       - MANAGEMENT_TOKEN_AUTH_KEY
       - MANAGEMENT_USE_HTTPS
+      - WALLET
+      - SECRET_SRC
+      - KEYSTORE_FILE
+      - KEYSTORE_PWD
     ports:
       - "8080:8080"
     volumes:

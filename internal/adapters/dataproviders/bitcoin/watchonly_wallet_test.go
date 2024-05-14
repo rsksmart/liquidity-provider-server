@@ -126,6 +126,18 @@ func TestWatchOnlyWallet_GetBalance(t *testing.T) {
 	require.Nil(t, result)
 }
 
+func TestWatchOnlyWallet_Shutdown(t *testing.T) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("Disconnect").Return().Once()
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+	wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+	require.NoError(t, err)
+	shutdownChannel := make(chan bool, 1)
+	wallet.Shutdown(shutdownChannel)
+	<-shutdownChannel
+	client.AssertExpectations(t)
+}
+
 func TestWatchOnlyWallet_Address(t *testing.T) {
 	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
