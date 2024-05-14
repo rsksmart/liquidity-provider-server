@@ -6,8 +6,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/powpeg
 
-ARG POWPEG_RELEASE="FINGERROOT"
-ARG POWPEG_VERSION="5.0.0.0"
+ARG POWPEG_RELEASE="ARROWHEAD"
+ARG POWPEG_VERSION="6.1.0.0"
 
 RUN gitrev="${POWPEG_RELEASE}-${POWPEG_VERSION}" && \
     git init && \
@@ -33,7 +33,7 @@ COPY --chown=root:root --chmod=444 reg2.key "$HOME/reg2.key"
 COPY --chown=root:root --chmod=444 regtest-fed.conf "$HOME/regtest-fed.conf"
 COPY --chown=root:root --chmod=444 regtest-fed.conf "/etc/rsk/node.conf"
 
-RUN chmod 400 "$HOME/reg2.key"
+RUN chmod 400 "$HOME/reg2.key" && chown 1000 "$HOME/reg2.key"
 
 RUN mkdir -p "$HOME/.powpeg"; chown 1000 "$HOME/.powpeg"
 RUN mkdir -p "$HOME/logs"; chown 1000 "$HOME/logs"
