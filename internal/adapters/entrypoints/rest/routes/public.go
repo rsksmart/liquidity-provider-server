@@ -82,5 +82,19 @@ func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry, store sessions
 			},
 			RequiresCsrfProtection: true,
 		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/status",
+				Method:  http.MethodGet,
+				Handler: handlers.NewGetPeginQuoteStatusHandler(useCaseRegistry.GetPeginStatusUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegout/status",
+				Method:  http.MethodGet,
+				Handler: handlers.NewGetPegoutQuoteStatusHandler(useCaseRegistry.GetPegoutStatusUseCase()),
+			},
+		},
 	}
 }
