@@ -1,16 +1,20 @@
 package routes
 
 import (
+	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"net/http"
 )
 
-const LOGIN_PATH = "/management/login"
+const (
+	LOGIN_PATH = "/management/login"
+	UI_PATH    = "/management"
+)
 
 // nolint:funlen
-func getManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry) []Endpoint {
+func getManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
 	return []Endpoint{
 		{
 			Path:    "/pegin/collateral",
@@ -86,6 +90,11 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    "/management/credentials",
 			Method:  http.MethodPost,
 			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
+		},
+		{
+			Path:    "/management",
+			Method:  http.MethodGet,
+			Handler: handlers.NewManagementInterfaceHandler(store, useCaseRegistry.GetManagementUiDataUseCase()),
 		},
 	}
 }
