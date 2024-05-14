@@ -35,7 +35,7 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 		log.Fatal("Error registering routes: ", err)
 	}
 
-	registerPublicRoutes(router, env, useCaseRegistry, store)
+	registerPublicRoutes(router, env, useCaseRegistry)
 
 	if env.Management.EnableManagementApi {
 		registerManagementRoutes(router, env, useCaseRegistry, store)
@@ -44,16 +44,12 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())
 }
 
-func registerPublicRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) {
+func registerPublicRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
-	sessionMiddlewares := middlewares.NewSessionMiddlewares(env.Management, store)
-	for _, endpoint := range getPublicEndpoints(useCaseRegistry, store) {
+	for _, endpoint := range getPublicEndpoints(useCaseRegistry) {
 		handler := endpoint.Handler
 		if endpoint.RequiresCaptcha {
 			handler = useMiddlewares(handler, captchaMiddleware)
-		}
-		if endpoint.RequiresCsrfProtection {
-			handler = useMiddlewares(handler, sessionMiddlewares.Csrf)
 		}
 		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
 	}
@@ -67,10 +63,10 @@ func registerManagementRoutes(router *mux.Router, env environment.Environment, u
 	)
 
 	sessionMiddlewares := middlewares.NewSessionMiddlewares(env.Management, store)
-	managementEndpoints := getManagementEndpoints(env, useCaseRegistry)
+	managementEndpoints := getManagementEndpoints(env, useCaseRegistry, store)
 	var handler http.Handler
 	for _, endpoint := range managementEndpoints {
-		if endpoint.Path == LOGIN_PATH {
+		if endpoint.Path == LOGIN_PATH || endpoint.Path == UI_PATH {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
 		} else {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
