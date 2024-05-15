@@ -8,7 +8,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 	"sync"
 )
@@ -44,7 +43,7 @@ func NewBridgePegoutUseCase(
 	}
 }
 
-func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...watcher.WatchedPegoutQuote) error {
+func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...quote.WatchedPegoutQuote) error {
 	var err error
 	var balance, totalValue *entities.Wei
 
@@ -90,7 +89,7 @@ func (useCase *BridgePegoutUseCase) updateQuotes(
 	ctx context.Context,
 	txHash string,
 	txErr error,
-	watchedQuotes []watcher.WatchedPegoutQuote,
+	watchedQuotes []quote.WatchedPegoutQuote,
 ) error {
 	var err error
 	retainedQuotes := make([]quote.RetainedPegoutQuote, 0)
@@ -110,7 +109,7 @@ func (useCase *BridgePegoutUseCase) updateQuotes(
 	return err
 }
 
-func (useCase *BridgePegoutUseCase) calculateTotalToPegout(watchedQuotes []watcher.WatchedPegoutQuote) (*entities.Wei, error) {
+func (useCase *BridgePegoutUseCase) calculateTotalToPegout(watchedQuotes []quote.WatchedPegoutQuote) (*entities.Wei, error) {
 	totalValue := new(entities.Wei)
 	for _, watchedQuote := range watchedQuotes {
 		if watchedQuote.RetainedQuote.State != quote.PegoutStateRefundPegOutSucceeded {

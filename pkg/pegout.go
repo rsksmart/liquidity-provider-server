@@ -35,6 +35,23 @@ type PegoutQuoteDTO struct {
 	ProductFeeAmount      uint64 `json:"productFeeAmount" required:"" description:"The DAO fee amount"`
 }
 
+type RetainedPegoutQuoteDTO struct {
+	QuoteHash          string   `json:"quoteHash" required:"" description:"32-byte long hash of the quote that acts as a unique identifier"`
+	Signature          string   `json:"signature" required:"" description:"Signature of the liquidity provider expressing commitment on the quote"`
+	DepositAddress     string   `json:"depositAddress" required:"" description:"Address of the smart contract where the user should execute depositPegout function"`
+	RequiredLiquidity  *big.Int `json:"requiredLiquidity" required:"" description:"BTC liquidity that the LP locks to guarantee the service. It is different from the total amount that the user needs to pay."`
+	State              string   `json:"state" required:"" description:"Current state of the quote. Possible values are:\n - WaitingForDeposit\n - WaitingForDepositConfirmations\n - TimeForDepositElapsed\n - SendPegoutSucceeded\n - SendPegoutFailed\n - RefundPegOutSucceeded\n - RefundPegOutFailed\n - BridgeTxSucceeded\n - BridgeTxFailed\n"`
+	UserRskTxHash      string   `json:"userRskTxHash" required:"" description:"The hash of the depositPegout transaction made by the user"`
+	LpBtcTxHash        string   `json:"lpBtcTxHash" required:"" description:"The hash of the BTC transaction from the LP to the user"`
+	RefundPegoutTxHash string   `json:"refundPegoutTxHash" required:"" description:"The hash of the transaction from the LP to the LBC where the LP got the refund in RBTC"`
+	BridgeRefundTxHash string   `json:"bridgeRefundTxHash" required:"" description:"The hash of the transaction from the LP to the bridge to convert the refunded RBTC into BTC"`
+}
+
+type PegoutQuoteStatusDTO struct {
+	Detail PegoutQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
+	Status RetainedPegoutQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+}
+
 func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 	return PegoutQuoteDTO{
 		LBCAddr:               entity.LbcAddress,
@@ -56,6 +73,20 @@ func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 		ExpireBlock:           entity.ExpireBlock,
 		GasFee:                entity.GasFee.Uint64(),
 		ProductFeeAmount:      entity.ProductFeeAmount,
+	}
+}
+
+func ToRetainedPegoutQuoteDTO(entity quote.RetainedPegoutQuote) RetainedPegoutQuoteDTO {
+	return RetainedPegoutQuoteDTO{
+		QuoteHash:          entity.QuoteHash,
+		Signature:          entity.Signature,
+		DepositAddress:     entity.DepositAddress,
+		RequiredLiquidity:  entity.RequiredLiquidity.AsBigInt(),
+		State:              string(entity.State),
+		UserRskTxHash:      entity.UserRskTxHash,
+		LpBtcTxHash:        entity.LpBtcTxHash,
+		RefundPegoutTxHash: entity.RefundPegoutTxHash,
+		BridgeRefundTxHash: entity.BridgeRefundTxHash,
 	}
 }
 

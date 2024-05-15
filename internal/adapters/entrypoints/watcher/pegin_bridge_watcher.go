@@ -18,7 +18,7 @@ import (
 // PeginBridgeWatcher is a watcher that checks the state of the pegin quotes and registers
 // the pegin on the bridge when the conditions are met
 type PeginBridgeWatcher struct {
-	quotes                      map[string]w.WatchedPeginQuote
+	quotes                      map[string]quote.WatchedPeginQuote
 	registerPeginUseCase        *pegin.RegisterPeginUseCase
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	contracts                   blockchain.RskContracts
@@ -36,7 +36,7 @@ func NewPeginBridgeWatcher(
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 ) *PeginBridgeWatcher {
-	quotes := make(map[string]w.WatchedPeginQuote)
+	quotes := make(map[string]quote.WatchedPeginQuote)
 	watcherStopChannel := make(chan bool, 1)
 	return &PeginBridgeWatcher{
 		quotes:                      quotes,
@@ -105,7 +105,7 @@ func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Eve
 		return
 	}
 	if parsedEvent.RetainedQuote.State == quote.PeginStateCallForUserSucceeded {
-		watcher.quotes[quoteHash] = w.NewWatchedPeginQuote(parsedEvent.PeginQuote, parsedEvent.RetainedQuote)
+		watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.PeginQuote, parsedEvent.RetainedQuote)
 	}
 }
 
@@ -123,7 +123,7 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 	}
 }
 
-func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote w.WatchedPeginQuote) {
+func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote quote.WatchedPeginQuote) {
 	var err error
 	const registerPeginErrorMsgTemplate = "Error executing register pegin on quote %s: %v"
 	if err = watcher.registerPeginUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
@@ -136,7 +136,7 @@ func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote w.WatchedPeginQuot
 	}
 }
 
-func (watcher *PeginBridgeWatcher) validateQuote(watchedQuote w.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
+func (watcher *PeginBridgeWatcher) validateQuote(watchedQuote quote.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PeginStateCallForUserSucceeded &&
 		tx.Confirmations >= watcher.contracts.Bridge.GetRequiredTxConfirmations()
 }

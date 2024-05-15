@@ -323,8 +323,24 @@ components:
       - rskRefundAddress
       - bitcoinRefundAddress
       type: object
+    PeginQuoteStatusDTO:
+      properties:
+        detail:
+          $ref: '#/components/schemas/PeginQuoteDTO'
+          description: Agreed specification of the quote
+          type: object
+        status:
+          $ref: '#/components/schemas/RetainedPeginQuoteDTO'
+          description: Current status of the quote
+          type: object
+      required:
+      - detail
+      - status
+      type: object
     PegoutConfiguration:
       properties:
+        bridgeTransactionMin:
+          $ref: '#/components/schemas/Wei'
         callFee:
           $ref: '#/components/schemas/Wei'
         callTime:
@@ -434,6 +450,20 @@ components:
       - rskRefundAddress
       - bitcoinRefundAddress
       type: object
+    PegoutQuoteStatusDTO:
+      properties:
+        detail:
+          $ref: '#/components/schemas/PegoutQuoteDTO'
+          description: Agreed specification of the quote
+          type: object
+        status:
+          $ref: '#/components/schemas/RetainedPegoutQuoteDTO'
+          description: Current status of the quote
+          type: object
+      required:
+      - detail
+      - status
+      type: object
     ProviderDetail:
       properties:
         fee:
@@ -464,6 +494,109 @@ components:
       - siteKey
       - pegin
       - pegout
+      type: object
+    RetainedPeginQuoteDTO:
+      properties:
+        callForUserTxHash:
+          description: The hash of the RSK transaction to the address requested by
+            the user
+          type: string
+        depositAddress:
+          description: BTC derivation address where the user should send the BTC
+          type: string
+        quoteHash:
+          description: 32-byte long hash of the quote that acts as a unique identifier
+          type: string
+        registerPeginTxHash:
+          description: The hash of the RSK transaction where the LP gets his refund
+            and fee
+          type: string
+        requiredLiquidity:
+          $ref: '#/components/schemas/'
+          description: RBTC liquidity that the LP locks to guarantee the service.
+            It is different from the total amount that the user needs to pay.
+        signature:
+          description: Signature of the liquidity provider expressing commitment on
+            the quote
+          type: string
+        state:
+          description: |-
+            Current state of the quote. Possible values are:
+             - WaitingForDeposit
+             - WaitingForDepositConfirmations
+             - TimeForDepositElapsed
+             - CallForUserSucceeded
+             - CallForUserFailed
+             - RegisterPegInSucceeded
+             - RegisterPegInFailed
+          type: string
+        userBtcTxHash:
+          description: The hash of the user's BTC transaction to the derivation address
+          type: string
+      required:
+      - quoteHash
+      - signature
+      - depositAddress
+      - requiredLiquidity
+      - state
+      - userBtcTxHash
+      - callForUserTxHash
+      - registerPeginTxHash
+      type: object
+    RetainedPegoutQuoteDTO:
+      properties:
+        bridgeRefundTxHash:
+          description: The hash of the transaction from the LP to the bridge to convert
+            the refunded RBTC into BTC
+          type: string
+        depositAddress:
+          description: Address of the smart contract where the user should execute
+            depositPegout function
+          type: string
+        lpBtcTxHash:
+          description: The hash of the BTC transaction from the LP to the user
+          type: string
+        quoteHash:
+          description: 32-byte long hash of the quote that acts as a unique identifier
+          type: string
+        refundPegoutTxHash:
+          description: The hash of the transaction from the LP to the LBC where the
+            LP got the refund in RBTC
+          type: string
+        requiredLiquidity:
+          $ref: '#/components/schemas/'
+          description: BTC liquidity that the LP locks to guarantee the service. It
+            is different from the total amount that the user needs to pay.
+        signature:
+          description: Signature of the liquidity provider expressing commitment on
+            the quote
+          type: string
+        state:
+          description: |
+            Current state of the quote. Possible values are:
+             - WaitingForDeposit
+             - WaitingForDepositConfirmations
+             - TimeForDepositElapsed
+             - SendPegoutSucceeded
+             - SendPegoutFailed
+             - RefundPegOutSucceeded
+             - RefundPegOutFailed
+             - BridgeTxSucceeded
+             - BridgeTxFailed
+          type: string
+        userRskTxHash:
+          description: The hash of the depositPegout transaction made by the user
+          type: string
+      required:
+      - quoteHash
+      - signature
+      - depositAddress
+      - requiredLiquidity
+      - state
+      - userRskTxHash
+      - lpBtcTxHash
+      - refundPegoutTxHash
+      - bridgeRefundTxHash
       type: object
     Services:
       properties:
@@ -556,6 +689,13 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
           description: ""
       summary: Health
+  /management:
+    get:
+      description: ' Serves the static site for the Management UI'
+      responses:
+        "200":
+          description: ""
+      summary: Management Interface
   /management/credentials:
     post:
       description: ' Set new credentials to log into the Management API'
@@ -653,6 +793,26 @@ paths:
                 $ref: '#/components/schemas/GetPeginQuoteResponse'
           description: ""
       summary: Pegin GetQuote
+  /pegin/status:
+    get:
+      description: ' Returns the status of an accepted pegin quote'
+      parameters:
+      - description: Hash of the quote
+        in: query
+        name: quoteHash
+        required: true
+        schema:
+          description: Hash of the quote
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeginQuoteStatusDTO'
+          description: Object containing the quote itself and its status
+      summary: GetPeginStatus
   /pegin/withdrawCollateral:
     post:
       description: ' Withdraw PegIn collateral of a resigned LP'
@@ -736,6 +896,26 @@ paths:
                 $ref: '#/components/schemas/GetPegoutQuoteResponse'
           description: ""
       summary: Pegout GetQuote
+  /pegout/status:
+    get:
+      description: ' Returns the status of an accepted pegout quote'
+      parameters:
+      - description: Hash of the quote
+        in: query
+        name: quoteHash
+        required: true
+        schema:
+          description: Hash of the quote
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PegoutQuoteStatusDTO'
+          description: Object containing the quote itself and its status
+      summary: GetPegoutStatus
   /pegout/withdrawCollateral:
     post:
       description: ' Withdraw PegOut collateral of a resigned LP'

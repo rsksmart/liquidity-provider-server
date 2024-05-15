@@ -67,7 +67,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run(t *testing.T) {
 	).Return(nil)
 	quoteReporitory.On("UpsertPegoutDeposit", mock.AnythingOfType("context.backgroundCtx"), deposit).Return(nil)
 	useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
-	watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
+	watchedPegoutQuote, err := useCase.Run(context.Background(), quote.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
 	quoteReporitory.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, quote.PegoutStateWaitingForDepositConfirmations, watchedPegoutQuote.RetainedQuote.State)
@@ -118,10 +118,10 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 			useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
-			watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), testCase.deposit)
+			watchedPegoutQuote, err := useCase.Run(context.Background(), quote.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), testCase.deposit)
 			quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
 			quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
-			assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
+			assert.Equal(t, quote.WatchedPegoutQuote{}, watchedPegoutQuote)
 			require.Error(t, err)
 			assert.True(t, strings.Contains(err.Error(), "deposit not valid for quote"))
 		})
@@ -148,10 +148,10 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 	for _, retainedQuote := range quotes {
 		quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 		useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
-		watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, retainedQuote), deposit)
+		watchedPegoutQuote, err := useCase.Run(context.Background(), quote.NewWatchedPegoutQuote(depositedPegoutQuote, retainedQuote), deposit)
 		quoteReporitory.AssertNotCalled(t, "UpdateRetainedQuote")
 		quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
-		assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
+		assert.Equal(t, quote.WatchedPegoutQuote{}, watchedPegoutQuote)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "illegal quote state"))
 	}
@@ -181,9 +181,9 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_ErrorHandling(t *testing.T) {
 		quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 		setup(quoteReporitory)
 		useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
-		watchedPegoutQuote, err := useCase.Run(context.Background(), watcher.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
+		watchedPegoutQuote, err := useCase.Run(context.Background(), quote.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
 		quoteReporitory.AssertExpectations(t)
-		assert.Equal(t, watcher.WatchedPegoutQuote{}, watchedPegoutQuote)
+		assert.Equal(t, quote.WatchedPegoutQuote{}, watchedPegoutQuote)
 		require.Error(t, err)
 	}
 }

@@ -6,8 +6,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/rskj
 
-ARG RSKJ_RELEASE="FINGERROOT"
-ARG RSKJ_VERSION="5.0.0"
+ARG RSKJ_RELEASE="ARROWHEAD"
+ARG RSKJ_VERSION="6.1.0"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \

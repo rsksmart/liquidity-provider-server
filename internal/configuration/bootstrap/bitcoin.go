@@ -53,10 +53,11 @@ func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, er
 	}
 
 	config := rpcclient.ConnConfig{
-		Host:         host,
-		User:         env.Username,
-		Pass:         env.Password,
-		Params:       params.Name,
+		Host:   host,
+		User:   env.Username,
+		Pass:   env.Password,
+		Params: params.Name,
+		// Rationale why this is disabled: https://en.bitcoin.it/wiki/Enabling_SSL_on_original_client_daemon
 		DisableTLS:   true,
 		HTTPPostMode: true,
 	}

@@ -7,15 +7,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-type WatchedPegoutQuote struct {
-	PegoutQuote   quote.PegoutQuote
-	RetainedQuote quote.RetainedPegoutQuote
-}
-
-func NewWatchedPegoutQuote(pegoutQuote quote.PegoutQuote, retainedQuote quote.RetainedPegoutQuote) WatchedPegoutQuote {
-	return WatchedPegoutQuote{PegoutQuote: pegoutQuote, RetainedQuote: retainedQuote}
-}
-
 type GetWatchedPegoutQuoteUseCase struct {
 	pegoutRepository quote.PegoutQuoteRepository
 }
@@ -24,8 +15,8 @@ func NewGetWatchedPegoutQuoteUseCase(pegoutRepository quote.PegoutQuoteRepositor
 	return &GetWatchedPegoutQuoteUseCase{pegoutRepository: pegoutRepository}
 }
 
-func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...quote.PegoutState) ([]WatchedPegoutQuote, error) {
-	result := make([]WatchedPegoutQuote, 0)
+func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...quote.PegoutState) ([]quote.WatchedPegoutQuote, error) {
+	result := make([]quote.WatchedPegoutQuote, 0)
 	for _, state := range states {
 		switch state {
 		case
@@ -45,9 +36,9 @@ func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...
 	return result, nil
 }
 
-func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PegoutState) ([]WatchedPegoutQuote, error) {
+func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PegoutState) ([]quote.WatchedPegoutQuote, error) {
 	var retainedQuotes []quote.RetainedPegoutQuote
-	watchedQuote := make([]WatchedPegoutQuote, 0)
+	watchedQuote := make([]quote.WatchedPegoutQuote, 0)
 	var pegoutQuote *quote.PegoutQuote
 	var err error
 	if retainedQuotes, err = useCase.pegoutRepository.GetRetainedQuoteByState(ctx, state); err != nil {
@@ -60,7 +51,7 @@ func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Contex
 		}
 		watchedQuote = append(
 			watchedQuote,
-			NewWatchedPegoutQuote(*pegoutQuote, retainedQuote),
+			quote.NewWatchedPegoutQuote(*pegoutQuote, retainedQuote),
 		)
 	}
 	return watchedQuote, nil
