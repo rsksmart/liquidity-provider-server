@@ -21,7 +21,6 @@ type Environment struct {
 	Rsk              RskEnv
 	Btc              BtcEnv
 	Provider         ProviderEnv
-	Pegin            PeginEnv
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
 }

@@ -203,6 +203,66 @@ func (_c *RpcClientBindingMock_BlockNumber_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// CallContract provides a mock function with given fields: ctx, call, blockNumber
+func (_m *RpcClientBindingMock) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	ret := _m.Called(ctx, call, blockNumber)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CallContract")
+	}
+
+	var r0 []byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.CallMsg, *big.Int) ([]byte, error)); ok {
+		return rf(ctx, call, blockNumber)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.CallMsg, *big.Int) []byte); ok {
+		r0 = rf(ctx, call, blockNumber)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ethereum.CallMsg, *big.Int) error); ok {
+		r1 = rf(ctx, call, blockNumber)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_CallContract_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CallContract'
+type RpcClientBindingMock_CallContract_Call struct {
+	*mock.Call
+}
+
+// CallContract is a helper method to define mock.On call
+//   - ctx context.Context
+//   - call ethereum.CallMsg
+//   - blockNumber *big.Int
+func (_e *RpcClientBindingMock_Expecter) CallContract(ctx interface{}, call interface{}, blockNumber interface{}) *RpcClientBindingMock_CallContract_Call {
+	return &RpcClientBindingMock_CallContract_Call{Call: _e.mock.On("CallContract", ctx, call, blockNumber)}
+}
+
+func (_c *RpcClientBindingMock_CallContract_Call) Run(run func(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int)) *RpcClientBindingMock_CallContract_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ethereum.CallMsg), args[2].(*big.Int))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_CallContract_Call) Return(_a0 []byte, _a1 error) *RpcClientBindingMock_CallContract_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_CallContract_Call) RunAndReturn(run func(context.Context, ethereum.CallMsg, *big.Int) ([]byte, error)) *RpcClientBindingMock_CallContract_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChainID provides a mock function with given fields: ctx
 func (_m *RpcClientBindingMock) ChainID(ctx context.Context) (*big.Int, error) {
 	ret := _m.Called(ctx)
@@ -410,6 +470,124 @@ func (_c *RpcClientBindingMock_EstimateGas_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// FilterLogs provides a mock function with given fields: ctx, query
+func (_m *RpcClientBindingMock) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
+	ret := _m.Called(ctx, query)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FilterLogs")
+	}
+
+	var r0 []types.Log
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.FilterQuery) ([]types.Log, error)); ok {
+		return rf(ctx, query)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.FilterQuery) []types.Log); ok {
+		r0 = rf(ctx, query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]types.Log)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ethereum.FilterQuery) error); ok {
+		r1 = rf(ctx, query)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_FilterLogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FilterLogs'
+type RpcClientBindingMock_FilterLogs_Call struct {
+	*mock.Call
+}
+
+// FilterLogs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query ethereum.FilterQuery
+func (_e *RpcClientBindingMock_Expecter) FilterLogs(ctx interface{}, query interface{}) *RpcClientBindingMock_FilterLogs_Call {
+	return &RpcClientBindingMock_FilterLogs_Call{Call: _e.mock.On("FilterLogs", ctx, query)}
+}
+
+func (_c *RpcClientBindingMock_FilterLogs_Call) Run(run func(ctx context.Context, query ethereum.FilterQuery)) *RpcClientBindingMock_FilterLogs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ethereum.FilterQuery))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_FilterLogs_Call) Return(_a0 []types.Log, _a1 error) *RpcClientBindingMock_FilterLogs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_FilterLogs_Call) RunAndReturn(run func(context.Context, ethereum.FilterQuery) ([]types.Log, error)) *RpcClientBindingMock_FilterLogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HeaderByNumber provides a mock function with given fields: ctx, number
+func (_m *RpcClientBindingMock) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+	ret := _m.Called(ctx, number)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HeaderByNumber")
+	}
+
+	var r0 *types.Header
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *big.Int) (*types.Header, error)); ok {
+		return rf(ctx, number)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *big.Int) *types.Header); ok {
+		r0 = rf(ctx, number)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Header)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *big.Int) error); ok {
+		r1 = rf(ctx, number)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_HeaderByNumber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HeaderByNumber'
+type RpcClientBindingMock_HeaderByNumber_Call struct {
+	*mock.Call
+}
+
+// HeaderByNumber is a helper method to define mock.On call
+//   - ctx context.Context
+//   - number *big.Int
+func (_e *RpcClientBindingMock_Expecter) HeaderByNumber(ctx interface{}, number interface{}) *RpcClientBindingMock_HeaderByNumber_Call {
+	return &RpcClientBindingMock_HeaderByNumber_Call{Call: _e.mock.On("HeaderByNumber", ctx, number)}
+}
+
+func (_c *RpcClientBindingMock_HeaderByNumber_Call) Run(run func(ctx context.Context, number *big.Int)) *RpcClientBindingMock_HeaderByNumber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*big.Int))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_HeaderByNumber_Call) Return(_a0 *types.Header, _a1 error) *RpcClientBindingMock_HeaderByNumber_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_HeaderByNumber_Call) RunAndReturn(run func(context.Context, *big.Int) (*types.Header, error)) *RpcClientBindingMock_HeaderByNumber_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NonceAt provides a mock function with given fields: ctx, account, blockNumber
 func (_m *RpcClientBindingMock) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
 	ret := _m.Called(ctx, account, blockNumber)
@@ -464,6 +642,65 @@ func (_c *RpcClientBindingMock_NonceAt_Call) Return(_a0 uint64, _a1 error) *RpcC
 }
 
 func (_c *RpcClientBindingMock_NonceAt_Call) RunAndReturn(run func(context.Context, common.Address, *big.Int) (uint64, error)) *RpcClientBindingMock_NonceAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PendingCodeAt provides a mock function with given fields: ctx, account
+func (_m *RpcClientBindingMock) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
+	ret := _m.Called(ctx, account)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PendingCodeAt")
+	}
+
+	var r0 []byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address) ([]byte, error)); ok {
+		return rf(ctx, account)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address) []byte); ok {
+		r0 = rf(ctx, account)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address) error); ok {
+		r1 = rf(ctx, account)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_PendingCodeAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PendingCodeAt'
+type RpcClientBindingMock_PendingCodeAt_Call struct {
+	*mock.Call
+}
+
+// PendingCodeAt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - account common.Address
+func (_e *RpcClientBindingMock_Expecter) PendingCodeAt(ctx interface{}, account interface{}) *RpcClientBindingMock_PendingCodeAt_Call {
+	return &RpcClientBindingMock_PendingCodeAt_Call{Call: _e.mock.On("PendingCodeAt", ctx, account)}
+}
+
+func (_c *RpcClientBindingMock_PendingCodeAt_Call) Run(run func(ctx context.Context, account common.Address)) *RpcClientBindingMock_PendingCodeAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(common.Address))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_PendingCodeAt_Call) Return(_a0 []byte, _a1 error) *RpcClientBindingMock_PendingCodeAt_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_PendingCodeAt_Call) RunAndReturn(run func(context.Context, common.Address) ([]byte, error)) *RpcClientBindingMock_PendingCodeAt_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -572,6 +809,66 @@ func (_c *RpcClientBindingMock_SendTransaction_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// SubscribeFilterLogs provides a mock function with given fields: ctx, query, ch
+func (_m *RpcClientBindingMock) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	ret := _m.Called(ctx, query, ch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeFilterLogs")
+	}
+
+	var r0 ethereum.Subscription
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.FilterQuery, chan<- types.Log) (ethereum.Subscription, error)); ok {
+		return rf(ctx, query, ch)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.FilterQuery, chan<- types.Log) ethereum.Subscription); ok {
+		r0 = rf(ctx, query, ch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ethereum.Subscription)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ethereum.FilterQuery, chan<- types.Log) error); ok {
+		r1 = rf(ctx, query, ch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_SubscribeFilterLogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeFilterLogs'
+type RpcClientBindingMock_SubscribeFilterLogs_Call struct {
+	*mock.Call
+}
+
+// SubscribeFilterLogs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query ethereum.FilterQuery
+//   - ch chan<- types.Log
+func (_e *RpcClientBindingMock_Expecter) SubscribeFilterLogs(ctx interface{}, query interface{}, ch interface{}) *RpcClientBindingMock_SubscribeFilterLogs_Call {
+	return &RpcClientBindingMock_SubscribeFilterLogs_Call{Call: _e.mock.On("SubscribeFilterLogs", ctx, query, ch)}
+}
+
+func (_c *RpcClientBindingMock_SubscribeFilterLogs_Call) Run(run func(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log)) *RpcClientBindingMock_SubscribeFilterLogs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(ethereum.FilterQuery), args[2].(chan<- types.Log))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_SubscribeFilterLogs_Call) Return(_a0 ethereum.Subscription, _a1 error) *RpcClientBindingMock_SubscribeFilterLogs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_SubscribeFilterLogs_Call) RunAndReturn(run func(context.Context, ethereum.FilterQuery, chan<- types.Log) (ethereum.Subscription, error)) *RpcClientBindingMock_SubscribeFilterLogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SuggestGasPrice provides a mock function with given fields: ctx
 func (_m *RpcClientBindingMock) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	ret := _m.Called(ctx)
@@ -626,6 +923,64 @@ func (_c *RpcClientBindingMock_SuggestGasPrice_Call) Return(_a0 *big.Int, _a1 er
 }
 
 func (_c *RpcClientBindingMock_SuggestGasPrice_Call) RunAndReturn(run func(context.Context) (*big.Int, error)) *RpcClientBindingMock_SuggestGasPrice_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SuggestGasTipCap provides a mock function with given fields: ctx
+func (_m *RpcClientBindingMock) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SuggestGasTipCap")
+	}
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*big.Int, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *big.Int); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RpcClientBindingMock_SuggestGasTipCap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SuggestGasTipCap'
+type RpcClientBindingMock_SuggestGasTipCap_Call struct {
+	*mock.Call
+}
+
+// SuggestGasTipCap is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *RpcClientBindingMock_Expecter) SuggestGasTipCap(ctx interface{}) *RpcClientBindingMock_SuggestGasTipCap_Call {
+	return &RpcClientBindingMock_SuggestGasTipCap_Call{Call: _e.mock.On("SuggestGasTipCap", ctx)}
+}
+
+func (_c *RpcClientBindingMock_SuggestGasTipCap_Call) Run(run func(ctx context.Context)) *RpcClientBindingMock_SuggestGasTipCap_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *RpcClientBindingMock_SuggestGasTipCap_Call) Return(_a0 *big.Int, _a1 error) *RpcClientBindingMock_SuggestGasTipCap_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RpcClientBindingMock_SuggestGasTipCap_Call) RunAndReturn(run func(context.Context) (*big.Int, error)) *RpcClientBindingMock_SuggestGasTipCap_Call {
 	_c.Call.Return(run)
 	return _c
 }
