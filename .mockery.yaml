@@ -4,6 +4,9 @@ filename: "{{ .InterfaceName | snakecase }}_mock.go"
 mockname: "{{ .InterfaceName | firstUpper }}Mock"
 outpkg: mocks
 packages:
+  github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet:
+    interfaces:
+      AbstractFactory:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/alerting:
     interfaces:
       sesClient:
@@ -16,6 +19,7 @@ packages:
       LbcCallerBinding:
       LbcAdapter:
       EventIteratorAdapter:
+      RskSignerWallet:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
     interfaces:
       DbClientBinding:
