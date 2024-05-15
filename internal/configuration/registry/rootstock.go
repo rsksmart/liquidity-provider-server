@@ -1,9 +1,7 @@
 package registry
 
 import (
-	"errors"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
@@ -27,17 +25,12 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 		return nil, err
 	}
 
-	ethClient, ok := client.Rpc().(*ethclient.Client)
-	if !ok {
-		return nil, errors.New("invalid RSK client type, expected *ethclient.Client to build the registry")
-	}
-
-	bridge, err := bindings.NewRskBridge(bridgeAddress, ethClient)
+	bridge, err := bindings.NewRskBridge(bridgeAddress, client.Rpc())
 	if err != nil {
 		return nil, err
 	}
 
-	lbc, err := bindings.NewLiquidityBridgeContract(lbcAddress, ethClient)
+	lbc, err := bindings.NewLiquidityBridgeContract(lbcAddress, client.Rpc())
 	if err != nil {
 		return nil, err
 	}

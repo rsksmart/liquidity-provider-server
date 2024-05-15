@@ -11,6 +11,9 @@ import (
 )
 
 type RpcClientBinding interface {
+	bind.ContractTransactor
+	bind.ContractCaller
+	bind.ContractFilterer
 	Close()
 	ChainID(ctx context.Context) (*big.Int, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
