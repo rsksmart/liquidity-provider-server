@@ -13,6 +13,7 @@ func TestLoad(t *testing.T) {
 	// this map is to define the value for the vars that intentionally have a zero value in the sample-config.env file
 	var sampleZeroVars = map[string]string{
 		"MANAGEMENT_USE_HTTPS":             "true",
+		"ENABLE_MANAGEMENT_API":            "true",
 		"LBC_ADDR":                         "0x1234",
 		"ACCOUNT_NUM":                      "1",
 		"CAPTCHA_SECRET_KEY":               "secret",
