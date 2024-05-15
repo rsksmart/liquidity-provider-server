@@ -7,15 +7,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-type WatchedPeginQuote struct {
-	PeginQuote    quote.PeginQuote
-	RetainedQuote quote.RetainedPeginQuote
-}
-
-func NewWatchedPeginQuote(peginQuote quote.PeginQuote, retainedQuote quote.RetainedPeginQuote) WatchedPeginQuote {
-	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote}
-}
-
 type GetWatchedPeginQuoteUseCase struct {
 	peginRepository quote.PeginQuoteRepository
 }
@@ -24,7 +15,7 @@ func NewGetWatchedPeginQuoteUseCase(peginRepository quote.PeginQuoteRepository) 
 	return &GetWatchedPeginQuoteUseCase{peginRepository: peginRepository}
 }
 
-func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote.PeginState) ([]WatchedPeginQuote, error) {
+func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote.PeginState) ([]quote.WatchedPeginQuote, error) {
 	switch state {
 	case quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserSucceeded:
 		return useCase.getWatchedQuotes(ctx, state)
@@ -33,9 +24,9 @@ func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote
 	}
 }
 
-func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PeginState) ([]WatchedPeginQuote, error) {
+func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PeginState) ([]quote.WatchedPeginQuote, error) {
 	var retainedQuotes []quote.RetainedPeginQuote
-	watchedQuotes := make([]WatchedPeginQuote, 0)
+	watchedQuotes := make([]quote.WatchedPeginQuote, 0)
 	var peginQuote *quote.PeginQuote
 	var err error
 	if retainedQuotes, err = useCase.peginRepository.GetRetainedQuoteByState(ctx, state); err != nil {
@@ -48,7 +39,7 @@ func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context
 		}
 		watchedQuotes = append(
 			watchedQuotes,
-			NewWatchedPeginQuote(*peginQuote, retainedQuote),
+			quote.NewWatchedPeginQuote(*peginQuote, retainedQuote),
 		)
 	}
 	return watchedQuotes, nil

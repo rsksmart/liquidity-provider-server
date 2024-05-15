@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -14,8 +15,7 @@ import (
 )
 
 const (
-	templatePath = "internal/adapters/entrypoints/rest/assets/"
-	nonceBytes   = 32
+	nonceBytes = 32
 )
 
 // NewManagementInterfaceHandler
@@ -41,7 +41,7 @@ func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_prov
 		nonce := hex.EncodeToString(bytes)
 
 		htmlTemplateSecurityHeaders(w, nonce)
-		tmpl := template.Must(template.ParseFiles(templatePath + string(result.Name)))
+		tmpl := template.Must(template.ParseFS(assets.FileSystem, string(result.Name)))
 
 		err = tmpl.Execute(w, struct {
 			liquidity_provider.ManagementTemplateData
@@ -68,7 +68,7 @@ func htmlTemplateSecurityHeaders(w http.ResponseWriter, nonce string) {
 }
 
 func sendErrorTemplate(w http.ResponseWriter) {
-	tmpl := template.Must(template.ParseFiles(templatePath + string(liquidity_provider.ManagementErrorTemplate)))
+	tmpl := template.Must(template.ParseFS(assets.FileSystem, string(liquidity_provider.ManagementErrorTemplate)))
 	err := tmpl.Execute(w, nil)
 	if err != nil {
 		log.Errorf("Error sending %s template to client, a partial version of the template might been sent: %s", liquidity_provider.ManagementErrorTemplate, err.Error())

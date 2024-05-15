@@ -107,6 +107,15 @@ type RetainedPegoutQuote struct {
 	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
 }
 
+type WatchedPegoutQuote struct {
+	PegoutQuote   PegoutQuote
+	RetainedQuote RetainedPegoutQuote
+}
+
+func NewWatchedPegoutQuote(pegoutQuote PegoutQuote, retainedQuote RetainedPegoutQuote) WatchedPegoutQuote {
+	return WatchedPegoutQuote{PegoutQuote: pegoutQuote, RetainedQuote: retainedQuote}
+}
+
 type AcceptedPegoutQuoteEvent struct {
 	entities.Event
 	Quote         PegoutQuote

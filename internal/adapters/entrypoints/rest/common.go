@@ -97,3 +97,7 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 	return err
 }
+
+func RequiredQueryParam(name string) error {
+	return fmt.Errorf("required query parameter %s is missing", name)
+}

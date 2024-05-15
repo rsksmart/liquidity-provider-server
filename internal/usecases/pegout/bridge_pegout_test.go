@@ -9,7 +9,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,7 @@ import (
 	"testing"
 )
 
-var bridgePegoutTestWatchedQuotes = []watcher.WatchedPegoutQuote{
+var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 	{
 		RetainedQuote: quote.RetainedPegoutQuote{QuoteHash: "01", State: quote.PegoutStateSendPegoutFailed},
 		PegoutQuote: quote.PegoutQuote{
@@ -123,7 +122,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 		return true
 	})).Return(nil).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),
@@ -149,7 +148,7 @@ func testBridgePegoutUseCaseValueBelowMinimum(t *testing.T) {
 		BridgeTransactionMin: entities.NewWei(5000),
 	}).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),
@@ -198,7 +197,7 @@ func testBridgePegoutUseCaseWalletBalanceError(t *testing.T) {
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),
@@ -228,7 +227,7 @@ func testBridgePegoutUseCaseWalletWithoutBalance(t *testing.T) {
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),
@@ -268,7 +267,7 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 		return true
 	})).Return(nil).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),
@@ -301,7 +300,7 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.Anything).Return(errors.New("update error")).Once()
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
-	testQuotes := make([]watcher.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
 		context.Background(),

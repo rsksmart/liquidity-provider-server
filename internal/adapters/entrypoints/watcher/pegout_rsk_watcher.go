@@ -16,7 +16,7 @@ import (
 )
 
 type PegoutRskDepositWatcher struct {
-	quotes                       map[string]w.WatchedPegoutQuote
+	quotes                       map[string]quote.WatchedPegoutQuote
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	expiredUseCase               *pegout.ExpiredPegoutQuoteUseCase
 	sendPegoutUseCase            *pegout.SendPegoutUseCase
@@ -64,7 +64,7 @@ func NewPegoutRskDepositWatcher(
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
 ) *PegoutRskDepositWatcher {
-	quotes := make(map[string]w.WatchedPegoutQuote)
+	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
 	currentBlock := cacheStartBlock
 	return &PegoutRskDepositWatcher{
@@ -160,7 +160,7 @@ func (watcher *PegoutRskDepositWatcher) handleAcceptedPegoutQuote(event entities
 		log.Info(pegoutRskWatcherLog("Quote %s is already watched", quoteHash))
 		return
 	}
-	watcher.quotes[quoteHash] = w.NewWatchedPegoutQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
+	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
 }
 
 func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromBlock, toBlock uint64) {
@@ -178,7 +178,7 @@ func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromB
 }
 
 func (watcher *PegoutRskDepositWatcher) checkDeposit(ctx context.Context, deposit quote.PegoutDeposit) {
-	var newWatchedQuote w.WatchedPegoutQuote
+	var newWatchedQuote quote.WatchedPegoutQuote
 	var err error
 	watchedQuote, ok := watcher.quotes[deposit.QuoteHash]
 	if ok && deposit.IsValidForQuote(watchedQuote.PegoutQuote) && watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDeposit {
@@ -196,7 +196,7 @@ func (watcher *PegoutRskDepositWatcher) checkQuotes(ctx context.Context, height 
 	}
 }
 
-func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height uint64, watchedQuote w.WatchedPegoutQuote) {
+func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height uint64, watchedQuote quote.WatchedPegoutQuote) {
 	var err error
 	var receipt blockchain.TransactionReceipt
 	if watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDeposit && watchedQuote.PegoutQuote.IsExpired() {
@@ -219,7 +219,7 @@ func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height u
 	}
 }
 
-func (watcher *PegoutRskDepositWatcher) sendPegout(ctx context.Context, watchedQuote w.WatchedPegoutQuote) {
+func (watcher *PegoutRskDepositWatcher) sendPegout(ctx context.Context, watchedQuote quote.WatchedPegoutQuote) {
 	var err error
 	const sendPegoutErrorMsgTemplate = "Error sending pegout to the user (quote %s): %v"
 	if err = watcher.sendPegoutUseCase.Run(ctx, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
@@ -232,7 +232,7 @@ func (watcher *PegoutRskDepositWatcher) sendPegout(ctx context.Context, watchedQ
 	}
 }
 
-func validateDepositedPegoutQuote(watchedQuote w.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {
+func validateDepositedPegoutQuote(watchedQuote quote.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {
 	return receipt.BlockNumber+uint64(watchedQuote.PegoutQuote.DepositConfirmations) < height &&
 		watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations &&
 		receipt.Value.Cmp(watchedQuote.PegoutQuote.Total()) >= 0

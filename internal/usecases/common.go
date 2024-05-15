@@ -53,6 +53,8 @@ const (
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
 	GetManagementUiId          UseCaseId = "GetManagementUi"
 	BridgePegoutId             UseCaseId = "BridgePegout"
+	PeginQuoteStatusId         UseCaseId = "PeginQuoteStatus"
+	PegoutQuoteStatusId        UseCaseId = "PegoutQuoteStatus"
 )
 
 var (
@@ -60,6 +62,7 @@ var (
 	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
 	RskAddressNotSupportedError = errors.New("rsk address not supported")
 	QuoteNotFoundError          = errors.New("quote not found")
+	QuoteNotAcceptedError       = errors.New("quote not accepted")
 	ExpiredQuoteError           = errors.New("expired quote")
 	NoLiquidityError            = errors.New("not enough liquidity")
 	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
