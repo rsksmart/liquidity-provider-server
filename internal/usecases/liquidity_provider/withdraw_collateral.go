@@ -1,4 +1,4 @@
-package pegout
+package liquidity_provider
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -15,7 +15,7 @@ func NewWithdrawCollateralUseCase(contracts blockchain.RskContracts) *WithdrawCo
 }
 
 func (useCase *WithdrawCollateralUseCase) Run() error {
-	err := useCase.contracts.Lbc.WithdrawPegoutCollateral()
+	err := useCase.contracts.Lbc.WithdrawCollateral()
 	if err != nil && (strings.Contains(err.Error(), "LBC021") || strings.Contains(err.Error(), "LBC022")) {
 		return usecases.WrapUseCaseError(usecases.WithdrawCollateralId, usecases.ProviderNotResignedError)
 	} else if err != nil {

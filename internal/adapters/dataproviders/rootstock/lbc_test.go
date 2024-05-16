@@ -653,40 +653,6 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 	})
 }
 
-func TestLiquidityBridgeContractImpl_WithdrawPegoutCollateral(t *testing.T) {
-	lbcMock := &mocks.LbcAdapterMock{}
-	signerMock := &mocks.TransactionSignerMock{}
-	mockClient := &mocks.RpcClientBindingMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(
-		rootstock.NewRskClient(mockClient),
-		test.AnyAddress,
-		lbcMock,
-		signerMock,
-		rootstock.RetryParams{},
-	)
-	t.Run("Success", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, true)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(tx, nil).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.NoError(t, err)
-		lbcMock.AssertExpectations(t)
-	})
-	t.Run("Error handling when sending withdrawPegoutCollateral tx", func(t *testing.T) {
-		_ = prepareTxMocks(mockClient, signerMock, true)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(nil, assert.AnError).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.Error(t, err)
-		lbcMock.AssertExpectations(t)
-	})
-	t.Run("Error handling (withdrawPegoutCollateral tx reverted)", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, false)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(tx, nil).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.ErrorContains(t, err, "withdraw pegout collateral error")
-		lbcMock.AssertExpectations(t)
-	})
-}
-
 func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})

@@ -292,27 +292,6 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 	return nil
 }
 
-func (lbc *liquidityBridgeContractImpl) WithdrawPegoutCollateral() error {
-	opts := &bind.TransactOpts{
-		From:   lbc.signer.Address(),
-		Signer: lbc.signer.Sign,
-	}
-
-	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
-		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "WithdrawPegoutCollateral", func() (*geth.Transaction, error) {
-				return lbc.contract.WithdrawPegoutCollateral(opts)
-			})
-		})
-
-	if err != nil {
-		return fmt.Errorf("withdraw pegout collateral error: %w", err)
-	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("withdraw pegout collateral error")
-	}
-	return nil
-}
-
 func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.Wei, error) {
 	var parsedAddress common.Address
 	var err error
