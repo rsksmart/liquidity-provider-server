@@ -26,3 +26,8 @@ func SafeAdd(a, b uint64) (uint64, error) {
 	}
 	return a + b, nil
 }
+
+func RoundToNDecimals(value float64, decimals uint) float64 {
+	ratio := math.Pow(10, float64(decimals))
+	return math.Round(value*ratio) / ratio
+}

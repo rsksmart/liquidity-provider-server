@@ -53,3 +53,23 @@ func TestSafeAdd(t *testing.T) {
 		return result
 	})
 }
+
+func TestRoundToNDecimals(t *testing.T) {
+	type args struct {
+		Value    float64
+		Decimals uint
+	}
+	cases := test.Table[args, float64]{
+		{Value: args{Value: 1.123456789, Decimals: 2}, Result: 1.12},
+		{Value: args{Value: 1.123456789, Decimals: 3}, Result: 1.123},
+		{Value: args{Value: 1.123456789, Decimals: 4}, Result: 1.1235},
+		{Value: args{Value: 1.123456789, Decimals: 5}, Result: 1.12346},
+		{Value: args{Value: 0.011998954000000001, Decimals: 10}, Result: 0.0119989540},
+		{Value: args{Value: 5, Decimals: 10}, Result: 5},
+		{Value: args{Value: -1.123456789, Decimals: 4}, Result: -1.1235},
+		{Value: args{Value: -1.123456789, Decimals: 5}, Result: -1.12346},
+	}
+	test.RunTable(t, cases, func(value args) float64 {
+		return utils.RoundToNDecimals(value.Value, value.Decimals)
+	})
+}
