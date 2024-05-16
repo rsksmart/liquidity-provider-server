@@ -88,7 +88,6 @@ type LiquidityBridgeContract interface {
 	AddCollateral(amount *entities.Wei) error
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
-	WithdrawPegoutCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
 	RegisterPegin(params RegisterPeginParams) (string, error)

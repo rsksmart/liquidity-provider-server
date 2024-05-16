@@ -813,13 +813,6 @@ paths:
                 $ref: '#/components/schemas/PeginQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPeginStatus
-  /pegin/withdrawCollateral:
-    post:
-      description: ' Withdraw PegIn collateral of a resigned LP'
-      responses:
-        "204":
-          description: ""
-      summary: Withdraw PegIn Collateral
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'
@@ -916,13 +909,6 @@ paths:
                 $ref: '#/components/schemas/PegoutQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPegoutStatus
-  /pegout/withdrawCollateral:
-    post:
-      description: ' Withdraw PegOut collateral of a resigned LP'
-      responses:
-        "204":
-          description: ""
-      summary: Withdraw PegOut Collateral
   /provider/changeStatus:
     post:
       description: ' Changes the status of the provider'
@@ -955,6 +941,13 @@ paths:
                 $ref: '#/components/schemas/ProviderDetailResponse'
           description: Detail of the provider that manges this instance
       summary: Provider detail
+  /providers/withdrawCollateral:
+    post:
+      description: ' Withdraw PegIn collateral of a resigned LP'
+      responses:
+        "204":
+          description: ""
+      summary: Withdraw PegIn Collateral
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

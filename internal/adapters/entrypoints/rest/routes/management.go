@@ -27,11 +27,6 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewAddPeginCollateralHandler(useCaseRegistry.AddPeginCollateralUseCase()),
 		},
 		{
-			Path:    "/pegin/withdrawCollateral",
-			Method:  http.MethodPost,
-			Handler: handlers.NewWithdrawPeginCollateralHandler(useCaseRegistry.WithdrawPeginCollateralUseCase()),
-		},
-		{
 			Path:    "/pegout/collateral",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetPegoutCollateralHandler(useCaseRegistry.GetPegoutCollateralUseCase()),
@@ -42,11 +37,6 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewAddPegoutCollateralHandler(useCaseRegistry.AddPegoutCollateralUseCase()),
 		},
 		{
-			Path:    "/pegout/withdrawCollateral",
-			Method:  http.MethodPost,
-			Handler: handlers.NewWithdrawPegoutCollateralHandler(useCaseRegistry.WithdrawPegoutCollateralUseCase()),
-		},
-		{
 			Path:    "/providers/changeStatus",
 			Method:  http.MethodPost,
 			Handler: handlers.NewChangeStatusHandler(useCaseRegistry.ChangeStatusUseCase()),
@@ -55,6 +45,11 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    "/providers/resignation",
 			Method:  http.MethodPost,
 			Handler: handlers.NewResignationHandler(useCaseRegistry.ResignationUseCase()),
+		},
+		{
+			Path:    "/providers/withdrawCollateral",
+			Method:  http.MethodPost,
+			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
 		},
 		{
 			Path:    "/configuration",

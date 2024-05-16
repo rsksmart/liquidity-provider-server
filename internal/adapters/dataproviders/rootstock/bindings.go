@@ -52,7 +52,6 @@ type LbcBinding interface {
 	AddCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	AddPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	WithdrawCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
-	WithdrawPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
 	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote) (*types.Transaction, error)
 	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
