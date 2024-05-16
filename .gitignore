@@ -22,3 +22,6 @@ keystore/
 build/
 /**/.env.regtest
 /**/gh_token.txt
+!sample-config.env
+/**/*.env
+/**/.env*
