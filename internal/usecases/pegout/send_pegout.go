@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -16,6 +17,7 @@ type SendPegoutUseCase struct {
 	quoteRepository quote.PegoutQuoteRepository
 	rpc             blockchain.Rpc
 	eventBus        entities.EventBus
+	contracts       blockchain.RskContracts
 	btcWalletMutex  sync.Locker
 }
 
@@ -24,6 +26,7 @@ func NewSendPegoutUseCase(
 	quoteRepository quote.PegoutQuoteRepository,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
+	contracts blockchain.RskContracts,
 	btcWalletMutex sync.Locker,
 ) *SendPegoutUseCase {
 	return &SendPegoutUseCase{
@@ -31,6 +34,7 @@ func NewSendPegoutUseCase(
 		quoteRepository: quoteRepository,
 		rpc:             rpc,
 		eventBus:        eventBus,
+		contracts:       contracts,
 		btcWalletMutex:  btcWalletMutex,
 	}
 }
@@ -109,6 +113,7 @@ func (useCase *SendPegoutUseCase) validateQuote(
 	var chainHeight uint64
 	var receipt blockchain.TransactionReceipt
 	var block blockchain.BlockInfo
+	var completed bool
 
 	if chainHeight, err = useCase.rpc.Rsk.GetHeight(ctx); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
@@ -125,6 +130,12 @@ func (useCase *SendPegoutUseCase) validateQuote(
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if pegoutQuote.ExpireTime().Before(block.Timestamp) {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
+	}
+
+	if completed, err = useCase.contracts.Lbc.IsPegOutQuoteCompleted(retainedQuote.QuoteHash); err != nil {
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
+	} else if completed {
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, fmt.Errorf("quote %s was already completed", retainedQuote.QuoteHash), false)
 	}
 	return receipt, nil
 }

@@ -904,6 +904,63 @@ func (_c *LbcBindingMock_IsOperationalForPegout_Call) RunAndReturn(run func(*bin
 	return _c
 }
 
+// IsPegOutQuoteCompleted provides a mock function with given fields: opts, quoteHash
+func (_m *LbcBindingMock) IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error) {
+	ret := _m.Called(opts, quoteHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsPegOutQuoteCompleted")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, [32]byte) (bool, error)); ok {
+		return rf(opts, quoteHash)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, [32]byte) bool); ok {
+		r0 = rf(opts, quoteHash)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts, [32]byte) error); ok {
+		r1 = rf(opts, quoteHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LbcBindingMock_IsPegOutQuoteCompleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsPegOutQuoteCompleted'
+type LbcBindingMock_IsPegOutQuoteCompleted_Call struct {
+	*mock.Call
+}
+
+// IsPegOutQuoteCompleted is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+//   - quoteHash [32]byte
+func (_e *LbcBindingMock_Expecter) IsPegOutQuoteCompleted(opts interface{}, quoteHash interface{}) *LbcBindingMock_IsPegOutQuoteCompleted_Call {
+	return &LbcBindingMock_IsPegOutQuoteCompleted_Call{Call: _e.mock.On("IsPegOutQuoteCompleted", opts, quoteHash)}
+}
+
+func (_c *LbcBindingMock_IsPegOutQuoteCompleted_Call) Run(run func(opts *bind.CallOpts, quoteHash [32]byte)) *LbcBindingMock_IsPegOutQuoteCompleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts), args[1].([32]byte))
+	})
+	return _c
+}
+
+func (_c *LbcBindingMock_IsPegOutQuoteCompleted_Call) Return(_a0 bool, _a1 error) *LbcBindingMock_IsPegOutQuoteCompleted_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *LbcBindingMock_IsPegOutQuoteCompleted_Call) RunAndReturn(run func(*bind.CallOpts, [32]byte) (bool, error)) *LbcBindingMock_IsPegOutQuoteCompleted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ParseRegister provides a mock function with given fields: log
 func (_m *LbcBindingMock) ParseRegister(log types.Log) (*bindings.LiquidityBridgeContractRegister, error) {
 	ret := _m.Called(log)
@@ -1380,64 +1437,6 @@ func (_c *LbcBindingMock_WithdrawCollateral_Call) Return(_a0 *types.Transaction,
 }
 
 func (_c *LbcBindingMock_WithdrawCollateral_Call) RunAndReturn(run func(*bind.TransactOpts) (*types.Transaction, error)) *LbcBindingMock_WithdrawCollateral_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// WithdrawPegoutCollateral provides a mock function with given fields: opts
-func (_m *LbcBindingMock) WithdrawPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error) {
-	ret := _m.Called(opts)
-
-	if len(ret) == 0 {
-		panic("no return value specified for WithdrawPegoutCollateral")
-	}
-
-	var r0 *types.Transaction
-	var r1 error
-	if rf, ok := ret.Get(0).(func(*bind.TransactOpts) (*types.Transaction, error)); ok {
-		return rf(opts)
-	}
-	if rf, ok := ret.Get(0).(func(*bind.TransactOpts) *types.Transaction); ok {
-		r0 = rf(opts)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Transaction)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(*bind.TransactOpts) error); ok {
-		r1 = rf(opts)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// LbcBindingMock_WithdrawPegoutCollateral_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithdrawPegoutCollateral'
-type LbcBindingMock_WithdrawPegoutCollateral_Call struct {
-	*mock.Call
-}
-
-// WithdrawPegoutCollateral is a helper method to define mock.On call
-//   - opts *bind.TransactOpts
-func (_e *LbcBindingMock_Expecter) WithdrawPegoutCollateral(opts interface{}) *LbcBindingMock_WithdrawPegoutCollateral_Call {
-	return &LbcBindingMock_WithdrawPegoutCollateral_Call{Call: _e.mock.On("WithdrawPegoutCollateral", opts)}
-}
-
-func (_c *LbcBindingMock_WithdrawPegoutCollateral_Call) Run(run func(opts *bind.TransactOpts)) *LbcBindingMock_WithdrawPegoutCollateral_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*bind.TransactOpts))
-	})
-	return _c
-}
-
-func (_c *LbcBindingMock_WithdrawPegoutCollateral_Call) Return(_a0 *types.Transaction, _a1 error) *LbcBindingMock_WithdrawPegoutCollateral_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *LbcBindingMock_WithdrawPegoutCollateral_Call) RunAndReturn(run func(*bind.TransactOpts) (*types.Transaction, error)) *LbcBindingMock_WithdrawPegoutCollateral_Call {
 	_c.Call.Return(run)
 	return _c
 }
