@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -255,6 +256,7 @@ func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	const (
 		confirmationTargetForEstimation = 1
 		extraFeeMultiplier              = 0.1
+		estimationMaxDecimals           = 8
 	)
 	estimationResult, err := wallet.conn.client.EstimateSmartFee(confirmationTargetForEstimation, &btcjson.EstimateModeConservative)
 	if err != nil {
@@ -264,9 +266,9 @@ func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	}
 	// add 10% to the fee rate if result still over the target for the estimation
 	if estimationResult.Blocks > confirmationTargetForEstimation {
-		return btcjson.Float64(*estimationResult.FeeRate + *estimationResult.FeeRate*extraFeeMultiplier), nil
+		return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate+*estimationResult.FeeRate*extraFeeMultiplier, estimationMaxDecimals)), nil
 	}
-	return estimationResult.FeeRate, nil
+	return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate, estimationMaxDecimals)), nil
 }
 
 func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTransactionOpts, error) {

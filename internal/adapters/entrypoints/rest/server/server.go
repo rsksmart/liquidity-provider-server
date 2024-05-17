@@ -49,9 +49,9 @@ func (s *Server) start() error {
 	s.http = http.Server{
 		Addr:              ":" + strconv.FormatUint(uint64(s.env.Port), 10),
 		Handler:           h,
-		ReadHeaderTimeout: 2 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		IdleTimeout:       3 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       10 * time.Second,
 	}
 	log.Info("Server started at localhost:", s.http.Addr)
 	return s.http.ListenAndServe()

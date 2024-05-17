@@ -17,8 +17,7 @@ type UseCaseRegistry interface {
 	GetProvidersUseCase() *liquidity_provider.GetProvidersUseCase
 	GetPeginCollateralUseCase() *pegin.GetCollateralUseCase
 	GetPegoutCollateralUseCase() *pegout.GetCollateralUseCase
-	WithdrawPeginCollateralUseCase() *pegin.WithdrawCollateralUseCase
-	WithdrawPegoutCollateralUseCase() *pegout.WithdrawCollateralUseCase
+	WithdrawCollateralUseCase() *liquidity_provider.WithdrawCollateralUseCase
 	HealthUseCase() *usecases.HealthUseCase
 	ResignationUseCase() *liquidity_provider.ResignUseCase
 	ChangeStatusUseCase() *liquidity_provider.ChangeStatusUseCase

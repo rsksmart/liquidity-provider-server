@@ -138,3 +138,8 @@ func (m *LbcMock) RegisterPegin(params blockchain.RegisterPeginParams) (string, 
 	args := m.Called(params)
 	return args.String(0), args.Error(1)
 }
+
+func (m *LbcMock) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
+	args := m.Called(quoteHash)
+	return args.Bool(0), args.Error(1)
+}

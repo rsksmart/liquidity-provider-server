@@ -88,7 +88,6 @@ type LiquidityBridgeContract interface {
 	AddCollateral(amount *entities.Wei) error
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
-	WithdrawPegoutCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
 	RegisterPegin(params RegisterPeginParams) (string, error)
@@ -98,6 +97,7 @@ type LiquidityBridgeContract interface {
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
 	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
+	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 }
 
 type FeeCollector interface {

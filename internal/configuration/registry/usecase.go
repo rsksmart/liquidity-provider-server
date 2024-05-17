@@ -15,47 +15,46 @@ import (
 var signingHashFunction = crypto.Keccak256
 
 type UseCaseRegistry struct {
-	getPeginQuoteUseCase            *pegin.GetQuoteUseCase
-	registerProviderUseCase         *liquidity_provider.RegistrationUseCase
-	callForUserUseCase              *pegin.CallForUserUseCase
-	registerPeginUseCase            *pegin.RegisterPeginUseCase
-	acceptPeginQuoteUseCase         *pegin.AcceptQuoteUseCase
-	getWatchedPeginQuoteUseCase     *watcher.GetWatchedPeginQuoteUseCase
-	expiredPeginQuoteUseCase        *pegin.ExpiredPeginQuoteUseCase
-	cleanExpiredQuotesUseCase       *watcher.CleanExpiredQuotesUseCase
-	getProviderDetailUseCase        *liquidity_provider.GetDetailUseCase
-	getWatchedPegoutQuoteUseCase    *watcher.GetWatchedPegoutQuoteUseCase
-	expiredPegoutUseCase            *pegout.ExpiredPegoutQuoteUseCase
-	sendPegoutUseCase               *pegout.SendPegoutUseCase
-	updatePegoutDepositUseCase      *watcher.UpdatePegoutQuoteDepositUseCase
-	initPegoutDepositCacheUseCase   *pegout.InitPegoutDepositCacheUseCase
-	refundPegoutUseCase             *pegout.RefundPegoutUseCase
-	getPegoutQuoteUseCase           *pegout.GetQuoteUseCase
-	acceptPegoutQuoteUseCase        *pegout.AcceptQuoteUseCase
-	getUserDepositsUseCase          *pegout.GetUserDepositsUseCase
-	liquidityCheckUseCase           *liquidity_provider.CheckLiquidityUseCase
-	penalizationAlertUseCase        *liquidity_provider.PenalizationAlertUseCase
-	getProvidersUseCase             *liquidity_provider.GetProvidersUseCase
-	getPeginCollateralUseCase       *pegin.GetCollateralUseCase
-	getPegoutCollateralUseCase      *pegout.GetCollateralUseCase
-	withdrawPeginCollateralUseCase  *pegin.WithdrawCollateralUseCase
-	withdrawPegoutCollateralUseCase *pegout.WithdrawCollateralUseCase
-	healthUseCase                   *usecases.HealthUseCase
-	resignUseCase                   *liquidity_provider.ResignUseCase
-	changeStatusUseCase             *liquidity_provider.ChangeStatusUseCase
-	addPeginCollateralUseCase       *pegin.AddCollateralUseCase
-	addPegoutCollateralUseCase      *pegout.AddCollateralUseCase
-	setPeginConfigUseCase           *liquidity_provider.SetPeginConfigUseCase
-	setPegoutConfigUseCase          *liquidity_provider.SetPegoutConfigUseCase
-	setGeneralConfigUseCase         *liquidity_provider.SetGeneralConfigUseCase
-	getConfigurationUseCase         *liquidity_provider.GetConfigUseCase
-	loginUseCase                    *liquidity_provider.LoginUseCase
-	setCredentialsUseCase           *liquidity_provider.SetCredentialsUseCase
-	defaultCredentialsUseCase       *liquidity_provider.GenerateDefaultCredentialsUseCase
-	getManagementUiDataUseCase      *liquidity_provider.GetManagementUiDataUseCase
-	bridgePegoutUseCase             *pegout.BridgePegoutUseCase
-	peginStatusUseCase              *pegin.StatusUseCase
-	pegoutStatusUseCase             *pegout.StatusUseCase
+	getPeginQuoteUseCase          *pegin.GetQuoteUseCase
+	registerProviderUseCase       *liquidity_provider.RegistrationUseCase
+	callForUserUseCase            *pegin.CallForUserUseCase
+	registerPeginUseCase          *pegin.RegisterPeginUseCase
+	acceptPeginQuoteUseCase       *pegin.AcceptQuoteUseCase
+	getWatchedPeginQuoteUseCase   *watcher.GetWatchedPeginQuoteUseCase
+	expiredPeginQuoteUseCase      *pegin.ExpiredPeginQuoteUseCase
+	cleanExpiredQuotesUseCase     *watcher.CleanExpiredQuotesUseCase
+	getProviderDetailUseCase      *liquidity_provider.GetDetailUseCase
+	getWatchedPegoutQuoteUseCase  *watcher.GetWatchedPegoutQuoteUseCase
+	expiredPegoutUseCase          *pegout.ExpiredPegoutQuoteUseCase
+	sendPegoutUseCase             *pegout.SendPegoutUseCase
+	updatePegoutDepositUseCase    *watcher.UpdatePegoutQuoteDepositUseCase
+	initPegoutDepositCacheUseCase *pegout.InitPegoutDepositCacheUseCase
+	refundPegoutUseCase           *pegout.RefundPegoutUseCase
+	getPegoutQuoteUseCase         *pegout.GetQuoteUseCase
+	acceptPegoutQuoteUseCase      *pegout.AcceptQuoteUseCase
+	getUserDepositsUseCase        *pegout.GetUserDepositsUseCase
+	liquidityCheckUseCase         *liquidity_provider.CheckLiquidityUseCase
+	penalizationAlertUseCase      *liquidity_provider.PenalizationAlertUseCase
+	getProvidersUseCase           *liquidity_provider.GetProvidersUseCase
+	getPeginCollateralUseCase     *pegin.GetCollateralUseCase
+	getPegoutCollateralUseCase    *pegout.GetCollateralUseCase
+	withdrawCollateralUseCase     *liquidity_provider.WithdrawCollateralUseCase
+	healthUseCase                 *usecases.HealthUseCase
+	resignUseCase                 *liquidity_provider.ResignUseCase
+	changeStatusUseCase           *liquidity_provider.ChangeStatusUseCase
+	addPeginCollateralUseCase     *pegin.AddCollateralUseCase
+	addPegoutCollateralUseCase    *pegout.AddCollateralUseCase
+	setPeginConfigUseCase         *liquidity_provider.SetPeginConfigUseCase
+	setPegoutConfigUseCase        *liquidity_provider.SetPegoutConfigUseCase
+	setGeneralConfigUseCase       *liquidity_provider.SetGeneralConfigUseCase
+	getConfigurationUseCase       *liquidity_provider.GetConfigUseCase
+	loginUseCase                  *liquidity_provider.LoginUseCase
+	setCredentialsUseCase         *liquidity_provider.SetCredentialsUseCase
+	defaultCredentialsUseCase     *liquidity_provider.GenerateDefaultCredentialsUseCase
+	getManagementUiDataUseCase    *liquidity_provider.GetManagementUiDataUseCase
+	bridgePegoutUseCase           *pegout.BridgePegoutUseCase
+	peginStatusUseCase            *pegin.StatusUseCase
+	pegoutStatusUseCase           *pegout.StatusUseCase
 }
 
 // NewUseCaseRegistry
@@ -157,6 +156,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			messaging.Rpc,
 			messaging.EventBus,
+			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
@@ -172,16 +172,15 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 		),
-		addPeginCollateralUseCase:       pegin.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
-		addPegoutCollateralUseCase:      pegout.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
-		changeStatusUseCase:             liquidity_provider.NewChangeStatusUseCase(rskRegistry.Contracts, liquidityProvider),
-		resignUseCase:                   liquidity_provider.NewResignUseCase(rskRegistry.Contracts, liquidityProvider),
-		getProvidersUseCase:             liquidity_provider.NewGetProvidersUseCase(rskRegistry.Contracts),
-		getPeginCollateralUseCase:       pegin.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
-		getPegoutCollateralUseCase:      pegout.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
-		withdrawPeginCollateralUseCase:  pegin.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
-		withdrawPegoutCollateralUseCase: pegout.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
-		healthUseCase:                   usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.RpcConnection, databaseRegistry.Connection),
+		addPeginCollateralUseCase:  pegin.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
+		addPegoutCollateralUseCase: pegout.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
+		changeStatusUseCase:        liquidity_provider.NewChangeStatusUseCase(rskRegistry.Contracts, liquidityProvider),
+		resignUseCase:              liquidity_provider.NewResignUseCase(rskRegistry.Contracts, liquidityProvider),
+		getProvidersUseCase:        liquidity_provider.NewGetProvidersUseCase(rskRegistry.Contracts),
+		getPeginCollateralUseCase:  pegin.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
+		getPegoutCollateralUseCase: pegout.NewGetCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
+		withdrawCollateralUseCase:  liquidity_provider.NewWithdrawCollateralUseCase(rskRegistry.Contracts),
+		healthUseCase:              usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.RpcConnection, databaseRegistry.Connection),
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
@@ -268,12 +267,8 @@ func (registry *UseCaseRegistry) GetPegoutCollateralUseCase() *pegout.GetCollate
 	return registry.getPegoutCollateralUseCase
 }
 
-func (registry *UseCaseRegistry) WithdrawPeginCollateralUseCase() *pegin.WithdrawCollateralUseCase {
-	return registry.withdrawPeginCollateralUseCase
-}
-
-func (registry *UseCaseRegistry) WithdrawPegoutCollateralUseCase() *pegout.WithdrawCollateralUseCase {
-	return registry.withdrawPegoutCollateralUseCase
+func (registry *UseCaseRegistry) WithdrawCollateralUseCase() *liquidity_provider.WithdrawCollateralUseCase {
+	return registry.withdrawCollateralUseCase
 }
 
 func (registry *UseCaseRegistry) HealthUseCase() *usecases.HealthUseCase {
