@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	ContentTypeJson = "application/json"
+	ContentTypeForm = "application/x-www-form-urlencoded"
+)
+
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
 
 type ErrorDetails = map[string]any
@@ -45,7 +50,7 @@ func JsonErrorResponse(w http.ResponseWriter, code int, response *ErrorResponse)
 
 func JsonResponseWithBody[T any](w http.ResponseWriter, statusCode int, body *T) {
 	var err error
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", ContentTypeJson)
 	w.WriteHeader(statusCode)
 	if body == nil {
 		return
