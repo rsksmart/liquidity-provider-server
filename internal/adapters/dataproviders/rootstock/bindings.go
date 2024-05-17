@@ -52,7 +52,6 @@ type LbcBinding interface {
 	AddCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	AddPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	WithdrawCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
-	WithdrawPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
 	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
 	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote) (*types.Transaction, error)
 	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
@@ -64,6 +63,7 @@ type LbcBinding interface {
 	FilterPenalized(opts *bind.FilterOpts) (*bindings.LiquidityBridgeContractPenalizedIterator, error)
 	ParseRegister(log types.Log) (*bindings.LiquidityBridgeContractRegister, error)
 	ProductFeePercentage(opts *bind.CallOpts) (*big.Int, error)
+	IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
 }
 
 type LbcAdapter interface {

@@ -197,6 +197,26 @@ func (lbc *liquidityBridgeContractImpl) GetCollateral(address string) (*entities
 	return entities.NewBigWei(collateral), nil
 }
 
+func (lbc *liquidityBridgeContractImpl) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
+	var quoteHashBytes [32]byte
+	opts := &bind.CallOpts{}
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return false, err
+	} else if len(hashBytesSlice) != 32 {
+		return false, errors.New("quote hash must be 32 bytes long")
+	}
+	copy(quoteHashBytes[:], hashBytesSlice)
+	result, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (bool, error) {
+			return lbc.contract.IsPegOutQuoteCompleted(opts, quoteHashBytes)
+		})
+	if err != nil {
+		return false, err
+	}
+	return result, nil
+}
+
 func (lbc *liquidityBridgeContractImpl) GetPegoutCollateral(address string) (*entities.Wei, error) {
 	var parsedAddress common.Address
 	var err error
@@ -288,27 +308,6 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 		return fmt.Errorf("withdraw pegin collateral error: %w", err)
 	} else if receipt == nil || receipt.Status == 0 {
 		return fmt.Errorf("withdraw pegin collateral error")
-	}
-	return nil
-}
-
-func (lbc *liquidityBridgeContractImpl) WithdrawPegoutCollateral() error {
-	opts := &bind.TransactOpts{
-		From:   lbc.signer.Address(),
-		Signer: lbc.signer.Sign,
-	}
-
-	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
-		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "WithdrawPegoutCollateral", func() (*geth.Transaction, error) {
-				return lbc.contract.WithdrawPegoutCollateral(opts)
-			})
-		})
-
-	if err != nil {
-		return fmt.Errorf("withdraw pegout collateral error: %w", err)
-	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("withdraw pegout collateral error")
 	}
 	return nil
 }

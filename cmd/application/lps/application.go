@@ -21,7 +21,7 @@ import (
 )
 
 const BootstrapTimeout = 3 * time.Minute // In case LP needs to register
-const watcherPreparationTimeout = 3 * time.Second
+const watcherPreparationTimeout = 10 * time.Second
 
 type Application struct {
 	env               environment.Environment

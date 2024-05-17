@@ -653,40 +653,6 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 	})
 }
 
-func TestLiquidityBridgeContractImpl_WithdrawPegoutCollateral(t *testing.T) {
-	lbcMock := &mocks.LbcAdapterMock{}
-	signerMock := &mocks.TransactionSignerMock{}
-	mockClient := &mocks.RpcClientBindingMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(
-		rootstock.NewRskClient(mockClient),
-		test.AnyAddress,
-		lbcMock,
-		signerMock,
-		rootstock.RetryParams{},
-	)
-	t.Run("Success", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, true)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(tx, nil).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.NoError(t, err)
-		lbcMock.AssertExpectations(t)
-	})
-	t.Run("Error handling when sending withdrawPegoutCollateral tx", func(t *testing.T) {
-		_ = prepareTxMocks(mockClient, signerMock, true)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(nil, assert.AnError).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.Error(t, err)
-		lbcMock.AssertExpectations(t)
-	})
-	t.Run("Error handling (withdrawPegoutCollateral tx reverted)", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, false)
-		lbcMock.On("WithdrawPegoutCollateral", mock.Anything).Return(tx, nil).Once()
-		err := lbc.WithdrawPegoutCollateral()
-		require.ErrorContains(t, err, "withdraw pegout collateral error")
-		lbcMock.AssertExpectations(t)
-	})
-}
-
 func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
@@ -756,6 +722,37 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		require.Error(t, err, "call for user error: transaction reverted")
 		assert.Empty(t, result)
 	})
+}
+
+func TestLiquidityBridgeContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
+	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
+	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
+	lbcMock := &mocks.LbcAdapterMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	t.Run("Success", func(t *testing.T) {
+		lbcMock.On("IsPegOutQuoteCompleted", mock.Anything, parsedQuoteHash).Return(true, nil).Once()
+		result, err := lbc.IsPegOutQuoteCompleted(quoteHash)
+		require.NoError(t, err)
+		assert.True(t, result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Should handle call error", func(t *testing.T) {
+		lbcMock.On("IsPegOutQuoteCompleted", mock.Anything, parsedQuoteHash).Return(false, assert.AnError).Once()
+		result, err := lbc.IsPegOutQuoteCompleted(quoteHash)
+		require.Error(t, err)
+		assert.False(t, result)
+	})
+	t.Run("Should handle parse error", func(t *testing.T) {
+		result, err := lbc.IsPegOutQuoteCompleted(test.AnyString)
+		require.Error(t, err)
+		assert.False(t, result)
+	})
+	t.Run("Should return error when quote hash is not long enough", func(t *testing.T) {
+		result, err := lbc.IsPegOutQuoteCompleted("0104050302")
+		require.ErrorContains(t, err, "quote hash must be 32 bytes long")
+		assert.False(t, result)
+	})
+
 }
 
 func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
