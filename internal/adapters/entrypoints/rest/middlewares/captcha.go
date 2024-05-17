@@ -3,10 +3,12 @@ package middlewares
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -40,11 +42,14 @@ func NewCaptchaMiddleware(captchaUrl string, captchaThreshold float32, disabled 
 			if err != nil {
 				unexpectedCaptchaError(w, err)
 				return
+			} else if len(validation.ErrorCodes) != 0 {
+				unexpectedCaptchaError(w, errors.New(strings.Join(validation.ErrorCodes, ", ")))
+				return
 			}
 
 			validCaptcha := calculateCaptchaValidity(validation, captchaThreshold)
 			if !validCaptcha {
-				unexpectedCaptchaError(w, err)
+				unexpectedCaptchaError(w, errors.New("captcha doesn't meet the required threshold"))
 			}
 			log.Debugf("Valid captcha solved on %s\n", validation.Hostname)
 			next.ServeHTTP(w, r)
@@ -81,6 +86,7 @@ func validateCaptcha(r *http.Request, captchaUrl, captchaSecretKey, token string
 	if err != nil {
 		return captchaValidationResponse{}, err
 	}
+	req.Header.Set("Content-Type", rest.ContentTypeForm)
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
