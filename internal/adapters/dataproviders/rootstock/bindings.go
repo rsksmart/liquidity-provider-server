@@ -63,6 +63,7 @@ type LbcBinding interface {
 	FilterPenalized(opts *bind.FilterOpts) (*bindings.LiquidityBridgeContractPenalizedIterator, error)
 	ParseRegister(log types.Log) (*bindings.LiquidityBridgeContractRegister, error)
 	ProductFeePercentage(opts *bind.CallOpts) (*big.Int, error)
+	IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
 }
 
 type LbcAdapter interface {

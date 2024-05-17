@@ -197,6 +197,26 @@ func (lbc *liquidityBridgeContractImpl) GetCollateral(address string) (*entities
 	return entities.NewBigWei(collateral), nil
 }
 
+func (lbc *liquidityBridgeContractImpl) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
+	var quoteHashBytes [32]byte
+	opts := &bind.CallOpts{}
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return false, err
+	} else if len(hashBytesSlice) != 32 {
+		return false, errors.New("quote hash must be 32 bytes long")
+	}
+	copy(quoteHashBytes[:], hashBytesSlice)
+	result, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (bool, error) {
+			return lbc.contract.IsPegOutQuoteCompleted(opts, quoteHashBytes)
+		})
+	if err != nil {
+		return false, err
+	}
+	return result, nil
+}
+
 func (lbc *liquidityBridgeContractImpl) GetPegoutCollateral(address string) (*entities.Wei, error) {
 	var parsedAddress common.Address
 	var err error
