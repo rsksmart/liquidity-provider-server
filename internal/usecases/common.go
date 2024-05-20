@@ -55,6 +55,7 @@ const (
 	BridgePegoutId             UseCaseId = "BridgePegout"
 	PeginQuoteStatusId         UseCaseId = "PeginQuoteStatus"
 	PegoutQuoteStatusId        UseCaseId = "PegoutQuoteStatus"
+	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 )
 
 var (

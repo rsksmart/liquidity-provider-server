@@ -23,7 +23,7 @@ func NewGetUserQuotesHandler(useCase *pegout.GetUserDepositsUseCase) http.Handle
 
 		deposits, err := useCase.Run(req.Context(), address)
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}

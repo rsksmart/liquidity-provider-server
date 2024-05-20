@@ -56,11 +56,13 @@ type LiquidityProvider interface {
 type PeginLiquidityProvider interface {
 	HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
 	PeginConfiguration(ctx context.Context) PeginConfiguration
+	AvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error)
 }
 
 type PegoutLiquidityProvider interface {
 	HasPegoutLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
 	PegoutConfiguration(ctx context.Context) PegoutConfiguration
+	AvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error)
 }
 
 type LiquidityProviderRepository interface {
@@ -88,6 +90,11 @@ type LiquidityProviderDetail struct {
 	MinTransactionValue   *entities.Wei `json:"minTransactionValue"  validate:"required"`
 	MaxTransactionValue   *entities.Wei `json:"maxTransactionValue"  validate:"required"`
 	RequiredConfirmations uint16        `json:"requiredConfirmations"  validate:"required"`
+}
+
+type AvailableLiquidity struct {
+	PeginLiquidity  *entities.Wei
+	PegoutLiquidity *entities.Wei
 }
 
 type PunishmentEvent struct {

@@ -55,6 +55,7 @@ type UseCaseRegistry struct {
 	bridgePegoutUseCase           *pegout.BridgePegoutUseCase
 	peginStatusUseCase            *pegin.StatusUseCase
 	pegoutStatusUseCase           *pegout.StatusUseCase
+	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 }
 
 // NewUseCaseRegistry
@@ -222,8 +223,9 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			mutexes.RskWalletMutex(),
 		),
-		peginStatusUseCase:  pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
-		pegoutStatusUseCase: pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),
+		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
+		pegoutStatusUseCase:       pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),
+		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 	}
 }
 
@@ -329,4 +331,8 @@ func (registry *UseCaseRegistry) GetPeginStatusUseCase() *pegin.StatusUseCase {
 
 func (registry *UseCaseRegistry) GetPegoutStatusUseCase() *pegout.StatusUseCase {
 	return registry.pegoutStatusUseCase
+}
+
+func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provider.GetAvailableLiquidityUseCase {
+	return registry.availableLiquidityUseCase
 }
