@@ -496,6 +496,8 @@ components:
       type: object
     ProviderDetailResponse:
       properties:
+        liquidityCheckEnabled:
+          type: boolean
         pegin:
           $ref: '#/components/schemas/ProviderDetail'
           type: object
@@ -506,6 +508,7 @@ components:
           type: string
       required:
       - siteKey
+      - liquidityCheckEnabled
       - pegin
       - pegout
       type: object
