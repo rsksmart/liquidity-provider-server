@@ -1,6 +1,9 @@
 package pkg
 
-import "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"math/big"
+)
 
 type ProviderDetail struct {
 	Fee                   uint64 `json:"fee"  required:""`
@@ -50,4 +53,17 @@ type CredentialsUpdateRequest struct {
 	OldPassword string `json:"oldPassword" validate:"required"`
 	NewUsername string `json:"newUsername" validate:"required"`
 	NewPassword string `json:"newPassword" validate:"required"`
+}
+
+type AvailableLiquidityDTO struct {
+	PeginLiquidityAmount  *big.Int `json:"peginLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegIn operations in wei"  required:""`
+	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"500000000" description:"Available liquidity for PegOut operations in satoshi" required:""`
+}
+
+func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
+	satoshis, _ := entity.PegoutLiquidity.ToSatoshi().Int(nil)
+	return AvailableLiquidityDTO{
+		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),
+		PegoutLiquidityAmount: satoshis,
+	}
 }

@@ -86,5 +86,12 @@ func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewGetPegoutQuoteStatusHandler(useCaseRegistry.GetPegoutStatusUseCase()),
 			},
 		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/providers/liquidity",
+				Method:  http.MethodGet,
+				Handler: handlers.NewGetAvailableLiquidityHandler(useCaseRegistry.GetAvailableLiquidityUseCase()),
+			},
+		},
 	}
 }

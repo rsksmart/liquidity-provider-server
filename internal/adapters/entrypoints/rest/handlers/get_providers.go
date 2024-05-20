@@ -16,7 +16,7 @@ func NewGetProvidersHandler(useCase *liquidity_provider.GetProvidersUseCase) htt
 	return func(w http.ResponseWriter, req *http.Request) {
 		providers, err := useCase.Run()
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}

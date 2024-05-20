@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+const UnknownErrorMessage = "unknown error"
+
 func closeManagementSession(req *http.Request, w http.ResponseWriter, env environment.ManagementEnv) error {
 	const errorMsg = "error closing session"
 	cookieStore, err := cookies.GetSessionCookieStore(env)

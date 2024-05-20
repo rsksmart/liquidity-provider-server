@@ -54,6 +54,18 @@ components:
           example: 100000000000
           type: integer
       type: object
+    AvailableLiquidityDTO:
+      properties:
+        peginLiquidityAmount:
+          description: Available liquidity for PegIn operations in wei
+          example: "5000000000000000000"
+        pegoutLiquidityAmount:
+          description: Available liquidity for PegOut operations in satoshi
+          example: "500000000"
+      required:
+      - peginLiquidityAmount
+      - pegoutLiquidityAmount
+      type: object
     ChangeStatusRequest:
       properties:
         status:
@@ -88,6 +100,8 @@ components:
         btcConfirmations:
           $ref: '#/components/schemas/ConfirmationsPerAmount'
           type: object
+        publicLiquidityCheck:
+          type: boolean
         rskConfirmations:
           $ref: '#/components/schemas/ConfirmationsPerAmount'
           type: object
@@ -941,6 +955,17 @@ paths:
                 $ref: '#/components/schemas/ProviderDetailResponse'
           description: Detail of the provider that manges this instance
       summary: Provider detail
+  /providers/liquidity:
+    get:
+      description: ' Fetches the available liquidity for both PegIn and PegOut operations.'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableLiquidityDTO'
+          description: ""
+      summary: Fetch Available Liquidity
   /providers/withdrawCollateral:
     post:
       description: ' Withdraw PegIn collateral of a resigned LP'

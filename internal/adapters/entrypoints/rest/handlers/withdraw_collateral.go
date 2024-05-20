@@ -17,10 +17,10 @@ func NewWithdrawCollateralHandler(useCase *liquidity_provider.WithdrawCollateral
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()
 		if errors.Is(err, usecases.ProviderNotResignedError) {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), true)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
 		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 		} else {
 			rest.JsonResponse(w, http.StatusNoContent)

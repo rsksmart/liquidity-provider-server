@@ -53,3 +53,13 @@ func (m *ProviderMock) PegoutConfiguration(ctx context.Context) liquidity_provid
 	args := m.Called(ctx)
 	return args.Get(0).(liquidity_provider.PegoutConfiguration)
 }
+
+func (m *ProviderMock) AvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+
+func (m *ProviderMock) AvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
