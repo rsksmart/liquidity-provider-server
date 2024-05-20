@@ -255,17 +255,18 @@ func (wallet *DerivativeWallet) Unlock() error {
 func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	const (
 		confirmationTargetForEstimation = 1
+		minimumEstimatedConfirmations   = 2
 		extraFeeMultiplier              = 0.1
 		estimationMaxDecimals           = 8
 	)
-	estimationResult, err := wallet.conn.client.EstimateSmartFee(confirmationTargetForEstimation, &btcjson.EstimateModeConservative)
+	estimationResult, err := wallet.conn.client.EstimateSmartFee(confirmationTargetForEstimation, &btcjson.EstimateModeEconomical)
 	if err != nil {
 		return nil, err
 	} else if len(estimationResult.Errors) != 0 {
 		return nil, errors.New(estimationResult.Errors[0])
 	}
 	// add 10% to the fee rate if result still over the target for the estimation
-	if estimationResult.Blocks > confirmationTargetForEstimation {
+	if estimationResult.Blocks > confirmationTargetForEstimation && estimationResult.Blocks != minimumEstimatedConfirmations {
 		return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate+*estimationResult.FeeRate*extraFeeMultiplier, estimationMaxDecimals)), nil
 	}
 	return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate, estimationMaxDecimals)), nil
