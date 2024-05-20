@@ -21,7 +21,8 @@ func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) htt
 			return
 		}
 		response := pkg.ProviderDetailResponse{
-			SiteKey: result.SiteKey,
+			SiteKey:               result.SiteKey,
+			LiquidityCheckEnabled: result.LiquidityCheckEnabled,
 			Pegin: pkg.ProviderDetail{
 				Fee:                   result.Pegin.Fee.Uint64(),
 				MinTransactionValue:   result.Pegin.MinTransactionValue.Uint64(),

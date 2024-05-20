@@ -13,9 +13,10 @@ type ProviderDetail struct {
 }
 
 type ProviderDetailResponse struct {
-	SiteKey string         `json:"siteKey" required:""`
-	Pegin   ProviderDetail `json:"pegin" required:""`
-	Pegout  ProviderDetail `json:"pegout" required:""`
+	SiteKey               string         `json:"siteKey" required:""`
+	LiquidityCheckEnabled bool           `json:"liquidityCheckEnabled" required:""`
+	Pegin                 ProviderDetail `json:"pegin" required:""`
+	Pegout                ProviderDetail `json:"pegout" required:""`
 }
 
 type LiquidityProvider struct {
