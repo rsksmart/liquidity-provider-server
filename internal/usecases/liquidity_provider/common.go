@@ -19,7 +19,10 @@ const (
 	credentialSaltSize = 32
 )
 
-var BadLoginError = errors.New("incorrect username or credentials")
+var (
+	BadLoginError                 = errors.New("incorrect username or credentials")
+	LiquidityCheckNotEnabledError = errors.New("public liquidity check is not enabled")
+)
 
 func ValidateConfiguredProvider(
 	provider liquidity_provider.LiquidityProvider,

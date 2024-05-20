@@ -25,7 +25,7 @@ func NewChangeStatusHandler(useCase *liquidity_provider.ChangeStatusUseCase) htt
 
 		err = useCase.Run(*request.Status)
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}

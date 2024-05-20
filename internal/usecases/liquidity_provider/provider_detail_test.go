@@ -21,7 +21,8 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 	result, err := useCase.Run(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, liquidity_provider.FullLiquidityProvider{
-		SiteKey: captchaKey,
+		SiteKey:               captchaKey,
+		LiquidityCheckEnabled: true,
 		Pegin: lp.LiquidityProviderDetail{
 			Fee:                   entities.NewWei(100),
 			MinTransactionValue:   entities.NewWei(1000),
@@ -102,7 +103,8 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 	}).Once()
 	provider.On("GeneralConfiguration", test.AnyCtx).
 		Return(lp.GeneralConfiguration{
-			RskConfirmations: map[int]uint16{1: 20},
-			BtcConfirmations: map[int]uint16{1: 10},
+			PublicLiquidityCheck: true,
+			RskConfirmations:     map[int]uint16{1: 20},
+			BtcConfirmations:     map[int]uint16{1: 10},
 		}).Once()
 }

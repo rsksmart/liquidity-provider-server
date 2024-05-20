@@ -34,8 +34,9 @@ type PegoutConfiguration struct {
 }
 
 type GeneralConfiguration struct {
-	RskConfirmations ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
-	BtcConfirmations ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
+	RskConfirmations     ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
+	BtcConfirmations     ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
+	PublicLiquidityCheck bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
 }
 
 type HashedCredentials struct {

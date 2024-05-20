@@ -55,7 +55,7 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 	}{
 		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daae424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}},
 		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "773d5aa1c01fa385f287bd499dcacc9e6e59025416b9f6b9b339dc47d9f2fd43"}},
-		{signed: entities.Signed[any]{Value: generalConfig, Hash: "3eecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757"}},
+		{signed: entities.Signed[any]{Value: generalConfig, Hash: "77a1d9b2426955a2dbeb4e6b561607fbd8bd044de7a60c1ed77126e72ea3cb18"}},
 		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daab424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}, err: entities.IntegrityError},
 		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "3b3e7b075eb60b8c249f44a117f406c64992bafda1273f540277448abd14077e"}, err: entities.IntegrityError},
 		{signed: entities.Signed[any]{Value: generalConfig, Hash: "3fecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757"}, err: entities.IntegrityError},

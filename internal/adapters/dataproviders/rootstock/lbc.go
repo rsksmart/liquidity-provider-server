@@ -264,7 +264,7 @@ func (lbc *liquidityBridgeContractImpl) AddCollateral(amount *entities.Wei) erro
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %w", err)
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("error adding pegin collateral")
+		return errors.New("error adding pegin collateral")
 	}
 	return nil
 }
@@ -286,7 +286,7 @@ func (lbc *liquidityBridgeContractImpl) AddPegoutCollateral(amount *entities.Wei
 	if err != nil {
 		return fmt.Errorf("error adding collateral: %w", err)
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("error adding pegout collateral")
+		return errors.New("error adding pegout collateral")
 	}
 	return nil
 }
@@ -307,7 +307,7 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 	if err != nil {
 		return fmt.Errorf("withdraw pegin collateral error: %w", err)
 	} else if receipt == nil || receipt.Status == 0 {
-		return fmt.Errorf("withdraw pegin collateral error")
+		return errors.New("withdraw pegin collateral error")
 	}
 	return nil
 }

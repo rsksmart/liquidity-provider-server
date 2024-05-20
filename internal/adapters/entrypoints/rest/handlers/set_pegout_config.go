@@ -25,7 +25,7 @@ func NewSetPegoutConfigHandler(useCase *liquidity_provider.SetPegoutConfigUseCas
 
 		err = useCase.Run(req.Context(), *request.Configuration)
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		} else {
