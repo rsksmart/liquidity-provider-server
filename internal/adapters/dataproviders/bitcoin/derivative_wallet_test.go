@@ -360,7 +360,7 @@ func testEstimateFees(t *testing.T, rskAccount *account.RskAccount, addressInfo 
 	floatAmount, _ := amount.ToRbtc().Float64()
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
-	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeConservative).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
 	client.On("WalletCreateFundedPsbt",
 		([]btcjson.PsbtInput)(nil),
 		[]btcjson.PsbtOutput{
@@ -389,7 +389,7 @@ func testEstimateFeesExtra(t *testing.T, rskAccount *account.RskAccount, address
 	amount := entities.NewWei(5000000000000000)
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
-	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeConservative).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 2}, nil).Once()
+	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 3}, nil).Once()
 	client.On("WalletCreateFundedPsbt",
 		mock.Anything,
 		mock.Anything,
@@ -443,7 +443,7 @@ func testSendWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressI
 		},
 		LockTime: 0,
 	}
-	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeConservative).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 2}, nil).Once()
 	client.On("FundRawTransaction", tx, btcjson.FundRawTransactionOpts{
 		ChangeAddress:   btcjson.String(btcAddress),
 		ChangePosition:  btcjson.Int(changePosition),

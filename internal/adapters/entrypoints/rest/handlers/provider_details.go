@@ -16,12 +16,13 @@ func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) htt
 	return func(w http.ResponseWriter, req *http.Request) {
 		result, err := useCase.Run(req.Context())
 		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
 		response := pkg.ProviderDetailResponse{
-			SiteKey: result.SiteKey,
+			SiteKey:               result.SiteKey,
+			LiquidityCheckEnabled: result.LiquidityCheckEnabled,
 			Pegin: pkg.ProviderDetail{
 				Fee:                   result.Pegin.Fee.Uint64(),
 				MinTransactionValue:   result.Pegin.MinTransactionValue.Uint64(),

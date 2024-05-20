@@ -54,7 +54,7 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("unknown error", rest.DetailsFromError(err), false)
+			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}

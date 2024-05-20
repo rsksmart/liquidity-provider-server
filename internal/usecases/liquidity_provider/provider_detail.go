@@ -33,9 +33,10 @@ func NewGetDetailUseCase(
 }
 
 type FullLiquidityProvider struct {
-	SiteKey string                                     `json:"siteKey"`
-	Pegin   liquidity_provider.LiquidityProviderDetail `json:"pegin"`
-	Pegout  liquidity_provider.LiquidityProviderDetail `json:"pegout"`
+	SiteKey               string                                     `json:"siteKey"`
+	LiquidityCheckEnabled bool                                       `json:"liquidityCheckEnabled"`
+	Pegin                 liquidity_provider.LiquidityProviderDetail `json:"pegin"`
+	Pegout                liquidity_provider.LiquidityProviderDetail `json:"pegout"`
 }
 
 func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider, error) {
@@ -44,7 +45,8 @@ func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider
 	peginConfig := useCase.peginProvider.PeginConfiguration(ctx)
 	pegoutConfig := useCase.pegoutProvider.PegoutConfiguration(ctx)
 	detail := FullLiquidityProvider{
-		SiteKey: useCase.captchaSiteKey,
+		SiteKey:               useCase.captchaSiteKey,
+		LiquidityCheckEnabled: generalConfiguration.PublicLiquidityCheck,
 		Pegin: liquidity_provider.LiquidityProviderDetail{
 			Fee:                   peginConfig.CallFee,
 			MinTransactionValue:   peginConfig.MinValue,
