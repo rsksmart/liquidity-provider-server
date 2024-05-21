@@ -926,7 +926,7 @@ paths:
                 $ref: '#/components/schemas/PegoutQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPegoutStatus
-  /provider/changeStatus:
+  /providers/changeStatus:
     post:
       description: ' Changes the status of the provider'
       requestBody:
@@ -939,13 +939,6 @@ paths:
         "204":
           description: ""
       summary: Change Provider Status
-  /provider/resignation:
-    post:
-      description: ' Provider stops being a liquidity provider'
-      responses:
-        "204":
-          description: ""
-      summary: Provider resignation
   /providers/details:
     get:
       description: ' Returns the details of the provider that manages this instance
@@ -969,6 +962,13 @@ paths:
                 $ref: '#/components/schemas/AvailableLiquidityDTO'
           description: ""
       summary: Fetch Available Liquidity
+  /providers/resignation:
+    post:
+      description: ' Provider stops being a liquidity provider'
+      responses:
+        "204":
+          description: ""
+      summary: Provider resignation
   /providers/withdrawCollateral:
     post:
       description: ' Withdraw PegIn collateral of a resigned LP'

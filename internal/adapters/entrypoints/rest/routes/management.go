@@ -87,7 +87,7 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
 		},
 		{
-			Path:    "/management",
+			Path:    UI_PATH,
 			Method:  http.MethodGet,
 			Handler: handlers.NewManagementInterfaceHandler(store, useCaseRegistry.GetManagementUiDataUseCase()),
 		},
