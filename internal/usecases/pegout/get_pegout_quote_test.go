@@ -333,7 +333,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 func getPegoutConfiguration() lpEntity.PegoutConfiguration {
 	return lpEntity.PegoutConfiguration{
 		TimeForDeposit: 60000,
-		CallTime:       600,
+		ExpireTime:     600,
 		PenaltyFee:     entities.NewWei(20),
 		CallFee:        entities.NewWei(200),
 		MaxValue:       entities.NewUWei(10000000000000000000),

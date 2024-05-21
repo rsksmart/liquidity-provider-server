@@ -33,7 +33,7 @@ func TestDefaultPegoutConfiguration(t *testing.T) {
 	config := liquidity_provider.DefaultPegoutConfiguration()
 	assert.Equal(t, liquidity_provider.PegoutConfiguration{
 		TimeForDeposit:       3600,
-		CallTime:             7200,
+		ExpireTime:           10800,
 		PenaltyFee:           entities.NewWei(10000000000000),
 		CallFee:              entities.NewWei(100000000000000),
 		MaxValue:             entities.NewWei(100000000000000000),
