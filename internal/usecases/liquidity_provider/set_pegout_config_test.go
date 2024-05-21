@@ -16,7 +16,7 @@ import (
 var pegoutConfigMock = entities.Signed[lp.PegoutConfiguration]{
 	Value: lp.PegoutConfiguration{
 		TimeForDeposit: 1,
-		CallTime:       2,
+		ExpireTime:     2,
 		PenaltyFee:     entities.NewWei(3),
 		CallFee:        entities.NewWei(4),
 		MaxValue:       entities.NewWei(5),

@@ -184,7 +184,7 @@ func (s *IntegrationTestSuite) configureRegtestLimits() error {
 		Body: pkg.PegoutConfigurationRequest{
 			Configuration: &liquidity_provider.PegoutConfiguration{
 				TimeForDeposit: 3600,
-				CallTime:       7200,
+				ExpireTime:     7200,
 				PenaltyFee:     entities.NewUWei(1000000000000000),
 				CallFee:        entities.NewUWei(10000000000000000),
 				MaxValue:       entities.NewUWei(10000000000000000000),
