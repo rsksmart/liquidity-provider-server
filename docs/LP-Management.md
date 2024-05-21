@@ -14,6 +14,11 @@ setting up the environment where the LPS is going to be deployed.
   - [FireBlocks wallet](#run-lps-using-fireblocks-service-integration)
 - [Secrets management](#secrets-management)
 
+### Reading as liquidity provider
+If you are a liquidity provider, and you're not interested in the technical details then the following sections are the ones of your main interest:
+- [Management UI Access](#management-ui-access)
+- [Wallet Management](#wallet-management)
+
 ## Context
 In the Flyover Protocol, there are two main actors, the regular user (user), who is party interested in executing Peg-In/Peg-Out operations and the Liquidity 
 Provider (LP), who puts liquidity to speed up the operation for the user in exchange for a fee as a reward. In order to do this, the user and the LP need to 
@@ -77,7 +82,7 @@ whether it should be treated as public or secured as a private endpoint.
 
 |         **Endpoint**          | **Method** | **Visibility** |                   **Description**                   |
 |:-----------------------------:|:----------:|:--------------:|:---------------------------------------------------:|
-|            /health            |    GET     |      ANY       |                     Healthcheck                     |
+|            /health            |    GET     |      ANY       |                    Health check                     |
 |         /getProviders         |    GET     |     PUBLIC     |             Get list of registered LPs              |
 |      /providers/details       |    GET     |     PUBLIC     |      Get details of the LP that owns this LPS       |
 |        /pegin/getQuote        |    POST    |     PUBLIC     |                Get pegin quote terms                |
@@ -123,9 +128,9 @@ Regarding the LP, through the Management UI the LPS allows the LP to perform all
 itself, the LPS informs both RSK and BTC addresses that the LP should transfer to in order to add liquidity to the wallets.
 
 If the LP wants to perform any additional operations **non-related to Flyover protocol** in the RSK network, then he needs to get the keystore file and password and
-import the account to a wallet of its choice such as Metamask (in the case of Metamask by following [these steps](https://support.metamask.io/managing-my-wallet/accounts-and-addresses/how-to-import-an-account/)).
+import the account to a wallet of its choice such as MetaMask (in the case of MetaMask by following [these steps](https://support.metamask.io/managing-my-wallet/accounts-and-addresses/how-to-import-an-account/)).
 In the case that the LP wants to perform any additional operations **non-related to Flyover protocol** in the BTC network then he needs to export the private key of
-the account (in the case of Metamask by following [these steps](https://support.metamask.io/managing-my-wallet/secret-recovery-phrase-and-private-keys/how-to-export-an-accounts-private-key/))
+the account (in the case of MetaMask by following [these steps](https://support.metamask.io/managing-my-wallet/secret-recovery-phrase-and-private-keys/how-to-export-an-accounts-private-key/))
 and convert it to wallet import format (WIF) and then import it to any wallet of its choice as explained in [Rootstock developer portal](https://dev.rootstock.io/rsk/rbtc/conversion/networks/).
 
 ### Run LPS using FireBlocks service integration
