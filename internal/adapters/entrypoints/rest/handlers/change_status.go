@@ -12,7 +12,7 @@ import (
 // @Description Changes the status of the provider
 // @Param ChangeStatusRequest body pkg.ChangeStatusRequest true "Change Provider Status Request"
 // @Success 204 object
-// @Route /provider/changeStatus [post]
+// @Route /providers/changeStatus [post]
 func NewChangeStatusHandler(useCase *liquidity_provider.ChangeStatusUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
