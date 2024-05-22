@@ -582,7 +582,7 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 	return &entities.Signed[liquidity_provider.PegoutConfiguration]{
 		Value: liquidity_provider.PegoutConfiguration{
 			TimeForDeposit:       3655,
-			CallTime:             7200,
+			ExpireTime:           7201,
 			PenaltyFee:           entities.NewWei(1000000000000000),
 			CallFee:              entities.NewWei(10000000000000000),
 			MaxValue:             entities.NewBigWei(maxBigInt),
@@ -590,7 +590,7 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 			ExpireBlocks:         500,
 			BridgeTransactionMin: entities.NewWei(1500000000000000000),
 		},
-		Signature: "9107bbb5addba09564b16d555279dbe226b6afbc3f026d64b3acbe9d0e7893f65c764592d23de3841454f3561d74c40f31d1caee97962da21a5f930914aee75400",
-		Hash:      "7d0b4dad0f4c5b1f0bc2481f182aae00f93daafd867df0b2036778638babb381",
+		Signature: "e3cd6e7dbf9708158ad03fb51ad493310bb93c4a5d56f6192531bb746f42251301f178ffd2173552181a729c2bb23ab98c9f3786bb7075f416bfe528f3a77d1601",
+		Hash:      "b79d03455e8407660c123700e24af0ea92f6ca83ccb8918e8c155295fc9ac48d",
 	}
 }

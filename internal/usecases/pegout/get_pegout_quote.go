@@ -178,7 +178,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		DepositConfirmations:  confirmationsForUserTx,
 		TransferConfirmations: confirmationsForLpTx,
 		TransferTime:          configuration.TimeForDeposit,
-		ExpireDate:            now + configuration.TimeForDeposit,
+		ExpireDate:            now + configuration.ExpireTime,
 		ExpireBlock:           uint32(blockNumber + configuration.ExpireBlocks),
 		GasFee:                fees.GasFee,
 		ProductFeeAmount:      fees.ProductFeeAmount,

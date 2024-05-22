@@ -24,7 +24,7 @@ type PeginConfiguration struct {
 
 type PegoutConfiguration struct {
 	TimeForDeposit       uint32        `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
-	CallTime             uint32        `json:"callTime" bson:"call_time" validate:"required"`
+	ExpireTime           uint32        `json:"expireTime" bson:"expire_time" validate:"required"`
 	PenaltyFee           *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
 	CallFee              *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
 	MaxValue             *entities.Wei `json:"maxValue" bson:"max_value" validate:"required"`

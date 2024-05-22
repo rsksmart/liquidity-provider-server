@@ -94,7 +94,7 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 	}).Once()
 	provider.On("PegoutConfiguration", test.AnyCtx).Return(lp.PegoutConfiguration{
 		TimeForDeposit: lp.PegoutTimeForDeposit,
-		CallTime:       lp.PegoutCallTime,
+		ExpireTime:     lp.PegoutExpireTime,
 		PenaltyFee:     entities.NewWei(lp.PegoutPenaltyFee),
 		CallFee:        entities.NewWei(200),
 		MaxValue:       entities.NewWei(20000),
