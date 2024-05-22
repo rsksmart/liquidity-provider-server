@@ -25,15 +25,6 @@ func NewSessionMiddlewares(env environment.ManagementEnv, store sessions.Store) 
 	}
 }
 
-// TODO remove after injecting token inside login template
-func NewDummyCsrfTokenHandler(env environment.ManagementEnv) http.Handler {
-	csrfStep := csrfMiddleware(env)
-	return csrfStep(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("X-Csrf-Token", csrf.Token(req))
-		w.WriteHeader(http.StatusOK)
-	}))
-}
-
 func sessionMiddleware(store sessions.Store) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
