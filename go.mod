@@ -1,6 +1,6 @@
 module github.com/rsksmart/liquidity-provider-server
 
-go 1.21.6
+go 1.21.9
 
 require (
 	github.com/awnumar/memguard v0.22.5
