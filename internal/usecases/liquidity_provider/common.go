@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"slices"
+	"strings"
 )
 
 const (
@@ -39,7 +40,7 @@ func ValidateConfiguredProvider(
 		providers,
 		liquidity_provider.RegisteredLiquidityProvider{Address: provider.RskAddress()},
 		func(a, b liquidity_provider.RegisteredLiquidityProvider) int {
-			return cmp.Compare(a.Address, b.Address)
+			return cmp.Compare(strings.ToLower(a.Address), strings.ToLower(b.Address))
 		},
 	)
 	if !found {
