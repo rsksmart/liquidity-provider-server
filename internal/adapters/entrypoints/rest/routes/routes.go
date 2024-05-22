@@ -21,15 +21,6 @@ type Endpoint struct {
 func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
 	router.Use(middlewares.NewCorsMiddleware())
 
-	// TODO this handler is temporary, it is only to provide the CSRF token to the client, in further tasks, this
-	// token should be provided inside the login template
-	// ---
-	router.Path("/csrf").Methods(http.MethodGet).
-		Handler(
-			middlewares.NewDummyCsrfTokenHandler(env.Management),
-		)
-	// ---
-
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {
 		log.Fatal("Error registering routes: ", err)

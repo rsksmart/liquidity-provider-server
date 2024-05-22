@@ -13,7 +13,7 @@ const (
 
 const (
 	PegoutTimeForDeposit       = 3600
-	PegoutCallTime             = 7200
+	PegoutExpireTime           = 10800
 	PegoutPenaltyFee           = 10000000000000
 	PegoutCallFee              = 100000000000000
 	PegoutMinValue             = 5000000000000000
@@ -56,7 +56,7 @@ func DefaultPeginConfiguration() PeginConfiguration {
 func DefaultPegoutConfiguration() PegoutConfiguration {
 	return PegoutConfiguration{
 		TimeForDeposit:       PegoutTimeForDeposit,
-		CallTime:             PegoutCallTime,
+		ExpireTime:           PegoutExpireTime,
 		PenaltyFee:           entities.NewWei(PegoutPenaltyFee),
 		CallFee:              entities.NewWei(PegoutCallFee),
 		MaxValue:             entities.NewWei(PegoutMaxValue),
