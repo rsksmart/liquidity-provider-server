@@ -877,12 +877,11 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	var gasLimit uint64 = 500
-	lbcMock := &mocks.LbcAdapterMock{}
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
 	refundParams := blockchain.RefundPegoutParams{
 		QuoteHash:          [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
 		BtcRawTx:           []byte{1, 2, 3},
@@ -895,6 +894,14 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		return opts.From.String() == parsedAddress.String() && opts.GasLimit == gasLimit
 	}
 	t.Run("Success", func(t *testing.T) {
+		lbcMock := &mocks.LbcAdapterMock{}
+		callerMock := &mocks.LbcCallerBindingMock{}
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbcMock.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
+			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		).Return(nil).Once()
 		tx := prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -904,19 +911,49 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tx.Hash().String(), result)
 		lbcMock.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
 	})
 	t.Run("Error handling (waiting for bridge)", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, true)
-		lbcMock.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
+		lbcMock := &mocks.LbcAdapterMock{}
+		callerMock := &mocks.LbcCallerBindingMock{}
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbcMock.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
 			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(tx, errors.New("LBC049")).Once()
+		).Return(errors.New("LBC049")).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)
+		lbcMock.AssertNotCalled(t, "RefundPegOut")
+		callerMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (Call error)", func(t *testing.T) {
+		lbcMock := &mocks.LbcAdapterMock{}
+		callerMock := &mocks.LbcCallerBindingMock{}
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbcMock.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
+			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		).Return(assert.AnError).Once()
+		result, err := lbc.RefundPegout(txConfig, refundParams)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+		lbcMock.AssertNotCalled(t, "RefundPegOut")
+		callerMock.AssertExpectations(t)
 	})
 	t.Run("Error handling (Transaction send error)", func(t *testing.T) {
+		lbcMock := &mocks.LbcAdapterMock{}
+		callerMock := &mocks.LbcCallerBindingMock{}
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbcMock.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
+			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		).Return(nil).Once()
 		_ = prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -926,8 +963,17 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		require.ErrorContains(t, err, "refund pegout error")
 		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
 	})
 	t.Run("Error handling (Transaction reverted)", func(t *testing.T) {
+		lbcMock := &mocks.LbcAdapterMock{}
+		callerMock := &mocks.LbcCallerBindingMock{}
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbcMock.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
+			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		).Return(nil).Once()
 		tx := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -937,6 +983,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		require.ErrorContains(t, err, "refund pegout error: transaction reverted")
 		assert.Equal(t, tx.Hash().String(), result)
 		lbcMock.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
 	})
 }
 
@@ -1261,6 +1308,6 @@ func prepareTxMocks(
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
 	signerMock.On("Sign", mock.Anything, mock.Anything).Return(tx, nil).Once()
-	signerMock.On("Address").Return(parsedAddress).Once()
+	signerMock.On("Address").Return(parsedAddress)
 	return tx
 }
