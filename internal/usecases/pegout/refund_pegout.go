@@ -71,7 +71,7 @@ func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retai
 	if !recoverable {
 		retainedQuote.State = quote.PegoutStateRefundPegOutFailed
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err)
+			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
 		}
 		useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
@@ -142,9 +142,13 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	})
 
 	if updateError = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
-		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, errors.Join(updateError, err), usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
+		err = errors.Join(err, updateError)
 	}
-	return retainedQuote, err
+	if err != nil {
+		err = errors.Join(err, usecases.NonRecoverableError)
+		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
+	}
+	return retainedQuote, nil
 }
 
 func (useCase *RefundPegoutUseCase) validateBtcTransaction(

@@ -408,22 +408,38 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 }
 
 func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
+	var res []any
+	var err error
+	lbcCaller := lbc.contract.Caller()
+	log.Infof("Executing RefundPegOut with params: %s", params.String())
+	err = lbcCaller.Call(
+		&bind.CallOpts{From: lbc.signer.Address()},
+		&res, "refundPegOut",
+		params.QuoteHash,
+		params.BtcRawTx,
+		params.BtcBlockHeaderHash,
+		params.MerkleBranchPath,
+		params.MerkleBranchHashes,
+	)
+	if err != nil && strings.Contains(err.Error(), "LBC049") {
+		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
+		return "", blockchain.WaitingForBridgeError
+	} else if err != nil {
+		return "", err
+	}
+
 	opts := &bind.TransactOpts{
 		From:     lbc.signer.Address(),
 		Signer:   lbc.signer.Sign,
 		GasLimit: *txConfig.GasLimit,
 	}
 
-	log.Infof("Executing RefundPegOut with params: %s\n", params.String())
 	receipt, err := awaitTx(lbc.client, "RefundPegOut", func() (*geth.Transaction, error) {
 		return lbc.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
 			params.BtcBlockHeaderHash, params.MerkleBranchPath, params.MerkleBranchHashes)
 	})
 
-	if err != nil && strings.Contains(err.Error(), "LBC049") {
-		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
-		return "", blockchain.WaitingForBridgeError
-	} else if err != nil {
+	if err != nil {
 		return "", fmt.Errorf("refund pegout error: %w", err)
 	} else if receipt == nil {
 		return "", errors.New("refund pegout error: incomplete receipt")
