@@ -56,6 +56,7 @@ type UseCaseRegistry struct {
 	peginStatusUseCase            *pegin.StatusUseCase
 	pegoutStatusUseCase           *pegout.StatusUseCase
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
+	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 }
 
 // NewUseCaseRegistry
@@ -226,6 +227,7 @@ func NewUseCaseRegistry(
 		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
 		pegoutStatusUseCase:       pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
+		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 	}
 }
 

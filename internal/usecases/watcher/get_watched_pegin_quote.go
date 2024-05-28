@@ -15,13 +15,24 @@ func NewGetWatchedPeginQuoteUseCase(peginRepository quote.PeginQuoteRepository) 
 	return &GetWatchedPeginQuoteUseCase{peginRepository: peginRepository}
 }
 
-func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, state quote.PeginState) ([]quote.WatchedPeginQuote, error) {
-	switch state {
-	case quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserSucceeded:
-		return useCase.getWatchedQuotes(ctx, state)
-	default:
-		return nil, fmt.Errorf("GetWatchedPeginQuoteUseCase: illegal state %s", state)
+func (useCase *GetWatchedPeginQuoteUseCase) Run(ctx context.Context, states ...quote.PeginState) ([]quote.WatchedPeginQuote, error) {
+	result := make([]quote.WatchedPeginQuote, 0)
+	for _, state := range states {
+		switch state {
+		case
+			quote.PeginStateWaitingForDeposit,
+			quote.PeginStateCallForUserSucceeded,
+			quote.PeginStateWaitingForDepositConfirmations:
+			if watchedQuotes, err := useCase.getWatchedQuotes(ctx, state); err == nil {
+				result = append(result, watchedQuotes...)
+			} else {
+				return nil, usecases.WrapUseCaseError(usecases.GetWatchedPeginQuoteId, err)
+			}
+		default:
+			return nil, fmt.Errorf("GetWatchedPeginQuoteUseCase: illegal state %s", state)
+		}
 	}
+	return result, nil
 }
 
 func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context, state quote.PeginState) ([]quote.WatchedPeginQuote, error) {

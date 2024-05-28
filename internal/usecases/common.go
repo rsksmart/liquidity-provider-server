@@ -56,6 +56,7 @@ const (
 	PeginQuoteStatusId         UseCaseId = "PeginQuoteStatus"
 	PegoutQuoteStatusId        UseCaseId = "PegoutQuoteStatus"
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
+	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 )
 
 var (
@@ -73,6 +74,7 @@ var (
 	InsufficientAmountError     = errors.New("insufficient amount")
 	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
 	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
+	IllegalQuoteStateError      = errors.New("illegal quote state")
 )
 
 type ErrorArgs map[string]string

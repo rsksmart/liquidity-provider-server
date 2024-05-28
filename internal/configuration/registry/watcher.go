@@ -29,6 +29,7 @@ func NewWatcherRegistry(
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			useCaseRegistry.callForUserUseCase,
 			useCaseRegistry.getWatchedPeginQuoteUseCase,
+			useCaseRegistry.updatePeginDepositUseCase,
 			useCaseRegistry.expiredPeginQuoteUseCase,
 			btcRegistry.MonitoringWallet,
 			messaging.Rpc,
