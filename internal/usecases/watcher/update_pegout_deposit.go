@@ -20,7 +20,7 @@ func (useCase *UpdatePegoutQuoteDepositUseCase) Run(ctx context.Context, watched
 	if !deposit.IsValidForQuote(watchedQuote.PegoutQuote) {
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.UpdatePegoutDepositId, errors.New("deposit not valid for quote"))
 	} else if watchedQuote.RetainedQuote.State != quote.PegoutStateWaitingForDeposit {
-		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.UpdatePegoutDepositId, errors.New("illegal quote state"))
+		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.UpdatePegoutDepositId, usecases.IllegalQuoteStateError)
 	}
 	watchedQuote.RetainedQuote.State = quote.PegoutStateWaitingForDepositConfirmations
 	watchedQuote.RetainedQuote.UserRskTxHash = deposit.TxHash

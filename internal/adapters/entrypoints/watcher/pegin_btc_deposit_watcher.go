@@ -18,6 +18,7 @@ import (
 type PeginDepositAddressWatcher struct {
 	quotes                      map[string]quote.WatchedPeginQuote
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
+	updatePeginDepositUseCase   *w.UpdatePeginDepositUseCase
 	callForUserUseCase          *pegin.CallForUserUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
@@ -33,6 +34,7 @@ const callForUserErrorTemplate = "Error executing call for user on quote %s: %v"
 func NewPeginDepositAddressWatcher(
 	callForUserUseCase *pegin.CallForUserUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
+	updatePeginDepositUseCase *w.UpdatePeginDepositUseCase,
 	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,
 	btcWallet blockchain.BitcoinWallet,
 	rpc blockchain.Rpc,
@@ -43,6 +45,7 @@ func NewPeginDepositAddressWatcher(
 	return &PeginDepositAddressWatcher{
 		quotes:                      quotes,
 		callForUserUseCase:          callForUserUseCase,
+		updatePeginDepositUseCase:   updatePeginDepositUseCase,
 		getWatchedPeginQuoteUseCase: getWatchedPeginQuoteUseCase,
 		expiredUseCase:              expiredUseCase,
 		btcWallet:                   btcWallet,
@@ -57,7 +60,7 @@ func (watcher *PeginDepositAddressWatcher) Prepare(ctx context.Context) error {
 	var depositAddress string
 	var watchedQuotes []quote.WatchedPeginQuote
 	watcher.currentBlock = big.NewInt(0)
-	watchedQuotes, err = watcher.getWatchedPeginQuoteUseCase.Run(ctx, quote.PeginStateWaitingForDeposit)
+	watchedQuotes, err = watcher.getWatchedPeginQuoteUseCase.Run(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
 	if err != nil {
 		return err
 	}
@@ -79,7 +82,7 @@ watcherLoop:
 		select {
 		case <-watcher.ticker.C:
 			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
-				watcher.checkQuotes()
+				watcher.checkQuotes(context.Background())
 				watcher.currentBlock = height
 			} else if err != nil {
 				log.Error(peginBtcDepositWatcherLog("error getting Bitcoin chain height: %v", err))
@@ -123,28 +126,32 @@ func (watcher *PeginDepositAddressWatcher) handleAcceptedPeginQuote(event entiti
 	watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
 }
 
-func (watcher *PeginDepositAddressWatcher) checkQuotes() {
+func (watcher *PeginDepositAddressWatcher) checkQuotes(ctx context.Context) {
 	for _, watchedQuote := range watcher.quotes {
-		watcher.handleQuote(watchedQuote)
+		watcher.handleQuote(ctx, watchedQuote)
 	}
 }
 
-func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote quote.WatchedPeginQuote) {
+func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) {
+	var err error
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
-	depositAddress := watchedQuote.RetainedQuote.DepositAddress
-	txs, err := watcher.btcWallet.GetTransactions(depositAddress)
-	if err != nil {
-		log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
+
+	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
+		if err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
+			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
+		}
 		return
 	}
-	for _, tx := range txs {
-		if validatePeginQuote(watchedQuote, tx) {
-			watcher.callForUser(watchedQuote, tx)
-			return
+
+	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDepositConfirmations {
+		if err = watcher.handleDepositedQuote(ctx, watchedQuote); err != nil {
+			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 		}
+		return
 	}
+
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
-		if err = watcher.expiredUseCase.Run(context.Background(), watchedQuote.RetainedQuote); err != nil {
+		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
 			log.Error(peginBtcDepositWatcherLog("Error updating expired quote (%s): %v", quoteHash, err))
 		} else {
 			delete(watcher.quotes, quoteHash)
@@ -152,10 +159,50 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(watchedQuote quote.Watche
 	}
 }
 
-func (watcher *PeginDepositAddressWatcher) callForUser(watchedQuote quote.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) {
+func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
+	var err error
+	var block blockchain.BitcoinBlockInformation
+	var txs []blockchain.BitcoinTransactionInformation
+	var updatedQuote quote.WatchedPeginQuote
+
+	depositAddress := watchedQuote.RetainedQuote.DepositAddress
+	if txs, err = watcher.btcWallet.GetTransactions(depositAddress); err != nil {
+		return err
+	}
+
+	for _, tx := range txs {
+		if block, err = watcher.rpc.Btc.GetTransactionBlockInfo(tx.Hash); err != nil {
+			return err
+		}
+		onTime := watchedQuote.PeginQuote.ExpireTime().After(block.Time)
+		correctAmount := tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
+		if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && onTime && correctAmount {
+			if updatedQuote, err = watcher.updatePeginDepositUseCase.Run(ctx, watchedQuote, block, tx); err != nil {
+				return err
+			} else {
+				watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = updatedQuote
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+func (watcher *PeginDepositAddressWatcher) handleDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
+	tx, err := watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash)
+	if err != nil {
+		return err
+	}
+	if tx.Confirmations >= uint64(watchedQuote.PeginQuote.Confirmations) {
+		watcher.callForUser(ctx, watchedQuote)
+	}
+	return nil
+}
+
+func (watcher *PeginDepositAddressWatcher) callForUser(ctx context.Context, watchedQuote quote.WatchedPeginQuote) {
 	var err error
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
-	if err = watcher.callForUserUseCase.Run(context.Background(), tx.Hash, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
+	if err = watcher.callForUserUseCase.Run(ctx, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, quoteHash)
 		log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 	} else if err != nil {
@@ -163,12 +210,6 @@ func (watcher *PeginDepositAddressWatcher) callForUser(watchedQuote quote.Watche
 	} else {
 		delete(watcher.quotes, quoteHash)
 	}
-}
-
-func validatePeginQuote(watchedQuote quote.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
-	return tx.Confirmations >= uint64(watchedQuote.PeginQuote.Confirmations) &&
-		watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit &&
-		tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
 }
 
 func peginBtcDepositWatcherLog(msg string, args ...any) string {
