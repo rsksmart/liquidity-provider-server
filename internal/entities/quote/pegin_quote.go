@@ -15,12 +15,13 @@ const (
 type PeginState string
 
 const (
-	PeginStateWaitingForDeposit      PeginState = "WaitingForDeposit"
-	PeginStateTimeForDepositElapsed  PeginState = "TimeForDepositElapsed"
-	PeginStateCallForUserSucceeded   PeginState = "CallForUserSucceeded"
-	PeginStateCallForUserFailed      PeginState = "CallForUserFailed"
-	PeginStateRegisterPegInSucceeded PeginState = "RegisterPegInSucceeded"
-	PeginStateRegisterPegInFailed    PeginState = "RegisterPegInFailed"
+	PeginStateWaitingForDeposit              PeginState = "WaitingForDeposit"
+	PeginStateWaitingForDepositConfirmations PeginState = "WaitingForDepositConfirmations"
+	PeginStateTimeForDepositElapsed          PeginState = "TimeForDepositElapsed"
+	PeginStateCallForUserSucceeded           PeginState = "CallForUserSucceeded"
+	PeginStateCallForUserFailed              PeginState = "CallForUserFailed"
+	PeginStateRegisterPegInSucceeded         PeginState = "RegisterPegInSucceeded"
+	PeginStateRegisterPegInFailed            PeginState = "RegisterPegInFailed"
 )
 
 type PeginQuoteRepository interface {

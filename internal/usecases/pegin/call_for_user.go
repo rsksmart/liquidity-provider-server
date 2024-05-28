@@ -40,12 +40,12 @@ func NewCallForUserUseCase(
 	}
 }
 
-func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, retainedQuote quote.RetainedPeginQuote) error {
+func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	var valueToSend *entities.Wei
 	var peginQuote *quote.PeginQuote
 	var err error
 
-	if retainedQuote.State != quote.PeginStateWaitingForDeposit {
+	if retainedQuote.State != quote.PeginStateWaitingForDepositConfirmations {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, err, true)
 	}
 
@@ -55,7 +55,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, usecases.QuoteNotFoundError, false)
 	}
 
-	if err = useCase.validateBitcoinTx(ctx, bitcoinTx, peginQuote, retainedQuote); err != nil {
+	if err = useCase.validateBitcoinTx(ctx, peginQuote, retainedQuote); err != nil {
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, bitcoinTx string, re
 		return err
 	}
 
-	retainedQuote, err = useCase.performCallForUser(bitcoinTx, valueToSend, peginQuote, retainedQuote)
+	retainedQuote, err = useCase.performCallForUser(valueToSend, peginQuote, retainedQuote)
 
 	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		err = errors.Join(err, updateError)
@@ -88,8 +88,9 @@ func (useCase *CallForUserUseCase) publishErrorEvent(
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.CallForUserId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
 		retainedQuote.State = quote.PeginStateCallForUserFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
+			wrappedError = errors.Join(wrappedError, err)
 		}
 		useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
@@ -130,7 +131,6 @@ func (useCase *CallForUserUseCase) calculateValueToSend(
 }
 
 func (useCase *CallForUserUseCase) performCallForUser(
-	bitcoinTx string,
 	valueToSend *entities.Wei,
 	peginQuote *quote.PeginQuote,
 	retainedQuote quote.RetainedPeginQuote,
@@ -147,7 +147,6 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	}
 
 	retainedQuote.CallForUserTxHash = callForUserTx
-	retainedQuote.UserBtcTxHash = bitcoinTx
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
@@ -160,7 +159,6 @@ func (useCase *CallForUserUseCase) performCallForUser(
 
 func (useCase *CallForUserUseCase) validateBitcoinTx(
 	ctx context.Context,
-	bitcoinTx string,
 	peginQuote *quote.PeginQuote,
 	retainedQuote quote.RetainedPeginQuote,
 ) error {
@@ -169,7 +167,7 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	var txConfirmations big.Int
 	var err error
 
-	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(bitcoinTx); err != nil {
+	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
 	}
 	txConfirmations.SetUint64(txInfo.Confirmations)
@@ -177,7 +175,7 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.NoEnoughConfirmationsError, true)
 	}
 
-	if txBlock, err = useCase.rpc.Btc.GetTransactionBlockInfo(bitcoinTx); err != nil {
+	if txBlock, err = useCase.rpc.Btc.GetTransactionBlockInfo(retainedQuote.UserBtcTxHash); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
 	} else if peginQuote.ExpireTime().Before(txBlock.Time) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, usecases.ExpiredQuoteError, false)
@@ -185,7 +183,6 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 
 	sentAmount := txInfo.AmountToAddress(retainedQuote.DepositAddress)
 	if sentAmount.Cmp(peginQuote.Total()) < 0 {
-		retainedQuote.UserBtcTxHash = bitcoinTx
 		return useCase.publishErrorEvent(
 			ctx,
 			retainedQuote,

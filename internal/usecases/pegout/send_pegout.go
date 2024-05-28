@@ -91,6 +91,7 @@ func (useCase *SendPegoutUseCase) publishErrorEvent(
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.SendPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
 		retainedQuote.State = quote.PegoutStateSendPegoutFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
 			wrappedError = errors.Join(wrappedError, err)
 		}
