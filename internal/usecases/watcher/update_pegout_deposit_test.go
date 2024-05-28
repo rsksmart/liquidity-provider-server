@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -153,7 +154,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 		quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
 		assert.Equal(t, quote.WatchedPegoutQuote{}, watchedPegoutQuote)
 		require.Error(t, err)
-		assert.True(t, strings.Contains(err.Error(), "illegal quote state"))
+		require.ErrorIs(t, err, usecases.IllegalQuoteStateError)
 	}
 }
 
