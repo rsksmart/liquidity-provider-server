@@ -5,7 +5,7 @@ as part of the Flyover protocol. This server performs all the necessary operatio
 Rootstock and Bitcoin networks.
 
 ## How to run
-To run the project locally you can use follow these steps:
+To run the project locally you can follow these steps:
 
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `cd docker-compose/local`
@@ -18,7 +18,7 @@ This will set up a local environment, please keep in mind that a productive set-
 For the unit tests you can run `make test` in the root of the repository and for the integration tests please [check this file](test/integration/Readme.md)
 
 ### Installing the project
-If you want to play with the code and made modifications to it then run the following commands (remember that you need to have Go installed with the version
+If you want to play with the code and make modifications to it then run the following commands (remember that you need to have Go installed with the version
 specified in the `go.mod` file):
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `make tools`

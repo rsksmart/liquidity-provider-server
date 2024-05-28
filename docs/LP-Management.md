@@ -23,7 +23,7 @@ If you are a liquidity provider, and you're not interested in the technical deta
 In the Flyover Protocol, there are two main actors, the regular user (user), who is party interested in executing Peg-In/Peg-Out operations and the Liquidity 
 Provider (LP), who puts liquidity to speed up the operation for the user in exchange for a fee as a reward. In order to do this, the user and the LP need to 
 agree on the terms of the service (a Peg-In/Peg-Out *Quote*). This implies that the different LPs may offer different quotes, so the user needs to be able to
-communicate with each one of the LPs to decide which one is going to use for the operation.
+interact with each LP to receive quote details and decide which one is going to use for the operation.
 
 The user interacts with the Flyover Protocol through the [Flyover SDK](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk). This 
 SDK fetches the list of the available LP from the liquidity bridge contract (LBC), this contract returns a list where each element has some information about
@@ -125,7 +125,7 @@ With this, the LPS would keep in memory the wallet and sign the Rootstock and Bi
 approach the knowledge of the private key is inside the organization running the LPS.
 
 Regarding the LP, through the Management UI the LPS allows the LP to perform all the necessary operations related to the protocol, and regarding the wallet
-itself, the LPS informs both RSK and BTC addresses that the LP should transfer to in order to add liquidity to the wallets.
+itself, the LPS informs both RSK and BTC addresses to which the LP should send funds in order to add liquidity to the wallets.
 
 If the LP wants to perform any additional operations **non-related to Flyover protocol** in the RSK network, then he needs to get the keystore file and password and
 import the account to a wallet of its choice such as MetaMask (in the case of MetaMask by following [these steps](https://support.metamask.io/managing-my-wallet/accounts-and-addresses/how-to-import-an-account/)).
@@ -135,11 +135,11 @@ and convert it to wallet import format (WIF) and then import it to any wallet of
 
 ### Run LPS using FireBlocks service integration
 The FireBlocks integration will be included in the next release, this integration allows to run the LPS without the need to have the private keys inside the organization's
-environment and also will provide the LP with a UI to manage those wallets since its a custodial service.
+environment and also will provide the LP with a UI to manage those wallets since it's a custodial service.
 
 #### Technical clarifications
-Regardless of the option chosen by the LP to handle the wallet management, the LPS will require to create the following watch-only wallets in the
-BTC node, so we advise ensuring that the node doesn't have other wallets with the same names to avoid errors on the startup:
+Regardless of the option chosen by the LP to handle the wallet management, the LPS will need to create the following watch-only wallets in the
+BTC node. The LPS does this creation by itself, so we advise ensuring that the node doesn't have other wallets with the same names to avoid errors on the startup:
 
 - `rsk-wallet`: this wallet will be used to track the UTXOs available to spend with the LP wallet. It requires a rescan of the network, and it only
 imports the LP public key on the first start of the LPS, after that, it just validates that the wallet is created abd the public key is imported
