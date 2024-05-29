@@ -154,7 +154,6 @@
     <script nonce="{{ .ScriptNonce }}">
         document.addEventListener('DOMContentLoaded', () => {
             const data = {{.}};
-            console.log(data)
             const weiToEther = wei => (wei / 1e18).toString();
             const etherToWei = ether => {
                 const num = parseFloat(ether);
@@ -163,11 +162,11 @@
                 }
                 return BigInt(num * 1e18);
             };
-        
+
             let generalChanged = false, peginChanged = false, pegoutChanged = false;
-        
+
             const setTextContent = (id, text) => document.getElementById(id).textContent = text;
-        
+
             const fetchData = async (url, elementId) => {
                 try {
                     const response = await fetch(url, { 
@@ -183,30 +182,47 @@
                     console.error(error);
                 }
             };
-        
+
+            const fetchProviderData = async () => {
+                try {
+                    const response = await fetch('http://localhost:8080/getProviders', { 
+                        method: 'GET', 
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const providers = await response.json();
+                    const provider = providers[0];
+                    setTextContent('providerAddress', provider.provider);
+                    setTextContent('isOperational', provider.status ? "Operational" : "Not Operational");
+                } catch (error) {
+                    console.error('Failed to fetch provider data:', error);
+                }
+            };
+
             const createLabel = text => {
                 const label = document.createElement('span');
                 label.classList.add('small-label');
                 label.textContent = text;
                 return label;
             };
-        
+
             const createInput = (section, key, value, labelText) => {
                 const div = document.createElement('div');
                 div.classList.add('mb-3');
-        
+
                 const label = document.createElement('label');
                 label.classList.add('form-label');
                 label.textContent = formatLabel(key);
-        
+
                 const inputContainer = document.createElement('div');
                 inputContainer.classList.add('input-container');
-        
+
                 const input = document.createElement('input');
                 input.style.marginLeft = "10px";
                 input.dataset.key = key;
                 input.dataset.originalValue = value;
-        
+
                 if (typeof value === 'boolean') {
                     input.type = 'checkbox';
                     input.classList.add('form-check-input');
@@ -223,19 +239,19 @@
                         label.appendChild(questionIcon);
                     }
                 }
-        
+
                 inputContainer.appendChild(input);
                 div.appendChild(label);
                 div.appendChild(inputContainer);
                 section.appendChild(div);
             };
-        
+
             const setChanged = (sectionId) => {
                 if (sectionId === 'generalConfig') generalChanged = true;
                 else if (sectionId === 'peginConfig') peginChanged = true;
                 else if (sectionId === 'pegoutConfig') pegoutChanged = true;
             };
-        
+
             const createQuestionIcon = (tooltipText) => {
                 const questionIcon = document.createElement('span');
                 questionIcon.classList.add('question-mark');
@@ -251,7 +267,7 @@
                 questionIcon.appendChild(tooltip);
                 return questionIcon;
             };
-        
+
             const getTooltipText = (key) => {
                 const tooltips = {
                     timeForDeposit: 'The time (in seconds) for which a deposit is considered valid.',
@@ -264,27 +280,27 @@
                 };
                 return tooltips[key] || 'No description available';
             };
-        
+
             const formatLabel = (key) => {
                 if (key.startsWith('rskConfirmations')) {
                     const parts = key.split(' ');
-                    return `${parts[0]} for ${parts[1]} ${parts[2]}`;
+                    return `${parts[0]} for ${parts[1]} ${parts[2]} <=`;
                 } else if (key.startsWith('btcConfirmations')) {
                     const parts = key.split(' ');
-                    return `${parts[0]} for ${parts[1]} ${parts[2]}`;
+                    return `${parts[0]} for ${parts[1]} ${parts[2]} <=`;
                 } else {
                     return key;
                 }
             };
-        
+
             const formatValue = (key, value) => {
                 return isFeeKey(key) ? weiToEther(value) : value;
             };
-        
+
             const isFeeKey = (key) => {
                 return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
             };
-        
+
             const populateConfigSection = (sectionId, config) => {
                 const section = document.getElementById(sectionId);
                 section.innerHTML = '';
@@ -301,13 +317,13 @@
                     }
                 });
             };
-        
+
             const showSuccessToast = () => {
                 const toastElement = document.getElementById('successToast');
                 const toast = new bootstrap.Toast(toastElement);
                 toast.show();
             };
-        
+
             const showErrorToast = (errorMessage) => {
                 const toastElement = document.createElement('div');
                 toastElement.classList.add('toast');
@@ -327,20 +343,20 @@
                 const toast = new bootstrap.Toast(toastElement);
                 toast.show();
             };
-        
+
             const formatErrorField = (field, value) => {
                 if (field.startsWith('rskConfirmations') || field.startsWith('btcConfirmations')) {
                     const unit = field.startsWith('rskConfirmations') ? 'rBTC' : 'BTC';
-                    const numericValue = parseFloat(field.split('.')[1]) / 1e18;
-                    return `${field.split('.')[0]} ${numericValue}${unit}`;
+                    const numericValue = parseFloat(field.split(' ')[1]) / 1e18;
+                    return `${field.split(' ')[0]} ${numericValue}${unit}`;
                 }
                 return field;
             };
-        
+
             const validateConfig = (config, originalConfig) => {
                 const errors = [];
                 const inferType = value => (typeof value === 'boolean') ? 'boolean' : !isNaN(value) ? 'number' : 'string';
-        
+
                 Object.entries(config).forEach(([key, value]) => {
                     const expectedType = inferType(originalConfig[key]);
                     const actualType = inferType(value);
@@ -350,15 +366,15 @@
                             const subExpectedType = inferType(originalConfig[key][subKey]);
                             const subActualType = inferType(subValue);
                             if (subActualType !== subExpectedType) {
-                                errors.push(`Invalid type for ${formatErrorField(`${key}.${subKey}`, subValue)}: expected ${subExpectedType}, got ${subActualType}`);
+                                errors.push(`Invalid type for ${formatErrorField(`${key} ${subKey}`, subValue)}: expected ${subExpectedType}, got ${subActualType}`);
                             }
                         });
                     }
                 });
-        
+
                 return { isValid: errors.length === 0, errors };
             };
-        
+
             const saveConfig = () => {
                 const postConfig = async (sectionId, endpoint, config) => {
                     try {
@@ -372,12 +388,12 @@
                         console.error(`Error during ${sectionId} configuration save:`, error);
                     }
                 };
-        
+
                 const getConfig = (sectionId, formatFunction) => {
                     const inputs = document.getElementById(sectionId).querySelectorAll('input');
                     const config = {};
                     inputs.forEach(input => {
-                        const keys = input.dataset.key.split('.');
+                        const keys = input.dataset.key.split(' ');
                         let value;
                         if (isFeeKey(keys[keys.length - 1])) {
                             try {
@@ -394,55 +410,55 @@
                                 value = Number(value);
                             }
                         }
-                        if (keys.length === 2) {
-                            config[keys[0]] = config[keys[0]] || {};
-                            config[keys[0]][keys[1]] = value;
+                        if (keys.length === 3) {
+                            const mainKey = keys[0];
+                            const weiKey = etherToWei(keys[1]).toString();
+                            config[mainKey] = config[mainKey] || {};
+                            config[mainKey][weiKey] = value;
                         } else {
                             config[input.dataset.key] = value;
                         }
                     });
                     return formatFunction ? formatFunction(config) : config;
                 };
-        
-                const formatGeneralConfig = config => {
-                    const formattedConfig = { rskConfirmations: {}, btcConfirmations: {}, publicLiquidityCheck: false };
+
+                const formatGeneralConfig = (config) => {
+                    const formattedConfig = { rskConfirmations: {}, btcConfirmations: {} };
                     Object.keys(config).forEach(key => {
                         if (key.startsWith('rskConfirmations')) {
-                            const parts = key.split(' ');
-                            const weiKey = etherToWei(parts[1]);
-                            formattedConfig.rskConfirmations[weiKey] = config[key];
+                            const weiKey = key.split(' ')[1];
+                            formattedConfig.rskConfirmations = config[key];
                         } else if (key.startsWith('btcConfirmations')) {
-                            const parts = key.split(' ');
-                            const weiKey = etherToWei(parts[1]);
-                            formattedConfig.btcConfirmations[weiKey] = config[key];
+                            const weiKey = key.split(' ')[1];
+                            formattedConfig.btcConfirmations = config[key];
                         } else {
                             formattedConfig[key] = config[key];
                         }
                     });
                     return formattedConfig;
                 };
-        
+
                 const generalConfig = getConfig('generalConfig', formatGeneralConfig);
                 const peginConfig = getConfig('peginConfig');
                 const pegoutConfig = getConfig('pegoutConfig');
-        
+
                 const { isValid: isGeneralValid, errors: generalErrors } = validateConfig(generalConfig, data.Configuration.general);
                 const { isValid: isPeginValid, errors: peginErrors } = validateConfig(peginConfig, data.Configuration.pegin);
                 const { isValid: isPegoutValid, errors: pegoutErrors } = validateConfig(pegoutConfig, data.Configuration.pegout);
-        
+
                 if (!isGeneralValid || !isPeginValid || !isPegoutValid) {
                     const allErrors = [...generalErrors, ...peginErrors, ...pegoutErrors];
                     showErrorToast(allErrors.join('<br>'));
                     return;
                 }
-        
+
                 if (generalChanged) postConfig('generalConfig', '/configuration', generalConfig);
                 if (peginChanged) postConfig('peginConfig', '/pegin/configuration', peginConfig);
                 if (pegoutChanged) postConfig('pegoutConfig', '/pegout/configuration', pegoutConfig);
-        
+
                 showSuccessToast();
             };
-        
+
             const addCollateral = async (amountId, endpoint, elementId) => {
                 const amountInEther = document.getElementById(amountId).value;
                 try {
@@ -461,18 +477,17 @@
                     showErrorToast(`Invalid input "${amountInEther}" for collateral amount. Please enter a valid number.`);
                 }
             };
-        
-            document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', 'http://localhost:8080/pegin/addCollateral', 'peginCollateral'));
-            document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', 'http://localhost:8080/pegout/addCollateral', 'pegoutCollateral'));
+
+            document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral'));
+            document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral'));
             document.getElementById('saveConfig').addEventListener('click', saveConfig);
-        
-            setTextContent('providerAddress', data.ProviderAddress);
-            setTextContent('isOperational', data.IsOperational ? "Operational" : "Not Operational");
+
             populateConfigSection('generalConfig', data.Configuration.general);
             populateConfigSection('peginConfig', data.Configuration.pegin);
             populateConfigSection('pegoutConfig', data.Configuration.pegout);
             fetchData('/pegin/collateral', 'peginCollateral');
             fetchData('/pegout/collateral', 'pegoutCollateral');
+            fetchProviderData();
         });
     </script>
 </body>
