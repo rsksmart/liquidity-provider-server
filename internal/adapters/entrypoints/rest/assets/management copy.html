@@ -60,6 +60,8 @@
                         <p class="card-text" id="providerAddress"></p>
                         <h5 class="card-title">Operational Status</h5>
                         <p class="card-text" id="isOperational"></p>
+                        <h5 class="card-title">LBC Address</h5>
+                        <p class="card-text" id="lbcAddress"></p>
                     </div>
                 </div>
                 <div class="card">
@@ -93,7 +95,7 @@
                                 <div class="collateral-inputs">
                                     <div class="mb-3">
                                         <label for="addPegoutCollateralAmount" class="form-label">Add Pegout Collateral Amount</label>
-                                        <input type="number" class="form-control" id="addPegoutCollateralAmount" placeholder="Enter amount in rBTC">
+                                        <input type="number" class="form-control" id="addPegoutCollateralAmount" placeholder="Enter amount in Ether">
                                     </div>
                                 </div>
                                 <div class="collateral-buttons">
@@ -163,11 +165,11 @@
                 }
                 return BigInt(num * 1e18);
             };
-        
+    
             let generalChanged = false, peginChanged = false, pegoutChanged = false;
-        
+    
             const setTextContent = (id, text) => document.getElementById(id).textContent = text;
-        
+    
             const fetchData = async (url, elementId) => {
                 try {
                     const response = await fetch(url, { 
@@ -183,30 +185,30 @@
                     console.error(error);
                 }
             };
-        
+    
             const createLabel = text => {
                 const label = document.createElement('span');
                 label.classList.add('small-label');
                 label.textContent = text;
                 return label;
             };
-        
+    
             const createInput = (section, key, value, labelText) => {
                 const div = document.createElement('div');
                 div.classList.add('mb-3');
-        
+    
                 const label = document.createElement('label');
                 label.classList.add('form-label');
                 label.textContent = formatLabel(key);
-        
+    
                 const inputContainer = document.createElement('div');
                 inputContainer.classList.add('input-container');
-        
+    
                 const input = document.createElement('input');
                 input.style.marginLeft = "10px";
                 input.dataset.key = key;
                 input.dataset.originalValue = value;
-        
+    
                 if (typeof value === 'boolean') {
                     input.type = 'checkbox';
                     input.classList.add('form-check-input');
@@ -223,19 +225,19 @@
                         label.appendChild(questionIcon);
                     }
                 }
-        
+    
                 inputContainer.appendChild(input);
                 div.appendChild(label);
                 div.appendChild(inputContainer);
                 section.appendChild(div);
             };
-        
+    
             const setChanged = (sectionId) => {
                 if (sectionId === 'generalConfig') generalChanged = true;
                 else if (sectionId === 'peginConfig') peginChanged = true;
                 else if (sectionId === 'pegoutConfig') pegoutChanged = true;
             };
-        
+    
             const createQuestionIcon = (tooltipText) => {
                 const questionIcon = document.createElement('span');
                 questionIcon.classList.add('question-mark');
@@ -251,7 +253,7 @@
                 questionIcon.appendChild(tooltip);
                 return questionIcon;
             };
-        
+    
             const getTooltipText = (key) => {
                 const tooltips = {
                     timeForDeposit: 'The time (in seconds) for which a deposit is considered valid.',
@@ -264,31 +266,51 @@
                 };
                 return tooltips[key] || 'No description available';
             };
-        
+    
             const formatLabel = (key) => {
                 if (key.startsWith('rskConfirmations')) {
                     const parts = key.split(' ');
-                    return `${parts[0]} for ${parts[1]} ${parts[2]}`;
+                    return `${parts[0]} for <= ${parts[1]} ${parts[2]}`;
                 } else if (key.startsWith('btcConfirmations')) {
                     const parts = key.split(' ');
-                    return `${parts[0]} for ${parts[1]} ${parts[2]}`;
+                    return `${parts[0]} for <= ${parts[1]} ${parts[2]}`;
                 } else {
                     return key;
                 }
             };
-        
+
             const formatValue = (key, value) => {
                 return isFeeKey(key) ? weiToEther(value) : value;
             };
-        
+    
             const isFeeKey = (key) => {
                 return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
             };
-        
+    
             const populateConfigSection = (sectionId, config) => {
                 const section = document.getElementById(sectionId);
                 section.innerHTML = '';
-                Object.entries(config).forEach(([key, value]) => {
+                const orderedConfig = {};
+                console.log(config)
+                // Order rskConfirmations
+                orderedConfig.rskConfirmations = Object.keys(config.rskConfirmations)
+                    .sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1))
+                    .reduce((obj, key) => {
+                        obj[key] = config.rskConfirmations[key];
+                        return obj;
+                    }, {});
+
+                // Order btcConfirmations
+                orderedConfig.btcConfirmations = Object.keys(config.btcConfirmations)
+                    .sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1))
+                    .reduce((obj, key) => {
+                        obj[key] = config.btcConfirmations[key];
+                        return obj;
+                    }, {});
+
+                orderedConfig.publicLiquidityCheck = config.publicLiquidityCheck;
+
+                Object.entries(orderedConfig).forEach(([key, value]) => {
                     if (typeof value === 'object' && !Array.isArray(value)) {
                         Object.entries(value).forEach(([subKey, subValue]) => {
                             const etherValue = weiToEther(subKey);
@@ -301,13 +323,13 @@
                     }
                 });
             };
-        
+
             const showSuccessToast = () => {
                 const toastElement = document.getElementById('successToast');
                 const toast = new bootstrap.Toast(toastElement);
                 toast.show();
             };
-        
+    
             const showErrorToast = (errorMessage) => {
                 const toastElement = document.createElement('div');
                 toastElement.classList.add('toast');
@@ -327,7 +349,7 @@
                 const toast = new bootstrap.Toast(toastElement);
                 toast.show();
             };
-        
+    
             const formatErrorField = (field, value) => {
                 if (field.startsWith('rskConfirmations') || field.startsWith('btcConfirmations')) {
                     const unit = field.startsWith('rskConfirmations') ? 'rBTC' : 'BTC';
@@ -336,11 +358,11 @@
                 }
                 return field;
             };
-        
+    
             const validateConfig = (config, originalConfig) => {
                 const errors = [];
                 const inferType = value => (typeof value === 'boolean') ? 'boolean' : !isNaN(value) ? 'number' : 'string';
-        
+    
                 Object.entries(config).forEach(([key, value]) => {
                     const expectedType = inferType(originalConfig[key]);
                     const actualType = inferType(value);
@@ -355,10 +377,10 @@
                         });
                     }
                 });
-        
+    
                 return { isValid: errors.length === 0, errors };
             };
-        
+    
             const saveConfig = () => {
                 const postConfig = async (sectionId, endpoint, config) => {
                     try {
@@ -372,7 +394,7 @@
                         console.error(`Error during ${sectionId} configuration save:`, error);
                     }
                 };
-        
+    
                 const getConfig = (sectionId, formatFunction) => {
                     const inputs = document.getElementById(sectionId).querySelectorAll('input');
                     const config = {};
@@ -403,46 +425,43 @@
                     });
                     return formatFunction ? formatFunction(config) : config;
                 };
-        
+    
                 const formatGeneralConfig = config => {
                     const formattedConfig = { rskConfirmations: {}, btcConfirmations: {}, publicLiquidityCheck: false };
                     Object.keys(config).forEach(key => {
                         if (key.startsWith('rskConfirmations')) {
-                            const parts = key.split(' ');
-                            const weiKey = etherToWei(parts[1]);
+                            const weiKey = etherToWei(key.split(' ')[1]);
                             formattedConfig.rskConfirmations[weiKey] = config[key];
                         } else if (key.startsWith('btcConfirmations')) {
-                            const parts = key.split(' ');
-                            const weiKey = etherToWei(parts[1]);
+                            const weiKey = etherToWei(key.split(' ')[1]);
                             formattedConfig.btcConfirmations[weiKey] = config[key];
-                        } else {
-                            formattedConfig[key] = config[key];
                         }
                     });
+                    formattedConfig.publicLiquidityCheck = config.publicLiquidityCheck;
                     return formattedConfig;
                 };
-        
+    
                 const generalConfig = getConfig('generalConfig', formatGeneralConfig);
                 const peginConfig = getConfig('peginConfig');
                 const pegoutConfig = getConfig('pegoutConfig');
-        
+    
                 const { isValid: isGeneralValid, errors: generalErrors } = validateConfig(generalConfig, data.Configuration.general);
                 const { isValid: isPeginValid, errors: peginErrors } = validateConfig(peginConfig, data.Configuration.pegin);
                 const { isValid: isPegoutValid, errors: pegoutErrors } = validateConfig(pegoutConfig, data.Configuration.pegout);
-        
+    
                 if (!isGeneralValid || !isPeginValid || !isPegoutValid) {
                     const allErrors = [...generalErrors, ...peginErrors, ...pegoutErrors];
                     showErrorToast(allErrors.join('<br>'));
                     return;
                 }
-        
+    
                 if (generalChanged) postConfig('generalConfig', '/configuration', generalConfig);
                 if (peginChanged) postConfig('peginConfig', '/pegin/configuration', peginConfig);
                 if (pegoutChanged) postConfig('pegoutConfig', '/pegout/configuration', pegoutConfig);
-        
+    
                 showSuccessToast();
             };
-        
+    
             const addCollateral = async (amountId, endpoint, elementId) => {
                 const amountInEther = document.getElementById(amountId).value;
                 try {
@@ -461,19 +480,20 @@
                     showErrorToast(`Invalid input "${amountInEther}" for collateral amount. Please enter a valid number.`);
                 }
             };
-        
+    
             document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', 'http://localhost:8080/pegin/addCollateral', 'peginCollateral'));
             document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', 'http://localhost:8080/pegout/addCollateral', 'pegoutCollateral'));
             document.getElementById('saveConfig').addEventListener('click', saveConfig);
-        
+    
             setTextContent('providerAddress', data.ProviderAddress);
             setTextContent('isOperational', data.IsOperational ? "Operational" : "Not Operational");
+            setTextContent('lbcAddress', data.LbcAddress);
             populateConfigSection('generalConfig', data.Configuration.general);
             populateConfigSection('peginConfig', data.Configuration.pegin);
             populateConfigSection('pegoutConfig', data.Configuration.pegout);
             fetchData('/pegin/collateral', 'peginCollateral');
             fetchData('/pegout/collateral', 'pegoutCollateral');
         });
-    </script>
+    </script>    
 </body>
 </html>
