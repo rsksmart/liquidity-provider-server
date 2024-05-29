@@ -2,7 +2,12 @@ package assets
 
 import "embed"
 
-// FileSystem holds Management UI template files and its assets
+// TemplateFileSystem holds Management UI template files
 //
 //go:embed *.html
+var TemplateFileSystem embed.FS
+
+// FileSystem holds Management UI template assets (images, styles, scripts)
+//
+//go:embed static favicon.ico
 var FileSystem embed.FS

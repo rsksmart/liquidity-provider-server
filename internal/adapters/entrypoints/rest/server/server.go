@@ -54,7 +54,7 @@ func (s *Server) start() error {
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	}
-	s.router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./internal/adapters/entrypoints/rest/assets/static/"))))
+
 	log.Info("Server started at localhost:", s.http.Addr)
 	return s.http.ListenAndServe()
 }
