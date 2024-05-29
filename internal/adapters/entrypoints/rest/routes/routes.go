@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"slices"
 )
 
 type Endpoint struct {
@@ -57,7 +58,7 @@ func registerManagementRoutes(router *mux.Router, env environment.Environment, u
 	managementEndpoints := getManagementEndpoints(env, useCaseRegistry, store)
 	var handler http.Handler
 	for _, endpoint := range managementEndpoints {
-		if endpoint.Path == LOGIN_PATH || endpoint.Path == UI_PATH {
+		if slices.Contains(AllowedPaths[:], endpoint.Path) {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
 		} else {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
