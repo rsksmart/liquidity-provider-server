@@ -131,13 +131,13 @@ func TestGetWatchedPeginQuoteUseCase_Run_WrongState(t *testing.T) {
 func TestGetWatchedPeginQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	setups := []func(quoteRepository *mocks.PeginQuoteRepositoryMock){
 		func(quoteRepository *mocks.PeginQuoteRepositoryMock) {
-			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 		func(quoteRepository *mocks.PeginQuoteRepositoryMock) {
-			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedQuotes, nil)
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 	}

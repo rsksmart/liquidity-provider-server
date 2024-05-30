@@ -12,7 +12,7 @@ func TestProviderType_IsValid(t *testing.T) {
 		{Value: "pegout", Result: true},
 		{Value: "both", Result: true},
 		{Value: "", Result: false},
-		{Value: "any value", Result: false},
+		{Value: test.AnyString, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.IsValid()
@@ -25,7 +25,7 @@ func TestProviderType_AcceptsPegin(t *testing.T) {
 		{Value: "pegout", Result: false},
 		{Value: "both", Result: true},
 		{Value: "", Result: false},
-		{Value: "any value", Result: false},
+		{Value: test.AnyString, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.AcceptsPegin()
@@ -38,7 +38,7 @@ func TestProviderType_AcceptsPegout(t *testing.T) {
 		{Value: "pegout", Result: true},
 		{Value: "both", Result: true},
 		{Value: "", Result: false},
-		{Value: "any value", Result: false},
+		{Value: test.AnyString, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.AcceptsPegout()
@@ -54,7 +54,7 @@ func TestToProviderType(t *testing.T) {
 		{Value: "pegout", Result: nil},
 		{Value: "both", Result: nil},
 		{Value: "", Result: liquidity_provider.InvalidProviderTypeError},
-		{Value: "any value", Result: liquidity_provider.InvalidProviderTypeError},
+		{Value: test.AnyString, Result: liquidity_provider.InvalidProviderTypeError},
 	}
 
 	valueCases := test.Table[string, liquidity_provider.ProviderType]{
@@ -62,7 +62,7 @@ func TestToProviderType(t *testing.T) {
 		{Value: "pegout", Result: liquidity_provider.PegoutProvider},
 		{Value: "both", Result: liquidity_provider.FullProvider},
 		{Value: "", Result: ""},
-		{Value: "any value", Result: ""},
+		{Value: test.AnyString, Result: ""},
 	}
 
 	test.RunTable(t, errorCases, func(value string) error {
