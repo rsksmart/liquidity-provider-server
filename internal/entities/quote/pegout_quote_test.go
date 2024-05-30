@@ -71,15 +71,15 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 	quotes := test.Table[quote.PegoutQuote, bool]{
 		{
 			Value: quote.PegoutQuote{
-				LbcAddress:            "any addrees",
-				LpRskAddress:          "any addrees",
-				BtcRefundAddress:      "any addrees",
-				RskRefundAddress:      "any addrees",
-				LpBtcAddress:          "any addrees",
+				LbcAddress:            test.AnyAddress,
+				LpRskAddress:          test.AnyAddress,
+				BtcRefundAddress:      test.AnyAddress,
+				RskRefundAddress:      test.AnyAddress,
+				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
 				PenaltyFee:            1,
 				Nonce:                 1,
-				DepositAddress:        "any addrees",
+				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
 				AgreementTimestamp:    uint32(now),
 				DepositDateLimit:      1,
@@ -95,15 +95,15 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutQuote{
-				LbcAddress:            "any addrees",
-				LpRskAddress:          "any addrees",
-				BtcRefundAddress:      "any addrees",
-				RskRefundAddress:      "any addrees",
-				LpBtcAddress:          "any addrees",
+				LbcAddress:            test.AnyAddress,
+				LpRskAddress:          test.AnyAddress,
+				BtcRefundAddress:      test.AnyAddress,
+				RskRefundAddress:      test.AnyAddress,
+				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
 				PenaltyFee:            1,
 				Nonce:                 1,
-				DepositAddress:        "any addrees",
+				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
 				AgreementTimestamp:    uint32(now),
 				DepositDateLimit:      1,
@@ -130,15 +130,15 @@ func TestGetCreationBlock(t *testing.T) {
 	quotes := test.Table[quote.PegoutQuote, uint64]{
 		{
 			Value: quote.PegoutQuote{
-				LbcAddress:            "any addrees",
-				LpRskAddress:          "any addrees",
-				BtcRefundAddress:      "any addrees",
-				RskRefundAddress:      "any addrees",
-				LpBtcAddress:          "any addrees",
+				LbcAddress:            test.AnyAddress,
+				LpRskAddress:          test.AnyAddress,
+				BtcRefundAddress:      test.AnyAddress,
+				RskRefundAddress:      test.AnyAddress,
+				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
 				PenaltyFee:            1,
 				Nonce:                 1,
-				DepositAddress:        "any addrees",
+				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
 				AgreementTimestamp:    1,
 				DepositDateLimit:      1,
@@ -154,15 +154,15 @@ func TestGetCreationBlock(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutQuote{
-				LbcAddress:            "any addrees",
-				LpRskAddress:          "any addrees",
-				BtcRefundAddress:      "any addrees",
-				RskRefundAddress:      "any addrees",
-				LpBtcAddress:          "any addrees",
+				LbcAddress:            test.AnyAddress,
+				LpRskAddress:          test.AnyAddress,
+				BtcRefundAddress:      test.AnyAddress,
+				RskRefundAddress:      test.AnyAddress,
+				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
 				PenaltyFee:            1,
 				Nonce:                 1,
-				DepositAddress:        "any addrees",
+				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
 				AgreementTimestamp:    1,
 				DepositDateLimit:      1,
@@ -195,8 +195,8 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 	cases := test.Table[quote.PegoutDeposit, bool]{
 		{
 			Value: quote.PegoutDeposit{
-				TxHash:      "any hash",
-				QuoteHash:   "any hash",
+				TxHash:      test.AnyHash,
+				QuoteHash:   test.AnyHash,
 				Amount:      entities.NewWei(490000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,
@@ -206,8 +206,8 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutDeposit{
-				TxHash:      "any hash",
-				QuoteHash:   "any hash",
+				TxHash:      test.AnyHash,
+				QuoteHash:   test.AnyHash,
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   time.Unix(now.Unix()+61, 0),
 				BlockNumber: 499,
@@ -217,8 +217,8 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutDeposit{
-				TxHash:      "any hash",
-				QuoteHash:   "any hash",
+				TxHash:      test.AnyHash,
+				QuoteHash:   test.AnyHash,
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 501,
@@ -228,8 +228,8 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutDeposit{
-				TxHash:      "any hash",
-				QuoteHash:   "any hash",
+				TxHash:      test.AnyHash,
+				QuoteHash:   test.AnyHash,
 				Amount:      entities.NewWei(5100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,

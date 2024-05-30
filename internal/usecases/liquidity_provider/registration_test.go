@@ -24,7 +24,7 @@ func TestRegistrationUseCase_Run_AlreadyRegistered(t *testing.T) {
 	provider.On("RskAddress").Return("rskAddress")
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
+	params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
@@ -34,11 +34,11 @@ func TestRegistrationUseCase_Run_AlreadyRegistered(t *testing.T) {
 
 func TestRegistrationUseCase_Run_ValidateParams(t *testing.T) {
 	cases := []blockchain.ProviderRegistrationParams{
-		blockchain.NewProviderRegistrationParams("", "url.com", true, "both"),
+		blockchain.NewProviderRegistrationParams("", test.AnyUrl, true, "both"),
 		blockchain.NewProviderRegistrationParams("name", "", true, "both"),
-		blockchain.NewProviderRegistrationParams("name", "url.com", false, "both"),
-		blockchain.NewProviderRegistrationParams("name", "url.com", true, "anything"),
-		blockchain.NewProviderRegistrationParams("", "url.com", true, ""),
+		blockchain.NewProviderRegistrationParams("name", test.AnyUrl, false, "both"),
+		blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "anything"),
+		blockchain.NewProviderRegistrationParams("", test.AnyUrl, true, ""),
 	}
 	lbc := &mocks.LbcMock{}
 	provider := &mocks.ProviderMock{}
@@ -60,16 +60,16 @@ func TestRegistrationUseCase_Run_AddPeginCollateralIfNotOperational(t *testing.T
 	lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(1000), nil)
 	lbc.On("IsOperationalPegin", mock.Anything).Return(false, nil)
 	lbc.On("IsOperationalPegout", mock.Anything).Return(false, nil)
-	lbc.On("AddCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
+	lbc.On("AddCollateral", test.AnyWei).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "pegin")
+	params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "pegin")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
-	lbc.AssertNotCalled(t, "AddPegoutCollateral", mock.AnythingOfType("*entities.Wei"))
+	lbc.AssertNotCalled(t, "AddPegoutCollateral", test.AnyWei)
 	assert.Equal(t, int64(0), id)
 	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
@@ -81,16 +81,16 @@ func TestRegistrationUseCase_Run_AddPegoutCollateralIfNotOperational(t *testing.
 	lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(1000), nil)
 	lbc.On("IsOperationalPegin", mock.Anything).Return(false, nil)
 	lbc.On("IsOperationalPegout", mock.Anything).Return(false, nil)
-	lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
+	lbc.On("AddPegoutCollateral", test.AnyWei).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "pegout")
+	params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "pegout")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
-	lbc.AssertNotCalled(t, "AddCollateral", mock.AnythingOfType("*entities.Wei"))
+	lbc.AssertNotCalled(t, "AddCollateral", test.AnyWei)
 	assert.Equal(t, int64(0), id)
 	require.ErrorIs(t, err, usecases.AlreadyRegisteredError)
 }
@@ -102,13 +102,13 @@ func TestRegistrationUseCase_Run_AddCollateralIfNotOperational(t *testing.T) {
 	lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(999), nil)
 	lbc.On("IsOperationalPegin", mock.Anything).Return(false, nil)
 	lbc.On("IsOperationalPegout", mock.Anything).Return(false, nil)
-	lbc.On("AddCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
-	lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
+	lbc.On("AddCollateral", test.AnyWei).Return(nil)
+	lbc.On("AddPegoutCollateral", test.AnyWei).Return(nil)
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return("rskAddress")
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
+	params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
 	provider.AssertExpectations(t)
@@ -132,7 +132,7 @@ func TestRegistrationUseCase_Run(t *testing.T) {
 	provider.On("RskAddress").Return("rskAddress")
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-	params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
+	params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "both")
 	id, err := useCase.Run(params)
 	lbc.AssertExpectations(t)
 	lbc.AssertNotCalled(t, "AddCollateral")
@@ -152,7 +152,7 @@ func TestRegistrationUseCase_Run_ErrorHandling(t *testing.T) {
 		provider.On("RskAddress").Return("rskAddress")
 		contracts := blockchain.RskContracts{Lbc: lbc}
 		useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
-		params := blockchain.NewProviderRegistrationParams("name", "url.com", true, "both")
+		params := blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, "both")
 		id, err := useCase.Run(params)
 		lbc.AssertExpectations(t)
 		assert.Equal(t, int64(0), id)
@@ -219,7 +219,7 @@ func registrationUseCaseUnexpectedErrorSetups() test.Table[func(mock *mocks.LbcM
 				lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(10), nil)
 				lbc.On("IsOperationalPegin", mock.Anything).Return(false, nil)
 				lbc.On("IsOperationalPegout", mock.Anything).Return(false, nil)
-				lbc.On("AddCollateral", mock.AnythingOfType("*entities.Wei")).Return(assert.AnError)
+				lbc.On("AddCollateral", test.AnyWei).Return(assert.AnError)
 			},
 		},
 		{
@@ -229,8 +229,8 @@ func registrationUseCaseUnexpectedErrorSetups() test.Table[func(mock *mocks.LbcM
 				lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(10), nil)
 				lbc.On("IsOperationalPegin", mock.Anything).Return(false, nil)
 				lbc.On("IsOperationalPegout", mock.Anything).Return(false, nil)
-				lbc.On("AddCollateral", mock.AnythingOfType("*entities.Wei")).Return(nil)
-				lbc.On("AddPegoutCollateral", mock.AnythingOfType("*entities.Wei")).Return(assert.AnError)
+				lbc.On("AddCollateral", test.AnyWei).Return(nil)
+				lbc.On("AddPegoutCollateral", test.AnyWei).Return(assert.AnError)
 			},
 		},
 	}

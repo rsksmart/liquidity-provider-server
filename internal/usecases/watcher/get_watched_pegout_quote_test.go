@@ -116,13 +116,13 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WrongState(t *testing.T) {
 func TestGetWatchedPegoutQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	setups := []func(quoteRepository *mocks.PegoutQuoteRepositoryMock){
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
-			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
-			quoteRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedPegoutQuotes, nil)
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 	}

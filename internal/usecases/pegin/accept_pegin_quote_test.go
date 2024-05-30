@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+var anyScript = "any script"
 var acceptPeginSignature = "signature"
 var acceptPeginDerivationAddress = "derivation address"
 var acceptPeginQuoteHash = "1a1b1c"
@@ -64,9 +65,9 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		State:             quote.PeginStateWaitingForDeposit,
 	}
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&testPeginQuote, nil)
-	quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(nil, nil)
-	quoteRepository.On("InsertRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), retainedQuote).Return(nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
+	quoteRepository.On("GetRetainedQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
+	quoteRepository.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
 	lbcParsedAddress, _ := hex.DecodeString(strings.TrimPrefix(testPeginQuote.LbcAddress, "0x"))
@@ -79,12 +80,12 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		UserBtcRefundAddress: refundParsedAddress,
 		LpBtcAddress:         lpParsedAddress,
 		QuoteHash:            parsedHash,
-	}).Return(blockchain.FlyoverDerivation{Address: acceptPeginDerivationAddress, RedeemScript: "any script"}, nil)
+	}).Return(blockchain.FlyoverDerivation{Address: acceptPeginDerivationAddress, RedeemScript: anyScript}, nil)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress, true).Return(refundParsedAddress, nil)
 	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress, true).Return(lpParsedAddress, nil)
 	lp := new(mocks.ProviderMock)
-	lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), requiredLiquidity).Return(nil)
+	lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
 	lp.On("SignQuote", acceptPeginQuoteHash).Return(acceptPeginSignature, nil)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPeginQuoteEvent) bool {
@@ -94,7 +95,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
-	rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50), nil)
+	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex)
@@ -122,8 +123,8 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 		State:             quote.PeginStateWaitingForDeposit,
 	}
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&testPeginQuote, nil)
-	quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&retainedQuote, nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
+	quoteRepository.On("GetRetainedQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&retainedQuote, nil)
 
 	bridge := new(mocks.BridgeMock)
 	btc := new(mocks.BtcRpcMock)
@@ -157,7 +158,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 
 func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(nil, nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
 
 	bridge := new(mocks.BridgeMock)
 	btc := new(mocks.BtcRpcMock)
@@ -190,7 +191,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	expiredQuote.AgreementTimestamp = uint32(time.Now().Unix()) - 1000
 	expiredQuote.TimeForDeposit = 500
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&expiredQuote, nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&expiredQuote, nil)
 
 	bridge := new(mocks.BridgeMock)
 	btc := new(mocks.BtcRpcMock)
@@ -221,25 +222,25 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(&testPeginQuote, nil)
-	quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), acceptPeginQuoteHash).Return(nil, nil)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
+	quoteRepository.On("GetRetainedQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
 	bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(blockchain.FlyoverDerivation{
 		Address:      "derivation address",
-		RedeemScript: "any script",
+		RedeemScript: anyScript,
 	}, nil)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress, true).Return([]byte{4, 5, 6}, nil)
 	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress, true).Return([]byte{7, 8, 9}, nil)
 	lp := new(mocks.ProviderMock)
-	lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), requiredLiquidity).Return(assert.AnError)
+	lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(assert.AnError)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
-	rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(50), nil)
+	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -291,38 +292,38 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 // nolint:funlen
 func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock,
 	bridge *mocks.BridgeMock, btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-	derivation := blockchain.FlyoverDerivation{Address: test.AnyAddress, RedeemScript: "any script"}
+	derivation := blockchain.FlyoverDerivation{Address: test.AnyAddress, RedeemScript: anyScript}
 	return []func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 		btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock){
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, assert.AnError).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, assert.AnError).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, assert.AnError).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			*quoteHash = "malformed hash"
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		},
@@ -330,23 +331,23 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			caseQuote := testPeginQuote
 			caseQuote.LbcAddress = "malformed address"
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&caseQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&caseQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(blockchain.FederationInfo{}, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
@@ -354,51 +355,51 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
-			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(nil, assert.AnError).Once()
+			rsk.On("GasPrice", test.AnyCtx).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
-			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
-			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
+			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
+			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
 			lp.On("SignQuote", mock.Anything).Return("", assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
-			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
-			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
+			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
+			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
 			// set derivation and signature to empty to malform the retained quote
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(blockchain.FlyoverDerivation{}, nil).Once()
 			lp.On("SignQuote", mock.Anything).Return("", nil).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
-			quoteRepository.On("GetQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(&testPeginQuote, nil).Once()
-			quoteRepository.On("GetRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil, nil).Once()
+			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
+			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
 			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
-			rsk.On("GasPrice", mock.AnythingOfType("context.backgroundCtx")).Return(entities.NewWei(1), nil).Once()
-			lp.On("HasPeginLiquidity", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil).Once()
+			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
+			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
 			lp.On("SignQuote", mock.Anything).Return("signature", nil).Once()
-			quoteRepository.On("InsertRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError).Once()
+			quoteRepository.On("InsertRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
 		},
 	}
 }

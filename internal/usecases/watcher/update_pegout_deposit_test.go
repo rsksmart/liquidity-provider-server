@@ -16,7 +16,10 @@ import (
 	"time"
 )
 
-var now = uint32(time.Now().Unix())
+var (
+	now       = uint32(time.Now().Unix())
+	userRskTx = "user rsk tx hash"
+)
 
 var depositedRetainedQuote = quote.RetainedPegoutQuote{
 	QuoteHash:         "02011d",
@@ -50,7 +53,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 
 func TestUpdatePegoutQuoteDepositUseCase_Run(t *testing.T) {
 	deposit := quote.PegoutDeposit{
-		TxHash:      "user rsk tx hash",
+		TxHash:      userRskTx,
 		QuoteHash:   depositedRetainedQuote.QuoteHash,
 		Amount:      entities.NewWei(6800),
 		Timestamp:   time.Now(),
@@ -60,13 +63,13 @@ func TestUpdatePegoutQuoteDepositUseCase_Run(t *testing.T) {
 	quoteReporitory := new(mocks.PegoutQuoteRepositoryMock)
 	quoteReporitory.On(
 		"UpdateRetainedQuote",
-		mock.AnythingOfType("context.backgroundCtx"),
+		test.AnyCtx,
 		mock.MatchedBy(func(q quote.RetainedPegoutQuote) bool {
 			return q.UserRskTxHash == deposit.TxHash &&
 				q.State == quote.PegoutStateWaitingForDepositConfirmations
 		}),
 	).Return(nil)
-	quoteReporitory.On("UpsertPegoutDeposit", mock.AnythingOfType("context.backgroundCtx"), deposit).Return(nil)
+	quoteReporitory.On("UpsertPegoutDeposit", test.AnyCtx, deposit).Return(nil)
 	useCase := watcher.NewUpdatePegoutQuoteDepositUseCase(quoteReporitory)
 	watchedPegoutQuote, err := useCase.Run(context.Background(), quote.NewWatchedPegoutQuote(depositedPegoutQuote, depositedRetainedQuote), deposit)
 	quoteReporitory.AssertExpectations(t)
@@ -83,7 +86,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 		{
 			name: "Should fail by value",
 			deposit: quote.PegoutDeposit{
-				TxHash:      "user rsk tx hash",
+				TxHash:      userRskTx,
 				QuoteHash:   depositedRetainedQuote.QuoteHash,
 				Amount:      entities.NewWei(6000),
 				Timestamp:   time.Now(),
@@ -94,7 +97,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 		{
 			name: "Should fail by time",
 			deposit: quote.PegoutDeposit{
-				TxHash:      "user rsk tx hash",
+				TxHash:      userRskTx,
 				QuoteHash:   depositedRetainedQuote.QuoteHash,
 				Amount:      entities.NewWei(6500),
 				Timestamp:   time.Unix(time.Now().Unix()+660, 0),
@@ -105,7 +108,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 		{
 			name: "Should fail by confirmations",
 			deposit: quote.PegoutDeposit{
-				TxHash:      "user rsk tx hash",
+				TxHash:      userRskTx,
 				QuoteHash:   depositedRetainedQuote.QuoteHash,
 				Amount:      entities.NewWei(6500),
 				Timestamp:   time.Now(),
@@ -131,7 +134,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 
 func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 	deposit := quote.PegoutDeposit{
-		TxHash:      "user rsk tx hash",
+		TxHash:      userRskTx,
 		QuoteHash:   "02011d",
 		Amount:      entities.NewWei(6800),
 		Timestamp:   time.Now(),
@@ -160,7 +163,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_IllegalState(t *testing.T) {
 
 func TestUpdatePegoutQuoteDepositUseCase_Run_ErrorHandling(t *testing.T) {
 	deposit := quote.PegoutDeposit{
-		TxHash:      "user rsk tx hash",
+		TxHash:      userRskTx,
 		QuoteHash:   depositedRetainedQuote.QuoteHash,
 		Amount:      entities.NewWei(6800),
 		Timestamp:   time.Now(),
@@ -170,11 +173,11 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_ErrorHandling(t *testing.T) {
 
 	setups := []func(quoteRepository *mocks.PegoutQuoteRepositoryMock){
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
-			quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError)
+			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError)
 		},
 		func(quoteRepository *mocks.PegoutQuoteRepositoryMock) {
-			quoteRepository.On("UpdateRetainedQuote", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(nil)
-			quoteRepository.On("UpsertPegoutDeposit", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).Return(assert.AnError)
+			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(nil)
+			quoteRepository.On("UpsertPegoutDeposit", test.AnyCtx, mock.Anything).Return(assert.AnError)
 		},
 	}
 

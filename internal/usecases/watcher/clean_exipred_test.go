@@ -51,7 +51,7 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 	).Return([]quote.RetainedPegoutQuote{pegoutExpiredQuotes[2], pegoutExpiredQuotes[4], pegoutExpiredQuotes[5]}, nil)
 	pegoutRepository.On(
 		"DeleteQuotes",
-		mock.AnythingOfType("context.backgroundCtx"),
+		test.AnyCtx,
 		[]string{"pegoutHash3", "pegoutHash5", "pegoutHash6"},
 	).Return(uint(3), nil)
 
@@ -68,31 +68,31 @@ func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 func TestCleanExpiredQuotesUseCase_Run_ErrorHandling(t *testing.T) {
 	setups := []func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock){
 		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
-			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
-			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedQuotes, nil)
-			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(nil, assert.AnError)
 		},
 		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
-			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedQuotes, nil)
-			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedPegoutQuotes, nil)
-			peginRepository.On("DeleteQuotes", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("DeleteQuotes", test.AnyCtx, mock.Anything).
 				Return(uint(0), assert.AnError)
 		},
 		func(peginRepository *mocks.PeginQuoteRepositoryMock, pegoutRepository *mocks.PegoutQuoteRepositoryMock) {
-			peginRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedQuotes, nil)
-			pegoutRepository.On("GetRetainedQuoteByState", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx, mock.Anything).
 				Return(retainedPegoutQuotes, nil)
-			peginRepository.On("DeleteQuotes", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			peginRepository.On("DeleteQuotes", test.AnyCtx, mock.Anything).
 				Return(uint(5), nil)
-			pegoutRepository.On("DeleteQuotes", mock.AnythingOfType("context.backgroundCtx"), mock.Anything).
+			pegoutRepository.On("DeleteQuotes", test.AnyCtx, mock.Anything).
 				Return(uint(0), assert.AnError)
 		},
 	}
