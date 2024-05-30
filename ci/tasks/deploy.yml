@@ -39,7 +39,7 @@ run:
       touch ~/.ssh/known_hosts
       ssh-keyscan flyover-01-testnet.aws-us-east-1.testnet.flyover.rif.technology >> ~/.ssh/known_hosts
       ssh  -o "StrictHostKeyChecking=no" -A ubuntu@flyover-01-testnet.aws-us-east-1.testnet.flyover.rif.technology sh -s << EOF 
-      cd /home/ubuntu/flyover-deploy/docker-compose && git pull origin Stable-Test && docker system prune -f && docker-compose -f docker-compose.yml -f loki-testnet.yml --env-file .env.testnet build --no-cache && docker-compose -f docker-compose.yml -f loki-testnet.yml --env-file .env.testnet up --force-recreate -d 
+      cd /home/ubuntu/flyover-deploy/docker-compose && git pull origin Stable-Test && docker system prune -f && docker-compose -f docker-compose.yml -f loki-testnet.yml --env-file .env.testnet build --build-arg COMMIT_HASH="$(git rev-parse HEAD)" --no-cache && docker-compose -f docker-compose.yml -f loki-testnet.yml --env-file .env.testnet up --force-recreate -d
 
       EOF
           

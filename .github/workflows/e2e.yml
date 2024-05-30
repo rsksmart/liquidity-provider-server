@@ -4,27 +4,34 @@ on:
   pull_request:
     branches:
       - '*'
+  push:
+    branches:
+      - QA-Test
+      - Stable-Test
+      - master
+      - feature/GBI-1861
 
 jobs:
   e2e-test:
-    runs-on: ubuntu-18.04
+    name: Server initialization and health check
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.18
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Check out repository code
-        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Update env file
+        run: cd docker-compose/local/ && ./gh-action-env.sh ${{ secrets.GITHUB_TOKEN }}
 
       - name: Building LPS environment...
-        run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh build
-
-      - name: Setting LPS environment up...
-        run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh up && sleep 300
+        run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh up
 
       - name: Checking LPS health...
-        run: docker ps && curl -X GET http://localhost:8080/health
+        run: curl -X GET http://localhost:8080/health
 
       - name: Shutting LPS environment down...
         run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh down

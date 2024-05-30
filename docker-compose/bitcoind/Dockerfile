@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 ubuntu:latest
+FROM --platform=linux/amd64 ubuntu:jammy
 
 ARG BITCOIN_VERSION=24.0.1
 ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
