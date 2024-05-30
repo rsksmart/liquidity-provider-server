@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/hex"
 	"fmt"
+	"html/template"
+	"net/http"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
@@ -10,8 +13,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
-	"html/template"
-	"net/http"
 )
 
 const (
@@ -41,7 +42,7 @@ func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_prov
 		nonce := hex.EncodeToString(bytes)
 
 		htmlTemplateSecurityHeaders(w, nonce)
-		tmpl := template.Must(template.ParseFS(assets.FileSystem, string(result.Name)))
+		tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, string(result.Name)))
 
 		err = tmpl.Execute(w, struct {
 			liquidity_provider.ManagementTemplateData
@@ -59,7 +60,7 @@ func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_prov
 }
 
 func htmlTemplateSecurityHeaders(w http.ResponseWriter, nonce string) {
-	cspHeader := fmt.Sprintf("default-src 'self'; font-src 'self'; style-src 'self'; object-src 'none'; frame-src 'self';script-src 'self' 'nonce-%s'; img-src 'self' data:; connect-src 'self';", nonce)
+	cspHeader := fmt.Sprintf("default-src 'self'; font-src 'self' data:; style-src 'self' 'sha256-KoyuUqdEu+hxBz6L8yaiUAiFiD/fPDTxWrW817e498s='; object-src 'none'; frame-src 'self'; script-src 'self' 'nonce-%s'; img-src 'self' data:; connect-src 'self';", nonce)
 	w.Header().Set("Content-Type", "text/html")
 	w.Header().Set("Content-Security-Policy", cspHeader)
 	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
@@ -68,7 +69,7 @@ func htmlTemplateSecurityHeaders(w http.ResponseWriter, nonce string) {
 }
 
 func sendErrorTemplate(w http.ResponseWriter) {
-	tmpl := template.Must(template.ParseFS(assets.FileSystem, string(liquidity_provider.ManagementErrorTemplate)))
+	tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, string(liquidity_provider.ManagementErrorTemplate)))
 	err := tmpl.Execute(w, nil)
 	if err != nil {
 		log.Errorf("Error sending %s template to client, a partial version of the template might been sent: %s", liquidity_provider.ManagementErrorTemplate, err.Error())
