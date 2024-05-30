@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gorilla/sessions"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -9,9 +10,13 @@ import (
 )
 
 const (
-	LOGIN_PATH = "/management/login"
-	UI_PATH    = "/management"
+	LoginPath  = "/management/login"
+	UiPath     = "/management"
+	StaticPath = "/static/{file}"
+	IconPath   = "/favicon.ico"
 )
+
+var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
 func getManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
@@ -72,7 +77,7 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()),
 		},
 		{
-			Path:    LOGIN_PATH,
+			Path:    LoginPath,
 			Method:  http.MethodPost,
 			Handler: handlers.NewManagementLoginHandler(env.Management, useCaseRegistry.LoginUseCase()),
 		},
@@ -87,9 +92,19 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
 		},
 		{
-			Path:    UI_PATH,
+			Path:    UiPath,
 			Method:  http.MethodGet,
 			Handler: handlers.NewManagementInterfaceHandler(store, useCaseRegistry.GetManagementUiDataUseCase()),
+		},
+		{
+			Path:    StaticPath,
+			Method:  http.MethodGet,
+			Handler: http.FileServer(http.FS(assets.FileSystem)),
+		},
+		{
+			Path:    IconPath,
+			Method:  http.MethodGet,
+			Handler: http.FileServer(http.FS(assets.FileSystem)),
 		},
 	}
 }

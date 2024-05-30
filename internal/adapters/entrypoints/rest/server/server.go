@@ -3,12 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +10,13 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	log "github.com/sirupsen/logrus"
 )
 
 type Server struct {
@@ -53,6 +54,7 @@ func (s *Server) start() error {
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	}
+
 	log.Info("Server started at localhost:", s.http.Addr)
 	return s.http.ListenAndServe()
 }
