@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+const (
+	stringShouldBeValidTemplate   = "string %s should be valid"
+	stringShouldBeInvalidTemplate = "string %s should be invalid"
+)
+
 var specialChars = []string{
 	"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "+", "=", "{", "}",
 	"[", "]", ":", ";", "<", ">", ",", ".", "?", "/", "|", "\\", " ", "\"", "'", "`", "~",
@@ -60,11 +65,11 @@ func TestPasswordSpecialCharRule(t *testing.T) {
 	}
 	for _, str := range allowedStrings {
 		err := rule(str)
-		require.NoError(t, err, "string %s should be valid", str)
+		require.NoError(t, err, stringShouldBeValidTemplate, str)
 	}
 	for _, str := range notAllowedStrings {
 		err := rule(str)
-		require.Error(t, err, "string %s should be invalid", str)
+		require.Error(t, err, stringShouldBeInvalidTemplate, str)
 	}
 }
 
@@ -83,11 +88,11 @@ func TestPasswordUpperCaseRule(t *testing.T) {
 	}
 	for _, str := range allowedStrings {
 		err := rule(str)
-		require.NoError(t, err, "string %s should be valid", str)
+		require.NoError(t, err, stringShouldBeValidTemplate, str)
 	}
 	for _, str := range notAllowedStrings {
 		err := rule(str)
-		require.Error(t, err, "string %s should be invalid", str)
+		require.Error(t, err, stringShouldBeInvalidTemplate, str)
 	}
 }
 
@@ -106,11 +111,11 @@ func TestPasswordLowerCaseRule(t *testing.T) {
 	}
 	for _, str := range allowedStrings {
 		err := rule(str)
-		require.NoError(t, err, "string %s should be valid", str)
+		require.NoError(t, err, stringShouldBeValidTemplate, str)
 	}
 	for _, str := range notAllowedStrings {
 		err := rule(str)
-		require.Error(t, err, "string %s should be invalid", str)
+		require.Error(t, err, stringShouldBeInvalidTemplate, str)
 	}
 }
 
@@ -129,11 +134,11 @@ func TestPasswordDigitRule(t *testing.T) {
 	}
 	for _, str := range allowedStrings {
 		err := rule(str)
-		require.NoError(t, err, "string %s should be valid", str)
+		require.NoError(t, err, stringShouldBeValidTemplate, str)
 	}
 	for _, str := range notAllowedStrings {
 		err := rule(str)
-		require.Error(t, err, "string %s should be invalid", str)
+		require.Error(t, err, stringShouldBeInvalidTemplate, str)
 	}
 }
 

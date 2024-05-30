@@ -38,7 +38,7 @@ func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
 	alertSender := &mocks.AlertSenderMock{}
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
-		mock.AnythingOfType("context.backgroundCtx"),
+		test.AnyCtx,
 		"PegIn: Out of liquidity",
 		"You are out of liquidity to perform a PegIn. Please, do a deposit",
 		[]string{recipient},
@@ -61,7 +61,7 @@ func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
 	alertSender := &mocks.AlertSenderMock{}
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
-		mock.AnythingOfType("context.backgroundCtx"),
+		test.AnyCtx,
 		"PegOut: Out of liquidity",
 		"You are out of liquidity to perform a PegOut. Please, do a deposit",
 		[]string{recipient},
@@ -124,7 +124,7 @@ func TestCheckLiquidityUseCase_Run_OnlyLogSendErrors(t *testing.T) {
 				bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 				provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
 				provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
-				sender.On("SendAlert", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
+				sender.On("SendAlert", test.AnyCtx, mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 		{
@@ -132,7 +132,7 @@ func TestCheckLiquidityUseCase_Run_OnlyLogSendErrors(t *testing.T) {
 				bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 				provider.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil).Once()
 				provider.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError).Once()
-				sender.On("SendAlert", mock.AnythingOfType("context.backgroundCtx"), mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
+				sender.On("SendAlert", test.AnyCtx, mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 	}

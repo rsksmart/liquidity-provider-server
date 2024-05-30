@@ -18,11 +18,16 @@ import (
 	"time"
 )
 
-var AnyCtx = mock.AnythingOfType("context.backgroundCtx")
+var (
+	AnyCtx = mock.AnythingOfType("context.backgroundCtx")
+	AnyWei = mock.AnythingOfType("*entities.Wei")
+)
 
 const (
 	AnyAddress  = "any address"
 	AnyString   = "any value"
+	AnyHash     = "any hash"
+	AnyUrl      = "url.com"
 	keyPath     = "../../docker-compose/localstack/local-key.json"
 	KeyPassword = "test"
 )

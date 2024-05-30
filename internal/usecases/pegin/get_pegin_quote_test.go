@@ -17,11 +17,14 @@ import (
 	"testing"
 )
 
+var (
+	fedAddress = "fed address"
+	lbcAddress = "lbc address"
+)
+
 // nolint:funlen,cyclop
 func TestGetQuoteUseCase_Run(t *testing.T) {
 	quoteHash := "0x9876543210"
-	fedAddress := "fed address"
-	lbcAddress := "lbc address"
 	lpBtcAddress := "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6"
 	userRskAddress := "0x79568c2989232dCa1840087D73d403602364c0D4"
 	quoteValue := entities.NewWei(5000)
@@ -219,9 +222,9 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-			bridge.On("GetFedAddress").Return("fed address", nil)
+			bridge.On("GetFedAddress").Return(fedAddress, nil)
 			bridge.On("GetMinimumLockTxValue").Return(nil, assert.AnError)
-			lbc.On("GetAddress").Return("lbc address")
+			lbc.On("GetAddress").Return(lbcAddress)
 			lp.On("RskAddress").Return("0x4b5b6b")
 			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
@@ -232,10 +235,10 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-			bridge.On("GetFedAddress").Return("fed address", nil)
+			bridge.On("GetFedAddress").Return(fedAddress, nil)
 			bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
 			lbc.On("HashPeginQuote", mock.Anything).Return("", assert.AnError)
-			lbc.On("GetAddress").Return("lbc address")
+			lbc.On("GetAddress").Return(lbcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 			lp.On("RskAddress").Return("0x4b5b6b")
@@ -246,10 +249,10 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-			bridge.On("GetFedAddress").Return("fed address", nil)
+			bridge.On("GetFedAddress").Return(fedAddress, nil)
 			bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
 			lbc.On("HashPeginQuote", mock.Anything).Return("any hash", nil)
-			lbc.On("GetAddress").Return("lbc address")
+			lbc.On("GetAddress").Return(lbcAddress)
 			peginQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 			lp.On("RskAddress").Return("0x4b5b6b")
 			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
@@ -269,7 +272,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
 			feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-			bridge.On("GetFedAddress").Return("fed address", nil)
+			bridge.On("GetFedAddress").Return(fedAddress, nil)
 			lbc.On("GetAddress").Return("")
 			peginConfig := getPeginConfiguration()
 			generalConfig := getGeneralConfiguration()
