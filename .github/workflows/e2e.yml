@@ -1,15 +1,10 @@
 name: LPS E2E test
 
 on:
-  pull_request:
-    branches:
-      - '*'
   push:
-    branches:
-      - QA-Test
-      - Stable-Test
-      - master
-      - feature/GBI-1861
+    branches: [ QA-Test, Stable-Test, master ]
+  pull_request:
+    branches: [ QA-Test, Stable-Test, master ]
 
 jobs:
   e2e-test:
