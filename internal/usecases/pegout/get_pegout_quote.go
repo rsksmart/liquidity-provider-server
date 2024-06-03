@@ -108,10 +108,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, err
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.GetPegoutQuoteId, useCase.contracts.Bridge, pegoutQuote.Total()); err != nil {
-		return GetPegoutQuoteResult{}, err
-	}
-
 	if hash, err = useCase.persistQuote(ctx, pegoutQuote); err != nil {
 		return GetPegoutQuoteResult{}, err
 	}
