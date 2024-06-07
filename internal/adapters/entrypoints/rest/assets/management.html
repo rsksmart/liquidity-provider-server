@@ -42,6 +42,17 @@
             border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;
         }
         .nav{ margin-bottom: 1rem; }
+        .loading-bar {
+            display: none;
+            height: 2px;
+            background-color: #007bff;
+            animation: loading 1s infinite;
+        }
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 50%; }
+            100% { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -85,6 +96,7 @@
                                 </div>
                                 <div class="collateral-buttons">
                                     <button type="button" class="btn btn-primary" id="addPeginCollateralButton">Add Pegin Collateral</button>
+                                    <div class="loading-bar" id="peginLoadingBar"></div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="pegout" role="tabpanel" aria-labelledby="pegout-tab">
@@ -98,6 +110,7 @@
                                 </div>
                                 <div class="collateral-buttons">
                                     <button type="button" class="btn btn-primary" id="addPegoutCollateralButton">Add Pegout Collateral</button>
+                                    <div class="loading-bar" id="pegoutLoadingBar"></div>
                                 </div>
                             </div>
                         </div>
@@ -151,16 +164,32 @@
     </div>
 
     <script src="../static/Bootstrap.js" crossorigin="anonymous"></script>
+    <script src="../static/decimal.js" crossorigin="anonymous"></script>
     <script nonce="{{ .ScriptNonce }}">
         document.addEventListener('DOMContentLoaded', () => {
             const data = {{.}};
-            const weiToEther = wei => (wei / 1e18).toString();
-            const etherToWei = ether => {
-                const num = parseFloat(ether);
-                if (isNaN(num) || !/^\d+(\.\d+)?$/.test(ether)) {
-                    throw new RangeError(`The input "${ether}" is not a valid number`);
+            const weiToEther = wei => {
+                try {
+                    const decimalValue = new Decimal(wei);
+                    return decimalValue.dividedBy(new Decimal(1e18)).toString();
+                } catch (error) {
+                    throw new Error(`Failed to convert wei to ether. Input: "${wei}". Error: ${error.message}`);
                 }
-                return BigInt(num * 1e18);
+            };
+
+            const etherToWei = ether => {
+                if (typeof ether !== 'string' && typeof ether !== 'number') {
+                    throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a number or string.`);
+                }
+                try {
+                    const num = new Decimal(ether);
+                    if (num.isNegative()) {
+                        throw new RangeError(`The input "${ether}" is not a valid number.`);
+                    }
+                    return num.times(new Decimal(1e18)).toString();
+                } catch (error) {
+                    throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: ${error.message}`);
+                }
             };
 
             let generalChanged = false, peginChanged = false, pegoutChanged = false;
@@ -255,12 +284,13 @@
             const createQuestionIcon = (tooltipText) => {
                 const questionIcon = document.createElement('span');
                 questionIcon.classList.add('question-mark');
-                questionIcon.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
-                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-                        <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"/>
-                    </svg>
-                `;
+                const img = document.createElement('img');
+                img.src = '../static/questionIcon.svg';
+                img.width = 13;
+                img.height = 13;
+                img.alt = 'Question Mark';
+                img.classList.add('bi', 'bi-question-circle');
+                questionIcon.appendChild(img);
                 const tooltip = document.createElement('div');
                 tooltip.classList.add('custom-tooltip');
                 tooltip.textContent = tooltipText;
@@ -459,8 +489,12 @@
                 showSuccessToast();
             };
 
-            const addCollateral = async (amountId, endpoint, elementId) => {
+            const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId) => {
                 const amountInEther = document.getElementById(amountId).value;
+                const loadingBar = document.getElementById(loadingBarId);
+                const button = document.getElementById(buttonId);
+                loadingBar.style.display = 'block';
+                button.disabled = true; 
                 try {
                     const amountInWei = Number(etherToWei(amountInEther));
                     const response = await fetch(endpoint, {
@@ -475,11 +509,14 @@
                     }
                 } catch (error) {
                     showErrorToast(`Invalid input "${amountInEther}" for collateral amount. Please enter a valid number.`);
+                } finally {
+                    loadingBar.style.display = 'none';
+                    button.disabled = false;
                 }
             };
 
-            document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral'));
-            document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral'));
+            document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton'));
+            document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton'));
             document.getElementById('saveConfig').addEventListener('click', saveConfig);
 
             populateConfigSection('generalConfig', data.Configuration.general);
