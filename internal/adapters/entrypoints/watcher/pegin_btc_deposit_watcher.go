@@ -136,6 +136,15 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 	var err error
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
 
+	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
+		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
+			log.Error(peginBtcDepositWatcherLog("Error updating expired quote (%s): %v", quoteHash, err))
+		} else {
+			delete(watcher.quotes, quoteHash)
+		}
+		return
+	}
+
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
 		if err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
 			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
@@ -148,14 +157,6 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 		}
 		return
-	}
-
-	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
-		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
-			log.Error(peginBtcDepositWatcherLog("Error updating expired quote (%s): %v", quoteHash, err))
-		} else {
-			delete(watcher.quotes, quoteHash)
-		}
 	}
 }
 

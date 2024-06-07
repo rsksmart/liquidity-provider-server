@@ -197,6 +197,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
 			signingHashFunction,
+			rskRegistry.Contracts,
 		),
 		getConfigurationUseCase: liquidity_provider.NewGetConfigUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		loginUseCase:            liquidity_provider.NewLoginUseCase(databaseRegistry.LiquidityProviderRepository, messaging.EventBus),
