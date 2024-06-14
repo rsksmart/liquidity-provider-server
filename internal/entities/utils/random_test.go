@@ -21,6 +21,17 @@ func TestGetRandomInt(t *testing.T) {
 	}
 }
 
+func TestMustGetRandomInt(t *testing.T) {
+	var numbers []int64
+	var number int64
+	for i := 0; i < 100; i++ {
+		number = utils.MustGetRandomInt()
+		assert.Positive(t, number)
+		assert.False(t, slices.Contains(numbers, number))
+		numbers = append(numbers, number)
+	}
+}
+
 func TestGetRandomBytes_Size(t *testing.T) {
 	sizes := []int64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512}
 	for _, size := range sizes {
