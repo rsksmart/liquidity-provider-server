@@ -86,7 +86,7 @@ func validateCaptcha(r *http.Request, captchaUrl, captchaSecretKey, token string
 	if err != nil {
 		return captchaValidationResponse{}, err
 	}
-	req.Header.Set("Content-Type", rest.ContentTypeForm)
+	req.Header.Set(rest.HeaderContentType, rest.ContentTypeForm)
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

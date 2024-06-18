@@ -5,25 +5,28 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
-	"time"
+	"sync"
 )
 
 type PenalizationAlertWatcher struct {
 	rpc                      blockchain.Rpc
 	penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase
 	currentBlock             uint64
-	ticker                   *time.Ticker
+	currentBlockMutex        sync.RWMutex
+	ticker                   Ticker
 	watcherStopChannel       chan bool
 }
 
-func NewPenalizationAlertWatcher(rpc blockchain.Rpc, penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase) *PenalizationAlertWatcher {
+func NewPenalizationAlertWatcher(rpc blockchain.Rpc, penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase, ticker Ticker) *PenalizationAlertWatcher {
 	watcherStopChannel := make(chan bool, 1)
-	return &PenalizationAlertWatcher{rpc: rpc, penalizationAlertUseCase: penalizationAlertUseCase, watcherStopChannel: watcherStopChannel}
+	return &PenalizationAlertWatcher{rpc: rpc, penalizationAlertUseCase: penalizationAlertUseCase, watcherStopChannel: watcherStopChannel, ticker: ticker, currentBlockMutex: sync.RWMutex{}}
 }
 
 func (watcher *PenalizationAlertWatcher) Prepare(ctx context.Context) error {
 	var err error
 	var height uint64
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
 	if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 		return err
 	}
@@ -36,11 +39,11 @@ func (watcher *PenalizationAlertWatcher) Start() {
 	var ctx context.Context
 	var err error
 	var height uint64
-	watcher.ticker = time.NewTicker(penalizationCheckInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
+			watcher.currentBlockMutex.Lock()
 			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 				log.Error("Error checking penalization events inside watcher: ", err)
@@ -50,12 +53,19 @@ watcherLoop:
 				}
 			}
 			cancel()
+			watcher.currentBlockMutex.Unlock()
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
 			break watcherLoop
 		}
 	}
+}
+
+func (watcher *PenalizationAlertWatcher) GetCurrentBlock() uint64 {
+	watcher.currentBlockMutex.RLock()
+	defer watcher.currentBlockMutex.RUnlock()
+	return watcher.currentBlock
 }
 
 func (watcher *PenalizationAlertWatcher) Shutdown(closeChannel chan<- bool) {

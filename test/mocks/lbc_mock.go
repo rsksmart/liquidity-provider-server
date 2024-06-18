@@ -85,6 +85,9 @@ func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
 
 func (m *LbcMock) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
 	args := m.Called(ctx, fromBlock, toBlock)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]liquidity_provider.PunishmentEvent), args.Error(1)
 }
 

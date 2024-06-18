@@ -115,9 +115,15 @@ func (useCase *BridgePegoutUseCase) calculateTotalToPegout(watchedQuotes []quote
 		if watchedQuote.RetainedQuote.State != quote.PegoutStateRefundPegOutSucceeded {
 			return nil, errors.New("not all quotes were refunded successfully")
 		}
-		totalValue.Add(totalValue, watchedQuote.PegoutQuote.Value)
-		totalValue.Add(totalValue, watchedQuote.PegoutQuote.CallFee)
-		totalValue.Add(totalValue, watchedQuote.PegoutQuote.GasFee)
+		if watchedQuote.PegoutQuote.Value != nil {
+			totalValue.Add(totalValue, watchedQuote.PegoutQuote.Value)
+		}
+		if watchedQuote.PegoutQuote.CallFee != nil {
+			totalValue.Add(totalValue, watchedQuote.PegoutQuote.CallFee)
+		}
+		if watchedQuote.PegoutQuote.GasFee != nil {
+			totalValue.Add(totalValue, watchedQuote.PegoutQuote.GasFee)
+		}
 	}
 	return totalValue, nil
 }

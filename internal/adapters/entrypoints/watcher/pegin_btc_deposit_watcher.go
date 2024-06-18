@@ -12,46 +12,70 @@ import (
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 	"math/big"
-	"time"
+	"sync"
 )
 
 type PeginDepositAddressWatcher struct {
 	quotes                      map[string]quote.WatchedPeginQuote
+	quotesMutex                 sync.RWMutex
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	updatePeginDepositUseCase   *w.UpdatePeginDepositUseCase
 	callForUserUseCase          *pegin.CallForUserUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
 	rpc                         blockchain.Rpc
-	ticker                      *time.Ticker
+	ticker                      Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
 	currentBlock                *big.Int
+	currentBlockMutex           sync.RWMutex
+}
+
+type PeginDepositAddressWatcherUseCases struct {
+	callForUserUseCase          *pegin.CallForUserUseCase
+	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
+	updatePeginDepositUseCase   *w.UpdatePeginDepositUseCase
+	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
+}
+
+func NewPeginDepositAddressWatcherUseCases(
+	callForUserUseCase *pegin.CallForUserUseCase,
+	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
+	updatePeginDepositUseCase *w.UpdatePeginDepositUseCase,
+	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,
+) *PeginDepositAddressWatcherUseCases {
+	return &PeginDepositAddressWatcherUseCases{
+		callForUserUseCase:          callForUserUseCase,
+		getWatchedPeginQuoteUseCase: getWatchedPeginQuoteUseCase,
+		updatePeginDepositUseCase:   updatePeginDepositUseCase,
+		expiredUseCase:              expiredUseCase,
+	}
 }
 
 const callForUserErrorTemplate = "Error executing call for user on quote %s: %v"
 
 func NewPeginDepositAddressWatcher(
-	callForUserUseCase *pegin.CallForUserUseCase,
-	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
-	updatePeginDepositUseCase *w.UpdatePeginDepositUseCase,
-	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,
+	useCases *PeginDepositAddressWatcherUseCases,
 	btcWallet blockchain.BitcoinWallet,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
+	ticker Ticker,
 ) *PeginDepositAddressWatcher {
 	quotes := make(map[string]quote.WatchedPeginQuote)
 	watcherStopChannel := make(chan bool, 1)
 	return &PeginDepositAddressWatcher{
 		quotes:                      quotes,
-		callForUserUseCase:          callForUserUseCase,
-		updatePeginDepositUseCase:   updatePeginDepositUseCase,
-		getWatchedPeginQuoteUseCase: getWatchedPeginQuoteUseCase,
-		expiredUseCase:              expiredUseCase,
+		quotesMutex:                 sync.RWMutex{},
+		callForUserUseCase:          useCases.callForUserUseCase,
+		updatePeginDepositUseCase:   useCases.updatePeginDepositUseCase,
+		getWatchedPeginQuoteUseCase: useCases.getWatchedPeginQuoteUseCase,
+		expiredUseCase:              useCases.expiredUseCase,
 		btcWallet:                   btcWallet,
 		eventBus:                    eventBus,
 		watcherStopChannel:          watcherStopChannel,
 		rpc:                         rpc,
+		ticker:                      ticker,
+		currentBlockMutex:           sync.RWMutex{},
 	}
 }
 
@@ -59,7 +83,12 @@ func (watcher *PeginDepositAddressWatcher) Prepare(ctx context.Context) error {
 	var err error
 	var depositAddress string
 	var watchedQuotes []quote.WatchedPeginQuote
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
 	watcher.currentBlock = big.NewInt(0)
+
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	watchedQuotes, err = watcher.getWatchedPeginQuoteUseCase.Run(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
 	if err != nil {
 		return err
@@ -76,17 +105,18 @@ func (watcher *PeginDepositAddressWatcher) Prepare(ctx context.Context) error {
 
 func (watcher *PeginDepositAddressWatcher) Start() {
 	eventChannel := watcher.eventBus.Subscribe(quote.AcceptedPeginQuoteEventId)
-	watcher.ticker = time.NewTicker(peginDepositWatcherInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
+			watcher.currentBlockMutex.Lock()
 			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes(context.Background())
 				watcher.currentBlock = height
 			} else if err != nil {
 				log.Error(peginBtcDepositWatcherLog("error getting Bitcoin chain height: %v", err))
 			}
+			watcher.currentBlockMutex.Unlock()
 		case event := <-eventChannel:
 			if event != nil {
 				watcher.handleAcceptedPeginQuote(event)
@@ -113,6 +143,8 @@ func (watcher *PeginDepositAddressWatcher) handleAcceptedPeginQuote(event entiti
 		return
 	}
 
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
 		log.Info(peginBtcDepositWatcherLog("Quote %s is already watched", quoteHash))
 		return
@@ -135,6 +167,9 @@ func (watcher *PeginDepositAddressWatcher) checkQuotes(ctx context.Context) {
 func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) {
 	var err error
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
+
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
 		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
@@ -211,6 +246,19 @@ func (watcher *PeginDepositAddressWatcher) callForUser(ctx context.Context, watc
 	} else {
 		delete(watcher.quotes, quoteHash)
 	}
+}
+
+func (watcher *PeginDepositAddressWatcher) GetWatchedQuote(quoteHash string) (quote.WatchedPeginQuote, bool) {
+	watcher.quotesMutex.RLock()
+	defer watcher.quotesMutex.RUnlock()
+	watchedQuote, ok := watcher.quotes[quoteHash]
+	return watchedQuote, ok
+}
+
+func (watcher *PeginDepositAddressWatcher) GetCurrentBlock() *big.Int {
+	watcher.currentBlockMutex.RLock()
+	defer watcher.currentBlockMutex.RUnlock()
+	return watcher.currentBlock
 }
 
 func peginBtcDepositWatcherLog(msg string, args ...any) string {

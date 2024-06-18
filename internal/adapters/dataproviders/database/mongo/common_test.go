@@ -86,7 +86,7 @@ func TestConnection_Collection(t *testing.T) {
 	assert.NotNil(t, conn.Collection(collectionName))
 }
 
-func assertDbInteractionLog(t *testing.T, interaction mongo.DbInteraction) (assertFunc func()) {
+func assertDbInteractionLog(t *testing.T, interaction mongo.DbInteraction) (assertFunc func() bool) {
 	return test.AssertLogContains(t, string(interaction))
 }
 

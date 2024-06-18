@@ -4,18 +4,24 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type LiquidityCheckWatcher struct {
 	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase
 	watcherStopChannel    chan bool
-	ticker                *time.Ticker
+	ticker                Ticker
 }
 
-func NewLiquidityCheckWatcher(checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase) *LiquidityCheckWatcher {
+func NewLiquidityCheckWatcher(
+	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase,
+	ticker Ticker,
+) *LiquidityCheckWatcher {
 	watcherStopChannel := make(chan bool, 1)
-	return &LiquidityCheckWatcher{checkLiquidityUseCase: checkLiquidityUseCase, watcherStopChannel: watcherStopChannel}
+	return &LiquidityCheckWatcher{
+		checkLiquidityUseCase: checkLiquidityUseCase,
+		watcherStopChannel:    watcherStopChannel,
+		ticker:                ticker,
+	}
 }
 
 func (watcher *LiquidityCheckWatcher) Shutdown(closeChannel chan<- bool) {
@@ -29,12 +35,11 @@ func (watcher *LiquidityCheckWatcher) Prepare(ctx context.Context) error { retur
 func (watcher *LiquidityCheckWatcher) Start() {
 	var ctx context.Context
 	var cancel context.CancelFunc
-	watcher.ticker = time.NewTicker(liquidityCheckInterval)
 
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
 			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if err := watcher.checkLiquidityUseCase.Run(ctx); err != nil {
 				log.Error("Error checking liquidity inside watcher: ", err)

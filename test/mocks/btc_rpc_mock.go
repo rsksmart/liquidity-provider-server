@@ -3,6 +3,7 @@ package mocks
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/stretchr/testify/mock"
+	"math/big"
 )
 
 type BtcRpcMock struct {
@@ -49,4 +50,12 @@ func (m *BtcRpcMock) GetPartialMerkleTree(hash string) ([]byte, error) {
 func (m *BtcRpcMock) ValidateAddress(address string) error {
 	args := m.Called(address)
 	return args.Error(0)
+}
+
+func (m *BtcRpcMock) GetHeight() (*big.Int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*big.Int), args.Error(1)
 }

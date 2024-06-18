@@ -4,22 +4,23 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type QuoteCleanerWatcher struct {
 	cleanUseCase       *watcher.CleanExpiredQuotesUseCase
-	ticker             *time.Ticker
+	ticker             Ticker
 	watcherStopChannel chan bool
 }
 
 func NewQuoteCleanerWatcher(
 	cleanUseCase *watcher.CleanExpiredQuotesUseCase,
+	ticker Ticker,
 ) *QuoteCleanerWatcher {
 	watcherStopChannel := make(chan bool, 1)
 	return &QuoteCleanerWatcher{
 		cleanUseCase:       cleanUseCase,
 		watcherStopChannel: watcherStopChannel,
+		ticker:             ticker,
 	}
 }
 
@@ -28,11 +29,10 @@ func (watcher *QuoteCleanerWatcher) Prepare(ctx context.Context) error {
 }
 
 func (watcher *QuoteCleanerWatcher) Start() {
-	watcher.ticker = time.NewTicker(quoteCleanInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
 			watcher.clean()
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()

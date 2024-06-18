@@ -14,6 +14,15 @@ func GetRandomInt() (int64, error) {
 	return random.Int64(), nil
 }
 
+// MustGetRandomInt same as GetRandomInt but panics if error
+func MustGetRandomInt() int64 {
+	random, err := GetRandomInt()
+	if err != nil {
+		panic(err)
+	}
+	return random
+}
+
 func GetRandomBytes(numberOfBytes int64) ([]byte, error) {
 	random := make([]byte, numberOfBytes)
 

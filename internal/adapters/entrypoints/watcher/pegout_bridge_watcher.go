@@ -9,7 +9,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 // PegoutBridgeWatcher is a watcher that checks the state of the pegout quotes and creates a transaction
@@ -18,26 +17,26 @@ import (
 type PegoutBridgeWatcher struct {
 	getQuotesUseCase    *w.GetWatchedPegoutQuoteUseCase
 	bridgePegoutUseCase *pegout.BridgePegoutUseCase
-	ticker              *time.Ticker
+	ticker              Ticker
 	watcherStopChannel  chan struct{}
 }
 
-func NewPegoutBridgeWatcher(getQuotesUseCase *w.GetWatchedPegoutQuoteUseCase, bridgePegoutUseCase *pegout.BridgePegoutUseCase) *PegoutBridgeWatcher {
+func NewPegoutBridgeWatcher(getQuotesUseCase *w.GetWatchedPegoutQuoteUseCase, bridgePegoutUseCase *pegout.BridgePegoutUseCase, ticker Ticker) *PegoutBridgeWatcher {
 	return &PegoutBridgeWatcher{
 		getQuotesUseCase:    getQuotesUseCase,
 		bridgePegoutUseCase: bridgePegoutUseCase,
 		watcherStopChannel:  make(chan struct{}, 1),
+		ticker:              ticker,
 	}
 }
 
 func (watcher *PegoutBridgeWatcher) Prepare(ctx context.Context) error { return nil }
 
 func (watcher *PegoutBridgeWatcher) Start() {
-	watcher.ticker = time.NewTicker(pegoutBridgeWatcherInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
 			watcher.runUseCases()
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
