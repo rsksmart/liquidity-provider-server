@@ -12,21 +12,23 @@ import (
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 	"math/big"
-	"time"
+	"sync"
 )
 
 // PeginBridgeWatcher is a watcher that checks the state of the pegin quotes and registers
 // the pegin on the bridge when the conditions are met
 type PeginBridgeWatcher struct {
 	quotes                      map[string]quote.WatchedPeginQuote
+	quotesMutex                 sync.RWMutex
 	registerPeginUseCase        *pegin.RegisterPeginUseCase
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	contracts                   blockchain.RskContracts
 	rpc                         blockchain.Rpc
-	ticker                      *time.Ticker
+	ticker                      Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
 	currentBlock                *big.Int
+	currentBlockMutex           sync.RWMutex
 }
 
 func NewPeginBridgeWatcher(
@@ -35,6 +37,7 @@ func NewPeginBridgeWatcher(
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
+	ticker Ticker,
 ) *PeginBridgeWatcher {
 	quotes := make(map[string]quote.WatchedPeginQuote)
 	watcherStopChannel := make(chan bool, 1)
@@ -46,15 +49,22 @@ func NewPeginBridgeWatcher(
 		rpc:                         rpc,
 		eventBus:                    eventBus,
 		watcherStopChannel:          watcherStopChannel,
+		ticker:                      ticker,
+		quotesMutex:                 sync.RWMutex{},
+		currentBlockMutex:           sync.RWMutex{},
 	}
 }
 
 func (watcher *PeginBridgeWatcher) Prepare(ctx context.Context) error {
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
 	watcher.currentBlock = big.NewInt(0)
 	watchedQuotes, err := watcher.getWatchedPeginQuoteUseCase.Run(ctx, quote.PeginStateCallForUserSucceeded)
 	if err != nil {
 		return err
 	}
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	for _, watchedQuote := range watchedQuotes {
 		watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = watchedQuote
 	}
@@ -63,17 +73,20 @@ func (watcher *PeginBridgeWatcher) Prepare(ctx context.Context) error {
 
 func (watcher *PeginBridgeWatcher) Start() {
 	eventChannel := watcher.eventBus.Subscribe(quote.CallForUserCompletedEventId)
-	watcher.ticker = time.NewTicker(peginBridgeWatcherInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
+			watcher.currentBlockMutex.Lock()
+			watcher.quotesMutex.Lock()
 			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
 				log.Error(peginBridgeWatcherLog(blockchain.BtcChainHeightErrorTemplate, err))
 			}
+			watcher.currentBlockMutex.Unlock()
+			watcher.quotesMutex.Unlock()
 		case event := <-eventChannel:
 			if event != nil {
 				watcher.handleCallForUserCompleted(event)
@@ -99,7 +112,8 @@ func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Eve
 		log.Error(peginBridgeWatcherLog("Trying to parse wrong event"))
 		return
 	}
-
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
 		log.Info(peginBridgeWatcherLog("Quote %s is already watched", quoteHash))
 		return
@@ -139,6 +153,19 @@ func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote quote.WatchedPegin
 func (watcher *PeginBridgeWatcher) validateQuote(watchedQuote quote.WatchedPeginQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PeginStateCallForUserSucceeded &&
 		tx.Confirmations >= watcher.contracts.Bridge.GetRequiredTxConfirmations()
+}
+
+func (watcher *PeginBridgeWatcher) GetWatchedQuote(quoteHash string) (quote.WatchedPeginQuote, bool) {
+	watcher.quotesMutex.RLock()
+	defer watcher.quotesMutex.RUnlock()
+	watchedQuote, ok := watcher.quotes[quoteHash]
+	return watchedQuote, ok
+}
+
+func (watcher *PeginBridgeWatcher) GetCurrentBlock() *big.Int {
+	watcher.currentBlockMutex.RLock()
+	defer watcher.currentBlockMutex.RUnlock()
+	return watcher.currentBlock
 }
 
 func peginBridgeWatcherLog(msg string, args ...any) string {
