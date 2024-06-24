@@ -19,7 +19,27 @@ type Endpoint struct {
 	Handler http.Handler
 }
 
-func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
+// EndpointFactory abstraction to be able to mock the endpoints in tests
+type EndpointFactory interface {
+	GetPublic(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint
+	GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint
+}
+
+type endpointFactoryImpl struct{}
+
+func NewEndpointFactory() EndpointFactory {
+	return &endpointFactoryImpl{}
+}
+
+func (f *endpointFactoryImpl) GetPublic(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint {
+	return GetPublicEndpoints(useCaseRegistry)
+}
+
+func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
+	return GetManagementEndpoints(env, useCaseRegistry, store)
+}
+
+func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
 	router.Use(middlewares.NewCorsMiddleware())
 
 	store, err := cookies.GetSessionCookieStore(env.Management)
@@ -27,18 +47,18 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 		log.Fatal("Error registering routes: ", err)
 	}
 
-	registerPublicRoutes(router, env, useCaseRegistry)
+	registerPublicRoutes(router, env, endpointFactory.GetPublic(useCaseRegistry))
 
 	if env.Management.EnableManagementApi {
-		registerManagementRoutes(router, env, useCaseRegistry, store)
+		registerManagementRoutes(router, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
 	}
 
 	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())
 }
 
-func registerPublicRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry) {
+func registerPublicRoutes(router *mux.Router, env environment.Environment, endpoints []PublicEndpoint) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
-	for _, endpoint := range getPublicEndpoints(useCaseRegistry) {
+	for _, endpoint := range endpoints {
 		handler := endpoint.Handler
 		if endpoint.RequiresCaptcha {
 			handler = useMiddlewares(handler, captchaMiddleware)
@@ -47,7 +67,7 @@ func registerPublicRoutes(router *mux.Router, env environment.Environment, useCa
 	}
 }
 
-func registerManagementRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) {
+func registerManagementRoutes(router *mux.Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
@@ -55,9 +75,8 @@ func registerManagementRoutes(router *mux.Router, env environment.Environment, u
 	)
 
 	sessionMiddlewares := middlewares.NewSessionMiddlewares(env.Management, store)
-	managementEndpoints := getManagementEndpoints(env, useCaseRegistry, store)
 	var handler http.Handler
-	for _, endpoint := range managementEndpoints {
+	for _, endpoint := range endpoints {
 		if slices.Contains(AllowedPaths[:], endpoint.Path) {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
 		} else {

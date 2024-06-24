@@ -12,6 +12,7 @@ import (
 
 const (
 	ManagementSessionCookieName = "lp-session"
+	CsrfCookieName              = "lps-csrf-cookie"
 	KeysBytesLength             = 32
 	SessionMaxSeconds           = 60 * 30
 )
@@ -26,17 +27,18 @@ func GetSessionCookieStore(env environment.ManagementEnv) (sessions.Store, error
 		return cookieStore, nil
 	}
 
+	authKey, err = utils.DecodeKey(env.SessionAuthKey, KeysBytesLength)
+	if err != nil {
+		err = fmt.Errorf("error decoding session auth key: %w", err)
+		return nil, err
+	}
+	encryptionKey, err = utils.DecodeKey(env.SessionEncryptionKey, KeysBytesLength)
+	if err != nil {
+		err = fmt.Errorf("error decoding session encryption key: %w", err)
+		return nil, err
+	}
+
 	storeOnce.Do(func() {
-		authKey, err = utils.DecodeKey(env.SessionAuthKey, KeysBytesLength)
-		if err != nil {
-			err = fmt.Errorf("error decoding session auth key: %w", err)
-			return
-		}
-		encryptionKey, err = utils.DecodeKey(env.SessionEncryptionKey, KeysBytesLength)
-		if err != nil {
-			err = fmt.Errorf("error decoding session encryption key: %w", err)
-			return
-		}
 		cookieStore = NewUniqueSessionStore(ManagementSessionCookieName, authKey, encryptionKey)
 	})
 	return cookieStore, err
