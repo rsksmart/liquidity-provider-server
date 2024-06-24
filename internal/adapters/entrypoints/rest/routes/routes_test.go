@@ -55,20 +55,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
-		for _, route := range onlyPublicRoutes {
-			methods, methodsErr := route.GetMethods()
-			require.NoError(t, methodsErr)
-			for _, method := range methods {
-				if method != http.MethodOptions {
-					path, pathErr := route.GetPathTemplate()
-					require.NoError(t, pathErr)
-					req := httptest.NewRequest(method, path, nil)
-					responseRecorder := httptest.NewRecorder()
-					onlyPublicRouter.ServeHTTP(responseRecorder, req)
-					assertHasCorsHeaders(t, responseRecorder)
-				}
-			}
-		}
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -80,24 +67,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	})
 
 	t.Run("should register public routes", func(t *testing.T) {
-		publicRoutes := routes.GetPublicEndpoints(useCaseRegistry)
-		for _, endpoint := range publicRoutes {
-			req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
-			publicRoutesOk := slices.ContainsFunc(onlyPublicRoutes, func(r *mux.Route) bool {
-				return r.Match(req, &mux.RouteMatch{})
-			})
-			assert.True(t, publicRoutesOk)
-		}
-		t.Run("should use captcha middleware in proper routes", func(t *testing.T) {
-			for _, endpoint := range publicRoutes {
-				if endpoint.RequiresCaptcha {
-					req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
-					responseRecorder := httptest.NewRecorder()
-					onlyPublicRouter.ServeHTTP(responseRecorder, req)
-					assert.Contains(t, responseRecorder.Body.String(), "missing X-Captcha-Token header")
-				}
-			}
-		})
+		testPublicRoutesRegistration(t, useCaseRegistry, onlyPublicRoutes, onlyPublicRouter)
 	})
 
 	t.Run("should register management routes only if Management API is enabled", func(t *testing.T) {
@@ -136,20 +106,7 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
-		for _, route := range managementAndPublicRoutes {
-			methods, methodsErr := route.GetMethods()
-			require.NoError(t, methodsErr)
-			for _, method := range methods {
-				if method != http.MethodOptions {
-					path, pathErr := route.GetPathTemplate()
-					require.NoError(t, pathErr)
-					req := httptest.NewRequest(method, path, nil)
-					responseRecorder := httptest.NewRecorder()
-					managementRouter.ServeHTTP(responseRecorder, req)
-					assertHasCorsHeaders(t, responseRecorder)
-				}
-			}
-		}
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -161,24 +118,7 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	})
 
 	t.Run("should register public routes", func(t *testing.T) {
-		publicRoutes := routes.GetPublicEndpoints(useCaseRegistry)
-		for _, endpoint := range publicRoutes {
-			req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
-			ok := slices.ContainsFunc(managementAndPublicRoutes, func(r *mux.Route) bool {
-				return r.Match(req, &mux.RouteMatch{})
-			})
-			assert.True(t, ok)
-		}
-		t.Run("should use captcha middleware in proper routes", func(t *testing.T) {
-			for _, endpoint := range publicRoutes {
-				if endpoint.RequiresCaptcha {
-					req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
-					responseRecorder := httptest.NewRecorder()
-					managementRouter.ServeHTTP(responseRecorder, req)
-					assert.Contains(t, responseRecorder.Body.String(), "missing X-Captcha-Token header")
-				}
-			}
-		})
+		testPublicRoutesRegistration(t, useCaseRegistry, managementAndPublicRoutes, managementRouter)
 	})
 
 	t.Run("should register management routes only if Management API is enabled", func(t *testing.T) {
@@ -203,9 +143,46 @@ func TestConfigureRoutes_Management(t *testing.T) {
 					assertHasSessionMiddleware(t, managementRouter, endpoint, responseRecorder.Result().Cookies()[0], responseRecorder.Header().Get(csrfTokenHeaderName))
 					require.NoError(t, responseRecorder.Result().Body.Close())
 				}
-
 			}
 		})
+	})
+}
+
+func testCorsMiddleware(t *testing.T, routesToTest []*mux.Route, routerToTest *mux.Router) {
+	for _, route := range routesToTest {
+		methods, methodsErr := route.GetMethods()
+		require.NoError(t, methodsErr)
+		for _, method := range methods {
+			if method != http.MethodOptions {
+				path, pathErr := route.GetPathTemplate()
+				require.NoError(t, pathErr)
+				req := httptest.NewRequest(method, path, nil)
+				responseRecorder := httptest.NewRecorder()
+				routerToTest.ServeHTTP(responseRecorder, req)
+				assertHasCorsHeaders(t, responseRecorder)
+			}
+		}
+	}
+}
+
+func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCaseRegistry, routesToTest []*mux.Route, routerToTest *mux.Router) {
+	publicRoutes := routes.GetPublicEndpoints(useCaseRegistry)
+	for _, endpoint := range publicRoutes {
+		req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
+		publicRoutesOk := slices.ContainsFunc(routesToTest, func(r *mux.Route) bool {
+			return r.Match(req, &mux.RouteMatch{})
+		})
+		assert.True(t, publicRoutesOk)
+	}
+	t.Run("should use captcha middleware in proper routes", func(t *testing.T) {
+		for _, endpoint := range publicRoutes {
+			if endpoint.RequiresCaptcha {
+				req := httptest.NewRequest(endpoint.Method, endpoint.Path, nil)
+				responseRecorder := httptest.NewRecorder()
+				routerToTest.ServeHTTP(responseRecorder, req)
+				assert.Contains(t, responseRecorder.Body.String(), "missing X-Captcha-Token header")
+			}
+		}
 	})
 }
 
