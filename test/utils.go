@@ -151,3 +151,18 @@ func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 	require.NoError(t, err)
 	return testAccount
 }
+
+func ReadFile(t *testing.T, path string) []byte {
+	_, currentPackageDir, _, _ := runtime.Caller(0)
+	file, err := os.Open(filepath.Join(currentPackageDir, "../../", path))
+	require.NoError(t, err)
+
+	defer func(file *os.File) {
+		closingErr := file.Close()
+		require.NoError(t, closingErr)
+	}(file)
+
+	fileBytes, err := io.ReadAll(file)
+	require.NoError(t, err)
+	return fileBytes
+}
