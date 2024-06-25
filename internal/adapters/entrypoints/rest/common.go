@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	log "github.com/sirupsen/logrus"
+	"math/big"
 	"net/http"
 	"time"
 )
@@ -16,6 +17,21 @@ const (
 )
 
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
+
+func PositiveStringValidationRule(value string) bool {
+	bigIntValue := new(big.Int)
+	bigIntValue.SetString(value, 10)
+	return bigIntValue.Cmp(big.NewInt(0)) > 0
+}
+
+func init() {
+	err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
+		return PositiveStringValidationRule(field.Field().String())
+	})
+	if err != nil {
+		log.Fatal("Error registering validation: ", err)
+	}
+}
 
 type ErrorDetails = map[string]any
 
