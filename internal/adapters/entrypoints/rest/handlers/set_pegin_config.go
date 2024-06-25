@@ -23,7 +23,7 @@ func NewSetPeginConfigHandler(useCase *liquidity_provider.SetPeginConfigUseCase)
 			return
 		}
 
-		err = useCase.Run(req.Context(), *request.Configuration)
+		err = useCase.Run(req.Context(), pkg.FromPeginConfigurationDTO(request.Configuration))
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
