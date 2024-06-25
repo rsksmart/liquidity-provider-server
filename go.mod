@@ -23,6 +23,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.mongodb.org/mongo-driver v1.13.1
 	golang.org/x/crypto v0.16.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -79,5 +80,4 @@ require (
 	golang.org/x/time v0.1.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
