@@ -212,21 +212,9 @@
                 }
             };
 
-            const fetchProviderData = async () => {
-                try {
-                    const response = await fetch('/getProviders', { 
-                        method: 'GET', 
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    const providers = await response.json();
-                    const provider = providers[0];
-                    setTextContent('providerAddress', provider.provider);
-                    setTextContent('isOperational', provider.status ? "Operational" : "Not Operational");
-                } catch (error) {
-                    console.error('Failed to fetch provider data:', error);
-                }
+            const populateProviderData = providerData => {
+                setTextContent('providerAddress', providerData.address);
+                setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
             };
 
             const createLabel = text => {
@@ -522,9 +510,9 @@
             populateConfigSection('generalConfig', data.Configuration.general);
             populateConfigSection('peginConfig', data.Configuration.pegin);
             populateConfigSection('pegoutConfig', data.Configuration.pegout);
+            populateProviderData(data.ProviderData);
             fetchData('/pegin/collateral', 'peginCollateral');
             fetchData('/pegout/collateral', 'pegoutCollateral');
-            fetchProviderData();
         });
     </script>
 </body>

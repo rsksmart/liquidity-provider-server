@@ -381,8 +381,7 @@ func TestLiquidityBridgeContractImpl_GetProviders(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
 	t.Run("Success", func(t *testing.T) {
-		lbcMock.On("GetProviderIds", mock.Anything).Return(big.NewInt(2), nil).Once()
-		lbcMock.On("GetProviders", mock.Anything, []*big.Int{big.NewInt(1), big.NewInt(2)}).Return(contractProviders, nil).Once()
+		lbcMock.On("GetProviders", mock.Anything).Return(contractProviders, nil).Once()
 		result, err := lbc.GetProviders()
 		require.NoError(t, err)
 		assert.Equal(t, parsedProviders, result)
@@ -391,22 +390,14 @@ func TestLiquidityBridgeContractImpl_GetProviders(t *testing.T) {
 	t.Run("Error handling on invalid provider type", func(t *testing.T) {
 		invalidProviders := contractProviders
 		invalidProviders[0].ProviderType = "invalid type"
-		lbcMock.On("GetProviderIds", mock.Anything).Return(big.NewInt(2), nil).Once()
-		lbcMock.On("GetProviders", mock.Anything, []*big.Int{big.NewInt(1), big.NewInt(2)}).Return(invalidProviders, nil).Once()
+		lbcMock.On("GetProviders", mock.Anything).Return(invalidProviders, nil).Once()
 		result, err := lbc.GetProviders()
 		require.ErrorIs(t, err, liquidity_provider.InvalidProviderTypeError)
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Error handling GetProviderIds", func(t *testing.T) {
-		lbcMock.On("GetProviderIds", mock.Anything).Return(nil, assert.AnError).Once()
-		result, err := lbc.GetProviders()
-		require.Error(t, err)
-		assert.Nil(t, result)
-	})
 	t.Run("Error handling GetProviders", func(t *testing.T) {
-		lbcMock.On("GetProviderIds", mock.Anything).Return(big.NewInt(2), nil).Once()
-		lbcMock.On("GetProviders", mock.Anything, []*big.Int{big.NewInt(1), big.NewInt(2)}).Return(nil, assert.AnError).Once()
+		lbcMock.On("GetProviders", mock.Anything).Return(nil, assert.AnError).Once()
 		result, err := lbc.GetProviders()
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -1260,6 +1251,58 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)
 		iteratorMock.AssertExpectations(t)
+	})
+}
+
+func TestLiquidityBridgeContractImpl_GetProvider(t *testing.T) {
+	lbcMock := &mocks.LbcAdapterMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	t.Run("Success", func(t *testing.T) {
+		lbcMock.EXPECT().GetProvider(mock.Anything, parsedAddress).Return(bindings.LiquidityBridgeContractLiquidityProvider{
+			Id:           big.NewInt(5),
+			Provider:     parsedAddress,
+			Name:         test.AnyString,
+			ApiBaseUrl:   test.AnyUrl,
+			Status:       true,
+			ProviderType: string(liquidity_provider.FullProvider),
+		}, nil).Once()
+		result, err := lbc.GetProvider(parsedAddress.String())
+		require.NoError(t, err)
+		assert.Equal(t, liquidity_provider.RegisteredLiquidityProvider{
+			Id:           5,
+			Address:      parsedAddress.String(),
+			Name:         test.AnyString,
+			ApiBaseUrl:   test.AnyUrl,
+			Status:       true,
+			ProviderType: liquidity_provider.FullProvider,
+		}, result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Error handling on GetProvider call fail", func(t *testing.T) {
+		lbcMock.On("GetProvider", mock.Anything, parsedAddress).Return(bindings.LiquidityBridgeContractLiquidityProvider{}, assert.AnError).Once()
+		result, err := lbc.GetProvider(parsedAddress.String())
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Invalid address", func(t *testing.T) {
+		result, err := lbc.GetProvider(test.AnyString)
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+		assert.Empty(t, result)
+	})
+	t.Run("Invalid type", func(t *testing.T) {
+		lbcMock.EXPECT().GetProvider(mock.Anything, parsedAddress).Return(bindings.LiquidityBridgeContractLiquidityProvider{
+			Id:           big.NewInt(5),
+			Provider:     parsedAddress,
+			Name:         test.AnyString,
+			ApiBaseUrl:   test.AnyUrl,
+			Status:       true,
+			ProviderType: test.AnyString,
+		}, nil).Once()
+		result, err := lbc.GetProvider(parsedAddress.String())
+		require.ErrorIs(t, err, liquidity_provider.InvalidProviderTypeError)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
 	})
 }
 

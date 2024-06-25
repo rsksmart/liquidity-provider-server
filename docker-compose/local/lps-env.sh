@@ -79,9 +79,9 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 
 [ -d "$BTCD_HOME" ] || mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
-[ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod 777 -R "$POWPEG_PEGIN_HOME"
-[ -d "$POWPEG_PEGOUT_HOME" ] || mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod 777 -R "$POWPEG_PEGOUT_HOME"
-[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod 777 -R "$LPS_HOME"
+[ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME"
+[ -d "$POWPEG_PEGOUT_HOME" ] || mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod -R 777 "$POWPEG_PEGOUT_HOME"
+[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME"
 [ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
 [ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
 
@@ -167,10 +167,12 @@ FAIL=true
 for i in {1..10}
 do
   sleep 5
-  docker ps -a
   curl -s "http://localhost:8080/health" \
     && echo "LPS is up and running" \
     && FAIL=false
+  if [ "$FAIL" = false ]; then
+    break
+  fi
 done
 
 if [ "$FAIL" = true ]; then
