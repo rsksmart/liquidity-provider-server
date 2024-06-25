@@ -27,6 +27,7 @@ import (
 const (
 	penalizedIteratorString = "*bindings.LiquidityBridgeContractPenalizedIterator"
 	depositIteratorString   = "*bindings.LiquidityBridgeContractPegOutDepositIterator"
+	invalidAddressTest      = "Invalid address"
 )
 
 var peginQuote = quote.PeginQuote{
@@ -993,7 +994,7 @@ func TestLiquidityBridgeContractImpl_IsOperationalPegin(t *testing.T) {
 		_, err := lbc.IsOperationalPegin(parsedAddress.String())
 		require.Error(t, err)
 	})
-	t.Run("Invalid address", func(t *testing.T) {
+	t.Run(invalidAddressTest, func(t *testing.T) {
 		result, err := lbc.IsOperationalPegin(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
 		assert.False(t, result)
@@ -1015,7 +1016,7 @@ func TestLiquidityBridgeContractImpl_IsOperationalPegout(t *testing.T) {
 		_, err := lbc.IsOperationalPegout(parsedAddress.String())
 		require.Error(t, err)
 	})
-	t.Run("Invalid address", func(t *testing.T) {
+	t.Run(invalidAddressTest, func(t *testing.T) {
 		result, err := lbc.IsOperationalPegout(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
 		assert.False(t, result)
@@ -1285,7 +1286,7 @@ func TestLiquidityBridgeContractImpl_GetProvider(t *testing.T) {
 		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)
 	})
-	t.Run("Invalid address", func(t *testing.T) {
+	t.Run(invalidAddressTest, func(t *testing.T) {
 		result, err := lbc.GetProvider(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
 		assert.Empty(t, result)
