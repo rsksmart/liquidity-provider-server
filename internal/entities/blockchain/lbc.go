@@ -80,6 +80,7 @@ type LiquidityBridgeContract interface {
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
 	GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error)
+	GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error)
 	ProviderResign() error
 	SetProviderStatus(id uint64, newStatus bool) error
 	GetCollateral(address string) (*entities.Wei, error)

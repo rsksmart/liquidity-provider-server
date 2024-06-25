@@ -17,14 +17,14 @@ func NewChangeStatusUseCase(contracts blockchain.RskContracts, provider liquidit
 
 func (useCase *ChangeStatusUseCase) Run(newStatus bool) error {
 	var err error
-	var id uint64
+	var registeredProvider liquidity_provider.RegisteredLiquidityProvider
 
-	id, err = ValidateConfiguredProvider(useCase.provider, useCase.contracts.Lbc)
+	registeredProvider, err = useCase.contracts.Lbc.GetProvider(useCase.provider.RskAddress())
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.ChangeProviderStatusId, err)
 	}
 
-	if err = useCase.contracts.Lbc.SetProviderStatus(id, newStatus); err != nil {
+	if err = useCase.contracts.Lbc.SetProviderStatus(registeredProvider.Id, newStatus); err != nil {
 		return usecases.WrapUseCaseError(usecases.ChangeProviderStatusId, err)
 	}
 	return nil
