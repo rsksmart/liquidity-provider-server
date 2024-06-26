@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
 
 // NewGetPeginQuoteStatusHandler
@@ -25,7 +26,7 @@ func NewGetPeginQuoteStatusHandler(useCase *pegin.StatusUseCase) http.HandlerFun
 		}
 		result, err := useCase.Run(req.Context(), quoteHash)
 		if errors.Is(err, usecases.QuoteNotFoundError) {
-			rest.JsonResponse(w, http.StatusNotFound)
+			rest.JsonErrorResponse(w, http.StatusNotFound, rest.NewErrorResponse("Quote not found", true))
 			return
 		} else if errors.Is(err, usecases.QuoteNotAcceptedError) {
 			rest.JsonErrorResponse(w, http.StatusConflict, rest.NewErrorResponse(err.Error(), true))
