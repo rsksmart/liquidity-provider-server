@@ -90,37 +90,19 @@ func (lbc *liquidityBridgeContractImpl) HashPegoutQuote(pegoutQuote quote.Pegout
 }
 
 func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
-	var i, maxProviderId int64
 	var providerType liquidity_provider.ProviderType
 	var providers []bindings.LiquidityBridgeContractLiquidityProvider
-	var provider bindings.LiquidityBridgeContractLiquidityProvider
 
 	opts := &bind.CallOpts{}
-	maxId, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return lbc.contract.GetProviderIds(opts)
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	maxProviderId = maxId.Int64()
-	providerIds := make([]*big.Int, 0)
-
-	for i = 1; i <= maxProviderId; i++ {
-		providerIds = append(providerIds, big.NewInt(i))
-	}
-
-	providers, err = rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+	providers, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
-			return lbc.contract.GetProviders(opts, providerIds)
+			return lbc.contract.GetProviders(opts)
 		})
 	if err != nil {
 		return nil, err
 	}
 	parsedProviders := make([]liquidity_provider.RegisteredLiquidityProvider, 0)
-	for i = 0; i < maxProviderId; i++ {
-		provider = providers[i]
+	for _, provider := range providers {
 		providerType = liquidity_provider.ProviderType(provider.ProviderType)
 		if !providerType.IsValid() {
 			return nil, liquidity_provider.InvalidProviderTypeError
@@ -135,6 +117,36 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.Reg
 		})
 	}
 	return parsedProviders, nil
+}
+
+func (lbc *liquidityBridgeContractImpl) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
+	var providerType liquidity_provider.ProviderType
+
+	if !common.IsHexAddress(address) {
+		return liquidity_provider.RegisteredLiquidityProvider{}, blockchain.InvalidAddressError
+	}
+
+	opts := &bind.CallOpts{}
+	provider, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (bindings.LiquidityBridgeContractLiquidityProvider, error) {
+			return lbc.contract.GetProvider(opts, common.HexToAddress(address))
+		})
+	if err != nil {
+		return liquidity_provider.RegisteredLiquidityProvider{}, err
+	}
+
+	providerType = liquidity_provider.ProviderType(provider.ProviderType)
+	if !providerType.IsValid() {
+		return liquidity_provider.RegisteredLiquidityProvider{}, liquidity_provider.InvalidProviderTypeError
+	}
+	return liquidity_provider.RegisteredLiquidityProvider{
+		Id:           provider.Id.Uint64(),
+		Address:      provider.Provider.String(),
+		Name:         provider.Name,
+		ApiBaseUrl:   provider.ApiBaseUrl,
+		Status:       provider.Status,
+		ProviderType: providerType,
+	}, nil
 }
 
 func (lbc *liquidityBridgeContractImpl) ProviderResign() error {
