@@ -555,6 +555,63 @@ func (_c *LbcBindingMock_GetPegoutCollateral_Call) RunAndReturn(run func(*bind.C
 	return _c
 }
 
+// GetProvider provides a mock function with given fields: opts, providerAddress
+func (_m *LbcBindingMock) GetProvider(opts *bind.CallOpts, providerAddress common.Address) (bindings.LiquidityBridgeContractLiquidityProvider, error) {
+	ret := _m.Called(opts, providerAddress)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProvider")
+	}
+
+	var r0 bindings.LiquidityBridgeContractLiquidityProvider
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, common.Address) (bindings.LiquidityBridgeContractLiquidityProvider, error)); ok {
+		return rf(opts, providerAddress)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, common.Address) bindings.LiquidityBridgeContractLiquidityProvider); ok {
+		r0 = rf(opts, providerAddress)
+	} else {
+		r0 = ret.Get(0).(bindings.LiquidityBridgeContractLiquidityProvider)
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts, common.Address) error); ok {
+		r1 = rf(opts, providerAddress)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LbcBindingMock_GetProvider_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProvider'
+type LbcBindingMock_GetProvider_Call struct {
+	*mock.Call
+}
+
+// GetProvider is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+//   - providerAddress common.Address
+func (_e *LbcBindingMock_Expecter) GetProvider(opts interface{}, providerAddress interface{}) *LbcBindingMock_GetProvider_Call {
+	return &LbcBindingMock_GetProvider_Call{Call: _e.mock.On("GetProvider", opts, providerAddress)}
+}
+
+func (_c *LbcBindingMock_GetProvider_Call) Run(run func(opts *bind.CallOpts, providerAddress common.Address)) *LbcBindingMock_GetProvider_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts), args[1].(common.Address))
+	})
+	return _c
+}
+
+func (_c *LbcBindingMock_GetProvider_Call) Return(_a0 bindings.LiquidityBridgeContractLiquidityProvider, _a1 error) *LbcBindingMock_GetProvider_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *LbcBindingMock_GetProvider_Call) RunAndReturn(run func(*bind.CallOpts, common.Address) (bindings.LiquidityBridgeContractLiquidityProvider, error)) *LbcBindingMock_GetProvider_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetProviderIds provides a mock function with given fields: opts
 func (_m *LbcBindingMock) GetProviderIds(opts *bind.CallOpts) (*big.Int, error) {
 	ret := _m.Called(opts)
@@ -613,9 +670,9 @@ func (_c *LbcBindingMock_GetProviderIds_Call) RunAndReturn(run func(*bind.CallOp
 	return _c
 }
 
-// GetProviders provides a mock function with given fields: opts, providerIds
-func (_m *LbcBindingMock) GetProviders(opts *bind.CallOpts, providerIds []*big.Int) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
-	ret := _m.Called(opts, providerIds)
+// GetProviders provides a mock function with given fields: opts
+func (_m *LbcBindingMock) GetProviders(opts *bind.CallOpts) ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
+	ret := _m.Called(opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProviders")
@@ -623,19 +680,19 @@ func (_m *LbcBindingMock) GetProviders(opts *bind.CallOpts, providerIds []*big.I
 
 	var r0 []bindings.LiquidityBridgeContractLiquidityProvider
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*bind.CallOpts, []*big.Int) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)); ok {
-		return rf(opts, providerIds)
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)); ok {
+		return rf(opts)
 	}
-	if rf, ok := ret.Get(0).(func(*bind.CallOpts, []*big.Int) []bindings.LiquidityBridgeContractLiquidityProvider); ok {
-		r0 = rf(opts, providerIds)
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) []bindings.LiquidityBridgeContractLiquidityProvider); ok {
+		r0 = rf(opts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]bindings.LiquidityBridgeContractLiquidityProvider)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*bind.CallOpts, []*big.Int) error); ok {
-		r1 = rf(opts, providerIds)
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -650,14 +707,13 @@ type LbcBindingMock_GetProviders_Call struct {
 
 // GetProviders is a helper method to define mock.On call
 //   - opts *bind.CallOpts
-//   - providerIds []*big.Int
-func (_e *LbcBindingMock_Expecter) GetProviders(opts interface{}, providerIds interface{}) *LbcBindingMock_GetProviders_Call {
-	return &LbcBindingMock_GetProviders_Call{Call: _e.mock.On("GetProviders", opts, providerIds)}
+func (_e *LbcBindingMock_Expecter) GetProviders(opts interface{}) *LbcBindingMock_GetProviders_Call {
+	return &LbcBindingMock_GetProviders_Call{Call: _e.mock.On("GetProviders", opts)}
 }
 
-func (_c *LbcBindingMock_GetProviders_Call) Run(run func(opts *bind.CallOpts, providerIds []*big.Int)) *LbcBindingMock_GetProviders_Call {
+func (_c *LbcBindingMock_GetProviders_Call) Run(run func(opts *bind.CallOpts)) *LbcBindingMock_GetProviders_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*bind.CallOpts), args[1].([]*big.Int))
+		run(args[0].(*bind.CallOpts))
 	})
 	return _c
 }
@@ -667,7 +723,7 @@ func (_c *LbcBindingMock_GetProviders_Call) Return(_a0 []bindings.LiquidityBridg
 	return _c
 }
 
-func (_c *LbcBindingMock_GetProviders_Call) RunAndReturn(run func(*bind.CallOpts, []*big.Int) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)) *LbcBindingMock_GetProviders_Call {
+func (_c *LbcBindingMock_GetProviders_Call) RunAndReturn(run func(*bind.CallOpts) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)) *LbcBindingMock_GetProviders_Call {
 	_c.Call.Return(run)
 	return _c
 }

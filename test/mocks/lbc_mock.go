@@ -78,6 +78,11 @@ func (m *LbcMock) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvid
 	return args.Get(0).([]liquidity_provider.RegisteredLiquidityProvider), args.Error(1)
 }
 
+func (m *LbcMock) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
+	args := m.Called(address)
+	return args.Get(0).(liquidity_provider.RegisteredLiquidityProvider), args.Error(1)
+}
+
 func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
 	args := m.Called(id, status)
 	return args.Error(0)
