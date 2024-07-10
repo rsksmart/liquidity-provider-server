@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"math/big"
 )
@@ -33,11 +34,31 @@ type ChangeStatusRequest struct {
 }
 
 type PeginConfigurationRequest struct {
-	Configuration *liquidity_provider.PeginConfiguration `json:"configuration" validate:"required"`
+	Configuration PeginConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type PeginConfigurationDTO struct {
+	TimeForDeposit uint32 `json:"timeForDeposit" validate:"required"`
+	CallTime       uint32 `json:"callTime" validate:"required"`
+	PenaltyFee     string `json:"penaltyFee" validate:"required,numeric,positive_string"`
+	CallFee        string `json:"callFee" validate:"required,numeric,positive_string"`
+	MaxValue       string `json:"maxValue" validate:"required,numeric,positive_string"`
+	MinValue       string `json:"minValue" validate:"required,numeric,positive_string"`
 }
 
 type PegoutConfigurationRequest struct {
-	Configuration *liquidity_provider.PegoutConfiguration `json:"configuration" validate:"required"`
+	Configuration PegoutConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type PegoutConfigurationDTO struct {
+	TimeForDeposit       uint32 `json:"timeForDeposit" validate:"required"`
+	ExpireTime           uint32 `json:"expireTime" validate:"required"`
+	PenaltyFee           string `json:"penaltyFee" validate:"required,numeric,positive_string"`
+	CallFee              string `json:"callFee" validate:"required,numeric,positive_string"`
+	MaxValue             string `json:"maxValue" validate:"required,numeric,positive_string"`
+	MinValue             string `json:"minValue" validate:"required,numeric,positive_string"`
+	ExpireBlocks         uint64 `json:"expireBlocks" validate:"required"`
+	BridgeTransactionMin string `json:"bridgeTransactionMin" validate:"required,numeric,positive_string"`
 }
 
 type GeneralConfigurationRequest struct {
@@ -66,5 +87,51 @@ func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) Avail
 	return AvailableLiquidityDTO{
 		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),
 		PegoutLiquidityAmount: satoshis,
+	}
+}
+
+func FromPeginConfigurationDTO(dto PeginConfigurationDTO) liquidity_provider.PeginConfiguration {
+	const base = 10
+	penaltyFee := new(big.Int)
+	penaltyFee.SetString(dto.PenaltyFee, base)
+	callFee := new(big.Int)
+	callFee.SetString(dto.CallFee, base)
+	maxValue := new(big.Int)
+	maxValue.SetString(dto.MaxValue, base)
+	minValue := new(big.Int)
+	minValue.SetString(dto.MinValue, base)
+
+	return liquidity_provider.PeginConfiguration{
+		TimeForDeposit: dto.TimeForDeposit,
+		CallTime:       dto.CallTime,
+		PenaltyFee:     entities.NewBigWei(penaltyFee),
+		CallFee:        entities.NewBigWei(callFee),
+		MaxValue:       entities.NewBigWei(maxValue),
+		MinValue:       entities.NewBigWei(minValue),
+	}
+}
+
+func FromPegoutConfigurationDTO(dto PegoutConfigurationDTO) liquidity_provider.PegoutConfiguration {
+	const base = 10
+	penaltyFee := new(big.Int)
+	penaltyFee.SetString(dto.PenaltyFee, base)
+	callFee := new(big.Int)
+	callFee.SetString(dto.CallFee, base)
+	maxValue := new(big.Int)
+	maxValue.SetString(dto.MaxValue, base)
+	minValue := new(big.Int)
+	minValue.SetString(dto.MinValue, base)
+	bridgeTransactionMin := new(big.Int)
+	bridgeTransactionMin.SetString(dto.BridgeTransactionMin, base)
+
+	return liquidity_provider.PegoutConfiguration{
+		TimeForDeposit:       dto.TimeForDeposit,
+		ExpireTime:           dto.ExpireTime,
+		PenaltyFee:           entities.NewBigWei(penaltyFee),
+		CallFee:              entities.NewBigWei(callFee),
+		MaxValue:             entities.NewBigWei(maxValue),
+		MinValue:             entities.NewBigWei(minValue),
+		ExpireBlocks:         dto.ExpireBlocks,
+		BridgeTransactionMin: entities.NewBigWei(bridgeTransactionMin),
 	}
 }
