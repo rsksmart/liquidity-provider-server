@@ -10,8 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/cmd/application/lps"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
@@ -163,13 +161,13 @@ func (s *IntegrationTestSuite) configureRegtestLimits() error {
 		Method: http.MethodPost,
 		URL:    url + "/pegin/configuration",
 		Body: pkg.PeginConfigurationRequest{
-			Configuration: &liquidity_provider.PeginConfiguration{
+			Configuration: pkg.PeginConfigurationDTO{
 				TimeForDeposit: 3600,
 				CallTime:       7200,
-				PenaltyFee:     entities.NewUWei(1000000000000000),
-				CallFee:        entities.NewUWei(10000000000000000),
-				MaxValue:       entities.NewUWei(10000000000000000000),
-				MinValue:       entities.NewUWei(600000000000000000),
+				PenaltyFee:     "1000000000000000",
+				CallFee:        "10000000000000000",
+				MaxValue:       "10000000000000000000",
+				MinValue:       "600000000000000000",
 			},
 		},
 	})
@@ -182,13 +180,13 @@ func (s *IntegrationTestSuite) configureRegtestLimits() error {
 		Method: http.MethodPost,
 		URL:    url + "/pegout/configuration",
 		Body: pkg.PegoutConfigurationRequest{
-			Configuration: &liquidity_provider.PegoutConfiguration{
+			Configuration: pkg.PegoutConfigurationDTO{
 				TimeForDeposit: 3600,
 				ExpireTime:     7200,
-				PenaltyFee:     entities.NewUWei(1000000000000000),
-				CallFee:        entities.NewUWei(10000000000000000),
-				MaxValue:       entities.NewUWei(10000000000000000000),
-				MinValue:       entities.NewUWei(600000000000000000),
+				PenaltyFee:     "1000000000000000",
+				CallFee:        "10000000000000000",
+				MaxValue:       "10000000000000000000",
+				MinValue:       "600000000000000000",
 				ExpireBlocks:   500,
 			},
 		},

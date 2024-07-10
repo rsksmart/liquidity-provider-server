@@ -186,7 +186,7 @@
                     if (num.isNegative()) {
                         throw new RangeError(`The input "${ether}" is not a valid number.`);
                     }
-                    return num.times(new Decimal(1e18)).toString();
+                    return num.times(new Decimal(1e18)).toFixed();
                 } catch (error) {
                     throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: ${error.message}`);
                 }
@@ -415,7 +415,7 @@
                         let value;
                         if (isFeeKey(keys[keys.length - 1])) {
                             try {
-                                value = Number(etherToWei(input.value).toString());
+                                value = etherToWei(input.value).toString();
                             } catch (error) {
                                 showErrorToast(`Invalid input "${input.value}" for field "${input.dataset.key}". Please enter a valid number.`);
                                 throw error;
