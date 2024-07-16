@@ -462,7 +462,7 @@ func TestIsTestnetBtcAddress(t *testing.T) {
 		assert.Truef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return true for address %s", address)
 	}
 	for _, address := range regtestAddresses {
-		assert.Falsef(t, blockchain.IsTestnetBtcAddress(address), "IsMainnetBtcAddress should return false for address %s", address)
+		assert.Falsef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return false for address %s", address)
 	}
 }
 
