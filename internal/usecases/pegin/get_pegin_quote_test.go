@@ -18,18 +18,20 @@ import (
 )
 
 var (
-	fedAddress = "fed address"
-	lbcAddress = "lbc address"
+	fedAddress              = "2MxdCCrmUaEG1Tk8dshdcTGKiA9LewNDVCb"
+	lbcAddress              = "lbc address"
+	getPeginTestUserAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
+	getPeginTestBtcAddress  = "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6"
 )
 
 // nolint:funlen,cyclop
 func TestGetQuoteUseCase_Run(t *testing.T) {
 	quoteHash := "0x9876543210"
-	lpBtcAddress := "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6"
-	userRskAddress := "0x79568c2989232dCa1840087D73d403602364c0D4"
+	lpBtcAddress := getPeginTestBtcAddress
+	userRskAddress := getPeginTestUserAddress
 	quoteValue := entities.NewWei(5000)
 	quoteData := []byte{1}
-	userBtcAddress := "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6"
+	userBtcAddress := getPeginTestBtcAddress
 	lpRskAddress := "0x4b5b6b"
 	gasLimit := entities.NewWei(100)
 	config := getPeginConfiguration()
@@ -103,56 +105,79 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	}
 }
 
+func TestGetQuoteUseCase_Run_ValidateFedAddress(t *testing.T) {
+	rsk := new(mocks.RootstockRpcServerMock)
+	rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
+	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(100), nil)
+	lp := new(mocks.ProviderMock)
+	lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
+	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
+	feeCollector := new(mocks.FeeCollectorMock)
+	feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
+	bridge := new(mocks.BridgeMock)
+	bridge.On("GetFedAddress").Return("bcrt1qtmm4qallkmnd2vl5y3w3an3uvq6w5v2ahqvfqm0mfxny8cnsdrashv8fsr", nil)
+	lbc := new(mocks.LbcMock)
+	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	btc := new(mocks.BtcRpcMock)
+	btc.On("ValidateAddress", mock.Anything).Return(nil)
+	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, "feeCollectorAddress")
+	result, err := useCase.Run(context.Background(), pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(5000), getPeginTestUserAddress, getPeginTestBtcAddress))
+	assert.Empty(t, result)
+	require.ErrorContains(t, err, "only P2SH addresses are supported for federation address")
+}
+
 func validateRequestTestCases() test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error] {
 	return test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error]{
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", test.AnyAddress).Return(blockchain.BtcAddressNotSupportedError)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", test.AnyAddress)
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), getPeginTestUserAddress, test.AnyAddress)
 			}, Result: blockchain.BtcAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", test.AnyAddress).Return(blockchain.BtcAddressInvalidNetworkError)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", test.AnyAddress)
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), getPeginTestUserAddress, test.AnyAddress)
 			}, Result: blockchain.BtcAddressInvalidNetworkError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegin.NewQuoteRequest("any", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegin.NewQuoteRequest("any", []byte{1}, entities.NewWei(1000), getPeginTestUserAddress, "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "any", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), "any", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), getPeginTestUserAddress+"1", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D41", []byte{1}, entities.NewWei(1000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegin.NewQuoteRequest(getPeginTestUserAddress+"1", []byte{1}, entities.NewWei(1000), getPeginTestUserAddress, "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
-				return pegin.NewQuoteRequest("0x79568c2989232dCa1840087D73d403602364c0D4", []byte{1}, entities.NewWei(999), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(999), getPeginTestUserAddress, "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
 			}, Result: lpEntity.AmountOutOfRangeError,
 		},
 	}
 }
 
 func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
-	userRskAddress := "0x79568c2989232dCa1840087D73d403602364c0D4"
-	request := pegin.NewQuoteRequest(userRskAddress, []byte{1}, entities.NewWei(5000), userRskAddress, "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
+	userRskAddress := getPeginTestUserAddress
+	request := pegin.NewQuoteRequest(userRskAddress, []byte{1}, entities.NewWei(5000), userRskAddress, getPeginTestBtcAddress)
 
 	setups := getQuoteUseCaseUnexpectedErrorSetups()
 
@@ -226,7 +251,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			bridge.On("GetMinimumLockTxValue").Return(nil, assert.AnError)
 			lbc.On("GetAddress").Return(lbcAddress)
 			lp.On("RskAddress").Return("0x4b5b6b")
-			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
+			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 		},
@@ -242,7 +267,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 			lp.On("RskAddress").Return("0x4b5b6b")
-			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
+			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 		},
 		func(rsk *mocks.RootstockRpcServerMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
 			lbc *mocks.LbcMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
@@ -255,7 +280,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lbc.On("GetAddress").Return(lbcAddress)
 			peginQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(assert.AnError)
 			lp.On("RskAddress").Return("0x4b5b6b")
-			lp.On("BtcAddress").Return("mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6")
+			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 		},
