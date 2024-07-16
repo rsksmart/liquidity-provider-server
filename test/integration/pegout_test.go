@@ -196,11 +196,11 @@ func lookForTxToAddress(block *wire.MsgBlock, target btcutil.Address, params *ch
 }
 
 func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteDTO) bindings.QuotesPegOutQuote {
-	lpBtcAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.LpBTCAddr, true)
+	lpBtcAddress, err := bitcoin.DecodeAddress(originalQuote.LpBTCAddr)
 	s.NoError(err)
-	btcRefundAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.BtcRefundAddr, true)
+	btcRefundAddress, err := bitcoin.DecodeAddress(originalQuote.BtcRefundAddr)
 	s.NoError(err)
-	depositAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.DepositAddr, true)
+	depositAddress, err := bitcoin.DecodeAddress(originalQuote.DepositAddr)
 	s.NoError(err)
 	return bindings.QuotesPegOutQuote{
 		LbcAddress:            common.HexToAddress(originalQuote.LBCAddr),

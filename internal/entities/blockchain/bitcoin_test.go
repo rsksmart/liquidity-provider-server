@@ -186,7 +186,7 @@ var p2shMainnetAddresses = []string{
 	"33tB53JpXTNeDvMUeXKLU3VfYMLMc6oLab",
 }
 
-var nativeSegwitTestnetAddresses = []string{
+var p2wpkhTestnetAddresses = []string{
 	"tb1q2hxr4x5g4grwwrerf3y4tge776hmuw0wnh5vrd",
 	"tb1qj9g0zjrj5r872hkkvxcedr3l504z50ayy5ercl",
 	"tb1qpkv0lra0nz68ge5lzjjt6urdz2ejx8x4e9ell3",
@@ -212,9 +212,14 @@ var nativeSegwitTestnetAddresses = []string{
 	"tb1q36tpm7eu706v0ut0hap6yjuehgsg53rg280tc9",
 	"tb1qwnmmmrrr7hw60yulw2rx50ne2tkktj729076zf",
 	"tb1qag9uv7n266eyf6d88xc3e5nmek8sqe6aqxmfpp",
+	"tb1q22cm3qarlpj3gnf5h03kpdhaftdvf98q58dp75",
+	"tb1qja7532egus56jkjnu6xgf9nh96q9up7gq5473m",
+	"tb1qug3kle73ze6wcstdc4wunkjxapqnaeetprqjql",
+	"tb1q66e97gspk233et7k24334zm2femvf5tpsq8ggm",
+	"tb1qjtl57d37ccadme30hv3jhytt9gc9p4dq9zrz49",
 }
 
-var nativeSegwitMainnetAddresses = []string{
+var p2wpkhMainnetAddresses = []string{
 	"bc1qg5d579rlqmfekwx3m85a2sr8gy2s5dwfjj2lun",
 	"bc1qtqxd29s9k3tj3rq9fzj7mnjknvlqzy8hsuzs5x",
 	"bc1qv245zr29zw5urv5fy00c6km09l302fmlftf0aj",
@@ -240,6 +245,82 @@ var nativeSegwitMainnetAddresses = []string{
 	"bc1q2rrlg43vv5snstv3mvc79mfr9amfw4yknhjtew",
 	"bc1q9da5fx8eerg4m40vkqc2mm24nykxhtpw9sfcw3",
 	"bc1qma0pelvcshhq59wfur9p5rhacjyk0lmfdr53vs",
+	"bc1qzulaxy8fmvk8a92sec8s8u0xcqwcxw4fx037d8",
+	"bc1q8sr9tv9ng4yd8s6s9eenfs7mh24jv64vnwzl0p",
+	"bc1q5pfzfxmtx3kn7j8wqwe6336tmg0n5lmpqss9kx",
+	"bc1qgq506g46u2dnua70k3dypu6r7xu3kfqeee3c38",
+	"bc1qk2r5qt94fluyehjhr6neka0agpxung28pndjly",
+}
+
+var taprootMainnetAddresses = []string{
+	"bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297",
+	"bc1py8g4v4ehll399qlpaxyxykg37pszhad9yg0dphxvjhdmhy7f08vsn43s6p",
+	"bc1pc09cafvlgu5ykmxyyzr4gu5qwx9a2zz6fz3lljeyddc9z7n75n9qfz7ckr",
+	"bc1p74k39706fe6n0qv5k30z4xpqd8gcf8apyzn9s5rujkz4jln2u3fqwwta94",
+	"bc1petgnkphl82md05d84gwee0alkuzpphfjy8ycxs932ngvdx8z8u0s3dwj5t",
+}
+
+var taprootTestnetAddresses = []string{
+	"tb1pqaas5xm75dny58s452949c9ak5qd53shfkln490ju4ny2afs2ldsput844",
+	"tb1p25h0xs3840q7aex3kl9dshd8q99qzaxkh8r5p70z54r4ykmn2rtsgcsj34",
+	"tb1p7hvw8mnqlrtp7ffa8wzmhq7vddegffdeus4sl0yj6fw54zjda36qhc5q8y",
+	"tb1pnqdr56lugmtrcxtae8k9cfe7hve8986ud0daktljsh93wf8q7u4qhc2q3c",
+	"tb1pa54gmj3dzr9g5p7qx6kupqg9xkvtv2cdcty78wgyaycxtqc72h5qlqgz2c",
+	"tb1p8lkxfnps5wd6rsrusvytp8zllrmxz05e0ttessnhyzwl0kusc2as4s72wz",
+}
+
+var p2wshMainnetAddresses = []string{
+	"bc1qhnumvtg3c9xj2q7jmt8xnk4p5kmk52ffqwax8crfn4hqtry6qseq8vahua",
+	"bc1qv47nn097m6hujqadw6kgt5hsk9h06k7tgq05empl3nn3mska8cfqpkjl36",
+	"bc1qj8pqhwkv0k6h2tm3wtqu793njkvfd66dva04zldpdcey4sak5h3qx3n8nz",
+	"bc1qem2ta6uk98rfr779t4wftq4qjtr3xtja9vf9yy3rgtczapc78j3sxa6570",
+	"bc1qazm8jprsdjxn0qq77yrzw7m2340ys0kuuylg05vul4t5ll2lhduquuhngw",
+}
+var p2wshTestnetAddresses = []string{
+	"tb1qzda4qlkdpjgmwxt9zr29pphhzqf2ku09p7dj33qyugqn80kg5muq8x0wyv",
+	"tb1qgpgtqj68zwsdz7xmvqxxxaan7dcfgu76jz0cfzynqgrtvdsxlyqsf7dfz8",
+	"tb1qkp4lxc09e34cc5vw383j42rgacurp7wrpnwjmvazv6g23c2ydz3qx5tfhl",
+	"tb1qzhu8fjgw5aaqgv0q2jey4dnc3pgcr4cks858d6eaf97ljxywe70qwwsdku",
+	"tb1qzda4qlkdpjgmwxt9zr29pphhzqf2ku09p7dj33qyugqn80kg5muq8x0wyv",
+}
+
+var p2wshRegtestAddresses = []string{
+	"bcrt1qtmm4qallkmnd2vl5y3w3an3uvq6w5v2ahqvfqm0mfxny8cnsdrashv8fsr",
+	"bcrt1q93c4pfcz8lye3d0j9y7dp9sr48rj5kv34gfds4f0q9nmwd6afhrsy5hv6e",
+	"bcrt1q7fs9g5c3kp3r9c6e8qx0y6lfjc5z7xq0xvd3crw0pqkz9m7v84qq2v9l6q",
+	"bcrt1qdpszwqsc2vnf9sh4jl8gq0g2qpj3eyg89szukln6wxdtr3w6suvq3hyt4q",
+	"bcrt1q94s5pfq9eycr98rdscpjxzwc7vzh8nfrlx2wzt8hztpyzvcajndszww3y9",
+	"bcrt1qzv8ykc6vcq4fzzklgk4e3wts3r6fzjd7jqh4k3lw6tztkgv5rxmss0q6n4",
+	"bcrt1qv95xqjc42ngc60gptf5pv5g4gq3hyuqytxvhdjq4nwvxd93w5lzst3t6ez",
+	"bcrt1q96s6z5fnr5vxhrgslh4gk5g5vj95w6krj3jsl8r60lm3fvkljqdsg3ch8v",
+	"bcrt1qxyprwrln9w5qk2ghnys5xfwz0s3u8jgrdm2vj42y27tqeqp8zznq0kwkcn",
+	"bcrt1q7yjkl6r5mg8j9hyt8gx6f2h5jq4kt8ks7w0q3r4wlcck9yks4vzsryvw8r",
+}
+
+var p2wpkhRegtestAddresses = []string{
+	"bcrt1qg59jse8wha2z07w8jsjd3my7530tk0vqh7hv09",
+	"bcrt1qpncuuk7mflzwyfrv7uwtskl35qdxs0uuwzwhvf",
+	"bcrt1q32chehq23qgu24h5jvy4407ypvmrfvut7vssyg",
+	"bcrt1q5rg6mxr9z4myvs6c8gkh7lcrcj9eexava5979n",
+	"bcrt1qpq0hdfj3fwtusy3vjmhkmz9y7epvveqalgt4te",
+	"bcrt1qp6u0t6evapxq7q89yv7xfsq978dwnxeskkup7t",
+	"bcrt1qkeya2ky446gl6kqm86nj96tjxhhsf9ctsha9xj",
+	"bcrt1q9pt3z976daw3jw3jncqs83vys6ay567hdwhqgt",
+	"bcrt1qvgfxpgzhhd6ktq0rfc5lm8ysu653uyxmqglvtf",
+	"bcrt1q4lqflp2gywyuhdudawm4kncq2m2llaydh3srju",
+}
+
+var p2trRegtestAddresses = []string{
+	"bcrt1p5chgc8qnl250kjp4956u690hqmkr7px2xdxq0hnrd3e69slumsfsj7wslt",
+	"bcrt1pmxnjedrmj4l7muyezf62x6cw6e385a36v9sk9znlxz54dwwtldlqxm6p8h",
+	"bcrt1pgtyx9g4xw9kx3m6v9fkpadnrp820t5mk6v4vry4sqadkg6fehp0qqtq4hp",
+	"bcrt1plmdsnxc9mmjt4dks4qapzd8cr2m407excd0c4a3zjt6lchzlhd5qtx4r95",
+	"bcrt1pt7qtpvcevgkl4453nk3ctlyc89qpurjyvakpqwu5l3prsf7jlynsfzj337",
+	"bcrt1p62ulphlvyrkfxjy5xun02qshdmdsmdxrssa9fltgc9pranxdpceq0zxehk",
+	"bcrt1p7tpuqkurf0z4rq0auepqqnlycp454mtcvmxks5wqpp5dxpgxw64sr9gfl2",
+	"bcrt1pujvqun9necxr76k235kme0auxx2wc5prhapa303rk6kwt7l4wvtq54cpsq",
+	"bcrt1pr9mhhhd706m6gsyddfpkp3jhpj4cneqrt8sy7whm8rlts8t2cs8s2dk38m",
+	"bcrt1p7m6rue7kxpaqc56rcvym5n9jwtumsvjv00qqk0u4c953tps0t0sqklkgge",
 }
 
 func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
@@ -303,19 +384,21 @@ func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 }
 
 func TestIsSupportedBtcAddress(t *testing.T) {
-	var notSuported []string
-	notSuported = append(notSuported, nativeSegwitTestnetAddresses...)
-	notSuported = append(notSuported, nativeSegwitMainnetAddresses...)
-
 	var supported []string
 	supported = append(supported, p2pkhTestnetAddresses...)
 	supported = append(supported, p2pkhMainnetAddresses...)
 	supported = append(supported, p2shTestnetAddresses...)
 	supported = append(supported, p2shMainnetAddresses...)
+	supported = append(supported, p2wpkhTestnetAddresses...)
+	supported = append(supported, p2wpkhMainnetAddresses...)
+	supported = append(supported, p2wshTestnetAddresses...)
+	supported = append(supported, p2wshMainnetAddresses...)
+	supported = append(supported, taprootTestnetAddresses...)
+	supported = append(supported, taprootMainnetAddresses...)
+	supported = append(supported, p2wshRegtestAddresses...)
+	supported = append(supported, p2wpkhRegtestAddresses...)
+	supported = append(supported, p2trRegtestAddresses...)
 
-	for _, address := range notSuported {
-		assert.Falsef(t, blockchain.IsSupportedBtcAddress(address), "Address %s should not be supported", address)
-	}
 	for _, address := range supported {
 		assert.Truef(t, blockchain.IsSupportedBtcAddress(address), "Address %s should be supported", address)
 	}
@@ -325,17 +408,29 @@ func TestIsMainnetBtcAddress(t *testing.T) {
 	var mainnetAddresses []string
 	mainnetAddresses = append(mainnetAddresses, p2pkhMainnetAddresses...)
 	mainnetAddresses = append(mainnetAddresses, p2shMainnetAddresses...)
-	mainnetAddresses = append(mainnetAddresses, nativeSegwitMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wpkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wshMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, taprootMainnetAddresses...)
 
 	var testnetAddresses []string
 	testnetAddresses = append(testnetAddresses, p2pkhTestnetAddresses...)
 	testnetAddresses = append(testnetAddresses, p2shTestnetAddresses...)
-	testnetAddresses = append(testnetAddresses, nativeSegwitTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2wpkhTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2wshTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, taprootTestnetAddresses...)
+
+	var regtestAddresses []string
+	regtestAddresses = append(regtestAddresses, p2wshRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2wpkhRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2trRegtestAddresses...)
 
 	for _, address := range mainnetAddresses {
 		assert.Truef(t, blockchain.IsMainnetBtcAddress(address), "IsMainnetBtcAddress should return true for address %s", address)
 	}
 	for _, address := range testnetAddresses {
+		assert.Falsef(t, blockchain.IsMainnetBtcAddress(address), "IsMainnetBtcAddress should return false for address %s", address)
+	}
+	for _, address := range regtestAddresses {
 		assert.Falsef(t, blockchain.IsMainnetBtcAddress(address), "IsMainnetBtcAddress should return false for address %s", address)
 	}
 }
@@ -344,17 +439,185 @@ func TestIsTestnetBtcAddress(t *testing.T) {
 	var mainnetAddresses []string
 	mainnetAddresses = append(mainnetAddresses, p2pkhMainnetAddresses...)
 	mainnetAddresses = append(mainnetAddresses, p2shMainnetAddresses...)
-	mainnetAddresses = append(mainnetAddresses, nativeSegwitMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wpkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wshMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, taprootMainnetAddresses...)
 
 	var testnetAddresses []string
 	testnetAddresses = append(testnetAddresses, p2pkhTestnetAddresses...)
 	testnetAddresses = append(testnetAddresses, p2shTestnetAddresses...)
-	testnetAddresses = append(testnetAddresses, nativeSegwitTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2wpkhTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2wshTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, taprootTestnetAddresses...)
+
+	var regtestAddresses []string
+	regtestAddresses = append(regtestAddresses, p2wshRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2wpkhRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2trRegtestAddresses...)
 
 	for _, address := range mainnetAddresses {
 		assert.Falsef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return false for address %s", address)
 	}
 	for _, address := range testnetAddresses {
 		assert.Truef(t, blockchain.IsTestnetBtcAddress(address), "IsTestnetBtcAddress should return true for address %s", address)
+	}
+	for _, address := range regtestAddresses {
+		assert.Falsef(t, blockchain.IsTestnetBtcAddress(address), "IsMainnetBtcAddress should return false for address %s", address)
+	}
+}
+
+func TestIsRegtestBtcAddress(t *testing.T) {
+	var mainnetAddresses []string
+	mainnetAddresses = append(mainnetAddresses, p2pkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2shMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wpkhMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, p2wshMainnetAddresses...)
+	mainnetAddresses = append(mainnetAddresses, taprootMainnetAddresses...)
+
+	var testnetAddresses []string
+	testnetAddresses = append(testnetAddresses, p2wpkhTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, p2wshTestnetAddresses...)
+	testnetAddresses = append(testnetAddresses, taprootTestnetAddresses...)
+
+	var regtestAddresses []string
+	regtestAddresses = append(regtestAddresses, p2wshRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2wpkhRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2trRegtestAddresses...)
+	regtestAddresses = append(regtestAddresses, p2pkhTestnetAddresses...)
+	regtestAddresses = append(regtestAddresses, p2shTestnetAddresses...)
+
+	for _, address := range mainnetAddresses {
+		assert.Falsef(t, blockchain.IsRegtestBtcAddress(address), "IsRegtestBtcAddress should return false for address %s", address)
+	}
+	for _, address := range testnetAddresses {
+		assert.Falsef(t, blockchain.IsRegtestBtcAddress(address), "IsRegtestBtcAddress should return false for address %s", address)
+	}
+	for _, address := range regtestAddresses {
+		assert.Truef(t, blockchain.IsRegtestBtcAddress(address), "IsRegtestBtcAddress should return true for address %s", address)
+	}
+}
+
+func TestIsP2PKHAddress(t *testing.T) {
+	var p2pkhAddresses []string
+	p2pkhAddresses = append(p2pkhAddresses, p2pkhMainnetAddresses...)
+	p2pkhAddresses = append(p2pkhAddresses, p2pkhTestnetAddresses...)
+	var others []string
+	others = append(others, p2shMainnetAddresses...)
+	others = append(others, p2shTestnetAddresses...)
+	others = append(others, p2wpkhMainnetAddresses...)
+	others = append(others, p2wpkhTestnetAddresses...)
+	others = append(others, p2wshMainnetAddresses...)
+	others = append(others, p2wshTestnetAddresses...)
+	others = append(others, taprootMainnetAddresses...)
+	others = append(others, taprootTestnetAddresses...)
+	others = append(others, p2wshRegtestAddresses...)
+	others = append(others, p2wpkhRegtestAddresses...)
+	others = append(others, p2trRegtestAddresses...)
+
+	for _, address := range p2pkhAddresses {
+		assert.Truef(t, blockchain.IsBtcP2PKHAddress(address), "IsP2PKHAddress should return true for address %s", address)
+	}
+	for _, address := range others {
+		assert.Falsef(t, blockchain.IsBtcP2PKHAddress(address), "IsP2PKHAddress should return false for address %s", address)
+	}
+}
+
+func TestIsP2SHAddress(t *testing.T) {
+	var p2shAddresses []string
+	p2shAddresses = append(p2shAddresses, p2shMainnetAddresses...)
+	p2shAddresses = append(p2shAddresses, p2shTestnetAddresses...)
+	var others []string
+	others = append(others, p2pkhMainnetAddresses...)
+	others = append(others, p2pkhTestnetAddresses...)
+	others = append(others, p2wpkhMainnetAddresses...)
+	others = append(others, p2wpkhTestnetAddresses...)
+	others = append(others, p2wshMainnetAddresses...)
+	others = append(others, p2wshTestnetAddresses...)
+	others = append(others, taprootMainnetAddresses...)
+	others = append(others, taprootTestnetAddresses...)
+	others = append(others, p2wshRegtestAddresses...)
+	others = append(others, p2wpkhRegtestAddresses...)
+	others = append(others, p2trRegtestAddresses...)
+
+	for _, address := range p2shAddresses {
+		assert.Truef(t, blockchain.IsBtcP2SHAddress(address), "IsP2SHAddress should return true for address %s", address)
+	}
+	for _, address := range others {
+		assert.Falsef(t, blockchain.IsBtcP2SHAddress(address), "IsP2SHAddress should return false for address %s", address)
+	}
+}
+
+func TestIsP2WPKHAddress(t *testing.T) {
+	var p2wpkhAddresses []string
+	p2wpkhAddresses = append(p2wpkhAddresses, p2wpkhMainnetAddresses...)
+	p2wpkhAddresses = append(p2wpkhAddresses, p2wpkhTestnetAddresses...)
+	p2wpkhAddresses = append(p2wpkhAddresses, p2wpkhRegtestAddresses...)
+	var others []string
+	others = append(others, p2pkhMainnetAddresses...)
+	others = append(others, p2pkhTestnetAddresses...)
+	others = append(others, p2shMainnetAddresses...)
+	others = append(others, p2shTestnetAddresses...)
+	others = append(others, p2wshMainnetAddresses...)
+	others = append(others, p2wshTestnetAddresses...)
+	others = append(others, taprootMainnetAddresses...)
+	others = append(others, taprootTestnetAddresses...)
+	others = append(others, p2wshRegtestAddresses...)
+	others = append(others, p2trRegtestAddresses...)
+
+	for _, address := range p2wpkhAddresses {
+		assert.Truef(t, blockchain.IsBtcP2WPKHAddress(address), "IsP2WPKHAddress should return true for address %s", address)
+	}
+	for _, address := range others {
+		assert.Falsef(t, blockchain.IsBtcP2WPKHAddress(address), "IsP2WPKHAddress should return false for address %s", address)
+	}
+}
+
+func TestIsP2WSHAddress(t *testing.T) {
+	var p2wshAddresses []string
+	p2wshAddresses = append(p2wshAddresses, p2wshMainnetAddresses...)
+	p2wshAddresses = append(p2wshAddresses, p2wshTestnetAddresses...)
+	p2wshAddresses = append(p2wshAddresses, p2wshRegtestAddresses...)
+	var others []string
+	others = append(others, p2pkhMainnetAddresses...)
+	others = append(others, p2pkhTestnetAddresses...)
+	others = append(others, p2shMainnetAddresses...)
+	others = append(others, p2shTestnetAddresses...)
+	others = append(others, p2wpkhMainnetAddresses...)
+	others = append(others, p2wpkhTestnetAddresses...)
+	others = append(others, taprootMainnetAddresses...)
+	others = append(others, taprootTestnetAddresses...)
+	others = append(others, p2wpkhRegtestAddresses...)
+	others = append(others, p2trRegtestAddresses...)
+
+	for _, address := range p2wshAddresses {
+		assert.Truef(t, blockchain.IsBtcP2WSHAddress(address), "IsP2WSHAddress should return true for address %s", address)
+	}
+	for _, address := range others {
+		assert.Falsef(t, blockchain.IsBtcP2WSHAddress(address), "IsP2WSHAddress should return false for address %s", address)
+	}
+}
+
+func TestIsTaprootAddress(t *testing.T) {
+	var taprootAddresses []string
+	taprootAddresses = append(taprootAddresses, taprootMainnetAddresses...)
+	taprootAddresses = append(taprootAddresses, taprootTestnetAddresses...)
+	taprootAddresses = append(taprootAddresses, p2trRegtestAddresses...)
+	var others []string
+	others = append(others, p2pkhMainnetAddresses...)
+	others = append(others, p2pkhTestnetAddresses...)
+	others = append(others, p2shMainnetAddresses...)
+	others = append(others, p2shTestnetAddresses...)
+	others = append(others, p2wpkhMainnetAddresses...)
+	others = append(others, p2wpkhTestnetAddresses...)
+	others = append(others, p2wshMainnetAddresses...)
+	others = append(others, p2wshTestnetAddresses...)
+	others = append(others, p2wshRegtestAddresses...)
+	others = append(others, p2wpkhRegtestAddresses...)
+
+	for _, address := range taprootAddresses {
+		assert.Truef(t, blockchain.IsBtcP2TRAddress(address), "IsTaprootAddress should return true for address %s", address)
+	}
+	for _, address := range others {
+		assert.Falsef(t, blockchain.IsBtcP2TRAddress(address), "IsTaprootAddress should return false for address %s", address)
 	}
 }

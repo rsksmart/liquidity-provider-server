@@ -34,8 +34,8 @@ func (m *BtcRpcMock) GetTransactionBlockInfo(txHash string) (blockchain.BitcoinB
 	return args.Get(0).(blockchain.BitcoinBlockInformation), args.Error(1)
 }
 
-func (m *BtcRpcMock) DecodeAddress(address string, keepVersion bool) ([]byte, error) {
-	args := m.Called(address, keepVersion)
+func (m *BtcRpcMock) DecodeAddress(address string) ([]byte, error) {
+	args := m.Called(address)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
