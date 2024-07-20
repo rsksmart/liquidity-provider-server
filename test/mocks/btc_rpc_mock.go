@@ -59,3 +59,8 @@ func (m *BtcRpcMock) GetHeight() (*big.Int, error) {
 	}
 	return args.Get(0).(*big.Int), args.Error(1)
 }
+
+func (m *BtcRpcMock) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+	args := m.Called(txHash)
+	return args.Get(0).(blockchain.BtcCoinbaseTransactionInformation), args.Error(1)
+}
