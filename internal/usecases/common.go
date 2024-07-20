@@ -173,3 +173,16 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 	}
 	return signedConfig, nil
 }
+
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+	if !tx.HasWitness {
+		return nil
+	}
+
+	coinbaseInfo, err := btcRpc.GetCoinbaseInformation(tx.Hash)
+	if err != nil {
+		return err
+	}
+	_, err = bridgeContract.RegisterBtcCoinbaseTransaction(coinbaseInfo)
+	return err
+}

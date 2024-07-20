@@ -54,3 +54,16 @@ func TestGetRandomBytes_Random(t *testing.T) {
 		generatedBytes = append(generatedBytes, bytes)
 	}
 }
+
+func TestMustGetRandomBytes(t *testing.T) {
+	const size = 32
+	var generatedBytes [][]byte
+	for i := 0; i < 100; i++ {
+		bytes := utils.MustGetRandomBytes(size)
+		require.Len(t, bytes, size)
+		for _, generated := range generatedBytes {
+			assert.NotEqual(t, generated, bytes)
+		}
+		generatedBytes = append(generatedBytes, bytes)
+	}
+}

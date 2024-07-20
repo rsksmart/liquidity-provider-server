@@ -205,19 +205,19 @@ func (_c *LbcAdapterMock_CallForUser_Call) RunAndReturn(run func(*bind.TransactO
 }
 
 // Caller provides a mock function with given fields:
-func (_m *LbcAdapterMock) Caller() rootstock.LbcCallerBinding {
+func (_m *LbcAdapterMock) Caller() rootstock.ContractCallerBinding {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Caller")
 	}
 
-	var r0 rootstock.LbcCallerBinding
-	if rf, ok := ret.Get(0).(func() rootstock.LbcCallerBinding); ok {
+	var r0 rootstock.ContractCallerBinding
+	if rf, ok := ret.Get(0).(func() rootstock.ContractCallerBinding); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(rootstock.LbcCallerBinding)
+			r0 = ret.Get(0).(rootstock.ContractCallerBinding)
 		}
 	}
 
@@ -241,12 +241,12 @@ func (_c *LbcAdapterMock_Caller_Call) Run(run func()) *LbcAdapterMock_Caller_Cal
 	return _c
 }
 
-func (_c *LbcAdapterMock_Caller_Call) Return(_a0 rootstock.LbcCallerBinding) *LbcAdapterMock_Caller_Call {
+func (_c *LbcAdapterMock_Caller_Call) Return(_a0 rootstock.ContractCallerBinding) *LbcAdapterMock_Caller_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *LbcAdapterMock_Caller_Call) RunAndReturn(run func() rootstock.LbcCallerBinding) *LbcAdapterMock_Caller_Call {
+func (_c *LbcAdapterMock_Caller_Call) RunAndReturn(run func() rootstock.ContractCallerBinding) *LbcAdapterMock_Caller_Call {
 	_c.Call.Return(run)
 	return _c
 }

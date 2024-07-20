@@ -31,6 +31,10 @@ const (
 	pubKey         = "0232858a5faa413101831afe7a880da9a8ac4de6bd5e25b4358d762ba450b03c22"
 	changePosition = 2
 	feeRate        = 0.0001
+
+	testnetAddress    = "mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5"
+	mainnetAddress    = "141dsd6YZxdKcmTZckG4Q9qGzJbR1Jc9kv"
+	paymentScriptMock = "a payment script"
 )
 
 var (
@@ -300,20 +304,41 @@ func testGetBalance(t *testing.T, rskAccount *account.RskAccount, addressInfo *b
 	client.AssertExpectations(t)
 }
 
+// nolint:funlen
 func testGetTransactions(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
-	absolutePath, err := filepath.Abs("../../../../test/mocks/listUnspentByAddress.json")
+	absolutePathListUnspent, err := filepath.Abs("../../../../test/mocks/listUnspentByAddress.json")
 	require.NoError(t, err)
-	rpcResponse, err := os.ReadFile(absolutePath)
+	listUnspentRpcResponse, err := os.ReadFile(absolutePathListUnspent)
 	require.NoError(t, err)
-	var result []btcjson.ListUnspentResult
-	err = json.Unmarshal(rpcResponse, &result)
+	var listUnspentResult []btcjson.ListUnspentResult
+	err = json.Unmarshal(listUnspentRpcResponse, &listUnspentResult)
 	require.NoError(t, err)
+
+	var absolutePathTx string
+	var txRpcResponse []byte
+	var txId *chainhash.Hash
 	client := &mocks.ClientAdapterMock{}
+	mockedTxs := make(map[chainhash.Hash]*btcjson.TxRawResult)
+	for _, utxo := range listUnspentResult {
+		txResult := new(btcjson.TxRawResult)
+		absolutePathTx, err = filepath.Abs("../../../../test/mocks/rawTxVerbose-" + utxo.TxID + ".json")
+		require.NoError(t, err)
+		txRpcResponse, err = os.ReadFile(absolutePathTx)
+		require.NoError(t, err)
+		err = json.Unmarshal(txRpcResponse, txResult)
+		require.NoError(t, err)
+		txId, err = chainhash.NewHashFromStr(utxo.TxID)
+		require.NoError(t, err)
+		mockedTxs[*txId] = txResult
+	}
+	client.EXPECT().GetRawTransactionVerbose(mock.Anything).RunAndReturn(func(hash *chainhash.Hash) (*btcjson.TxRawResult, error) {
+		return mockedTxs[*hash], nil
+	})
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
 	parsedAddress, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
 	require.NoError(t, err)
-	client.On("ListUnspentMinMaxAddresses", 0, 9999999, []btcutil.Address{parsedAddress}).Return(result, nil).Once()
+	client.On("ListUnspentMinMaxAddresses", 0, 9999999, []btcutil.Address{parsedAddress}).Return(listUnspentResult, nil).Once()
 	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 	require.NoError(t, err)
 	transactions, err := wallet.GetTransactions(testnetAddress)
@@ -321,36 +346,46 @@ func testGetTransactions(t *testing.T, rskAccount *account.RskAccount, addressIn
 	slices.SortFunc(transactions, func(i, j blockchain.BitcoinTransactionInformation) int {
 		return cmp.Compare(i.Hash, j.Hash)
 	})
-	assert.Equal(t, []blockchain.BitcoinTransactionInformation{
+	expectedTransactions := []blockchain.BitcoinTransactionInformation{
 		{
 			Hash:          "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf",
-			Confirmations: 2439,
+			Confirmations: 288434,
 			Outputs: map[string][]*entities.Wei{
+				"mqbKtarYKnoEdPheFFDGRjksvEpb2vJGNh": {entities.NewWei(6000000000000000)},
+				"":                                   {entities.NewWei(0)},
 				"n3HJbF1Ps5c9ZE3UvLyjGFDvyAfjzDEBkS": {entities.NewWei(2531000000000000)},
 			},
+			HasWitness: false,
 		},
 		{
 			Hash:          "586c51dc94452aed9a373b0f52936c3e343c0db90f1155e985fd60e3c2e5c2b2",
-			Confirmations: 6,
+			Confirmations: 286001,
 			Outputs: map[string][]*entities.Wei{
+				"mxcLm8hdhfJ1cutzeq6zdwcUohKVfmRhPu": {entities.NewWei(992000000000000)},
 				"n3HJbF1Ps5c9ZE3UvLyjGFDvyAfjzDEBkS": {entities.NewWei(2000000000000000)},
 			},
+			HasWitness: false,
 		},
 		{
 			Hash:          "da28401c76d618e8c3b1c3e15dfe1c10d4b24875f23768f30bcc26c99b9c82d4",
-			Confirmations: 2,
+			Confirmations: 285997,
 			Outputs: map[string][]*entities.Wei{
+				"mocAPSv6trAJoZRoqcn18kvXEjcxvXc9m5": {entities.NewWei(93000000000000)},
 				"n3HJbF1Ps5c9ZE3UvLyjGFDvyAfjzDEBkS": {entities.NewWei(200000000000000), entities.NewWei(1000000000000000), entities.NewWei(1000000000000000)},
 			},
+			HasWitness: false,
 		},
 		{
 			Hash:          "fda421ccdff7324a382067d1746f6a387132435de6af336a0ebbf3f720eaae4d",
-			Confirmations: 6,
+			Confirmations: 286001,
 			Outputs: map[string][]*entities.Wei{
+				"n1sSgnWcHU8AeHTVFez9RQ8HxMdAVHJXui": {entities.NewWei(1873000000000000)},
 				"n3HJbF1Ps5c9ZE3UvLyjGFDvyAfjzDEBkS": {entities.NewWei(20000000000000000)},
 			},
+			HasWitness: false,
 		},
-	}, transactions)
+	}
+	assert.ElementsMatch(t, expectedTransactions, transactions)
 	client.AssertExpectations(t)
 }
 

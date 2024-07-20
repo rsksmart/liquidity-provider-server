@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"sync"
 )
 
 const (
@@ -20,6 +21,7 @@ type RefundPegoutUseCase struct {
 	contracts       blockchain.RskContracts
 	eventBus        entities.EventBus
 	rpc             blockchain.Rpc
+	rskWalletMutex  sync.Locker
 }
 
 func NewRefundPegoutUseCase(
@@ -27,18 +29,21 @@ func NewRefundPegoutUseCase(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	rpc blockchain.Rpc,
+	rskWalletMutex sync.Locker,
 ) *RefundPegoutUseCase {
 	return &RefundPegoutUseCase{
 		quoteRepository: quoteRepository,
 		contracts:       contracts,
 		eventBus:        eventBus,
 		rpc:             rpc,
+		rskWalletMutex:  rskWalletMutex,
 	}
 }
 
 func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	var params blockchain.RefundPegoutParams
 	var pegoutQuote *quote.PegoutQuote
+	var lpBtcTransaction blockchain.BitcoinTransactionInformation
 	var err error
 
 	if retainedQuote.State != quote.PegoutStateSendPegoutSucceeded {
@@ -51,7 +56,7 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
 	}
 
-	if err = useCase.validateBtcTransaction(ctx, *pegoutQuote, retainedQuote); err != nil {
+	if lpBtcTransaction, err = useCase.getLpBtcTransactionIfValid(ctx, *pegoutQuote, retainedQuote); err != nil {
 		return err
 	}
 
@@ -59,6 +64,13 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return err
 	}
 	txConfig := blockchain.NewTransactionConfig(nil, refundPegoutGasLimit, nil)
+
+	useCase.rskWalletMutex.Lock()
+	defer useCase.rskWalletMutex.Unlock()
+
+	if err = usecases.RegisterCoinbaseTransaction(useCase.rpc.Btc, useCase.contracts.Bridge, lpBtcTransaction); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, errors.Is(err, blockchain.WaitingForBridgeError))
+	}
 
 	if retainedQuote, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
@@ -70,8 +82,9 @@ func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retai
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
 		retainedQuote.State = quote.PegoutStateRefundPegOutFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
+			wrappedError = errors.Join(wrappedError, err)
 		}
 		useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
@@ -151,17 +164,17 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	return retainedQuote, nil
 }
 
-func (useCase *RefundPegoutUseCase) validateBtcTransaction(
+func (useCase *RefundPegoutUseCase) getLpBtcTransactionIfValid(
 	ctx context.Context,
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
-) error {
+) (blockchain.BitcoinTransactionInformation, error) {
 	var txInfo blockchain.BitcoinTransactionInformation
 	var err error
 	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.LpBtcTxHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if txInfo.Confirmations < uint64(pegoutQuote.TransferConfirmations) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
 	}
-	return nil
+	return txInfo, nil
 }

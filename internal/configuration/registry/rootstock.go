@@ -57,6 +57,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				client,
 				btcParams,
 				rootstock.DefaultRetryParams,
+				wallet,
 			),
 			Lbc: rootstock.NewLiquidityBridgeContractImpl(
 				client,
