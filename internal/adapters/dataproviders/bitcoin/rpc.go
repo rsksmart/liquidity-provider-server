@@ -40,8 +40,13 @@ func (rpc *bitcoindRpc) validateNetwork(address string) error {
 			return blockchain.BtcAddressInvalidNetworkError
 		}
 		return nil
-	case wire.TestNet, wire.TestNet3:
+	case wire.TestNet3:
 		if !blockchain.IsTestnetBtcAddress(address) {
+			return blockchain.BtcAddressInvalidNetworkError
+		}
+		return nil
+	case wire.TestNet:
+		if !blockchain.IsRegtestBtcAddress(address) {
 			return blockchain.BtcAddressInvalidNetworkError
 		}
 		return nil
@@ -50,8 +55,8 @@ func (rpc *bitcoindRpc) validateNetwork(address string) error {
 	}
 }
 
-func (rpc *bitcoindRpc) DecodeAddress(address string, keepVersion bool) ([]byte, error) {
-	return DecodeAddressBase58(address, keepVersion)
+func (rpc *bitcoindRpc) DecodeAddress(address string) ([]byte, error) {
+	return DecodeAddress(address)
 }
 
 func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTransactionInformation, error) {

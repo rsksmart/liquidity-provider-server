@@ -3,6 +3,7 @@ package pegin
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -94,7 +95,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if fedAddress, err = useCase.contracts.Bridge.GetFedAddress(); err != nil {
+	if fedAddress, err = useCase.getFederationAddress(); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
@@ -200,4 +201,15 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	return daoTxAmounts, nil
+}
+
+func (useCase *GetQuoteUseCase) getFederationAddress() (string, error) {
+	var fedAddress string
+	var err error
+	if fedAddress, err = useCase.contracts.Bridge.GetFedAddress(); err != nil {
+		return "", err
+	} else if !blockchain.IsBtcP2SHAddress(fedAddress) {
+		return "", errors.New("only P2SH addresses are supported for federation address")
+	}
+	return fedAddress, nil
 }

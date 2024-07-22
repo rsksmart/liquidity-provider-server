@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/base58"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/btcsuite/btcd/btcutil/bloom"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -22,6 +23,16 @@ const (
 	MinConfirmationsForUtxos = 1
 )
 
+func DecodeAddress(address string) ([]byte, error) {
+	if blockchain.IsBtcP2PKHAddress(address) || blockchain.IsBtcP2SHAddress(address) {
+		return DecodeAddressBase58(address, true)
+	} else if blockchain.IsBtcP2WPKHAddress(address) || blockchain.IsBtcP2WSHAddress(address) || blockchain.IsBtcP2TRAddress(address) {
+		_, data, err := bech32.Decode(address) // this function decodes both bech32 and bech32m
+		return data, err
+	}
+	return nil, blockchain.BtcAddressNotSupportedError
+}
+
 func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	var buff bytes.Buffer
 	addressBytes, version, err := base58.CheckDecode(address)
@@ -35,13 +46,6 @@ func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	}
 	buff.Write(addressBytes)
 	return buff.Bytes(), nil
-}
-
-func DecodeAddressBase58OnlyLegacy(address string, keepVersion bool) ([]byte, error) {
-	if !blockchain.IsSupportedBtcAddress(address) {
-		return nil, fmt.Errorf("only legacy address allowed (%s)", address)
-	}
-	return DecodeAddressBase58(address, keepVersion)
 }
 
 func toSwappedBytes32(hash *chainhash.Hash) [32]byte {

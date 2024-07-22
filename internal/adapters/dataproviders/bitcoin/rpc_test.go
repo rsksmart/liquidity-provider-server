@@ -28,6 +28,7 @@ const (
 	mainnetBlockFile     = "block-696394-mainnet.txt"
 )
 
+// nolint:funlen
 func TestBitcoindRpc_ValidateAddress(t *testing.T) {
 	client := &mocks.ClientAdapterMock{}
 	mainnet := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
@@ -36,32 +37,61 @@ func TestBitcoindRpc_ValidateAddress(t *testing.T) {
 	invalid := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.SigNetParams, client))
 
 	p2pkhMainnet := "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
-	p2shMainnet := "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
 	p2pkhTestnet := "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn"
+	p2shMainnet := "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
 	p2shTestnet := "2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc"
 	p2wpkhMainnet := "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
 	p2wpkhTestnet := "tb1qg9stx3w3xj0t5j8d5q2g4yvz5gj8v3tjxjxw5v"
+	p2wshMainnet := "bc1quhruqrghgcca950rvhtrg7cpd7u8k6svpzgzmrjy8xyukacl5lkq0r8l2d"
+	p2wshTestnet := "tb1qgpgtqj68zwsdz7xmvqxxxaan7dcfgu76jz0cfzynqgrtvdsxlyqsf7dfz8"
+	p2trMainnet := "bc1pq2g3k9fleqcvu382g674psux05wwa08w6gw6022mr7sqla8009ws3p5054"
+	p2trTestnet := "tb1p9jveg4j5mh2z3v6e6z93ln5jn4zfehd873ps2vv0g6k234tqw67sm08vk5"
+
+	p2wpkhRegtest := "bcrt1q8gf8taa048wxjj90g7htpt5t5hzja4a2qz6use"
+	p2wshRegtest := "bcrt1qtmm4qallkmnd2vl5y3w3an3uvq6w5v2ahqvfqm0mfxny8cnsdrashv8fsr"
+	p2trRegtest := "bcrt1ptzfcz2r2uskkhq2yq3umhahf6y6algfrlwhu3eu8mjht44gu984q6ucjxd"
 
 	require.NoError(t, mainnet.ValidateAddress(p2pkhMainnet))
 	require.NoError(t, mainnet.ValidateAddress(p2shMainnet))
+	require.NoError(t, mainnet.ValidateAddress(p2wpkhMainnet))
+	require.NoError(t, mainnet.ValidateAddress(p2wshMainnet))
+	require.NoError(t, mainnet.ValidateAddress(p2trMainnet))
+	require.ErrorIs(t, mainnet.ValidateAddress(p2wpkhRegtest), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, mainnet.ValidateAddress(p2wshRegtest), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, mainnet.ValidateAddress(p2trRegtest), blockchain.BtcAddressInvalidNetworkError)
 	require.ErrorIs(t, mainnet.ValidateAddress(p2pkhTestnet), blockchain.BtcAddressInvalidNetworkError)
 	require.ErrorIs(t, mainnet.ValidateAddress(p2shTestnet), blockchain.BtcAddressInvalidNetworkError)
-	require.ErrorIs(t, mainnet.ValidateAddress(p2wpkhMainnet), blockchain.BtcAddressNotSupportedError)
 	require.ErrorIs(t, mainnet.ValidateAddress(p2wpkhTestnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, mainnet.ValidateAddress(p2wshTestnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, mainnet.ValidateAddress(p2trTestnet), blockchain.BtcAddressInvalidNetworkError)
 
 	require.ErrorIs(t, testnet.ValidateAddress(p2pkhMainnet), blockchain.BtcAddressInvalidNetworkError)
 	require.ErrorIs(t, testnet.ValidateAddress(p2shMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2wpkhMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2wshMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2trMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2wpkhRegtest), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2wshRegtest), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, testnet.ValidateAddress(p2trRegtest), blockchain.BtcAddressInvalidNetworkError)
 	require.NoError(t, testnet.ValidateAddress(p2pkhTestnet))
 	require.NoError(t, testnet.ValidateAddress(p2shTestnet))
-	require.ErrorIs(t, testnet.ValidateAddress(p2wpkhMainnet), blockchain.BtcAddressInvalidNetworkError)
-	require.ErrorIs(t, testnet.ValidateAddress(p2wpkhTestnet), blockchain.BtcAddressNotSupportedError)
+	require.NoError(t, testnet.ValidateAddress(p2wpkhTestnet))
+	require.NoError(t, testnet.ValidateAddress(p2wshTestnet))
+	require.NoError(t, testnet.ValidateAddress(p2trTestnet))
 
 	require.ErrorIs(t, regtest.ValidateAddress(p2pkhMainnet), blockchain.BtcAddressInvalidNetworkError)
 	require.ErrorIs(t, regtest.ValidateAddress(p2shMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2wpkhMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2wshMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2trMainnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2wpkhTestnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2wshTestnet), blockchain.BtcAddressInvalidNetworkError)
+	require.ErrorIs(t, regtest.ValidateAddress(p2trTestnet), blockchain.BtcAddressInvalidNetworkError)
 	require.NoError(t, regtest.ValidateAddress(p2pkhTestnet))
 	require.NoError(t, regtest.ValidateAddress(p2shTestnet))
-	require.ErrorIs(t, regtest.ValidateAddress(p2wpkhMainnet), blockchain.BtcAddressInvalidNetworkError)
-	require.ErrorIs(t, regtest.ValidateAddress(p2wpkhTestnet), blockchain.BtcAddressNotSupportedError)
+	require.NoError(t, regtest.ValidateAddress(p2wpkhRegtest))
+	require.NoError(t, regtest.ValidateAddress(p2wshRegtest))
+	require.NoError(t, regtest.ValidateAddress(p2trRegtest))
 
 	const unsupportedNetwork = "unsupported network"
 	require.Contains(t, invalid.ValidateAddress(p2pkhMainnet).Error(), unsupportedNetwork)
@@ -89,16 +119,17 @@ func TestBitcoindRpc_GetHeight(t *testing.T) {
 }
 
 func TestBitcoindRpc_DecodeAddress(t *testing.T) {
+	var decodedAddresses []decodedAddress
+	decodedAddresses = append(decodedAddresses, base58Addresses...)
+	decodedAddresses = append(decodedAddresses, bech32Addresses...)
+	decodedAddresses = append(decodedAddresses, bech32mAddresses...)
 	client := &mocks.ClientAdapterMock{}
 	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 	cases := decodedAddresses
 	for _, c := range cases {
-		withVersion, err := rpc.DecodeAddress(c.address, true)
+		decoded, err := rpc.DecodeAddress(c.address)
 		require.NoError(t, err)
-		withoutVersion, err := rpc.DecodeAddress(c.address, false)
-		require.NoError(t, err)
-		assert.Equal(t, c.expected, withVersion)
-		assert.Equal(t, c.expected[1:], withoutVersion)
+		assert.Equal(t, c.expected, decoded)
 	}
 }
 
