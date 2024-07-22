@@ -595,7 +595,8 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 	return registerEvent.Id.Int64(), nil
 }
 
-// TODO currently we only support P2PKH addresses (P2SH is allowed for federation address)
+// parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPeginQuote. All BTC address fields support all address types
+// except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, error) {
 	var decodedFederationAddress []byte
 	var parsedQuote bindings.QuotesPeginQuote
@@ -610,10 +611,10 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	} else {
 		copy(parsedQuote.FedBtcAddress[:], decodedFederationAddress)
 	}
-	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(peginQuote.BtcRefundAddress, true); err != nil {
+	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(peginQuote.BtcRefundAddress); err != nil {
 		return bindings.QuotesPeginQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
 	}
-	if parsedQuote.LiquidityProviderBtcAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(peginQuote.LpBtcAddress, true); err != nil {
+	if parsedQuote.LiquidityProviderBtcAddress, err = bitcoin.DecodeAddress(peginQuote.LpBtcAddress); err != nil {
 		return bindings.QuotesPeginQuote{}, fmt.Errorf("error parsing btc liquidity provider address: %w", err)
 	}
 
@@ -650,7 +651,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	return parsedQuote, nil
 }
 
-// TODO currently we only support P2PKH addresses
+// parsePegoutQuote parses a quote.PegoutQuote into a bindings.QuotesPegOutQuote. All BTC address fields support all address types.
 func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote, error) {
 	var parsedQuote bindings.QuotesPegOutQuote
 	var err error
@@ -669,13 +670,13 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user rsk refund address: %w", err)
 	}
 
-	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.BtcRefundAddress, true); err != nil {
+	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(pegoutQuote.BtcRefundAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
 	}
-	if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.LpBtcAddress, true); err != nil {
+	if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing liquidity provider btc address: %w", err)
 	}
-	if parsedQuote.DeposityAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.DepositAddress, true); err != nil {
+	if parsedQuote.DeposityAddress, err = bitcoin.DecodeAddress(pegoutQuote.DepositAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)
 	}
 

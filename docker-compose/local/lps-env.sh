@@ -257,10 +257,10 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
       "configuration": {
           "timeForDeposit": 3600,
           "callTime": 7200,
-          "penaltyFee": 1000000000000000,
-          "callFee": 10000000000000000,
-          "maxValue": 10000000000000000000,
-          "minValue": 600000000000000000
+          "penaltyFee": "1000000000000000",
+          "callFee": "10000000000000000",
+          "maxValue": "10000000000000000000",
+          "minValue": "600000000000000000"
       }
   }'
 
@@ -280,11 +280,11 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
       "configuration": {
           "timeForDeposit": 3600,
           "expireTime": 10800,
-          "penaltyFee": 1000000000000000,
-          "callFee": 10000000000000000,
-          "maxValue": 10000000000000000000,
-          "minValue": 600000000000000000,
+          "penaltyFee": "1000000000000000",
+          "callFee": "10000000000000000",
+          "maxValue": "10000000000000000000",
+          "minValue": "600000000000000000",
           "expireBlocks": 500,
-          "bridgeTransactionMin": 1500000000000000000
+          "bridgeTransactionMin": "1500000000000000000"
       }
   }'
