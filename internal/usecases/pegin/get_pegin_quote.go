@@ -110,7 +110,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.contracts.Bridge, peginQuote.Total()); err != nil {
+	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.contracts.Bridge, peginQuote.Value); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
 
