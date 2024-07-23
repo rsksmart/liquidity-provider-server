@@ -7,7 +7,7 @@ RUN apt-get update -y && \
 WORKDIR /code/rskj
 
 ARG RSKJ_RELEASE="ARROWHEAD"
-ARG RSKJ_VERSION="6.1.0"
+ARG RSKJ_VERSION="6.3.1"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \

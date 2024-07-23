@@ -7,7 +7,7 @@ RUN apt-get update -y && \
 WORKDIR /code/powpeg
 
 ARG POWPEG_RELEASE="ARROWHEAD"
-ARG POWPEG_VERSION="6.1.0.0"
+ARG POWPEG_VERSION="6.3.1.0"
 
 RUN gitrev="${POWPEG_RELEASE}-${POWPEG_VERSION}" && \
     git init && \
