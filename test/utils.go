@@ -25,12 +25,14 @@ var (
 )
 
 const (
-	AnyAddress  = "any address"
-	AnyString   = "any value"
-	AnyHash     = "any hash"
-	AnyUrl      = "url.com"
-	keyPath     = "../../docker-compose/localstack/local-key.json"
-	KeyPassword = "test"
+	AnyAddress    = "any address"
+	AnyRskAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
+	AnyBtcAddress = "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"
+	AnyString     = "any value"
+	AnyHash       = "any hash"
+	AnyUrl        = "url.com"
+	keyPath       = "../../docker-compose/localstack/local-key.json"
+	KeyPassword   = "test"
 )
 
 type Case[V, R any] struct {
