@@ -40,6 +40,10 @@ The server has the following dependencies:
 - Bitcoin node
 - MongoDB instance
 
+**IMPORTANT**: liquidity provider server performs sensitive operations and uses non publicly enabled functionality of both Rootstock and Bitcoin nodes.
+This means that the nodes used to run this server must be private and well protected, the usage of public nodes or nodes that are not properly secured
+might lead to a loss of funds.
+
 P.S.: if you run the server locally you'll see that the docker compose includes more services than the previously mentioned, that is because the ones
 mentioned before are the minimal dependencies, but in order to run a fully functional environment more dependencies might be required.
 

@@ -175,6 +175,46 @@ func validateRequestTestCases() test.Table[func(btc *mocks.BtcRpcMock) pegin.Quo
 	}
 }
 
+func TestGetQuoteUseCase_Run_BridgeMinimum(t *testing.T) {
+	lp := new(mocks.ProviderMock)
+	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	bridge := new(mocks.BridgeMock)
+	feeCollector := new(mocks.FeeCollectorMock)
+	btc := new(mocks.BtcRpcMock)
+	lbc := new(mocks.LbcMock)
+	contracts := blockchain.RskContracts{FeeCollector: feeCollector, Bridge: bridge, Lbc: lbc}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+
+	lbc.On("GetAddress").Return(lbcAddress).Once()
+	btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(2000), nil).Once()
+	lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration()).Once()
+	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration()).Once()
+	lp.On("RskAddress").Return(test.AnyAddress).Once()
+	lp.On("BtcAddress").Return(test.AnyAddress).Once()
+	rsk.EXPECT().EstimateGas(test.AnyCtx, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil).Once()
+	rsk.EXPECT().GasPrice(test.AnyCtx).Return(entities.NewWei(10), nil).Once()
+	feeCollector.On("DaoFeePercentage").Return(uint64(0), nil).Once()
+	bridge.On("GetFedAddress").Return(fedAddress, nil).Once()
+	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, test.AnyAddress)
+	t.Run("Should compare bridge minimum against quote value", func(t *testing.T) {
+		// we compare 1999 of the quote value with the 2000 of the minimum, so the total is higher than the minimum due to the fees
+		quoteValue := entities.NewWei(1999)
+		request := pegin.NewQuoteRequest(test.AnyRskAddress, []byte{1}, quoteValue, test.AnyRskAddress, test.AnyBtcAddress)
+		result, err := useCase.Run(context.Background(), request)
+		assert.Empty(t, result)
+		require.ErrorIs(t, err, usecases.TxBelowMinimumError)
+	})
+
+	lp.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	bridge.AssertExpectations(t)
+	feeCollector.AssertExpectations(t)
+	btc.AssertExpectations(t)
+	peginQuoteRepository.AssertExpectations(t)
+}
+
 func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 	userRskAddress := getPeginTestUserAddress
 	request := pegin.NewQuoteRequest(userRskAddress, []byte{1}, entities.NewWei(5000), userRskAddress, getPeginTestBtcAddress)
