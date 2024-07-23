@@ -2,14 +2,19 @@ package rootstock
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 )
+
+const registerCoinbaseTxGasLimit = 100000
 
 type rskBridgeImpl struct {
 	address               string
@@ -20,6 +25,7 @@ type rskBridgeImpl struct {
 	client                RpcClientBinding
 	btcParams             *chaincfg.Params
 	retryParams           RetryParams
+	signer                TransactionSigner
 }
 
 type RskBridgeConfig struct {
@@ -35,6 +41,7 @@ func NewRskBridgeImpl(
 	client *RskClient,
 	btcParams *chaincfg.Params,
 	retryParams RetryParams,
+	signer TransactionSigner,
 ) blockchain.RootstockBridge {
 	return &rskBridgeImpl{
 		address:               config.Address,
@@ -45,6 +52,7 @@ func NewRskBridgeImpl(
 		client:                client.client,
 		btcParams:             btcParams,
 		retryParams:           retryParams,
+		signer:                signer,
 	}
 }
 
@@ -153,4 +161,47 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 		IrisActivationHeight: bridge.irisActivationHeight,
 		ErpKeys:              bridge.erpKeys,
 	}, nil
+}
+
+// RegisterBtcCoinbaseTransaction registers a new Bitcoin coinbase transaction in the bridge. Returns blockchain.WaitingForBridgeError
+// if the transaction has not been observed by the bridge yet. If the transaction was already registered, it returns an empty string instead of the hash.
+func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params blockchain.BtcCoinbaseTransactionInformation) (string, error) {
+	var err error
+	var alreadyRegistered bool
+	var bestChainHeight *big.Int
+
+	if bestChainHeight, err = bridge.contract.GetBtcBlockchainBestChainHeight(&bind.CallOpts{}); err != nil {
+		return "", fmt.Errorf("error validating if coinbase transaction was processed by the bridge: %w", err)
+	} else if bestChainHeight.Cmp(params.BlockHeight) < 0 {
+		return "", blockchain.WaitingForBridgeError
+	}
+
+	if alreadyRegistered, err = bridge.contract.HasBtcBlockCoinbaseTransactionInformation(&bind.CallOpts{}, params.BlockHash); alreadyRegistered {
+		log.Info("Coinbase transaction already registered")
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("error validating if coinbase transaction was registered: %w", err)
+	}
+
+	log.Infof("Executing RegisterBtcCoinbaseTransaction with params: %s\n", params.String())
+	opts := &bind.TransactOpts{
+		From:     bridge.signer.Address(),
+		Signer:   bridge.signer.Sign,
+		GasLimit: registerCoinbaseTxGasLimit,
+	}
+
+	receipt, err := awaitTx(bridge.client, "RegisterBtcCoinbaseTransaction", func() (*geth.Transaction, error) {
+		return bridge.contract.RegisterBtcCoinbaseTransaction(opts, params.BtcTxSerialized, params.BlockHash,
+			params.SerializedPmt, params.WitnessMerkleRoot, params.WitnessReservedValue)
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("register coinbase transaction error: %w", err)
+	} else if receipt == nil {
+		return "", errors.New("register coinbase transaction error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("register coinbase transaction error: transaction reverted (%s)", txHash)
+	}
+	return receipt.TxHash.String(), nil
 }

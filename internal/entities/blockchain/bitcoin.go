@@ -104,12 +104,15 @@ type BitcoinNetwork interface {
 	GetHeight() (*big.Int, error)
 	BuildMerkleBranch(txHash string) (MerkleBranch, error)
 	GetTransactionBlockInfo(txHash string) (BitcoinBlockInformation, error)
+	// GetCoinbaseInformation returns the coinbase transaction information of the block that includes txHash
+	GetCoinbaseInformation(txHash string) (BtcCoinbaseTransactionInformation, error)
 }
 
 type BitcoinTransactionInformation struct {
 	Hash          string
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
+	HasWitness    bool
 }
 
 func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entities.Wei {

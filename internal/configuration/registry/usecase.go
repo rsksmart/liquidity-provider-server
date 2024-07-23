@@ -135,6 +135,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.EventBus,
 			messaging.Rpc,
+			mutexes.RskWalletMutex(),
 		),
 		getPegoutQuoteUseCase: pegout.NewGetQuoteUseCase(
 			messaging.Rpc,

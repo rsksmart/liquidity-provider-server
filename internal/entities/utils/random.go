@@ -32,3 +32,12 @@ func GetRandomBytes(numberOfBytes int64) ([]byte, error) {
 	}
 	return random, nil
 }
+
+// MustGetRandomBytes same as GetRandomBytes but panics if error
+func MustGetRandomBytes(numberOfBytes int64) []byte {
+	random, err := GetRandomBytes(numberOfBytes)
+	if err != nil {
+		panic(err)
+	}
+	return random
+}
