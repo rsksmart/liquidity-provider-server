@@ -5,6 +5,7 @@ import (
 	"fmt"
 	merkle "github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -244,6 +245,10 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 		WitnessMerkleRoot:    ToSwappedBytes32(merkle.CalcMerkleRoot(txs, true)),
 		WitnessReservedValue: ToSwappedBytes32(witnessReservedValue),
 	}, nil
+}
+
+func (rpc *bitcoindRpc) NetworkName() string {
+	return strings.ToLower(rpc.conn.NetworkParams.Name)
 }
 
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {
