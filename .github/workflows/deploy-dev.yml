@@ -1,0 +1,34 @@
+name: CD for flyover-api dev 
+
+on:
+  push:
+    branches:
+      - QA-Test
+
+jobs:
+  execute-command:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            role-to-assume: ${{ secrets.DEV_ROLE_ARN }}
+            aws-region: ${{ secrets.AWS_REGION }}    
+
+      - name: Execute deployment command on EC2 instance
+        run: |
+          aws ssm send-command \
+            --document-name "deployBEDevDocument" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-version '$LATEST'
+          echo "Deploy sent to EC2 instance"
+        env:
+          INSTANCE_ID: ${{ secrets.DEV_INSTANCE_ID }}
