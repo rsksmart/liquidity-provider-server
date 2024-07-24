@@ -16,7 +16,15 @@ import (
 	"testing"
 )
 
+// nolint:funlen
 func TestGetQuoteUseCase_Run(t *testing.T) {
+	const (
+		toAddress        = "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"
+		rskRefundAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
+		lbcAddress       = "0x1234"
+		lpRskAddress     = "0x12ab"
+		lpBtcAddress     = "address"
+	)
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
@@ -24,15 +32,15 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 	bridge := new(mocks.BridgeMock)
 	lbc := new(mocks.LbcMock)
-	lbc.On("GetAddress").Return("0x1234")
+	lbc.On("GetAddress").Return(lbcAddress)
 	lbc.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
-	lp.On("RskAddress").Return("0x1234")
-	lp.On("BtcAddress").Return("address")
+	lp.On("RskAddress").Return(lpRskAddress)
+	lp.On("BtcAddress").Return(lpBtcAddress)
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000000000000000), nil)
 	btc := new(mocks.BtcRpcMock)
@@ -41,12 +49,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
 	useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, feeCollectorAddress)
-	request := pegout.NewQuoteRequest(
-		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-		entities.NewWei(1000000000000000000),
-		"0x79568c2989232dCa1840087D73d403602364c0D4",
-		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-	)
+	request := pegout.NewQuoteRequest(toAddress, entities.NewWei(1000000000000000000), rskRefundAddress)
 	result, err := useCase.Run(context.Background(), request)
 	rsk.AssertExpectations(t)
 	feeCollector.AssertExpectations(t)
@@ -58,6 +61,26 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	assert.NotEmpty(t, result.Hash)
 	require.NoError(t, entities.ValidateStruct(result.PegoutQuote))
 	require.NoError(t, err)
+	assert.Equal(t, toAddress, result.PegoutQuote.DepositAddress)
+	assert.Equal(t, toAddress, result.PegoutQuote.BtcRefundAddress)
+	assert.Equal(t, entities.NewWei(1000000000000000000), result.PegoutQuote.Value)
+	assert.Equal(t, entities.NewWei(200), result.PegoutQuote.CallFee)
+	assert.Equal(t, uint64(20), result.PegoutQuote.PenaltyFee)
+	assert.Equal(t, "0x1234", result.PegoutQuote.LbcAddress)
+	assert.NotEmpty(t, result.PegoutQuote.Nonce)
+	assert.NotEmpty(t, result.PegoutQuote.AgreementTimestamp)
+	assert.Zero(t, result.PegoutQuote.ProductFeeAmount)
+	assert.Equal(t, uint16(10), result.PegoutQuote.DepositConfirmations)
+	assert.Equal(t, uint16(10), result.PegoutQuote.TransferConfirmations)
+	assert.Equal(t, uint32(60000), result.PegoutQuote.TransferTime)
+	assert.Equal(t, 60000+result.PegoutQuote.AgreementTimestamp, result.PegoutQuote.DepositDateLimit)
+	assert.Equal(t, 600+result.PegoutQuote.AgreementTimestamp, result.PegoutQuote.ExpireDate)
+	assert.Equal(t, uint32(70100), result.PegoutQuote.ExpireBlock)
+	assert.Equal(t, entities.NewWei(1000000000000000), result.PegoutQuote.GasFee)
+	assert.Equal(t, rskRefundAddress, result.PegoutQuote.RskRefundAddress)
+	assert.Equal(t, lbcAddress, result.PegoutQuote.LbcAddress)
+	assert.Equal(t, lpBtcAddress, result.PegoutQuote.LpBtcAddress)
+	assert.Equal(t, lpRskAddress, result.PegoutQuote.LpRskAddress)
 }
 
 func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
@@ -90,7 +113,7 @@ func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BtcRpcMock, lp *moc
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressInvalidNetworkError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4")
 			},
 			Result: blockchain.BtcAddressInvalidNetworkError,
 		},
@@ -99,45 +122,29 @@ func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BtcRpcMock, lp *moc
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressNotSupportedError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegout.NewQuoteRequest(wrongAddress, entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4")
 			}, Result: blockchain.BtcAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D41", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D41")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
 			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
-				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressInvalidNetworkError).Once()
-				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
-			}, Result: blockchain.BtcAddressInvalidNetworkError,
-		},
-		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
-				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressNotSupportedError).Once()
-				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
-				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D4", wrongAddress)
-			}, Result: blockchain.BtcAddressNotSupportedError,
-		},
-		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(99999999999999999), "0x79568c2989232dCa1840087D73d403602364c0D4", "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe")
+				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(99999999999999999), "0x79568c2989232dCa1840087D73d403602364c0D4")
 			}, Result: lpEntity.AmountOutOfRangeError,
 		},
 	}
@@ -150,7 +157,6 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
 		entities.NewWei(1000000000000000000),
 		"0x79568c2989232dCa1840087D73d403602364c0D4",
-		"mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
 	)
 	feeCollectorAddress := "feeCollectorAddress"
 	for _, testCase := range cases {
@@ -323,7 +329,7 @@ func getPegoutConfiguration() lpEntity.PegoutConfiguration {
 		CallFee:        entities.NewWei(200),
 		MaxValue:       entities.NewUWei(10000000000000000000),
 		MinValue:       entities.NewWei(100000000000000000),
-		ExpireBlocks:   60000,
+		ExpireBlocks:   70000,
 	}
 
 }
