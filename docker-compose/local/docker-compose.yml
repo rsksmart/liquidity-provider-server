@@ -1,5 +1,22 @@
 version: "3"
 services:
+  localstack:
+    build:
+      context: ../localstack
+      args:
+        UID: "${LPS_UID}"
+    container_name: localstack
+    image: flyover-localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "${LOCALSTACK_HOME:-./volumes/localstack}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - net_lps
   powpeg-pegin:
     build:
       context: ../powpeg/pegin
@@ -68,8 +85,8 @@ services:
     image: bitcond:latest
     container_name: bitcoind01
     environment:
-      - BTCD_RPC_USER
-      - BTCD_RPC_PASS
+      - BTC_USERNAME
+      - BTC_PASSWORD
     ports:
       - "5555:5555"
     volumes:
@@ -79,8 +96,8 @@ services:
     command:
       [
         "bitcoind",
-        "-rpcuser=${BTCD_RPC_USER}",
-        "-rpcpassword=${BTCD_RPC_PASS}",
+        "-rpcuser=${BTC_USERNAME}",
+        "-rpcpassword=${BTC_PASSWORD}",
         "-addresstype=legacy",
         "-${LPS_STAGE}",
         "-printtoconsole",
@@ -129,7 +146,7 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
       - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
-      - MONGO_INITDB_DATABASE=$MONGODB_DATABASE
+      - MONGO_INITDB_DATABASE=flyover
     ports:
       - 27017:27017
     volumes:
