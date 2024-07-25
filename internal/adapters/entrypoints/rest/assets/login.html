@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Management Login</title>
+    <link href="../static/Bootstrap.css" rel="stylesheet" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">LP Management Login</div>
+                    <div class="card-body">
+                        <form method="post" autocomplete="off" id="login-form" class="form">
+                            <input type="hidden" name="csrf" value="{{ .CsrfToken }}" required/>
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" name="username" id="username" class="form-control" required/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" name="password" id="password" class="form-control" required/>
+                            </div>
+                            {{if not .CredentialsSet}}
+                            <div class="mb-3">
+                                <label for="new-username" class="form-label">New Username</label>
+                                <input type="text" name="new-username" id="new-username" class="form-control" required/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new-password" class="form-label">New Password</label>
+                                <input type="password" name="new-password" id="new-password" class="form-control" required/>
+                            </div>
+                            {{end}}
+                            <div class="alert alert-danger d-none" id="error-message" role="alert">
+                                Invalid username or password.
+                            </div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/Bootstrap.js" crossorigin="anonymous"></script>
+    <script nonce="{{ .ScriptNonce }}">
+        addEventListener('load', function (){
+            const form = document.getElementById('login-form');
+            const baseUrl = {{.BaseUrl}};
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const csrfToken = form.querySelector('input[name="csrf"]').value;
+                {{if .CredentialsSet}}
+                const username = form.querySelector('input[name="username"]').value;
+                const password = form.querySelector('input[name="password"]').value;
+                login({ baseUrl, username, password, csrfToken })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = window.location.href;
+                        console.log('Login successful');
+                    } else {
+                        throw new Error("Login unsuccessful")
+                    }
+                })
+                .catch(e => {
+                    console.log(e);
+                    document.getElementById("error-message").classList.remove('d-none');
+                });
+                {{else}}
+                const oldUsername = form.querySelector('input[name="username"]').value;
+                const oldPassword = form.querySelector('input[name="password"]').value;
+                const newUsername = form.querySelector('input[name="new-username"]').value;
+                const newPassword = form.querySelector('input[name="new-password"]').value;
+                login({ baseUrl, username: oldUsername, password: oldPassword, csrfToken })
+                    .then(response => {
+                        if (response.ok) {
+                            return setCredentials({ baseUrl, oldUsername, oldPassword, newUsername, newPassword, csrfToken })
+                        } else {
+                            return Promise.reject('Login failed');
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('Credentials set successfully');
+                            window.location.href = window.location.href
+                        } else {
+                            return Promise.reject('Failed to set credentials');
+                        }
+                    })
+                    .catch(e => {
+                       console.log(e);
+                       document.getElementById("error-message").classList.remove('d-none');
+                    });
+                {{end}}
+            });
+        });
+        function login({ baseUrl, username, password, csrfToken }) {
+            return fetch(`${baseUrl}/management/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ username, password })
+            })
+        }
+        function setCredentials({ baseUrl, oldUsername, oldPassword, newUsername, newPassword, csrfToken }) {
+            return fetch(`${baseUrl}/management/credentials`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ oldUsername, oldPassword, newUsername, newPassword })
+            })
+        }
+    </script>
+</body>
+</html>
