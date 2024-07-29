@@ -64,3 +64,8 @@ func (m *BtcRpcMock) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinba
 	args := m.Called(txHash)
 	return args.Get(0).(blockchain.BtcCoinbaseTransactionInformation), args.Error(1)
 }
+
+func (m *BtcRpcMock) NetworkName() string {
+	args := m.Called()
+	return args.String(0)
+}

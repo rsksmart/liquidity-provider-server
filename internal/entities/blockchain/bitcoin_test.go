@@ -1,10 +1,12 @@
 package blockchain_test
 
 import (
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -620,4 +622,19 @@ func TestIsTaprootAddress(t *testing.T) {
 	for _, address := range others {
 		assert.Falsef(t, blockchain.IsBtcP2TRAddress(address), "IsTaprootAddress should return false for address %s", address)
 	}
+}
+
+func TestZeroAddresses(t *testing.T) {
+	t.Run("Mainnet zero address should be an array of zeros", func(t *testing.T) {
+		result, version, err := base58.CheckDecode(blockchain.BitcoinMainnetP2PKHZeroAddress)
+		require.NoError(t, err)
+		assert.Equal(t, make([]byte, 20), result)
+		assert.Equal(t, uint8(0x00), version)
+	})
+	t.Run("Testnet zero address should be an array of zeros", func(t *testing.T) {
+		result, version, err := base58.CheckDecode(blockchain.BitcoinTestnetP2PKHZeroAddress)
+		require.NoError(t, err)
+		assert.Equal(t, make([]byte, 20), result)
+		assert.Equal(t, uint8(0x6f), version)
+	})
 }

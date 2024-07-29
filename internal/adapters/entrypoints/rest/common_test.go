@@ -168,7 +168,7 @@ func TestValidateRequest(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		require.NoError(t, json.NewDecoder(w.Body).Decode(&response))
 		assert.Contains(t, response.Message, "validation error")
-		assert.Len(t, response.Details, 3)
+		assert.Len(t, response.Details, 2)
 		for key := range response.Details {
 			assert.Contains(t, response.Details[key], "validation failed")
 		}

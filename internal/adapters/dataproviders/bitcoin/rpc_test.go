@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -685,4 +686,17 @@ func getTestBlock(t *testing.T, filename string) *btcutil.Block {
 	block, err := btcutil.NewBlockFromBytes(blockBytes)
 	require.NoError(t, err)
 	return block
+}
+
+func TestBitcoindRpc_NetworkName(t *testing.T) {
+	table := test.Table[*chaincfg.Params, string]{
+		{Value: &chaincfg.MainNetParams, Result: "mainnet"},
+		{Value: &chaincfg.TestNet3Params, Result: "testnet3"},
+		{Value: &chaincfg.RegressionNetParams, Result: "regtest"},
+		{Value: &chaincfg.SimNetParams, Result: "simnet"},
+	}
+	test.RunTable(t, table, func(p *chaincfg.Params) string {
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(p, &mocks.ClientAdapterMock{}))
+		return rpc.NetworkName()
+	})
 }

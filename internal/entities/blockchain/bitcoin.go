@@ -34,6 +34,11 @@ const (
 	BtcTxInfoErrorTemplate      = "error getting Bitcoin transaction information (%s): %v"
 )
 
+const (
+	BitcoinMainnetP2PKHZeroAddress = "1111111111111111111114oLvT2"
+	BitcoinTestnetP2PKHZeroAddress = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+)
+
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
 func IsSupportedBtcAddress(address string) bool {
 	return IsTestnetBtcAddress(address) || IsMainnetBtcAddress(address) || IsRegtestBtcAddress(address)
@@ -106,6 +111,7 @@ type BitcoinNetwork interface {
 	GetTransactionBlockInfo(txHash string) (BitcoinBlockInformation, error)
 	// GetCoinbaseInformation returns the coinbase transaction information of the block that includes txHash
 	GetCoinbaseInformation(txHash string) (BtcCoinbaseTransactionInformation, error)
+	NetworkName() string
 }
 
 type BitcoinTransactionInformation struct {

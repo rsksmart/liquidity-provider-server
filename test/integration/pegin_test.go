@@ -74,7 +74,6 @@ func getPeginQuoteTest(s *IntegrationTestSuite, url string, quoteResponse *pkg.G
 		CallContractArguments:    "",
 		ValueToTransfer:          600000000000000000,
 		RskRefundAddress:         "0x79568c2989232dCa1840087D73d403602364c0D4",
-		BitcoinRefundAddress:     "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
 	}
 
 	result, err := execute[[]pkg.GetPeginQuoteResponse](Execution{
