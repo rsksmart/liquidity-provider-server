@@ -45,7 +45,6 @@ type QuoteRequest struct {
 	callContractArguments    []byte
 	valueToTransfer          *entities.Wei
 	rskRefundAddress         string
-	bitcoinRefundAddress     string
 }
 
 func NewQuoteRequest(
@@ -53,14 +52,12 @@ func NewQuoteRequest(
 	callContractArguments []byte,
 	valueToTransfer *entities.Wei,
 	rskRefundAddress string,
-	bitcoinRefundAddress string,
 ) QuoteRequest {
 	return QuoteRequest{
 		callEoaOrContractAddress: callEoaOrContractAddress,
 		callContractArguments:    callContractArguments,
 		valueToTransfer:          valueToTransfer,
 		rskRefundAddress:         rskRefundAddress,
-		bitcoinRefundAddress:     bitcoinRefundAddress,
 	}
 }
 
@@ -127,10 +124,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PeginConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	args := usecases.NewErrorArgs()
-	if err = useCase.rpc.Btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
-		args["btcAddress"] = request.bitcoinRefundAddress
-		return args, err
-	}
 	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		args["rskAddress"] = request.rskRefundAddress
 		return args, usecases.RskAddressNotSupportedError
@@ -155,16 +148,23 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 ) (quote.PeginQuote, error) {
 	var err error
 	var nonce int64
+	var btcRefundAddress string
+	const mainnet = "mainnet"
 
 	if nonce, err = utils.GetRandomInt(); err != nil {
 		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	if useCase.rpc.Btc.NetworkName() == mainnet {
+		btcRefundAddress = blockchain.BitcoinMainnetP2PKHZeroAddress
+	} else {
+		btcRefundAddress = blockchain.BitcoinTestnetP2PKHZeroAddress
 	}
 
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      fedAddress,
 		LbcAddress:         useCase.contracts.Lbc.GetAddress(),
 		LpRskAddress:       useCase.lp.RskAddress(),
-		BtcRefundAddress:   request.bitcoinRefundAddress,
+		BtcRefundAddress:   btcRefundAddress,
 		RskRefundAddress:   request.rskRefundAddress,
 		LpBtcAddress:       useCase.lp.BtcAddress(),
 		CallFee:            fees.CallFee,
