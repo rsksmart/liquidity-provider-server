@@ -23,11 +23,17 @@ import (
 )
 
 const (
-	testnetTestBlockHash = "00000000001e94d85c3e736aa4071d36d26547713820a27af9edbe97489c696f"
-	testnetTestTxHash    = "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29"
-	witnessTestTxHash    = "5cadcbc1ccd91b222346f22c9a9a6fdbf20c9338ec8df0b36097e92d029509ec"
-	testnetBlockFile     = "block-2582756-testnet.txt"
-	mainnetBlockFile     = "block-696394-mainnet.txt"
+	testnetTestBlockHash     = "00000000001e94d85c3e736aa4071d36d26547713820a27af9edbe97489c696f"
+	testnetTestTxHash        = "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29"
+	testnetWitnessTestTxHash = "5cadcbc1ccd91b222346f22c9a9a6fdbf20c9338ec8df0b36097e92d029509ec"
+	testnetBlockFile         = "block-2582756-testnet.txt"
+)
+
+const (
+	mainnetTestBlockHash     = "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3"
+	mainnetTestTxHash        = "c7f58fcae16340963f14326ee3eb677abf53f8c07f165a031d72be6b2c4b35b2"
+	mainnetWitnessTestTxHash = "85c2fc50c70ceda8cb9f62aacc65a67b76411e442096d86649c95d7e9a28af8c"
+	mainnetBlockFile         = "block-696394-mainnet.txt"
 )
 
 // nolint:funlen
@@ -146,26 +152,39 @@ func TestBitcoindRpc_GetRawTransaction(t *testing.T) {
 }
 
 func TestBitcoindRpc_GetRawTransaction_FromBlock(t *testing.T) {
-	mainnetBlock := getTestBlock(t, mainnetBlockFile)
-	tx, err := mainnetBlock.Tx(0)
-	require.NoError(t, err)
-	client := &mocks.ClientAdapterMock{}
-	client.On("GetRawTransaction", mock.Anything).Return(tx, nil).Once()
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-	result, err := rpc.GetRawTransaction(tx.Hash().String())
-	require.NoError(t, err)
-	expectedBytes, err := hex.DecodeString(
-		"01000000010000000000000000000000000000000000000000000000000000000000000000" +
-			"ffffffff5f034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe" +
-			"6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b10000000000000" +
-			"0010c56e6700d262d24bd851bb829f9f0000ffffffff0401b3cc25000000001976a914536ffa992491" +
-			"508dca0354e52f32a3a7a679a53a88ac00000000000000002b6a2952534b424c4f434b3a040c866ad2" +
-			"fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce90000000000000000266a24b9e11b" +
-			"6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b0000000000000000" +
-			"266a24aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b800000000",
+	const (
+		coinbaseIndex = 0
+		segwitTxIndex = 7
+		legacyTxIndex = 1
 	)
-	require.NoError(t, err)
-	require.Equal(t, expectedBytes, result)
+
+	const (
+		coinbaseTx = "010000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff5f034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b100000000000000010c56e6700d262d24bd851bb829f9f0000ffffffff0401b3cc25000000001976a914536ffa992491508dca0354e52f32a3a7a679a53a88ac00000000000000002b6a2952534b424c4f434b3a040c866ad2fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce90000000000000000266a24b9e11b6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b0000000000000000266a24aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b80120000000000000000000000000000000000000000000000000000000000000000000000000"
+		segwitTx   = "020000000001015cc3af292dd2e81c21582b0666879869112ebc97ebb4a3a6bd2cfe8a30f92b940100000000fdffffff02a0cd8700000000001976a91409e6abdfa8852101e9b9ba77efa6f4a9617cb5ec88ac1cf8df0d000000001600144b6cf6cf48ec8aa8dfa1e10395f829c8a504dcb80247304402207acaf018536ce71f69b3e964a19337779eff9e8921b7c99a1cb26e0001329c3e02201cfd03cdf29fa3625c7b77d82d0950f3f3b6ba1d5a6fcae0633899741a14cafd012103414dfd31acabbbe2135534bd359a6b120d02ddfac80847da0946d1f58850311c47a00a00"
+		legacyTx   = "0200000001c48719db38d7286213202ef512b180e389ed8f863bd5116b658b7b1913dd9fd7080000006a4730440220753eed9c595e55d95bbdeb3dd7ed1fe2f3a6838f68c840304db5e7b8d99616b902204a3143b47ee93f1f75b79dea9919eea9d211b08fd53578fd676bad73971d2f23012102380b75bccbe06860dd573c1a6278690b6efb4ec7c14795d1ee4858bf8c718dd6ffffffff055b552e000000000017a9142e62d87b097cee76ede80d01671036795898a392878d320200000000001600143932ea911f6f00b168a2c094c07cdb120ae5f31bf2cf27000000000017a91484910e6a662c1c114b45af3bef8bdb5c3cb7e302876e043300000000001976a914f1ebdd044ba61d8c8575cc52556cba834dde727388ace3d54208000000001976a9142287780623e361a71cfaaece32e34e29c43b09f388ac00000000"
+	)
+
+	cases := []struct {
+		index     int
+		hexString string
+	}{
+		{coinbaseIndex, coinbaseTx},
+		{segwitTxIndex, segwitTx},
+		{legacyTxIndex, legacyTx},
+	}
+	mainnetBlock := getTestBlock(t, mainnetBlockFile)
+	client := &mocks.ClientAdapterMock{}
+	for _, tx := range cases {
+		parsedTx, err := mainnetBlock.Tx(tx.index)
+		require.NoError(t, err)
+		client.On("GetRawTransaction", mock.Anything).Return(parsedTx, nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		result, err := rpc.GetRawTransaction(parsedTx.Hash().String())
+		require.NoError(t, err)
+		expectedBytes, err := hex.DecodeString(tx.hexString)
+		require.NoError(t, err)
+		require.Equal(t, expectedBytes, result)
+	}
 }
 
 func TestBitcoindRpc_GetRawTransaction_ErrorHandling(t *testing.T) {
@@ -233,31 +252,98 @@ func TestBitcoindRpc_GetTransactionBlockInfo_ErrorHandling(t *testing.T) {
 	require.Error(t, err)
 }
 
+// nolint:funlen
 func TestBitcoindRpc_BuildMerkleBranch(t *testing.T) {
-	block := getTestBlock(t, testnetBlockFile)
-
-	client := &mocks.ClientAdapterMock{}
-	client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
-	client.On("GetBlock", mock.Anything).Return(block.MsgBlock(), nil).Once()
-	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-	branch, err := rpc.BuildMerkleBranch(testnetTestTxHash)
-	require.NoError(t, err)
-	assert.Equal(t, blockchain.MerkleBranch{
-		Hashes: [][32]byte{
-			{155, 80, 207, 191, 224, 254, 254, 207, 78, 62, 249, 222, 89, 87, 171, 35, 220, 207, 189, 31, 70, 82, 141, 48, 198, 32, 160, 219, 132, 222, 4, 8},
-			{71, 170, 231, 32, 77, 30, 186, 115, 142, 85, 108, 168, 0, 13, 46, 49, 84, 233, 136, 89, 60, 43, 243, 202, 144, 62, 255, 213, 141, 194, 189, 179},
-			{59, 162, 140, 60, 248, 2, 245, 106, 154, 191, 234, 177, 48, 236, 162, 182, 251, 183, 83, 235, 29, 21, 107, 125, 34, 114, 26, 64, 162, 84, 126, 120},
-			{93, 7, 146, 22, 74, 120, 71, 158, 154, 141, 202, 163, 154, 161, 141, 251, 221, 203, 104, 72, 74, 252, 21, 254, 64, 150, 96, 172, 63, 160, 41, 97},
-			{234, 116, 222, 241, 199, 162, 201, 219, 87, 174, 86, 69, 151, 193, 247, 143, 142, 205, 242, 138, 20, 53, 19, 208, 210, 50, 150, 113, 181, 67, 117, 177},
-			{141, 182, 8, 250, 221, 182, 182, 192, 127, 135, 114, 87, 57, 169, 102, 200, 136, 177, 0, 83, 135, 209, 203, 85, 237, 80, 109, 235, 151, 92, 88, 192},
-			{23, 44, 34, 196, 81, 13, 32, 151, 5, 75, 11, 104, 32, 13, 151, 201, 99, 35, 250, 136, 32, 246, 156, 232, 196, 199, 28, 210, 227, 241, 116, 67},
-			{56, 133, 146, 188, 185, 209, 23, 73, 20, 41, 218, 247, 211, 165, 219, 89, 80, 135, 219, 133, 198, 55, 47, 72, 23, 8, 219, 209, 63, 211, 217, 117},
-			{95, 15, 80, 149, 169, 116, 91, 201, 28, 85, 231, 232, 222, 112, 145, 6, 33, 235, 81, 88, 148, 191, 165, 186, 206, 116, 16, 165, 252, 48, 10, 29},
-			{13, 139, 52, 219, 135, 232, 179, 145, 111, 223, 227, 136, 201, 12, 147, 249, 30, 34, 41, 128, 144, 62, 214, 57, 252, 196, 229, 128, 136, 98, 83, 183},
-			{22, 85, 158, 56, 49, 196, 24, 106, 225, 109, 143, 164, 106, 193, 100, 188, 171, 81, 231, 70, 160, 3, 7, 147, 226, 80, 59, 114, 2, 254, 137, 138},
-		},
-		Path: big.NewInt(406),
-	}, branch)
+	testnetBlock := getTestBlock(t, testnetBlockFile)
+	mainnetBlock := getTestBlock(t, mainnetBlockFile)
+	t.Run("Should build merkle branch for testnet transactions", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Twice()
+		client.On("GetBlock", mock.Anything).Return(testnetBlock.MsgBlock(), nil).Twice()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, client))
+		legacyBranch, legacyErr := rpc.BuildMerkleBranch(testnetTestTxHash)
+		require.NoError(t, legacyErr)
+		assert.Equal(t, blockchain.MerkleBranch{
+			Hashes: [][32]byte{
+				{155, 80, 207, 191, 224, 254, 254, 207, 78, 62, 249, 222, 89, 87, 171, 35, 220, 207, 189, 31, 70, 82, 141, 48, 198, 32, 160, 219, 132, 222, 4, 8},
+				{71, 170, 231, 32, 77, 30, 186, 115, 142, 85, 108, 168, 0, 13, 46, 49, 84, 233, 136, 89, 60, 43, 243, 202, 144, 62, 255, 213, 141, 194, 189, 179},
+				{59, 162, 140, 60, 248, 2, 245, 106, 154, 191, 234, 177, 48, 236, 162, 182, 251, 183, 83, 235, 29, 21, 107, 125, 34, 114, 26, 64, 162, 84, 126, 120},
+				{93, 7, 146, 22, 74, 120, 71, 158, 154, 141, 202, 163, 154, 161, 141, 251, 221, 203, 104, 72, 74, 252, 21, 254, 64, 150, 96, 172, 63, 160, 41, 97},
+				{234, 116, 222, 241, 199, 162, 201, 219, 87, 174, 86, 69, 151, 193, 247, 143, 142, 205, 242, 138, 20, 53, 19, 208, 210, 50, 150, 113, 181, 67, 117, 177},
+				{141, 182, 8, 250, 221, 182, 182, 192, 127, 135, 114, 87, 57, 169, 102, 200, 136, 177, 0, 83, 135, 209, 203, 85, 237, 80, 109, 235, 151, 92, 88, 192},
+				{23, 44, 34, 196, 81, 13, 32, 151, 5, 75, 11, 104, 32, 13, 151, 201, 99, 35, 250, 136, 32, 246, 156, 232, 196, 199, 28, 210, 227, 241, 116, 67},
+				{56, 133, 146, 188, 185, 209, 23, 73, 20, 41, 218, 247, 211, 165, 219, 89, 80, 135, 219, 133, 198, 55, 47, 72, 23, 8, 219, 209, 63, 211, 217, 117},
+				{95, 15, 80, 149, 169, 116, 91, 201, 28, 85, 231, 232, 222, 112, 145, 6, 33, 235, 81, 88, 148, 191, 165, 186, 206, 116, 16, 165, 252, 48, 10, 29},
+				{13, 139, 52, 219, 135, 232, 179, 145, 111, 223, 227, 136, 201, 12, 147, 249, 30, 34, 41, 128, 144, 62, 214, 57, 252, 196, 229, 128, 136, 98, 83, 183},
+				{22, 85, 158, 56, 49, 196, 24, 106, 225, 109, 143, 164, 106, 193, 100, 188, 171, 81, 231, 70, 160, 3, 7, 147, 226, 80, 59, 114, 2, 254, 137, 138},
+			},
+			Path: big.NewInt(406),
+		}, legacyBranch)
+		witnessBranch, witnessErr := rpc.BuildMerkleBranch(testnetWitnessTestTxHash)
+		require.NoError(t, witnessErr)
+		assert.Equal(t, blockchain.MerkleBranch{
+			Hashes: [][32]byte{
+				{202, 209, 6, 128, 197, 197, 163, 175, 47, 177, 10, 21, 77, 20, 72, 72, 131, 121, 88, 230, 49, 100, 110, 20, 79, 151, 50, 101, 226, 41, 41, 101},
+				{77, 24, 29, 182, 74, 66, 127, 130, 228, 136, 234, 187, 23, 100, 239, 128, 169, 12, 177, 96, 126, 213, 17, 64, 214, 194, 169, 236, 158, 178, 132, 231},
+				{122, 108, 123, 152, 101, 7, 240, 31, 193, 116, 169, 48, 128, 204, 67, 149, 28, 121, 218, 242, 130, 217, 90, 252, 10, 77, 77, 39, 153, 8, 28, 44},
+				{11, 62, 45, 81, 209, 148, 243, 39, 5, 199, 125, 90, 5, 82, 151, 11, 24, 25, 226, 210, 7, 196, 193, 48, 98, 221, 121, 15, 101, 110, 105, 58},
+				{167, 182, 98, 239, 12, 122, 232, 82, 62, 136, 57, 198, 175, 0, 211, 223, 82, 87, 43, 122, 235, 226, 24, 154, 81, 15, 241, 78, 121, 76, 96, 82},
+				{211, 117, 223, 57, 134, 244, 54, 236, 187, 61, 117, 98, 2, 124, 89, 205, 189, 22, 190, 29, 197, 194, 68, 106, 103, 96, 127, 38, 127, 226, 155, 91},
+				{200, 230, 212, 225, 203, 32, 124, 219, 80, 204, 156, 59, 126, 35, 11, 34, 19, 50, 65, 93, 54, 55, 3, 60, 178, 37, 1, 69, 136, 221, 220, 239},
+				{189, 13, 95, 161, 30, 246, 40, 118, 221, 191, 214, 114, 197, 142, 158, 21, 199, 113, 85, 153, 133, 133, 153, 144, 31, 29, 69, 167, 25, 155, 38, 81},
+				{30, 162, 139, 139, 159, 215, 199, 91, 237, 155, 15, 39, 148, 226, 191, 117, 0, 141, 185, 53, 231, 172, 56, 154, 238, 85, 29, 227, 85, 252, 12, 255},
+				{72, 1, 142, 131, 233, 175, 74, 228, 245, 69, 89, 179, 175, 225, 148, 40, 99, 156, 135, 228, 165, 16, 126, 147, 191, 122, 224, 199, 191, 155, 166, 64},
+				{152, 164, 241, 22, 94, 106, 235, 155, 115, 150, 126, 205, 206, 46, 232, 198, 44, 210, 93, 85, 58, 255, 205, 164, 118, 103, 139, 245, 200, 55, 14, 249},
+			},
+			Path: big.NewInt(10),
+		}, witnessBranch)
+		client.AssertExpectations(t)
+	})
+	t.Run("Should build merkle branch for mainnet transactions", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: mainnetTestBlockHash}, nil).Twice()
+		client.On("GetBlock", mock.Anything).Return(mainnetBlock.MsgBlock(), nil).Twice()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		legacyBranch, legacyErr := rpc.BuildMerkleBranch(mainnetTestTxHash)
+		require.NoError(t, legacyErr)
+		assert.Equal(t, blockchain.MerkleBranch{
+			Hashes: [][32]byte{
+				{137, 102, 35, 174, 4, 121, 246, 50, 90, 243, 230, 171, 188, 182, 183, 75, 191, 149, 81, 56, 0, 111, 18, 236, 254, 15, 228, 164, 206, 219, 84, 101},
+				{156, 91, 227, 106, 182, 149, 132, 255, 186, 154, 54, 182, 48, 48, 61, 149, 172, 114, 107, 184, 255, 229, 102, 46, 203, 181, 210, 238, 212, 170, 11, 52},
+				{82, 2, 198, 200, 130, 81, 112, 25, 107, 119, 103, 99, 30, 148, 200, 230, 133, 162, 62, 161, 103, 150, 103, 64, 59, 219, 28, 60, 36, 65, 176, 222},
+				{175, 142, 172, 188, 138, 186, 62, 56, 29, 45, 32, 12, 145, 23, 64, 114, 233, 144, 163, 174, 84, 227, 247, 27, 185, 148, 125, 220, 65, 8, 114, 12},
+				{123, 220, 166, 223, 255, 27, 14, 38, 164, 42, 113, 248, 101, 42, 29, 243, 5, 14, 190, 19, 244, 195, 46, 198, 157, 216, 152, 26, 253, 61, 96, 21},
+				{117, 231, 53, 138, 107, 79, 64, 171, 87, 103, 225, 7, 193, 174, 116, 54, 182, 129, 43, 76, 213, 179, 14, 133, 137, 158, 155, 68, 112, 238, 111, 54},
+				{172, 101, 233, 61, 146, 94, 28, 43, 204, 218, 120, 21, 239, 34, 169, 144, 145, 234, 135, 56, 145, 165, 165, 219, 7, 84, 249, 115, 191, 95, 156, 183},
+				{249, 45, 23, 27, 143, 58, 131, 195, 10, 205, 55, 171, 225, 154, 124, 88, 202, 207, 50, 63, 143, 115, 189, 73, 237, 251, 231, 241, 167, 184, 138, 197},
+				{203, 13, 22, 187, 45, 252, 231, 123, 189, 32, 137, 238, 167, 8, 142, 30, 234, 130, 66, 201, 160, 221, 24, 109, 88, 46, 242, 115, 26, 190, 127, 8},
+				{112, 243, 236, 215, 155, 86, 49, 31, 112, 198, 40, 60, 71, 154, 246, 0, 237, 35, 184, 90, 148, 121, 31, 66, 246, 195, 199, 189, 143, 238, 57, 122},
+				{175, 73, 148, 36, 83, 68, 95, 216, 191, 100, 102, 139, 4, 1, 211, 121, 42, 72, 152, 79, 92, 246, 68, 179, 116, 211, 158, 42, 125, 174, 232, 47},
+				{87, 19, 169, 48, 133, 4, 206, 201, 212, 192, 224, 109, 238, 124, 190, 42, 70, 188, 85, 141, 66, 165, 105, 242, 252, 246, 131, 33, 236, 71, 102, 107},
+			},
+			Path: big.NewInt(18),
+		}, legacyBranch)
+		witnessBranch, witnessErr := rpc.BuildMerkleBranch(mainnetWitnessTestTxHash)
+		require.NoError(t, witnessErr)
+		assert.Equal(t, blockchain.MerkleBranch{
+			Hashes: [][32]byte{
+				{157, 79, 110, 242, 184, 247, 118, 177, 32, 78, 45, 230, 94, 240, 122, 146, 14, 233, 242, 37, 235, 66, 0, 75, 107, 64, 137, 73, 7, 116, 140, 9},
+				{190, 167, 136, 193, 228, 187, 128, 140, 249, 68, 248, 208, 74, 78, 217, 35, 109, 46, 55, 225, 69, 168, 223, 222, 238, 210, 245, 217, 101, 142, 11, 132},
+				{82, 2, 198, 200, 130, 81, 112, 25, 107, 119, 103, 99, 30, 148, 200, 230, 133, 162, 62, 161, 103, 150, 103, 64, 59, 219, 28, 60, 36, 65, 176, 222},
+				{175, 142, 172, 188, 138, 186, 62, 56, 29, 45, 32, 12, 145, 23, 64, 114, 233, 144, 163, 174, 84, 227, 247, 27, 185, 148, 125, 220, 65, 8, 114, 12},
+				{123, 220, 166, 223, 255, 27, 14, 38, 164, 42, 113, 248, 101, 42, 29, 243, 5, 14, 190, 19, 244, 195, 46, 198, 157, 216, 152, 26, 253, 61, 96, 21},
+				{117, 231, 53, 138, 107, 79, 64, 171, 87, 103, 225, 7, 193, 174, 116, 54, 182, 129, 43, 76, 213, 179, 14, 133, 137, 158, 155, 68, 112, 238, 111, 54},
+				{172, 101, 233, 61, 146, 94, 28, 43, 204, 218, 120, 21, 239, 34, 169, 144, 145, 234, 135, 56, 145, 165, 165, 219, 7, 84, 249, 115, 191, 95, 156, 183},
+				{249, 45, 23, 27, 143, 58, 131, 195, 10, 205, 55, 171, 225, 154, 124, 88, 202, 207, 50, 63, 143, 115, 189, 73, 237, 251, 231, 241, 167, 184, 138, 197},
+				{203, 13, 22, 187, 45, 252, 231, 123, 189, 32, 137, 238, 167, 8, 142, 30, 234, 130, 66, 201, 160, 221, 24, 109, 88, 46, 242, 115, 26, 190, 127, 8},
+				{112, 243, 236, 215, 155, 86, 49, 31, 112, 198, 40, 60, 71, 154, 246, 0, 237, 35, 184, 90, 148, 121, 31, 66, 246, 195, 199, 189, 143, 238, 57, 122},
+				{175, 73, 148, 36, 83, 68, 95, 216, 191, 100, 102, 139, 4, 1, 211, 121, 42, 72, 152, 79, 92, 246, 68, 179, 116, 211, 158, 42, 125, 174, 232, 47},
+				{87, 19, 169, 48, 133, 4, 206, 201, 212, 192, 224, 109, 238, 124, 190, 42, 70, 188, 85, 141, 66, 165, 105, 242, 252, 246, 131, 33, 236, 71, 102, 107},
+			},
+			Path: big.NewInt(16),
+		}, witnessBranch)
+		client.AssertExpectations(t)
+	})
 }
 
 func TestBitcoindRpc_BuildMerkleBranch_ErrorHandling(t *testing.T) {
@@ -330,7 +416,7 @@ func TestBitcoindRpc_GetPartialMerkleTree(t *testing.T) {
 			100, 193, 106, 164, 143, 109, 225, 106, 24, 196, 49, 56, 158, 85, 22, 3, 215, 173, 1,
 		},
 		pmt)
-	pmt, err = rpc.GetPartialMerkleTree(witnessTestTxHash)
+	pmt, err = rpc.GetPartialMerkleTree(testnetWitnessTestTxHash)
 	require.NoError(t, err)
 	assert.Equal(t,
 		[]byte{
@@ -354,13 +440,13 @@ func TestBitcoindRpc_GetPartialMerkleTree(t *testing.T) {
 	client.AssertExpectations(t)
 }
 
-func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
-	cases := [2]struct {
+// nolint:funlen
+func TestBitcoindRpc_GetPartialMerkleTree_MainnetBlock(t *testing.T) {
+	cases := [3]struct {
 		tx  string
 		pmt string
 	}{
-		// first two are witness tx
-		// TODO add non-witness scenario in the task to update the merkle proofs
+		// first two are witness txs, last one is legacy
 		{
 			tx: "07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041",
 			pmt: "f30800000d" +
@@ -396,17 +482,36 @@ func TestBitcoindRpc_BuildMerkleBranch_MainnetBlock(t *testing.T) {
 				"6b6647ec2183f6fcf269a5428d55bc462abe7cee6de0c0d4c9ce048530a91357" +
 				"04dbd50300",
 		},
+		{
+			tx: "db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9",
+			pmt: "f30800000d" +
+				"32f19bb610f0d51f754364ea4fda76ae2488b61fb4b2e0d966403c7c3544d20a" +
+				"e981f2c57041ca97a5910eb5b2bae1662937504b7fe6b2ce41574b38e61f0ddb" +
+				"48055668e4e3d31af8efdb4179740c9de740d57594efeee0535d572d9dbd5f95" +
+				"94c2d2e51eae99af800c39575a11f3b4eb0fdf5d5deff0b9f5ff592566f4f173" +
+				"2b3f6d41bded4344899a348d3053ccd68e922626e589da71d9a583ccfe9e3be6" +
+				"393a24e14d18006b54a967963c56da58b18ce770cdb3b32e56d88c138c473a1a" +
+				"37acc29a7788a88404fb9a05c416c2ad8f340a61c1ea331528a91ae6210db4f0" +
+				"e22d21c55b3f6806387ca34aba54522a7fe15e593ab0d0ff89c6d826cf4e7455" +
+				"99bdfed66a4ef1a366f056363158b2907388a5bd4013643d83a016469d392aab" +
+				"2319910a0ac801d2c9793c661f1bb02863f672288ce3b4c5e365cff81932fbe4" +
+				"3d1eba4b027f80b1240ab5b8c677167602ee63c5a6dad213777b6fbbd3dd9778" +
+				"71f30b975d1a8f6cd62535985ea4d11f5c7f80549eab1b18a5cc011872b5403d" +
+				"ee666302831a3c64d1604c5c0bec9c796d8dcace974ae97e5837ff0d446d060c" +
+				"04ff370000",
+		},
 	}
 	mainnetBlock := getTestBlock(t, mainnetBlockFile)
 	for _, c := range cases {
 		client := &mocks.ClientAdapterMock{}
-		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
+		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: mainnetTestBlockHash}, nil).Once()
 		client.On("GetBlock", mock.Anything).Return(mainnetBlock.MsgBlock(), nil).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
 		serializedPMT, err := rpc.GetPartialMerkleTree(c.tx)
 		require.NoError(t, err)
 		result := hex.EncodeToString(serializedPMT)
 		assert.Equal(t, c.pmt, result)
+		client.AssertExpectations(t)
 	}
 }
 
@@ -519,7 +624,7 @@ func TestBitcoindRpc_GetCoinbaseInformation(t *testing.T) {
 		client := &mocks.ClientAdapterMock{}
 		client.On("GetRawTransactionVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-		coinbaseInfo, err := rpc.GetCoinbaseInformation(witnessTestTxHash)
+		coinbaseInfo, err := rpc.GetCoinbaseInformation(testnetWitnessTestTxHash)
 		assert.Empty(t, coinbaseInfo)
 		require.Error(t, err)
 	})
@@ -528,7 +633,7 @@ func TestBitcoindRpc_GetCoinbaseInformation(t *testing.T) {
 		client.On("GetRawTransactionVerbose", mock.Anything).Return(&btcjson.TxRawResult{BlockHash: testnetTestBlockHash}, nil).Once()
 		client.On("GetBlock", mock.Anything).Return(nil, assert.AnError).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-		coinbaseInfo, err := rpc.GetCoinbaseInformation(witnessTestTxHash)
+		coinbaseInfo, err := rpc.GetCoinbaseInformation(testnetWitnessTestTxHash)
 		assert.Empty(t, coinbaseInfo)
 		require.Error(t, err)
 	})
@@ -539,7 +644,7 @@ func TestBitcoindRpc_GetCoinbaseInformation(t *testing.T) {
 		client.On("GetBlock", mock.Anything).Return(testnetBlock.MsgBlock(), nil).Once()
 		client.On("GetBlockVerbose", mock.Anything).Return(nil, assert.AnError).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-		coinbaseInfo, err := rpc.GetCoinbaseInformation(witnessTestTxHash)
+		coinbaseInfo, err := rpc.GetCoinbaseInformation(testnetWitnessTestTxHash)
 		assert.Empty(t, coinbaseInfo)
 		require.Error(t, err)
 	})
@@ -551,7 +656,7 @@ func TestBitcoindRpc_GetCoinbaseInformation(t *testing.T) {
 		client.On("GetBlock", mock.Anything).Return(testnetBlock.MsgBlock(), nil).Once()
 		client.On("GetBlockVerbose", mock.Anything).Return(&btcjson.GetBlockVerboseResult{Height: 2582756}, nil).Once()
 		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
-		coinbaseInfo, err := rpc.GetCoinbaseInformation(witnessTestTxHash)
+		coinbaseInfo, err := rpc.GetCoinbaseInformation(testnetWitnessTestTxHash)
 		require.NoError(t, err)
 		blockHashBytes, _ := hex.DecodeString("00000000001e94d85c3e736aa4071d36d26547713820a27af9edbe97489c696f")
 		copy(blockHash[:], blockHashBytes)
