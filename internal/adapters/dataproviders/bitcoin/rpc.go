@@ -108,7 +108,7 @@ func (rpc *bitcoindRpc) GetRawTransaction(hash string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err = rawTx.MsgTx().SerializeNoWitness(&buf); err != nil {
+	if err = rawTx.MsgTx().Serialize(&buf); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -138,6 +138,8 @@ func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
 }
 
 func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranch, error) {
+	var wid *chainhash.Hash
+	isWitness := false
 	rawBlock, parsedTxHash, err := rpc.getTxBlock(txHash)
 	if err != nil {
 		return blockchain.MerkleBranch{}, err
@@ -146,12 +148,16 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	block := btcutil.NewBlock(rawBlock)
 	txs := make([]*btcutil.Tx, 0)
 	for _, t := range block.MsgBlock().Transactions {
-		txs = append(txs, btcutil.NewTx(t))
+		parsedTx := btcutil.NewTx(t)
+		if parsedTx.Hash().String() == txHash && parsedTx.HasWitness() {
+			isWitness = true
+			wid = parsedTx.WitnessHash()
+		}
+		txs = append(txs, parsedTx)
 	}
 
 	var cleanStore []*chainhash.Hash
-	// TODO we should change this to support witness when we support non legacy LP wallets
-	store := merkle.BuildMerkleTreeStore(txs, false)
+	store := merkle.BuildMerkleTreeStore(txs, isWitness)
 	for _, node := range store {
 		if node != nil {
 			cleanStore = append(cleanStore, node)
@@ -159,7 +165,7 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	}
 
 	index := slices.IndexFunc(cleanStore, func(h *chainhash.Hash) bool {
-		return h != nil && h.IsEqual(parsedTxHash)
+		return h != nil && (h.IsEqual(parsedTxHash) || h.IsEqual(wid))
 	})
 	if index == -1 {
 		return blockchain.MerkleBranch{}, fmt.Errorf("transaction %s not found in merkle tree", txHash)
