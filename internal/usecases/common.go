@@ -68,7 +68,6 @@ var (
 	ExpiredQuoteError           = errors.New("expired quote")
 	NoLiquidityError            = errors.New("not enough liquidity")
 	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	ProviderNotFoundError       = errors.New("liquidity provider not found")
 	WrongStateError             = errors.New("quote with wrong state")
 	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError     = errors.New("insufficient amount")

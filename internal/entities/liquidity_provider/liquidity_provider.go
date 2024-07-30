@@ -18,7 +18,10 @@ const (
 	DefaultCredentialsSetEventId entities.EventId = "CredentialsSet"
 )
 
-var InvalidProviderTypeError = errors.New("invalid liquidity provider type")
+var (
+	InvalidProviderTypeError = errors.New("invalid liquidity provider type")
+	ProviderNotFoundError    = errors.New("liquidity provider not found")
+)
 
 func (p ProviderType) IsValid() bool {
 	switch p {
