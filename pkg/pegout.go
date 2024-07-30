@@ -7,10 +7,9 @@ import (
 )
 
 type PegoutQuoteRequest struct {
-	To                   string `json:"to" required:"" validate:"required" description:"Bitcoin address that will receive the BTC amount"`
-	ValueToTransfer      uint64 `json:"valueToTransfer" required:"" validate:"required" example:"10000000000000" description:"ValueToTransfer"`
-	RskRefundAddress     string `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"RskRefundAddress"`
-	BitcoinRefundAddress string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"BitcoinRefundAddress"`
+	To               string `json:"to" required:"" validate:"required" description:"Bitcoin address that will receive the BTC amount"`
+	ValueToTransfer  uint64 `json:"valueToTransfer" required:"" validate:"required" example:"10000000000000" description:"ValueToTransfer"`
+	RskRefundAddress string `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"RskRefundAddress"`
 }
 
 type PegoutQuoteDTO struct {
