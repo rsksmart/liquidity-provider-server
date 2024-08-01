@@ -121,17 +121,17 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.Reg
 
 func (lbc *liquidityBridgeContractImpl) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
 	var providerType liquidity_provider.ProviderType
+	const lbcProviderNotRegisteredError = "LBC001"
 
 	if !common.IsHexAddress(address) {
 		return liquidity_provider.RegisteredLiquidityProvider{}, blockchain.InvalidAddressError
 	}
 
 	opts := &bind.CallOpts{}
-	provider, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
-		func() (bindings.LiquidityBridgeContractLiquidityProvider, error) {
-			return lbc.contract.GetProvider(opts, common.HexToAddress(address))
-		})
-	if err != nil {
+	provider, err := lbc.contract.GetProvider(opts, common.HexToAddress(address))
+	if err != nil && err.Error() == lbcProviderNotRegisteredError {
+		return liquidity_provider.RegisteredLiquidityProvider{}, liquidity_provider.ProviderNotFoundError
+	} else if err != nil {
 		return liquidity_provider.RegisteredLiquidityProvider{}, err
 	}
 

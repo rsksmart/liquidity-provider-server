@@ -1305,6 +1305,13 @@ func TestLiquidityBridgeContractImpl_GetProvider(t *testing.T) {
 		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)
 	})
+	t.Run("Provider not found", func(t *testing.T) {
+		lbcMock.EXPECT().GetProvider(mock.Anything, parsedAddress).Return(bindings.LiquidityBridgeContractLiquidityProvider{}, errors.New("LBC001")).Once()
+		result, err := lbc.GetProvider(parsedAddress.String())
+		require.ErrorIs(t, err, liquidity_provider.ProviderNotFoundError)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+	})
 }
 
 type txModifier func(tx *geth.LegacyTx)
