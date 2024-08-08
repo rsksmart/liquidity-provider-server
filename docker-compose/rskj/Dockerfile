@@ -1,12 +1,13 @@
-FROM openjdk:8-jdk-slim-buster as builder
+FROM openjdk:8-jdk-slim-buster AS builder
 
 RUN apt-get update -y && \
-    apt-get install -qq --no-install-recommends git curl gnupg
+    apt-get install -y -qq --no-install-recommends git curl gnupg && \
+    apt-get clean
 
 WORKDIR /code/rskj
 
-ARG RSKJ_RELEASE="FINGERROOT"
-ARG RSKJ_VERSION="5.0.0"
+ARG RSKJ_RELEASE="ARROWHEAD"
+ARG RSKJ_VERSION="6.3.1"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
@@ -24,14 +25,14 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys 1DC9157991
     modifier=$(sed -n 's/^modifier=//p' "$file" | tr -d "\"'") && \
     cp "rskj-core/build/libs/rskj-core-$version_number-$modifier-all.jar" rsk.jar
 
-FROM --platform=linux/amd64 openjdk:8-jdk as runner
+FROM --platform=linux/amd64 openjdk:8-jdk AS runner
 
 ARG UID=1000
 ARG HOME="/home/rsk"
 RUN useradd -m -u "$UID" --home="$HOME" rsk
 
-COPY --from=builder --chown="$UID" "/code/rskj/rskj-core/build/libs/rskj-core-*-all.jar" "$HOME/rskj-core.jar"
-COPY --chown="$UID" rsk.conf $HOME
+COPY --from=builder --chown=root:root --chmod=555 "/code/rskj/rskj-core/build/libs/rskj-core-*-all.jar" "$HOME/rskj-core.jar"
+COPY --chown=root:root --chmod=444 rsk.conf $HOME
 
 RUN mkdir -p "$HOME/.rsk"; chown "$UID" "$HOME/.rsk"
 RUN mkdir -p "$HOME/logs"; chown -R "$UID" "$HOME/logs"
