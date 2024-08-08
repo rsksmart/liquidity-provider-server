@@ -1,8 +1,8 @@
 FROM --platform=linux/amd64 node:16
 
-RUN apt-get update -y && apt-get install -qq --no-install-recommends jq
+RUN apt-get update -y && apt-get install -y -qq --no-install-recommends jq && apt-get clean
 
-RUN npm install -g truffle
+RUN npm install --ignore-scripts -g truffle
 
 USER node
 
@@ -16,12 +16,13 @@ RUN gitBranch=${LBC_GIT_BRANCH} && \
     git fetch --depth 1 origin "$gitBranch" && \
     git checkout "$gitBranch"
 
-COPY --chown=node truffle-config.patch ./
+COPY --chown=root:root --chmod=444 truffle-config.patch ./
 
 RUN git apply truffle-config.patch
+RUN --mount=type=secret,id=gh_token,required=true,uid=1000 echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/gh_token)" >> .npmrc
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 RUN npx truffle compile
 
-COPY --chown=node deploy-lbc.sh ./
+COPY --chown=root:root --chmod=555 deploy-lbc.sh ./
