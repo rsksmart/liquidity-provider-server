@@ -34,35 +34,35 @@ elif [ "$SCRIPT_CMD" = "up" ]; then
   echo "Starting LPS env up..."
 elif [ "$SCRIPT_CMD" = "down" ]; then
   echo "Shutting LPS env down..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml down
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml down
   exit 0
 elif [ "$SCRIPT_CMD" = "build" ]; then
   echo "Building LPS env..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml -f docker-compose.lps.yml build
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml -f docker-compose.lps.yml build
   exit 0
 elif [ "$SCRIPT_CMD" = "stop" ]; then
   echo "Stopping LPS env..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml stop
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml stop
   exit 0
 elif [ "$SCRIPT_CMD" = "ps" ]; then
   echo "List of running services:"
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml ps
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml ps
   exit 0
 elif [ "$SCRIPT_CMD" = "deploy" ]; then
   echo "Stopping LPS..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml stop lps
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml stop lps
   echo "Building LPS..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
   echo "Starting LPS..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml start lps
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml start lps
   exit 0
 elif [ "$SCRIPT_CMD" = "import-rsk-db" ]; then
   echo "Importing rsk db..."
-  docker-compose --env-file "$ENV_FILE" run -d rskj java -Xmx6g -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=rskj -cp rskj-core.jar co.rsk.Start --${LPS_STAGE} --import
+  docker compose --env-file "$ENV_FILE" run -d rskj java -Xmx6g -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=rskj -cp rskj-core.jar co.rsk.Start --${LPS_STAGE} --import
   exit 0
 elif [ "$SCRIPT_CMD" = "start-bitcoind" ]; then
   echo "Starting bitcoind..."
-  docker-compose --env-file "$ENV_FILE" -f docker-compose.yml up -d bitcoind
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d bitcoind
   exit 0
 else
   echo "Invalid command: $SCRIPT_CMD"
@@ -88,7 +88,7 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'"
 
 # start bitcoind and RSKJ dependant services
-docker-compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
+docker compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
 
 # read env vars
 . ./"$ENV_FILE"
@@ -151,17 +151,17 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 fi
 
 if [ -z "${LBC_ADDR}" ]; then
-  docker-compose down
+  docker compose down
   echo "LBC_ADDR is not set up. Exit"
   exit 1
 fi
 echo "LBC deployed at $LBC_ADDR"
 
-docker-compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
+docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
 
-docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build --build-arg COMMIT_HASH="$(git rev-parse HEAD)" lps
-docker-compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build --build-arg COMMIT_HASH="$(git rev-parse HEAD)" lps
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
 FAIL=true
 for i in {1..10}
