@@ -100,10 +100,10 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 	var fedInfo blockchain.FederationInfo
 	var userBtcAddress, lpBtcAddress, lbcAddress []byte
 
-	if userBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.BtcRefundAddress, true); err != nil {
+	if userBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.BtcRefundAddress); err != nil {
 		errorArgs["btcAddress"] = peginQuote.BtcRefundAddress
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
-	} else if lpBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.LpBtcAddress, true); err != nil {
+	} else if lpBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.LpBtcAddress); err != nil {
 		errorArgs["btcAddress"] = peginQuote.LpBtcAddress
 		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	} else if lbcAddress, err = blockchain.DecodeStringTrimPrefix(peginQuote.LbcAddress); err != nil {

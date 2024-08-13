@@ -41,7 +41,7 @@ func NewServer(env environment.Environment, useCaseRegistry registry.UseCaseRegi
 }
 
 func (s *Server) start() error {
-	routes.ConfigureRoutes(s.router, s.env, s.useCaseRegistry)
+	routes.ConfigureRoutes(s.router, s.env, s.useCaseRegistry, routes.NewEndpointFactory())
 	w := log.StandardLogger().WriterLevel(s.logLevel)
 	h := handlers.LoggingHandler(w, s.router)
 	defer func(w *io.PipeWriter) {
@@ -51,7 +51,7 @@ func (s *Server) start() error {
 		Addr:              ":" + strconv.FormatUint(uint64(s.env.Port), 10),
 		Handler:           h,
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      60 * time.Second, // 60 for endpoints that trigger a transaction
 		IdleTimeout:       10 * time.Second,
 	}
 

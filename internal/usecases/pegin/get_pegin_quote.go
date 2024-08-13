@@ -3,6 +3,7 @@ package pegin
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -44,7 +45,6 @@ type QuoteRequest struct {
 	callContractArguments    []byte
 	valueToTransfer          *entities.Wei
 	rskRefundAddress         string
-	bitcoinRefundAddress     string
 }
 
 func NewQuoteRequest(
@@ -52,14 +52,12 @@ func NewQuoteRequest(
 	callContractArguments []byte,
 	valueToTransfer *entities.Wei,
 	rskRefundAddress string,
-	bitcoinRefundAddress string,
 ) QuoteRequest {
 	return QuoteRequest{
 		callEoaOrContractAddress: callEoaOrContractAddress,
 		callContractArguments:    callContractArguments,
 		valueToTransfer:          valueToTransfer,
 		rskRefundAddress:         rskRefundAddress,
-		bitcoinRefundAddress:     bitcoinRefundAddress,
 	}
 }
 
@@ -94,7 +92,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if fedAddress, err = useCase.contracts.Bridge.GetFedAddress(); err != nil {
+	if fedAddress, err = useCase.getFederationAddress(); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
@@ -126,10 +124,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider.PeginConfiguration, request QuoteRequest) (usecases.ErrorArgs, error) {
 	var err error
 	args := usecases.NewErrorArgs()
-	if err = useCase.rpc.Btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
-		args["btcAddress"] = request.bitcoinRefundAddress
-		return args, err
-	}
 	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		args["rskAddress"] = request.rskRefundAddress
 		return args, usecases.RskAddressNotSupportedError
@@ -154,16 +148,23 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 ) (quote.PeginQuote, error) {
 	var err error
 	var nonce int64
+	var btcRefundAddress string
+	const mainnet = "mainnet"
 
 	if nonce, err = utils.GetRandomInt(); err != nil {
 		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	if useCase.rpc.Btc.NetworkName() == mainnet {
+		btcRefundAddress = blockchain.BitcoinMainnetP2PKHZeroAddress
+	} else {
+		btcRefundAddress = blockchain.BitcoinTestnetP2PKHZeroAddress
 	}
 
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      fedAddress,
 		LbcAddress:         useCase.contracts.Lbc.GetAddress(),
 		LpRskAddress:       useCase.lp.RskAddress(),
-		BtcRefundAddress:   request.bitcoinRefundAddress,
+		BtcRefundAddress:   btcRefundAddress,
 		RskRefundAddress:   request.rskRefundAddress,
 		LpBtcAddress:       useCase.lp.BtcAddress(),
 		CallFee:            fees.CallFee,
@@ -200,4 +201,15 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	return daoTxAmounts, nil
+}
+
+func (useCase *GetQuoteUseCase) getFederationAddress() (string, error) {
+	var fedAddress string
+	var err error
+	if fedAddress, err = useCase.contracts.Bridge.GetFedAddress(); err != nil {
+		return "", err
+	} else if !blockchain.IsBtcP2SHAddress(fedAddress) {
+		return "", errors.New("only P2SH addresses are supported for federation address")
+	}
+	return fedAddress, nil
 }

@@ -43,23 +43,20 @@ func NewGetQuoteUseCase(
 }
 
 type QuoteRequest struct {
-	to                   string
-	valueToTransfer      *entities.Wei
-	rskRefundAddress     string
-	bitcoinRefundAddress string
+	to               string
+	valueToTransfer  *entities.Wei
+	rskRefundAddress string
 }
 
 func NewQuoteRequest(
 	to string,
 	valueToTransfer *entities.Wei,
 	rskRefundAddress string,
-	bitcoinRefundAddress string,
 ) QuoteRequest {
 	return QuoteRequest{
-		to:                   to,
-		valueToTransfer:      valueToTransfer,
-		rskRefundAddress:     rskRefundAddress,
-		bitcoinRefundAddress: bitcoinRefundAddress,
+		to:               to,
+		valueToTransfer:  valueToTransfer,
+		rskRefundAddress: rskRefundAddress,
 	}
 }
 
@@ -122,10 +119,6 @@ func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider
 		errorArgs["btcAddress"] = request.to
 		return errorArgs, err
 	}
-	if err = useCase.rpc.Btc.ValidateAddress(request.bitcoinRefundAddress); err != nil {
-		errorArgs["btcAddress"] = request.bitcoinRefundAddress
-		return errorArgs, err
-	}
 	if !blockchain.IsRskAddress(request.rskRefundAddress) {
 		errorArgs["rskAddress"] = request.rskRefundAddress
 		return errorArgs, usecases.RskAddressNotSupportedError
@@ -161,7 +154,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 	pegoutQuote := quote.PegoutQuote{
 		LbcAddress:            useCase.contracts.Lbc.GetAddress(),
 		LpRskAddress:          useCase.lp.RskAddress(),
-		BtcRefundAddress:      request.bitcoinRefundAddress,
+		BtcRefundAddress:      request.to,
 		RskRefundAddress:      request.rskRefundAddress,
 		LpBtcAddress:          useCase.lp.BtcAddress(),
 		CallFee:               fees.CallFee,

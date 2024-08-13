@@ -42,3 +42,8 @@ func (m *BridgeMock) FetchFederationInfo() (blockchain.FederationInfo, error) {
 func (m *BridgeMock) GetRequiredTxConfirmations() uint64 {
 	return m.Called().Get(0).(uint64)
 }
+
+func (m *BridgeMock) RegisterBtcCoinbaseTransaction(registrationParams blockchain.BtcCoinbaseTransactionInformation) (string, error) {
+	args := m.Called(registrationParams)
+	return args.String(0), args.Error(1)
+}

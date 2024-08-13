@@ -5,6 +5,7 @@ import (
 	"fmt"
 	merkle "github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -40,8 +41,13 @@ func (rpc *bitcoindRpc) validateNetwork(address string) error {
 			return blockchain.BtcAddressInvalidNetworkError
 		}
 		return nil
-	case wire.TestNet, wire.TestNet3:
+	case wire.TestNet3:
 		if !blockchain.IsTestnetBtcAddress(address) {
+			return blockchain.BtcAddressInvalidNetworkError
+		}
+		return nil
+	case wire.TestNet:
+		if !blockchain.IsRegtestBtcAddress(address) {
 			return blockchain.BtcAddressInvalidNetworkError
 		}
 		return nil
@@ -50,8 +56,8 @@ func (rpc *bitcoindRpc) validateNetwork(address string) error {
 	}
 }
 
-func (rpc *bitcoindRpc) DecodeAddress(address string, keepVersion bool) ([]byte, error) {
-	return DecodeAddressBase58(address, keepVersion)
+func (rpc *bitcoindRpc) DecodeAddress(address string) ([]byte, error) {
+	return DecodeAddress(address)
 }
 
 func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTransactionInformation, error) {
@@ -84,9 +90,10 @@ func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTrans
 		outputs[output.ScriptPubKey.Address] = amounts
 	}
 	return blockchain.BitcoinTransactionInformation{
-		Hash:          tx.Hash,
+		Hash:          tx.Txid,
 		Confirmations: tx.Confirmations,
 		Outputs:       outputs,
+		HasWitness:    tx.Hash != tx.Txid,
 	}, nil
 }
 
@@ -102,7 +109,7 @@ func (rpc *bitcoindRpc) GetRawTransaction(hash string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err = rawTx.MsgTx().SerializeNoWitness(&buf); err != nil {
+	if err = rawTx.MsgTx().Serialize(&buf); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -115,7 +122,12 @@ func (rpc *bitcoindRpc) GetPartialMerkleTree(hash string) ([]byte, error) {
 	}
 
 	block := btcutil.NewBlock(rawBlock)
-	return serializePartialMerkleTree(parsedTxHash, block)
+	for _, t := range block.Transactions() {
+		if t.Hash().String() == hash && t.HasWitness() {
+			return serializePartialMerkleTree(parsedTxHash, block, true)
+		}
+	}
+	return serializePartialMerkleTree(parsedTxHash, block, false)
 }
 
 func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
@@ -127,6 +139,8 @@ func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
 }
 
 func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranch, error) {
+	var wid *chainhash.Hash
+	isWitness := false
 	rawBlock, parsedTxHash, err := rpc.getTxBlock(txHash)
 	if err != nil {
 		return blockchain.MerkleBranch{}, err
@@ -135,12 +149,16 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	block := btcutil.NewBlock(rawBlock)
 	txs := make([]*btcutil.Tx, 0)
 	for _, t := range block.MsgBlock().Transactions {
-		txs = append(txs, btcutil.NewTx(t))
+		parsedTx := btcutil.NewTx(t)
+		if parsedTx.Hash().String() == txHash && parsedTx.HasWitness() {
+			isWitness = true
+			wid = parsedTx.WitnessHash()
+		}
+		txs = append(txs, parsedTx)
 	}
 
 	var cleanStore []*chainhash.Hash
-	// TODO we should change this to support witness when we support non legacy LP wallets
-	store := merkle.BuildMerkleTreeStore(txs, false)
+	store := merkle.BuildMerkleTreeStore(txs, isWitness)
 	for _, node := range store {
 		if node != nil {
 			cleanStore = append(cleanStore, node)
@@ -148,7 +166,7 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	}
 
 	index := slices.IndexFunc(cleanStore, func(h *chainhash.Hash) bool {
-		return h != nil && h.IsEqual(parsedTxHash)
+		return h != nil && (h.IsEqual(parsedTxHash) || h.IsEqual(wid))
 	})
 	if index == -1 {
 		return blockchain.MerkleBranch{}, fmt.Errorf("transaction %s not found in merkle tree", txHash)
@@ -178,12 +196,59 @@ func (rpc *bitcoindRpc) GetTransactionBlockInfo(transactionHash string) (blockch
 		return blockchain.BitcoinBlockInformation{}, err
 	}
 
-	blockHashBytes := toSwappedBytes32(parsedBlockHash)
+	blockHashBytes := ToSwappedBytes32(parsedBlockHash)
 	return blockchain.BitcoinBlockInformation{
 		Hash:   blockHashBytes,
 		Height: big.NewInt(block.Height),
 		Time:   time.Unix(block.Time, 0),
 	}, nil
+}
+
+func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+	var coinbaseTxHash chainhash.Hash
+	var witnessReservedValue [32]byte
+	var err error
+
+	block, _, err := rpc.getTxBlock(txHash)
+	if err != nil {
+		return blockchain.BtcCoinbaseTransactionInformation{}, err
+	}
+	txs := make([]*btcutil.Tx, 0)
+	serializedCoinbase := bytes.NewBuffer([]byte{})
+
+	for _, tx := range block.Transactions {
+		if merkle.IsCoinBaseTx(tx) {
+			if err = tx.SerializeNoWitness(serializedCoinbase); err != nil {
+				return blockchain.BtcCoinbaseTransactionInformation{}, err
+			}
+			coinbaseTxHash = tx.TxHash()
+			copy(witnessReservedValue[:], [][]byte(tx.TxIn[0].Witness)[0])
+		}
+		txs = append(txs, btcutil.NewTx(tx))
+	}
+	pmt, err := serializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block), false)
+	if err != nil {
+		return blockchain.BtcCoinbaseTransactionInformation{}, err
+	}
+
+	blockHash := block.BlockHash()
+	blockVerboseInfo, err := rpc.conn.client.GetBlockVerbose(&blockHash)
+	if err != nil {
+		return blockchain.BtcCoinbaseTransactionInformation{}, err
+	}
+
+	return blockchain.BtcCoinbaseTransactionInformation{
+		BtcTxSerialized:      serializedCoinbase.Bytes(),
+		BlockHash:            ToSwappedBytes32(&blockHash),
+		BlockHeight:          big.NewInt(blockVerboseInfo.Height),
+		SerializedPmt:        pmt,
+		WitnessMerkleRoot:    ToSwappedBytes32(merkle.CalcMerkleRoot(txs, true)),
+		WitnessReservedValue: ToSwappedBytes32(witnessReservedValue),
+	}, nil
+}
+
+func (rpc *bitcoindRpc) NetworkName() string {
+	return strings.ToLower(rpc.conn.NetworkParams.Name)
 }
 
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -62,6 +63,29 @@ func CountNonZeroValues(aStruct any) int {
 	return count
 }
 
+type ThreadSafeBuffer struct {
+	bytes.Buffer
+	mutex sync.RWMutex
+}
+
+func (b *ThreadSafeBuffer) Write(p []byte) (n int, err error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return b.Buffer.Write(p)
+}
+
+func (b *ThreadSafeBuffer) Read(p []byte) (n int, err error) {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+	return b.Buffer.Read(p)
+}
+
+func (b *ThreadSafeBuffer) Len() int {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+	return b.Buffer.Len()
+}
+
 func AssertNoLog(t *testing.T) (assertFunc func()) {
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
@@ -70,14 +94,17 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 	}
 }
 
-func AssertLogContains(t *testing.T, expected string) (assertFunc func()) {
+func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 	message := make([]byte, 1024)
-	buff := new(bytes.Buffer)
+	buff := new(ThreadSafeBuffer)
 	log.SetOutput(buff)
-	return func() {
+	return func() bool {
+		if buff.Len() == 0 {
+			return false
+		}
 		_, err := buff.Read(message)
 		require.NoError(t, err, "Error reading log message")
-		assert.Contains(t, string(message), expected, "Expected message not found")
+		return assert.Contains(t, string(message), expected, "Expected message not found")
 	}
 }
 
@@ -125,4 +152,19 @@ func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 	})
 	require.NoError(t, err)
 	return testAccount
+}
+
+func ReadFile(t *testing.T, path string) []byte {
+	_, currentPackageDir, _, _ := runtime.Caller(0)
+	file, err := os.Open(filepath.Join(currentPackageDir, "../../", path))
+	require.NoError(t, err)
+
+	defer func(file *os.File) {
+		closingErr := file.Close()
+		require.NoError(t, closingErr)
+	}(file)
+
+	fileBytes, err := io.ReadAll(file)
+	require.NoError(t, err)
+	return fileBytes
 }

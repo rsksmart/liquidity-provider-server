@@ -39,8 +39,7 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 	var err error
 	var peginQuote *quote.PeginQuote
 	var params blockchain.RegisterPeginParams
-	var newState quote.PeginState
-	var registerPeginTxHash string
+	var userBtcTx blockchain.BitcoinTransactionInformation
 
 	if retainedQuote.State != quote.PeginStateCallForUserSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
@@ -52,7 +51,7 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
 	}
 
-	if err = useCase.validateTransaction(ctx, retainedQuote); err != nil {
+	if userBtcTx, err = useCase.getUserBtcTransactionIfValid(ctx, retainedQuote); err != nil {
 		return err
 	}
 
@@ -62,30 +61,12 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if err != nil {
-		newState = quote.PeginStateRegisterPegInFailed
-	} else {
-		newState = quote.PeginStateRegisterPegInSucceeded
+
+	if err = usecases.RegisterCoinbaseTransaction(useCase.rpc.Btc, useCase.contracts.Bridge, userBtcTx); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, errors.Is(err, blockchain.WaitingForBridgeError))
 	}
 
-	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
-	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
-		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
-		RetainedQuote: retainedQuote,
-		Error:         err,
-	})
-
-	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
-		err = errors.Join(err, updateError)
-	}
-	if err != nil {
-		err = errors.Join(err, usecases.NonRecoverableError)
-		return usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
-	}
-	return nil
+	return useCase.performRegisterPegin(ctx, params, retainedQuote)
 }
 
 func (useCase *RegisterPeginUseCase) publishErrorEvent(ctx context.Context, retainedQuote quote.RetainedPeginQuote, err error, recoverable bool) error {
@@ -95,8 +76,9 @@ func (useCase *RegisterPeginUseCase) publishErrorEvent(ctx context.Context, reta
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, errorArgs)
 	if !recoverable {
 		retainedQuote.State = quote.PeginStateRegisterPegInFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
+			wrappedError = errors.Join(wrappedError, err)
 		}
 		useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
@@ -137,13 +119,44 @@ func (useCase *RegisterPeginUseCase) buildRegisterPeginParams(peginQuote quote.P
 	}, nil
 }
 
-func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
+func (useCase *RegisterPeginUseCase) getUserBtcTransactionIfValid(ctx context.Context, retainedQuote quote.RetainedPeginQuote) (blockchain.BitcoinTransactionInformation, error) {
 	var txInfo blockchain.BitcoinTransactionInformation
 	var err error
 	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.UserBtcTxHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if txInfo.Confirmations < useCase.contracts.Bridge.GetRequiredTxConfirmations() {
-		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+	return txInfo, nil
+}
+
+func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, params blockchain.RegisterPeginParams, retainedQuote quote.RetainedPeginQuote) error {
+	var registerPeginTxHash string
+	var newState quote.PeginState
+	var err error
+
+	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	} else if err != nil {
+		newState = quote.PeginStateRegisterPegInFailed
+	} else {
+		newState = quote.PeginStateRegisterPegInSucceeded
+	}
+
+	retainedQuote.State = newState
+	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
+	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
+		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
+		RetainedQuote: retainedQuote,
+		Error:         err,
+	})
+
+	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
+		err = errors.Join(err, updateError)
+	}
+	if err != nil {
+		err = errors.Join(err, usecases.NonRecoverableError)
+		return usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return nil
 }

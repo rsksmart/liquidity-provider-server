@@ -47,3 +47,12 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
+    interfaces:
+      Ticker:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry:
+    interfaces:
+      UseCaseRegistry:
+  github.com/gorilla/sessions:
+    interfaces:
+      Store:
