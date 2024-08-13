@@ -14,13 +14,9 @@ import (
 func TestResignUseCase_Run(t *testing.T) {
 	lbc := &mocks.LbcMock{}
 	provider := &mocks.ProviderMock{}
-	provider.On("RskAddress").Return("0x01")
-	lbc.On("GetProviders").Return([]lp.RegisteredLiquidityProvider{
-		{
-			Id:      1,
-			Address: "0x01",
-		},
-	}, nil)
+	const address = "0x01"
+	provider.On("RskAddress").Return(address)
+	lbc.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 1, Address: address}, nil)
 	lbc.On("ProviderResign").Return(nil).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewResignUseCase(contracts, provider)
@@ -32,13 +28,9 @@ func TestResignUseCase_Run(t *testing.T) {
 func TestResignUseCase_Run_NotRegistered(t *testing.T) {
 	lbc := &mocks.LbcMock{}
 	provider := &mocks.ProviderMock{}
-	provider.On("RskAddress").Return("0x01")
-	lbc.On("GetProviders").Return([]lp.RegisteredLiquidityProvider{
-		{
-			Id:      2,
-			Address: "0x02",
-		},
-	}, nil)
+	const address = "0x01"
+	provider.On("RskAddress").Return(address)
+	lbc.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewResignUseCase(contracts, provider)
 	err := useCase.Run()
@@ -49,13 +41,9 @@ func TestResignUseCase_Run_NotRegistered(t *testing.T) {
 func TestResignUseCase_Run_Error(t *testing.T) {
 	lbc := &mocks.LbcMock{}
 	provider := &mocks.ProviderMock{}
-	provider.On("RskAddress").Return("0x01")
-	lbc.On("GetProviders").Return([]lp.RegisteredLiquidityProvider{
-		{
-			Id:      1,
-			Address: "0x01",
-		},
-	}, nil)
+	const address = "0x01"
+	provider.On("RskAddress").Return(address)
+	lbc.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 1, Address: address}, nil)
 	lbc.On("ProviderResign").Return(assert.AnError).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewResignUseCase(contracts, provider)

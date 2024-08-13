@@ -17,6 +17,7 @@ type WatcherRegistry struct {
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
 }
 
+// nolint:funlen
 func NewWatcherRegistry(
 	env environment.Environment,
 	useCaseRegistry *UseCaseRegistry,
@@ -24,16 +25,20 @@ func NewWatcherRegistry(
 	btcRegistry *Bitcoin,
 	liquidityProvider *dataproviders.LocalLiquidityProvider,
 	messaging *Messaging,
+	tickers *watcher.ApplicationTickers,
 ) *WatcherRegistry {
 	return &WatcherRegistry{
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
-			useCaseRegistry.callForUserUseCase,
-			useCaseRegistry.getWatchedPeginQuoteUseCase,
-			useCaseRegistry.updatePeginDepositUseCase,
-			useCaseRegistry.expiredPeginQuoteUseCase,
+			watcher.NewPeginDepositAddressWatcherUseCases(
+				useCaseRegistry.callForUserUseCase,
+				useCaseRegistry.getWatchedPeginQuoteUseCase,
+				useCaseRegistry.updatePeginDepositUseCase,
+				useCaseRegistry.expiredPeginQuoteUseCase,
+			),
 			btcRegistry.MonitoringWallet,
 			messaging.Rpc,
 			messaging.EventBus,
+			tickers.PeginDepositWatcherTicker,
 		),
 		PeginBridgeWatcher: watcher.NewPeginBridgeWatcher(
 			useCaseRegistry.registerPeginUseCase,
@@ -41,9 +46,11 @@ func NewWatcherRegistry(
 			rskRegistry.Contracts,
 			messaging.Rpc,
 			messaging.EventBus,
+			tickers.PeginBridgeWatcherTicker,
 		),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(
 			useCaseRegistry.cleanExpiredQuotesUseCase,
+			tickers.QuoteCleanerTicker,
 		),
 		PegoutRskDepositWatcher: watcher.NewPegoutRskDepositWatcher(
 			watcher.NewPegoutRskDepositWatcherUseCases(
@@ -58,21 +65,25 @@ func NewWatcherRegistry(
 			rskRegistry.Contracts,
 			messaging.EventBus,
 			env.Pegout.DepositCacheStartBlock,
+			tickers.PegoutDepositWatcherTicker,
 		),
 		PegoutBtcTransferWatcher: watcher.NewPegoutBtcTransferWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.refundPegoutUseCase,
 			messaging.Rpc,
 			messaging.EventBus,
+			tickers.PegoutBtcTransferWatcherTicker,
 		),
-		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(useCaseRegistry.liquidityCheckUseCase),
+		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(useCaseRegistry.liquidityCheckUseCase, tickers.LiquidityCheckTicker),
 		PenalizationAlertWatcher: watcher.NewPenalizationAlertWatcher(
 			messaging.Rpc,
 			useCaseRegistry.penalizationAlertUseCase,
+			tickers.PenalizationCheckTicker,
 		),
 		PegoutBridgeWatcher: watcher.NewPegoutBridgeWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.bridgePegoutUseCase,
+			tickers.PegoutBridgeWatcherTicker,
 		),
 	}
 }
