@@ -19,7 +19,7 @@ const (
 var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
-func getManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
+func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
 	return []Endpoint{
 		{
 			Path:    "/pegin/collateral",
