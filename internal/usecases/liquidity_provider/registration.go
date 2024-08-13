@@ -56,29 +56,43 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 	}
 
 	addedPeginCollateral, err = useCase.addPeginCollateral(params, operational, collateral)
+	if err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
 	addedCollateral.pegin = addedPeginCollateral
-	if useCase.isProviderReady(addedCollateral, params) {
+	if useCase.isProviderReady(addedCollateral, operational) {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
-	} else if err != nil {
-		return 0, err
 	}
 
 	addedPegoutCollateral, err = useCase.addPegoutCollateral(params, operational, collateral)
+	if err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
 	addedCollateral.pegout = addedPegoutCollateral
-	if useCase.isProviderReady(addedCollateral, params) {
+	if useCase.isProviderReady(addedCollateral, operational) {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
-	} else if err != nil {
-		return 0, err
 	}
 
 	log.Debug("Registering new provider...")
 	return useCase.registerProvider(params, collateral)
 }
 
-func (useCase *RegistrationUseCase) isProviderReady(addedCollateral addedCollateralInfo, providerParams blockchain.ProviderRegistrationParams) bool {
-	return (addedCollateral.pegin && providerParams.Type == liquidity_provider.PeginProvider) ||
-		(addedCollateral.pegout && providerParams.Type == liquidity_provider.PegoutProvider) ||
-		(addedCollateral.pegin && addedCollateral.pegout && providerParams.Type == liquidity_provider.FullProvider)
+func (useCase *RegistrationUseCase) isProviderReady(addedCollateral addedCollateralInfo, operational operationalInfo) bool {
+	provider, err := useCase.contracts.Lbc.GetProvider(useCase.provider.RskAddress())
+	if err != nil {
+		return false
+	}
+
+	readyForPegin := operational.operationalForPegin || (!operational.operationalForPegin && addedCollateral.pegin)
+	if provider.ProviderType.AcceptsPegin() && !readyForPegin {
+		return false
+	}
+
+	readyForPegout := operational.operationalForPegout || (!operational.operationalForPegout && addedCollateral.pegout)
+	if provider.ProviderType.AcceptsPegout() && !readyForPegout {
+		return false
+	}
+	return true
 }
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {

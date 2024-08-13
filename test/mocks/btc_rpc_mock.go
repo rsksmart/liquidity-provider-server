@@ -3,6 +3,7 @@ package mocks
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/stretchr/testify/mock"
+	"math/big"
 )
 
 type BtcRpcMock struct {
@@ -33,8 +34,8 @@ func (m *BtcRpcMock) GetTransactionBlockInfo(txHash string) (blockchain.BitcoinB
 	return args.Get(0).(blockchain.BitcoinBlockInformation), args.Error(1)
 }
 
-func (m *BtcRpcMock) DecodeAddress(address string, keepVersion bool) ([]byte, error) {
-	args := m.Called(address, keepVersion)
+func (m *BtcRpcMock) DecodeAddress(address string) ([]byte, error) {
+	args := m.Called(address)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -49,4 +50,22 @@ func (m *BtcRpcMock) GetPartialMerkleTree(hash string) ([]byte, error) {
 func (m *BtcRpcMock) ValidateAddress(address string) error {
 	args := m.Called(address)
 	return args.Error(0)
+}
+
+func (m *BtcRpcMock) GetHeight() (*big.Int, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*big.Int), args.Error(1)
+}
+
+func (m *BtcRpcMock) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+	args := m.Called(txHash)
+	return args.Get(0).(blockchain.BtcCoinbaseTransactionInformation), args.Error(1)
+}
+
+func (m *BtcRpcMock) NetworkName() string {
+	args := m.Called()
+	return args.String(0)
 }
