@@ -68,7 +68,6 @@ var (
 	ExpiredQuoteError           = errors.New("expired quote")
 	NoLiquidityError            = errors.New("not enough liquidity")
 	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	ProviderNotFoundError       = errors.New("liquidity provider not found")
 	WrongStateError             = errors.New("quote with wrong state")
 	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError     = errors.New("insufficient amount")
@@ -172,4 +171,17 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 		Signature: hex.EncodeToString(signature),
 	}
 	return signedConfig, nil
+}
+
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+	if !tx.HasWitness {
+		return nil
+	}
+
+	coinbaseInfo, err := btcRpc.GetCoinbaseInformation(tx.Hash)
+	if err != nil {
+		return err
+	}
+	_, err = bridgeContract.RegisterBtcCoinbaseTransaction(coinbaseInfo)
+	return err
 }

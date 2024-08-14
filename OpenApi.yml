@@ -196,25 +196,25 @@ components:
       - status
       - providerType
       type: object
-    PeginConfiguration:
+    PeginConfigurationDTO:
       properties:
         callFee:
-          $ref: '#/components/schemas/Wei'
+          type: string
         callTime:
           type: integer
         maxValue:
-          $ref: '#/components/schemas/Wei'
+          type: string
         minValue:
-          $ref: '#/components/schemas/Wei'
+          type: string
         penaltyFee:
-          $ref: '#/components/schemas/Wei'
+          type: string
         timeForDeposit:
           type: integer
       type: object
     PeginConfigurationRequest:
       properties:
         configuration:
-          $ref: '#/components/schemas/PeginConfiguration'
+          $ref: '#/components/schemas/PeginConfigurationDTO'
           type: object
       type: object
     PeginQuoteDTO:
@@ -309,11 +309,6 @@ components:
       type: object
     PeginQuoteRequest:
       properties:
-        bitcoinRefundAddress:
-          description: 'User Bitcoin refund address. Note: Must be a legacy address,
-            segwit addresses are not accepted'
-          example: "0x0"
-          type: string
         callContractArguments:
           description: Contract data
           example: "0x0"
@@ -335,7 +330,6 @@ components:
       - callContractArguments
       - valueToTransfer
       - rskRefundAddress
-      - bitcoinRefundAddress
       type: object
     PeginQuoteStatusDTO:
       properties:
@@ -351,29 +345,29 @@ components:
       - detail
       - status
       type: object
-    PegoutConfiguration:
+    PegoutConfigurationDTO:
       properties:
         bridgeTransactionMin:
-          $ref: '#/components/schemas/Wei'
+          type: string
         callFee:
-          $ref: '#/components/schemas/Wei'
-        callTime:
-          type: integer
+          type: string
         expireBlocks:
           type: integer
+        expireTime:
+          type: integer
         maxValue:
-          $ref: '#/components/schemas/Wei'
+          type: string
         minValue:
-          $ref: '#/components/schemas/Wei'
+          type: string
         penaltyFee:
-          $ref: '#/components/schemas/Wei'
+          type: string
         timeForDeposit:
           type: integer
       type: object
     PegoutConfigurationRequest:
       properties:
         configuration:
-          $ref: '#/components/schemas/PegoutConfiguration'
+          $ref: '#/components/schemas/PegoutConfigurationDTO'
           type: object
       type: object
     PegoutQuoteDTO:
@@ -443,10 +437,6 @@ components:
       type: object
     PegoutQuoteRequest:
       properties:
-        bitcoinRefundAddress:
-          description: BitcoinRefundAddress
-          example: "0x0"
-          type: string
         rskRefundAddress:
           description: RskRefundAddress
           example: "0x0"
@@ -462,7 +452,6 @@ components:
       - to
       - valueToTransfer
       - rskRefundAddress
-      - bitcoinRefundAddress
       type: object
     PegoutQuoteStatusDTO:
       properties:
@@ -624,8 +613,6 @@ components:
         rsk:
           type: string
       type: object
-    Wei: {}
-    entities.Wei: {}
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
