@@ -1,4 +1,5 @@
 # Liquidity Provider Server
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
 
 This is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users 
 as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both
