@@ -3,6 +3,24 @@ repos:
     rev: v1.55.2
     hooks:
       - id: golangci-lint-full
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.0
+    hooks:
+      - id: commitizen
+  - repo: local
+    hooks:
+      - id: unit-tests
+        name: LPS Unit Tests
+        entry: make test
+        language: system
+        types: [go]
+  - repo: local
+    hooks:
+      - id: code-style
+        name: LPS Code Style Check
+        entry: make lint
+        language: system
+        types: [go]
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.16.3
     hooks:
