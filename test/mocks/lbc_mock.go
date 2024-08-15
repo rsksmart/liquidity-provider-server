@@ -78,6 +78,11 @@ func (m *LbcMock) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvid
 	return args.Get(0).([]liquidity_provider.RegisteredLiquidityProvider), args.Error(1)
 }
 
+func (m *LbcMock) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
+	args := m.Called(address)
+	return args.Get(0).(liquidity_provider.RegisteredLiquidityProvider), args.Error(1)
+}
+
 func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
 	args := m.Called(id, status)
 	return args.Error(0)
@@ -85,6 +90,9 @@ func (m *LbcMock) SetProviderStatus(id uint64, status bool) error {
 
 func (m *LbcMock) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
 	args := m.Called(ctx, fromBlock, toBlock)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]liquidity_provider.PunishmentEvent), args.Error(1)
 }
 

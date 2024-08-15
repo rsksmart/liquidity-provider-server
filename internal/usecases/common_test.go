@@ -7,12 +7,14 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	u "github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 )
 
@@ -141,4 +143,60 @@ func TestSignConfiguration_SignatureError(t *testing.T) {
 	signed, err := u.SignConfiguration(id, wallet, hashFunctionMock.Hash, configuration)
 	require.Equal(t, entities.Signed[liquidity_provider.PeginConfiguration]{}, signed)
 	require.Error(t, err)
+}
+
+func TestRegisterCoinbaseTransaction(t *testing.T) {
+	tx := blockchain.BitcoinTransactionInformation{
+		Confirmations: 10,
+		Outputs:       map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1)}},
+		HasWitness:    true,
+		Hash:          test.AnyHash,
+	}
+	coinbaseInfo := blockchain.BtcCoinbaseTransactionInformation{
+		BtcTxSerialized:      utils.MustGetRandomBytes(32),
+		BlockHash:            utils.To32Bytes(utils.MustGetRandomBytes(32)),
+		BlockHeight:          big.NewInt(500),
+		SerializedPmt:        utils.MustGetRandomBytes(64),
+		WitnessMerkleRoot:    utils.To32Bytes(utils.MustGetRandomBytes(32)),
+		WitnessReservedValue: utils.To32Bytes(utils.MustGetRandomBytes(32)),
+	}
+	t.Run("Should return if tx does not have witness data", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		rpc := &mocks.BtcRpcMock{}
+		txWithoutWitness := tx
+		txWithoutWitness.HasWitness = false
+		err := u.RegisterCoinbaseTransaction(rpc, bridge, txWithoutWitness)
+		require.NoError(t, err)
+		bridge.AssertNotCalled(t, "RegisterCoinbaseTransaction")
+		rpc.AssertNotCalled(t, "GetCoinbaseInformation")
+	})
+	t.Run("Should handle error fetching the coinbase information", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		rpc := &mocks.BtcRpcMock{}
+		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(blockchain.BtcCoinbaseTransactionInformation{}, assert.AnError)
+		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
+		require.Error(t, err)
+		bridge.AssertNotCalled(t, "RegisterCoinbaseTransaction")
+		rpc.AssertExpectations(t)
+	})
+	t.Run("Should handle error registering the transaction", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		rpc := &mocks.BtcRpcMock{}
+		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(coinbaseInfo, nil)
+		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return("", assert.AnError)
+		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
+		require.Error(t, err)
+		bridge.AssertExpectations(t)
+		rpc.AssertExpectations(t)
+	})
+	t.Run("Should register a coinbase tx successfully", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		rpc := &mocks.BtcRpcMock{}
+		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(coinbaseInfo, nil)
+		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return(test.AnyHash, nil)
+		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
+		require.NoError(t, err)
+		bridge.AssertExpectations(t)
+		rpc.AssertExpectations(t)
+	})
 }

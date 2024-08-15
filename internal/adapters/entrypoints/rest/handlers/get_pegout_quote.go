@@ -33,7 +33,6 @@ func NewGetPegoutQuoteHandler(useCase *pegout.GetQuoteUseCase) http.HandlerFunc 
 			quoteRequest.To,
 			entities.NewUWei(quoteRequest.ValueToTransfer),
 			quoteRequest.RskRefundAddress,
-			quoteRequest.BitcoinRefundAddress,
 		)
 
 		result, err = useCase.Run(req.Context(), pegoutRequest)

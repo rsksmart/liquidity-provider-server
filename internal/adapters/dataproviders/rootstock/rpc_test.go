@@ -273,7 +273,7 @@ func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
 			Number: big.NewInt(123),
 			Time:   uint64(now),
 			Nonce:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-		}, nil, nil, nil, nil), nil).Once()
+		}, nil, nil, nil), nil).Once()
 	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
 	block, err := rpc.GetBlockByHash(context.Background(), blockHash)
 	require.NoError(t, err)

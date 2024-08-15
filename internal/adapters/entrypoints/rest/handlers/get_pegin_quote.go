@@ -41,7 +41,6 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 			callArgument,
 			entities.NewUWei(quoteRequest.ValueToTransfer),
 			quoteRequest.RskRefundAddress,
-			quoteRequest.BitcoinRefundAddress,
 		)
 
 		result, err = useCase.Run(req.Context(), peginRequest)
