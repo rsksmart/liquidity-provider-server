@@ -1,0 +1,46 @@
+repos:
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.55.2
+    hooks:
+      - id: golangci-lint-full
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.0
+    hooks:
+      - id: commitizen
+  - repo: local
+    hooks:
+      - id: unit-tests
+        name: LPS Unit Tests
+        entry: make test
+        language: system
+        types: [go]
+  - repo: local
+    hooks:
+      - id: code-style
+        name: LPS Code Style Check
+        entry: make lint
+        language: system
+        types: [go]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.16.3
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: "trailing-whitespace"
+      - id: "end-of-file-fixer"
+        exclude: '\.tf\.json$'
+      - id: "check-yaml"
+        args:
+          - "--unsafe"
+      - id: "check-executables-have-shebangs"
+      - id: "check-case-conflict"
+  - repo: https://github.com/mrtazz/checkmake.git
+    rev: 0.2.2
+    hooks:
+      -   id: checkmake
