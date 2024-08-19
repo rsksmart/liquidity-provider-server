@@ -6,7 +6,7 @@ TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
 filter_coverage_file = grep -v "internal/adapters/dataproviders/rootstock/bindings" $(1) > coverage/temp.txt && mv coverage/temp.txt $(1)
 
 tools: download
-	go install github.com/parvez3019/go-swagger3@latest
+	go install github.com/parvez3019/go-swagger3@fef3d30b0707883c389261bf26297eebd10d7216 #v1.0.3
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.55.2
