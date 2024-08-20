@@ -5,6 +5,9 @@ on:
     branches:
       - QA-Test
 
+permissions:
+  contents: read
+
 jobs:
   execute-command:
     runs-on: ubuntu-latest
