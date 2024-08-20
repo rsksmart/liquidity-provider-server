@@ -1,7 +1,6 @@
-ARG GO_VERSION=1.21.12
 ARG ALPINE_VERSION=3.19.1
 
-FROM --platform=linux/amd64 golang:${GO_VERSION} AS builder
+FROM --platform=linux/amd64 golang:1.21.12@sha256:f2eb989b0b5579b75652b72ee7b3b04cb1736fc254d7efbf3e492d4c9ea7235a AS builder
 
 ARG COMMIT_HASH
 ENV COMMIT_HASH=${COMMIT_HASH}
