@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-slim-buster AS builder
+FROM openjdk:8-jdk-slim-buster@sha256:221a061dbd1a81efe42e6ce9bc099f7ce318b1f7f3ba186e387264f14e61dec2 AS builder
 
 RUN apt-get update -y && \
     apt-get install -y -qq --no-install-recommends git curl gnupg && \
