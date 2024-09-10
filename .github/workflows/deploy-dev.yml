@@ -1,4 +1,4 @@
-name: CD for flyover-api dev 
+name: CD for flyover-api dev
 
 on:
   push:
@@ -15,13 +15,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
             role-to-assume: ${{ secrets.DEV_ROLE_ARN }}
-            aws-region: ${{ secrets.AWS_REGION }}    
+            aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Execute deployment command on EC2 instance
         run: |
