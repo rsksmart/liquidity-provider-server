@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -51,7 +52,7 @@ func (s *IntegrationTestSuite) TestPegInOverPayFlow() {
 			case balanceIncreaseEvent := <-balanceIncreaseChannel:
 				balanceIncreaseSubscription.Unsubscribe()
 				refundedAmount := new(entities.Wei).Add(value, new(entities.Wei).Add(callFee, gasFee))
-				s.Require().Equal(quote.Quote.LPRSKAddr, balanceIncreaseEvent.Dest.String())
+				s.Require().Equal(strings.ToLower(quote.Quote.LPRSKAddr), strings.ToLower(balanceIncreaseEvent.Dest.String()))
 				s.Require().Equal(refundedAmount.AsBigInt().Int64(), balanceIncreaseEvent.Amount.Int64())
 				registered = true
 			case err = <-balanceIncreaseSubscription.Err():

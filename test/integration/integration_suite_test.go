@@ -10,11 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rsksmart/liquidity-provider-server/cmd/application/lps"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 	"io"
-	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -55,7 +53,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	var configFile *os.File
 
 	log.Debug("Setting up integration tests...")
-	if configFile, err = os.Open("test/integration/integration-test.config.json"); err != nil {
+	if configFile, err = os.Open("./integration-test.config.json"); err != nil {
 		s.FailNow("Error reading configuration file", err)
 	}
 	defer func(configFile *os.File) {
@@ -83,13 +81,6 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	if s.config.Lps.UseTestInstance {
 		s.setupLps()
 		time.Sleep(3 * time.Second)
-	}
-
-	if s.config.Network == "regtest" {
-		log.Warn("Setting limits for regtest operations. This requires the management API enabled.")
-		if err = s.configureRegtestLimits(); err != nil {
-			s.FailNow("Error setting regtest limits", err)
-		}
 	}
 
 	log.Debug("Set up completed")
@@ -152,50 +143,6 @@ func (s *IntegrationTestSuite) setupRsk() error {
 	}
 	s.rsk = rsk
 	s.lbc = lbc
-	return nil
-}
-
-func (s *IntegrationTestSuite) configureRegtestLimits() error {
-	url := s.config.Lps.Url
-	result, err := execute[any](Execution{
-		Method: http.MethodPost,
-		URL:    url + "/pegin/configuration",
-		Body: pkg.PeginConfigurationRequest{
-			Configuration: pkg.PeginConfigurationDTO{
-				TimeForDeposit: 3600,
-				CallTime:       7200,
-				PenaltyFee:     "1000000000000000",
-				CallFee:        "10000000000000000",
-				MaxValue:       "10000000000000000000",
-				MinValue:       "600000000000000000",
-			},
-		},
-	})
-	if err != nil {
-		return err
-	} else if result.StatusCode != 204 {
-		return fmt.Errorf("unexpected status code: %v", result.StatusCode)
-	}
-	result, err = execute[any](Execution{
-		Method: http.MethodPost,
-		URL:    url + "/pegout/configuration",
-		Body: pkg.PegoutConfigurationRequest{
-			Configuration: pkg.PegoutConfigurationDTO{
-				TimeForDeposit: 3600,
-				ExpireTime:     7200,
-				PenaltyFee:     "1000000000000000",
-				CallFee:        "10000000000000000",
-				MaxValue:       "10000000000000000000",
-				MinValue:       "600000000000000000",
-				ExpireBlocks:   500,
-			},
-		},
-	})
-	if err != nil {
-		return err
-	} else if result.StatusCode != 204 {
-		return fmt.Errorf("unexpected status code: %v", result.StatusCode)
-	}
 	return nil
 }
 
