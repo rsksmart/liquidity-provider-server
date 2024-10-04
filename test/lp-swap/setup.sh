@@ -49,6 +49,8 @@ sed -e 's/SECRET_SRC=aws/SECRET_SRC=env/g' \
   -e 's/PROVIDER_NAME=\"Default Provider\"/PROVIDER_NAME=\"Provider 1\"/g' \
   -e 's/LOG_FILE=\/home\/lps\/logs\/lps.log/LOG_FILE=/g' \
   -e 's/MONGODB_HOST=mongodb/MONGODB_HOST=lp-swap-mongodb-1/g' \
+  -e 's/MONGODB_USER=root/MONGODB_USER=flyover-user/g' \
+  -e 's/MONGODB_PASSWORD=root/MONGODB_PASSWORD=flyover-password/g' \
   -e "s/LBC_ADDR=/$LBC_ADDRESS/g" \
   -e "s/BTC_ENDPOINT=bitcoind:5555/BTC_ENDPOINT=btc01:5555/g" \
   -e "s/ENABLE_MANAGEMENT_API=false/ENABLE_MANAGEMENT_API=true/g" \
@@ -59,6 +61,8 @@ sed -e 's/SECRET_SRC=aws/SECRET_SRC=env/g' \
   -e 's/PROVIDER_NAME=\"Default Provider\"/PROVIDER_NAME=\"Provider 2\"/g' \
   -e 's/LOG_FILE=\/home\/lps\/logs\/lps.log/LOG_FILE=/g' \
   -e 's/MONGODB_HOST=mongodb/MONGODB_HOST=lp-swap-mongodb-2/g' \
+  -e 's/MONGODB_USER=root/MONGODB_USER=flyover-user/g' \
+  -e 's/MONGODB_PASSWORD=root/MONGODB_PASSWORD=flyover-password/g' \
   -e "s/LBC_ADDR=/$LBC_ADDRESS/g" \
   -e "s/BASE_URL=\"http:\/\/localhost:8080\"/BASE_URL=\"http:\/\/localhost:8081\"/g" \
   -e "s/BTC_ENDPOINT=bitcoind:5555/BTC_ENDPOINT=btc02:5555/g" \

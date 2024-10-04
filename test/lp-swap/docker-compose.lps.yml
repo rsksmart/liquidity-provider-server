@@ -80,8 +80,8 @@ services:
     image: mongo:4
     restart: on-failure
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=root
+      - MONGO_INITDB_ROOT_USERNAME=flyover-user
+      - MONGO_INITDB_ROOT_PASSWORD=flyover-password
       - MONGO_INITDB_DATABASE=flyover
     ports:
       - "27017-27018:27017"
