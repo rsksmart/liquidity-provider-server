@@ -118,7 +118,7 @@ fi
 CSRF_TOKEN=$(curl -s -c cookie_jar.txt -H 'Content-Type: application/json' \
   "$SUNSET_URL/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
-CSRF_TOKEN=${CSRF_TOKEN//&#43;/+/}
+CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
 echo "CSRF_TOKEN -> $CSRF_TOKEN"
 curl -s -b cookie_jar.txt -c cookie_jar.txt "$SUNSET_URL/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
