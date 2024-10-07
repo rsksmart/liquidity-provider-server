@@ -27,16 +27,19 @@ const (
 // @Route /management [get]
 func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_provider.GetManagementUiDataUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		const errorGeneratingTemplate = "Error generating template: %v"
 		session, err := store.Get(req, cookies.ManagementSessionCookieName)
 		loggedIn := err == nil && !session.IsNew
 		result, err := useCase.Run(req.Context(), loggedIn)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}
 
 		bytes, err := utils.GetRandomBytes(nonceBytes)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}

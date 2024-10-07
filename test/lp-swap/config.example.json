@@ -1,0 +1,11 @@
+{
+  "ghToken": "",
+  "lp1": {
+    "key": {"address":"b4cbc80da6586615da4ac51416e0fac15d435750","crypto":{"cipher":"aes-128-ctr","ciphertext":"666596e67e2d952bb4278245f3bf8b6259d1c591939625fb3d03109d7d5e3f22","cipherparams":{"iv":"7fbc0ffe4103b311826344d370ef3912"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"d87b8fd0c391533502644dda48f9ff059e1151e0c64f37954af20f7e17c6fbfa"},"mac":"fecef2821c7fea325d1050b35fedd7e15b7051baa95ab8f7aaf48eee43ae8b7d"},"id":"bec11a9d-db99-44cb-924a-5c3b61dd0334","version":3},
+    "password": "test"
+  },
+  "lp2": {
+    "key": {"address":"f6af42d4f3487799fc48537775b3908a89ca7cb3","crypto":{"cipher":"aes-128-ctr","ciphertext":"c23a4ec21133141202012075497e6e82c2241fa06cdff4da07eef64d0c668d17","cipherparams":{"iv":"b7671d8e8811ab8de6d9511301d412d9"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"f2291e0af522984420d04ad4a1d073333b87fca41159c21cd2cea588888101fe"},"mac":"205006c4cbd477e60d2b3a45735136c43c114ad84972eeae2a40d56f4bd856eb"},"id":"1f97470e-e352-4dd1-bbcb-120aca9321d0","version":3},
+    "password": "test"
+  }
+}

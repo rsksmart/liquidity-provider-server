@@ -1,0 +1,5 @@
+*.env
+*-key.json
+config.json
+cookie_jar.txt
+gh_token.txt
