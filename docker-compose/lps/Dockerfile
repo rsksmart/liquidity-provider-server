@@ -4,7 +4,9 @@ ARG ALPINE_VERSION=3.19.1
 FROM --platform=linux/amd64 golang:${GO_VERSION} AS builder
 
 ARG COMMIT_HASH
-ENV COMMIT_HASH=${COMMIT_HASH}
+ARG COMMIT_TAG
+ENV COMMIT_HASH_VALUE=${COMMIT_HASH}
+ENV COMMIT_TAG_VALUE=${COMMIT_TAG}
 
 WORKDIR /code
 
@@ -13,7 +15,7 @@ COPY cmd ./cmd
 COPY pkg ./pkg
 COPY internal ./internal
 
-RUN make build
+RUN test -n "$COMMIT_TAG_VALUE" && test -n "$COMMIT_HASH_VALUE" && make build
 
 FROM --platform=linux/amd64 alpine:${ALPINE_VERSION}
 

@@ -237,6 +237,7 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().SetCredentialsUseCase().Return(&liquidity_provider.SetCredentialsUseCase{})
 	registryMock.EXPECT().LoginUseCase().Return(&liquidity_provider.LoginUseCase{})
 	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
+	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 }
 
 func assertHasCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {

@@ -57,6 +57,7 @@ const (
 	PegoutQuoteStatusId        UseCaseId = "PegoutQuoteStatus"
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
+	ServerInfoId               UseCaseId = "ServerInfo"
 )
 
 var (
