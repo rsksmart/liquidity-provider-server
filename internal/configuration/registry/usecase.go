@@ -216,6 +216,7 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			liquidityProvider,
 			liquidityProvider,
+			rskRegistry.Contracts,
 			env.Provider.ApiBaseUrl,
 		),
 		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(

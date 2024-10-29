@@ -2,8 +2,11 @@ package liquidity_provider
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"slices"
+	"strings"
 )
 
 type ManagementTemplateId string
@@ -19,6 +22,7 @@ type GetManagementUiDataUseCase struct {
 	lp                          liquidity_provider.LiquidityProvider
 	peginLp                     liquidity_provider.PeginLiquidityProvider
 	pegoutLp                    liquidity_provider.PegoutLiquidityProvider
+	contracts                   blockchain.RskContracts
 	baseUrl                     string
 }
 
@@ -27,6 +31,7 @@ func NewGetManagementUiDataUseCase(
 	lp liquidity_provider.LiquidityProvider,
 	peginLp liquidity_provider.PeginLiquidityProvider,
 	pegoutLp liquidity_provider.PegoutLiquidityProvider,
+	contracts blockchain.RskContracts,
 	baseUrl string,
 ) *GetManagementUiDataUseCase {
 	return &GetManagementUiDataUseCase{
@@ -34,6 +39,7 @@ func NewGetManagementUiDataUseCase(
 		lp:                          lp,
 		peginLp:                     peginLp,
 		pegoutLp:                    pegoutLp,
+		contracts:                   contracts,
 		baseUrl:                     baseUrl,
 	}
 }
@@ -46,6 +52,9 @@ type ManagementTemplate struct {
 type ManagementTemplateData struct {
 	CredentialsSet bool
 	BaseUrl        string
+	BtcAddress     string
+	RskAddress     string
+	ProviderData   liquidity_provider.RegisteredLiquidityProvider
 	Configuration  FullConfiguration
 }
 
@@ -53,7 +62,7 @@ func (useCase *GetManagementUiDataUseCase) Run(ctx context.Context, loggedIn boo
 	if !loggedIn {
 		return useCase.getLoginTemplateData(ctx)
 	}
-	return useCase.getManagementTemplateData(ctx), nil
+	return useCase.getManagementTemplateData(ctx)
 }
 
 func (useCase *GetManagementUiDataUseCase) getLoginTemplateData(ctx context.Context) (*ManagementTemplate, error) {
@@ -71,21 +80,38 @@ func (useCase *GetManagementUiDataUseCase) getLoginTemplateData(ctx context.Cont
 	}, nil
 }
 
-func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context.Context) *ManagementTemplate {
+func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context.Context) (*ManagementTemplate, error) {
 	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
 	peginConfiguration := useCase.peginLp.PeginConfiguration(ctx)
 	pegoutConfiguration := useCase.pegoutLp.PegoutConfiguration(ctx)
+
+	rskAddress := useCase.lp.RskAddress()
+	// TODO change to getProvider in 2.1.0
+	providers, err := useCase.contracts.Lbc.GetProviders()
+	if err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.GetManagementUiId, err)
+	}
+
+	index := slices.IndexFunc(providers, func(providerInfo liquidity_provider.RegisteredLiquidityProvider) bool {
+		return strings.EqualFold(providerInfo.Address, rskAddress)
+	})
+	if index == -1 {
+		return nil, usecases.WrapUseCaseError(usecases.GetManagementUiId, usecases.ProviderNotFoundError)
+	}
 
 	return &ManagementTemplate{
 		Name: ManagementUiTemplate,
 		Data: ManagementTemplateData{
 			CredentialsSet: true,
 			BaseUrl:        useCase.baseUrl,
+			BtcAddress:     useCase.lp.BtcAddress(),
+			RskAddress:     rskAddress,
+			ProviderData:   providers[index],
 			Configuration: FullConfiguration{
 				General: generalConfiguration,
 				Pegin:   peginConfiguration,
 				Pegout:  pegoutConfiguration,
 			},
 		},
-	}
+	}, nil
 }
