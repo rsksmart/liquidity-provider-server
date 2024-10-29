@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 ubuntu:jammy
+FROM --platform=linux/amd64 ubuntu:jammy@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97
 
 ARG BITCOIN_VERSION=24.0.1
 ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
@@ -6,7 +6,7 @@ ARG BITCOIN_DOWNLOAD_FILENAME=bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz
 ENV BITCOIN_VERSION=$BITCOIN_VERSION
 ENV BITCOIN_DOWNLOAD_FILENAME=$BITCOIN_DOWNLOAD_FILENAME
 
-RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates wget gnupg2 curl && apt-get clean
+RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates curl gnupg2 wget && apt-get clean
 
 RUN wget "https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/SHA256SUMS.asc" \
     && wget "https://bitcoincore.org/bin/bitcoin-core-$BITCOIN_VERSION/$BITCOIN_DOWNLOAD_FILENAME" \

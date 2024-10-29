@@ -1,8 +1,8 @@
-FROM --platform=linux/amd64 node:16
+FROM --platform=linux/amd64 node:16@sha256:f77a1aef2da8d83e45ec990f45df50f1a286c5fe8bbfb8c6e4246c6389705c0b
 
 RUN apt-get update -y && apt-get install -y -qq --no-install-recommends jq && apt-get clean
 
-RUN npm install --ignore-scripts -g truffle
+RUN npm install --ignore-scripts -g truffle@5.11.5@sha512-yCa2uWs5DmL0spuJUuIMtnVayRQrVuWLtcRXHMB0NLrtWDcRo7VM9RViveV4+oi9LdZ8VpFmmqHGm43LbzUxOA==
 
 USER node
 
