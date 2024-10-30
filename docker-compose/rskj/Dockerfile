@@ -25,7 +25,7 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys 1DC9157991
     modifier=$(sed -n 's/^modifier=//p' "$file" | tr -d "\"'") && \
     cp "rskj-core/build/libs/rskj-core-$version_number-$modifier-all.jar" rsk.jar
 
-    FROM --platform=linux/amd64 openjdk:8-jdk@sha256:86e863cc57215cfb181bd319736d0baf625fe8f150577f9eb58bd937f5452cb8 AS runner
+FROM --platform=linux/amd64 openjdk:8-jdk@sha256:86e863cc57215cfb181bd319736d0baf625fe8f150577f9eb58bd937f5452cb8 AS runner
 
 ARG UID=1000
 ARG HOME="/home/rsk"
