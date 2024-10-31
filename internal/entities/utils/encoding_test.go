@@ -1,10 +1,11 @@
 package utils_test
 
 import (
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestDecodeKey(t *testing.T) {
@@ -64,4 +65,20 @@ func TestDecodeKey_DecodingError(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, result)
 	}
+}
+
+func TestDecodeKey_LengthErrorDoesNotExposeKey(t *testing.T) {
+	// A valid hex string but wrong length
+	sensitiveKey := "1234567890abcdef1234567890abcdef" // 16 bytes
+	expectedBytes := 32                                // Expecting 32 bytes
+
+	result, err := utils.DecodeKey(sensitiveKey, expectedBytes)
+
+	require.Error(t, err)
+	require.Nil(t, result)
+
+	// Check that error message contains expected information but not the key
+	require.Contains(t, err.Error(), "key length is not 32 bytes")
+	require.Contains(t, err.Error(), "16 bytes long")
+	require.NotContains(t, err.Error(), sensitiveKey)
 }
