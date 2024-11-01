@@ -1,7 +1,7 @@
-FROM openjdk:8-jdk-slim-buster AS builder
+FROM openjdk:8-jdk-slim-buster@sha256:221a061dbd1a81efe42e6ce9bc099f7ce318b1f7f3ba186e387264f14e61dec2 AS builder
 
 RUN apt-get update -y && \
-    apt-get install -y -qq --no-install-recommends git curl gnupg && \
+    apt-get install -y -qq --no-install-recommends curl git gnupg && \
     apt-get clean
 
 WORKDIR /code/powpeg
@@ -22,7 +22,7 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys A6DBEAC640
     ./configure.sh && \
     ./gradlew --no-daemon clean build -x test
 
-FROM --platform=linux/amd64 openjdk:8-jdk AS runner
+FROM --platform=linux/amd64 openjdk:8-jdk@sha256:86e863cc57215cfb181bd319736d0baf625fe8f150577f9eb58bd937f5452cb8 AS runner
 
 ARG HOME="/home/powpeg"
 RUN useradd -m -u 1000 --home="$HOME" powpeg
