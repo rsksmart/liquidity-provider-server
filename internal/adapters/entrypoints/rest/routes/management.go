@@ -94,7 +94,7 @@ func getManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		{
 			Path:    UiPath,
 			Method:  http.MethodGet,
-			Handler: handlers.NewManagementInterfaceHandler(store, useCaseRegistry.GetManagementUiDataUseCase()),
+			Handler: handlers.NewManagementInterfaceHandler(env.Management, store, useCaseRegistry.GetManagementUiDataUseCase()),
 		},
 		{
 			Path:    StaticPath,
