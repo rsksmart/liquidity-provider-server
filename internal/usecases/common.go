@@ -173,3 +173,23 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 	}
 	return signedConfig, nil
 }
+
+// ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
+func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
+	if err != nil {
+		return err
+	}
+	utxos := transaction.UTXOsToAddress(address)
+	if len(utxos) == 0 {
+		err = fmt.Errorf("no UTXO directed to address %s present in transaction", address)
+		return errors.Join(TxBelowMinimumError, err)
+	}
+	for _, utxo := range utxos {
+		if minLockTxValueInWei.Cmp(utxo) > 0 {
+			err = errors.New("not all the UTXOs are above the min lock value")
+			return errors.Join(TxBelowMinimumError, err)
+		}
+	}
+	return nil
+}
