@@ -14,7 +14,7 @@ func TestNewUpdateProviderArgs(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, invalidResult)
 
-		validResult, err := NewUpdateProviderArgs("name", "https://example.com", "regtest")
+		validResult, err := NewUpdateProviderArgs("name", "https://url.com", "regtest")
 		require.NoError(t, err)
 		assert.NotEmpty(t, validResult)
 	})
@@ -89,7 +89,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 	ReadUpdateProviderScriptInput(scriptInput)
 	t.Run("should parse with aws secret source", func(t *testing.T) {
 		require.NoError(t, flag.Set("network", "regtest"))
-		require.NoError(t, flag.Set("provider-url", "https://example.com"))
+		require.NoError(t, flag.Set("provider-url", "https://provider.com"))
 		require.NoError(t, flag.Set("provider-name", "a name"))
 		require.NoError(t, flag.Set("secret-src", "aws"))
 		require.NoError(t, flag.Set("aws-endpoint", "http://localhost:1122"))
@@ -113,12 +113,12 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "regtest", env.Btc.Network)
 
 		assert.Equal(t, "a name", scriptInput.ProviderName)
-		assert.Equal(t, "https://example.com", scriptInput.ProviderUrl)
+		assert.Equal(t, "https://provider.com", scriptInput.ProviderUrl)
 	})
 
 	t.Run("should parse with env secret source", func(t *testing.T) {
 		require.NoError(t, flag.Set("network", "testnet"))
-		require.NoError(t, flag.Set("provider-url", "https://example2.com"))
+		require.NoError(t, flag.Set("provider-url", "https://provider2.com"))
 		require.NoError(t, flag.Set("provider-name", "a name 2"))
 		require.NoError(t, flag.Set("secret-src", "env"))
 		require.NoError(t, flag.Set("rsk-endpoint", "http://localhost:5566"))
@@ -141,6 +141,6 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "testnet", env.Btc.Network)
 
 		assert.Equal(t, "a name 2", scriptInput.ProviderName)
-		assert.Equal(t, "https://example2.com", scriptInput.ProviderUrl)
+		assert.Equal(t, "https://provider2.com", scriptInput.ProviderUrl)
 	})
 }
