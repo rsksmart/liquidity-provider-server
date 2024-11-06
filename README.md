@@ -52,6 +52,11 @@ mentioned before are the minimal dependencies, but in order to run a fully funct
 - **PegIn**: process of converting BTC into RBTC. [Here](docs/diagrams/PegIn.mmd) is a diagram with a detailed view of the process.
 - **PegOut**: process of converting RBTC into BTC. [Here](docs/diagrams/PegOut.mmd) is a diagram with a detailed view of the process.
 
+## LPS Utilities
+The [cmd/utils](cmd/utils) directory contains scripts with different utilities for the liquidity providers. You can either run them directly
+with `go run` or build them with `make utils`. You can run the scripts with the `--help` flag to see the available options. The current utilities are:
+- **update_provider_url**: updates the URL of a liquidity provider provided when the discovery function of the Liquidity Bridge Contract is executed.
+
 ### More information
 If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).
 

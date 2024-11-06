@@ -69,6 +69,11 @@ func (args UpdateProviderArgs) Url() string {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "This script is used to update the provider information displayed in the Liquidity Bridge Contract when the discovery function is executed.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	scriptInput := new(UpdateProviderScriptInput)
 	ReadUpdateProviderScriptInput(scriptInput)
 	env, err := ParseUpdateProviderScriptInput(scriptInput, term.ReadPassword)
