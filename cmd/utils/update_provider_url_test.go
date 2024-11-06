@@ -41,10 +41,10 @@ func TestUpdateProviderArgs_Validate(t *testing.T) {
 			network     string
 			expectError bool
 		}{
-			{url: "http://example.com", network: "testnet", expectError: true},
-			{url: "https://example.com", network: "testnet", expectError: false},
-			{url: "http://example.com", network: "mainnet", expectError: true},
-			{url: "https://example.com", network: "mainnet", expectError: false},
+			{url: "http://example11.com", network: "testnet", expectError: true},
+			{url: "https://example22.com", network: "testnet", expectError: false},
+			{url: "http://example33.com", network: "mainnet", expectError: true},
+			{url: "https://example44.com", network: "mainnet", expectError: false},
 		}
 		for _, tc := range testCases {
 			args, err := NewUpdateProviderArgs("name", tc.url, tc.network)
@@ -71,11 +71,11 @@ func TestUpdateProviderArgs_Url(t *testing.T) {
 		network string
 		result  string
 	}{
-		{url: "http://example.com/", network: "regtest", result: "http://example.com"},
-		{url: "https://example.com/path", network: "testnet", result: "https://example.com"},
-		{url: "https://example.com:1234", network: "mainnet", result: "https://example.com:1234"},
-		{url: "https://example.com:1234/", network: "testnet", result: "https://example.com:1234"},
-		{url: "https://example.com:1234/path", network: "testnet", result: "https://example.com:1234"},
+		{url: "http://example1.com/", network: "regtest", result: "http://example1.com"},
+		{url: "https://example2.com/path", network: "testnet", result: "https://example2.com"},
+		{url: "https://example3.com:1234", network: "mainnet", result: "https://example3.com:1234"},
+		{url: "https://example4.com:1234/", network: "testnet", result: "https://example4.com:1234"},
+		{url: "https://example5.com:1234/path", network: "testnet", result: "https://example5.com:1234"},
 	}
 	for _, tc := range testCases {
 		args, err := NewUpdateProviderArgs("name", tc.url, tc.network)
