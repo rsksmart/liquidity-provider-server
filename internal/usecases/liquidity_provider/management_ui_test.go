@@ -104,4 +104,26 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
+	t.Run("Return error when provider doesn't exists", func(t *testing.T) {
+		lbcMock := &mocks.LbcMock{}
+		lpMock := &mocks.ProviderMock{}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		fullConfig := liquidity_provider.FullConfiguration{
+			General: lp.DefaultGeneralConfiguration(),
+			Pegin:   lp.DefaultPeginConfiguration(),
+			Pegout:  lp.DefaultPegoutConfiguration(),
+		}
+		lbcMock.On("GetProviders").Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
+		lpMock.On("GeneralConfiguration", test.AnyCtx).Return(fullConfig.General).Once()
+		lpMock.On("PeginConfiguration", test.AnyCtx).Return(fullConfig.Pegin).Once()
+		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
+		lpMock.On("RskAddress").Return("nonExistingAddress").Once()
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		result, err := useCase.Run(context.Background(), true)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lpRepository.AssertExpectations(t)
+		lpMock.AssertExpectations(t)
+		lbcMock.AssertExpectations(t)
+	})
 }

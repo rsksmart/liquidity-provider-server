@@ -385,6 +385,68 @@ func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 	})
 }
 
+func TestBitcoinTransactionInformation_UTXOsToAddress(t *testing.T) {
+	address := "2N1DB2ZfVwWUSm8rxnDpo879awEvwFwtHL9"
+	cases := test.Table[blockchain.BitcoinTransactionInformation, []*entities.Wei]{
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{"2N1nBfGejU5iLEqAS42fBKJ1Dw6mw4su8eQ": {entities.NewWei(100)}},
+		},
+			Result: []*entities.Wei{},
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(500), entities.NewWei(300)}},
+		},
+			Result: []*entities.Wei{entities.NewWei(500), entities.NewWei(300)},
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs: map[string][]*entities.Wei{
+				"2MuqWCdj3sepKF4i7j8WvBgMoavTxavxj14": {entities.NewWei(100), entities.NewWei(500)},
+				address:                               {entities.NewWei(500)},
+			},
+		},
+			Result: []*entities.Wei{entities.NewWei(500)},
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs: map[string][]*entities.Wei{
+				"2N991MLUtYHfHzLQgtNfK9NtUVUSEe9Ncaf": {entities.NewWei(400)},
+				address:                               {entities.NewWei(200), entities.NewWei(100)},
+				"mpZQG3z2iWoMAWKQdJBmAan8hS8q1Kd1ai":  {entities.NewWei(800), entities.NewWei(1000)},
+			},
+		},
+			Result: []*entities.Wei{entities.NewWei(200), entities.NewWei(100)},
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs: map[string][]*entities.Wei{
+				"n3EanzRxjg2VyQRrnyetiVfNzjz7736RBD": {entities.NewWei(4000)},
+				address:                              {entities.NewWei(2000)},
+			},
+		},
+			Result: []*entities.Wei{entities.NewWei(2000)},
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(3000)}},
+		},
+			Result: []*entities.Wei{entities.NewWei(3000)},
+		},
+	}
+
+	test.RunTable(t, cases, func(value blockchain.BitcoinTransactionInformation) []*entities.Wei {
+		return value.UTXOsToAddress(address)
+	})
+}
+
 func TestIsSupportedBtcAddress(t *testing.T) {
 	var supported []string
 	supported = append(supported, p2pkhTestnetAddresses...)
