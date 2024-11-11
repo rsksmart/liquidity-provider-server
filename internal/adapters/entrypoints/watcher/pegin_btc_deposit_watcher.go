@@ -172,8 +172,9 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 	defer watcher.quotesMutex.Unlock()
 
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
-		if err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
+		if watchedQuote, err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
 			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
+			return
 		}
 	}
 
@@ -195,7 +196,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 	}
 }
 
-func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
+func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) (quote.WatchedPeginQuote, error) {
 	var err error
 	var block blockchain.BitcoinBlockInformation
 	var txs []blockchain.BitcoinTransactionInformation
@@ -203,28 +204,28 @@ func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.C
 
 	depositAddress := watchedQuote.RetainedQuote.DepositAddress
 	if txs, err = watcher.btcWallet.GetTransactions(depositAddress); err != nil {
-		return err
+		return quote.WatchedPeginQuote{}, err
 	}
 
 	for _, tx := range txs {
 		log.Info(peginBtcDepositWatcherLog("Checking transaction %s for quote %s", tx.Hash, watchedQuote.RetainedQuote.QuoteHash))
 		if block, err = watcher.rpc.Btc.GetTransactionBlockInfo(tx.Hash); err != nil {
-			return err
+			return quote.WatchedPeginQuote{}, err
 		}
 		onTime := watchedQuote.PeginQuote.ExpireTime().After(block.Time)
 		correctAmount := tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
 		if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && onTime && correctAmount {
 			if updatedQuote, err = watcher.updatePeginDepositUseCase.Run(ctx, watchedQuote, block, tx); err != nil {
-				return err
+				return quote.WatchedPeginQuote{}, err
 			} else {
 				watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = updatedQuote
-				return nil
+				return updatedQuote, nil
 			}
 		} else {
 			watcher.logRejectReason(block, tx, watchedQuote)
 		}
 	}
-	return nil
+	return watchedQuote, nil
 }
 
 func (watcher *PeginDepositAddressWatcher) handleDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
