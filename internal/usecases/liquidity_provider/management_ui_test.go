@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -113,7 +114,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 			Pegin:   lp.DefaultPeginConfiguration(),
 			Pegout:  lp.DefaultPegoutConfiguration(),
 		}
-		lbcMock.On("GetProviders").Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
+		lbcMock.On("GetProvider", mock.Anything).Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
 		lpMock.On("GeneralConfiguration", test.AnyCtx).Return(fullConfig.General).Once()
 		lpMock.On("PeginConfiguration", test.AnyCtx).Return(fullConfig.Pegin).Once()
 		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
