@@ -109,7 +109,7 @@ func (rpc *bitcoindRpc) GetRawTransaction(hash string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err = rawTx.MsgTx().Serialize(&buf); err != nil {
+	if err = rawTx.MsgTx().SerializeNoWitness(&buf); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -122,12 +122,7 @@ func (rpc *bitcoindRpc) GetPartialMerkleTree(hash string) ([]byte, error) {
 	}
 
 	block := btcutil.NewBlock(rawBlock)
-	for _, t := range block.Transactions() {
-		if t.Hash().String() == hash && t.HasWitness() {
-			return serializePartialMerkleTree(parsedTxHash, block, true)
-		}
-	}
-	return serializePartialMerkleTree(parsedTxHash, block, false)
+	return serializePartialMerkleTree(parsedTxHash, block)
 }
 
 func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
@@ -139,8 +134,6 @@ func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
 }
 
 func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranch, error) {
-	var wid *chainhash.Hash
-	isWitness := false
 	rawBlock, parsedTxHash, err := rpc.getTxBlock(txHash)
 	if err != nil {
 		return blockchain.MerkleBranch{}, err
@@ -149,16 +142,11 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	block := btcutil.NewBlock(rawBlock)
 	txs := make([]*btcutil.Tx, 0)
 	for _, t := range block.MsgBlock().Transactions {
-		parsedTx := btcutil.NewTx(t)
-		if parsedTx.Hash().String() == txHash && parsedTx.HasWitness() {
-			isWitness = true
-			wid = parsedTx.WitnessHash()
-		}
-		txs = append(txs, parsedTx)
+		txs = append(txs, btcutil.NewTx(t))
 	}
 
 	var cleanStore []*chainhash.Hash
-	store := merkle.BuildMerkleTreeStore(txs, isWitness)
+	store := merkle.BuildMerkleTreeStore(txs, false)
 	for _, node := range store {
 		if node != nil {
 			cleanStore = append(cleanStore, node)
@@ -166,7 +154,7 @@ func (rpc *bitcoindRpc) BuildMerkleBranch(txHash string) (blockchain.MerkleBranc
 	}
 
 	index := slices.IndexFunc(cleanStore, func(h *chainhash.Hash) bool {
-		return h != nil && (h.IsEqual(parsedTxHash) || h.IsEqual(wid))
+		return h != nil && h.IsEqual(parsedTxHash)
 	})
 	if index == -1 {
 		return blockchain.MerkleBranch{}, fmt.Errorf("transaction %s not found in merkle tree", txHash)
@@ -226,7 +214,7 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 		}
 		txs = append(txs, btcutil.NewTx(tx))
 	}
-	pmt, err := serializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block), false)
+	pmt, err := serializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
 	if err != nil {
 		return blockchain.BtcCoinbaseTransactionInformation{}, err
 	}
