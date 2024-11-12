@@ -173,6 +173,8 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 	return signedConfig, nil
 }
 
+// RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
+// IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
 func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
