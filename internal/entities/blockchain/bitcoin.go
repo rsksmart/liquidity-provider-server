@@ -97,6 +97,14 @@ func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entiti
 	return total
 }
 
+func (tx *BitcoinTransactionInformation) UTXOsToAddress(address string) []*entities.Wei {
+	utxos, ok := tx.Outputs[address]
+	if !ok {
+		return []*entities.Wei{}
+	}
+	return utxos
+}
+
 type BitcoinBlockInformation struct {
 	Hash   [32]byte
 	Height *big.Int
