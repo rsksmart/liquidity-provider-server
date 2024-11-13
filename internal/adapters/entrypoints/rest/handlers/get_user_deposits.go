@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
 
 // NewGetUserQuotesHandler
@@ -16,8 +18,19 @@ import (
 func NewGetUserQuotesHandler(useCase *pegout.GetUserDepositsUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		address := req.URL.Query().Get("address")
+
 		if address == "" {
 			http.Error(w, "address parameter is required", http.StatusBadRequest)
+			return
+		}
+
+		if !blockchain.IsRskAddress(address) {
+			details := map[string]any{
+				"address": address,
+				"error":   "invalid address format",
+			}
+			jsonErr := rest.NewErrorResponseWithDetails("invalid request", details, true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
 

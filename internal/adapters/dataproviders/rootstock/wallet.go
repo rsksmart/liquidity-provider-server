@@ -33,7 +33,7 @@ func (wallet *RskWalletImpl) Address() common.Address {
 func (wallet *RskWalletImpl) Sign(address common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
 	var chainId big.Int
 	if !bytes.Equal(address[:], wallet.account.Account.Address[:]) {
-		return nil, fmt.Errorf("provider address %v is incorrect", address.String())
+		return nil, fmt.Errorf("provider address %v is incorrect", address.Hex())
 	}
 	chainId.SetUint64(wallet.chainId)
 	return wallet.account.Keystore.SignTx(*wallet.account.Account, transaction, &chainId)

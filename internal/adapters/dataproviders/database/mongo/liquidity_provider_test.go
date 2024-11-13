@@ -75,11 +75,12 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegin")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegin configuration read successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(peginTestConfig, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetPeginConfiguration(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, peginTestConfig, result)
@@ -109,11 +110,12 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegout")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegout configuration read successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(pegoutTestConfig, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetPegoutConfiguration(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, pegoutTestConfig, result)
@@ -143,11 +145,12 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("general")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("general configuration read successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: {Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false} Signature:general signature Hash:general hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(generalTestConfig, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetGeneralConfiguration(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, generalTestConfig, result)
@@ -212,6 +215,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("pegin")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("pegin configuration upserted successfully", func(t *testing.T) {
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash} Name:pegin}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PeginConfiguration]{
@@ -219,7 +223,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 			Name:   configName,
 		}, options.Replace().SetUpsert(true)).
 			Return(nil, nil).Once()
-		defer assertDbInteractionLog(t, mongo.Insert)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertPeginConfiguration(context.Background(), *peginTestConfig)
 		require.NoError(t, err)
 	})
@@ -238,6 +242,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("pegout")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("pegout configuration upserted successfully", func(t *testing.T) {
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash} Name:pegout}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PegoutConfiguration]{
@@ -245,7 +250,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 			Name:   configName,
 		}, options.Replace().SetUpsert(true)).
 			Return(nil, nil).Once()
-		defer assertDbInteractionLog(t, mongo.Insert)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertPegoutConfiguration(context.Background(), *pegoutTestConfig)
 		require.NoError(t, err)
 	})
@@ -264,6 +269,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("general")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("general configuration upserted successfully", func(t *testing.T) {
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false} Signature:general signature Hash:general hash} Name:general}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.GeneralConfiguration]{
@@ -271,7 +277,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 			Name:   configName,
 		}, options.Replace().SetUpsert(true)).
 			Return(nil, nil).Once()
-		defer assertDbInteractionLog(t, mongo.Insert)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertGeneralConfiguration(context.Background(), *generalTestConfig)
 		require.NoError(t, err)
 	})

@@ -72,7 +72,7 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, errors.Is(err, blockchain.WaitingForBridgeError))
 	}
 
-	if retainedQuote, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
+	if _, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
 	}
 	return nil
