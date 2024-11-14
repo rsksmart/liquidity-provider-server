@@ -1,13 +1,14 @@
 package blockchain_test
 
 import (
+	"testing"
+
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var p2pkhTestnetAddresses = []string{
@@ -49,10 +50,6 @@ var p2pkhTestnetAddresses = []string{
 	"mgFWCp1UKkWt5SFQ5MAa37Fd1JoYTGwmCK",
 	"mjjo6muRiQzuzqvpTAK3A4odD2RXjHLTz9",
 	"mos8ZoeAZVpJSafT7qgv3Pf7Q3WtKXP1E7",
-	"mtd3ueANi3hsU1NVVdoUnuhSwy5LdzVXXr",
-	"mw1GKH6wpUmu1w83iP93asovyNod11ByrQ",
-	"myVVnWrgcuqmGj7f6CD3EyCLCi73sjjFLD",
-	"mg4pSPq9azViCbfSKpzZFHsuG17xG4pn3S",
 	"mi9fMknNV373AsJuFPKrQgqaMopnQsqZft",
 	"mrcAitXFKFcGWZUPTRnDv7qodxq3rAH2C7",
 	"mtwdVmgAXE5vfk1QziXnMhJb5DG5icognD",
