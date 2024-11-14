@@ -5,13 +5,14 @@ import (
 	"encoding/base32"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"path"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"path"
 )
 
 const defaultPasswordBytes = 64
@@ -41,8 +42,8 @@ func (useCase *GenerateDefaultCredentialsUseCase) Run(ctx context.Context, targe
 		return usecases.WrapUseCaseError(usecases.DefaultCredentialsId, err)
 	}
 	stringPassword := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(passwordBytes)
-	passwordFile := path.Join(targetDir, "management_password.txt")
-	err = os.WriteFile(passwordFile, []byte(stringPassword), 0600)
+	pathToFile := path.Join(targetDir, "management_password.txt")
+	err = os.WriteFile(pathToFile, []byte(stringPassword), 0600)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.DefaultCredentialsId, fmt.Errorf("error writing password file: %w", err))
 	}
@@ -66,6 +67,6 @@ func (useCase *GenerateDefaultCredentialsUseCase) Run(ctx context.Context, targe
 		},
 	})
 	log.Infof("There was no password detected in the database. A new password has been generated and saved in the file %s."+
-		"Please keep this file safe. The first time you open the management interface, you will be asked to change this password.", passwordFile)
+		"Please keep this file safe. The first time you open the management interface, you will be asked to change this password.", pathToFile)
 	return nil
 }
