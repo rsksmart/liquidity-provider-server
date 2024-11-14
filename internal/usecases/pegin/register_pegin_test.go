@@ -2,13 +2,10 @@ package pegin_test
 
 import (
 	"context"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -92,6 +89,7 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	bridge.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	mutex.AssertExpectations(t)
+	bridge.AssertNotCalled(t, "RegisterBtcCoinbaseTransaction")
 }
 
 func TestRegisterPeginUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
@@ -492,67 +490,4 @@ func registerPeginUpdateErrorSetups(t *testing.T, registerPeginTx string, retain
 			})).Return().Once()
 		},
 	}
-}
-
-func TestRegisterPeginUseCase_Run_RegisterCoinbase(t *testing.T) {
-	retainedPeginQuote := quote.RetainedPeginQuote{
-		QuoteHash:      hex.EncodeToString(utils.MustGetRandomBytes(32)),
-		Signature:      hex.EncodeToString(utils.MustGetRandomBytes(32)),
-		DepositAddress: test.AnyAddress, RequiredLiquidity: entities.NewWei(1500),
-		State:         quote.PeginStateCallForUserSucceeded,
-		UserBtcTxHash: userBtcTx, CallForUserTxHash: cfuTx,
-	}
-	lbc := new(mocks.LbcMock)
-	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	eventBus := new(mocks.EventBusMock)
-	bridge := new(mocks.BridgeMock)
-	btc := new(mocks.BtcRpcMock)
-	mutex := new(mocks.MutexMock)
-	coinbaseInfo := blockchain.BtcCoinbaseTransactionInformation{BlockHash: utils.To32Bytes(utils.MustGetRandomBytes(32))}
-	// Mocks that don't change per test
-	mutex.On("Lock").Return().Times(3)
-	mutex.On("Unlock").Return().Times(3)
-	quoteRepository.EXPECT().GetQuote(test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Times(3)
-	quoteRepository.EXPECT().UpdateRetainedQuote(test.AnyCtx, mock.Anything).Return(nil).Twice()
-	btc.On("GetRawTransaction", retainedPeginQuote.UserBtcTxHash).Return(btcRawTxMock, nil).Times(3)
-	btc.On("GetPartialMerkleTree", retainedPeginQuote.UserBtcTxHash).Return(pmtMock, nil).Times(3)
-	btc.On("GetTransactionBlockInfo", retainedPeginQuote.UserBtcTxHash).Return(btcBlockInfoMock, nil).Times(3)
-	bridge.On("GetRequiredTxConfirmations").Return(uint64(10)).Times(3)
-	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
-		Hash: retainedPeginQuote.UserBtcTxHash, Confirmations: 10, HasWitness: true,
-		Outputs: map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(1)}},
-	}, nil).Times(3)
-	btc.On("GetCoinbaseInformation", retainedPeginQuote.UserBtcTxHash).Return(coinbaseInfo, nil).Times(3)
-	// once as it'll be called only on 1st test
-	lbc.On("RegisterPegin", mock.Anything).Return(registerPeginTx, nil).Once()
-
-	useCase := pegin.NewRegisterPeginUseCase(blockchain.RskContracts{Lbc: lbc, Bridge: bridge}, quoteRepository, eventBus, blockchain.Rpc{Btc: btc}, mutex)
-	t.Run("Should call RegisterCoinbaseTransaction", func(t *testing.T) {
-		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return(test.AnyHash, nil).Once()
-		eventBus.On("Publish", mock.MatchedBy(func(e quote.RegisterPeginCompletedEvent) bool {
-			return e.Error == nil
-		})).Return().Once()
-		err := useCase.Run(context.Background(), retainedPeginQuote)
-		require.NoError(t, err)
-	})
-	t.Run("Should return recoverable error if tx wasn't registered due to waiting for the bridge", func(t *testing.T) {
-		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return("", blockchain.WaitingForBridgeError).Once()
-		err := useCase.Run(context.Background(), retainedPeginQuote)
-		require.Error(t, err)
-		require.NotErrorIs(t, err, usecases.NonRecoverableError)
-	})
-	t.Run("Should return non recoverable error if tx wasn't registered due to any other error", func(t *testing.T) {
-		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return("", assert.AnError).Once()
-		eventBus.On("Publish", mock.MatchedBy(func(e quote.RegisterPeginCompletedEvent) bool {
-			return errors.Is(e.Error, usecases.NonRecoverableError)
-		})).Return().Once()
-		err := useCase.Run(context.Background(), retainedPeginQuote)
-		require.ErrorIs(t, err, usecases.NonRecoverableError)
-	})
-	mutex.AssertExpectations(t)
-	lbc.AssertExpectations(t)
-	bridge.AssertExpectations(t)
-	btc.AssertExpectations(t)
-	quoteRepository.AssertExpectations(t)
-	eventBus.AssertExpectations(t)
 }

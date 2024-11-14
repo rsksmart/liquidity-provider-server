@@ -43,7 +43,6 @@ func NewRefundPegoutUseCase(
 func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	var params blockchain.RefundPegoutParams
 	var pegoutQuote *quote.PegoutQuote
-	var lpBtcTransaction blockchain.BitcoinTransactionInformation
 	var err error
 
 	if retainedQuote.State != quote.PegoutStateSendPegoutSucceeded {
@@ -56,7 +55,7 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
 	}
 
-	if lpBtcTransaction, err = useCase.getLpBtcTransactionIfValid(ctx, *pegoutQuote, retainedQuote); err != nil {
+	if err = useCase.validateBtcTransaction(ctx, *pegoutQuote, retainedQuote); err != nil {
 		return err
 	}
 
@@ -67,10 +66,6 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
-
-	if err = usecases.RegisterCoinbaseTransaction(useCase.rpc.Btc, useCase.contracts.Bridge, lpBtcTransaction); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, errors.Is(err, blockchain.WaitingForBridgeError))
-	}
 
 	if _, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
@@ -164,17 +159,17 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	return retainedQuote, nil
 }
 
-func (useCase *RefundPegoutUseCase) getLpBtcTransactionIfValid(
+func (useCase *RefundPegoutUseCase) validateBtcTransaction(
 	ctx context.Context,
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
-) (blockchain.BitcoinTransactionInformation, error) {
+) error {
 	var txInfo blockchain.BitcoinTransactionInformation
 	var err error
 	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.LpBtcTxHash); err != nil {
-		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if txInfo.Confirmations < uint64(pegoutQuote.TransferConfirmations) {
-		return blockchain.BitcoinTransactionInformation{}, useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
 	}
-	return txInfo, nil
+	return nil
 }
