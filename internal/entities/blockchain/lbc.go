@@ -99,6 +99,7 @@ type LiquidityBridgeContract interface {
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
 	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
+	UpdateProvider(name, url string) (string, error)
 }
 
 type FeeCollector interface {

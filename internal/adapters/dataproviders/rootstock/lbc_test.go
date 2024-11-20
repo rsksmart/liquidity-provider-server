@@ -473,6 +473,55 @@ func TestLiquidityBridgeContractImpl_SetProviderStatus(t *testing.T) {
 	})
 }
 
+func TestLiquidityBridgeContractImpl_UpdateProvider(t *testing.T) {
+	const (
+		name = "test name"
+		url  = "http://test.com"
+	)
+
+	lbcMock := &mocks.LbcAdapterMock{}
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(mockClient),
+		test.AnyAddress,
+		lbcMock,
+		signerMock,
+		rootstock.RetryParams{},
+	)
+	t.Run("Success", func(t *testing.T) {
+		tx := prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(tx, nil).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.NoError(t, err)
+		assert.Equal(t, tx.Hash().String(), result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Error handling when sending updateProvider tx", func(t *testing.T) {
+		_ = prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(nil, assert.AnError).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+
+		_ = prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(nil, nil).Once()
+		result, err = lbc.UpdateProvider(name, url)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (updateProvider tx reverted)", func(t *testing.T) {
+		tx := prepareTxMocks(mockClient, signerMock, false)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(tx, nil).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.ErrorContains(t, err, "update provider error")
+		lbcMock.AssertExpectations(t)
+		assert.Equal(t, tx.Hash().String(), result)
+	})
+}
+
 func TestLiquidityBridgeContractImpl_GetCollateral(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})

@@ -595,6 +595,23 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 	return registerEvent.Id.Int64(), nil
 }
 
+func (lbc *liquidityBridgeContractImpl) UpdateProvider(name, url string) (string, error) {
+	opts := &bind.TransactOpts{From: lbc.signer.Address(), Signer: lbc.signer.Sign}
+	receipt, err := awaitTx(lbc.client, "UpdateProvider", func() (*geth.Transaction, error) {
+		return lbc.contract.UpdateProvider(opts, name, url)
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("update provider error: %w", err)
+	} else if receipt == nil {
+		return "", errors.New("update provider error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("update provider error: transaction reverted (%s)", txHash)
+	}
+	return receipt.TxHash.String(), nil
+}
+
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPeginQuote. All BTC address fields support all address types
 // except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, error) {

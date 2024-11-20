@@ -151,3 +151,8 @@ func (m *LbcMock) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
 	args := m.Called(quoteHash)
 	return args.Bool(0), args.Error(1)
 }
+
+func (m *LbcMock) UpdateProvider(name, url string) (string, error) {
+	args := m.Called(name, url)
+	return args.String(0), args.Error(1)
+}
