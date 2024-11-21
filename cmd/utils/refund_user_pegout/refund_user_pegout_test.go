@@ -11,6 +11,14 @@ import (
 	"golang.org/x/term"
 )
 
+const (
+	testRskEndpoint      = "http://localhost:4444"
+	testQuoteHash        = "d93f58c82100a6cee4f19ac505c11d51b52cafe220f7f1944b70496f33d277fc"
+	testAwsLocalEndpoint = "http://localhost:4566"
+	testNetwork          = "regtest"
+	testKeystoreFile     = "./keystore.json"
+)
+
 func TestReadRefundUserPegOutScriptInput(t *testing.T) {
 	t.Run("should set flag values", func(t *testing.T) {
 		// Reset flags before test
@@ -21,19 +29,19 @@ func TestReadRefundUserPegOutScriptInput(t *testing.T) {
 
 		// Set test values
 		err := flag.CommandLine.Parse([]string{
-			"-network", "regtest",
-			"-quote-hash", "d93f58c82100a6cee4f19ac505c11d51b52cafe220f7f1944b70496f33d277fc",
-			"-rsk-endpoint", "http://localhost:4444",
+			"-network", testNetwork,
+			"-quote-hash", testQuoteHash,
+			"-rsk-endpoint", testRskEndpoint,
 			"-secret-src", "env",
-			"-keystore-file", "./keystore.json",
+			"-keystore-file", testKeystoreFile,
 		})
 		require.NoError(t, err)
 
-		assert.Equal(t, "regtest", scriptInput.Network)
-		assert.Equal(t, "d93f58c82100a6cee4f19ac505c11d51b52cafe220f7f1944b70496f33d277fc", scriptInput.QuoteHashBytes)
-		assert.Equal(t, "http://localhost:4444", scriptInput.RskEndpoint)
+		assert.Equal(t, testNetwork, scriptInput.Network)
+		assert.Equal(t, testQuoteHash, scriptInput.QuoteHashBytes)
+		assert.Equal(t, testRskEndpoint, scriptInput.RskEndpoint)
 		assert.Equal(t, "env", scriptInput.SecretSource)
-		assert.Equal(t, "./keystore.json", scriptInput.KeystoreFile)
+		assert.Equal(t, testKeystoreFile, scriptInput.KeystoreFile)
 	})
 }
 
@@ -53,34 +61,33 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 
 	t.Run("should parse valid input", func(t *testing.T) {
 		scriptInput := &RefundUserPegOutScriptInput{
-			Network:          "regtest",
-			QuoteHashBytes:   "d93f58c82100a6cee4f19ac505c11d51b52cafe220f7f1944b70496f33d277fc",
-			RskEndpoint:      "http://localhost:4444",
+			Network:          testNetwork,
+			QuoteHashBytes:   testQuoteHash,
+			RskEndpoint:      testRskEndpoint,
 			SecretSource:     "aws",
-			AwsLocalEndpoint: "http://localhost:4566",
+			AwsLocalEndpoint: testAwsLocalEndpoint,
 		}
 
 		env, err := ParseRefundUserPegOutScriptInput(scriptInput, func(fd int) ([]byte, error) {
 			return []byte("password"), nil
 		})
 		require.NoError(t, err)
-		assert.Equal(t, "regtest", env.LpsStage)
-		assert.Equal(t, "http://localhost:4444", env.Rsk.Endpoint)
+		assert.Equal(t, testNetwork, env.LpsStage)
+		assert.Equal(t, testRskEndpoint, env.Rsk.Endpoint)
 		assert.Equal(t, "aws", env.SecretSource)
-		assert.Equal(t, "http://localhost:4566", env.AwsLocalEndpoint)
+		assert.Equal(t, testAwsLocalEndpoint, env.AwsLocalEndpoint)
 	})
 }
 
 func TestRefundUserPegOut(t *testing.T) {
 	t.Run("should execute refund user peg out successfully", func(t *testing.T) {
 		lbc := &mocks.LbcMock{}
-		quoteHash := "d93f58c82100a6cee4f19ac505c11d51b52cafe220f7f1944b70496f33d277fc"
 		expectedTxHash := test.AnyHash
 
 		// Setup mock expectations
-		lbc.On("RefundUserPegOut", quoteHash).Return(expectedTxHash, nil)
+		lbc.On("RefundUserPegOut", testQuoteHash).Return(expectedTxHash, nil)
 
-		txHash, err := ExecuteRefundUserPegOut(lbc, quoteHash)
+		txHash, err := ExecuteRefundUserPegOut(lbc, testQuoteHash)
 		require.NoError(t, err)
 		assert.Equal(t, expectedTxHash, txHash)
 
