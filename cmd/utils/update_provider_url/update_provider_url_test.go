@@ -87,9 +87,9 @@ func TestUpdateProviderArgs_Url(t *testing.T) {
 }
 
 func TestParseUpdateProviderScriptInput(t *testing.T) {
-	scriptInput := new(UpdateProviderScriptInput)
-	ReadUpdateProviderScriptInput(scriptInput)
 	t.Run("should parse with aws secret source", func(t *testing.T) {
+		scriptInput := new(UpdateProviderScriptInput)
+		ReadUpdateProviderScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "regtest"))
 		require.NoError(t, flag.Set("provider-url", "https://provider.com"))
 		require.NoError(t, flag.Set("provider-name", "a name"))
@@ -118,7 +118,10 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "https://provider.com", scriptInput.ProviderUrl)
 	})
 
+	test.ResetFlagSet()
 	t.Run("should parse with env secret source", func(t *testing.T) {
+		scriptInput := new(UpdateProviderScriptInput)
+		ReadUpdateProviderScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "testnet"))
 		require.NoError(t, flag.Set("provider-url", "https://provider2.com"))
 		require.NoError(t, flag.Set("provider-name", "a name 2"))
@@ -126,9 +129,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		require.NoError(t, flag.Set("rsk-endpoint", "http://localhost:5566"))
 		require.NoError(t, flag.Set("lbc-address", "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6"))
 		require.NoError(t, flag.Set("keystore-file", "path/to/a/file"))
-		env, err := scriptInput.ToEnv(func(fd int) ([]byte, error) {
-			return []byte("secret-password-123"), nil
-		})
+		env, err := scriptInput.ToEnv(func(fd int) ([]byte, error) { return []byte("secret-password-123"), nil })
 		require.NoError(t, err)
 		assert.Equal(t, "testnet", env.LpsStage)
 		assert.Equal(t, "env", env.SecretSource)

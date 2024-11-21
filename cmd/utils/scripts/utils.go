@@ -14,6 +14,7 @@ import (
 	"os"
 )
 
+type ParseFunc = func()
 type PasswordReader = func(int) ([]byte, error)
 type FileReader = func(string) ([]byte, error)
 type RskClientFactory = func(context.Context, environment.RskEnv) (*rootstock.RskClient, error)

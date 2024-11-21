@@ -1,4 +1,4 @@
-.PHONY: test all clean
+.PHONY: test all clean utils
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -59,6 +59,12 @@ clean:
 	rm -rf build $(TEMPORAL_COVER_FILE)
 
 utils: download
-	mkdir -p utils && cd utils
-	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url.go
-	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin.go
+	rm -rf utils
+	mkdir -p utils
+	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url/update_provider_url.go
+	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
+
+utils-docker:
+	rm -rf utils
+	mkdir -p utils
+	docker build -f docker-compose/utils/Dockerfile --output=utils .

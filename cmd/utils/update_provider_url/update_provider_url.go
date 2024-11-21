@@ -56,7 +56,7 @@ func main() {
 	scriptInput := new(UpdateProviderScriptInput)
 	ReadUpdateProviderScriptInput(scriptInput)
 
-	err := ParseUpdateProviderScriptInput(scriptInput)
+	err := ParseUpdateProviderScriptInput(flag.Parse, scriptInput)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error parsing input", err)
 	}
@@ -85,8 +85,8 @@ func main() {
 	fmt.Println("Update provider executed successfully. Transaction hash: ", txHash)
 }
 
-func ParseUpdateProviderScriptInput(input *UpdateProviderScriptInput) error {
-	flag.Parse()
+func ParseUpdateProviderScriptInput(parseFunc scripts.ParseFunc, input *UpdateProviderScriptInput) error {
+	parseFunc()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(input); err != nil {
 		return fmt.Errorf("invalid input: %w", err)

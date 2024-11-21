@@ -56,6 +56,8 @@ mentioned before are the minimal dependencies, but in order to run a fully funct
 The [cmd/utils](cmd/utils) directory contains scripts with different utilities for the liquidity providers. You can either run them directly
 with `go run` or build them with `make utils`. You can run the scripts with the `--help` flag to see the available options. The current utilities are:
 - **update_provider_url**: updates the URL of a liquidity provider provided when the discovery function of the Liquidity Bridge Contract is executed.
+- **register_pegin**: register a PegIn transaction within the Liquidity Bridge Contract. Most times, this script is only required to execute refunds
+on special cases. This script requires an input file whose structure can be found [the input-example.json](cmd/utils/register_pegin/input-example.json) file.
 
 ### More information
 If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).

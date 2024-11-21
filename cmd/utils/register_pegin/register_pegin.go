@@ -61,7 +61,7 @@ func main() {
 	const errorCode = 2
 	var err error
 	scripts.SetUsageMessage(
-		"This script is used to register a Peg In in the Liquidity Bridge Contract." +
+		"This script is used to register a PegIn transaction in the Liquidity Bridge Contract." +
 			" It can be used to refund a Peg In if something went wrong during the Flyover Protocol process." +
 			" In order to execute such refund, an input file with the details of the quote, the LP signature of the quote," +
 			" and the hash of the Bitcoin transaction to be registered must be provided.",
@@ -71,7 +71,7 @@ func main() {
 	scriptInput := new(RegisterPegInScriptInput)
 	ReadRegisterPegInScriptInput(scriptInput)
 
-	parsedInput, err := ParseRegisterPegInScriptInput(scriptInput, os.ReadFile)
+	parsedInput, err := ParseRegisterPegInScriptInput(flag.Parse, scriptInput, os.ReadFile)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error parsing input", err)
 	}
@@ -106,14 +106,14 @@ func ReadRegisterPegInScriptInput(scriptInput *RegisterPegInScriptInput) {
 	flag.StringVar(&scriptInput.BtcRpcPassword, "btc-rpc-password", "", "The Bitcoin RPC password. You can skip it if you're using a public service.")
 }
 
-func ParseRegisterPegInScriptInput(scriptInput *RegisterPegInScriptInput, reader scripts.FileReader) (ParsedRegisterPegInInput, error) {
+func ParseRegisterPegInScriptInput(parse scripts.ParseFunc, scriptInput *RegisterPegInScriptInput, reader scripts.FileReader) (ParsedRegisterPegInInput, error) {
 	var rawInput struct {
 		Quote     pkg.PeginQuoteDTO `json:"quote"`
 		Signature string            `json:"signature"`
 		BtcTxHash string            `json:"btcTxHash"`
 	}
 
-	flag.Parse()
+	parse()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(scriptInput); err != nil {
 		return ParsedRegisterPegInInput{}, fmt.Errorf("invalid input: %w", err)
@@ -130,7 +130,7 @@ func ParseRegisterPegInScriptInput(scriptInput *RegisterPegInScriptInput, reader
 
 	signatureBytes, err := hex.DecodeString(rawInput.Signature)
 	if err != nil {
-		return ParsedRegisterPegInInput{}, err
+		return ParsedRegisterPegInInput{}, fmt.Errorf("invalid signature: %w", err)
 	}
 	return ParsedRegisterPegInInput{
 		Quote:     pkg.FromPeginQuoteDTO(rawInput.Quote),
