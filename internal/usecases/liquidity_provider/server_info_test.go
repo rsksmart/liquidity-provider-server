@@ -9,7 +9,7 @@ import (
 )
 
 func TestServerInfoUseCase_Run(t *testing.T) {
-	t.Run("Should return error if BuildVersion doesn't have any value", func(t *testing.T) {
+	t.Run("Should return error if BuildRevision doesn't have any value", func(t *testing.T) {
 		liquidity_provider.BuildVersion = "version"
 		liquidity_provider.BuildRevision = ""
 		useCase := liquidity_provider.NewServerInfoUseCase()
@@ -17,7 +17,7 @@ func TestServerInfoUseCase_Run(t *testing.T) {
 		assert.Empty(t, result)
 		require.Error(t, err)
 	})
-	t.Run("Should return error if BuildRevision doesn't have any value", func(t *testing.T) {
+	t.Run("Should return error if BuildVersion doesn't have any value", func(t *testing.T) {
 		liquidity_provider.BuildVersion = ""
 		liquidity_provider.BuildRevision = "revision"
 		useCase := liquidity_provider.NewServerInfoUseCase()
