@@ -46,6 +46,8 @@ func TestReadRefundUserPegOutScriptInput(t *testing.T) {
 }
 
 func TestParseRefundUserPegOutScriptInput(t *testing.T) {
+	parse := func() {}
+
 	t.Run("should validate required fields", func(t *testing.T) {
 		scriptInput := &RefundUserPegOutScriptInput{
 			Network:        "",
@@ -54,7 +56,7 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 			SecretSource:   "",
 		}
 
-		_, err := ParseRefundUserPegOutScriptInput(scriptInput, term.ReadPassword)
+		_, err := ParseRefundUserPegOutScriptInput(parse, scriptInput, term.ReadPassword)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid input")
 	})
@@ -68,7 +70,7 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 			AwsLocalEndpoint: testAwsLocalEndpoint,
 		}
 
-		env, err := ParseRefundUserPegOutScriptInput(scriptInput, func(fd int) ([]byte, error) {
+		env, err := ParseRefundUserPegOutScriptInput(parse, scriptInput, func(fd int) ([]byte, error) {
 			return []byte("password"), nil
 		})
 		require.NoError(t, err)

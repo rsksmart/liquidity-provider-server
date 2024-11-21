@@ -33,7 +33,7 @@ type PasswordReader = func(int) ([]byte, error)
 func main() {
 	scriptInput := new(RefundUserPegOutScriptInput)
 	ReadRefundUserPegOutScriptInput(scriptInput)
-	env, err := ParseRefundUserPegOutScriptInput(scriptInput, term.ReadPassword)
+	env, err := ParseRefundUserPegOutScriptInput(flag.Parse, scriptInput, term.ReadPassword)
 	if err != nil {
 		scripts.ExitWithError(2, "Error reading input", err)
 	}
@@ -65,9 +65,9 @@ func ReadRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput) {
 	flag.StringVar(&scriptInput.EncryptedJsonPasswordSecret, "password-secret", "", "Name of the secret storing the keystore password. Only required if the secret source is aws")
 }
 
-func ParseRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput, pwdReader PasswordReader) (environment.Environment, error) {
+func ParseRefundUserPegOutScriptInput(parse scripts.ParseFunc, scriptInput *RefundUserPegOutScriptInput, pwdReader PasswordReader) (environment.Environment, error) {
 	var env environment.Environment
-	flag.Parse()
+	parse()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(scriptInput)
 	if err != nil {
