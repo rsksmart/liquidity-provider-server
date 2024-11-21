@@ -23,12 +23,17 @@ validation: lint
 	go mod verify
 	govulncheck ./... # should fail on non informational vulnerabilities
 
+COMMIT_TAG ?= $(shell git describe --exact-match --tags)
 COMMIT_HASH ?= $(shell git rev-parse HEAD)
 SOURCE_VERSION := $(COMMIT_HASH)
+SOURCE_TAG := $(COMMIT_TAG)
+
 build: download
 	mkdir -p build && cd build
-	@echo "Building liquidity-provider-server $(SOURCE_VERSION)"
-	CGO_ENABLED=0 go build -v -installsuffix 'static' -ldflags="-s -X 'main.BuildVersion=$(SOURCE_VERSION)' -X 'main.BuildTime=$(shell date)'" -o ./build/liquidity-provider-server ./cmd/application/main.go
+	@echo "Building liquidity-provider-server $(SOURCE_TAG) ($(SOURCE_VERSION))"
+	CGO_ENABLED=0 go build -v -installsuffix 'static' \
+	-ldflags="-s -X 'main.BuildVersion=$(SOURCE_VERSION)' -X 'main.BuildTime=$(shell date)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildVersion=$(SOURCE_TAG)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildRevision=$(SOURCE_VERSION)'" \
+	-o ./build/liquidity-provider-server ./cmd/application/main.go
 
 api:
 	go-swagger3 --module-path . \

@@ -93,5 +93,12 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewGetAvailableLiquidityHandler(useCaseRegistry.GetAvailableLiquidityUseCase()),
 			},
 		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/version",
+				Method:  http.MethodGet,
+				Handler: handlers.NewVersionInfoHandler(useCaseRegistry.GetServerInfoUseCase()),
+			},
+		},
 	}
 }
