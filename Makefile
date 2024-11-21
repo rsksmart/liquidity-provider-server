@@ -62,3 +62,7 @@ test: clean
 
 clean:
 	rm -rf build $(TEMPORAL_COVER_FILE)
+
+utils:
+	mkdir -p utils && cd utils
+	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url.go

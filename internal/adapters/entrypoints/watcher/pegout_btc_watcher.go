@@ -80,8 +80,8 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			watcher.quotesMutex.Lock()
 			watcher.currentBlockMutex.Lock()
+			watcher.quotesMutex.Lock()
 			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height

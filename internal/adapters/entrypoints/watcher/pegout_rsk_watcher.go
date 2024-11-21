@@ -189,6 +189,7 @@ func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromB
 		return
 	}
 	for _, deposit := range deposits {
+		log.Info(pegoutRskWatcherLog("Checking deposit of tx %s for quote %s", deposit.TxHash, deposit.QuoteHash))
 		watcher.checkDeposit(ctx, deposit)
 	}
 }
@@ -203,6 +204,9 @@ func (watcher *PegoutRskDepositWatcher) checkDeposit(ctx context.Context, deposi
 		} else {
 			log.Error(pegoutRskWatcherLog("Error updating pegout deposit quote (%s): %v", watchedQuote.RetainedQuote.QuoteHash, err))
 		}
+	}
+	if ok && !deposit.IsValidForQuote(watchedQuote.PegoutQuote) {
+		watcher.logRejectReason(deposit, watchedQuote)
 	}
 }
 
@@ -220,6 +224,7 @@ func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height u
 			log.Error(pegoutRskWatcherLog("Error updating expired quote (%s): %v", watchedQuote.RetainedQuote.QuoteHash, err))
 			return
 		} else {
+			log.Info(pegoutRskWatcherLog("Quote %s expired at %d", watchedQuote.RetainedQuote.QuoteHash, watchedQuote.PegoutQuote.ExpireTime().Unix()))
 			delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 		}
 	}
@@ -265,6 +270,21 @@ func validateDepositedPegoutQuote(watchedQuote quote.WatchedPegoutQuote, receipt
 	return receipt.BlockNumber+uint64(watchedQuote.PegoutQuote.DepositConfirmations) < height &&
 		watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations &&
 		receipt.Value.Cmp(watchedQuote.PegoutQuote.Total()) >= 0
+}
+
+func (watcher *PegoutRskDepositWatcher) logRejectReason(deposit quote.PegoutDeposit, watchedQuote quote.WatchedPegoutQuote) {
+	rejectReason := fmt.Sprintf("Rejecting quote %s for the following reason: ", watchedQuote.RetainedQuote.QuoteHash)
+	if deposit.Timestamp.After(watchedQuote.PegoutQuote.ExpireTime()) {
+		depositTime := deposit.Timestamp.Unix()
+		expirationTime := watchedQuote.PegoutQuote.ExpireTime().Unix()
+		rejectReason += fmt.Sprintf("quote expired at %d, %d seconds before its first confirmation at %d;", expirationTime, depositTime-expirationTime, depositTime)
+	}
+	paidAmount := deposit.Amount
+	expectedAmount := watchedQuote.PegoutQuote.Total()
+	if paidAmount.Cmp(expectedAmount) < 0 {
+		rejectReason += fmt.Sprintf("transaction amount %s is less than expected %s;", paidAmount.String(), expectedAmount.String())
+	}
+	log.Info(pegoutRskWatcherLog(rejectReason))
 }
 
 func pegoutRskWatcherLog(format string, args ...any) string {

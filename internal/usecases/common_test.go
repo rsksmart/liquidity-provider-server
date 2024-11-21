@@ -200,3 +200,89 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 		rpc.AssertExpectations(t)
 	})
 }
+
+// nolint:funlen
+func TestValidateBridgeUtxoMin(t *testing.T) {
+	const (
+		address       = "2N991MLUtYHfHzLQgtNfK9NtUVUSEe9Ncaf"
+		txHash        = "9fa7040fbe1e442e970c231aaf830abf62c83b165fc436b1ce6e385b6ce40e59"
+		confirmations = 10
+	)
+	t.Run("should fail if one of the UTXO is under the bridge min", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
+		tx := blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{
+				address: {entities.NewWei(1000), entities.NewWei(999), entities.NewWei(3000)},
+			},
+		}
+		err := u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.ErrorContains(t, err, "not all the UTXOs are above the min lock value")
+		require.ErrorIs(t, err, u.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
+	t.Run("should fail if all of the UTXO is under the bridge min", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
+		tx := blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{
+				address: {entities.NewWei(1), entities.NewWei(999), entities.NewWei(100)},
+			},
+		}
+		err := u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.ErrorContains(t, err, "not all the UTXOs are above the min lock value")
+		require.ErrorIs(t, err, u.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
+	t.Run("should not fail if all the UTXO is above the bridge min", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Twice()
+		tx := blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{
+				address: {entities.NewWei(1000), entities.NewWei(1000), entities.NewWei(1001)},
+			},
+		}
+		err := u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.NoError(t, err)
+
+		tx = blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{address: {entities.NewWei(1000)}},
+		}
+		err = u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.NoError(t, err)
+
+		bridge.AssertExpectations(t)
+	})
+	t.Run("should return error if call to the bridge fails", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(nil, assert.AnError).Once()
+		tx := blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{
+				address: {entities.NewWei(1000), entities.NewWei(1000), entities.NewWei(1001)},
+			},
+		}
+		err := u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.Error(t, err)
+		require.NotErrorIs(t, err, u.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
+	t.Run("should fail if there is no UTXO for a given address", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
+		tx := blockchain.BitcoinTransactionInformation{
+			Hash: txHash, Confirmations: confirmations,
+			Outputs: map[string][]*entities.Wei{
+				"other-address": {entities.NewWei(1000), entities.NewWei(1000), entities.NewWei(1001)},
+			},
+		}
+		err := u.ValidateBridgeUtxoMin(bridge, tx, address)
+		require.ErrorContains(t, err, "no UTXO directed to address 2N991MLUtYHfHzLQgtNfK9NtUVUSEe9Ncaf present in transaction")
+		require.ErrorIs(t, err, u.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
+}

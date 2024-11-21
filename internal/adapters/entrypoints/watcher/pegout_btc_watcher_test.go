@@ -272,3 +272,45 @@ func TestPegoutBtcTransferWatcher_Shutdown(t *testing.T) {
 		return watcher.NewPegoutBtcTransferWatcher(nil, nil, blockchain.Rpc{}, eventBus, ticker)
 	})
 }
+
+func TestPegoutBtcTransferWatcher(t *testing.T) {
+	t.Run("watcher doesn't run into a deadlock", func(t *testing.T) {
+		eventBus := &mocks.EventBusMock{}
+		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return((<-chan entities.Event)(make(chan entities.Event)))
+		ticker := &mocks.TickerMock{}
+		tickerChannel := make(chan time.Time)
+		shutdownChannel := make(chan bool)
+		ticker.EXPECT().C().Return(tickerChannel)
+		ticker.EXPECT().Stop().Return()
+		btcRpc := &mocks.BtcRpcMock{}
+		rpc := blockchain.Rpc{Btc: btcRpc}
+		btcRpc.On("GetHeight").Return(big.NewInt(0), nil).Once()
+		quoteRepository := &mocks.PegoutQuoteRepositoryMock{}
+		quoteRepository.EXPECT().
+			GetRetainedQuoteByState(mock.Anything, quote.PegoutStateSendPegoutSucceeded).
+			After(time.Second*2).
+			Return([]quote.RetainedPegoutQuote{}, nil)
+		useCase := w.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
+		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, rpc, eventBus, ticker)
+
+		prepareDoneChannel := make(chan bool, 1)
+		startDoneChannel := make(chan bool, 1)
+		go assert.NotPanics(t, func() {
+			err := pegoutWatcher.Prepare(context.Background())
+			require.NoError(t, err)
+			prepareDoneChannel <- true
+		})
+		go assert.NotPanics(t, func() {
+			pegoutWatcher.Start()
+			startDoneChannel <- true
+		})
+
+		tickerChannel <- time.Now()
+		go pegoutWatcher.Shutdown(shutdownChannel)
+		<-shutdownChannel
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			assert.NotEmpty(c, prepareDoneChannel)
+			assert.NotEmpty(c, startDoneChannel)
+		}, time.Second*5, time.Millisecond*100)
+	})
+}
