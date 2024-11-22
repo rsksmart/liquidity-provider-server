@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
@@ -15,6 +16,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 )
 
@@ -178,4 +180,19 @@ func parseTransactionOutputs(outputs []btcjson.Vout) (map[string][]*entities.Wei
 		result[output.ScriptPubKey.Address] = append(result[output.ScriptPubKey.Address], entities.SatoshiToWei(uint64(amount.ToUnit(btcutil.AmountSatoshi))))
 	}
 	return result, nil
+}
+
+func EnsureLoadedBtcWallet(connection *Connection) error {
+	if connection.WalletId == "" {
+		return errors.New("the connection is not a wallet connection")
+	}
+	_, err := connection.client.GetWalletInfo()
+	if err == nil {
+		return nil
+	}
+	log.Warnf("Expected wallet %s to be loaded and its not. Loading it...", connection.WalletId)
+	if _, err = connection.client.LoadWallet(connection.WalletId); err != nil {
+		return fmt.Errorf("error loading wallet %s: %w", connection.WalletId, err)
+	}
+	return nil
 }

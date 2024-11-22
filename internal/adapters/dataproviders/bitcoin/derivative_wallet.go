@@ -116,6 +116,9 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 	if _, err := btcutil.DecodeAddress(toAddress, wallet.conn.NetworkParams); err != nil {
 		return nil, err
 	}
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
 
 	amountInSatoshi, _ := value.ToSatoshi().Int64()
 	output := []btcjson.PsbtOutput{
@@ -159,6 +162,9 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
 
 	utxos, err := wallet.conn.client.ListUnspentMinMaxAddresses(
 		MinConfirmationsForUtxos,
@@ -185,6 +191,9 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	if err != nil {
 		return "", err
 	}
+	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return "", err
+	}
 
 	satoshis, _ := value.ToSatoshi().Float64()
 	output := map[btcutil.Address]btcutil.Amount{decodedAddress: btcutil.Amount(satoshis)}
@@ -208,17 +217,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return "", err
 	}
 
-	var signedTx *wire.MsgTx
-	var complete bool
-	err = wallet.rskAccount.UsePrivateKeyWif(func(wif *btcutil.WIF) error {
-		signedTx, complete, err = wallet.conn.client.SignRawTransactionWithKey(fundedTx.Transaction, []string{wif.String()})
-		if err != nil {
-			return err
-		} else if !complete {
-			return errors.New("trying to send a transaction without a complete set of signatures")
-		}
-		return nil
-	})
+	signedTx, err := wallet.signFundedTransaction(fundedTx)
 	if err != nil {
 		return "", err
 	}
@@ -236,6 +235,9 @@ func (wallet *DerivativeWallet) ImportAddress(address string) error {
 }
 
 func (wallet *DerivativeWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
 }
 
@@ -293,4 +295,23 @@ func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTr
 
 func (wallet *DerivativeWallet) Shutdown(closeChannel chan<- bool) {
 	wallet.conn.Shutdown(closeChannel)
+}
+
+func (wallet *DerivativeWallet) signFundedTransaction(fundedTx *btcjson.FundRawTransactionResult) (*wire.MsgTx, error) {
+	var signedTx *wire.MsgTx
+	var complete bool
+	var err error
+	signingErr := wallet.rskAccount.UsePrivateKeyWif(func(wif *btcutil.WIF) error {
+		signedTx, complete, err = wallet.conn.client.SignRawTransactionWithKey(fundedTx.Transaction, []string{wif.String()})
+		if err != nil {
+			return err
+		} else if !complete {
+			return errors.New("trying to send a transaction without a complete set of signatures")
+		}
+		return nil
+	})
+	if signingErr != nil {
+		return nil, signingErr
+	}
+	return signedTx, nil
 }
