@@ -614,6 +614,15 @@ func (lbc *liquidityBridgeContractImpl) UpdateProvider(name, url string) (string
 }
 
 func (lbc *liquidityBridgeContractImpl) RefundUserPegOut(quoteHash string) (string, error) {
+	// Validate the hash format
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return "", fmt.Errorf("invalid quote hash format: %w", err)
+	}
+	if len(hashBytesSlice) != 32 {
+		return "", errors.New("quote hash must be 32 bytes long")
+	}
+
 	opts := &bind.TransactOpts{
 		From:   lbc.signer.Address(),
 		Signer: lbc.signer.Sign,

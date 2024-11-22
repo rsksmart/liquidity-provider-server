@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -19,9 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 const (
@@ -915,6 +917,56 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		result, err := lbc.RegisterPegin(invalid)
 		require.Error(t, err)
 		assert.Empty(t, result)
+	})
+}
+
+func TestLiquidityBridgeContractImpl_RefundUserPegOut(t *testing.T) {
+	lbcMock := &mocks.LbcAdapterMock{}
+	signer := &mocks.TransactionSignerMock{}
+	client := &mocks.RpcClientBindingMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(client),
+		test.AnyAddress,
+		lbcMock,
+		signer,
+		rootstock.RetryParams{},
+	)
+
+	t.Run("should fail with invalid hash format", func(t *testing.T) {
+		result, err := lbc.RefundUserPegOut("invalid hash")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid quote hash format")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should fail with invalid hash length", func(t *testing.T) {
+		result, err := lbc.RefundUserPegOut("ab")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "quote hash must be 32 bytes long")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should fail if transaction fails", func(t *testing.T) {
+		validHash := strings.Repeat("aa", 32)
+		tx := prepareTxMocks(client, signer, false)
+		lbcMock.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, assert.AnError).Once()
+
+		result, err := lbc.RefundUserPegOut(validHash)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "refund user peg out error")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should succeed", func(t *testing.T) {
+		validHash := strings.Repeat("aa", 32)
+		tx := prepareTxMocks(client, signer, true)
+		lbcMock.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, nil).Once()
+
+		result, err := lbc.RefundUserPegOut(validHash)
+		require.NoError(t, err)
+		assert.Equal(t, tx.Hash().String(), result)
+
+		lbcMock.AssertExpectations(t)
 	})
 }
 
