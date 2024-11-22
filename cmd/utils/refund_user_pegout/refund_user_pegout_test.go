@@ -46,9 +46,10 @@ func TestReadRefundUserPegOutScriptInput(t *testing.T) {
 }
 
 func TestParseRefundUserPegOutScriptInput(t *testing.T) {
-	// parse is a no-op function used as a placeholder in tests since the actual parsing
-	// functionality is not relevant for these test cases
-	parse := func() {}
+
+	parse := func() { // parse is a no-op function used as a placeholder in tests since the actual parsing
+		// functionality is not relevant for these test cases
+	}
 
 	t.Run("should validate required fields", func(t *testing.T) {
 		scriptInput := &RefundUserPegOutScriptInput{
