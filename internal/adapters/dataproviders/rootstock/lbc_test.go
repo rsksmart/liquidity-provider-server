@@ -478,7 +478,7 @@ func TestLiquidityBridgeContractImpl_SetProviderStatus(t *testing.T) {
 func TestLiquidityBridgeContractImpl_UpdateProvider(t *testing.T) {
 	const (
 		name = "test name"
-		url  = "http://test.com"
+		url  = "http://test.update.example.com"
 	)
 
 	lbcMock := &mocks.LbcAdapterMock{}

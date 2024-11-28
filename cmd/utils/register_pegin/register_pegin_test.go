@@ -133,19 +133,20 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 }
 
 func TestRegisterPegInScriptInput_ToEnv(t *testing.T) {
+	const btcRpcHost = "http://localhost:1111"
 	t.Run("Should parse RegisterPegIn script input successfully", func(t *testing.T) {
 		scriptInput := new(RegisterPegInScriptInput)
 		ReadRegisterPegInScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "regtest"))
 		require.NoError(t, flag.Set("input-file", "/file/path"))
-		require.NoError(t, flag.Set("btc-rpc-host", "http://localhost:1111"))
+		require.NoError(t, flag.Set("btc-rpc-host", btcRpcHost))
 		require.NoError(t, flag.Set("btc-rpc-user", "btcUser"))
 		require.NoError(t, flag.Set("btc-rpc-password", "btcPassword"))
 		env, err := scriptInput.ToEnv(term.ReadPassword)
 		require.NoError(t, err)
 		assert.Equal(t, "regtest", env.LpsStage)
 		assert.Equal(t, "regtest", env.Btc.Network)
-		assert.Equal(t, "http://localhost:1111", env.Btc.Endpoint)
+		assert.Equal(t, btcRpcHost, env.Btc.Endpoint)
 		assert.Equal(t, "btcUser", env.Btc.Username)
 		assert.Equal(t, "btcPassword", env.Btc.Password)
 		// we assert the rsk defaults to ensure the method called its parent method
@@ -161,19 +162,19 @@ func TestRegisterPegInScriptInput_ToEnv(t *testing.T) {
 		ReadRegisterPegInScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "regtest"))
 		require.NoError(t, flag.Set("input-file", "/file/path"))
-		require.NoError(t, flag.Set("btc-rpc-host", "http://localhost:1111"))
+		require.NoError(t, flag.Set("btc-rpc-host", btcRpcHost))
 		env, err := scriptInput.ToEnv(term.ReadPassword)
 		require.NoError(t, err)
 		assert.Equal(t, "regtest", env.LpsStage)
 		assert.Equal(t, "regtest", env.Btc.Network)
-		assert.Equal(t, "http://localhost:1111", env.Btc.Endpoint)
+		assert.Equal(t, btcRpcHost, env.Btc.Endpoint)
 		assert.Equal(t, "none", env.Btc.Username)
 		assert.Equal(t, "none", env.Btc.Password)
 	})
 }
 
 func TestParseRegisterPegInScriptInput(t *testing.T) {
-	parse := func() {}
+	parse := func() { /* mock function to prevent calling flag.Parse inside a test */ }
 	input := RegisterPegInScriptInput{
 		BaseInput: scripts.BaseInput{
 			AwsLocalEndpoint: "http://localhost:4566", RskEndpoint: "http://localhost:4444", Network: "regtest",
