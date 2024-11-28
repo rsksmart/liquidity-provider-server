@@ -24,7 +24,7 @@ func main() {
 	scripts.SetUsageMessage(
 		"This script is used to execute a refund for a PegOut transaction in the Liquidity Bridge Contract." +
 			" It is intended for use when the final user does not receive their funds." +
-			" To perform this refund, you must provide the hash of the Bitcoin transaction associated with the PegOut.",
+			" To perform this refund, you must provide the hash of the quote agreed for the service.",
 	)
 	scriptInput := new(RefundUserPegOutScriptInput)
 	ReadRefundUserPegOutScriptInput(scriptInput)
