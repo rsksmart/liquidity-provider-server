@@ -63,3 +63,13 @@ func TestFromPegoutConfigurationDTO(t *testing.T) {
 	assert.Equal(t, uint64(20), configuration.ExpireBlocks)
 	assert.Equal(t, "8000000000000000000000", configuration.BridgeTransactionMin.AsBigInt().String())
 }
+
+func TestToServerInfoDTO(t *testing.T) {
+	serverInfo := liquidity_provider.ServerInfo{
+		Version:  "1.0.0",
+		Revision: "1234567890",
+	}
+	dto := pkg.ToServerInfoDTO(serverInfo)
+	assert.Equal(t, "1.0.0", dto.Version)
+	assert.Equal(t, "1234567890", dto.Revision)
+}

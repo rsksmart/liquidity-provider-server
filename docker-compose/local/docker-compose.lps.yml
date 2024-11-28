@@ -6,6 +6,8 @@ services:
       dockerfile: docker-compose/lps/Dockerfile
       args:
         UID: "${LPS_UID}"
+        COMMIT_HASH: "${COMMIT_HASH}"
+        COMMIT_TAG: "${COMMIT_TAG}"
     image: lps:latest
     container_name: lps01
     environment:

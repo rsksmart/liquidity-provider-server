@@ -82,6 +82,11 @@ type AvailableLiquidityDTO struct {
 	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"500000000" description:"Available liquidity for PegOut operations in satoshi" required:""`
 }
 
+type ServerInfoDTO struct {
+	Version  string `json:"version" example:"v1.0.0" description:"Server version tag"  required:""`
+	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
+}
+
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
 	satoshis, _ := entity.PegoutLiquidity.ToSatoshi().Int(nil)
 	return AvailableLiquidityDTO{
@@ -133,5 +138,12 @@ func FromPegoutConfigurationDTO(dto PegoutConfigurationDTO) liquidity_provider.P
 		MinValue:             entities.NewBigWei(minValue),
 		ExpireBlocks:         dto.ExpireBlocks,
 		BridgeTransactionMin: entities.NewBigWei(bridgeTransactionMin),
+	}
+}
+
+func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
+	return ServerInfoDTO{
+		Version:  entity.Version,
+		Revision: entity.Revision,
 	}
 }
