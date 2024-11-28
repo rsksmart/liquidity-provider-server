@@ -4,19 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"syscall"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/defaults"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"golang.org/x/term"
 )
 
@@ -36,46 +31,24 @@ type RefundUserPegOutScriptInput struct {
 type PasswordReader = func(int) ([]byte, error)
 
 func main() {
-	ctx := context.Background()
-
 	scriptInput := new(RefundUserPegOutScriptInput)
 	ReadRefundUserPegOutScriptInput(scriptInput)
-	env, err := ParseRefundUserPegOutScriptInput(scriptInput, term.ReadPassword)
+	env, err := ParseRefundUserPegOutScriptInput(flag.Parse, scriptInput, term.ReadPassword)
 	if err != nil {
-		ExitWithError(2, "Error reading input", err)
+		scripts.ExitWithError(2, "Error reading input", err)
 	}
 
-	rskClient, err := bootstrap.Rootstock(ctx, env.Rsk)
+	ctx := context.Background()
+	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env)
 	if err != nil {
-		ExitWithError(2, "Error connecting to RSK node", err)
-	}
-	rskWallet, err := GetWallet(ctx, env, rskClient)
-	if err != nil {
-		ExitWithError(2, "Error accessing to wallet", err)
+		scripts.ExitWithError(2, "Error accessing the Liquidity Bridge Contract", err)
 	}
 
-	err = ExecuteRefundUserPegOut(ctx, env, rskWallet, rskClient, common.HexToHash(scriptInput.QuoteHashBytes))
+	txHash, err := ExecuteRefundUserPegOut(lbc, scriptInput.QuoteHashBytes)
 	if err != nil {
-		ExitWithError(2, "Error on transaction execution", err)
+		scripts.ExitWithError(2, "Error on transaction execution", err)
 	}
-}
-
-func GetWallet(
-	ctx context.Context,
-	env environment.Environment,
-	rskClient *rootstock.RskClient,
-) (rootstock.RskSignerWallet, error) {
-	secretLoader, err := secrets.GetSecretLoader(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-	walletFactory, err := wallet.NewFactory(env, wallet.FactoryCreationArgs{
-		Ctx: ctx, Env: env, SecretLoader: secretLoader, RskClient: rskClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return walletFactory.RskWallet()
+	fmt.Println("Refund user peg out executed successfully. Transaction hash: ", txHash)
 }
 
 func ReadRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput) {
@@ -92,9 +65,9 @@ func ReadRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput) {
 	flag.StringVar(&scriptInput.EncryptedJsonPasswordSecret, "password-secret", "", "Name of the secret storing the keystore password. Only required if the secret source is aws")
 }
 
-func ParseRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput, pwdReader PasswordReader) (environment.Environment, error) {
+func ParseRefundUserPegOutScriptInput(parse scripts.ParseFunc, scriptInput *RefundUserPegOutScriptInput, pwdReader PasswordReader) (environment.Environment, error) {
 	var env environment.Environment
-	flag.Parse()
+	parse()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(scriptInput)
 	if err != nil {
@@ -142,38 +115,6 @@ func ParseRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput, 
 	return env, nil
 }
 
-func ExecuteRefundUserPegOut(
-	ctx context.Context,
-	env environment.Environment,
-	rskWallet rootstock.RskSignerWallet,
-	rskClient *rootstock.RskClient,
-	quoteHashBytes common.Hash,
-) error {
-	lbc, err := bindings.NewLiquidityBridgeContract(common.HexToAddress(env.Rsk.LbcAddress), rskClient.Rpc())
-	if err != nil {
-		return err
-	}
-
-	opts := &bind.TransactOpts{From: rskWallet.Address(), Signer: rskWallet.Sign}
-	tx, err := lbc.RefundUserPegOut(opts, quoteHashBytes)
-	if err != nil {
-		return err
-	}
-
-	receipt, err := bind.WaitMined(ctx, rskClient.Rpc(), tx)
-	if err != nil {
-		return err
-	}
-
-	if receipt.Status == 1 {
-		fmt.Println("Refund user peg out executed successfully. Transaction hash: ", receipt.TxHash.Hex())
-		return nil
-	} else {
-		return fmt.Errorf("transaction %s failed", receipt.TxHash.Hex())
-	}
-}
-
-func ExitWithError(code int, message string, err error) {
-	fmt.Println(fmt.Sprintf("%s: %s", message, err.Error()))
-	os.Exit(code)
+func ExecuteRefundUserPegOut(lbc blockchain.LiquidityBridgeContract, quoteHash string) (string, error) {
+	return lbc.RefundUserPegOut(quoteHash)
 }

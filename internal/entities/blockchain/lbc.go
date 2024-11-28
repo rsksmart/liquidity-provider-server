@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"math/big"
 )
 
 const (
@@ -100,6 +101,7 @@ type LiquidityBridgeContract interface {
 	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	UpdateProvider(name, url string) (string, error)
+	RefundUserPegOut(quoteHash string) (string, error)
 }
 
 type FeeCollector interface {

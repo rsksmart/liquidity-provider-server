@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -154,5 +155,10 @@ func (m *LbcMock) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
 
 func (m *LbcMock) UpdateProvider(name, url string) (string, error) {
 	args := m.Called(name, url)
+	return args.String(0), args.Error(1)
+}
+
+func (m *LbcMock) RefundUserPegOut(quoteHash string) (string, error) {
+	args := m.Called(quoteHash)
 	return args.String(0), args.Error(1)
 }

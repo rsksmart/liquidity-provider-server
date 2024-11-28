@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -15,9 +19,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"strings"
-	"time"
 )
 
 // registerPeginGasLimit Fixed gas limit for registerPegin function, should change only if the function does
@@ -608,6 +609,35 @@ func (lbc *liquidityBridgeContractImpl) UpdateProvider(name, url string) (string
 	} else if receipt.Status == 0 {
 		txHash := receipt.TxHash.String()
 		return txHash, fmt.Errorf("update provider error: transaction reverted (%s)", txHash)
+	}
+	return receipt.TxHash.String(), nil
+}
+
+func (lbc *liquidityBridgeContractImpl) RefundUserPegOut(quoteHash string) (string, error) {
+	// Validate the hash format
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return "", fmt.Errorf("invalid quote hash format: %w", err)
+	}
+	if len(hashBytesSlice) != 32 {
+		return "", errors.New("quote hash must be 32 bytes long")
+	}
+
+	opts := &bind.TransactOpts{
+		From:   lbc.signer.Address(),
+		Signer: lbc.signer.Sign,
+	}
+	receipt, err := awaitTx(lbc.client, "RefundUserPegOut", func() (*geth.Transaction, error) {
+		return lbc.contract.RefundUserPegOut(opts, common.HexToHash(quoteHash))
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("refund user peg out error: %w", err)
+	} else if receipt == nil {
+		return "", errors.New("refund user peg out error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("refund user peg out error: transaction reverted (%s)", txHash)
 	}
 	return receipt.TxHash.String(), nil
 }
