@@ -292,12 +292,13 @@
             const getTooltipText = (key) => {
                 const tooltips = {
                     timeForDeposit: 'The time (in seconds) for which a deposit is considered valid.',
-                    expireTime: 'The time (in seconds) after which a transaction is considered expired.',
-                    penaltyFee: 'The penalty fee (in Wei) charged for invalid transactions.',
-                    callFee: 'The fee (in Wei) charged for processing a transaction.',
-                    maxValue: 'The maximum value (in Wei) allowed for a transaction.',
-                    minValue: 'The minimum value (in Wei) allowed for a transaction.',
-                    expireBlocks: 'The number of blocks after which a transaction is considered expired.'
+                    expireTime: 'The time (in seconds) after which a quote is considered expired.',
+                    penaltyFee: 'The penalty fee (in BTC) charged for invalid transactions.',
+                    callFee: 'The fee (in BTC) charged by the LP for processing a transaction.',
+                    maxValue: 'The maximum value (in BTC) allowed for a transaction.',
+                    minValue: 'The minimum value (in BTC) allowed for a transaction.',
+                    expireBlocks: 'The number of blocks after which a quote is considered expired.',
+                    bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.'
                 };
                 return tooltips[key] || 'No description available';
             };
@@ -327,7 +328,16 @@
                 section.innerHTML = '';
                 Object.entries(config).forEach(([key, value]) => {
                     if (typeof value === 'object' && !Array.isArray(value)) {
-                        Object.entries(value).forEach(([subKey, subValue]) => {
+                        Object.entries(value)
+                        .sort((a, b) => {
+                            const firstAmount = BigInt(a[0]);
+                            const secondAmount = BigInt(b[0]);
+                            // I use if statements instead of subtraction to avoid overflow risk
+                            if (firstAmount < secondAmount) return -1;
+                            if (firstAmount > secondAmount) return 1;
+                            return 0;
+                        })
+                        .forEach(([subKey, subValue]) => {
                             const etherValue = weiToEther(subKey);
                             const label = key === "rskConfirmations" ? "rskConfirmations" : "btcConfirmations";
                             const unit = key === "rskConfirmations" ? "rBTC" : "BTC";
