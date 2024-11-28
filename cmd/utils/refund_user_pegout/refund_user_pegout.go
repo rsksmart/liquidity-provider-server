@@ -4,10 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"syscall"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/rsksmart/liquidity-provider-server/cmd/utils/defaults"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -16,21 +14,18 @@ import (
 )
 
 type RefundUserPegOutScriptInput struct {
-	QuoteHashBytes              string `validate:"required,hexadecimal"`
-	Network                     string `validate:"required,oneof=regtest testnet mainnet"`
-	RskEndpoint                 string `validate:"required,http_url"`
-	CustomLbcAddress            string `validate:"omitempty,eth_addr"`
-	AwsLocalEndpoint            string `validate:"http_url"`
-	SecretSource                string `validate:"required,oneof=aws env"`
-	EncryptedJsonSecret         string
-	EncryptedJsonPasswordSecret string
-	KeystoreFile                string `validate:"omitempty,filepath"`
-	KeystorePassword            string
+	scripts.BaseInput        // Embedding BaseInput
+	QuoteHashBytes    string `validate:"required,hexadecimal"`
 }
 
 type PasswordReader = func(int) ([]byte, error)
 
 func main() {
+	scripts.SetUsageMessage(
+		"This script is used to execute a refund for a PegOut transaction in the Liquidity Bridge Contract." +
+			" It is intended for use when the final user does not receive their funds." +
+			" To perform this refund, you must provide the hash of the quote agreed for the service.",
+	)
 	scriptInput := new(RefundUserPegOutScriptInput)
 	ReadRefundUserPegOutScriptInput(scriptInput)
 	env, err := ParseRefundUserPegOutScriptInput(flag.Parse, scriptInput, term.ReadPassword)
@@ -66,7 +61,6 @@ func ReadRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput) {
 }
 
 func ParseRefundUserPegOutScriptInput(parse scripts.ParseFunc, scriptInput *RefundUserPegOutScriptInput, pwdReader PasswordReader) (environment.Environment, error) {
-	var env environment.Environment
 	parse()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(scriptInput)
@@ -74,45 +68,7 @@ func ParseRefundUserPegOutScriptInput(parse scripts.ParseFunc, scriptInput *Refu
 		return environment.Environment{}, fmt.Errorf("invalid input: %w", err)
 	}
 
-	if scriptInput.SecretSource == "env" {
-		var password []byte
-		fmt.Println("Insert keystore password:")
-		if password, err = pwdReader(syscall.Stdin); err != nil {
-			return environment.Environment{}, fmt.Errorf("error reading password: %w", err)
-		}
-		scriptInput.KeystorePassword = string(password)
-	}
-
-	rskEnvDefaults, err := defaults.GetRsk(scriptInput.Network)
-	if err != nil {
-		return environment.Environment{}, fmt.Errorf("invalid input: %w", err)
-	}
-
-	var lbcAddress string
-	if scriptInput.CustomLbcAddress != "" {
-		lbcAddress = scriptInput.CustomLbcAddress
-	} else {
-		lbcAddress = rskEnvDefaults.LbcAddress
-	}
-
-	env.LpsStage = scriptInput.Network
-	env.AwsLocalEndpoint = scriptInput.AwsLocalEndpoint
-	env.SecretSource = scriptInput.SecretSource
-	env.WalletManagement = "native"
-	env.Rsk = environment.RskEnv{
-		Endpoint:                    scriptInput.RskEndpoint,
-		ChainId:                     rskEnvDefaults.ChainId,
-		LbcAddress:                  lbcAddress,
-		BridgeAddress:               rskEnvDefaults.BridgeAddress,
-		AccountNumber:               rskEnvDefaults.AccountNumber,
-		EncryptedJsonSecret:         scriptInput.EncryptedJsonSecret,
-		EncryptedJsonPasswordSecret: scriptInput.EncryptedJsonPasswordSecret,
-		KeystoreFile:                scriptInput.KeystoreFile,
-		KeystorePassword:            scriptInput.KeystorePassword,
-	}
-	env.Btc = environment.BtcEnv{Network: scriptInput.Network}
-
-	return env, nil
+	return scriptInput.BaseInput.ToEnv(pwdReader)
 }
 
 func ExecuteRefundUserPegOut(lbc blockchain.LiquidityBridgeContract, quoteHash string) (string, error) {

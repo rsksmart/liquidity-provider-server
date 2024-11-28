@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
+
+	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 )
 
 const (
@@ -53,10 +55,12 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 
 	t.Run("should validate required fields", func(t *testing.T) {
 		scriptInput := &RefundUserPegOutScriptInput{
-			Network:        "",
+			BaseInput: scripts.BaseInput{
+				Network:      "",
+				RskEndpoint:  "",
+				SecretSource: "",
+			},
 			QuoteHashBytes: "",
-			RskEndpoint:    "",
-			SecretSource:   "",
 		}
 
 		_, err := ParseRefundUserPegOutScriptInput(parse, scriptInput, term.ReadPassword)
@@ -66,11 +70,13 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 
 	t.Run("should parse valid input", func(t *testing.T) {
 		scriptInput := &RefundUserPegOutScriptInput{
-			Network:          testNetwork,
-			QuoteHashBytes:   testQuoteHash,
-			RskEndpoint:      testRskEndpoint,
-			SecretSource:     "aws",
-			AwsLocalEndpoint: testAwsLocalEndpoint,
+			BaseInput: scripts.BaseInput{
+				Network:          testNetwork,
+				RskEndpoint:      testRskEndpoint,
+				SecretSource:     "aws",
+				AwsLocalEndpoint: testAwsLocalEndpoint,
+			},
+			QuoteHashBytes: testQuoteHash,
 		}
 
 		env, err := ParseRefundUserPegOutScriptInput(parse, scriptInput, func(fd int) ([]byte, error) {
