@@ -5,6 +5,13 @@ TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
 
 filter_coverage_file = grep -v "internal/adapters/dataproviders/rootstock/bindings" $(1) > coverage/temp.txt && mv coverage/temp.txt $(1)
 
+define utils_build
+	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url/update_provider_url.go
+  	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
+  	CGO_ENABLED=0 go build -v -o ./utils/refund_user_pegout ./cmd/utils/refund_user_pegout/refund_user_pegout.go
+  	CGO_ENABLED=0 go build -v -o ./utils/key_conversion ./cmd/utils/key_conversion/key_conversion.go
+endef
+
 tools: download
 	go install github.com/parvez3019/go-swagger3@fef3d30b0707883c389261bf26297eebd10d7216 #v1.0.3
 	go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -66,9 +73,7 @@ clean:
 utils: download
 	rm -rf utils
 	mkdir -p utils
-	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url/update_provider_url.go
-	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
-	CGO_ENABLED=0 go build -v -o ./utils/refund_user_pegout ./cmd/utils/refund_user_pegout/refund_user_pegout.go
+	$(utils_build)
 
 utils-docker:
 	rm -rf utils
