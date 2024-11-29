@@ -67,6 +67,8 @@ var testDataset = []keyConversionTestDataset{
 	},
 }
 
+const keyFileTemplate = "text-key-%d.txt"
+
 func TestWifToHex(t *testing.T) {
 	t.Run("should convert WIF key to hex key", func(t *testing.T) {
 		for _, dataset := range testDataset {
@@ -162,7 +164,7 @@ func TestCreateKeystore(t *testing.T) {
 	t.Run("should create new keystore if key was obtained from a text file", func(t *testing.T) {
 		for i, dataset := range testDataset {
 			privateKeyParsed := secp256k1.PrivKeyFromBytes(dataset.HexKeyBytes)
-			keyPath := test.WriteTestFile(t, fmt.Sprintf("text-key-%d.txt", i), []byte(hex.EncodeToString(dataset.HexKeyBytes)))
+			keyPath := test.WriteTestFile(t, fmt.Sprintf(keyFileTemplate, i), []byte(hex.EncodeToString(dataset.HexKeyBytes)))
 			pwdReaderFunc := func(i int) ([]byte, error) { return []byte(dataset.KeystorePassword), nil }
 			keystoreBytes, password, err := CreateKeystore(&KeyConversionScriptInput{KeySource: fileKeySource, InputFile: keyPath}, *privateKeyParsed, pwdReaderFunc)
 			require.NoError(t, err)
@@ -227,7 +229,7 @@ func TestGetKeystoreAndPassword(t *testing.T) {
 	})
 	t.Run("should get keystore and password from a private key provided by a text file", func(t *testing.T) {
 		for i, dataset := range testDataset {
-			keyPath := test.WriteTestFile(t, fmt.Sprintf("text-key-%d.txt", i), []byte(hex.EncodeToString(dataset.HexKeyBytes)))
+			keyPath := test.WriteTestFile(t, fmt.Sprintf(keyFileTemplate, i), []byte(hex.EncodeToString(dataset.HexKeyBytes)))
 			pwdReaderFunc := func(i int) ([]byte, error) { return []byte(dataset.KeystorePassword), nil }
 			keystoreBytes, password, err := GetKeystoreAndPassword(&KeyConversionScriptInput{KeySource: fileKeySource, InputFile: keyPath, OriginBlockchain: rskOriginBlockchain}, pwdReaderFunc)
 			require.NoError(t, err)
@@ -261,7 +263,7 @@ func TestShowKeys(t *testing.T) {
 				expectedBtcAddress = dataset.BtcTestnetAddress
 				expectedWifKey = dataset.TestnetWifKey
 			}
-			fileName := fmt.Sprintf("text-key-%d.txt", i)
+			fileName := fmt.Sprintf(keyFileTemplate, i)
 			keyPath := test.WriteTestFile(t, fileName, []byte(hex.EncodeToString(dataset.HexKeyBytes)))
 			input := &KeyConversionScriptInput{
 				KeySource:        fileKeySource,
