@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -19,9 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 const (
@@ -473,6 +475,55 @@ func TestLiquidityBridgeContractImpl_SetProviderStatus(t *testing.T) {
 	})
 }
 
+func TestLiquidityBridgeContractImpl_UpdateProvider(t *testing.T) {
+	const (
+		name = "test name"
+		url  = "http://test.update.example.com"
+	)
+
+	lbcMock := &mocks.LbcAdapterMock{}
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(mockClient),
+		test.AnyAddress,
+		lbcMock,
+		signerMock,
+		rootstock.RetryParams{},
+	)
+	t.Run("Success", func(t *testing.T) {
+		tx := prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(tx, nil).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.NoError(t, err)
+		assert.Equal(t, tx.Hash().String(), result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Error handling when sending updateProvider tx", func(t *testing.T) {
+		_ = prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(nil, assert.AnError).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+
+		_ = prepareTxMocks(mockClient, signerMock, true)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(nil, nil).Once()
+		result, err = lbc.UpdateProvider(name, url)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		lbcMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (updateProvider tx reverted)", func(t *testing.T) {
+		tx := prepareTxMocks(mockClient, signerMock, false)
+		lbcMock.EXPECT().UpdateProvider(mock.Anything, name, url).Return(tx, nil).Once()
+		result, err := lbc.UpdateProvider(name, url)
+		require.ErrorContains(t, err, "update provider error")
+		lbcMock.AssertExpectations(t)
+		assert.Equal(t, tx.Hash().String(), result)
+	})
+}
+
 func TestLiquidityBridgeContractImpl_GetCollateral(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
@@ -866,6 +917,56 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		result, err := lbc.RegisterPegin(invalid)
 		require.Error(t, err)
 		assert.Empty(t, result)
+	})
+}
+
+func TestLiquidityBridgeContractImpl_RefundUserPegOut(t *testing.T) {
+	lbcMock := &mocks.LbcAdapterMock{}
+	signer := &mocks.TransactionSignerMock{}
+	client := &mocks.RpcClientBindingMock{}
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(client),
+		test.AnyAddress,
+		lbcMock,
+		signer,
+		rootstock.RetryParams{},
+	)
+
+	t.Run("should fail with invalid hash format", func(t *testing.T) {
+		result, err := lbc.RefundUserPegOut("invalid hash")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid quote hash format")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should fail with invalid hash length", func(t *testing.T) {
+		result, err := lbc.RefundUserPegOut("ab")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "quote hash must be 32 bytes long")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should fail if transaction fails", func(t *testing.T) {
+		validHash := strings.Repeat("aa", 32)
+		tx := prepareTxMocks(client, signer, false)
+		lbcMock.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, assert.AnError).Once()
+
+		result, err := lbc.RefundUserPegOut(validHash)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "refund user peg out error")
+		assert.Empty(t, result)
+	})
+
+	t.Run("should succeed", func(t *testing.T) {
+		validHash := strings.Repeat("aa", 32)
+		tx := prepareTxMocks(client, signer, true)
+		lbcMock.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, nil).Once()
+
+		result, err := lbc.RefundUserPegOut(validHash)
+		require.NoError(t, err)
+		assert.Equal(t, tx.Hash().String(), result)
+
+		lbcMock.AssertExpectations(t)
 	})
 }
 

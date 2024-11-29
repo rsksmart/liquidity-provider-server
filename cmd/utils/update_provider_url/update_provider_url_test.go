@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
@@ -85,9 +87,9 @@ func TestUpdateProviderArgs_Url(t *testing.T) {
 }
 
 func TestParseUpdateProviderScriptInput(t *testing.T) {
-	scriptInput := new(UpdateProviderScriptInput)
-	ReadUpdateProviderScriptInput(scriptInput)
 	t.Run("should parse with aws secret source", func(t *testing.T) {
+		scriptInput := new(UpdateProviderScriptInput)
+		ReadUpdateProviderScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "regtest"))
 		require.NoError(t, flag.Set("provider-url", "https://provider.com"))
 		require.NoError(t, flag.Set("provider-name", "a name"))
@@ -97,7 +99,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		require.NoError(t, flag.Set("lbc-address", "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975"))
 		require.NoError(t, flag.Set("keystore-secret", "UnitTest/Keystore-Secret"))
 		require.NoError(t, flag.Set("password-secret", "UnitTest/Password-Secret"))
-		env, err := ParseUpdateProviderScriptInput(scriptInput, term.ReadPassword)
+		env, err := scriptInput.ToEnv(term.ReadPassword)
 		require.NoError(t, err)
 		assert.Equal(t, "regtest", env.LpsStage)
 		assert.Equal(t, "http://localhost:1122", env.AwsLocalEndpoint)
@@ -116,7 +118,10 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "https://provider.com", scriptInput.ProviderUrl)
 	})
 
+	test.ResetFlagSet()
 	t.Run("should parse with env secret source", func(t *testing.T) {
+		scriptInput := new(UpdateProviderScriptInput)
+		ReadUpdateProviderScriptInput(scriptInput)
 		require.NoError(t, flag.Set("network", "testnet"))
 		require.NoError(t, flag.Set("provider-url", "https://provider2.com"))
 		require.NoError(t, flag.Set("provider-name", "a name 2"))
@@ -124,9 +129,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		require.NoError(t, flag.Set("rsk-endpoint", "http://localhost:5566"))
 		require.NoError(t, flag.Set("lbc-address", "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6"))
 		require.NoError(t, flag.Set("keystore-file", "path/to/a/file"))
-		env, err := ParseUpdateProviderScriptInput(scriptInput, func(fd int) ([]byte, error) {
-			return []byte("secret-password-123"), nil
-		})
+		env, err := scriptInput.ToEnv(func(fd int) ([]byte, error) { return []byte("secret-password-123"), nil })
 		require.NoError(t, err)
 		assert.Equal(t, "testnet", env.LpsStage)
 		assert.Equal(t, "env", env.SecretSource)
@@ -143,4 +146,14 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "a name 2", scriptInput.ProviderName)
 		assert.Equal(t, "https://provider2.com", scriptInput.ProviderUrl)
 	})
+}
+
+func TestExecuteUpdateProvider(t *testing.T) {
+	lbc := &mocks.LbcMock{}
+	lbc.On("UpdateProvider", "name", "http://test.com").Return(test.AnyHash, nil)
+	args, _ := NewUpdateProviderArgs("name", "http://test.com", "regtest")
+	txHash, err := ExecuteUpdateProvider(lbc, args)
+	require.NoError(t, err)
+	assert.Equal(t, test.AnyHash, txHash)
+	lbc.AssertExpectations(t)
 }

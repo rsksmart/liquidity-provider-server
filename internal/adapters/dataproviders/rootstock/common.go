@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"errors"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -108,11 +109,16 @@ func awaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context
 	ctx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
 	defer func() {
 		cancel()
-		if r.Status == 1 {
+		if r != nil && r.Status == 1 {
 			log.Infof("Transaction %s (%s) executed successfully\n", logName, tx.Hash().String())
-		} else {
+		} else if tx != nil {
 			log.Infof("Transaction %s (%s) failed\n", logName, tx.Hash().String())
+		} else {
+			log.Info("Transaction failed")
 		}
 	}()
-	return bind.WaitMined(ctx, client, tx)
+	if tx != nil {
+		return bind.WaitMined(ctx, client, tx)
+	}
+	return nil, errors.New("invalid transaction")
 }

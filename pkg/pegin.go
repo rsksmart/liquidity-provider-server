@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"math/big"
 )
@@ -59,6 +60,31 @@ type GetPeginQuoteResponse struct {
 type AcceptPeginRespose struct {
 	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
+}
+
+func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
+	return quote.PeginQuote{
+		FedBtcAddress:      dto.FedBTCAddr,
+		LbcAddress:         dto.LBCAddr,
+		LpRskAddress:       dto.LPRSKAddr,
+		BtcRefundAddress:   dto.BTCRefundAddr,
+		RskRefundAddress:   dto.RSKRefundAddr,
+		LpBtcAddress:       dto.LPBTCAddr,
+		CallFee:            entities.NewUWei(dto.CallFee),
+		PenaltyFee:         entities.NewUWei(dto.PenaltyFee),
+		ContractAddress:    dto.ContractAddr,
+		Data:               dto.Data,
+		GasLimit:           dto.GasLimit,
+		Nonce:              dto.Nonce,
+		Value:              entities.NewUWei(dto.Value),
+		AgreementTimestamp: dto.AgreementTimestamp,
+		TimeForDeposit:     dto.TimeForDeposit,
+		LpCallTime:         dto.LpCallTime,
+		Confirmations:      dto.Confirmations,
+		CallOnRegister:     dto.CallOnRegister,
+		GasFee:             entities.NewUWei(dto.GasFee),
+		ProductFeeAmount:   dto.ProductFeeAmount,
+	}
 }
 
 func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {

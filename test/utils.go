@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
@@ -167,4 +168,8 @@ func ReadFile(t *testing.T, path string) []byte {
 	fileBytes, err := io.ReadAll(file)
 	require.NoError(t, err)
 	return fileBytes
+}
+
+func ResetFlagSet() {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
