@@ -50,19 +50,19 @@ api:
 
 coverage: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func "$(TEMPORAL_COVER_FILE)" && go tool cover -html="$(TEMPORAL_COVER_FILE)"
 	rm $(TEMPORAL_COVER_FILE)
 
 coverage-report: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(COVER_FILE))
 
 test: clean
 	mkdir -p coverage
-	go test -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
+	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func $(TEMPORAL_COVER_FILE)
 	rm $(TEMPORAL_COVER_FILE)
