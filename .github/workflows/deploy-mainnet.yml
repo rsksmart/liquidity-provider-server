@@ -1,14 +1,13 @@
-name: CD for flyover-api Testnet 
+name: CD for flyover-api Mainnet 
 
 on:
-  push:
-    branches:
-      - QA-Test
+  release:
+    types: [published]
 
 jobs:
   execute-command:
     runs-on: ubuntu-latest
-    environment: testnet
+    environment: mainnet
     permissions:
       id-token: write
       contents: read
@@ -26,9 +25,9 @@ jobs:
       - name: Execute deployment command on EC2 instance
         run: |
           aws ssm send-command \
-            --document-name "deployBETestnetDocument" \
+            --document-name "deployBEMainnetDocument" \
             --instance-ids "$INSTANCE_ID" \
             --document-version '$LATEST'
           echo "Deploy sent to EC2 instance"
         env:
-          INSTANCE_ID: ${{ secrets.TESTNET_INSTANCE_ID }}
+          INSTANCE_ID: ${{ secrets.MAINNET_INSTANCE_ID }}
