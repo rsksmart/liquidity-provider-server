@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "master", "Stable-Test", "QA-Test"]
   pull_request:
-    branches: [ "master", "Stable-Test", "QA-Test"]
   schedule:
     - cron: "0 0 * * 1"
 
