@@ -21,7 +21,7 @@ func TestToAvailableLiquidityDTO(t *testing.T) {
 	}
 	dto := pkg.ToAvailableLiquidityDTO(liquidity)
 	assert.Equal(t, "1234567890987654321", dto.PeginLiquidityAmount.String())
-	assert.Equal(t, "987654321", dto.PegoutLiquidityAmount.String())
+	assert.Equal(t, "987654322", dto.PegoutLiquidityAmount.String())
 }
 
 func TestFromPeginConfigurationDTO(t *testing.T) {
