@@ -165,473 +165,473 @@
         </div>
     </div>
 
-<script src="../static/Bootstrap.js" crossorigin="anonymous"></script>
-<script src="../static/decimal.js" crossorigin="anonymous"></script>
-<script nonce = "{{ .ScriptNonce }}">
-    document.addEventListener('DOMContentLoaded', () => {
-        const data = {{.}};
-        const weiToEther = wei => {
-            try {
-                const decimalValue = new Decimal(wei);
-                return decimalValue.dividedBy(new Decimal(1e18)).toString();
-            } catch (error) {
-                throw new Error(`Failed to convert wei to ether. Input: "${wei}". Error: ${error.message}`);
-            }
-        };
-
-        const etherToWei = ether => {
-            if (typeof ether !== 'string' && typeof ether !== 'number') {
-                throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a number or string.`);
-            }
-            try {
-                const num = new Decimal(ether);
-                if (num.isNegative()) {
-                    throw new RangeError(`The input "${ether}" is not a valid number.`);
+    <script src="../static/Bootstrap.js" crossorigin="anonymous"></script>
+    <script src="../static/decimal.js" crossorigin="anonymous"></script>
+    <script nonce="{{ .ScriptNonce }}">
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = {{.}};
+            const weiToEther = wei => {
+                try {
+                    const decimalValue = new Decimal(wei);
+                    return decimalValue.dividedBy(new Decimal(1e18)).toString();
+                } catch (error) {
+                    throw new Error(`Failed to convert wei to ether. Input: "${wei}". Error: ${error.message}`);
                 }
-                return num.times(new Decimal(1e18)).toFixed();
-            } catch (error) {
-                throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: ${error.message}`);
-            }
-        };
-
-        let generalChanged = false, peginChanged = false, pegoutChanged = false;
-
-        const setTextContent = (id, text) => document.getElementById(id).textContent = text;
-
-        const fetchData = async (url, elementId) => {
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': data.CsrfToken
-                    }
-                });
-                const responseData = await response.json();
-                setTextContent(elementId, weiToEther(responseData.collateral) + " rBTC");
-            } catch (error) {
-                console.error(error);
-            }
-        };
-
-        const populateProviderData = (providerData, rskAddress, btcAddress) => {
-            setTextContent('providerRskAddress', rskAddress);
-            setTextContent('providerBtcAddress', btcAddress);
-            setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
-        };
-
-        const createInput = (section, key, value) => {
-            const div = document.createElement('div');
-            div.classList.add('mb-3');
-
-            const label = document.createElement('label');
-            label.classList.add('form-label');
-            label.textContent = key;
-
-            const inputContainer = document.createElement('div');
-            inputContainer.classList.add('input-container');
-
-            const input = document.createElement('input');
-            input.style.marginLeft = "10px";
-            input.dataset.key = key;
-            input.dataset.originalValue = value;
-
-            if (typeof value === 'boolean') {
-                input.type = 'checkbox';
-                input.classList.add('form-check-input');
-                input.checked = value;
-                input.addEventListener('change', () => setChanged(section.id));
-            } else {
-                input.type = 'text';
-                input.style.width = "40%";
-                input.classList.add('form-control');
-                input.value = formatValue(key, value);
-                input.addEventListener('input', () => setChanged(section.id));
-                if (isFeeKey(key)) {
-                    const questionIcon = createQuestionIcon(getTooltipText(key));
-                    label.appendChild(questionIcon);
-                }
-            }
-
-            inputContainer.appendChild(input);
-            div.appendChild(label);
-            div.appendChild(inputContainer);
-            section.appendChild(div);
-        };
-
-        const createConfirmationConfig = (section, configKey, confirmations) => {
-            const container = document.createElement('div');
-            container.classList.add('confirmation-config');
-            container.dataset.configKey = configKey;
-
-            const header = document.createElement('h5');
-            header.textContent = configKey;
-            container.appendChild(header);
-
-            const entriesContainer = document.createElement('div');
-            entriesContainer.classList.add('entries-container');
-
-            let index = 0;
-            Object.entries(confirmations).forEach(([amountWei, confirmation]) => {
-                createConfirmationEntry(entriesContainer, configKey, index, amountWei, confirmation);
-                index++;
-            });
-
-            container.appendChild(entriesContainer);
-
-            const addButton = document.createElement('button');
-            addButton.type = 'button';
-            addButton.classList.add('btn', 'btn-secondary', 'mt-2');
-            addButton.textContent = 'Add Entry';
-            addButton.addEventListener('click', () => {
-                const index = entriesContainer.querySelectorAll('.input-group').length;
-                createConfirmationEntry(entriesContainer, configKey, index);
-                setChanged(configKey);
-            });
-
-            container.appendChild(addButton);
-            section.appendChild(container);
-        };
-
-        const setChanged = (sectionId) => {
-            if (sectionId === 'generalConfig') generalChanged = true;
-            else if (sectionId === 'peginConfig') peginChanged = true;
-            else if (sectionId === 'pegoutConfig') pegoutChanged = true;
-            else if (sectionId === 'rskConfirmations' || sectionId === 'btcConfirmations') generalChanged = true;
-        };
-
-        const createQuestionIcon = (tooltipText) => {
-            const questionIcon = document.createElement('span');
-            questionIcon.classList.add('question-mark');
-            const img = document.createElement('img');
-            img.src = '../static/questionIcon.svg';
-            img.width = 13;
-            img.height = 13;
-            img.alt = 'Question Mark';
-            img.classList.add('bi', 'bi-question-circle');
-            questionIcon.appendChild(img);
-            const tooltip = document.createElement('div');
-            tooltip.classList.add('custom-tooltip');
-            tooltip.textContent = tooltipText;
-            questionIcon.appendChild(tooltip);
-            return questionIcon;
-        };
-
-        const getTooltipText = (key) => {
-            const tooltips = {
-                timeForDeposit: 'The time (in seconds) for which a deposit is considered valid.',
-                expireTime: 'The time (in seconds) after which a quote is considered expired.',
-                penaltyFee: 'The penalty fee (in BTC) charged for invalid transactions.',
-                callFee: 'The fee (in BTC) charged by the LP for processing a transaction.',
-                maxValue: 'The maximum value (in BTC) allowed for a transaction.',
-                minValue: 'The minimum value (in BTC) allowed for a transaction.',
-                expireBlocks: 'The number of blocks after which a quote is considered expired.',
-                bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.'
             };
-            return tooltips[key] || 'No description available';
-        };
 
-        const formatValue = (key, value) => {
-            return isFeeKey(key) ? weiToEther(value) : value;
-        };
-
-        const isFeeKey = (key) => {
-            return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
-        };
-
-        const createConfirmationEntry = (container, configKey, index, amount = '', confirmation = '') => {
-            const div = document.createElement('div');
-            div.classList.add('d-flex', 'align-items-center', 'mb-2');
-            const fieldWidth = '180px';
-            const amountGroup = document.createElement('div');
-            amountGroup.classList.add('input-group', 'me-2');
-            const amountInput = document.createElement('input');
-            amountInput.type = 'text';
-            amountInput.value = amount ? weiToEther(amount) : '';
-            amountInput.classList.add('form-control', 'form-control-sm');
-            amountInput.placeholder = 'Amount';
-            amountInput.dataset.configKey = configKey;
-            amountInput.dataset.field = 'amount';
-            amountInput.dataset.index = index;
-            amountInput.style.maxWidth = fieldWidth;
-            const amountInputAppend = document.createElement('span');
-            amountInputAppend.classList.add('input-group-text', 'input-group-text-sm');
-            amountInputAppend.textContent = 'rBTC';
-            amountGroup.appendChild(amountInput);
-            amountGroup.appendChild(amountInputAppend);
-            const confirmationGroup = document.createElement('div');
-            confirmationGroup.classList.add('input-group', 'me-2');
-
-            const confirmationInput = document.createElement('input');
-            confirmationInput.type = 'number';
-            confirmationInput.value = confirmation;
-            confirmationInput.classList.add('form-control', 'form-control-sm');
-            confirmationInput.placeholder = 'Confirmations';
-            confirmationInput.dataset.configKey = configKey;
-            confirmationInput.dataset.field = 'confirmation';
-            confirmationInput.dataset.index = index;
-            confirmationInput.style.maxWidth = fieldWidth;
-
-            const confirmationInputAppend = document.createElement('span');
-            confirmationInputAppend.classList.add('input-group-text', 'input-group-text-sm');
-            confirmationInputAppend.textContent = 'confirmations';
-
-            confirmationGroup.appendChild(confirmationInput);
-            confirmationGroup.appendChild(confirmationInputAppend);
-
-
-            const removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.classList.add('btn', 'btn-danger', 'btn-sm');
-            removeButton.textContent = 'Remove';
-
-            removeButton.addEventListener('click', () => {
-                div.remove();
-                setChanged(configKey);
-            });
-
-            amountInput.addEventListener('input', () => setChanged(configKey));
-            confirmationInput.addEventListener('input', () => setChanged(configKey));
-
-            div.appendChild(amountGroup);
-            div.appendChild(confirmationGroup);
-            div.appendChild(removeButton);
-            container.appendChild(div);
-        };
-
-        const populateConfigSection = (sectionId, config) => {
-            const section = document.getElementById(sectionId);
-            section.innerHTML = '';
-            Object.entries(config).forEach(([key, value]) => {
-                if (key === 'rskConfirmations' || key === 'btcConfirmations') createConfirmationConfig(section, key, value);
-                else createInput(section, key, value);
-            });
-        };
-
-        const showSuccessToast = () => {
-            const toastElement = document.getElementById('successToast');
-            const toast = new bootstrap.Toast(toastElement);
-            toast.show();
-        };
-
-        const showErrorToast = (errorMessage) => {
-            const toastElement = document.createElement('div');
-            toastElement.classList.add('toast');
-            toastElement.setAttribute('role', 'alert');
-            toastElement.setAttribute('aria-live', 'assertive');
-            toastElement.setAttribute('aria-atomic', 'true');
-            toastElement.innerHTML = `
-                <div class="toast-header">
-                    <strong class="me-auto">Error</strong>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body">
-                    ${errorMessage}
-                </div>
-            `;
-            document.querySelector('.toast-container').appendChild(toastElement);
-            const toast = new bootstrap.Toast(toastElement);
-            toast.show();
-        };
-
-        const inferType = value => {
-            if (value === null || value === undefined) return 'undefined';
-            if (Array.isArray(value)) return 'array';
-            return typeof value;
-        };
-
-        const validateConfig = (config, originalConfig) => {
-            const errors = [];
-            Object.entries(config).forEach(([key, value]) => {
-                const expectedValue = originalConfig[key];
-                const expectedType = inferType(expectedValue);
-                let actualType = inferType(value);
-                if (isFeeKey(key)) if ((expectedType === 'number' && actualType === 'string') || (expectedType === 'string' && actualType === 'number')) actualType = expectedType;
-                if (expectedType !== 'undefined' && actualType !== expectedType) errors.push(`Invalid type for ${key}: expected ${expectedType}, got ${actualType}`);
-                if (key === 'rskConfirmations' || key === 'btcConfirmations') {
-                    if (actualType !== 'object') {
-                        errors.push(`Invalid type for ${key}: expected object, got ${actualType}`);
-                    } else {
-                        Object.entries(value).forEach(([subKey, subValue]) => {
-                            const subExpectedValue = expectedValue ? expectedValue[subKey] : undefined;
-                            const subExpectedType = 'number';
-                            const subActualType = inferType(subValue);
-                            if (subActualType !== 'number') errors.push(`Invalid type for ${key} confirmation value of amount ${subKey}: expected number, got ${subActualType}`);
-                        });
-                    }
+            const etherToWei = ether => {
+                if (typeof ether !== 'string' && typeof ether !== 'number') {
+                    throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a number or string.`);
                 }
-            });
-
-            return { isValid: errors.length === 0, errors };
-        };
-
-        const saveConfig = async () => {
-            const generalConfig = getConfig('generalConfig', formatGeneralConfig);
-            const peginConfig = getConfig('peginConfig');
-            const pegoutConfig = getConfig('pegoutConfig');
-    
-            let saveSuccess = true;
-    
-            const { isValid: isGeneralValid, errors: generalErrors } = validateConfig(generalConfig, data.Configuration.general);
-            if (!isGeneralValid) {
-                showErrorToast(generalErrors.join('<br>'));
-                saveSuccess = false;
-            } else if (generalChanged) {
-                const success = await postConfig('generalConfig', '/configuration', generalConfig);
-                saveSuccess = saveSuccess && success;
-            }
-    
-            const { isValid: isPeginValid, errors: peginErrors } = validateConfig(peginConfig, data.Configuration.pegin);
-            if (!isPeginValid) {
-                showErrorToast(peginErrors.join('<br>'));
-                saveSuccess = false;
-            } else if (peginChanged) {
-                const success = await postConfig('peginConfig', '/pegin/configuration', peginConfig);
-                saveSuccess = saveSuccess && success;
-            }
-    
-            const { isValid: isPegoutValid, errors: pegoutErrors } = validateConfig(pegoutConfig, data.Configuration.pegout);
-            if (!isPegoutValid) {
-                showErrorToast(pegoutErrors.join('<br>'));
-                saveSuccess = false;
-            } else if (pegoutChanged) {
-                const success = await postConfig('pegoutConfig', '/pegout/configuration', pegoutConfig);
-                saveSuccess = saveSuccess && success;
-            }
-    
-            if (saveSuccess) showSuccessToast();
-        };
-        
-        const getConfig = (sectionId, formatFunction) => {
-            const inputs = document.getElementById(sectionId).querySelectorAll('input');
-            const config = {};
-            inputs.forEach(input => {
-                const configKey = input.dataset.configKey;
-                const index = input.dataset.index;
-                const field = input.dataset.field;
-                if (configKey === 'rskConfirmations' || configKey === 'btcConfirmations') {
-                    if (!config[configKey]) config[configKey] = [];
-                    if (!config[configKey][index]) config[configKey][index] = {};
-                    if (field === 'amount') {
-                        try {
-                            config[configKey][index][field] = etherToWei(input.value).toString();
-                        } catch (error) {
-                            showErrorToast(`Invalid input "${input.value}" for field "Amount". Please enter a valid number.`);
-                            throw error;
-                        }
-                    } else if (field === 'confirmation') {
-                        const value = Number(input.value);
-                        if (isNaN(value) || !Number.isInteger(value) || value < 0) {
-                            showErrorToast(`Invalid input "${input.value}" for field "Confirmation". Please enter a valid non-negative integer.`);
-                            throw new Error('Invalid confirmation number');
-                        }
-                        config[configKey][index][field] = value;
+                try {
+                    const num = new Decimal(ether);
+                    if (num.isNegative()) {
+                        throw new RangeError(`The input "${ether}" is not a valid number.`);
                     }
-                } else {
-                    let value;
-                    if (input.type === 'checkbox') {
-                        value = input.checked;
-                    } else {
-                        if (isFeeKey(input.dataset.key)) {
-                            try {
-                                value = etherToWei(input.value).toString();
-                            } catch (error) {
-                                showErrorToast(`Invalid input "${input.value}" for field "${input.dataset.key}". Please enter a valid number.`);
-                                throw error;
-                            }
-                        } else {
-                            value = input.value;
-                            if (!isNaN(value) && !isNaN(parseFloat(value))) {
-                                value = Number(value);
-                            }
-                        }
-                    }
-                    config[input.dataset.key] = value;
+                    return num.times(new Decimal(1e18)).toFixed();
+                } catch (error) {
+                    throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: ${error.message}`);
                 }
-            });
-            if (formatFunction) return formatFunction(config);
-            else return config;
-        };
+            };
 
-        const formatGeneralConfig = (config) => {
-            const formattedConfig = {};
-            Object.keys(config).forEach(key => {
-                if (key === 'rskConfirmations' || key === 'btcConfirmations') {
-                    formattedConfig[key] = {};
-                    config[key].forEach(entry => {
-                        if (entry.amount && entry.confirmation !== undefined) {
-                            formattedConfig[key][entry.amount] = entry.confirmation;
+            let generalChanged = false, peginChanged = false, pegoutChanged = false;
+
+            const setTextContent = (id, text) => document.getElementById(id).textContent = text;
+
+            const fetchData = async (url, elementId) => {
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': data.CsrfToken
                         }
                     });
-                } else {
-                    formattedConfig[key] = config[key];
+                    const responseData = await response.json();
+                    setTextContent(elementId, weiToEther(responseData.collateral) + " rBTC");
+                } catch (error) {
+                    console.error(error);
                 }
-            });
-            return formattedConfig;
-        };
+            };
 
-        const postConfig = async (sectionId, endpoint, config) => {
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': data.CsrfToken
-                    },
-                    body: JSON.stringify({
-                        configuration: config
-                    })
+            const populateProviderData = (providerData, rskAddress, btcAddress) => {
+                setTextContent('providerRskAddress', rskAddress);
+                setTextContent('providerBtcAddress', btcAddress);
+                setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
+            };
+
+            const createInput = (section, key, value) => {
+                const div = document.createElement('div');
+                div.classList.add('mb-3');
+
+                const label = document.createElement('label');
+                label.classList.add('form-label');
+                label.textContent = key;
+
+                const inputContainer = document.createElement('div');
+                inputContainer.classList.add('input-container');
+
+                const input = document.createElement('input');
+                input.style.marginLeft = "10px";
+                input.dataset.key = key;
+                input.dataset.originalValue = value;
+
+                if (typeof value === 'boolean') {
+                    input.type = 'checkbox';
+                    input.classList.add('form-check-input');
+                    input.checked = value;
+                    input.addEventListener('change', () => setChanged(section.id));
+                } else {
+                    input.type = 'text';
+                    input.style.width = "40%";
+                    input.classList.add('form-control');
+                    input.value = formatValue(key, value);
+                    input.addEventListener('input', () => setChanged(section.id));
+                    if (isFeeKey(key)) {
+                        const questionIcon = createQuestionIcon(getTooltipText(key));
+                        label.appendChild(questionIcon);
+                    }
+                }
+
+                inputContainer.appendChild(input);
+                div.appendChild(label);
+                div.appendChild(inputContainer);
+                section.appendChild(div);
+            };
+
+            const createConfirmationConfig = (section, configKey, confirmations) => {
+                const container = document.createElement('div');
+                container.classList.add('confirmation-config');
+                container.dataset.configKey = configKey;
+
+                const header = document.createElement('h5');
+                header.textContent = configKey;
+                container.appendChild(header);
+
+                const entriesContainer = document.createElement('div');
+                entriesContainer.classList.add('entries-container');
+
+                let index = 0;
+                Object.entries(confirmations).forEach(([amountWei, confirmation]) => {
+                    createConfirmationEntry(entriesContainer, configKey, index, amountWei, confirmation);
+                    index++;
                 });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    showErrorToast(`Error saving ${sectionId} configuration: ${errorData.message || 'Unknown error'}`);
+
+                container.appendChild(entriesContainer);
+
+                const addButton = document.createElement('button');
+                addButton.type = 'button';
+                addButton.classList.add('btn', 'btn-secondary', 'mt-2');
+                addButton.textContent = 'Add Entry';
+                addButton.addEventListener('click', () => {
+                    const index = entriesContainer.querySelectorAll('.input-group').length;
+                    createConfirmationEntry(entriesContainer, configKey, index);
+                    setChanged(configKey);
+                });
+
+                container.appendChild(addButton);
+                section.appendChild(container);
+            };
+
+            const setChanged = (sectionId) => {
+                if (sectionId === 'generalConfig') generalChanged = true;
+                else if (sectionId === 'peginConfig') peginChanged = true;
+                else if (sectionId === 'pegoutConfig') pegoutChanged = true;
+                else if (sectionId === 'rskConfirmations' || sectionId === 'btcConfirmations') generalChanged = true;
+            };
+
+            const createQuestionIcon = (tooltipText) => {
+                const questionIcon = document.createElement('span');
+                questionIcon.classList.add('question-mark');
+                const img = document.createElement('img');
+                img.src = '../static/questionIcon.svg';
+                img.width = 13;
+                img.height = 13;
+                img.alt = 'Question Mark';
+                img.classList.add('bi', 'bi-question-circle');
+                questionIcon.appendChild(img);
+                const tooltip = document.createElement('div');
+                tooltip.classList.add('custom-tooltip');
+                tooltip.textContent = tooltipText;
+                questionIcon.appendChild(tooltip);
+                return questionIcon;
+            };
+
+            const getTooltipText = (key) => {
+                const tooltips = {
+                    timeForDeposit: 'The time (in seconds) for which a deposit is considered valid.',
+                    expireTime: 'The time (in seconds) after which a quote is considered expired.',
+                    penaltyFee: 'The penalty fee (in BTC) charged for invalid transactions.',
+                    callFee: 'The fee (in BTC) charged by the LP for processing a transaction.',
+                    maxValue: 'The maximum value (in BTC) allowed for a transaction.',
+                    minValue: 'The minimum value (in BTC) allowed for a transaction.',
+                    expireBlocks: 'The number of blocks after which a quote is considered expired.',
+                    bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.'
+                };
+                return tooltips[key] || 'No description available';
+            };
+
+            const formatValue = (key, value) => {
+                return isFeeKey(key) ? weiToEther(value) : value;
+            };
+
+            const isFeeKey = (key) => {
+                return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
+            };
+
+            const createConfirmationEntry = (container, configKey, index, amount = '', confirmation = '') => {
+                const div = document.createElement('div');
+                div.classList.add('d-flex', 'align-items-center', 'mb-2');
+                const fieldWidth = '180px';
+                const amountGroup = document.createElement('div');
+                amountGroup.classList.add('input-group', 'me-2');
+                const amountInput = document.createElement('input');
+                amountInput.type = 'text';
+                amountInput.value = amount ? weiToEther(amount) : '';
+                amountInput.classList.add('form-control', 'form-control-sm');
+                amountInput.placeholder = 'Amount';
+                amountInput.dataset.configKey = configKey;
+                amountInput.dataset.field = 'amount';
+                amountInput.dataset.index = index;
+                amountInput.style.maxWidth = fieldWidth;
+                const amountInputAppend = document.createElement('span');
+                amountInputAppend.classList.add('input-group-text', 'input-group-text-sm');
+                amountInputAppend.textContent = 'rBTC';
+                amountGroup.appendChild(amountInput);
+                amountGroup.appendChild(amountInputAppend);
+                const confirmationGroup = document.createElement('div');
+                confirmationGroup.classList.add('input-group', 'me-2');
+
+                const confirmationInput = document.createElement('input');
+                confirmationInput.type = 'number';
+                confirmationInput.value = confirmation;
+                confirmationInput.classList.add('form-control', 'form-control-sm');
+                confirmationInput.placeholder = 'Confirmations';
+                confirmationInput.dataset.configKey = configKey;
+                confirmationInput.dataset.field = 'confirmation';
+                confirmationInput.dataset.index = index;
+                confirmationInput.style.maxWidth = fieldWidth;
+
+                const confirmationInputAppend = document.createElement('span');
+                confirmationInputAppend.classList.add('input-group-text', 'input-group-text-sm');
+                confirmationInputAppend.textContent = 'confirmations';
+
+                confirmationGroup.appendChild(confirmationInput);
+                confirmationGroup.appendChild(confirmationInputAppend);
+
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.classList.add('btn', 'btn-danger', 'btn-sm');
+                removeButton.textContent = 'Remove';
+
+                removeButton.addEventListener('click', () => {
+                    div.remove();
+                    setChanged(configKey);
+                });
+
+                amountInput.addEventListener('input', () => setChanged(configKey));
+                confirmationInput.addEventListener('input', () => setChanged(configKey));
+
+                div.appendChild(amountGroup);
+                div.appendChild(confirmationGroup);
+                div.appendChild(removeButton);
+                container.appendChild(div);
+            };
+
+            const populateConfigSection = (sectionId, config) => {
+                const section = document.getElementById(sectionId);
+                section.innerHTML = '';
+                Object.entries(config).forEach(([key, value]) => {
+                    if (key === 'rskConfirmations' || key === 'btcConfirmations') createConfirmationConfig(section, key, value);
+                    else createInput(section, key, value);
+                });
+            };
+
+            const showSuccessToast = () => {
+                const toastElement = document.getElementById('successToast');
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            };
+
+            const showErrorToast = (errorMessage) => {
+                const toastElement = document.createElement('div');
+                toastElement.classList.add('toast');
+                toastElement.setAttribute('role', 'alert');
+                toastElement.setAttribute('aria-live', 'assertive');
+                toastElement.setAttribute('aria-atomic', 'true');
+                toastElement.innerHTML = `
+                    <div class="toast-header">
+                        <strong class="me-auto">Error</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${errorMessage}
+                    </div>
+                `;
+                document.querySelector('.toast-container').appendChild(toastElement);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+            };
+
+            const inferType = value => {
+                if (value === null || value === undefined) return 'undefined';
+                if (Array.isArray(value)) return 'array';
+                return typeof value;
+            };
+
+            const validateConfig = (config, originalConfig) => {
+                const errors = [];
+                Object.entries(config).forEach(([key, value]) => {
+                    const expectedValue = originalConfig[key];
+                    const expectedType = inferType(expectedValue);
+                    let actualType = inferType(value);
+                    if (isFeeKey(key)) if ((expectedType === 'number' && actualType === 'string') || (expectedType === 'string' && actualType === 'number')) actualType = expectedType;
+                    if (expectedType !== 'undefined' && actualType !== expectedType) errors.push(`Invalid type for ${key}: expected ${expectedType}, got ${actualType}`);
+                    if (key === 'rskConfirmations' || key === 'btcConfirmations') {
+                        if (actualType !== 'object') {
+                            errors.push(`Invalid type for ${key}: expected object, got ${actualType}`);
+                        } else {
+                            Object.entries(value).forEach(([subKey, subValue]) => {
+                                const subExpectedValue = expectedValue ? expectedValue[subKey] : undefined;
+                                const subExpectedType = 'number';
+                                const subActualType = inferType(subValue);
+                                if (subActualType !== 'number') errors.push(`Invalid type for ${key} confirmation value of amount ${subKey}: expected number, got ${subActualType}`);
+                            });
+                        }
+                    }
+                });
+
+                return { isValid: errors.length === 0, errors };
+            };
+
+            const saveConfig = async () => {
+                const generalConfig = getConfig('generalConfig', formatGeneralConfig);
+                const peginConfig = getConfig('peginConfig');
+                const pegoutConfig = getConfig('pegoutConfig');
+        
+                let saveSuccess = true;
+        
+                const { isValid: isGeneralValid, errors: generalErrors } = validateConfig(generalConfig, data.Configuration.general);
+                if (!isGeneralValid) {
+                    showErrorToast(generalErrors.join('<br>'));
+                    saveSuccess = false;
+                } else if (generalChanged) {
+                    const success = await postConfig('generalConfig', '/configuration', generalConfig);
+                    saveSuccess = saveSuccess && success;
+                }
+        
+                const { isValid: isPeginValid, errors: peginErrors } = validateConfig(peginConfig, data.Configuration.pegin);
+                if (!isPeginValid) {
+                    showErrorToast(peginErrors.join('<br>'));
+                    saveSuccess = false;
+                } else if (peginChanged) {
+                    const success = await postConfig('peginConfig', '/pegin/configuration', peginConfig);
+                    saveSuccess = saveSuccess && success;
+                }
+        
+                const { isValid: isPegoutValid, errors: pegoutErrors } = validateConfig(pegoutConfig, data.Configuration.pegout);
+                if (!isPegoutValid) {
+                    showErrorToast(pegoutErrors.join('<br>'));
+                    saveSuccess = false;
+                } else if (pegoutChanged) {
+                    const success = await postConfig('pegoutConfig', '/pegout/configuration', pegoutConfig);
+                    saveSuccess = saveSuccess && success;
+                }
+        
+                if (saveSuccess) showSuccessToast();
+            };
+
+            const getConfig = (sectionId, formatFunction) => {
+                const inputs = document.getElementById(sectionId).querySelectorAll('input');
+                const config = {};
+                inputs.forEach(input => {
+                    const configKey = input.dataset.configKey;
+                    const index = input.dataset.index;
+                    const field = input.dataset.field;
+                    if (configKey === 'rskConfirmations' || configKey === 'btcConfirmations') {
+                        if (!config[configKey]) config[configKey] = [];
+                        if (!config[configKey][index]) config[configKey][index] = {};
+                        if (field === 'amount') {
+                            try {
+                                config[configKey][index][field] = etherToWei(input.value).toString();
+                            } catch (error) {
+                                showErrorToast(`Invalid input "${input.value}" for field "Amount". Please enter a valid number.`);
+                                throw error;
+                            }
+                        } else if (field === 'confirmation') {
+                            const value = Number(input.value);
+                            if (isNaN(value) || !Number.isInteger(value) || value < 0) {
+                                showErrorToast(`Invalid input "${input.value}" for field "Confirmation". Please enter a valid non-negative integer.`);
+                                throw new Error('Invalid confirmation number');
+                            }
+                            config[configKey][index][field] = value;
+                        }
+                    } else {
+                        let value;
+                        if (input.type === 'checkbox') {
+                            value = input.checked;
+                        } else {
+                            if (isFeeKey(input.dataset.key)) {
+                                try {
+                                    value = etherToWei(input.value).toString();
+                                } catch (error) {
+                                    showErrorToast(`Invalid input "${input.value}" for field "${input.dataset.key}". Please enter a valid number.`);
+                                    throw error;
+                                }
+                            } else {
+                                value = input.value;
+                                if (!isNaN(value) && !isNaN(parseFloat(value))) {
+                                    value = Number(value);
+                                }
+                            }
+                        }
+                        config[input.dataset.key] = value;
+                    }
+                });
+                if (formatFunction) return formatFunction(config);
+                else return config;
+            };
+
+            const formatGeneralConfig = (config) => {
+                const formattedConfig = {};
+                Object.keys(config).forEach(key => {
+                    if (key === 'rskConfirmations' || key === 'btcConfirmations') {
+                        formattedConfig[key] = {};
+                        config[key].forEach(entry => {
+                            if (entry.amount && entry.confirmation !== undefined) {
+                                formattedConfig[key][entry.amount] = entry.confirmation;
+                            }
+                        });
+                    } else {
+                        formattedConfig[key] = config[key];
+                    }
+                });
+                return formattedConfig;
+            };
+
+            const postConfig = async (sectionId, endpoint, config) => {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': data.CsrfToken
+                        },
+                        body: JSON.stringify({
+                            configuration: config
+                        })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        showErrorToast(`Error saving ${sectionId} configuration: ${errorData.message || 'Unknown error'}`);
+                        return false;
+                    }
+                    return true;
+                } catch (error) {
+                    showErrorToast(`Error during ${sectionId} configuration save: ${error.message}`);
                     return false;
                 }
-                return true;
-            } catch (error) {
-                showErrorToast(`Error during ${sectionId} configuration save: ${error.message}`);
-                return false;
-            }
-        };
+            };
 
-        const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId) => {
-            const amountInEther = document.getElementById(amountId).value;
-            const loadingBar = document.getElementById(loadingBarId);
-            const button = document.getElementById(buttonId);
-            loadingBar.style.display = 'block';
-            button.disabled = true;
-            try {
-                const amountInWei = Number(etherToWei(amountInEther));
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': data.CsrfToken },
-                    body: JSON.stringify({ amount: amountInWei })
-                });
-                if (response.ok) {
-                    fetchData(endpoint.replace('/addCollateral', '/collateral'), elementId);
-                } else {
-                    const errorData = await response.json();
-                    showErrorToast(`Error adding collateral: ${errorData.message || 'Unknown error'}`);
+            const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId) => {
+                const amountInEther = document.getElementById(amountId).value;
+                const loadingBar = document.getElementById(loadingBarId);
+                const button = document.getElementById(buttonId);
+                loadingBar.style.display = 'block';
+                button.disabled = true;
+                try {
+                    const amountInWei = Number(etherToWei(amountInEther));
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': data.CsrfToken },
+                        body: JSON.stringify({ amount: amountInWei })
+                    });
+                    if (response.ok) {
+                        fetchData(endpoint.replace('/addCollateral', '/collateral'), elementId);
+                    } else {
+                        const errorData = await response.json();
+                        showErrorToast(`Error adding collateral: ${errorData.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    showErrorToast(`Invalid input "${amountInEther}" for collateral amount. Please enter a valid number.`);
+                } finally {
+                    loadingBar.style.display = 'none';
+                    button.disabled = false;
                 }
-            } catch (error) {
-                showErrorToast(`Invalid input "${amountInEther}" for collateral amount. Please enter a valid number.`);
-            } finally {
-                loadingBar.style.display = 'none';
-                button.disabled = false;
-            }
-        };
+            };
 
-        document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton'));
-        document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton'));
-        document.getElementById('saveConfig').addEventListener('click', saveConfig);
+            document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton'));
+            document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton'));
+            document.getElementById('saveConfig').addEventListener('click', saveConfig);
 
-        populateConfigSection('generalConfig', data.Configuration.general);
-        populateConfigSection('peginConfig', data.Configuration.pegin);
-        populateConfigSection('pegoutConfig', data.Configuration.pegout);
-        populateProviderData(data.ProviderData, data.RskAddress, data.BtcAddress);
-        fetchData('/pegin/collateral', 'peginCollateral');
-        fetchData('/pegout/collateral', 'pegoutCollateral');
-    }); 
-</script>
+            populateConfigSection('generalConfig', data.Configuration.general);
+            populateConfigSection('peginConfig', data.Configuration.pegin);
+            populateConfigSection('pegoutConfig', data.Configuration.pegout);
+            populateProviderData(data.ProviderData, data.RskAddress, data.BtcAddress);
+            fetchData('/pegin/collateral', 'peginCollateral');
+            fetchData('/pegout/collateral', 'pegoutCollateral');
+        });
+    </script>
 </body>
 </html>
