@@ -271,10 +271,8 @@
                 const entriesContainer = document.createElement('div');
                 entriesContainer.classList.add('entries-container');
 
-                let index = 0;
-                Object.entries(confirmations).forEach(([amountWei, confirmation]) => {
+                Object.entries(confirmations).forEach(([amountWei, confirmation], index) => {
                     createConfirmationEntry(entriesContainer, configKey, index, amountWei, confirmation);
-                    index++;
                 });
 
                 container.appendChild(entriesContainer);
@@ -453,8 +451,6 @@
                             errors.push(`Invalid type for ${key}: expected object, got ${actualType}`);
                         } else {
                             Object.entries(value).forEach(([subKey, subValue]) => {
-                                const subExpectedValue = expectedValue ? expectedValue[subKey] : undefined;
-                                const subExpectedType = 'number';
                                 const subActualType = inferType(subValue);
                                 if (subActualType !== 'number') errors.push(`Invalid type for ${key} confirmation value of amount ${subKey}: expected number, got ${subActualType}`);
                             });
