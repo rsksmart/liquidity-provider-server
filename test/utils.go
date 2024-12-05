@@ -30,7 +30,7 @@ const (
 	AnyRskAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
 	AnyBtcAddress = "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"
 	AnyString     = "any value"
-	AnyHash       = "any hash"
+	AnyHash       = "d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb"
 	AnyUrl        = "url.com"
 	keyPath       = "../../docker-compose/localstack/local-key.json"
 	KeyPassword   = "test"

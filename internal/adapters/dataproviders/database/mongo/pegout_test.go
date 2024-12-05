@@ -96,13 +96,13 @@ func TestPegoutMongoRepository_GetQuote(t *testing.T) {
 	t.Run("Get pegout quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {LbcAddress:0xc2A630c053D12D63d32b025082f6Ba268db18300 LpRskAddress:0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b BtcRefundAddress:n2Ge4xMVQKp5Hzzf8xTBJBLppRgjRZYYyq RskRefundAddress:0x79568C2989232dcA1840087d73d403602364c0D4 LpBtcAddress:mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe CallFee:100000000000000 PenaltyFee:10000000000000 Nonce:6410832321595034747 DepositAddress:n2Ge4xMVQKp5Hzzf8xTBJBLppRgjRZYYyq Value:5000000000000000 AgreementTimestamp:1721944367 DepositDateLimit:1721951567 DepositConfirmations:4 TransferConfirmations:2 TransferTime:7200 ExpireDate:1721958767 ExpireBlock:5366409 GasFee:4170000000000 ProductFeeAmount:13}"
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyString}}).
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPegoutQuote{
 				PegoutQuote: testPegoutQuote,
 				Hash:        test.AnyString,
 			}, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
 		assert.Equal(t, testPegoutQuote, *result)
@@ -111,7 +111,7 @@ func TestPegoutMongoRepository_GetQuote(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPegoutQuote{}, assert.AnError, nil)).Once()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -120,9 +120,16 @@ func TestPegoutMongoRepository_GetQuote(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPegoutQuote{}, mongoDb.ErrNoDocuments, nil)).Once()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("Fail on invalid pegout quote hash", func(t *testing.T) {
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
+		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		collection.AssertNotCalled(t, "FindOne")
+		require.Error(t, err)
 		assert.Nil(t, result)
 	})
 }
@@ -133,10 +140,10 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 	t.Run("Get retained pegout quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {QuoteHash:27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f DepositAddress:mkE1WWdiu5VgjfugomDk8GxV6JdEEEJR9s Signature:5c9eab91c753355f87c19d09ea88b2fd02773981e513bc2821fed5ceba0d452a0a3d21e2252cb35348ce5c6803117e3abb62837beb8f5866a375ce66587d004b1c RequiredLiquidity:55 State:WaitingForDepositConfirmations UserRskTxHash:0x6b2e1e4daf8cf00c5c3534b72cdeec3526e8a38f70c11e44888b6e4ae1ee7d38 LpBtcTxHash:6ac3779dc33ad52f3409cbb909bcd458745995496a2a3954406206f6e5d4cb0e RefundPegoutTxHash:0x8e773a2826e73f8e5792304379a7e46dff38f17089c6d344335e03537b31c2bc BridgeRefundTxHash:0x4f3f6f0664a732e4c907971e75c1e3fd8671461dcb53f566660432fc47255d8b}"
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyString}}).
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(testRetainedPegoutQuote, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
 		assert.Equal(t, testRetainedPegoutQuote, *result)
@@ -145,7 +152,7 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(quote.RetainedPegoutQuote{}, assert.AnError, nil)).Once()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -154,9 +161,16 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(quote.RetainedPegoutQuote{}, mongoDb.ErrNoDocuments, nil)).Once()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("Fail on invalid pegout quote hash", func(t *testing.T) {
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		collection.AssertNotCalled(t, "FindOne")
+		require.Error(t, err)
 		assert.Nil(t, result)
 	})
 }
@@ -359,6 +373,17 @@ func TestPegoutMongoRepository_ListPegoutDepositsByAddress(t *testing.T) {
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Empty(t, result)
+	})
+	t.Run("Should sanitize address properly", func(t *testing.T) {
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client))
+		collection.On("Find", mock.Anything,
+			bson.M{"from": bson.M{"$regex": "0x1234567890abcdef1234567890abcdef12345678\\(a\\+\\)\\+", "$options": "i"}},
+			options.Find().SetSort(bson.M{"timestamp": -1}),
+		).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutDeposit}, nil, nil)).Once()
+		result, err := repo.ListPegoutDepositsByAddress(context.Background(), "0x1234567890abcdef1234567890abcdef12345678(a+)+")
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.Equal(t, []quote.PegoutDeposit{testPegoutDeposit}[0], result[0])
 	})
 }
 

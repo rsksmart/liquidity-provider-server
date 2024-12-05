@@ -51,6 +51,10 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
+
 	collection := repo.conn.Collection(PeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
 
@@ -68,6 +72,10 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	var result quote.RetainedPeginQuote
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
