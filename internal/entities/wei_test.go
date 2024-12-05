@@ -162,7 +162,22 @@ func TestWei_ToSatoshi(t *testing.T) {
 		{
 			name: "1 wei to sat",
 			w:    entities.NewWei(1),
-			want: new(big.Float).Quo(new(big.Float).SetInt64(1), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil))),
+			want: big.NewFloat(1),
+		},
+		{
+			name: "72160329123080000 wei to 7216033 sat",
+			w:    entities.NewWei(72160329123080000),
+			want: big.NewFloat(7216033),
+		},
+		{
+			name: "4360000000000000 wei to 436000 sat",
+			w:    entities.NewWei(4360000000000000),
+			want: big.NewFloat(436000),
+		},
+		{
+			name: "1 RBTC to 100000000 sat",
+			w:    entities.NewWei(1000000000000000000),
+			want: big.NewFloat(100000000),
 		},
 	}
 	for _, tt := range tests {
