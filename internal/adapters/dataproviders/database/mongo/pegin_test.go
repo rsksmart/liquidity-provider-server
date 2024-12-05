@@ -84,13 +84,13 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 	t.Run("Get pegin quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1}"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyString}}).
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPeginQuote{
 				PeginQuote: testPeginQuote,
 				Hash:       test.AnyString,
 			}, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
 		assert.Equal(t, testPeginQuote, *result)
@@ -99,7 +99,7 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPeginQuote{}, assert.AnError, nil)).Once()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -108,9 +108,16 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPeginQuote{}, mongoDb.ErrNoDocuments, nil)).Once()
-		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		result, err := repo.GetQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("Fail on invalid pegin quote hash", func(t *testing.T) {
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
+		result, err := repo.GetQuote(context.Background(), test.AnyString)
+		collection.AssertNotCalled(t, "FindOne")
+		require.Error(t, err)
 		assert.Nil(t, result)
 	})
 }
@@ -121,10 +128,10 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 	t.Run("Get retained pegin quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89}"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyString}}).
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(testRetainedPeginQuote, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
 		assert.Equal(t, testRetainedPeginQuote, *result)
@@ -133,7 +140,7 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(quote.RetainedPeginQuote{}, assert.AnError, nil)).Once()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -142,9 +149,16 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, mock.Anything).
 			Return(mongoDb.NewSingleResultFromDocument(quote.RetainedPeginQuote{}, mongoDb.ErrNoDocuments, nil)).Once()
-		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("Fail on invalid pegin quote hash", func(t *testing.T) {
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
+		collection.AssertNotCalled(t, "FindOne")
+		require.Error(t, err)
 		assert.Nil(t, result)
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"regexp"
 )
 
 const (
@@ -53,6 +54,10 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
+
 	collection := repo.conn.Collection(PegoutQuoteCollection)
 	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
 
@@ -70,6 +75,10 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	var result quote.RetainedPegoutQuote
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
@@ -101,7 +110,8 @@ func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Conte
 	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
 	defer cancel()
 
-	filter := bson.M{"from": bson.M{"$regex": address, "$options": "i"}}
+	sanitizedAddress := regexp.QuoteMeta(address)
+	filter := bson.M{"from": bson.M{"$regex": sanitizedAddress, "$options": "i"}}
 	sort := options.Find().SetSort(bson.M{"timestamp": -1})
 	cursor, err := repo.conn.Collection(DepositEventsCollection).Find(dbCtx, filter, sort)
 	if err != nil {

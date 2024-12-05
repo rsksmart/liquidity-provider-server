@@ -30,9 +30,9 @@ func TestUniqueSessionStore_New(t *testing.T) {
 	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
 	t.Run("should return an error if the session name is different", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		session, err := store.New(req, test.AnyHash)
+		session, err := store.New(req, test.AnyString)
 		assertDummySession(t, session)
-		require.ErrorContains(t, err, "UniqueSessionStore is expecting cookie session name and received any hash")
+		require.ErrorContains(t, err, "UniqueSessionStore is expecting cookie session name and received any value")
 	})
 	t.Run("should return an new session the first time", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
