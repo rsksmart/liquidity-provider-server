@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -43,7 +44,7 @@ func TestNewWatcherRegistry(t *testing.T) {
 		mutexes := environment.NewApplicationMutexes()
 		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
 
-		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lp, messagingRegistry)
+		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lp, messagingRegistry, watcher.NewApplicationTickers())
 
 		require.NotNil(t, watcherRegistry)
 		value := reflect.ValueOf(watcherRegistry).Elem()

@@ -12,11 +12,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
+	"sync"
 	"time"
 )
 
 type PegoutRskDepositWatcher struct {
 	quotes                       map[string]quote.WatchedPegoutQuote
+	quotesMutex                  sync.RWMutex
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	expiredUseCase               *pegout.ExpiredPegoutQuoteUseCase
 	sendPegoutUseCase            *pegout.SendPegoutUseCase
@@ -25,11 +27,12 @@ type PegoutRskDepositWatcher struct {
 	pegoutLp                     liquidity_provider.PegoutLiquidityProvider
 	rpc                          blockchain.Rpc
 	contracts                    blockchain.RskContracts
-	ticker                       *time.Ticker
+	ticker                       Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
 	currentBlock                 uint64
 	cacheStartBlock              uint64
+	currentBlockMutex            sync.RWMutex
 }
 
 type PegoutRskDepositWatcherUseCases struct {
@@ -63,6 +66,7 @@ func NewPegoutRskDepositWatcher(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
+	ticker Ticker,
 ) *PegoutRskDepositWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
@@ -81,6 +85,9 @@ func NewPegoutRskDepositWatcher(
 		watcherStopChannel:           watcherStopChannel,
 		currentBlock:                 currentBlock,
 		cacheStartBlock:              cacheStartBlock,
+		ticker:                       ticker,
+		currentBlockMutex:            sync.RWMutex{},
+		quotesMutex:                  sync.RWMutex{},
 	}
 }
 
@@ -99,6 +106,10 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 		return err
 	}
 	pegoutConfig := watcher.pegoutLp.PegoutConfiguration(ctx)
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	for _, watchedQuote := range watchedQuotes {
 		quoteCreationBlock = quote.GetCreationBlock(pegoutConfig, watchedQuote.PegoutQuote)
 		if watcher.currentBlock == 0 || watcher.currentBlock > quoteCreationBlock {
@@ -115,12 +126,13 @@ func (watcher *PegoutRskDepositWatcher) Start() {
 	var checkContext context.Context
 	var checkCancel context.CancelFunc
 	eventChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
-	watcher.ticker = time.NewTicker(pegoutDepositWatcherInterval)
 
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
+			watcher.currentBlockMutex.Lock()
+			watcher.quotesMutex.Lock()
 			checkContext, checkCancel = context.WithTimeout(context.Background(), 1*time.Minute)
 			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
 				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
@@ -130,6 +142,8 @@ watcherLoop:
 				log.Error(pegoutRskWatcherLog(blockchain.RskChainHeightErrorTemplate, err))
 			}
 			checkCancel()
+			watcher.currentBlockMutex.Unlock()
+			watcher.quotesMutex.Unlock()
 		case event := <-eventChannel:
 			if event != nil {
 				watcher.handleAcceptedPegoutQuote(event)
@@ -149,6 +163,8 @@ func (watcher *PegoutRskDepositWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegoutRskDepositWatcher) handleAcceptedPegoutQuote(event entities.Event) {
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	parsedEvent, ok := event.(quote.AcceptedPegoutQuoteEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
@@ -235,6 +251,19 @@ func (watcher *PegoutRskDepositWatcher) sendPegout(ctx context.Context, watchedQ
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}
+}
+
+func (watcher *PegoutRskDepositWatcher) GetWatchedQuote(quoteHash string) (quote.WatchedPegoutQuote, bool) {
+	watcher.quotesMutex.RLock()
+	defer watcher.quotesMutex.RUnlock()
+	watchedQuote, ok := watcher.quotes[quoteHash]
+	return watchedQuote, ok
+}
+
+func (watcher *PegoutRskDepositWatcher) GetCurrentBlock() uint64 {
+	watcher.currentBlockMutex.RLock()
+	defer watcher.currentBlockMutex.RUnlock()
+	return watcher.currentBlock
 }
 
 func validateDepositedPegoutQuote(watchedQuote quote.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {

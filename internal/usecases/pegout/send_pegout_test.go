@@ -1,4 +1,4 @@
-package pegout
+package pegout_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -17,14 +18,12 @@ import (
 	"time"
 )
 
-var now = uint32(time.Now().Unix())
-
 const (
 	blockHash          = "0x6e6f6a"
 	blockNumber uint64 = 440
 )
 
-var retainedQuote = quote.RetainedPegoutQuote{
+var sendPegoutRetainedQuote = quote.RetainedPegoutQuote{
 	QuoteHash:          "e64215867af36cad04e8c2e3e8336618b358f68923529f2a1e5dbc6dd4af4df1",
 	DepositAddress:     "0x654321",
 	Signature:          "0x112a3b",
@@ -36,7 +35,7 @@ var retainedQuote = quote.RetainedPegoutQuote{
 	BridgeRefundTxHash: "",
 }
 
-var pegoutQuote = quote.PegoutQuote{
+var sendPegoutTestQuote = quote.PegoutQuote{
 	LbcAddress:            "0x5678",
 	LpRskAddress:          "0x1234",
 	BtcRefundAddress:      test.AnyAddress,
@@ -45,7 +44,7 @@ var pegoutQuote = quote.PegoutQuote{
 	CallFee:               entities.NewWei(3000),
 	PenaltyFee:            2,
 	Nonce:                 3,
-	DepositAddress:        retainedQuote.DepositAddress,
+	DepositAddress:        sendPegoutRetainedQuote.DepositAddress,
 	Value:                 entities.NewWei(4000),
 	AgreementTimestamp:    now,
 	DepositDateLimit:      now + 60,
@@ -62,16 +61,16 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	btcTxHash := "0x5b5c5d"
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-	quoteHash, _ := hex.DecodeString(retainedQuote.QuoteHash)
-	btcWallet.On("SendWithOpReturn", retainedQuote.DepositAddress, pegoutQuote.Value, quoteHash).Return(btcTxHash, nil).Once()
+	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.LpBtcTxHash = btcTxHash
 		expected.State = quote.PegoutStateSendPegoutSucceeded
 		require.NoError(t, event.Error)
-		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
@@ -79,7 +78,7 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 		TransactionHash:   "0x5b5c5d",
 		BlockHash:         blockHash,
 		BlockNumber:       blockNumber,
@@ -96,17 +95,17 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 		Nonce:     1,
 	}, nil).Once()
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.LpBtcTxHash = btcTxHash
 	updatedQuote.State = quote.PegoutStateSendPegoutSucceeded
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	rpc := blockchain.Rpc{Rsk: rsk}
 	lbc := new(mocks.LbcMock)
-	lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(false, nil).Once()
+	lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.NoError(t, err)
 	btcWallet.AssertExpectations(t)
@@ -131,11 +130,11 @@ func TestSendPegoutUseCase_Run_ShouldNotPublishRecoverableError(t *testing.T) {
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		btcWallet := new(mocks.BtcWalletMock)
 		rsk := new(mocks.RootstockRpcServerMock)
-		caseQuote := retainedQuote
+		caseQuote := sendPegoutRetainedQuote
 		lbc := new(mocks.LbcMock)
 		setup(&caseQuote, btcWallet, rsk, quoteRepository, lbc)
 		rpc := blockchain.Rpc{Rsk: rsk}
-		useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+		useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
 		err := useCase.Run(context.Background(), caseQuote)
 		btcWallet.AssertExpectations(t)
 		rsk.AssertExpectations(t)
@@ -147,30 +146,30 @@ func TestSendPegoutUseCase_Run_ShouldNotPublishRecoverableError(t *testing.T) {
 }
 
 // nolint:funlen
-func getRecoverableSetups() []func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-	return []func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock){
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			retainedQuote.State = quote.PegoutStateWaitingForDeposit
+func getRecoverableSetups() []func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+	return []func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock){
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			sendPegoutRetainedQuote.State = quote.PegoutStateWaitingForDeposit
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			retainedQuote.UserRskTxHash = ""
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			sendPegoutRetainedQuote.UserRskTxHash = ""
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(nil, assert.AnError).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(nil, assert.AnError).Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			rsk.On("GetHeight", test.AnyCtx).Return(uint64(0), assert.AnError).Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
 			rsk.On("GetTransactionReceipt", test.AnyCtx, mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-			rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+			rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 				TransactionHash:   "0x5b5c5d",
 				BlockHash:         "0x6e6f6a",
 				BlockNumber:       blockNumber,
@@ -182,10 +181,10 @@ func getRecoverableSetups() []func(retainedQuote *quote.RetainedPegoutQuote, btc
 			}, nil).Once()
 			rsk.On("GetBlockByHash", test.AnyCtx, mock.Anything).Return(blockchain.BlockInfo{}, assert.AnError).Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-			rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+			rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 				TransactionHash:   "0x5b5c5d",
 				BlockHash:         "0x6e6f6a",
 				BlockNumber:       blockNumber,
@@ -197,12 +196,12 @@ func getRecoverableSetups() []func(retainedQuote *quote.RetainedPegoutQuote, btc
 			}, nil).Once()
 			rsk.On("GetBlockByHash", test.AnyCtx, mock.Anything).
 				Return(blockchain.BlockInfo{Timestamp: time.Unix(int64(now), 0)}, nil).Once()
-			lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(false, assert.AnError).Once()
+			lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, assert.AnError).Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, btcWallet *mocks.BtcWalletMock, rsk *mocks.RootstockRpcServerMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, lbc *mocks.LbcMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-			rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+			rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 				TransactionHash:   "0x5b5c5d",
 				BlockHash:         "0x6e6f6a",
 				BlockNumber:       blockNumber,
@@ -214,7 +213,7 @@ func getRecoverableSetups() []func(retainedQuote *quote.RetainedPegoutQuote, btc
 			}, nil).Once()
 			rsk.On("GetBlockByHash", test.AnyCtx, mock.Anything).
 				Return(blockchain.BlockInfo{Timestamp: time.Unix(int64(now), 0)}, nil).Once()
-			lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(false, nil).Once()
+			lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 			btcWallet.On("GetBalance").Return(entities.NewWei(0), assert.AnError).Once()
 		},
 	}
@@ -225,17 +224,17 @@ func TestSendPegoutUseCase_Run_InsufficientAmount(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.ErrorIs(t, event.Error, usecases.InsufficientAmountError)
-		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
 	mutex := new(mocks.MutexMock)
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
-		TransactionHash:   retainedQuote.UserRskTxHash,
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+		TransactionHash:   sendPegoutRetainedQuote.UserRskTxHash,
 		BlockHash:         "0x6e6f6a",
 		BlockNumber:       blockNumber,
 		From:              "0x1234",
@@ -245,15 +244,15 @@ func TestSendPegoutUseCase_Run_InsufficientAmount(t *testing.T) {
 		Value:             entities.NewWei(8000),
 	}, nil).Once()
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	lbc := new(mocks.LbcMock)
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorIs(t, err, usecases.InsufficientAmountError)
 	quoteRepository.AssertExpectations(t)
@@ -272,8 +271,8 @@ func TestSendPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
-		TransactionHash:   retainedQuote.UserRskTxHash,
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+		TransactionHash:   sendPegoutRetainedQuote.UserRskTxHash,
 		BlockHash:         "0x6e6f6a",
 		BlockNumber:       445,
 		From:              "0x1234",
@@ -283,12 +282,12 @@ func TestSendPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 		Value:             entities.NewWei(8500),
 	}, nil).Once()
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 	lbc := new(mocks.LbcMock)
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorIs(t, err, usecases.NoEnoughConfirmationsError)
 	quoteRepository.AssertExpectations(t)
@@ -303,15 +302,15 @@ func TestSendPegoutUseCase_Run_ExpiredQuote(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
-	expiredQuote := pegoutQuote
+	expiredQuote := sendPegoutTestQuote
 	expiredQuote.ExpireDate = now - 60
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&expiredQuote, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&expiredQuote, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.ErrorIs(t, event.Error, usecases.ExpiredQuoteError)
 		return assert.Equal(t, expiredQuote, event.PegoutQuote) &&
@@ -319,7 +318,7 @@ func TestSendPegoutUseCase_Run_ExpiredQuote(t *testing.T) {
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 		TransactionHash:   "0x5b5c5d",
 		BlockHash:         blockHash,
 		BlockNumber:       blockNumber,
@@ -338,8 +337,8 @@ func TestSendPegoutUseCase_Run_ExpiredQuote(t *testing.T) {
 	lbc := new(mocks.LbcMock)
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorIs(t, err, usecases.ExpiredQuoteError)
 	quoteRepository.AssertExpectations(t)
@@ -354,8 +353,8 @@ func TestSendPegoutUseCase_Run_NoLiquidity(t *testing.T) {
 	btcWallet.On("GetBalance").Return(entities.NewWei(100), nil).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
-		TransactionHash:   retainedQuote.UserRskTxHash,
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+		TransactionHash:   sendPegoutRetainedQuote.UserRskTxHash,
 		BlockHash:         blockHash,
 		BlockNumber:       blockNumber,
 		From:              "0x1234",
@@ -375,13 +374,13 @@ func TestSendPegoutUseCase_Run_NoLiquidity(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 	lbc := new(mocks.LbcMock)
-	lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(false, nil).Once()
+	lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorIs(t, err, usecases.NoLiquidityError)
 	quoteRepository.AssertExpectations(t)
@@ -398,12 +397,12 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(nil, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(nil, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.ErrorIs(t, event.Error, usecases.QuoteNotFoundError)
 		return assert.Equal(t, quote.PegoutQuote{}, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
@@ -411,8 +410,8 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 	lbc := new(mocks.LbcMock)
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
 	quoteRepository.AssertExpectations(t)
@@ -427,21 +426,21 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-	quoteHash, _ := hex.DecodeString(retainedQuote.QuoteHash)
-	btcWallet.On("SendWithOpReturn", retainedQuote.DepositAddress, pegoutQuote.Value, quoteHash).Return("", assert.AnError).Once()
+	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return("", assert.AnError).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.Error(t, event.Error)
-		return assert.Equal(t, pegoutQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
+		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 		TransactionHash:   "0x5b5c5d",
 		BlockHash:         blockHash,
 		BlockNumber:       blockNumber,
@@ -458,16 +457,16 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 		Nonce:     1,
 	}, nil).Once()
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	lbc := new(mocks.LbcMock)
-	lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(false, nil).Once()
+	lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.Error(t, err)
 	btcWallet.AssertExpectations(t)
@@ -482,15 +481,15 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 	btcTxHash := "0x5b5c5d"
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil)
-	quoteHash, _ := hex.DecodeString(retainedQuote.QuoteHash)
-	btcWallet.On("SendWithOpReturn", retainedQuote.DepositAddress, pegoutQuote.Value, quoteHash).Return(btcTxHash, nil)
+	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil)
 	rsk := new(mocks.RootstockRpcServerMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil)
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
-		TransactionHash: retainedQuote.UserRskTxHash, Value: entities.NewWei(8500),
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+		TransactionHash: sendPegoutRetainedQuote.UserRskTxHash, Value: entities.NewWei(8500),
 		BlockHash: blockHash, BlockNumber: blockNumber, From: "0x1234", To: "0x5678",
 		CumulativeGasUsed: big.NewInt(500), GasUsed: big.NewInt(500),
 	}, nil)
@@ -500,37 +499,37 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 	lbc := new(mocks.LbcMock)
 	lbc.On("IsPegOutQuoteCompleted", mock.Anything).Return(false, nil)
 
-	setups := []func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock){
-		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+	setups := []func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock){
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-				expected := *retainedQuote
+				expected := *sendPegoutRetainedQuote
 				expected.LpBtcTxHash = btcTxHash
 				expected.State = quote.PegoutStateSendPegoutSucceeded
 				require.NoError(t, event.Error)
-				return assert.Equal(t, pegoutQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
+				return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 			})).Return().Once()
 		},
-		func(retainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
-			retainedQuote.QuoteHash = "no hex"
-			quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
+		func(sendPegoutRetainedQuote *quote.RetainedPegoutQuote, quoteRepository *mocks.PegoutQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
+			sendPegoutRetainedQuote.QuoteHash = "no hex"
+			quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-				expected := *retainedQuote
+				expected := *sendPegoutRetainedQuote
 				expected.State = quote.PegoutStateSendPegoutFailed
 				require.Error(t, event.Error)
-				return assert.Equal(t, pegoutQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
+				return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 			})).Return().Once()
 		},
 	}
 	for _, setup := range setups {
-		caseQuote := retainedQuote
+		caseQuote := sendPegoutRetainedQuote
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		eventBus := new(mocks.EventBusMock)
 		setup(&caseQuote, quoteRepository, eventBus)
 		rpc := blockchain.Rpc{Rsk: rsk}
-		useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+		useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
 		err := useCase.Run(context.Background(), caseQuote)
 		quoteRepository.AssertExpectations(t)
 		require.Error(t, err)
@@ -548,20 +547,20 @@ func TestSendPegoutUseCase_Run_QuoteAlreadyCompleted(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
-	updatedQuote := retainedQuote
+	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
+	updatedQuote := sendPegoutRetainedQuote
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
-		expected := retainedQuote
+		expected := sendPegoutRetainedQuote
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.ErrorContains(t, event.Error, errorMsg)
-		return assert.Equal(t, pegoutQuote, event.PegoutQuote) &&
+		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) &&
 			assert.Equal(t, expected, event.RetainedQuote) &&
 			assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
 	})).Return().Once()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
-	rsk.On("GetTransactionReceipt", test.AnyCtx, retainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
+	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
 		TransactionHash:   "0x5b5c5d",
 		BlockHash:         blockHash,
 		BlockNumber:       blockNumber,
@@ -578,11 +577,11 @@ func TestSendPegoutUseCase_Run_QuoteAlreadyCompleted(t *testing.T) {
 		Nonce:     1,
 	}, nil).Once()
 	lbc := new(mocks.LbcMock)
-	lbc.On("IsPegOutQuoteCompleted", retainedQuote.QuoteHash).Return(true, nil).Once()
+	lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(true, nil).Once()
 
 	rpc := blockchain.Rpc{Rsk: rsk}
-	useCase := NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), retainedQuote)
+	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.ErrorContains(t, err, errorMsg)
 	quoteRepository.AssertExpectations(t)

@@ -56,7 +56,7 @@ func csrfMiddleware(env environment.ManagementEnv) func(next http.Handler) http.
 	return csrf.Protect(
 		authKey,
 		csrf.MaxAge(cookies.SessionMaxSeconds),
-		csrf.CookieName("lps-csrf-cookie"),
+		csrf.CookieName(cookies.CsrfCookieName),
 		csrf.Path("/"),
 		csrf.Secure(env.UseHttps),
 		csrf.HttpOnly(true),
