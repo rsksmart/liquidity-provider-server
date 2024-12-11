@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"math/big"
 	"regexp"
@@ -93,6 +94,28 @@ type FlyoverDerivation struct {
 	RedeemScript string
 }
 
+type BtcCoinbaseTransactionInformation struct {
+	BtcTxSerialized      []byte
+	BlockHash            [32]byte
+	BlockHeight          *big.Int
+	SerializedPmt        []byte
+	WitnessMerkleRoot    [32]byte
+	WitnessReservedValue [32]byte
+}
+
+func (params BtcCoinbaseTransactionInformation) String() string {
+	return fmt.Sprintf(
+		"RegisterPeginParams { BtcTxSerialized: %s, BlockHash: %s, BlockHeight: %d"+
+			"SerializedPmt: %s, WitnessMerkleRoot: %s, WitnessReservedValue: %s }",
+		hex.EncodeToString(params.BtcTxSerialized),
+		hex.EncodeToString(params.BlockHash[:]),
+		params.BlockHeight.Uint64(),
+		hex.EncodeToString(params.SerializedPmt),
+		hex.EncodeToString(params.WitnessMerkleRoot[:]),
+		hex.EncodeToString(params.WitnessReservedValue[:]),
+	)
+}
+
 type RootstockBridge interface {
 	GetAddress() string
 	GetFedAddress() (string, error)
@@ -100,6 +123,7 @@ type RootstockBridge interface {
 	GetFlyoverDerivationAddress(args FlyoverDerivationArgs) (FlyoverDerivation, error)
 	GetRequiredTxConfirmations() uint64
 	FetchFederationInfo() (FederationInfo, error)
+	RegisterBtcCoinbaseTransaction(registrationParams BtcCoinbaseTransactionInformation) (string, error)
 }
 
 type FederationInfo struct {

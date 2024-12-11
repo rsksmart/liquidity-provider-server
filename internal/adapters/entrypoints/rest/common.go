@@ -12,6 +12,10 @@ import (
 )
 
 const (
+	HeaderContentType = "Content-Type"
+)
+
+const (
 	ContentTypeJson = "application/json"
 	ContentTypeForm = "application/x-www-form-urlencoded"
 )
@@ -66,7 +70,7 @@ func JsonErrorResponse(w http.ResponseWriter, code int, response *ErrorResponse)
 
 func JsonResponseWithBody[T any](w http.ResponseWriter, statusCode int, body *T) {
 	var err error
-	w.Header().Set("Content-Type", ContentTypeJson)
+	w.Header().Set(HeaderContentType, ContentTypeJson)
 	w.WriteHeader(statusCode)
 	if body == nil {
 		return
@@ -102,7 +106,7 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 }
 
 func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
-	var validationErrors *validator.ValidationErrors
+	var validationErrors validator.ValidationErrors
 	err := RequestValidator.Struct(body)
 	if err == nil {
 		return nil
@@ -111,8 +115,8 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 		return err
 	}
 	details := make(ErrorDetails)
-	for _, field := range *validationErrors {
-		details[field.Field()] = fmt.Errorf("validation failed: %s", field.Tag())
+	for _, field := range validationErrors {
+		details[field.Field()] = fmt.Sprintf("validation failed: %s", field.Tag())
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)

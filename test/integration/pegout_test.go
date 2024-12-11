@@ -35,10 +35,9 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 	s.Run("Should be able to get pegout quote", func() {
 		body := pkg.PegoutQuoteRequest{
-			To:                   "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
-			ValueToTransfer:      600000000000000000,
-			RskRefundAddress:     "0x79568c2989232dCa1840087D73d403602364c0D4",
-			BitcoinRefundAddress: "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
+			To:               "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
+			ValueToTransfer:  600000000000000000,
+			RskRefundAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
 		}
 
 		result, err := execute[[]pkg.GetPegoutQuoteResponse](Execution{
@@ -149,7 +148,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 		txHash := waitForBtcTransactionToAddress(s, address)
 
 		txParsedHash, _ := chainhash.NewHashFromStr(txHash)
-		tx, err := s.btc.GetTransaction(txParsedHash)
+		tx, err := s.btc.GetRawTransaction(txParsedHash)
 		s.NoError(err)
 		s.NotNil(tx)
 	})
@@ -196,11 +195,11 @@ func lookForTxToAddress(block *wire.MsgBlock, target btcutil.Address, params *ch
 }
 
 func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteDTO) bindings.QuotesPegOutQuote {
-	lpBtcAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.LpBTCAddr, true)
+	lpBtcAddress, err := bitcoin.DecodeAddress(originalQuote.LpBTCAddr)
 	s.NoError(err)
-	btcRefundAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.BtcRefundAddr, true)
+	btcRefundAddress, err := bitcoin.DecodeAddress(originalQuote.BtcRefundAddr)
 	s.NoError(err)
-	depositAddress, err := bitcoin.DecodeAddressBase58OnlyLegacy(originalQuote.DepositAddr, true)
+	depositAddress, err := bitcoin.DecodeAddress(originalQuote.DepositAddr)
 	s.NoError(err)
 	return bindings.QuotesPegOutQuote{
 		LbcAddress:            common.HexToAddress(originalQuote.LBCAddr),

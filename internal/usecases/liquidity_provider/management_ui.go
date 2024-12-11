@@ -5,8 +5,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"slices"
-	"strings"
 )
 
 type ManagementTemplateId string
@@ -86,17 +84,9 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 	pegoutConfiguration := useCase.pegoutLp.PegoutConfiguration(ctx)
 
 	rskAddress := useCase.lp.RskAddress()
-	// TODO change to getProvider in 2.1.0
-	providers, err := useCase.contracts.Lbc.GetProviders()
+	providerInfo, err := useCase.contracts.Lbc.GetProvider(rskAddress)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.GetManagementUiId, err)
-	}
-
-	index := slices.IndexFunc(providers, func(providerInfo liquidity_provider.RegisteredLiquidityProvider) bool {
-		return strings.EqualFold(providerInfo.Address, rskAddress)
-	})
-	if index == -1 {
-		return nil, usecases.WrapUseCaseError(usecases.GetManagementUiId, usecases.ProviderNotFoundError)
 	}
 
 	return &ManagementTemplate{
@@ -106,7 +96,7 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 			BaseUrl:        useCase.baseUrl,
 			BtcAddress:     useCase.lp.BtcAddress(),
 			RskAddress:     rskAddress,
-			ProviderData:   providers[index],
+			ProviderData:   providerInfo,
 			Configuration: FullConfiguration{
 				General: generalConfiguration,
 				Pegin:   peginConfiguration,

@@ -2,11 +2,9 @@ package liquidity_provider_test
 
 import (
 	"context"
-	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -21,68 +19,6 @@ var hashedDefaultCredentialsMock = &lpEntity.HashedCredentials{
 	HashedPassword: "20cdf83f3e87da259cb72609bdcaa220d9a4c69135ce9d8dd39eb9dd738ee503",
 	UsernameSalt:   "4948388a01e926807fd86a5f1c2426dba97030717001f5f9d7106950e03724b2",
 	PasswordSalt:   "9baf3a40312f39849f46dad1040f2f039f1cffa1238c41e9db675315cfad39b6",
-}
-
-func TestValidateConfiguredProvider(t *testing.T) {
-	lbc := &mocks.LbcMock{}
-	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{
-		{
-			Id:           1,
-			Address:      "0x01",
-			Name:         "one",
-			ApiBaseUrl:   "api1.com",
-			Status:       true,
-			ProviderType: "both",
-		},
-		{
-			Id:           2,
-			Address:      "0x02",
-			Name:         "two",
-			ApiBaseUrl:   "api2.com",
-			Status:       true,
-			ProviderType: "pegin",
-		},
-		{
-			Id:           3,
-			Address:      "0x03",
-			Name:         "three",
-			ApiBaseUrl:   "api3.com",
-			Status:       true,
-			ProviderType: "pegout",
-		},
-	}, nil)
-
-	provider := &mocks.ProviderMock{}
-	provider.On("RskAddress").Return("0x02")
-
-	id, err := liquidity_provider.ValidateConfiguredProvider(provider, lbc)
-	assert.Equal(t, uint64(2), id)
-	require.NoError(t, err)
-}
-
-func TestValidateConfiguredProvider_Fail(t *testing.T) {
-	lbc := &mocks.LbcMock{}
-	var provider *mocks.ProviderMock = nil
-	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{}, errors.New("some error")).Once()
-	id, err := liquidity_provider.ValidateConfiguredProvider(provider, lbc)
-	assert.Equal(t, uint64(0), id)
-	require.Error(t, err)
-
-	provider = &mocks.ProviderMock{}
-	provider.On("RskAddress").Return("0x02")
-	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{
-		{
-			Id:           3,
-			Address:      "0x03",
-			Name:         "three",
-			ApiBaseUrl:   "api3.com",
-			Status:       true,
-			ProviderType: "pegout",
-		},
-	}, nil).Once()
-	id, err = liquidity_provider.ValidateConfiguredProvider(provider, lbc)
-	assert.Equal(t, uint64(0), id)
-	require.ErrorIs(t, err, usecases.ProviderConfigurationError)
 }
 
 func TestReadDefaultPassword_AlreadyRead(t *testing.T) {

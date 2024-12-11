@@ -16,3 +16,11 @@ func DecodeKey(key string, expectedBytes int) ([]byte, error) {
 	}
 	return bytes, nil
 }
+
+// To32Bytes utility to convert a byte slice to a fixed size byte array, if input has
+// more than 32 bytes they won't be copied.
+func To32Bytes(value []byte) [32]byte {
+	var bytes [32]byte
+	copy(bytes[:], value)
+	return bytes
+}

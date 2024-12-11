@@ -10,7 +10,6 @@ type PeginQuoteRequest struct {
 	CallContractArguments    string `json:"callContractArguments" required:"" validate:"" example:"0x0" description:"Contract data"`
 	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" validate:"required" example:"0x0" description:"Value to send in the call"`
 	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"User RSK refund address"`
-	BitcoinRefundAddress     string `json:"bitcoinRefundAddress" required:"" validate:"required" example:"0x0" description:"User Bitcoin refund address. Note: Must be a legacy address, segwit addresses are not accepted"`
 }
 
 type PeginQuoteDTO struct {

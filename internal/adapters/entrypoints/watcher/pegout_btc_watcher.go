@@ -12,18 +12,20 @@ import (
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 	"math/big"
-	"time"
+	"sync"
 )
 
 type PegoutBtcTransferWatcher struct {
 	quotes                       map[string]quote.WatchedPegoutQuote
+	quotesMutex                  sync.RWMutex
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	refundPegoutUseCase          *pegout.RefundPegoutUseCase
 	rpc                          blockchain.Rpc
-	ticker                       *time.Ticker
+	ticker                       Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
 	currentBlock                 *big.Int
+	currentBlockMutex            sync.RWMutex
 }
 
 func NewPegoutBtcTransferWatcher(
@@ -31,18 +33,22 @@ func NewPegoutBtcTransferWatcher(
 	refundPegoutUseCase *pegout.RefundPegoutUseCase,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
+	ticker Ticker,
 ) *PegoutBtcTransferWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
 	currentBlock := big.NewInt(0)
 	return &PegoutBtcTransferWatcher{
 		quotes:                       quotes,
+		quotesMutex:                  sync.RWMutex{},
 		getWatchedPegoutQuoteUseCase: getWatchedPegoutQuoteUseCase,
 		refundPegoutUseCase:          refundPegoutUseCase,
 		rpc:                          rpc,
 		eventBus:                     eventBus,
 		watcherStopChannel:           watcherStopChannel,
 		currentBlock:                 currentBlock,
+		ticker:                       ticker,
+		currentBlockMutex:            sync.RWMutex{},
 	}
 }
 
@@ -53,10 +59,15 @@ func (watcher *PegoutBtcTransferWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegoutBtcTransferWatcher) Prepare(ctx context.Context) error {
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
+	watcher.currentBlock = big.NewInt(0)
 	watchedQuotes, err := watcher.getWatchedPegoutQuoteUseCase.Run(ctx, quote.PegoutStateSendPegoutSucceeded)
 	if err != nil {
 		return err
 	}
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	for _, watchedQuote := range watchedQuotes {
 		watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = watchedQuote
 	}
@@ -65,17 +76,20 @@ func (watcher *PegoutBtcTransferWatcher) Prepare(ctx context.Context) error {
 
 func (watcher *PegoutBtcTransferWatcher) Start() {
 	eventChannel := watcher.eventBus.Subscribe(quote.PegoutBtcSentEventId)
-	watcher.ticker = time.NewTicker(pegoutBtcTransferWatcherInterval)
 watcherLoop:
 	for {
 		select {
-		case <-watcher.ticker.C:
+		case <-watcher.ticker.C():
+			watcher.currentBlockMutex.Lock()
+			watcher.quotesMutex.Lock()
 			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
 				log.Error(pegoutBtcWatcherLog(blockchain.BtcChainHeightErrorTemplate, err))
 			}
+			watcher.quotesMutex.Unlock()
+			watcher.currentBlockMutex.Unlock()
 		case event := <-eventChannel:
 			if event != nil {
 				watcher.handleBtcSentToUserCompleted(event)
@@ -119,10 +133,12 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 	parsedEvent, ok := event.(quote.PegoutBtcSentToUserEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
-		log.Error(pegoutBtcWatcherLog("Trying to parse wrong event in Pegin Bridge watcher"))
+		log.Error(pegoutBtcWatcherLog("Trying to parse wrong event in Pegout Bridge watcher"))
 		return
 	}
 
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
 		log.Info(pegoutBtcWatcherLog("Quote %s is already watched", quoteHash))
 		return
@@ -132,6 +148,19 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 		return
 	}
 	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote)
+}
+
+func (watcher *PegoutBtcTransferWatcher) GetWatchedQuote(quoteHash string) (quote.WatchedPegoutQuote, bool) {
+	watcher.quotesMutex.RLock()
+	defer watcher.quotesMutex.RUnlock()
+	watchedQuote, ok := watcher.quotes[quoteHash]
+	return watchedQuote, ok
+}
+
+func (watcher *PegoutBtcTransferWatcher) GetCurrentBlock() *big.Int {
+	watcher.currentBlockMutex.RLock()
+	defer watcher.currentBlockMutex.RUnlock()
+	return watcher.currentBlock
 }
 
 func (watcher *PegoutBtcTransferWatcher) validateQuote(watchedQuote quote.WatchedPegoutQuote, tx blockchain.BitcoinTransactionInformation) bool {

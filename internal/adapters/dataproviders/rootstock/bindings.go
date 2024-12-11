@@ -37,13 +37,18 @@ type RskBridgeBinding interface {
 	GetFederatorPublicKeyOfType(opts *bind.CallOpts, index *big.Int, atype string) ([]byte, error)
 	GetFederationThreshold(opts *bind.CallOpts) (*big.Int, error)
 	GetActiveFederationCreationBlockHeight(opts *bind.CallOpts) (*big.Int, error)
+	IsBtcTxHashAlreadyProcessed(opts *bind.CallOpts, hash string) (bool, error)
+	HasBtcBlockCoinbaseTransactionInformation(opts *bind.CallOpts, blockHash [32]byte) (bool, error)
+	GetBtcBlockchainBestChainHeight(opts *bind.CallOpts) (*big.Int, error)
+	RegisterBtcCoinbaseTransaction(opts *bind.TransactOpts, btcTxSerialized []byte, blockHash [32]byte, pmtSerialized []byte, witnessMerkleRoot [32]byte, witnessReservedValue [32]byte) (*types.Transaction, error)
 }
 
 type LbcBinding interface {
 	HashQuote(opts *bind.CallOpts, quote bindings.QuotesPeginQuote) ([32]byte, error)
 	HashPegoutQuote(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error)
 	GetProviderIds(opts *bind.CallOpts) (*big.Int, error)
-	GetProviders(opts *bind.CallOpts, providerIds []*big.Int) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
+	GetProviders(opts *bind.CallOpts) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
+	GetProvider(opts *bind.CallOpts, providerAddress common.Address) (bindings.LiquidityBridgeContractLiquidityProvider, error)
 	Resign(opts *bind.TransactOpts) (*types.Transaction, error)
 	SetProviderStatus(opts *bind.TransactOpts, _providerId *big.Int, status bool) (*types.Transaction, error)
 	GetCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
@@ -68,7 +73,7 @@ type LbcBinding interface {
 
 type LbcAdapter interface {
 	LbcBinding
-	Caller() LbcCallerBinding
+	Caller() ContractCallerBinding
 	DepositEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPegOutDepositIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPegOutDeposit]
 	PenalizedEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPenalizedIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPenalized]
 }
@@ -80,7 +85,7 @@ type EventIteratorAdapter[T any] interface {
 	Error() error
 }
 
-type LbcCallerBinding interface {
+type ContractCallerBinding interface {
 	Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error
 }
 
@@ -108,7 +113,7 @@ func NewLbcAdapter(liquidityBridgeContract *bindings.LiquidityBridgeContract) Lb
 	return &lbcAdapter{LiquidityBridgeContract: liquidityBridgeContract}
 }
 
-func (lbc *lbcAdapter) Caller() LbcCallerBinding {
+func (lbc *lbcAdapter) Caller() ContractCallerBinding {
 	return &bindings.LiquidityBridgeContractCallerRaw{
 		Contract: &lbc.LiquidityBridgeContract.LiquidityBridgeContractCaller,
 	}

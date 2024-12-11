@@ -21,6 +21,17 @@ func TestGetRandomInt(t *testing.T) {
 	}
 }
 
+func TestMustGetRandomInt(t *testing.T) {
+	var numbers []int64
+	var number int64
+	for i := 0; i < 100; i++ {
+		number = utils.MustGetRandomInt()
+		assert.Positive(t, number)
+		assert.False(t, slices.Contains(numbers, number))
+		numbers = append(numbers, number)
+	}
+}
+
 func TestGetRandomBytes_Size(t *testing.T) {
 	sizes := []int64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512}
 	for _, size := range sizes {
@@ -36,6 +47,19 @@ func TestGetRandomBytes_Random(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		bytes, err := utils.GetRandomBytes(size)
 		require.NoError(t, err)
+		require.Len(t, bytes, size)
+		for _, generated := range generatedBytes {
+			assert.NotEqual(t, generated, bytes)
+		}
+		generatedBytes = append(generatedBytes, bytes)
+	}
+}
+
+func TestMustGetRandomBytes(t *testing.T) {
+	const size = 32
+	var generatedBytes [][]byte
+	for i := 0; i < 100; i++ {
+		bytes := utils.MustGetRandomBytes(size)
 		require.Len(t, bytes, size)
 		for _, generated := range generatedBytes {
 			assert.NotEqual(t, generated, bytes)

@@ -12,7 +12,7 @@ type PublicEndpoint struct {
 }
 
 // nolint:funlen
-func getPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint {
+func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint {
 	return []PublicEndpoint{
 		{
 			Endpoint: Endpoint{
