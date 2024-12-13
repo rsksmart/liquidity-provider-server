@@ -170,6 +170,19 @@ func ReadFile(t *testing.T, path string) []byte {
 	return fileBytes
 }
 
+// WriteTestFile writes a file to the temp directory with the given name and content, returning the path to the file.
+// The file is written with 0644 permissions.
+func WriteTestFile(t *testing.T, name string, content []byte) string {
+	tempDir := os.TempDir()
+	testFile := filepath.Join(tempDir, name)
+	if _, err := os.Stat(testFile); err == nil {
+		require.NoError(t, os.Remove(testFile))
+	}
+	err := os.WriteFile(testFile, content, os.FileMode(0644))
+	require.NoError(t, err)
+	return filepath.Join(tempDir, name)
+}
+
 func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
