@@ -118,7 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const entriesContainer = document.createElement('div');
         entriesContainer.classList.add('entries-container');
 
-        Object.entries(confirmations).forEach(([amountWei, confirmation], index) => {
+        const sortedEntries = Object.entries(confirmations).sort(([amountWeiA], [amountWeiB]) => {
+            const amountA = new Decimal(weiToEther(amountWeiA));
+            const amountB = new Decimal(weiToEther(amountWeiB));
+            return amountA.minus(amountB).toNumber();
+        });
+        sortedEntries.forEach(([amountWei, confirmation], index) => {
             createConfirmationEntry(entriesContainer, configKey, index, amountWei, confirmation);
         });
 
@@ -367,7 +372,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (saveSuccess) showSuccessToast();
+        if (saveSuccess) {
+            showSuccessToast();
+            sortConfirmationEntries();
+        }
+    };
+    
+    const sortConfirmationEntries = () => {
+        const confirmationConfigs = document.querySelectorAll('.confirmation-config');
+        confirmationConfigs.forEach(container => {
+            const entriesContainer = container.querySelector('.entries-container');
+            const entries = Array.from(entriesContainer.children);
+
+            entries.sort((a, b) => {
+                const amountA = getAmountFromEntry(a);
+                const amountB = getAmountFromEntry(b);
+                return amountA.minus(amountB).toNumber();
+            });
+
+            entriesContainer.innerHTML = '';
+            entries.forEach(entry => entriesContainer.appendChild(entry));
+        });
+    };
+
+    const getAmountFromEntry = (entry) => {
+        const amountInput = entry.querySelector('input[data-field="amount"]');
+        const amountValue = amountInput.value;
+        try {
+            return new Decimal(amountValue);
+        } catch (error) {
+            return new Decimal(0);
+        }
     };
 
     const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId) => {
