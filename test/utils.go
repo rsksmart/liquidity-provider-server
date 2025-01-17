@@ -95,7 +95,7 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 }
 
 func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
-	message := make([]byte, 1024)
+	message := make([]byte, 2048)
 	buff := new(ThreadSafeBuffer)
 	log.SetOutput(buff)
 	return func() bool {

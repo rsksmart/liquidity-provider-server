@@ -67,8 +67,10 @@
                 <div class="card">
                     <div class="card-header">Provider</div>
                     <div class="card-body">
-                        <h5 class="card-title">Provider Address</h5>
-                        <p class="card-text" id="providerAddress"></p>
+                        <h5 class="card-title">Provider RSK Address</h5>
+                        <p class="card-text" id="providerRskAddress"></p>
+                        <h5 class="card-title">Provider BTC Address</h5>
+                        <p class="card-text" id="providerBtcAddress"></p>
                         <h5 class="card-title">Operational Status</h5>
                         <p class="card-text" id="isOperational"></p>
                     </div>
@@ -198,11 +200,11 @@
 
             const fetchData = async (url, elementId) => {
                 try {
-                    const response = await fetch(url, { 
-                        method: 'GET', 
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'X-CSRF-Token': data.CsrfToken 
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': data.CsrfToken
                         }
                     });
                     const responseData = await response.json();
@@ -212,8 +214,9 @@
                 }
             };
 
-            const populateProviderData = providerData => {
-                setTextContent('providerAddress', providerData.address);
+            const populateProviderData = (providerData, rskAddress, btcAddress) => {
+                setTextContent('providerRskAddress', rskAddress);
+                setTextContent('providerBtcAddress', btcAddress);
                 setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
             };
 
@@ -482,7 +485,7 @@
                 const loadingBar = document.getElementById(loadingBarId);
                 const button = document.getElementById(buttonId);
                 loadingBar.style.display = 'block';
-                button.disabled = true; 
+                button.disabled = true;
                 try {
                     const amountInWei = Number(etherToWei(amountInEther));
                     const response = await fetch(endpoint, {
@@ -510,7 +513,7 @@
             populateConfigSection('generalConfig', data.Configuration.general);
             populateConfigSection('peginConfig', data.Configuration.pegin);
             populateConfigSection('pegoutConfig', data.Configuration.pegout);
-            populateProviderData(data.ProviderData);
+            populateProviderData(data.ProviderData, data.RskAddress, data.BtcAddress);
             fetchData('/pegin/collateral', 'peginCollateral');
             fetchData('/pegout/collateral', 'pegoutCollateral');
         });
