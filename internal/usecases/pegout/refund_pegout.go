@@ -60,7 +60,7 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	}
 	txConfig := blockchain.NewTransactionConfig(nil, refundPegoutGasLimit, nil)
 
-	if retainedQuote, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
+	if _, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
 	}
 	return nil
