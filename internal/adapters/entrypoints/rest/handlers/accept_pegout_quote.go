@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
 
 // NewAcceptPegoutQuoteHandler
@@ -22,6 +24,12 @@ func NewAcceptPegoutQuoteHandler(useCase *pegout.AcceptQuoteUseCase) http.Handle
 		if err = rest.DecodeRequest(w, req, &acceptRequest); err != nil {
 			return
 		} else if err = rest.ValidateRequest(w, &acceptRequest); err != nil {
+			return
+		}
+
+		if err = quote.ValidateQuoteHash(acceptRequest.QuoteHash); err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("invalid quote hash", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
 

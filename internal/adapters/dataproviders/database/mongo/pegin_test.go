@@ -20,48 +20,49 @@ import (
 )
 
 var testPeginQuote = quote.PeginQuote{
-	FedBtcAddress:      test.AnyAddress,
-	LbcAddress:         test.AnyAddress,
-	LpRskAddress:       test.AnyAddress,
-	BtcRefundAddress:   test.AnyAddress,
-	RskRefundAddress:   test.AnyAddress,
-	LpBtcAddress:       test.AnyAddress,
-	CallFee:            entities.NewWei(1),
-	PenaltyFee:         entities.NewWei(2),
-	ContractAddress:    test.AnyAddress,
-	Data:               test.AnyString,
-	GasLimit:           1,
-	Nonce:              2,
-	Value:              entities.NewWei(3),
-	AgreementTimestamp: 4,
-	TimeForDeposit:     5,
-	LpCallTime:         6,
-	Confirmations:      7,
+	FedBtcAddress:      "3LxPz39femVBL278mTiBvgzBNMVFqXssoH",
+	LbcAddress:         "0xAA9cAf1e3967600578727F975F283446A3Da6612",
+	LpRskAddress:       "0x4202bac9919c3412fc7c8be4e678e26279386603",
+	BtcRefundAddress:   "171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX",
+	RskRefundAddress:   "0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82",
+	LpBtcAddress:       "17kksixYkbHeLy9okV16kr4eAxVhFkRhP",
+	CallFee:            entities.NewWei(100000000000000),
+	PenaltyFee:         entities.NewWei(10000000000000),
+	ContractAddress:    "0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82",
+	Data:               "010203",
+	GasLimit:           21000,
+	Nonce:              8373381263192041574,
+	Value:              entities.NewWei(8000000000000000),
+	AgreementTimestamp: 1727298699,
+	TimeForDeposit:     3600,
+	LpCallTime:         7200,
+	Confirmations:      2,
 	CallOnRegister:     true,
-	GasFee:             entities.NewWei(4),
-	ProductFeeAmount:   8,
+	GasFee:             entities.NewWei(1341211956000),
+	ProductFeeAmount:   1,
 }
 
 var testRetainedPeginQuote = quote.RetainedPeginQuote{
-	QuoteHash:           test.AnyString,
-	DepositAddress:      test.AnyAddress,
-	Signature:           test.AnyString,
+	QuoteHash:           "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819",
+	DepositAddress:      "2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG",
+	Signature:           "b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c",
 	RequiredLiquidity:   entities.NewWei(100),
 	State:               quote.PeginStateCallForUserSucceeded,
-	UserBtcTxHash:       test.AnyString,
-	CallForUserTxHash:   test.AnyString,
-	RegisterPeginTxHash: test.AnyString,
+	UserBtcTxHash:       "619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f",
+	CallForUserTxHash:   "0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3",
+	RegisterPeginTxHash: "0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89",
 }
 
 func TestPeginMongoRepository_InsertQuote(t *testing.T) {
 	t.Run("Insert pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "INSERT interaction with db: {PeginQuote:{FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1} Hash:any value}"
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginQuote) bool {
 			return q.Hash == test.AnyString && reflect.TypeOf(quote.PeginQuote{}).NumField() == test.CountNonZeroValues(q.PeginQuote)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client)
 		repo := mongo.NewPeginMongoRepository(conn)
-		defer assertDbInteractionLog(t, mongo.Insert)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.InsertQuote(context.Background(), test.AnyString, testPeginQuote)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -81,13 +82,14 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
 	t.Run("Get pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: {FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1}"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyString}}).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPeginQuote{
 				PeginQuote: testPeginQuote,
 				Hash:       test.AnyString,
 			}, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetQuote(context.Background(), test.AnyString)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -117,10 +119,11 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
 	t.Run("Get retained pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: {QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89}"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyString}}).
 			Return(mongoDb.NewSingleResultFromDocument(testRetainedPeginQuote, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuote(context.Background(), test.AnyString)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -148,13 +151,14 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 
 func TestPeginMongoRepository_InsertRetainedQuote(t *testing.T) {
 	t.Run("Insert retained pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "INSERT interaction with db: {QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89}"
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
-			return q.QuoteHash == test.AnyString && reflect.TypeOf(quote.RetainedPeginQuote{}).NumField() == test.CountNonZeroValues(q)
+			return q.QuoteHash == testRetainedPeginQuote.QuoteHash && reflect.TypeOf(quote.RetainedPeginQuote{}).NumField() == test.CountNonZeroValues(q)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client)
 		repo := mongo.NewPeginMongoRepository(conn)
-		defer assertDbInteractionLog(t, mongo.Insert)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.InsertRetainedQuote(context.Background(), testRetainedPeginQuote)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -173,6 +177,7 @@ func TestPeginMongoRepository_InsertRetainedQuote(t *testing.T) {
 func TestPeginMongoRepository_UpdateRetainedQuote(t *testing.T) {
 	const updated = "updated value"
 	t.Run("Update retained pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "UPDATE interaction with db: {QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:updated value Signature:updated value RequiredLiquidity:200 State:CallForUserFailed UserBtcTxHash:updated value CallForUserTxHash:updated value RegisterPeginTxHash:updated value}"
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 		updatedQuote := testRetainedPeginQuote
 		updatedQuote.State = quote.PeginStateCallForUserFailed
@@ -188,7 +193,7 @@ func TestPeginMongoRepository_UpdateRetainedQuote(t *testing.T) {
 		).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		conn := mongo.NewConnection(client)
 		repo := mongo.NewPeginMongoRepository(conn)
-		defer assertDbInteractionLog(t, mongo.Update)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpdateRetainedQuote(context.Background(), updatedQuote)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -230,6 +235,7 @@ func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	states := []quote.PeginState{quote.PeginStateCallForUserSucceeded, quote.PeginStateCallForUserFailed}
 	t.Run("Get retained pegin quotes by state successfully", func(t *testing.T) {
+		const expectedLog = "READ interaction with db: [{QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89} {QuoteHash:second DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:123 RequiredLiquidity:777 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89}]"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		secondQuote := testRetainedPeginQuote
 		secondQuote.QuoteHash = "second"
@@ -238,7 +244,7 @@ func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		collection.On("Find", mock.Anything,
 			bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}},
 		).Return(mongoDb.NewCursorFromDocuments([]any{testRetainedPeginQuote, secondQuote}, nil, nil)).Once()
-		defer assertDbInteractionLog(t, mongo.Read)()
+		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuoteByState(context.Background(), states...)
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
