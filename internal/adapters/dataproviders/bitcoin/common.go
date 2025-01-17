@@ -87,12 +87,12 @@ func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uin
 	}
 }
 
-func serializePartialMerkleTree(txHash *chainhash.Hash, block *btcutil.Block, witness bool) ([]byte, error) {
+func serializePartialMerkleTree(txHash *chainhash.Hash, block *btcutil.Block) ([]byte, error) {
 	var err error
 	filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 	filter.AddHash(txHash)
 
-	msg, indices := NewMerkleBlock(block, filter, witness)
+	msg, indices := bloom.NewMerkleBlock(block, filter)
 	if len(indices) > 1 {
 		return nil, fmt.Errorf("block matches more than one transaction (%v)", len(indices))
 	}

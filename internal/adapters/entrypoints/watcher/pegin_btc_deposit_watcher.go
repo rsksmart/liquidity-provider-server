@@ -171,18 +171,19 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 
+	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
+		if watchedQuote, err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
+			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
+			return
+		}
+	}
+
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
 		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
 			log.Error(peginBtcDepositWatcherLog("Error updating expired quote (%s): %v", quoteHash, err))
 		} else {
+			log.Info(peginBtcDepositWatcherLog("Quote %s expired at %d", quoteHash, watchedQuote.PeginQuote.ExpireTime().Unix()))
 			delete(watcher.quotes, quoteHash)
-		}
-		return
-	}
-
-	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
-		if err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
-			log.Error(peginBtcDepositWatcherLog(callForUserErrorTemplate, quoteHash, err))
 		}
 		return
 	}
@@ -195,7 +196,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 	}
 }
 
-func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
+func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) (quote.WatchedPeginQuote, error) {
 	var err error
 	var block blockchain.BitcoinBlockInformation
 	var txs []blockchain.BitcoinTransactionInformation
@@ -203,25 +204,28 @@ func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.C
 
 	depositAddress := watchedQuote.RetainedQuote.DepositAddress
 	if txs, err = watcher.btcWallet.GetTransactions(depositAddress); err != nil {
-		return err
+		return quote.WatchedPeginQuote{}, err
 	}
 
 	for _, tx := range txs {
+		log.Info(peginBtcDepositWatcherLog("Checking transaction %s for quote %s", tx.Hash, watchedQuote.RetainedQuote.QuoteHash))
 		if block, err = watcher.rpc.Btc.GetTransactionBlockInfo(tx.Hash); err != nil {
-			return err
+			return quote.WatchedPeginQuote{}, err
 		}
 		onTime := watchedQuote.PeginQuote.ExpireTime().After(block.Time)
 		correctAmount := tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress).Cmp(watchedQuote.PeginQuote.Total()) >= 0
 		if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && onTime && correctAmount {
 			if updatedQuote, err = watcher.updatePeginDepositUseCase.Run(ctx, watchedQuote, block, tx); err != nil {
-				return err
+				return quote.WatchedPeginQuote{}, err
 			} else {
 				watcher.quotes[watchedQuote.RetainedQuote.QuoteHash] = updatedQuote
-				return nil
+				return updatedQuote, nil
 			}
+		} else {
+			watcher.logRejectReason(block, tx, watchedQuote)
 		}
 	}
-	return nil
+	return watchedQuote, nil
 }
 
 func (watcher *PeginDepositAddressWatcher) handleDepositedQuote(ctx context.Context, watchedQuote quote.WatchedPeginQuote) error {
@@ -259,6 +263,21 @@ func (watcher *PeginDepositAddressWatcher) GetCurrentBlock() *big.Int {
 	watcher.currentBlockMutex.RLock()
 	defer watcher.currentBlockMutex.RUnlock()
 	return watcher.currentBlock
+}
+
+func (watcher *PeginDepositAddressWatcher) logRejectReason(block blockchain.BitcoinBlockInformation, tx blockchain.BitcoinTransactionInformation, watchedQuote quote.WatchedPeginQuote) {
+	rejectReason := fmt.Sprintf("Rejecting quote %s for the following reason: ", watchedQuote.RetainedQuote.QuoteHash)
+	if watchedQuote.PeginQuote.ExpireTime().Before(block.Time) {
+		blockTime := block.Time.Unix()
+		expirationTime := watchedQuote.PeginQuote.ExpireTime().Unix()
+		rejectReason += fmt.Sprintf("quote expired at %d, %d seconds before its first confirmation at %d;", expirationTime, blockTime-expirationTime, blockTime)
+	}
+	paidAmount := tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress)
+	expectedAmount := watchedQuote.PeginQuote.Total()
+	if paidAmount.Cmp(expectedAmount) < 0 {
+		rejectReason += fmt.Sprintf("transaction amount %s is less than expected %s;", paidAmount.ToSatoshi().String(), expectedAmount.ToSatoshi().String())
+	}
+	log.Info(peginBtcDepositWatcherLog(rejectReason))
 }
 
 func peginBtcDepositWatcherLog(msg string, args ...any) string {

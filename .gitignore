@@ -20,6 +20,7 @@ integration/geth_keystore
 /docker-compose/lbc-deployer/liquidity-bridge-contract/
 keystore/
 build/
+/utils/*
 /**/.env.regtest
 /**/gh_token.txt
 /**/local/cookie_jar.txt

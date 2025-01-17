@@ -146,7 +146,6 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
-		app.watcherRegistry.QuoteCleanerWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
 		app.watcherRegistry.LiquidityCheckWatcher,

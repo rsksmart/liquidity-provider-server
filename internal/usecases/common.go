@@ -173,6 +173,8 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 	return signedConfig, nil
 }
 
+// RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
+// IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
 func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
@@ -184,4 +186,24 @@ func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContrac
 	}
 	_, err = bridgeContract.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 	return err
+}
+
+// ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
+func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
+	if err != nil {
+		return err
+	}
+	utxos := transaction.UTXOsToAddress(address)
+	if len(utxos) == 0 {
+		err = fmt.Errorf("no UTXO directed to address %s present in transaction", address)
+		return errors.Join(TxBelowMinimumError, err)
+	}
+	for _, utxo := range utxos {
+		if minLockTxValueInWei.Cmp(utxo) > 0 {
+			err = errors.New("not all the UTXOs are above the min lock value")
+			return errors.Join(TxBelowMinimumError, err)
+		}
+	}
+	return nil
 }

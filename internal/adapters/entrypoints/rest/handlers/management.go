@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"html/template"
 	"net/http"
 
@@ -25,24 +26,29 @@ const (
 // @Description Serves the static site for the Management UI
 // @Success 200 object
 // @Route /management [get]
-func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_provider.GetManagementUiDataUseCase) http.HandlerFunc {
+func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase *liquidity_provider.GetManagementUiDataUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		const errorGeneratingTemplate = "Error generating template: %v"
 		session, err := store.Get(req, cookies.ManagementSessionCookieName)
 		loggedIn := err == nil && !session.IsNew
 		result, err := useCase.Run(req.Context(), loggedIn)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}
 
 		bytes, err := utils.GetRandomBytes(nonceBytes)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}
 		nonce := hex.EncodeToString(bytes)
-
-		htmlTemplateSecurityHeaders(w, nonce)
+		w.Header().Set(rest.HeaderContentType, "text/html")
+		if env.EnableSecurityHeaders {
+			htmlTemplateSecurityHeaders(w, nonce)
+		}
 		tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, string(result.Name)))
 
 		err = tmpl.Execute(w, struct {
@@ -62,7 +68,6 @@ func NewManagementInterfaceHandler(store sessions.Store, useCase *liquidity_prov
 
 func htmlTemplateSecurityHeaders(w http.ResponseWriter, nonce string) {
 	cspHeader := fmt.Sprintf("default-src 'self'; font-src 'self' data:; style-src 'self' 'sha256-yr5DcAJJmu0m4Rv1KfUyA8AJj1t0kAJ1D2JuSBIT1DU='; object-src 'none'; frame-src 'self'; script-src 'self' 'nonce-%s'; img-src 'self' data:; connect-src 'self';", nonce)
-	w.Header().Set(rest.HeaderContentType, "text/html")
 	w.Header().Set("Content-Security-Policy", cspHeader)
 	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 	w.Header().Set("X-Frame-Options", "DENY")

@@ -148,7 +148,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 		txHash := waitForBtcTransactionToAddress(s, address)
 
 		txParsedHash, _ := chainhash.NewHashFromStr(txHash)
-		tx, err := s.btc.GetTransaction(txParsedHash)
+		tx, err := s.btc.GetRawTransaction(txParsedHash)
 		s.NoError(err)
 		s.NotNil(tx)
 	})

@@ -191,5 +191,9 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 			false,
 		)
 	}
+
+	if err = usecases.ValidateBridgeUtxoMin(useCase.contracts.Bridge, txInfo, retainedQuote.DepositAddress); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, !errors.Is(err, usecases.TxBelowMinimumError))
+	}
 	return nil
 }
