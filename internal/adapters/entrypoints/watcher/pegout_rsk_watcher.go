@@ -123,8 +123,6 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 }
 
 func (watcher *PegoutRskDepositWatcher) Start() {
-	var checkContext context.Context
-	var checkCancel context.CancelFunc
 	eventChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
 
 watcherLoop:
@@ -133,7 +131,7 @@ watcherLoop:
 		case <-watcher.ticker.C():
 			watcher.currentBlockMutex.Lock()
 			watcher.quotesMutex.Lock()
-			checkContext, checkCancel = context.WithTimeout(context.Background(), 1*time.Minute)
+			checkContext, checkCancel := context.WithTimeout(context.Background(), 1*time.Minute)
 			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
 				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
 				watcher.checkQuotes(checkContext, height)

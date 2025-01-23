@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -91,7 +92,7 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 	defer utils.CloseBodyIfExists(res)
 
 	if res == nil || res.Body == nil {
-		return fmt.Errorf("received emtpy response from RPC server on createwallet")
+		return errors.New("received emtpy response from RPC server on createwallet")
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&response)
@@ -105,8 +106,8 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 
 func (c *BtcSuiteClientAdapter) getUrl() string {
 	if c.config.DisableTLS {
-		return fmt.Sprintf("http://%s", c.config.Host)
+		return "http://" + c.config.Host
 	} else {
-		return fmt.Sprintf("https://%s", c.config.Host)
+		return "https://" + c.config.Host
 	}
 }

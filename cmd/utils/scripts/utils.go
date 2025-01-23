@@ -70,7 +70,7 @@ func CreateLiquidityBridgeContract(
 
 func SetUsageMessage(msg string) {
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), msg+"\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", msg)
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 	}

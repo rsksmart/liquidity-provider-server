@@ -279,6 +279,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	t.Run("should update state to WaitingForDepositConfirmations after first confirmation", func(t *testing.T) {
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
+		// nolint:gosec
 		testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -384,6 +385,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		t.Run("should stop tracking quote on successful call for user", func(t *testing.T) {
 			resetMocks()
 			testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDepositConfirmations}
+			// nolint:gosec
 			testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
 
 			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
@@ -417,6 +419,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		now := time.Now().Unix()
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
+		// nolint:gosec
 		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -446,6 +449,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		now := time.Now().Unix()
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
+		// nolint:gosec
 		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
