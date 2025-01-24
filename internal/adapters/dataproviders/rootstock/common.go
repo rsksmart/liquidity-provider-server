@@ -16,7 +16,7 @@ import (
 const (
 	rpcCallRetryMax     = 3
 	rpcCallRetrySleep   = 1 * time.Minute
-	txMiningWaitTimeout = 2 * time.Minute
+	txMiningWaitTimeout = 5 * time.Minute
 )
 
 var DefaultRetryParams = RetryParams{
