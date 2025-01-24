@@ -188,6 +188,7 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 
 func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	expiredQuote := testPeginQuote
+	// nolint:gosec
 	expiredQuote.AgreementTimestamp = uint32(time.Now().Unix()) - 1000
 	expiredQuote.TimeForDeposit = 500
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)

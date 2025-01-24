@@ -35,8 +35,6 @@ func (watcher *PenalizationAlertWatcher) Prepare(ctx context.Context) error {
 }
 
 func (watcher *PenalizationAlertWatcher) Start() {
-	var cancel context.CancelFunc
-	var ctx context.Context
 	var err error
 	var height uint64
 watcherLoop:
@@ -44,7 +42,7 @@ watcherLoop:
 		select {
 		case <-watcher.ticker.C():
 			watcher.currentBlockMutex.Lock()
-			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 				log.Error("Error checking penalization events inside watcher: ", err)
 			} else {

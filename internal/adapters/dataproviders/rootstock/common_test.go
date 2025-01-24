@@ -2,7 +2,9 @@ package rootstock_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -106,5 +108,47 @@ func TestRskRetry(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
 		lbcMock.AssertExpectations(t)
+	})
+}
+
+func TestAwaitTxWithCtx(t *testing.T) {
+	t.Run("should return receipt if tx is successful", func(t *testing.T) {
+		clientMock := &mocks.RpcClientBindingMock{}
+		signerMock := &mocks.TransactionSignerMock{}
+		tx := prepareTxMocks(clientMock, signerMock, true)
+		defer test.AssertLogContains(t, fmt.Sprintf("Transaction success tx (%s) executed successfully", tx.Hash()))()
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "success tx", context.Background(), func() (*geth.Transaction, error) {
+			return tx, nil
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, receipt)
+		assert.Equal(t, uint64(1), receipt.Status)
+	})
+	t.Run("should return receipt if tx reverts", func(t *testing.T) {
+		clientMock := &mocks.RpcClientBindingMock{}
+		signerMock := &mocks.TransactionSignerMock{}
+		tx := prepareTxMocks(clientMock, signerMock, false)
+		defer test.AssertLogContains(t, fmt.Sprintf("Transaction fail tx (%s) reverted", tx.Hash()))()
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "fail tx", context.Background(), func() (*geth.Transaction, error) {
+			return tx, nil
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, receipt)
+		assert.Zero(t, receipt.Status)
+	})
+	t.Run("should return error if tx to be mined", func(t *testing.T) {
+		clientMock := &mocks.RpcClientBindingMock{}
+		signerMock := &mocks.TransactionSignerMock{}
+		tx := prepareTxMocks(clientMock, signerMock, true)
+		clientMock.ExpectedCalls = []*mock.Call{}
+		clientMock.On("TransactionReceipt", mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer test.AssertLogContains(t, fmt.Sprintf("Error waiting for transaction Test tx (%s) to be mined", tx.Hash()))()
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "Test tx", ctx, func() (*geth.Transaction, error) {
+			return tx, nil
+		})
+		cancel()
+		require.Error(t, err)
+		assert.Nil(t, receipt)
 	})
 }

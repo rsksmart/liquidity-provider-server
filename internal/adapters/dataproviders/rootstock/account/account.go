@@ -2,6 +2,7 @@ package account
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/awnumar/memguard"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -13,7 +14,7 @@ import (
 	"os"
 )
 
-var NoDerivationError = fmt.Errorf("btc derivation wasn't enabled for this account")
+var NoDerivationError = errors.New("btc derivation wasn't enabled for this account")
 
 type RskAccount struct {
 	Account  *accounts.Account

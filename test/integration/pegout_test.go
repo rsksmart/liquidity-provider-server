@@ -202,15 +202,18 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 	depositAddress, err := bitcoin.DecodeAddress(originalQuote.DepositAddr)
 	s.NoError(err)
 	return bindings.QuotesPegOutQuote{
-		LbcAddress:            common.HexToAddress(originalQuote.LBCAddr),
-		LpRskAddress:          common.HexToAddress(originalQuote.LPRSKAddr),
-		BtcRefundAddress:      btcRefundAddress,
-		RskRefundAddress:      common.HexToAddress(originalQuote.RSKRefundAddr),
-		LpBtcAddress:          lpBtcAddress,
-		CallFee:               big.NewInt(int64(originalQuote.CallFee)),
-		PenaltyFee:            big.NewInt(int64(originalQuote.PenaltyFee)),
-		Nonce:                 originalQuote.Nonce,
-		DeposityAddress:       depositAddress,
+		LbcAddress:       common.HexToAddress(originalQuote.LBCAddr),
+		LpRskAddress:     common.HexToAddress(originalQuote.LPRSKAddr),
+		BtcRefundAddress: btcRefundAddress,
+		RskRefundAddress: common.HexToAddress(originalQuote.RSKRefundAddr),
+		LpBtcAddress:     lpBtcAddress,
+		// nolint:gosec
+		CallFee: big.NewInt(int64(originalQuote.CallFee)),
+		// nolint:gosec
+		PenaltyFee:      big.NewInt(int64(originalQuote.PenaltyFee)),
+		Nonce:           originalQuote.Nonce,
+		DeposityAddress: depositAddress,
+		// nolint:gosec
 		Value:                 big.NewInt(int64(originalQuote.Value)),
 		AgreementTimestamp:    originalQuote.AgreementTimestamp,
 		DepositDateLimit:      originalQuote.DepositDateLimit,
@@ -219,8 +222,10 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 		TransferTime:          originalQuote.TransferTime,
 		ExpireDate:            originalQuote.ExpireDate,
 		ExpireBlock:           originalQuote.ExpireBlock,
-		ProductFeeAmount:      big.NewInt(int64(originalQuote.ProductFeeAmount)),
-		GasFee:                big.NewInt(int64(originalQuote.GasFee)),
+		// nolint:gosec
+		ProductFeeAmount: big.NewInt(int64(originalQuote.ProductFeeAmount)),
+		// nolint:gosec
+		GasFee: big.NewInt(int64(originalQuote.GasFee)),
 	}
 }
 

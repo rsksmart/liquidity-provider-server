@@ -43,6 +43,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 		return q.FedBtcAddress == fedAddress && q.LbcAddress == lbcAddress && q.LpRskAddress == lpRskAddress &&
 			q.BtcRefundAddress == blockchain.BitcoinTestnetP2PKHZeroAddress && q.RskRefundAddress == userRskAddress && q.LpBtcAddress == lpBtcAddress &&
 			q.CallFee.Cmp(config.CallFee) == 0 && q.PenaltyFee.Cmp(config.PenaltyFee) == 0 && q.ContractAddress == userRskAddress &&
+			// nolint:gosec
 			q.Data == hex.EncodeToString(quoteData) && q.GasLimit == uint32(gasLimit.Uint64()) && q.Value.Cmp(quoteValue) == 0 &&
 			q.Nonce > 0 && q.TimeForDeposit == config.TimeForDeposit && q.LpCallTime == config.CallTime && q.Confirmations == 10 &&
 			q.CallOnRegister == false && q.GasFee.Cmp(entities.NewWei(10000)) == 0 && q.ProductFeeAmount == 0

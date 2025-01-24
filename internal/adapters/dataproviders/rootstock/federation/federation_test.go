@@ -251,7 +251,7 @@ func TestBuildPowPegAddressHash(t *testing.T) {
 
 	str := hex.EncodeToString(buf.Bytes())
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
-	assert.EqualValues(t, str, powPegScriptString)
+	assert.EqualValues(t, powPegScriptString, str)
 
 	address, err := btcutil.NewAddressScriptHash(buf.Bytes(), &chaincfg.MainNetParams)
 	require.NoError(t, err)

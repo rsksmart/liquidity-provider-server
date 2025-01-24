@@ -22,17 +22,19 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	now := time.Now()
 	signature := "0x010203"
 	quoteMock := quote.PegoutQuote{
-		LbcAddress:            "0xabcd01",
-		LpRskAddress:          "0xabcd02",
-		BtcRefundAddress:      "hijk",
-		RskRefundAddress:      "0xabcd04",
-		LpBtcAddress:          "edfg",
-		CallFee:               entities.NewWei(5),
-		PenaltyFee:            1,
-		Nonce:                 1,
-		DepositAddress:        "address",
-		Value:                 entities.NewWei(12),
-		AgreementTimestamp:    uint32(now.Unix()),
+		LbcAddress:       "0xabcd01",
+		LpRskAddress:     "0xabcd02",
+		BtcRefundAddress: "hijk",
+		RskRefundAddress: "0xabcd04",
+		LpBtcAddress:     "edfg",
+		CallFee:          entities.NewWei(5),
+		PenaltyFee:       1,
+		Nonce:            1,
+		DepositAddress:   "address",
+		Value:            entities.NewWei(12),
+		// nolint:gosec
+		AgreementTimestamp: uint32(now.Unix()),
+		// nolint:gosec
 		DepositDateLimit:      uint32(now.Unix() + 600),
 		DepositConfirmations:  1,
 		TransferConfirmations: 1,

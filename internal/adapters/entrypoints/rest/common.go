@@ -116,7 +116,7 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	}
 	details := make(ErrorDetails)
 	for _, field := range validationErrors {
-		details[field.Field()] = fmt.Sprintf("validation failed: %s", field.Tag())
+		details[field.Field()] = "validation failed: " + field.Tag()
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)

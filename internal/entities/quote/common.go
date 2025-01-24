@@ -2,6 +2,7 @@ package quote
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -30,7 +31,7 @@ func ValidateQuoteHash(hash string) error {
 
 	// Check if it's a valid hex string
 	if _, err := hex.DecodeString(hash); err != nil {
-		return fmt.Errorf("invalid quote hash format: must be a valid hex string")
+		return errors.New("invalid quote hash format: must be a valid hex string")
 	}
 
 	return nil

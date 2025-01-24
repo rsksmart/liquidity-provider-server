@@ -57,7 +57,7 @@ func TestGenerateDefaultCredentialsUseCase_Run(t *testing.T) {
 		"been generated and saved in the file %s.Please keep this file safe. The first time you open the "+
 		"management interface, you will be asked to change this password.", passwordFile)
 	assert.Contains(t, buff.String(), expectedLog)
-	assert.Positive(t, len(writtenPassword))
+	assert.NotEmpty(t, writtenPassword)
 	eventBus.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
 }
