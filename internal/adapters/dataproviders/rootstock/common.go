@@ -94,10 +94,10 @@ func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, err
 }
 
 func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
-	return awaitTxWithCtx(client, logName, context.Background(), txCall)
+	return AwaitTxWithCtx(client, logName, context.Background(), txCall)
 }
 
-func awaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+func AwaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (*geth.Receipt, error) {
 	var tx *geth.Transaction
 	var err error
 
@@ -105,20 +105,23 @@ func awaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context
 	tx, err = txCall()
 	if err != nil {
 		return nil, err
+	} else if tx == nil {
+		return nil, errors.New("invalid transaction")
 	}
+
 	ctx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
-	defer func() {
-		cancel()
-		if r != nil && r.Status == 1 {
-			log.Infof("Transaction %s (%s) executed successfully\n", logName, tx.Hash().String())
-		} else if tx != nil {
-			log.Infof("Transaction %s (%s) failed\n", logName, tx.Hash().String())
-		} else {
-			log.Info("Transaction failed")
-		}
-	}()
-	if tx != nil {
-		return bind.WaitMined(ctx, client, tx)
+	defer cancel()
+
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if err != nil || receipt == nil {
+		log.Infof("Error waiting for transaction %s (%s) to be mined: %v", logName, tx.Hash().String(), err)
+		return nil, err
 	}
-	return nil, errors.New("invalid transaction")
+
+	if receipt.Status == 1 {
+		log.Infof("Transaction %s (%s) executed successfully", logName, tx.Hash().String())
+	} else {
+		log.Infof("Transaction %s (%s) reverted", logName, tx.Hash().String())
+	}
+	return receipt, nil
 }

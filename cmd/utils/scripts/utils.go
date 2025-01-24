@@ -20,7 +20,7 @@ type FileReader = func(string) ([]byte, error)
 type RskClientFactory = func(context.Context, environment.RskEnv) (*rootstock.RskClient, error)
 
 func ExitWithError(code int, message string, err error) {
-	fmt.Println(fmt.Sprintf("%s: %s", message, err.Error()))
+	fmt.Printf("%s: %s\n", message, err.Error())
 	os.Exit(code)
 }
 
