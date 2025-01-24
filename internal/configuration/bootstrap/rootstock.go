@@ -28,7 +28,11 @@ func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClien
 
 	switch parsedUrl.Scheme {
 	case "http", "https":
-		transport := http.DefaultTransport.(*http.Transport).Clone()
+		defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+		if !ok {
+			return nil, errors.New("failed to get default transport")
+		}
+		transport := defaultTransport.Clone()
 		transport.DisableKeepAlives = true
 
 		httpClient := new(http.Client)

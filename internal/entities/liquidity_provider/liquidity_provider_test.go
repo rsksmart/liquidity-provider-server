@@ -3,6 +3,7 @@ package liquidity_provider_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -71,7 +72,8 @@ func TestToProviderType(t *testing.T) {
 	})
 
 	test.RunTable(t, valueCases, func(value string) liquidity_provider.ProviderType {
-		result, _ = liquidity_provider.ToProviderType(value)
+		result, err = liquidity_provider.ToProviderType(value)
+		require.NoError(t, err)
 		return result
 	})
 }

@@ -221,6 +221,7 @@ func TestParseRegisterPegInScriptInput(t *testing.T) {
 		result, err := ParseRegisterPegInScriptInput(parse, &input, os.ReadFile)
 		require.NoError(t, err)
 		assert.Equal(t, "e57767cefb13bb962e9729d99adbb7147f6054af6e8f4d7c4cd47e74cf9ccaa4", result.BtcTxHash)
+		// nolint:errcheck
 		signature, _ := hex.DecodeString("7290e2c28751d7e4ba2ea5fe5f8b1d3a0bfcd55089fddc0e74fe6809afb8195622801d2dd8267ea3cc4088f5e4b133e0e22dcc403ee0f838efbb277f493c8cde1b")
 		assert.Equal(t, signature, result.Signature)
 		assert.Equal(t, quote.PeginQuote{

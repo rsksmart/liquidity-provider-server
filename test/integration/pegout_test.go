@@ -147,7 +147,8 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 
 		txHash := waitForBtcTransactionToAddress(s, address)
 
-		txParsedHash, _ := chainhash.NewHashFromStr(txHash)
+		txParsedHash, err := chainhash.NewHashFromStr(txHash)
+		s.NoError(err)
 		tx, err := s.btc.GetRawTransaction(txParsedHash)
 		s.NoError(err)
 		s.NotNil(tx)
@@ -156,7 +157,8 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 	s.Run("Should refund pegout to liquidity provider", func() {
 		eventChannel := make(chan *bindings.LiquidityBridgeContractPegOutRefunded)
 		var quoteHash [32]byte
-		hashBytes, _ := hex.DecodeString(quote.QuoteHash)
+		hashBytes, err := hex.DecodeString(quote.QuoteHash)
+		s.Require().NoError(err)
 		copy(quoteHash[:], hashBytes)
 		subscription, err := s.lbc.WatchPegOutRefunded(
 			nil,
@@ -182,10 +184,11 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 	})
 }
 
-func lookForTxToAddress(block *wire.MsgBlock, target btcutil.Address, params *chaincfg.Params) string {
+func lookForTxToAddress(s *IntegrationTestSuite, block *wire.MsgBlock, target btcutil.Address, params *chaincfg.Params) string {
 	for _, tx := range block.Transactions {
 		for _, output := range tx.TxOut {
-			_, addresses, _, _ := txscript.ExtractPkScriptAddrs(output.PkScript, params)
+			_, addresses, _, err := txscript.ExtractPkScriptAddrs(output.PkScript, params)
+			s.Require().NoError(err)
 			if len(addresses) != 0 && addresses[0].EncodeAddress() == target.EncodeAddress() {
 				return tx.TxHash().String()
 			}
@@ -202,18 +205,15 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 	depositAddress, err := bitcoin.DecodeAddress(originalQuote.DepositAddr)
 	s.NoError(err)
 	return bindings.QuotesPegOutQuote{
-		LbcAddress:       common.HexToAddress(originalQuote.LBCAddr),
-		LpRskAddress:     common.HexToAddress(originalQuote.LPRSKAddr),
-		BtcRefundAddress: btcRefundAddress,
-		RskRefundAddress: common.HexToAddress(originalQuote.RSKRefundAddr),
-		LpBtcAddress:     lpBtcAddress,
-		// nolint:gosec
-		CallFee: big.NewInt(int64(originalQuote.CallFee)),
-		// nolint:gosec
-		PenaltyFee:      big.NewInt(int64(originalQuote.PenaltyFee)),
-		Nonce:           originalQuote.Nonce,
-		DeposityAddress: depositAddress,
-		// nolint:gosec
+		LbcAddress:            common.HexToAddress(originalQuote.LBCAddr),
+		LpRskAddress:          common.HexToAddress(originalQuote.LPRSKAddr),
+		BtcRefundAddress:      btcRefundAddress,
+		RskRefundAddress:      common.HexToAddress(originalQuote.RSKRefundAddr),
+		LpBtcAddress:          lpBtcAddress,
+		CallFee:               big.NewInt(int64(originalQuote.CallFee)),
+		PenaltyFee:            big.NewInt(int64(originalQuote.PenaltyFee)),
+		Nonce:                 originalQuote.Nonce,
+		DeposityAddress:       depositAddress,
 		Value:                 big.NewInt(int64(originalQuote.Value)),
 		AgreementTimestamp:    originalQuote.AgreementTimestamp,
 		DepositDateLimit:      originalQuote.DepositDateLimit,
@@ -222,10 +222,8 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 		TransferTime:          originalQuote.TransferTime,
 		ExpireDate:            originalQuote.ExpireDate,
 		ExpireBlock:           originalQuote.ExpireBlock,
-		// nolint:gosec
-		ProductFeeAmount: big.NewInt(int64(originalQuote.ProductFeeAmount)),
-		// nolint:gosec
-		GasFee: big.NewInt(int64(originalQuote.GasFee)),
+		ProductFeeAmount:      big.NewInt(int64(originalQuote.ProductFeeAmount)),
+		GasFee:                big.NewInt(int64(originalQuote.GasFee)),
 	}
 }
 
@@ -235,13 +233,14 @@ func waitForBtcTransactionToAddress(s *IntegrationTestSuite, address btcutil.Add
 	info, err := s.btc.GetBlockChainInfo()
 	s.NoError(err)
 	latestBlockNumber := info.Blocks
-	latestBlockHash, _ = chainhash.NewHashFromStr(info.BestBlockHash)
+	latestBlockHash, err = chainhash.NewHashFromStr(info.BestBlockHash)
+	s.NoError(err)
 	block, err = s.btc.GetBlock(latestBlockHash)
 	s.NoError(err)
 
 	var txHash string
 	for txHash == "" {
-		txHash = lookForTxToAddress(block, address, &s.btcParams)
+		txHash = lookForTxToAddress(s, block, address, &s.btcParams)
 		if txHash != "" {
 			return txHash
 		}

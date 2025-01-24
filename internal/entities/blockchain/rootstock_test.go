@@ -65,8 +65,10 @@ func TestDecodeStringTrimPrefix(t *testing.T) {
 		{Value: "0xe8d8c8f343522fd53c45c71723B93D735b149220", Result: []byte{232, 216, 200, 243, 67, 82, 47, 213, 60, 69, 199, 23, 35, 185, 61, 115, 91, 20, 146, 32}},
 	}
 	var bytes []byte
+	var err error
 	test.RunTable(t, cases, func(address string) []byte {
-		bytes, _ = blockchain.DecodeStringTrimPrefix(address)
+		bytes, err = blockchain.DecodeStringTrimPrefix(address)
+		require.NoError(t, err)
 		return bytes
 	})
 }
@@ -87,12 +89,16 @@ func TestDecodeStringTrim_Fail(t *testing.T) {
 
 func TestBtcCoinbaseTransactionInformation_String(t *testing.T) {
 	var blockHash, witnessMerkleRoot, witnessReservedValue [32]byte
-	tx, _ := hex.DecodeString("020000000001018e1993e43f182c6966ac011f12d82c18ee2b2e292b23f206e5c55d518cded7e80100000000fdffffff0300879303000000001976a914d60c3f1e0a8e76dd5ea1470c968b87b9b0339c4988ac0000000000000000226a2042be5ef1f59c24d2715f6f4b803a2acc66515554447f1a3e0abb99a3317aa6afc11fa11900000000160014ddb677f36498f7a4901a74e882df68fd00cf473502473044022077657caef5a7692e3ac1dffca4cfebea98029a21dbf5247a044ef4d2a8f2fdfd02206342029f868122a7c2321b67cea2440c98925728450f28b3e443e80c4f95765e01210232858a5faa413101831afe7a880da9a8ac4de6bd5e25b4358d762ba450b03c2200000000")
-	blockHashBytes, _ := hex.DecodeString("8e1993e43f182c6966ac011f12d82c18ee2b2e292b23f206e5c55d518cded7e8")
+	tx, err := hex.DecodeString("020000000001018e1993e43f182c6966ac011f12d82c18ee2b2e292b23f206e5c55d518cded7e80100000000fdffffff0300879303000000001976a914d60c3f1e0a8e76dd5ea1470c968b87b9b0339c4988ac0000000000000000226a2042be5ef1f59c24d2715f6f4b803a2acc66515554447f1a3e0abb99a3317aa6afc11fa11900000000160014ddb677f36498f7a4901a74e882df68fd00cf473502473044022077657caef5a7692e3ac1dffca4cfebea98029a21dbf5247a044ef4d2a8f2fdfd02206342029f868122a7c2321b67cea2440c98925728450f28b3e443e80c4f95765e01210232858a5faa413101831afe7a880da9a8ac4de6bd5e25b4358d762ba450b03c2200000000")
+	require.NoError(t, err)
+	blockHashBytes, err := hex.DecodeString("8e1993e43f182c6966ac011f12d82c18ee2b2e292b23f206e5c55d518cded7e8")
+	require.NoError(t, err)
 	copy(blockHash[:], blockHashBytes)
-	witnessMerkleRootBytes, _ := hex.DecodeString("42be5ef1f59c24d2715f6f4b803a2acc66515554447f1a3e0abb99a3317aa6af")
+	witnessMerkleRootBytes, err := hex.DecodeString("42be5ef1f59c24d2715f6f4b803a2acc66515554447f1a3e0abb99a3317aa6af")
+	require.NoError(t, err)
 	copy(witnessMerkleRoot[:], witnessMerkleRootBytes)
-	witnessReservedValueBytes, _ := hex.DecodeString("ddb677f36498f7a4901a74e882df68fd00cf4735")
+	witnessReservedValueBytes, err := hex.DecodeString("ddb677f36498f7a4901a74e882df68fd00cf4735")
+	require.NoError(t, err)
 	copy(witnessReservedValue[:], witnessReservedValueBytes)
 	transaction := blockchain.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      tx,

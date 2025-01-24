@@ -44,7 +44,7 @@ func NewMerkleBlock(block *btcutil.Block, filter *bloom.Filter, witness bool) (*
 			mBlock.matchedBits = append(mBlock.matchedBits, 0x00)
 		}
 		if witness && blockchain.IsCoinBase(tx) {
-			emptyHash, _ := chainhash.NewHash(make([]byte, 32))
+			emptyHash, _ := chainhash.NewHash(make([]byte, 32)) // nolint:errcheck
 			mBlock.allHashes = append(mBlock.allHashes, emptyHash)
 		} else if witness {
 			mBlock.allHashes = append(mBlock.allHashes, tx.WitnessHash())
@@ -70,7 +70,7 @@ func NewMerkleBlock(block *btcutil.Block, filter *bloom.Filter, witness bool) (*
 		Flags:        make([]byte, (len(mBlock.bits)+7)/8),
 	}
 	for _, hash := range mBlock.finalHashes {
-		_ = msgMerkleBlock.AddTxHash(hash)
+		_ = msgMerkleBlock.AddTxHash(hash) // nolint:errcheck
 	}
 	for i := uint32(0); i < uint32(len(mBlock.bits)); i++ {
 		msgMerkleBlock.Flags[i/8] |= mBlock.bits[i] << (i % 8)

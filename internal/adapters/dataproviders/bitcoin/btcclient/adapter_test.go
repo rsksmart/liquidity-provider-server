@@ -133,6 +133,7 @@ func TestBtcSuiteClientAdapter_SignRawTransactionWithKey(t *testing.T) {
 	err = tx.DeserializeNoWitness(bytes.NewReader(txBytes))
 	require.NoError(t, err)
 	receiveChannel <- &rpcclient.Response{}
-	_, _, _ = adapter.SignRawTransactionWithKey(tx, keys)
+	_, _, err = adapter.SignRawTransactionWithKey(tx, keys)
+	require.NoError(t, err)
 	client.AssertExpectations(t)
 }

@@ -44,7 +44,9 @@ func TestLoginUseCase_GetDefaultPasswordChannel(t *testing.T) {
 	assert.NotNil(t, useCase.GetDefaultCredentialsChannel())
 	select {
 	case content := <-useCase.GetDefaultCredentialsChannel():
-		assert.Equal(t, hashedDefaultCredentialsMock, content.(lpEntity.DefaultCredentialsSetEvent).Credentials)
+		parsedContent, ok := content.(lpEntity.DefaultCredentialsSetEvent)
+		assert.True(t, ok)
+		assert.Equal(t, hashedDefaultCredentialsMock, parsedContent.Credentials)
 	default:
 		assert.Fail(t, "expected to receive an event")
 	}

@@ -142,7 +142,10 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 	for _, utxo := range utxos {
 		_, ok = txs[utxo.TxID]
 		if !ok {
-			txId, _ := chainhash.NewHashFromStr(utxo.TxID)
+			txId, parseErr := chainhash.NewHashFromStr(utxo.TxID)
+			if parseErr != nil {
+				return nil, parseErr
+			}
 			if rawTxInfo, err = client.GetRawTransactionVerbose(txId); err != nil {
 				return nil, err
 			}

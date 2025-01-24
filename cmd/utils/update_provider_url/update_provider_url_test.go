@@ -151,7 +151,8 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 func TestExecuteUpdateProvider(t *testing.T) {
 	lbc := &mocks.LbcMock{}
 	lbc.On("UpdateProvider", "name", "http://test.com").Return(test.AnyHash, nil)
-	args, _ := NewUpdateProviderArgs("name", "http://test.com", "regtest")
+	args, err := NewUpdateProviderArgs("name", "http://test.com", "regtest")
+	require.NoError(t, err)
 	txHash, err := ExecuteUpdateProvider(lbc, args)
 	require.NoError(t, err)
 	assert.Equal(t, test.AnyHash, txHash)
