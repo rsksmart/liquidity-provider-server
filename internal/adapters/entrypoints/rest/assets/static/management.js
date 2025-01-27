@@ -256,29 +256,34 @@ function getConfirmationConfig(sectionId) {
         inputGroups.forEach(input => {
             const idx = input.dataset.index;
             if (!tempArray[idx]) tempArray[idx] = {};
+
+            if (input.value.trim() === '') {
+                showErrorToast(`Please enter a non-empty value for "${input.dataset.field === 'amount' ? 'rBTC amount' : 'confirmations'}."`);
+                throw new Error(`Empty ${input.dataset.field} input`);
+            }
+
             if (input.dataset.field === 'amount') {
                 try {
                     tempArray[idx].amount = etherToWei(input.value).toString();
                 } catch (error) {
-                    showErrorToast(`Invalid input "${input.value}" for field "Amount". Please enter a valid non-negative number.`);
+                    showErrorToast(`Invalid input "${input.value}" for rBTC amount. Please enter a valid non-negative number.`);
                     throw error;
                 }
             } else if (input.dataset.field === 'confirmation') {
                 const val = Number(input.value);
                 if (isNaN(val) || !Number.isInteger(val) || val < 0) {
-                    showErrorToast(`Invalid input "${input.value}" for field "Confirmation". Please enter a valid non-negative integer.`);
+                    showErrorToast(`Invalid input "${input.value}" for confirmations. Please enter a valid non-negative integer.`);
                     throw new Error('Invalid confirmation number');
                 }
                 tempArray[idx].confirmation = val;
             }
         });
 
-        tempArray = tempArray.filter(entryObj => 
+        tempArray = tempArray.filter( entryObj =>
             entryObj !== undefined &&
             entryObj.amount !== undefined &&
             entryObj.confirmation !== undefined
         );
-        
         config[configKey] = tempArray;
     });
     return config;
