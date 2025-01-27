@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
@@ -15,7 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
+	"reflect"
 	"testing"
+	"unsafe"
 )
 
 const testString = "test"
@@ -132,7 +135,13 @@ func TestBtcSuiteClientAdapter_SignRawTransactionWithKey(t *testing.T) {
 	require.NoError(t, err)
 	err = tx.DeserializeNoWitness(bytes.NewReader(txBytes))
 	require.NoError(t, err)
-	receiveChannel <- &rpcclient.Response{}
+	response := &rpcclient.Response{}
+	// setting value using reflection since is a private field (from the library) and there is no other way to test this
+	field := reflect.ValueOf(response).Elem().FieldByName("result")
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).
+		Elem().
+		Set(reflect.ValueOf([]uint8(fmt.Sprintf(`{"hex":"%s","complete":true}`, rawTx))))
+	receiveChannel <- response
 	_, _, err = adapter.SignRawTransactionWithKey(tx, keys)
 	require.NoError(t, err)
 	client.AssertExpectations(t)
