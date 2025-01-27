@@ -90,37 +90,19 @@ func (lbc *liquidityBridgeContractImpl) HashPegoutQuote(pegoutQuote quote.Pegout
 }
 
 func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
-	var i, maxProviderId int64
 	var providerType liquidity_provider.ProviderType
 	var providers []bindings.LiquidityBridgeContractLiquidityProvider
-	var provider bindings.LiquidityBridgeContractLiquidityProvider
 
 	opts := &bind.CallOpts{}
-	maxId, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return lbc.contract.GetProviderIds(opts)
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	maxProviderId = maxId.Int64()
-	providerIds := make([]*big.Int, 0)
-
-	for i = 1; i <= maxProviderId; i++ {
-		providerIds = append(providerIds, big.NewInt(i))
-	}
-
-	providers, err = rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+	providers, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() ([]bindings.LiquidityBridgeContractLiquidityProvider, error) {
-			return lbc.contract.GetProviders(opts, providerIds)
+			return lbc.contract.GetProviders(opts)
 		})
 	if err != nil {
 		return nil, err
 	}
 	parsedProviders := make([]liquidity_provider.RegisteredLiquidityProvider, 0)
-	for i = 0; i < maxProviderId; i++ {
-		provider = providers[i]
+	for _, provider := range providers {
 		providerType = liquidity_provider.ProviderType(provider.ProviderType)
 		if !providerType.IsValid() {
 			return nil, liquidity_provider.InvalidProviderTypeError
@@ -135,6 +117,36 @@ func (lbc *liquidityBridgeContractImpl) GetProviders() ([]liquidity_provider.Reg
 		})
 	}
 	return parsedProviders, nil
+}
+
+func (lbc *liquidityBridgeContractImpl) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
+	var providerType liquidity_provider.ProviderType
+	const lbcProviderNotRegisteredError = "LBC001"
+
+	if !common.IsHexAddress(address) {
+		return liquidity_provider.RegisteredLiquidityProvider{}, blockchain.InvalidAddressError
+	}
+
+	opts := &bind.CallOpts{}
+	provider, err := lbc.contract.GetProvider(opts, common.HexToAddress(address))
+	if err != nil && err.Error() == lbcProviderNotRegisteredError {
+		return liquidity_provider.RegisteredLiquidityProvider{}, liquidity_provider.ProviderNotFoundError
+	} else if err != nil {
+		return liquidity_provider.RegisteredLiquidityProvider{}, err
+	}
+
+	providerType = liquidity_provider.ProviderType(provider.ProviderType)
+	if !providerType.IsValid() {
+		return liquidity_provider.RegisteredLiquidityProvider{}, liquidity_provider.InvalidProviderTypeError
+	}
+	return liquidity_provider.RegisteredLiquidityProvider{
+		Id:           provider.Id.Uint64(),
+		Address:      provider.Provider.String(),
+		Name:         provider.Name,
+		ApiBaseUrl:   provider.ApiBaseUrl,
+		Status:       provider.Status,
+		ProviderType: providerType,
+	}, nil
 }
 
 func (lbc *liquidityBridgeContractImpl) ProviderResign() error {
@@ -583,7 +595,8 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 	return registerEvent.Id.Int64(), nil
 }
 
-// TODO currently we only support P2PKH addresses (P2SH is allowed for federation address)
+// parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPeginQuote. All BTC address fields support all address types
+// except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, error) {
 	var decodedFederationAddress []byte
 	var parsedQuote bindings.QuotesPeginQuote
@@ -598,10 +611,10 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	} else {
 		copy(parsedQuote.FedBtcAddress[:], decodedFederationAddress)
 	}
-	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(peginQuote.BtcRefundAddress, true); err != nil {
+	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(peginQuote.BtcRefundAddress); err != nil {
 		return bindings.QuotesPeginQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
 	}
-	if parsedQuote.LiquidityProviderBtcAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(peginQuote.LpBtcAddress, true); err != nil {
+	if parsedQuote.LiquidityProviderBtcAddress, err = bitcoin.DecodeAddress(peginQuote.LpBtcAddress); err != nil {
 		return bindings.QuotesPeginQuote{}, fmt.Errorf("error parsing btc liquidity provider address: %w", err)
 	}
 
@@ -638,7 +651,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	return parsedQuote, nil
 }
 
-// TODO currently we only support P2PKH addresses
+// parsePegoutQuote parses a quote.PegoutQuote into a bindings.QuotesPegOutQuote. All BTC address fields support all address types.
 func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote, error) {
 	var parsedQuote bindings.QuotesPegOutQuote
 	var err error
@@ -657,13 +670,13 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user rsk refund address: %w", err)
 	}
 
-	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.BtcRefundAddress, true); err != nil {
+	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(pegoutQuote.BtcRefundAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
 	}
-	if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.LpBtcAddress, true); err != nil {
+	if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing liquidity provider btc address: %w", err)
 	}
-	if parsedQuote.DeposityAddress, err = bitcoin.DecodeAddressBase58OnlyLegacy(pegoutQuote.DepositAddress, true); err != nil {
+	if parsedQuote.DeposityAddress, err = bitcoin.DecodeAddress(pegoutQuote.DepositAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)
 	}
 

@@ -82,8 +82,8 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		QuoteHash:            parsedHash,
 	}).Return(blockchain.FlyoverDerivation{Address: acceptPeginDerivationAddress, RedeemScript: anyScript}, nil)
 	btc := new(mocks.BtcRpcMock)
-	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress, true).Return(refundParsedAddress, nil)
-	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress, true).Return(lpParsedAddress, nil)
+	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress).Return(refundParsedAddress, nil)
+	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress).Return(lpParsedAddress, nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
 	lp.On("SignQuote", acceptPeginQuoteHash).Return(acceptPeginSignature, nil)
@@ -231,8 +231,8 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		RedeemScript: anyScript,
 	}, nil)
 	btc := new(mocks.BtcRpcMock)
-	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress, true).Return([]byte{4, 5, 6}, nil)
-	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress, true).Return([]byte{7, 8, 9}, nil)
+	btc.On("DecodeAddress", testPeginQuote.BtcRefundAddress).Return([]byte{4, 5, 6}, nil)
+	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress).Return([]byte{7, 8, 9}, nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(assert.AnError)
 	eventBus := new(mocks.EventBusMock)
@@ -318,14 +318,14 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+			btc.On("DecodeAddress", mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
@@ -333,23 +333,23 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			caseQuote.LbcAddress = "malformed address"
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&caseQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(blockchain.FederationInfo{}, assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(blockchain.FlyoverDerivation{}, assert.AnError).Once()
 		},
@@ -357,8 +357,8 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(nil, assert.AnError).Once()
@@ -367,8 +367,8 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
@@ -379,8 +379,8 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
@@ -392,8 +392,8 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, mock.Anything).Return(&testPeginQuote, nil).Once()
 			quoteRepository.On("GetRetainedQuote", test.AnyCtx, mock.Anything).Return(nil, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{1}, nil).Once()
-			btc.On("DecodeAddress", mock.Anything, mock.Anything).Return([]byte{2}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{1}, nil).Once()
+			btc.On("DecodeAddress", mock.Anything).Return([]byte{2}, nil).Once()
 			bridge.On("FetchFederationInfo").Return(federationInfo, nil).Once()
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()

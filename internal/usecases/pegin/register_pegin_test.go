@@ -89,6 +89,7 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	bridge.AssertExpectations(t)
 	btc.AssertExpectations(t)
 	mutex.AssertExpectations(t)
+	bridge.AssertNotCalled(t, "RegisterBtcCoinbaseTransaction")
 }
 
 func TestRegisterPeginUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {

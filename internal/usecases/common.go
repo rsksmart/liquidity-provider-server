@@ -68,7 +68,6 @@ var (
 	ExpiredQuoteError           = errors.New("expired quote")
 	NoLiquidityError            = errors.New("not enough liquidity")
 	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	ProviderNotFoundError       = errors.New("liquidity provider not found")
 	WrongStateError             = errors.New("quote with wrong state")
 	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError     = errors.New("insufficient amount")
@@ -172,6 +171,21 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 		Signature: hex.EncodeToString(signature),
 	}
 	return signedConfig, nil
+}
+
+// RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
+// IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+	if !tx.HasWitness {
+		return nil
+	}
+
+	coinbaseInfo, err := btcRpc.GetCoinbaseInformation(tx.Hash)
+	if err != nil {
+		return err
+	}
+	_, err = bridgeContract.RegisterBtcCoinbaseTransaction(coinbaseInfo)
+	return err
 }
 
 // ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum

@@ -39,8 +39,6 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 	var err error
 	var peginQuote *quote.PeginQuote
 	var params blockchain.RegisterPeginParams
-	var newState quote.PeginState
-	var registerPeginTxHash string
 
 	if retainedQuote.State != quote.PeginStateCallForUserSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
@@ -62,30 +60,8 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if err != nil {
-		newState = quote.PeginStateRegisterPegInFailed
-	} else {
-		newState = quote.PeginStateRegisterPegInSucceeded
-	}
 
-	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
-	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
-		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
-		RetainedQuote: retainedQuote,
-		Error:         err,
-	})
-
-	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
-		err = errors.Join(err, updateError)
-	}
-	if err != nil {
-		err = errors.Join(err, usecases.NonRecoverableError)
-		return usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
-	}
-	return nil
+	return useCase.performRegisterPegin(ctx, params, retainedQuote)
 }
 
 func (useCase *RegisterPeginUseCase) publishErrorEvent(ctx context.Context, retainedQuote quote.RetainedPeginQuote, err error, recoverable bool) error {
@@ -95,8 +71,9 @@ func (useCase *RegisterPeginUseCase) publishErrorEvent(ctx context.Context, reta
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, errorArgs)
 	if !recoverable {
 		retainedQuote.State = quote.PeginStateRegisterPegInFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
+			wrappedError = errors.Join(wrappedError, err)
 		}
 		useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
@@ -144,6 +121,37 @@ func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, re
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if txInfo.Confirmations < useCase.contracts.Bridge.GetRequiredTxConfirmations() {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
+	}
+	return nil
+}
+
+func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, params blockchain.RegisterPeginParams, retainedQuote quote.RetainedPeginQuote) error {
+	var registerPeginTxHash string
+	var newState quote.PeginState
+	var err error
+
+	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	} else if err != nil {
+		newState = quote.PeginStateRegisterPegInFailed
+	} else {
+		newState = quote.PeginStateRegisterPegInSucceeded
+	}
+
+	retainedQuote.State = newState
+	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
+	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
+		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
+		RetainedQuote: retainedQuote,
+		Error:         err,
+	})
+
+	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
+		err = errors.Join(err, updateError)
+	}
+	if err != nil {
+		err = errors.Join(err, usecases.NonRecoverableError)
+		return usecases.WrapUseCaseErrorArgs(usecases.RegisterPeginId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return nil
 }

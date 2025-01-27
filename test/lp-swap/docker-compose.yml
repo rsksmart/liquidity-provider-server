@@ -1,0 +1,113 @@
+services:
+  btc01:
+    build:
+      context: ../../docker-compose/bitcoind
+    image: bitcond:latest
+    container_name: btc01
+    environment:
+      - BTC_USERNAME
+      - BTC_PASSWORD
+    ports:
+      - "5555:5555"
+    networks:
+      - lp-swap-network
+    command:
+      [
+        "bitcoind",
+        "-rpcuser=test",
+        "-rpcpassword=test",
+        "-addresstype=legacy",
+        "-regtest",
+        "-printtoconsole",
+        "-server",
+        "-txindex",
+        "-deprecatedrpc=signrawtransaction",
+        "-deprecatedrpc=accounts",
+        "-rpcbind=0.0.0.0",
+        "-rpcallowip=0.0.0.0/0",
+        "-rpcport=5555",
+      ]
+  btc02:
+    build:
+      context: ../../docker-compose/bitcoind
+    image: bitcond:latest
+    container_name: btc02
+    environment:
+      - BTC_USERNAME
+      - BTC_PASSWORD
+    ports:
+      - "5556:5555"
+    networks:
+      - lp-swap-network
+    command:
+      [
+        "bitcoind",
+        "-rpcuser=test",
+        "-rpcpassword=test",
+        "-addresstype=legacy",
+        "-regtest",
+        "-printtoconsole",
+        "-server",
+        "-txindex",
+        "-deprecatedrpc=signrawtransaction",
+        "-deprecatedrpc=accounts",
+        "-rpcbind=0.0.0.0",
+        "-rpcallowip=0.0.0.0/0",
+        "-rpcport=5555",
+      ]
+  rskj:
+    build:
+      context: ../../docker-compose/rskj
+    image: rskj:latest
+    container_name: rskj01
+    ports:
+      - "4444:4444"
+    networks:
+      - lp-swap-network
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.ws.enabled=true",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=rskj",
+        "-cp",
+        "rskj-core.jar",
+        "-Drsk.conf.file=rsk.conf",
+        "co.rsk.Start",
+        "--regtest",
+      ]
+  lbc-deployer:
+    build:
+      context: ../../docker-compose/lbc-deployer
+      secrets:
+        - gh_token
+      args:
+        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-QA-Test}"
+    image: lbc-deployer:latest
+    container_name: lbc-deployer01
+    environment:
+      - LPS_STAGE=regtest
+    networks:
+      - lp-swap-network
+  ui:
+    build:
+      context: ../../docker-compose/flyover-ui
+      secrets:
+        - gh_token
+      args:
+        - LBC_ADDRESS
+    image: flyover-ui:latest
+    container_name: flyover-ui
+    ports:
+      - "3000:80"
+    networks:
+      - lp-swap-network
+networks:
+  lp-swap-network:
+    driver: "bridge"
+secrets:
+  gh_token:
+    file: ./gh_token.txt

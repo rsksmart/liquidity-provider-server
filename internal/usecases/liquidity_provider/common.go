@@ -1,18 +1,13 @@
 package liquidity_provider
 
 import (
-	"cmp"
 	"context"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"slices"
-	"strings"
 )
 
 const (
@@ -24,30 +19,6 @@ var (
 	BadLoginError                 = errors.New("incorrect username or credentials")
 	LiquidityCheckNotEnabledError = errors.New("public liquidity check is not enabled")
 )
-
-func ValidateConfiguredProvider(
-	provider liquidity_provider.LiquidityProvider,
-	lbc blockchain.LiquidityBridgeContract,
-) (uint64, error) {
-	var err error
-	var providers []liquidity_provider.RegisteredLiquidityProvider
-
-	if providers, err = lbc.GetProviders(); err != nil {
-		return 0, err
-	}
-
-	index, found := slices.BinarySearchFunc(
-		providers,
-		liquidity_provider.RegisteredLiquidityProvider{Address: provider.RskAddress()},
-		func(a, b liquidity_provider.RegisteredLiquidityProvider) int {
-			return cmp.Compare(strings.ToLower(a.Address), strings.ToLower(b.Address))
-		},
-	)
-	if !found {
-		return 0, usecases.ProviderConfigurationError
-	}
-	return providers[index].Id, nil
-}
 
 // DefaultCredentialsProvider this is an interface to be implemented by those use case that require to use ValidateCredentials,
 // since that function requires a way to access to the default password set by the application

@@ -8,7 +8,7 @@
       "rpcEndpoint": "localhost:5555",
       "user": "test",
       "password": "test",
-      "password": "test-password"
+      "walletPassword": "test-password"
   },
   "rsk": {
     "rpcUrl": "ws://localhost:4445/websocket",

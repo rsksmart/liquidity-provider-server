@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"html/template"
 	"net/http"
@@ -27,21 +28,24 @@ const (
 // @Route /management [get]
 func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase *liquidity_provider.GetManagementUiDataUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		const errorGeneratingTemplate = "Error generating template: %v"
 		session, err := store.Get(req, cookies.ManagementSessionCookieName)
 		loggedIn := err == nil && !session.IsNew
 		result, err := useCase.Run(req.Context(), loggedIn)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}
 
 		bytes, err := utils.GetRandomBytes(nonceBytes)
 		if err != nil {
+			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
 		}
 		nonce := hex.EncodeToString(bytes)
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set(rest.HeaderContentType, "text/html")
 		if env.EnableSecurityHeaders {
 			htmlTemplateSecurityHeaders(w, nonce)
 		}

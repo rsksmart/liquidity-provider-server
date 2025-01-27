@@ -13,10 +13,15 @@ var (
 	btcMainnetP2PKHRegex  = regexp.MustCompile("^[1]([a-km-zA-HJ-NP-Z1-9]{25,34})$")
 	btcMainnetP2SHRegex   = regexp.MustCompile("^[3]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
 	btcTestnetP2SHRegex   = regexp.MustCompile("^[2]([a-km-zA-HJ-NP-Z1-9]{33,34})$")
-	btcMainnetP2WPKHRegex = regexp.MustCompile("^(bc1)([ac-hj-np-z02-9]{39})$")
-	btcTestnetP2WPKHRegex = regexp.MustCompile("^(tb1)([ac-hj-np-z02-9]{39})$")
-	btcMainnetP2WSHRegex  = regexp.MustCompile("^(bc1)([ac-hj-np-z02-9]{59})$")
-	btcTestnetP2WSHRegex  = regexp.MustCompile("^(tb1)([ac-hj-np-z02-9]{59})$")
+	btcMainnetP2WPKHRegex = regexp.MustCompile("^(bc1q)([ac-hj-np-z02-9]{38})$")
+	btcTestnetP2WPKHRegex = regexp.MustCompile("^(tb1q)([ac-hj-np-z02-9]{38})$")
+	btcRegtestP2WPKHRegex = regexp.MustCompile("^(bcrt1q)([ac-hj-np-z02-9]{38})$")
+	btcMainnetP2WSHRegex  = regexp.MustCompile("^(bc1q)([ac-hj-np-z02-9]{58})$")
+	btcTestnetP2WSHRegex  = regexp.MustCompile("^(tb1q)([ac-hj-np-z02-9]{58})$")
+	btcRegtestP2WSHRegex  = regexp.MustCompile("^(bcrt1q)([ac-hj-np-z02-9]{58})$")
+	btcMainnetP2TRRegex   = regexp.MustCompile("^(bc1p)([ac-hj-np-z02-9]{58})$")
+	btcTestnetP2TRRegex   = regexp.MustCompile("^(tb1p)([ac-hj-np-z02-9]{58})$")
+	btcRegtestP2TRRegex   = regexp.MustCompile("^(bcrt1p)([ac-hj-np-z02-9]{58})$")
 )
 
 var (
@@ -29,32 +34,59 @@ const (
 	BtcTxInfoErrorTemplate      = "error getting Bitcoin transaction information (%s): %v"
 )
 
+const (
+	BitcoinMainnetP2PKHZeroAddress = "1111111111111111111114oLvT2"
+	BitcoinTestnetP2PKHZeroAddress = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+)
+
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
-// Currently the supported address types are P2PKH and P2SH
 func IsSupportedBtcAddress(address string) bool {
-	return isP2PKH(address) || isP2SH(address)
+	return IsTestnetBtcAddress(address) || IsMainnetBtcAddress(address) || IsRegtestBtcAddress(address)
 }
 
-func isP2PKH(address string) bool {
+func IsBtcP2PKHAddress(address string) bool {
 	return btcTestnetP2PKHRegex.MatchString(address) || btcMainnetP2PKHRegex.MatchString(address)
 }
 
-func isP2SH(address string) bool {
-	return btcTestnetP2SHRegex.MatchString(address) || btcMainnetP2SHRegex.MatchString(address)
+func IsBtcP2SHAddress(address string) bool {
+	return btcMainnetP2SHRegex.MatchString(address) || btcTestnetP2SHRegex.MatchString(address)
+}
+
+func IsBtcP2WPKHAddress(address string) bool {
+	return btcMainnetP2WPKHRegex.MatchString(address) || btcTestnetP2WPKHRegex.MatchString(address) || btcRegtestP2WPKHRegex.MatchString(address)
+}
+
+func IsBtcP2WSHAddress(address string) bool {
+	return btcMainnetP2WSHRegex.MatchString(address) || btcTestnetP2WSHRegex.MatchString(address) || btcRegtestP2WSHRegex.MatchString(address)
+}
+
+func IsBtcP2TRAddress(address string) bool {
+	return btcMainnetP2TRRegex.MatchString(address) || btcTestnetP2TRRegex.MatchString(address) || btcRegtestP2TRRegex.MatchString(address)
+}
+
+func IsRegtestBtcAddress(address string) bool {
+	// only base58 addresses have the same structure in regtest and testnet
+	return btcRegtestP2WPKHRegex.MatchString(address) ||
+		btcRegtestP2WSHRegex.MatchString(address) ||
+		btcRegtestP2TRRegex.MatchString(address) ||
+		btcTestnetP2PKHRegex.MatchString(address) ||
+		btcTestnetP2SHRegex.MatchString(address)
 }
 
 func IsTestnetBtcAddress(address string) bool {
 	return btcTestnetP2PKHRegex.MatchString(address) ||
 		btcTestnetP2SHRegex.MatchString(address) ||
 		btcTestnetP2WPKHRegex.MatchString(address) ||
-		btcTestnetP2WSHRegex.MatchString(address)
+		btcTestnetP2WSHRegex.MatchString(address) ||
+		btcTestnetP2TRRegex.MatchString(address)
 }
 
 func IsMainnetBtcAddress(address string) bool {
 	return btcMainnetP2PKHRegex.MatchString(address) ||
 		btcMainnetP2SHRegex.MatchString(address) ||
 		btcMainnetP2WPKHRegex.MatchString(address) ||
-		btcMainnetP2WSHRegex.MatchString(address)
+		btcMainnetP2WSHRegex.MatchString(address) ||
+		btcMainnetP2TRRegex.MatchString(address)
 }
 
 type BitcoinWallet interface {
@@ -70,19 +102,23 @@ type BitcoinWallet interface {
 
 type BitcoinNetwork interface {
 	ValidateAddress(address string) error
-	DecodeAddress(address string, keepVersion bool) ([]byte, error)
+	DecodeAddress(address string) ([]byte, error)
 	GetTransactionInfo(hash string) (BitcoinTransactionInformation, error)
 	GetRawTransaction(hash string) ([]byte, error)
 	GetPartialMerkleTree(hash string) ([]byte, error)
 	GetHeight() (*big.Int, error)
 	BuildMerkleBranch(txHash string) (MerkleBranch, error)
 	GetTransactionBlockInfo(txHash string) (BitcoinBlockInformation, error)
+	// GetCoinbaseInformation returns the coinbase transaction information of the block that includes txHash
+	GetCoinbaseInformation(txHash string) (BtcCoinbaseTransactionInformation, error)
+	NetworkName() string
 }
 
 type BitcoinTransactionInformation struct {
 	Hash          string
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
+	HasWitness    bool
 }
 
 func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entities.Wei {

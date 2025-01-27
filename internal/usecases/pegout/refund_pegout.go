@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"sync"
 )
 
 const (
@@ -20,6 +21,7 @@ type RefundPegoutUseCase struct {
 	contracts       blockchain.RskContracts
 	eventBus        entities.EventBus
 	rpc             blockchain.Rpc
+	rskWalletMutex  sync.Locker
 }
 
 func NewRefundPegoutUseCase(
@@ -27,12 +29,14 @@ func NewRefundPegoutUseCase(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	rpc blockchain.Rpc,
+	rskWalletMutex sync.Locker,
 ) *RefundPegoutUseCase {
 	return &RefundPegoutUseCase{
 		quoteRepository: quoteRepository,
 		contracts:       contracts,
 		eventBus:        eventBus,
 		rpc:             rpc,
+		rskWalletMutex:  rskWalletMutex,
 	}
 }
 
@@ -60,6 +64,9 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	}
 	txConfig := blockchain.NewTransactionConfig(nil, refundPegoutGasLimit, nil)
 
+	useCase.rskWalletMutex.Lock()
+	defer useCase.rskWalletMutex.Unlock()
+
 	if _, err = useCase.performRefundPegout(ctx, retainedQuote, txConfig, params); err != nil {
 		return err
 	}
@@ -70,8 +77,9 @@ func (useCase *RefundPegoutUseCase) publishErrorEvent(ctx context.Context, retai
 	wrappedError := usecases.WrapUseCaseErrorArgs(usecases.RefundPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	if !recoverable {
 		retainedQuote.State = quote.PegoutStateRefundPegOutFailed
+		wrappedError = errors.Join(wrappedError, usecases.NonRecoverableError)
 		if err = useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
-			wrappedError = errors.Join(wrappedError, err, usecases.NonRecoverableError)
+			wrappedError = errors.Join(wrappedError, err)
 		}
 		useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
