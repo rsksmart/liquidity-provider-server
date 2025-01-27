@@ -85,7 +85,7 @@ services:
       secrets:
         - gh_token
       args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-QA-Test}"
+        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
     image: lbc-deployer:latest
     container_name: lbc-deployer01
     environment:
