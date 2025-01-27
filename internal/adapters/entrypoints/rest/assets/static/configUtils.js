@@ -97,6 +97,15 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
     }
 }
 
+/**
+ * Checks if there are any duplicated rBTC amounts in the given confirmation array.
+ */
+function hasDuplicateConfirmationAmounts(confirmationArray) {
+    const amounts = confirmationArray.map(entry => entry.amount);
+    const uniqueAmounts = new Set(amounts);
+    return uniqueAmounts.size < amounts.length;
+}
+
 export {
     weiToEther,
     etherToWei,
@@ -104,5 +113,6 @@ export {
     inferType,
     validateConfig,
     formatGeneralConfig,
-    postConfig
+    postConfig,
+    hasDuplicateConfirmationAmounts
 };

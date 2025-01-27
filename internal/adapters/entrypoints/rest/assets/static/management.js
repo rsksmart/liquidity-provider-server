@@ -4,7 +4,8 @@ import {
     isFeeKey,
     validateConfig,
     formatGeneralConfig,
-    postConfig
+    postConfig,
+    hasDuplicateConfirmationAmounts
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -250,7 +251,8 @@ function getConfirmationConfig(sectionId) {
     entries.forEach(entry => {
         const configKey = entry.dataset.configKey;
         const inputGroups = entry.querySelectorAll('input');
-        const tempArray = [];
+        let tempArray = [];
+
         inputGroups.forEach(input => {
             const idx = input.dataset.index;
             if (!tempArray[idx]) tempArray[idx] = {};
@@ -265,6 +267,13 @@ function getConfirmationConfig(sectionId) {
                 tempArray[idx].confirmation = val;
             }
         });
+
+        tempArray = tempArray.filter(entryObj => 
+            entryObj !== undefined &&
+            entryObj.amount !== undefined &&
+            entryObj.confirmation !== undefined
+        );
+        
         config[configKey] = tempArray;
     });
     return config;
@@ -324,6 +333,12 @@ const saveConfig = async (csrfToken, configurations) => {
         pegoutConfigData = getConfig('pegoutConfig');
     } catch (error) {
         return;
+    }
+    for (const key of ['rskConfirmations', 'btcConfirmations']) {
+        if (generalConfig[key] && hasDuplicateConfirmationAmounts(generalConfig[key])) {
+            showErrorToast(`Duplicate rBTC amounts found in ${key}. Please remove duplicates before saving.`);
+            return;
+        }
     }
 
     const { isValid: isGeneralValid, errors: generalErrors } = validateConfig(formatGeneralConfig(generalConfig), configurations.general);
