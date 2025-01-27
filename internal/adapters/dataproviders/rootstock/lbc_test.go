@@ -1146,7 +1146,7 @@ func TestLiquidityBridgeContractImpl_RegisterProvider(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
 		receipt, err := mockClient.TransactionReceipt(context.Background(), tx.Hash())
 		require.NoError(t, err)
-		data, err := hex.DecodeString("0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000d529ae9e860000")
+		data, err := hex.DecodeString("000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000d529ae9e860000")
 		require.NoError(t, err)
 		receipt.Logs = append(receipt.Logs, &geth.Log{
 			Address: common.HexToAddress("0xAa9caf1e3967600578727f975F283446a3dA6612"),

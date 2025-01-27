@@ -3,7 +3,6 @@ package liquidity_provider_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -47,33 +46,24 @@ func TestProviderType_AcceptsPegout(t *testing.T) {
 }
 
 func TestToProviderType(t *testing.T) {
-	var err error
-	var result liquidity_provider.ProviderType
-
-	errorCases := test.Table[string, error]{
-		{Value: "pegin", Result: nil},
-		{Value: "pegout", Result: nil},
-		{Value: "both", Result: nil},
-		{Value: "", Result: liquidity_provider.InvalidProviderTypeError},
-		{Value: test.AnyString, Result: liquidity_provider.InvalidProviderTypeError},
+	type testResult struct {
+		Result liquidity_provider.ProviderType
+		Error  error
 	}
 
-	valueCases := test.Table[string, liquidity_provider.ProviderType]{
-		{Value: "pegin", Result: liquidity_provider.PeginProvider},
-		{Value: "pegout", Result: liquidity_provider.PegoutProvider},
-		{Value: "both", Result: liquidity_provider.FullProvider},
-		{Value: "", Result: ""},
-		{Value: test.AnyString, Result: ""},
+	cases := test.Table[string, testResult]{
+		{Value: "pegin", Result: testResult{Result: liquidity_provider.PeginProvider, Error: nil}},
+		{Value: "pegout", Result: testResult{Result: liquidity_provider.PegoutProvider, Error: nil}},
+		{Value: "both", Result: testResult{Result: liquidity_provider.FullProvider, Error: nil}},
+		{Value: "", Result: testResult{Result: "", Error: liquidity_provider.InvalidProviderTypeError}},
+		{Value: test.AnyString, Result: testResult{Result: "", Error: liquidity_provider.InvalidProviderTypeError}},
 	}
 
-	test.RunTable(t, errorCases, func(value string) error {
-		_, err = liquidity_provider.ToProviderType(value)
-		return err
-	})
-
-	test.RunTable(t, valueCases, func(value string) liquidity_provider.ProviderType {
-		result, err = liquidity_provider.ToProviderType(value)
-		require.NoError(t, err)
-		return result
+	test.RunTable(t, cases, func(value string) testResult {
+		result, err := liquidity_provider.ToProviderType(value)
+		return testResult{
+			Result: result,
+			Error:  err,
+		}
 	})
 }
