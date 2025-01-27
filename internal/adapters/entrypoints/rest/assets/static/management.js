@@ -257,7 +257,12 @@ function getConfirmationConfig(sectionId) {
             const idx = input.dataset.index;
             if (!tempArray[idx]) tempArray[idx] = {};
             if (input.dataset.field === 'amount') {
-                tempArray[idx].amount = etherToWei(input.value).toString();
+                try {
+                    tempArray[idx].amount = etherToWei(input.value).toString();
+                } catch (error) {
+                    showErrorToast(`Invalid input "${input.value}" for field "Amount". Please enter a valid non-negative number.`);
+                    throw error;
+                }
             } else if (input.dataset.field === 'confirmation') {
                 const val = Number(input.value);
                 if (isNaN(val) || !Number.isInteger(val) || val < 0) {
