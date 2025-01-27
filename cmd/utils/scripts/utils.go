@@ -20,7 +20,7 @@ type FileReader = func(string) ([]byte, error)
 type RskClientFactory = func(context.Context, environment.RskEnv) (*rootstock.RskClient, error)
 
 func ExitWithError(code int, message string, err error) {
-	fmt.Println(fmt.Sprintf("%s: %s", message, err.Error()))
+	fmt.Printf("%s: %s\n", message, err.Error())
 	os.Exit(code)
 }
 
@@ -70,7 +70,7 @@ func CreateLiquidityBridgeContract(
 
 func SetUsageMessage(msg string) {
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), msg+"\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", msg)
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 	}

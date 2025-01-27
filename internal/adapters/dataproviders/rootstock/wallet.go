@@ -97,7 +97,7 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	}
 
 	sendError := wallet.client.SendTransaction(newCtx, signedTx)
-	receipt, err := awaitTxWithCtx(wallet.client, "SendRbtc", newCtx, func() (*geth.Transaction, error) {
+	receipt, err := AwaitTxWithCtx(wallet.client, "SendRbtc", newCtx, func() (*geth.Transaction, error) {
 		return signedTx, sendError
 	})
 

@@ -3,13 +3,14 @@ package watcher
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
+
+const pegoutBridgeWatcherLogPrefix = "PegoutBridgeWatcher:"
 
 // PegoutBridgeWatcher is a watcher that checks the state of the pegout quotes and creates a transaction
 // to send the value of multiple pegout quotes to the bridge to convert the refunded RBTC to BTC when
@@ -49,23 +50,19 @@ watcherLoop:
 func (watcher *PegoutBridgeWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug(pegoutBridgeWatcherLog("shut down"))
+	log.Debug(pegoutBridgeWatcherLogPrefix + " shut down")
 }
 
 func (watcher *PegoutBridgeWatcher) runUseCases() {
 	ctx := context.Background()
 	quotes, err := watcher.getQuotesUseCase.Run(ctx, quote.PegoutStateRefundPegOutSucceeded)
 	if err != nil {
-		log.Errorf(pegoutBridgeWatcherLog("error getting pegout quotes: %v", err))
+		log.Errorf("%s error getting pegout quotes: %v", pegoutBridgeWatcherLogPrefix, err)
 		return
 	}
 	err = watcher.bridgePegoutUseCase.Run(ctx, quotes...)
 	if err != nil && !errors.Is(err, usecases.TxBelowMinimumError) {
-		log.Errorf(pegoutBridgeWatcherLog("error sending pegout to bridge: %v", err))
+		log.Errorf("%s error sending pegout to bridge: %v", pegoutBridgeWatcherLogPrefix, err)
 		return
 	}
-}
-
-func pegoutBridgeWatcherLog(msg string, args ...any) string {
-	return fmt.Sprintf("PegoutBridgeWatcher: "+msg, args...)
 }

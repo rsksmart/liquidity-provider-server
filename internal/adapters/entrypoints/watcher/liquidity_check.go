@@ -33,14 +33,11 @@ func (watcher *LiquidityCheckWatcher) Shutdown(closeChannel chan<- bool) {
 func (watcher *LiquidityCheckWatcher) Prepare(ctx context.Context) error { return nil }
 
 func (watcher *LiquidityCheckWatcher) Start() {
-	var ctx context.Context
-	var cancel context.CancelFunc
-
 watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			ctx, cancel = context.WithTimeout(context.Background(), watcherValidationTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), watcherValidationTimeout)
 			if err := watcher.checkLiquidityUseCase.Run(ctx); err != nil {
 				log.Error("Error checking liquidity inside watcher: ", err)
 			}
