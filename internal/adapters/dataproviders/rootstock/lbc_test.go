@@ -1144,8 +1144,10 @@ func TestLiquidityBridgeContractImpl_RegisterProvider(t *testing.T) {
 	}
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
-		receipt, _ := mockClient.TransactionReceipt(context.Background(), tx.Hash())
-		data, _ := hex.DecodeString("0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000d529ae9e860000")
+		receipt, err := mockClient.TransactionReceipt(context.Background(), tx.Hash())
+		require.NoError(t, err)
+		data, err := hex.DecodeString("000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000d529ae9e860000")
+		require.NoError(t, err)
 		receipt.Logs = append(receipt.Logs, &geth.Log{
 			Address: common.HexToAddress("0xAa9caf1e3967600578727f975F283446a3dA6612"),
 			Topics: []common.Hash{
@@ -1224,7 +1226,8 @@ func TestLiquidityBridgeContractImpl_RegisterProvider_ErrorHandling(t *testing.T
 	})
 	t.Run("Error handling (parsing error)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
-		receipt, _ := mockClient.TransactionReceipt(context.Background(), tx.Hash())
+		receipt, err := mockClient.TransactionReceipt(context.Background(), tx.Hash())
+		require.NoError(t, err)
 		receipt.Logs = append(receipt.Logs, &geth.Log{})
 		lbcMock.On("ParseRegister", *receipt.Logs[0]).Return(nil, assert.AnError)
 		mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()

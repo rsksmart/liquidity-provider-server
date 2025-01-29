@@ -165,17 +165,21 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, ret
 		for _, retainedQuote := range retainedQuotes {
 			filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
 			updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
-			result, updateErr := collection.UpdateOne(dbCtx, filter, updateStatement)
+			updateResult, updateErr := collection.UpdateOne(dbCtx, filter, updateStatement)
 			if updateErr != nil {
 				return int64(0), updateErr
 			}
-			count += result.ModifiedCount
+			count += updateResult.ModifiedCount
 		}
 		return count, nil
 	})
 	if err != nil {
 		return err
-	} else if result.(int64) != int64(len(retainedQuotes)) {
+	}
+	parsedResult, ok := result.(int64)
+	if !ok {
+		return errors.New("unexpected result type")
+	} else if parsedResult != int64(len(retainedQuotes)) {
 		return fmt.Errorf("mismatch on updated documents. Expected %d, updated %d", len(retainedQuotes), result)
 	}
 	logDbInteraction(Update, retainedQuotes)

@@ -257,13 +257,16 @@ func TestPegoutMongoRepository_UpdateRetainedQuote(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 	var hashes = []string{"pegout1", "pegout2", "pegout3"}
 	log.SetLevel(log.DebugLevel)
 	t.Run("Delete quotes successfully", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClientMock.On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		quoteCollection.On("DeleteMany", mock.Anything,
 			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
@@ -292,7 +295,9 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Db error when deleting retained pegout quotes", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClientMock.On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		collection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		conn := mongo.NewConnection(client)
@@ -306,7 +311,9 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Error when deletion count missmatch", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClientMock.On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		quoteCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 4}, nil).Once()
 		conn := mongo.NewConnection(client)
@@ -486,7 +493,8 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		session.On("EndSession", mock.Anything).Return().Once()
 		session.On("WithTransaction", mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				fn := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				require.True(t, ok)
 				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
 				require.NoError(t, err)
 				assert.Equal(t, int64(len(retainedQuotes)), count)
@@ -528,7 +536,8 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		session.On("EndSession", mock.Anything).Return().Once()
 		session.On("WithTransaction", mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				fn := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				require.True(t, ok)
 				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
 				require.Error(t, err)
 				assert.Equal(t, int64(0), count)

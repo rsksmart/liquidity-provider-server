@@ -281,11 +281,10 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Delete quotes successfully", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPeginQuoteCollection).
-			Return(retainedCollection)
-		quoteCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
-		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
+		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClientMock.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		quoteCollection.On("DeleteMany", mock.Anything, bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}}).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything,
 			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
@@ -301,8 +300,7 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Db error when deleting pegin quotes", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		collection.On("DeleteMany", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		conn := mongo.NewConnection(client)
-		repo := mongo.NewPeginMongoRepository(conn)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		count, err := repo.DeleteQuotes(context.Background(), []string{test.AnyString})
 		collection.AssertExpectations(t)
 		require.Error(t, err)
@@ -311,11 +309,12 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Db error when deleting retained pegin quotes", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		parsedClient, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClient.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
 		collection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		conn := mongo.NewConnection(client)
-		repo := mongo.NewPeginMongoRepository(conn)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		count, err := repo.DeleteQuotes(context.Background(), []string{test.AnyString})
 		collection.AssertExpectations(t)
 		retainedCollection.AssertExpectations(t)
@@ -325,11 +324,12 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 	t.Run("Error when deletion count missmatch", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
-		client.Database(mongo.DbName).(*mocks.DbBindingMock).On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClientMock.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
 		quoteCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 4}, nil).Once()
-		conn := mongo.NewConnection(client)
-		repo := mongo.NewPeginMongoRepository(conn)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client))
 		count, err := repo.DeleteQuotes(context.Background(), hashes)
 		quoteCollection.AssertExpectations(t)
 		retainedCollection.AssertExpectations(t)

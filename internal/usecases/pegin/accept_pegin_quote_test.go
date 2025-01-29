@@ -70,10 +70,11 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	quoteRepository.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
-	lbcParsedAddress, _ := hex.DecodeString(strings.TrimPrefix(testPeginQuote.LbcAddress, "0x"))
-	refundParsedAddress := []byte{4, 5, 6}
-	lpParsedAddress := []byte{7, 8, 9}
-	parsedHash, _ := hex.DecodeString(acceptPeginQuoteHash)
+	lbcParsedAddress, err := hex.DecodeString(strings.TrimPrefix(testPeginQuote.LbcAddress, "0x"))
+	require.NoError(t, err)
+	refundParsedAddress, lpParsedAddress := []byte{4, 5, 6}, []byte{7, 8, 9}
+	parsedHash, err := hex.DecodeString(acceptPeginQuoteHash)
+	require.NoError(t, err)
 	bridge.On("GetFlyoverDerivationAddress", blockchain.FlyoverDerivationArgs{
 		FedInfo:              federationInfo,
 		LbcAdress:            lbcParsedAddress,
@@ -92,8 +93,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		return assert.Equal(t, testPeginQuote, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPeginQuoteEventId, event.Event.Id())
 	})).Once()
 	mutex := new(mocks.MutexMock)
-	mutex.On("Lock").Return()
-	mutex.On("Unlock").Return()
+	mutex.On("Lock").Return().On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
@@ -188,7 +188,6 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 
 func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	expiredQuote := testPeginQuote
-	// nolint:gosec
 	expiredQuote.AgreementTimestamp = uint32(time.Now().Unix()) - 1000
 	expiredQuote.TimeForDeposit = 500
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)

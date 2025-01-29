@@ -28,6 +28,7 @@ const (
 )
 
 var (
+	// nolint:errcheck
 	estimationData, _ = hex.DecodeString("5a68669900000000000000000000000000000000000000000000000002dda2a7ea1e40000000000000000000000000000000000000000000000000000000000066223d930000000000000000000000009d4b2c05818a0086e641437fcb64ab6098c7bbec")
 	estimationValue   = entities.NewWei(300)
 )
@@ -206,7 +207,8 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 		rAsBigInt.SetString(r, 16)
 		sAsBigInt := new(big.Int)
 		sAsBigInt.SetString(s, 16)
-		data, _ := hex.DecodeString("5a68669900000000000000000000000000000000000000000000000002dda2a7ea1e40000000000000000000000000000000000000000000000000000000000066223d930000000000000000000000009d4b2c05818a0086e641437fcb64ab6098c7bbec")
+		data, err := hex.DecodeString("5a68669900000000000000000000000000000000000000000000000002dda2a7ea1e40000000000000000000000000000000000000000000000000000000000066223d930000000000000000000000009d4b2c05818a0086e641437fcb64ab6098c7bbec")
+		require.NoError(t, err)
 		client.On("TransactionByHash", test.AnyCtx, common.HexToHash(txHash)).
 			Return(types.NewTx(&types.LegacyTx{
 				Nonce:    741514,
@@ -271,9 +273,8 @@ func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
 	client.On("BlockByHash", test.AnyCtx, common.HexToHash(blockHash)).Return(types.NewBlock(
 		&types.Header{
 			Number: big.NewInt(123),
-			// nolint:gosec
-			Time:  uint64(now),
-			Nonce: [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+			Time:   uint64(now),
+			Nonce:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 		}, nil, nil, nil), nil).Once()
 	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
 	block, err := rpc.GetBlockByHash(context.Background(), blockHash)
