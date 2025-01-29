@@ -164,7 +164,7 @@ const createConfirmationEntry = (container, configKey, index, amount = '', confi
 
     const amountInputAppend = document.createElement('span');
     amountInputAppend.classList.add('input-group-text', 'input-group-text-sm');
-    amountInputAppend.textContent = 'rBTC';
+    amountInputAppend.textContent = configKey === 'btcConfirmations' ? 'BTC' : 'rBTC';
     amountGroup.appendChild(amountInput);
     amountGroup.appendChild(amountInputAppend);
 
@@ -344,6 +344,14 @@ const saveConfig = async (csrfToken, configurations) => {
     } catch (error) {
         return;
     }
+
+    ['rskConfirmations', 'btcConfirmations'].forEach(key => {
+        if (!generalConfig[key]?.length) {
+            showErrorToast(`Please provide at least one fully filled out entry for ${key}.`);
+            throw new Error('Missing confirmations');
+        }
+    });
+
     for (const key of ['rskConfirmations', 'btcConfirmations']) {
         if (generalConfig[key] && hasDuplicateConfirmationAmounts(generalConfig[key])) {
             showErrorToast(`Duplicate rBTC amounts found in ${key}. Please remove duplicates before saving.`);
