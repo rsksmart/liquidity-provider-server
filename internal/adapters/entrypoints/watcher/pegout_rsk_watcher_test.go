@@ -21,6 +21,7 @@ import (
 	"time"
 )
 
+// nolint:funlen
 func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 	t.Run("should handle error during cache initialization", func(t *testing.T) {
 		contracts := blockchain.RskContracts{}
@@ -76,6 +77,109 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		t.Run("current block should be the oldest of the cache", func(t *testing.T) {
 			assert.Equal(t, uint64(500), depositWatcher.GetCurrentBlock())
 		})
+	})
+
+	t.Run("should start from the current block if cacheStartBlock is not provided", func(t *testing.T) {
+		latestBlock := uint64(567)
+		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+		lbc := &mocks.LbcMock{}
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		rskRpc := &mocks.RootstockRpcServerMock{}
+		rpc := blockchain.Rpc{Rsk: rskRpc}
+		providerMock := &mocks.ProviderMock{}
+		rskRpc.EXPECT().GetHeight(mock.Anything).Return(latestBlock, nil).Once()
+		pegoutRepository.EXPECT().
+			GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDeposit).
+			Return([]quote.RetainedPegoutQuote{}, nil).
+			Once()
+		pegoutRepository.EXPECT().
+			GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.RetainedPegoutQuote{}, nil).
+			Once()
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
+		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
+		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
+		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		err := depositWatcher.Prepare(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, latestBlock, depositWatcher.GetCurrentBlock())
+		rskRpc.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+		pegoutRepository.AssertNotCalled(t, "UpsertPegoutDeposits")
+		lbc.AssertNotCalled(t, "GetDepositEvents")
+	})
+
+	t.Run("should start from the oldest quote if cacheStartBlock is not provided but some quotes are not processed yet", func(t *testing.T) {
+		const (
+			quoteHash1 = "0a0b"
+			quoteHash2 = "0c0d"
+			quoteHash3 = "0e0f"
+		)
+		testRetainedQuotes := []quote.RetainedPegoutQuote{
+			{QuoteHash: quoteHash1, State: quote.PegoutStateWaitingForDeposit},
+			{QuoteHash: quoteHash2, State: quote.PegoutStateWaitingForDepositConfirmations},
+			{QuoteHash: quoteHash3, State: quote.PegoutStateWaitingForDeposit},
+		}
+		testQuotes := []quote.PegoutQuote{
+			{Nonce: 1, ExpireBlock: 3123},
+			{Nonce: 2, ExpireBlock: 1234},
+			{Nonce: 3, ExpireBlock: 6241},
+		}
+		latestBlock := uint64(7000)
+		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+		lbc := &mocks.LbcMock{}
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		rskRpc := &mocks.RootstockRpcServerMock{}
+		rpc := blockchain.Rpc{Rsk: rskRpc}
+		providerMock := &mocks.ProviderMock{}
+		rskRpc.EXPECT().GetHeight(mock.Anything).Return(latestBlock, nil).Once()
+		pegoutRepository.EXPECT().
+			GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDeposit).
+			Return([]quote.RetainedPegoutQuote{testRetainedQuotes[0], testRetainedQuotes[2]}, nil).
+			Once()
+		pegoutRepository.EXPECT().
+			GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.RetainedPegoutQuote{testRetainedQuotes[1]}, nil).
+			Once()
+		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash1).Return(&testQuotes[0], nil).Once()
+		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash2).Return(&testQuotes[1], nil).Once()
+		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash3).Return(&testQuotes[2], nil).Once()
+
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
+		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
+		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
+		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		err := depositWatcher.Prepare(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, uint64(734), depositWatcher.GetCurrentBlock())
+		rskRpc.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+		pegoutRepository.AssertNotCalled(t, "UpsertPegoutDeposits")
+		lbc.AssertNotCalled(t, "GetDepositEvents")
+	})
+
+	t.Run("should handle error getting height if cacheStartBlock is not provided", func(t *testing.T) {
+		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+		lbc := &mocks.LbcMock{}
+		contracts := blockchain.RskContracts{Lbc: lbc}
+		rskRpc := &mocks.RootstockRpcServerMock{}
+		rpc := blockchain.Rpc{Rsk: rskRpc}
+		providerMock := &mocks.ProviderMock{}
+		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError).Once()
+		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
+		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
+		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		err := depositWatcher.Prepare(context.Background())
+		require.Error(t, err)
+		rskRpc.AssertExpectations(t)
+		providerMock.AssertNotCalled(t, "PegoutConfiguration")
+		pegoutRepository.AssertNotCalled(t, "GetQuote")
+		pegoutRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
+		pegoutRepository.AssertNotCalled(t, "UpsertPegoutDeposits")
+		lbc.AssertNotCalled(t, "GetDepositEvents")
 	})
 }
 

@@ -92,13 +92,21 @@ func NewPegoutRskDepositWatcher(
 }
 
 func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
-	var quoteCreationBlock uint64
+	var quoteCreationBlock, height uint64
 	var err error
 
 	if watcher.cacheStartBlock != 0 {
 		if err = watcher.initDepositCacheUseCase.Run(ctx, watcher.cacheStartBlock); err != nil {
 			return err
 		}
+	} else {
+		if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
+			return err
+		}
+		watcher.currentBlockMutex.Lock()
+		watcher.currentBlock = height
+		watcher.cacheStartBlock = height
+		watcher.currentBlockMutex.Unlock()
 	}
 
 	watchedQuotes, err := watcher.getWatchedPegoutQuoteUseCase.Run(ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
