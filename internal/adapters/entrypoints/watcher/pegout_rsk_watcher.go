@@ -33,6 +33,7 @@ type PegoutRskDepositWatcher struct {
 	currentBlock                 uint64
 	cacheStartBlock              uint64
 	currentBlockMutex            sync.RWMutex
+	depositCheckTimeout          time.Duration
 }
 
 type PegoutRskDepositWatcherUseCases struct {
@@ -67,6 +68,7 @@ func NewPegoutRskDepositWatcher(
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
 	ticker Ticker,
+	depositCheckTimeout time.Duration,
 ) *PegoutRskDepositWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
@@ -88,6 +90,7 @@ func NewPegoutRskDepositWatcher(
 		ticker:                       ticker,
 		currentBlockMutex:            sync.RWMutex{},
 		quotesMutex:                  sync.RWMutex{},
+		depositCheckTimeout:          depositCheckTimeout,
 	}
 }
 
@@ -139,7 +142,7 @@ watcherLoop:
 		case <-watcher.ticker.C():
 			watcher.currentBlockMutex.Lock()
 			watcher.quotesMutex.Lock()
-			checkContext, checkCancel := context.WithTimeout(context.Background(), 1*time.Minute)
+			checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.depositCheckTimeout)
 			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
 				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
 				watcher.checkQuotes(checkContext, height)

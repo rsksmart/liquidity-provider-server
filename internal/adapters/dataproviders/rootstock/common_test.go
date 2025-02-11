@@ -90,6 +90,7 @@ func TestRskRetry(t *testing.T) {
 		lbcMock,
 		nil,
 		rootstock.RetryParams{Retries: retries, Sleep: 1 * time.Second},
+		time.Duration(1),
 	)
 	t.Run("Error on every attempt", func(t *testing.T) {
 		lbcMock.On("HashQuote", mock.Anything, mock.Anything).Return(nil, assert.AnError).Times(retries)
@@ -117,7 +118,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 		signerMock := &mocks.TransactionSignerMock{}
 		tx := prepareTxMocks(clientMock, signerMock, true)
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction success tx (%s) executed successfully", tx.Hash()))()
-		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "success tx", context.Background(), func() (*geth.Transaction, error) {
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "success tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
 		})
 		require.NoError(t, err)
@@ -129,7 +130,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 		signerMock := &mocks.TransactionSignerMock{}
 		tx := prepareTxMocks(clientMock, signerMock, false)
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction fail tx (%s) reverted", tx.Hash()))()
-		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "fail tx", context.Background(), func() (*geth.Transaction, error) {
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "fail tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
 		})
 		require.NoError(t, err)
@@ -144,7 +145,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 		clientMock.On("TransactionReceipt", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer test.AssertLogContains(t, fmt.Sprintf("Error waiting for transaction Test tx (%s) to be mined", tx.Hash()))()
-		receipt, err := rootstock.AwaitTxWithCtx(clientMock, "Test tx", ctx, func() (*geth.Transaction, error) {
+		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "Test tx", ctx, func() (*geth.Transaction, error) {
 			return tx, nil
 		})
 		cancel()

@@ -65,6 +65,7 @@ func CreateLiquidityBridgeContract(
 		rootstock.NewLbcAdapter(lbc),
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
 	), nil
 }
 

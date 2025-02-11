@@ -15,6 +15,7 @@ import (
 	mongoDb "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
+	"time"
 )
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
@@ -77,7 +78,7 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 	t.Run("pegin configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(peginTestConfig, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
@@ -87,7 +88,7 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 	})
 	t.Run("pegin configuration not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(
 				mongoDb.NewSingleResultFromDocument(entities.Signed[liquidity_provider.PeginConfiguration]{}, mongoDb.ErrNoDocuments, nil),
@@ -98,7 +99,7 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 	})
 	t.Run("Db error reading pegin configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
 		result, err := repo.GetPeginConfiguration(context.Background())
 		require.Error(t, err)
@@ -112,7 +113,7 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 	t.Run("pegout configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(pegoutTestConfig, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
@@ -122,7 +123,7 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 	})
 	t.Run("pegout configuration not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(
 				mongoDb.NewSingleResultFromDocument(entities.Signed[liquidity_provider.PegoutConfiguration]{}, mongoDb.ErrNoDocuments, nil),
@@ -133,7 +134,7 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 	})
 	t.Run("Db error reading pegout configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
 		result, err := repo.GetPegoutConfiguration(context.Background())
 		require.Error(t, err)
@@ -147,7 +148,7 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 	t.Run("general configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false} Signature:general signature Hash:general hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(generalTestConfig, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
@@ -157,7 +158,7 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 	})
 	t.Run("general configuration not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(
 				mongoDb.NewSingleResultFromDocument(entities.Signed[liquidity_provider.GeneralConfiguration]{}, mongoDb.ErrNoDocuments, nil),
@@ -168,7 +169,7 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 	})
 	t.Run("Db error reading general configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
 		result, err := repo.GetGeneralConfiguration(context.Background())
 		require.Error(t, err)
@@ -181,7 +182,7 @@ func TestLpMongoRepository_GetCredentials(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("credentials read successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(testCredentials, nil, nil)).Once()
 		defer test.AssertNoLog(t)()
@@ -191,7 +192,7 @@ func TestLpMongoRepository_GetCredentials(t *testing.T) {
 	})
 	t.Run("credentials not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(
 				mongoDb.NewSingleResultFromDocument(entities.Signed[liquidity_provider.HashedCredentials]{}, mongoDb.ErrNoDocuments, nil),
@@ -202,7 +203,7 @@ func TestLpMongoRepository_GetCredentials(t *testing.T) {
 	})
 	t.Run("Db error reading credentials", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
 		result, err := repo.GetCredentials(context.Background())
 		require.Error(t, err)
@@ -217,7 +218,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 	t.Run("pegin configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash} Name:pegin}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PeginConfiguration]{
 			Signed: *peginTestConfig,
 			Name:   configName,
@@ -229,7 +230,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 	})
 	t.Run("Db error upserting pegin configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertPeginConfiguration(context.Background(), *peginTestConfig)
@@ -244,7 +245,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 	t.Run("pegout configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash} Name:pegout}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PegoutConfiguration]{
 			Signed: *pegoutTestConfig,
 			Name:   configName,
@@ -256,7 +257,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 	})
 	t.Run("Db error upserting pegout configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertPegoutConfiguration(context.Background(), *pegoutTestConfig)
@@ -271,7 +272,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 	t.Run("general configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false} Signature:general signature Hash:general hash} Name:general}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.GeneralConfiguration]{
 			Signed: *generalTestConfig,
 			Name:   configName,
@@ -283,7 +284,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 	})
 	t.Run("Db error upserting general configuration", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertGeneralConfiguration(context.Background(), *generalTestConfig)
@@ -297,7 +298,7 @@ func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("credentials upserted successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.HashedCredentials]{
 			Signed: *testCredentials,
 			Name:   configName,
@@ -309,7 +310,7 @@ func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 	})
 	t.Run("Db error upserting credentials", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
-		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client))
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertCredentials(context.Background(), *testCredentials)

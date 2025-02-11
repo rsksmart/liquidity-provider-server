@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	rpcCallRetryMax     = 3
-	rpcCallRetrySleep   = 1 * time.Minute
-	txMiningWaitTimeout = 5 * time.Minute
+	rpcCallRetryMax   = 3
+	rpcCallRetrySleep = 1 * time.Minute
 )
 
 var DefaultRetryParams = RetryParams{
@@ -93,15 +92,19 @@ func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, err
 	return result, err
 }
 
-func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
-	return AwaitTxWithCtx(client, logName, context.Background(), txCall)
+func awaitTx(client RpcClientBinding, miningTimeout time.Duration, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+	return AwaitTxWithCtx(client, miningTimeout, logName, context.Background(), txCall)
 }
 
-func AwaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (*geth.Receipt, error) {
+func AwaitTxWithCtx(client RpcClientBinding, miningTimeout time.Duration, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (*geth.Receipt, error) {
 	var tx *geth.Transaction
 	var err error
 
 	log.Infof("Executing %s transaction...", logName)
+	deadline, ok := ctx.Deadline()
+	if ok {
+		log.Debugf("Waiting for transaction to be mined until %v...", deadline)
+	}
 	tx, err = txCall()
 	if err != nil {
 		return nil, err
@@ -109,7 +112,7 @@ func AwaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context
 		return nil, errors.New("invalid transaction")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
+	ctx, cancel := context.WithTimeout(ctx, miningTimeout)
 	defer cancel()
 
 	receipt, err := bind.WaitMined(ctx, client, tx)

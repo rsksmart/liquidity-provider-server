@@ -29,7 +29,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		rpc := blockchain.Rpc{Rsk: rskRpc}
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(&mocks.PegoutQuoteRepositoryMock{}, contracts, rpc)
 		useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, nil, nil, nil, initCacheUseCase)
-		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, nil, rpc, contracts, nil, 1, nil)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, nil, rpc, contracts, nil, 1, nil, time.Duration(1))
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError)
 		err := depositWatcher.Prepare(context.Background())
 		require.Error(t, err)
@@ -60,7 +60,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
 		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
-		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 3000, nil)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 3000, nil, time.Duration(1))
 		err := depositWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		t.Run("should initialize cache successfully", func(t *testing.T) {
@@ -100,7 +100,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
 		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
-		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil, time.Duration(1))
 		err := depositWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, latestBlock, depositWatcher.GetCurrentBlock())
@@ -150,7 +150,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
 		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
-		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil, time.Duration(1))
 		err := depositWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, uint64(734), depositWatcher.GetCurrentBlock())
@@ -171,7 +171,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
 		getWatchedQuotesUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 		useCases := watcher.NewPegoutRskDepositWatcherUseCases(getWatchedQuotesUseCase, nil, nil, nil, initCacheUseCase)
-		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil)
+		depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, nil, 0, nil, time.Duration(1))
 		err := depositWatcher.Prepare(context.Background())
 		require.Error(t, err)
 		rskRpc.AssertExpectations(t)
@@ -187,7 +187,7 @@ func TestPegoutRskDepositWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
 	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
-		return watcher.NewPegoutRskDepositWatcher(&watcher.PegoutRskDepositWatcherUseCases{}, nil, blockchain.Rpc{}, blockchain.RskContracts{}, eventBus, 0, ticker)
+		return watcher.NewPegoutRskDepositWatcher(&watcher.PegoutRskDepositWatcherUseCases{}, nil, blockchain.Rpc{}, blockchain.RskContracts{}, eventBus, 0, ticker, time.Duration(1))
 	})
 }
 
@@ -208,7 +208,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203"}
 
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, nil, nil, nil, nil)
-	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 3000, ticker)
+	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 3000, ticker, time.Duration(1))
 
 	go depositWatcher.Start()
 
@@ -273,7 +273,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 
 	updatePegoutDeposit := w.NewUpdatePegoutQuoteDepositUseCase(pegoutRepository)
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, nil, nil, updatePegoutDeposit, nil)
-	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker)
+	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
 
 	go depositWatcher.Start()
 	t.Run("should handle error getting deposits", func(t *testing.T) {
@@ -396,7 +396,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutRepository)
 	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex())
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, expireUseCase, sendPegoutUseCase, nil, nil)
-	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker)
+	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
 
 	go depositWatcher.Start()
 	t.Run("should stop tracking after cleaning expired quote", func(t *testing.T) {

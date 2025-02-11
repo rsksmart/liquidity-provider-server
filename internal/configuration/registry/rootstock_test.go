@@ -23,7 +23,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
 		rskConnBinding := new(mocks.RpcClientBindingMock)
 		rskClient := rootstock.NewRskClient(rskConnBinding)
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, rskRegistry)
 		require.NotEmpty(t, rskRegistry.Contracts)
@@ -37,7 +37,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.LbcAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock))
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -45,7 +45,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.BridgeAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock))
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -54,7 +54,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		walletFactoryMock.On("RskWallet").Return(nil, assert.AnError)
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -64,7 +64,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		walletFactoryMock.On("RskWallet").Return(new(mocks.RskSignerWalletMock), nil)
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})

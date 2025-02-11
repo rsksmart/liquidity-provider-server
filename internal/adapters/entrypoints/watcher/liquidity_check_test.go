@@ -18,7 +18,7 @@ import (
 
 func TestLiquidityCheckWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
-		return watcher.NewLiquidityCheckWatcher(nil, ticker)
+		return watcher.NewLiquidityCheckWatcher(nil, ticker, time.Duration(1))
 	})
 }
 
@@ -33,7 +33,7 @@ func TestLiquidityCheckWatcher_Start(t *testing.T) {
 	bridgeMock := &mocks.BridgeMock{}
 	bridgeMock.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
 	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, &mocks.AlertSenderMock{}, test.AnyString)
-	w := watcher.NewLiquidityCheckWatcher(useCase, ticker)
+	w := watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
@@ -63,7 +63,7 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	bridgeMock := &mocks.BridgeMock{}
 	bridgeMock.On("GetMinimumLockTxValue").Return(nil, assert.AnError)
 	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, &mocks.AlertSenderMock{}, test.AnyString)
-	w := watcher.NewLiquidityCheckWatcher(useCase, ticker)
+	w := watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	defer test.AssertLogContains(t, assert.AnError.Error())
@@ -82,6 +82,6 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 }
 
 func TestLiquidityCheckWatcher_Prepare(t *testing.T) {
-	w := watcher.NewLiquidityCheckWatcher(nil, &mocks.TickerMock{})
+	w := watcher.NewLiquidityCheckWatcher(nil, &mocks.TickerMock{}, time.Duration(1))
 	require.NoError(t, w.Prepare(context.Background()))
 }

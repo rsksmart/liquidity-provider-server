@@ -10,12 +10,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestConnection_GetDb(t *testing.T) {
 	client := &mocks.DbClientBindingMock{}
 	client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
-	conn := mongo.NewConnection(client)
+	conn := mongo.NewConnection(client, time.Duration(1))
 	assert.NotNil(t, conn.GetDb())
 }
 
@@ -24,7 +25,7 @@ func TestConnection_CheckConnection(t *testing.T) {
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		client.On("Ping", test.AnyCtx, (*readpref.ReadPref)(nil)).Return(nil)
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		result := conn.CheckConnection(context.Background())
 		assert.True(t, result)
 		client.AssertExpectations(t)
@@ -33,7 +34,7 @@ func TestConnection_CheckConnection(t *testing.T) {
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		client.On("Ping", test.AnyCtx, (*readpref.ReadPref)(nil)).Return(assert.AnError)
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		result := conn.CheckConnection(context.Background())
 		assert.False(t, result)
 		client.AssertExpectations(t)
@@ -45,7 +46,7 @@ func TestConnection_Shutdown(t *testing.T) {
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		client.On("Disconnect", mock.Anything).Return(nil)
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		closeChannel := make(chan bool)
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -61,7 +62,7 @@ func TestConnection_Shutdown(t *testing.T) {
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		client.On("Disconnect", mock.Anything).Return(assert.AnError)
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		closeChannel := make(chan bool)
 		defer test.AssertLogContains(t, "Error disconnecting from MongoDB")()
 		var wg sync.WaitGroup
@@ -82,7 +83,7 @@ func TestConnection_Collection(t *testing.T) {
 	db := &mocks.DbBindingMock{}
 	client.On("Database", mongo.DbName).Return(db)
 	db.On("Collection", collectionName).Return(&mocks.CollectionBindingMock{})
-	conn := mongo.NewConnection(client)
+	conn := mongo.NewConnection(client, time.Duration(1))
 	assert.NotNil(t, conn.Collection(collectionName))
 }
 

@@ -26,7 +26,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, useCase, ticker)
+		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, useCase, ticker, time.Duration(1))
 		err := penalizationWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		go penalizationWatcher.Start()
@@ -45,7 +45,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, useCase, ticker)
+		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, useCase, ticker, time.Duration(1))
 		err := penalizationWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		go penalizationWatcher.Start()
@@ -60,7 +60,7 @@ func TestPenalizationAlertWatcher_Prepare(t *testing.T) {
 	t.Run("prepare successfully", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
-		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, nil, nil)
+		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, nil, nil, time.Duration(1))
 		err := penalizationWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock())
@@ -69,7 +69,7 @@ func TestPenalizationAlertWatcher_Prepare(t *testing.T) {
 	t.Run("handle get height error", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(0, assert.AnError).Once()
-		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, nil, nil)
+		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, nil, nil, time.Duration(1))
 		err := penalizationWatcher.Prepare(context.Background())
 		require.Error(t, err)
 		assert.Zero(t, penalizationWatcher.GetCurrentBlock())
@@ -79,6 +79,6 @@ func TestPenalizationAlertWatcher_Prepare(t *testing.T) {
 
 func TestPenalizationAlertWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
-		return watcher.NewPenalizationAlertWatcher(blockchain.Rpc{}, nil, ticker)
+		return watcher.NewPenalizationAlertWatcher(blockchain.Rpc{}, nil, ticker, time.Duration(1))
 	})
 }
