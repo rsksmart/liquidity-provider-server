@@ -20,6 +20,7 @@ type FactoryCreationArgs struct {
 	Env          environment.Environment
 	SecretLoader secrets.SecretLoader
 	RskClient    *rootstock.RskClient
+	Timeouts     environment.ApplicationTimeouts
 }
 
 func NewFactory(env environment.Environment, args FactoryCreationArgs) (AbstractFactory, error) {

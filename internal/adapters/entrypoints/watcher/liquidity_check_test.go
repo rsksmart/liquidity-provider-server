@@ -22,6 +22,13 @@ func TestLiquidityCheckWatcher_Shutdown(t *testing.T) {
 	})
 }
 
+func TestNewLiquidityCheckWatcher(t *testing.T) {
+	ticker := &mocks.TickerMock{}
+	providerMock := &mocks.ProviderMock{}
+	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{}, &mocks.AlertSenderMock{}, test.AnyString)
+	test.AssertNonZeroValues(t, watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1)))
+}
+
 func TestLiquidityCheckWatcher_Start(t *testing.T) {
 	tickerChannel := make(chan time.Time)
 	ticker := &mocks.TickerMock{}

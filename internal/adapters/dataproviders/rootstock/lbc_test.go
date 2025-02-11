@@ -218,6 +218,17 @@ var parsedDeposits = []quote.PegoutDeposit{
 
 var parsedAddress = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 
+func TestNewLiquidityBridgeContractImpl(t *testing.T) {
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(&mocks.RpcClientBindingMock{}),
+		test.AnyAddress, &mocks.LbcAdapterMock{},
+		&mocks.TransactionSignerMock{},
+		rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)},
+		time.Duration(1),
+	)
+	test.AssertNonZeroValues(t, lbc)
+}
+
 func TestLiquidityBridgeContractImpl_GetAddress(t *testing.T) {
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1))
 	assert.Equal(t, test.AnyAddress, lbc.GetAddress())

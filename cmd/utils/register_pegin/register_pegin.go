@@ -86,7 +86,7 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error connecting to BTC node", err)
 	}
 
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env)
+	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing the Liquidity Bridge Contract", err)
 	}

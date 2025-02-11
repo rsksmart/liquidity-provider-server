@@ -21,6 +21,24 @@ import (
 	"time"
 )
 
+func TestNewPegoutRskDepositWatcher(t *testing.T) {
+	ticker := &mocks.TickerMock{}
+	providerMock := &mocks.ProviderMock{}
+	contracts := blockchain.RskContracts{Lbc: &mocks.LbcMock{}}
+	rpc := blockchain.Rpc{Btc: &mocks.BtcRpcMock{}, Rsk: &mocks.RootstockRpcServerMock{}}
+	eventBus := &mocks.EventBusMock{}
+	useCases := watcher.NewPegoutRskDepositWatcherUseCases(
+		&w.GetWatchedPegoutQuoteUseCase{},
+		&pegout.ExpiredPegoutQuoteUseCase{},
+		&pegout.SendPegoutUseCase{},
+		&w.UpdatePegoutQuoteDepositUseCase{},
+		&pegout.InitPegoutDepositCacheUseCase{},
+	)
+	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 1, ticker, time.Duration(1))
+	// the strcut has 17, but we need the mutexes to have the zero value
+	assert.Equal(t, 15, test.CountNonZeroValues(depositWatcher))
+}
+
 // nolint:funlen
 func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 	t.Run("should handle error during cache initialization", func(t *testing.T) {

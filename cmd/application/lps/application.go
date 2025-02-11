@@ -46,7 +46,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	log.Debug("Connected to RSK node")
 
 	walletFactory, err := wallet.NewFactory(env, wallet.FactoryCreationArgs{
-		Ctx: initCtx, Env: env, SecretLoader: secretLoader, RskClient: rskClient,
+		Ctx: initCtx, Env: env, SecretLoader: secretLoader, RskClient: rskClient, Timeouts: timeouts,
 	})
 	if err != nil {
 		log.Fatal("Error creating wallet factory: ", err)

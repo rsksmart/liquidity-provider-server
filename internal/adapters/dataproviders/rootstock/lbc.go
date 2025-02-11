@@ -42,11 +42,12 @@ func NewLiquidityBridgeContractImpl(
 	miningTimeout time.Duration,
 ) blockchain.LiquidityBridgeContract {
 	return &liquidityBridgeContractImpl{
-		client:      client.client,
-		address:     address,
-		contract:    contract,
-		signer:      signer,
-		retryParams: retryParams,
+		client:        client.client,
+		address:       address,
+		contract:      contract,
+		signer:        signer,
+		retryParams:   retryParams,
+		miningTimeout: miningTimeout,
 	}
 }
 

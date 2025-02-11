@@ -13,6 +13,13 @@ import (
 	"time"
 )
 
+func TestNewConnection(t *testing.T) {
+	client := &mocks.DbClientBindingMock{}
+	client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
+	conn := mongo.NewConnection(client, time.Duration(1))
+	test.AssertNonZeroValues(t, conn)
+}
+
 func TestConnection_GetDb(t *testing.T) {
 	client := &mocks.DbClientBindingMock{}
 	client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})

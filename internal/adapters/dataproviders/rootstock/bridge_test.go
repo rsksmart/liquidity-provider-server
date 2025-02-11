@@ -21,6 +21,13 @@ import (
 
 var dummyClient = rootstock.NewRskClient(nil)
 
+func TestNewRskBridgeImpl(t *testing.T) {
+	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, IrisActivationHeight: 100, ErpKeys: []string{"key1", "key2", "key3"}}
+	client := rootstock.NewRskClient(&mocks.RpcClientBindingMock{})
+	bridge := rootstock.NewRskBridgeImpl(config, &mocks.RskBridgeBindingMock{}, client, &chaincfg.TestNet3Params, rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)}, &mocks.TransactionSignerMock{}, time.Duration(1))
+	test.AssertNonZeroValues(t, bridge)
+}
+
 func TestRskBridgeImpl_GetAddress(t *testing.T) {
 	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{Address: test.AnyAddress}, nil, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 	assert.Equal(t, test.AnyAddress, bridge.GetAddress())

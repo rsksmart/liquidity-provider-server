@@ -15,6 +15,15 @@ import (
 	"time"
 )
 
+func TestNewPenalizationAlertWatcher(t *testing.T) {
+	rpc := blockchain.Rpc{
+		Btc: &mocks.BtcRpcMock{},
+		Rsk: &mocks.RootstockRpcServerMock{},
+	}
+	penalizationWatcher := watcher.NewPenalizationAlertWatcher(rpc, &liquidity_provider.PenalizationAlertUseCase{}, &mocks.TickerMock{}, time.Duration(1))
+	assert.Equal(t, 5, test.CountNonZeroValues(penalizationWatcher))
+}
+
 func TestPenalizationAlertWatcher_Start(t *testing.T) {
 	t.Run("shouldn't update block if use case had an error", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}

@@ -56,12 +56,23 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 func CountNonZeroValues(aStruct any) int {
 	value := reflect.ValueOf(aStruct)
 	count := 0
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
 	for i := 0; i < value.NumField(); i++ {
 		if !value.Field(i).IsZero() {
 			count++
 		}
 	}
 	return count
+}
+
+func AssertNonZeroValues(t *testing.T, aStruct any) {
+	structType := reflect.TypeOf(aStruct)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	require.Equal(t, structType.NumField(), CountNonZeroValues(aStruct))
 }
 
 type ThreadSafeBuffer struct {

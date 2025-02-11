@@ -24,8 +24,8 @@ type RskWalletImpl struct {
 	miningTimeout time.Duration
 }
 
-func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64) *RskWalletImpl {
-	return &RskWalletImpl{client: client.client, account: account, chainId: chainId}
+func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64, miningTimeout time.Duration) *RskWalletImpl {
+	return &RskWalletImpl{client: client.client, account: account, chainId: chainId, miningTimeout: miningTimeout}
 }
 
 func (wallet *RskWalletImpl) Address() common.Address {
