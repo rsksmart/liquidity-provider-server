@@ -27,6 +27,7 @@ func ExitWithError(code int, message string, err error) {
 func GetWallet(
 	ctx context.Context,
 	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
 	rskClient *rootstock.RskClient,
 ) (rootstock.RskSignerWallet, error) {
 	secretLoader, err := secrets.GetSecretLoader(ctx, env)
@@ -34,7 +35,7 @@ func GetWallet(
 		return nil, err
 	}
 	walletFactory, err := wallet.NewFactory(env, wallet.FactoryCreationArgs{
-		Ctx: ctx, Env: env, SecretLoader: secretLoader, RskClient: rskClient,
+		Ctx: ctx, Env: env, SecretLoader: secretLoader, RskClient: rskClient, Timeouts: timeouts,
 	})
 	if err != nil {
 		return nil, err
@@ -46,12 +47,13 @@ func CreateLiquidityBridgeContract(
 	ctx context.Context,
 	factory RskClientFactory,
 	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
 ) (blockchain.LiquidityBridgeContract, error) {
 	rskClient, err := factory(ctx, env.Rsk)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
 	}
-	rskWallet, err := GetWallet(ctx, env, rskClient)
+	rskWallet, err := GetWallet(ctx, env, timeouts, rskClient)
 	if err != nil {
 		return nil, fmt.Errorf("error accessing to wallet: %w", err)
 	}
@@ -65,6 +67,7 @@ func CreateLiquidityBridgeContract(
 		rootstock.NewLbcAdapter(lbc),
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
 	), nil
 }
 

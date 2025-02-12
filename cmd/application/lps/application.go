@@ -17,14 +17,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"syscall"
-	"time"
 )
-
-const BootstrapTimeout = 3 * time.Minute // In case LP needs to register
-const watcherPreparationTimeout = 10 * time.Second
 
 type Application struct {
 	env               environment.Environment
+	timeouts          environment.ApplicationTimeouts
 	liquidityProvider *dataproviders.LocalLiquidityProvider
 	useCaseRegistry   *registry.UseCaseRegistry
 	watcherRegistry   *registry.WatcherRegistry
@@ -36,7 +33,7 @@ type Application struct {
 	doneChannel       chan os.Signal
 }
 
-func NewApplication(initCtx context.Context, env environment.Environment) *Application {
+func NewApplication(initCtx context.Context, env environment.Environment, timeouts environment.ApplicationTimeouts) *Application {
 	secretLoader, err := secrets.GetSecretLoader(initCtx, env)
 	if err != nil {
 		log.Fatal("Error getting secret loader:", err)
@@ -49,7 +46,7 @@ func NewApplication(initCtx context.Context, env environment.Environment) *Appli
 	log.Debug("Connected to RSK node")
 
 	walletFactory, err := wallet.NewFactory(env, wallet.FactoryCreationArgs{
-		Ctx: initCtx, Env: env, SecretLoader: secretLoader, RskClient: rskClient,
+		Ctx: initCtx, Env: env, SecretLoader: secretLoader, RskClient: rskClient, Timeouts: timeouts,
 	})
 	if err != nil {
 		log.Fatal("Error creating wallet factory: ", err)
@@ -61,7 +58,7 @@ func NewApplication(initCtx context.Context, env environment.Environment) *Appli
 	}
 	log.Debug("Connected to BTC node RPC server")
 
-	dbConnection, err := bootstrap.Mongo(initCtx, env.Mongo)
+	dbConnection, err := bootstrap.Mongo(initCtx, env.Mongo, timeouts)
 	if err != nil {
 		log.Fatal("Error connecting to MongoDB:", err)
 	}
@@ -73,8 +70,7 @@ func NewApplication(initCtx context.Context, env environment.Environment) *Appli
 	}
 
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
-
-	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory)
+	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
@@ -84,10 +80,11 @@ func NewApplication(initCtx context.Context, env environment.Environment) *Appli
 	mutexes := environment.NewApplicationMutexes()
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers())
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 
 	return &Application{
 		env:               env,
+		timeouts:          timeouts,
 		liquidityProvider: liquidityProvider,
 		useCaseRegistry:   useCaseRegistry,
 		rskRegistry:       rootstockRegistry,
@@ -130,7 +127,7 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 		go w.Start()
 	}
 
-	applicationServer, done := server.NewServer(env, app.useCaseRegistry, logLevel)
+	applicationServer, done := server.NewServer(env, app.useCaseRegistry, logLevel, app.timeouts)
 	app.doneChannel = done
 	app.addRunningService(applicationServer)
 	go applicationServer.Start()
@@ -153,7 +150,7 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.PegoutBridgeWatcher,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), watcherPreparationTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
 	for _, w := range watchers {
 		if err = w.Prepare(ctx); err != nil {

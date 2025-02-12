@@ -26,6 +26,7 @@ func NewWatcherRegistry(
 	liquidityProvider *dataproviders.LocalLiquidityProvider,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
+	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
 	return &WatcherRegistry{
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
@@ -66,6 +67,7 @@ func NewWatcherRegistry(
 			messaging.EventBus,
 			env.Pegout.DepositCacheStartBlock,
 			tickers.PegoutDepositWatcherTicker,
+			timeouts.PegoutDepositCheck.Seconds(),
 		),
 		PegoutBtcTransferWatcher: watcher.NewPegoutBtcTransferWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
@@ -74,11 +76,16 @@ func NewWatcherRegistry(
 			messaging.EventBus,
 			tickers.PegoutBtcTransferWatcherTicker,
 		),
-		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(useCaseRegistry.liquidityCheckUseCase, tickers.LiquidityCheckTicker),
+		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(
+			useCaseRegistry.liquidityCheckUseCase,
+			tickers.LiquidityCheckTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
 		PenalizationAlertWatcher: watcher.NewPenalizationAlertWatcher(
 			messaging.Rpc,
 			useCaseRegistry.penalizationAlertUseCase,
 			tickers.PenalizationCheckTicker,
+			timeouts.WatcherValidation.Seconds(),
 		),
 		PegoutBridgeWatcher: watcher.NewPegoutBridgeWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,

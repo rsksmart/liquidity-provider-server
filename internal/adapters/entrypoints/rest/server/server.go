@@ -3,20 +3,18 @@ package server
 import (
 	"context"
 	"errors"
-	"io"
-	"net/http"
-	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
-	"time"
-
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
+	"io"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
 )
 
 type Server struct {
@@ -26,9 +24,15 @@ type Server struct {
 	doneChannel     chan os.Signal
 	env             environment.Environment
 	useCaseRegistry registry.UseCaseRegistry
+	timeouts        environment.ApplicationTimeouts
 }
 
-func NewServer(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, logLevel log.Level) (*Server, chan os.Signal) {
+func NewServer(
+	env environment.Environment,
+	useCaseRegistry registry.UseCaseRegistry,
+	logLevel log.Level,
+	timeouts environment.ApplicationTimeouts,
+) (*Server, chan os.Signal) {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	return &Server{
@@ -37,6 +41,7 @@ func NewServer(env environment.Environment, useCaseRegistry registry.UseCaseRegi
 		logLevel:        logLevel,
 		router:          mux.NewRouter(),
 		useCaseRegistry: useCaseRegistry,
+		timeouts:        timeouts,
 	}, done
 }
 
@@ -50,9 +55,9 @@ func (s *Server) start() error {
 	s.http = http.Server{
 		Addr:              ":" + strconv.FormatUint(uint64(s.env.Port), 10),
 		Handler:           h,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      60 * time.Second, // 60 for endpoints that trigger a transaction
-		IdleTimeout:       10 * time.Second,
+		ReadHeaderTimeout: s.timeouts.ServerReadHeader.Seconds(),
+		WriteTimeout:      s.timeouts.ServerWrite.Seconds(),
+		IdleTimeout:       s.timeouts.ServerIdle.Seconds(),
 	}
 
 	log.Info("Server started at localhost:", s.http.Addr)

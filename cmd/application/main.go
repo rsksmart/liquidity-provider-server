@@ -23,16 +23,20 @@ var (
 
 func main() {
 	memguard.CatchInterrupt()
-	initCtx, cancel := context.WithTimeout(context.Background(), lps.BootstrapTimeout)
-
 	env := environment.LoadEnv()
+	timeouts, err := environment.TimeoutsFromEnv(env.Timeouts)
+	if err != nil {
+		log.Fatal("Error parsing timeouts: ", err)
+	}
+	initCtx, cancel := context.WithTimeout(context.Background(), timeouts.Bootstrap.Seconds())
 
 	logLevel := setUpLogger(*env)
 	logBuildInfo()
 	log.Debugf("Environment loaded: %+v", env)
 
 	log.Info("Initializing application...")
-	app := lps.NewApplication(initCtx, *env)
+	log.Debugf("Using following timeouts (in seconds): %+v", timeouts)
+	app := lps.NewApplication(initCtx, *env, timeouts)
 	log.Info("Application initialized successfully")
 	cancel()
 	log.Info("Starting application...")

@@ -29,7 +29,7 @@ func TestGetWallet(t *testing.T) {
 		}
 		rskClient := &rootstock.RskClient{}
 
-		wallet, err := scripts.GetWallet(ctx, env, rskClient)
+		wallet, err := scripts.GetWallet(ctx, env, environment.DefaultTimeouts(), rskClient)
 		require.NoError(t, err)
 		require.NotNil(t, wallet)
 	})
@@ -38,11 +38,11 @@ func TestGetWallet(t *testing.T) {
 		ctx := context.Background()
 		rskClient := &rootstock.RskClient{}
 
-		result, err := scripts.GetWallet(ctx, environment.Environment{}, rskClient)
+		result, err := scripts.GetWallet(ctx, environment.Environment{}, environment.DefaultTimeouts(), rskClient)
 		assert.Nil(t, result)
 		require.Error(t, err)
 
-		result, err = scripts.GetWallet(ctx, environment.Environment{SecretSource: "env"}, rskClient)
+		result, err = scripts.GetWallet(ctx, environment.Environment{SecretSource: "env"}, environment.DefaultTimeouts(), rskClient)
 		assert.Nil(t, result)
 		require.Error(t, err)
 	})
@@ -63,7 +63,7 @@ func TestCreateLiquidityBridgeContract(t *testing.T) {
 		factoryMock := func(ctx context.Context, env environment.RskEnv) (*rootstock.RskClient, error) {
 			return &rootstock.RskClient{}, nil
 		}
-		contract, err := scripts.CreateLiquidityBridgeContract(context.Background(), factoryMock, env)
+		contract, err := scripts.CreateLiquidityBridgeContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, contract)
 	})

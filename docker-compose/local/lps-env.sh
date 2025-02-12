@@ -3,7 +3,7 @@
 set -e
 
 COMMIT_HASH=$(git rev-parse HEAD)
-COMMIT_TAG=$(git describe --exact-match --tags)
+COMMIT_TAG=$(git describe --exact-match --tags || echo "")
 export COMMIT_HASH
 export COMMIT_TAG
 

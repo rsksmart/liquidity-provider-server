@@ -218,8 +218,19 @@ var parsedDeposits = []quote.PegoutDeposit{
 
 var parsedAddress = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 
+func TestNewLiquidityBridgeContractImpl(t *testing.T) {
+	lbc := rootstock.NewLiquidityBridgeContractImpl(
+		rootstock.NewRskClient(&mocks.RpcClientBindingMock{}),
+		test.AnyAddress, &mocks.LbcAdapterMock{},
+		&mocks.TransactionSignerMock{},
+		rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)},
+		time.Duration(1),
+	)
+	test.AssertNonZeroValues(t, lbc)
+}
+
 func TestLiquidityBridgeContractImpl_GetAddress(t *testing.T) {
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1))
 	assert.Equal(t, test.AnyAddress, lbc.GetAddress())
 }
 
@@ -231,6 +242,7 @@ func TestLiquidityBridgeContractImpl_HashPeginQuote(t *testing.T) {
 		test.AnyAddress,
 		lbcMock,
 		nil, rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("HashQuote", mock.Anything, parsedPeginQuote).Return(hash, nil).Once()
@@ -249,7 +261,7 @@ func TestLiquidityBridgeContractImpl_HashPeginQuote(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_HashPeginQuote_ParsingErrors(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	validationFunction := func(peginQuote quote.PeginQuote) {
 		result, err := lbc.HashPeginQuote(peginQuote)
 		require.Error(t, err)
@@ -310,6 +322,7 @@ func TestLiquidityBridgeContractImpl_HashPegoutQuote(t *testing.T) {
 		test.AnyAddress,
 		lbcMock,
 		nil, rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("HashPegoutQuote", mock.Anything, parsedPegoutQuote).Return(hash, nil).Once()
@@ -328,7 +341,7 @@ func TestLiquidityBridgeContractImpl_HashPegoutQuote(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Incomplete quote", func(t *testing.T) {
 		testQuote := pegoutQuote
 		testQuote.LbcAddress = ""
@@ -382,7 +395,7 @@ func TestLiquidityBridgeContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T)
 
 func TestLiquidityBridgeContractImpl_GetProviders(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("GetProviders", mock.Anything).Return(contractProviders, nil).Once()
 		result, err := lbc.GetProviders()
@@ -417,6 +430,7 @@ func TestLiquidityBridgeContractImpl_ProviderResign(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
@@ -451,6 +465,7 @@ func TestLiquidityBridgeContractImpl_SetProviderStatus(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
@@ -490,6 +505,7 @@ func TestLiquidityBridgeContractImpl_UpdateProvider(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
@@ -526,7 +542,7 @@ func TestLiquidityBridgeContractImpl_UpdateProvider(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetCollateral(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("GetCollateral", mock.Anything, parsedAddress).Return(big.NewInt(500), nil).Once()
 		result, err := lbc.GetCollateral(parsedAddress.String())
@@ -549,7 +565,7 @@ func TestLiquidityBridgeContractImpl_GetCollateral(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetPegoutCollateral(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("GetPegoutCollateral", mock.Anything, parsedAddress).Return(big.NewInt(500), nil).Once()
 		result, err := lbc.GetPegoutCollateral(parsedAddress.String())
@@ -572,7 +588,7 @@ func TestLiquidityBridgeContractImpl_GetPegoutCollateral(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetMinimumCollateral(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("GetMinCollateral", mock.Anything).Return(big.NewInt(500), nil).Once()
 		result, err := lbc.GetMinimumCollateral()
@@ -598,6 +614,7 @@ func TestLiquidityBridgeContractImpl_AddCollateral(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	txMatchFunction := mock.MatchedBy(func(opts *bind.TransactOpts) bool {
 		return opts.Value.Cmp(big.NewInt(500)) == 0 && bytes.Equal(opts.From.Bytes(), parsedAddress.Bytes())
@@ -635,6 +652,7 @@ func TestLiquidityBridgeContractImpl_AddPegoutCollateral(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	txMatchFunction := mock.MatchedBy(func(opts *bind.TransactOpts) bool {
 		return opts.Value.Cmp(big.NewInt(777)) == 0 && bytes.Equal(opts.From.Bytes(), parsedAddress.Bytes())
@@ -672,6 +690,7 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true)
@@ -698,7 +717,7 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("GetBalance", mock.Anything, parsedAddress).Return(big.NewInt(600), nil).Once()
 		result, err := lbc.GetBalance(parsedAddress.String())
@@ -729,6 +748,7 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	modifiers := []txModifier{valueModifier(big.NewInt(1234)), gasLimitModifier(8000)}
 	var gasLimit uint64 = 8000
@@ -771,7 +791,7 @@ func TestLiquidityBridgeContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("IsPegOutQuoteCompleted", mock.Anything, parsedQuoteHash).Return(true, nil).Once()
 		result, err := lbc.IsPegOutQuoteCompleted(quoteHash)
@@ -808,6 +828,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	registerParams := blockchain.RegisterPeginParams{
 		QuoteSignature:        []byte{7, 8, 9},
@@ -845,7 +866,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	callerMock := &mocks.LbcCallerBindingMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 	registerParams := blockchain.RegisterPeginParams{QuoteSignature: []byte{7, 8, 9}, BitcoinRawTransaction: []byte{4, 5, 6}, PartialMerkleTree: []byte{1, 2, 3}, BlockHeight: big.NewInt(5), Quote: peginQuote}
 	matchOptsFunc := func(opts *bind.TransactOpts) bool {
 		return opts.From.String() == parsedAddress.String() && opts.GasLimit == 2500000
@@ -930,6 +951,7 @@ func TestLiquidityBridgeContractImpl_RefundUserPegOut(t *testing.T) {
 		lbcMock,
 		signer,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 
 	t.Run("should fail with invalid hash format", func(t *testing.T) {
@@ -989,7 +1011,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		lbcMock := &mocks.LbcAdapterMock{}
 		callerMock := &mocks.LbcCallerBindingMock{}
-		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 		lbcMock.On("Caller").Return(callerMock).Once()
 		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -1009,7 +1031,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	t.Run("Error handling (waiting for bridge)", func(t *testing.T) {
 		lbcMock := &mocks.LbcAdapterMock{}
 		callerMock := &mocks.LbcCallerBindingMock{}
-		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 		lbcMock.On("Caller").Return(callerMock).Once()
 		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -1025,7 +1047,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	t.Run("Error handling (Call error)", func(t *testing.T) {
 		lbcMock := &mocks.LbcAdapterMock{}
 		callerMock := &mocks.LbcCallerBindingMock{}
-		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 		lbcMock.On("Caller").Return(callerMock).Once()
 		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -1041,7 +1063,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	t.Run("Error handling (Transaction send error)", func(t *testing.T) {
 		lbcMock := &mocks.LbcAdapterMock{}
 		callerMock := &mocks.LbcCallerBindingMock{}
-		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 		lbcMock.On("Caller").Return(callerMock).Once()
 		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -1061,7 +1083,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 	t.Run("Error handling (Transaction reverted)", func(t *testing.T) {
 		lbcMock := &mocks.LbcAdapterMock{}
 		callerMock := &mocks.LbcCallerBindingMock{}
-		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{})
+		lbc := rootstock.NewLiquidityBridgeContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, lbcMock, signerMock, rootstock.RetryParams{}, time.Duration(1))
 		lbcMock.On("Caller").Return(callerMock).Once()
 		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
@@ -1082,7 +1104,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_IsOperationalPegin(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("IsOperational", mock.Anything, parsedAddress).Return(true, nil).Once()
 		result, err := lbc.IsOperationalPegin(parsedAddress.String())
@@ -1104,7 +1126,7 @@ func TestLiquidityBridgeContractImpl_IsOperationalPegin(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_IsOperationalPegout(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.On("IsOperationalForPegout", mock.Anything, parsedAddress).Return(true, nil).Once()
 		result, err := lbc.IsOperationalPegout(parsedAddress.String())
@@ -1134,6 +1156,7 @@ func TestLiquidityBridgeContractImpl_RegisterProvider(t *testing.T) {
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	txConfig := blockchain.TransactionConfig{Value: entities.NewWei(800)}
 	params := blockchain.ProviderRegistrationParams{
@@ -1191,6 +1214,7 @@ func TestLiquidityBridgeContractImpl_RegisterProvider_ErrorHandling(t *testing.T
 		lbcMock,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 	)
 	txConfig := blockchain.TransactionConfig{Value: entities.NewWei(800)}
 	params := blockchain.ProviderRegistrationParams{Name: "mock provider", ApiBaseUrl: "url.com", Status: true, Type: "both"}
@@ -1249,7 +1273,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 			return from == opts.Start && to == *opts.End && opts.Context != nil
 		}
 	}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		var from uint64 = 500
 		var to uint64 = 1000
@@ -1308,7 +1332,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 			return from == opts.Start && to == *opts.End && opts.Context != nil
 		}
 	}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		var from uint64 = 500
 		var to uint64 = 1000
@@ -1361,7 +1385,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetProvider(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{})
+	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
 	t.Run("Success", func(t *testing.T) {
 		lbcMock.EXPECT().GetProvider(mock.Anything, parsedAddress).Return(bindings.LiquidityBridgeContractLiquidityProvider{
 			Id:           big.NewInt(5),

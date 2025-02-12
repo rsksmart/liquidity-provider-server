@@ -33,7 +33,7 @@ func NewPegoutMongoRepository(conn *Connection) quote.PegoutQuoteRepository {
 }
 
 func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, hash string, pegoutQuote quote.PegoutQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(PegoutQuoteCollection)
 	storedQuote := StoredPegoutQuote{
@@ -51,7 +51,7 @@ func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, hash string,
 
 func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PegoutQuote, error) {
 	var result StoredPegoutQuote
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	if err := quote.ValidateQuoteHash(hash); err != nil {
@@ -73,7 +73,7 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 
 func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
 	var result quote.RetainedPegoutQuote
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	if err := quote.ValidateQuoteHash(hash); err != nil {
@@ -94,7 +94,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 }
 
 func (repo *pegoutMongoRepository) InsertRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	_, err := collection.InsertOne(dbCtx, retainedQuote)
@@ -107,7 +107,7 @@ func (repo *pegoutMongoRepository) InsertRetainedQuote(ctx context.Context, reta
 }
 
 func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Context, address string) ([]quote.PegoutDeposit, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	sanitizedAddress := regexp.QuoteMeta(address)
@@ -127,7 +127,7 @@ func (repo *pegoutMongoRepository) ListPegoutDepositsByAddress(ctx context.Conte
 }
 
 func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
@@ -147,7 +147,7 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, reta
 }
 
 func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, retainedQuotes []quote.RetainedPegoutQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	session, err := repo.conn.client.StartSession()
@@ -188,7 +188,7 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, ret
 
 func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
 	result := make([]quote.RetainedPegoutQuote, 0)
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
@@ -205,7 +205,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 }
 
 func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout*2)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()
 
 	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
@@ -227,7 +227,7 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 }
 
 func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	result, err := repo.conn.Collection(DepositEventsCollection).ReplaceOne(
@@ -246,7 +246,7 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, depo
 }
 
 func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, deposits []quote.PegoutDeposit) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	if len(deposits) == 0 {

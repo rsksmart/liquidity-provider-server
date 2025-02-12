@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 	"sync"
+	"time"
 )
 
 type PenalizationAlertWatcher struct {
@@ -15,11 +16,24 @@ type PenalizationAlertWatcher struct {
 	currentBlockMutex        sync.RWMutex
 	ticker                   Ticker
 	watcherStopChannel       chan bool
+	validationTimeout        time.Duration
 }
 
-func NewPenalizationAlertWatcher(rpc blockchain.Rpc, penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase, ticker Ticker) *PenalizationAlertWatcher {
+func NewPenalizationAlertWatcher(
+	rpc blockchain.Rpc,
+	penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase,
+	ticker Ticker,
+	validationTimeout time.Duration,
+) *PenalizationAlertWatcher {
 	watcherStopChannel := make(chan bool, 1)
-	return &PenalizationAlertWatcher{rpc: rpc, penalizationAlertUseCase: penalizationAlertUseCase, watcherStopChannel: watcherStopChannel, ticker: ticker, currentBlockMutex: sync.RWMutex{}}
+	return &PenalizationAlertWatcher{
+		rpc:                      rpc,
+		penalizationAlertUseCase: penalizationAlertUseCase,
+		watcherStopChannel:       watcherStopChannel,
+		ticker:                   ticker,
+		currentBlockMutex:        sync.RWMutex{},
+		validationTimeout:        validationTimeout,
+	}
 }
 
 func (watcher *PenalizationAlertWatcher) Prepare(ctx context.Context) error {
@@ -42,7 +56,7 @@ watcherLoop:
 		select {
 		case <-watcher.ticker.C():
 			watcher.currentBlockMutex.Lock()
-			ctx, cancel := context.WithTimeout(context.Background(), watcherValidationTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), watcher.validationTimeout)
 			if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
 				log.Error("Error checking penalization events inside watcher: ", err)
 			} else {
