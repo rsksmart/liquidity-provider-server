@@ -267,7 +267,8 @@ function getConfirmationConfig(sectionId) {
                 try {
                     tempArray[idx].amount = etherToWei(input.value).toString();
                 } catch (error) {
-                    showErrorToast(`Invalid input "${input.value}" for rBTC amount. Please enter a valid non-negative number.`);
+                    const amountLabel = configKey === 'btcConfirmations' ? 'BTC amount' : 'rBTC amount';
+                    showErrorToast(`Invalid input "${input.value}" for ${amountLabel}. Please enter a valid non-negative number.`);
                     throw error;
                 }
             } else if (input.dataset.field === 'confirmation') {
