@@ -189,112 +189,114 @@ rm -f cookie_jar.txt
 PASSWORD_FILE_PATH="/tmp/management_password.txt"
 
 echo "Checking for management_password.txt..."
-if docker exec lps01 test -f "$PASSWORD_FILE_PATH"; then
-  echo "management_password.txt found. Proceeding with configuration."
-
-  MANAGEMENT_PWD=$(docker exec lps01 cat "$PASSWORD_FILE_PATH")
-  CSRF_TOKEN=$(curl -s -c cookie_jar.txt -H 'Content-Type: application/json' \
-                            -H 'Accept: */*' \
-                            -H 'Connection: keep-alive' \
-                            -H 'Content-Type: application/json' \
-                            -H 'Origin: http://localhost:8080' \
-                            -H 'Sec-Fetch-Dest: empty' \
-                            -H 'Sec-Fetch-Mode: cors' \
-                            -H 'Sec-Fetch-Site: same-origin' \
-    "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
-
-  CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
-  curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
-    -H "X-CSRF-Token: $CSRF_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -H 'Accept: */*' \
-    -H 'Connection: keep-alive' \
-    -H 'Origin: http://localhost:8080' \
-    -H 'Referer: http://localhost:8080/management' \
-    -H 'Sec-Fetch-Dest: empty' \
-    -H 'Sec-Fetch-Mode: cors' \
-    -H 'Sec-Fetch-Site: same-origin' \
-    --data "{
-       \"username\": \"admin\",
-       \"password\": \"$MANAGEMENT_PWD\"
-    }"
-
-  echo "Setting up general regtest configuration"
-  curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
-    -H "X-CSRF-Token: $CSRF_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -H 'Accept: */*' \
-    -H 'Connection: keep-alive' \
-    -H 'Origin: http://localhost:8080' \
-    -H 'Referer: http://localhost:8080/management' \
-    -H 'Sec-Fetch-Dest: empty' \
-    -H 'Sec-Fetch-Mode: cors' \
-    -H 'Sec-Fetch-Site: same-origin' \
-    --data '{
-        "configuration": {
-            "rskConfirmations": {
-                "100000000000000000": 4,
-                "2000000000000000000": 20,
-                "400000000000000000": 12,
-                "4000000000000000000": 40,
-                "8000000000000000000": 80
-            },
-            "btcConfirmations": {
-                "100000000000000000": 2,
-                "2000000000000000000": 10,
-                "400000000000000000": 6,
-                "4000000000000000000": 20,
-                "8000000000000000000": 40
-            },
-            "publicLiquidityCheck": true
-        }
-    }' || { echo "Error in configuring general regtest configuration"; exit 1; }
-
-  echo "Setting up pegin regtest configuration"
-  curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
-    -H "X-CSRF-Token: $CSRF_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -H 'Accept: */*' \
-    -H 'Connection: keep-alive' \
-    -H 'Origin: http://localhost:8080' \
-    -H 'Referer: http://localhost:8080/management' \
-    -H 'Sec-Fetch-Dest: empty' \
-    -H 'Sec-Fetch-Mode: cors' \
-    -H 'Sec-Fetch-Site: same-origin' \
-    --data '{
-        "configuration": {
-            "timeForDeposit": 3600,
-            "callTime": 7200,
-            "penaltyFee": "1000000000000000",
-            "callFee": "10000000000000000",
-            "maxValue": "10000000000000000000",
-            "minValue": "600000000000000000"
-        }
-    }' || { echo "Error in configuring pegin regtest configuration"; exit 1; }
-
-  echo "Setting up pegout regtest configuration"
-  curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
-    -H "X-CSRF-Token: $CSRF_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -H 'Accept: */*' \
-    -H 'Connection: keep-alive' \
-    -H 'Origin: http://localhost:8080' \
-    -H 'Referer: http://localhost:8080/management' \
-    -H 'Sec-Fetch-Dest: empty' \
-    -H 'Sec-Fetch-Mode: cors' \
-    -H 'Sec-Fetch-Site: same-origin' \
-    --data '{
-        "configuration": {
-            "timeForDeposit": 3600,
-            "expireTime": 10800,
-            "penaltyFee": "1000000000000000",
-            "callFee": "10000000000000000",
-            "maxValue": "10000000000000000000",
-            "minValue": "600000000000000000",
-            "expireBlocks": 500,
-            "bridgeTransactionMin": "1500000000000000000"
-        }
-    }' || { echo "Error in configuring pegout regtest configuration"; exit 1; }
-else
-  echo "management_password.txt not found. Skipping configuration steps."
+if ! docker exec lps01 test -f "$PASSWORD_FILE_PATH"; then
+  echo "management_password.txt not found. Skipping configuration steps"
+  exit 0
 fi
+
+echo "management_password.txt found. Proceeding with configuration."
+
+MANAGEMENT_PWD=$(docker exec lps01 cat "$PASSWORD_FILE_PATH")
+
+CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
+                      -H 'Accept: */*' \
+                      -H 'Connection: keep-alive' \
+                      -H 'Content-Type: application/json' \
+                      -H 'Origin: http://localhost:8080' \
+                      -H 'Sec-Fetch-Dest: empty' \
+                      -H 'Sec-Fetch-Mode: cors' \
+                      -H 'Sec-Fetch-Site: same-origin' \
+  "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
+
+CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
+curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data "{
+     \"username\": \"admin\",
+     \"password\": \"$MANAGEMENT_PWD\"
+  }" || { echo "Error: login to Management UI failed"; exit 1; }
+
+echo "Setting up general regtest configuration"
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data '{
+      "configuration": {
+          "rskConfirmations": {
+              "100000000000000000": 4,
+              "2000000000000000000": 20,
+              "400000000000000000": 12,
+              "4000000000000000000": 40,
+              "8000000000000000000": 80
+          },
+          "btcConfirmations": {
+              "100000000000000000": 2,
+              "2000000000000000000": 10,
+              "400000000000000000": 6,
+              "4000000000000000000": 20,
+              "8000000000000000000": 40
+          },
+          "publicLiquidityCheck": true
+      }
+  }' || { echo "Error in configuring general regtest configuration"; exit 1; }
+
+echo "Setting up pegin regtest configuration"
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data '{
+      "configuration": {
+          "timeForDeposit": 3600,
+          "callTime": 7200,
+          "penaltyFee": "1000000000000000",
+          "callFee": "10000000000000000",
+          "maxValue": "10000000000000000000",
+          "minValue": "600000000000000000"
+      }
+  }' || { echo "Error in configuring pegin regtest configuration"; exit 1; }
+
+echo "Setting up pegout regtest configuration"
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data '{
+      "configuration": {
+          "timeForDeposit": 3600,
+          "expireTime": 10800,
+          "penaltyFee": "1000000000000000",
+          "callFee": "10000000000000000",
+          "maxValue": "10000000000000000000",
+          "minValue": "600000000000000000",
+          "expireBlocks": 500,
+          "bridgeTransactionMin": "1500000000000000000"
+      }
+  }' || { echo "Error in configuring pegout regtest configuration"; exit 1; }
