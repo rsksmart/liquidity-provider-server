@@ -36,8 +36,8 @@ func NewAcceptPegoutQuoteHandler(useCase *pegout.AcceptQuoteUseCase) http.Handle
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash)
 		if errors.Is(err, usecases.QuoteNotFoundError) ||
 			errors.Is(err, usecases.ExpiredQuoteError) {
-			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			jsonErr := rest.NewErrorResponseWithDetails("invalid quote hash", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
 			return
 		} else if errors.Is(err, usecases.NoLiquidityError) {
 			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
