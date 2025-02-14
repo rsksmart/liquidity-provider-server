@@ -79,7 +79,7 @@ type CredentialsUpdateRequest struct {
 
 type AvailableLiquidityDTO struct {
 	PeginLiquidityAmount  *big.Int `json:"peginLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegIn operations in wei"  required:""`
-	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"500000000" description:"Available liquidity for PegOut operations in satoshi" required:""`
+	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegOut operations in wei" required:""`
 }
 
 type ServerInfoDTO struct {
@@ -88,10 +88,9 @@ type ServerInfoDTO struct {
 }
 
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
-	satoshis, _ := entity.PegoutLiquidity.ToSatoshi().Int(nil)
 	return AvailableLiquidityDTO{
 		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),
-		PegoutLiquidityAmount: satoshis,
+		PegoutLiquidityAmount: entity.PegoutLiquidity.AsBigInt(),
 	}
 }
 
