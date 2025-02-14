@@ -61,6 +61,33 @@ on special cases. This script requires an input file whose structure can be foun
 - **refund_user_pegout**: executes a refund for a user's peg-out operation through the Liquidity Bridge Contract. This is used when a peg-out operation needs to be refunded back to the user's RSK address. The script requires the quote hash of the operation to refund.
 - **key_conversion**: shows the corresponding BTC and RSK address for a given private key and encrypts it into a keystore, accepts the key either in WIF or hex format. The key can be provided through the terminal, a file or an existing keystore.
 
+### Monitoring Service
+The project includes a Bitcoin balance monitoring service that tracks specified BTC addresses and exposes metrics at `http://<host>:8080/metrics` using Prometheus `https://prometheus.io/`.
+
+To run the monitoring service:
+```bash
+make monitoring
+```
+The service is configured in `docker-compose/monitoring/src/config.ts` and supports both testnet and mainnet monitoring:
+
+- **Testnet monitoring** (enabled by default):
+  - Monitors 3 testnet addresses with 10-second polling interval
+  - The preconfigured addresses are:
+    - mwEceC31MwWmF6hc5SSQ8FmbgdsSoBSnbm (testnet1)
+    - mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe (testnet2)
+    - tb1q7hec37mcmfk6hmqn67echzdf8zwg5n5pqnfzma (testnet3)
+
+- **Mainnet monitoring** (commented out by default):
+  - Can be enabled by uncommenting the mainnet configuration in config.ts
+  - The preconfigured addresses were taken randomly from mainnet and are:
+    - bc1qv7l4jgnzxyjgn598ee04l72lanudx50fqpdq0t (mainnet1)
+    - 3DGxAYYUA61WrrdbBac8Ra9eA9peAQwTJF (mainnet2)
+
+The service can be configured to monitor other addresses by modifying the `MONITORED_ADDRESSES` array in `docker-compose/monitoring/src/config.ts`.
+
+The metrics endpoint provides balance information for the monitored addresses.
+
+
 ### More information
 If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).
 
