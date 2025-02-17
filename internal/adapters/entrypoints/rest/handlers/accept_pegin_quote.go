@@ -34,10 +34,13 @@ func NewAcceptPeginQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerF
 		}
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash)
-		if errors.Is(err, usecases.QuoteNotFoundError) ||
-			errors.Is(err, usecases.ExpiredQuoteError) {
-			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		if errors.Is(err, usecases.QuoteNotFoundError) {
+			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
+			return
+		} else if errors.Is(err, usecases.ExpiredQuoteError) {
+			jsonErr := rest.NewErrorResponseWithDetails("expired quote", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusGone, jsonErr)
 			return
 		} else if errors.Is(err, usecases.NoLiquidityError) {
 			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
