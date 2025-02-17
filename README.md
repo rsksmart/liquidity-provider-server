@@ -70,22 +70,13 @@ make monitoring
 ```
 The service is configured in `docker-compose/monitoring/src/config.ts` and supports both testnet and mainnet monitoring:
 
-- **Testnet monitoring** (enabled by default):
-  - Monitors 3 testnet addresses with 10-second polling interval
-  - The preconfigured addresses are:
-    - mwEceC31MwWmF6hc5SSQ8FmbgdsSoBSnbm (testnet1)
-    - mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe (testnet2)
-    - tb1q7hec37mcmfk6hmqn67echzdf8zwg5n5pqnfzma (testnet3)
-
-- **Mainnet monitoring** (commented out by default):
-  - Can be enabled by uncommenting the mainnet configuration in config.ts
-  - The preconfigured addresses were taken randomly from mainnet and are:
-    - bc1qv7l4jgnzxyjgn598ee04l72lanudx50fqpdq0t (mainnet1)
-    - 3DGxAYYUA61WrrdbBac8Ra9eA9peAQwTJF (mainnet2)
+- MONITORED_ADDRESSES: The set of addresses to be monitored. Each address should have an alias that will be used in the metrics.
+- MONITOR_CONFIG: The configuration for the monitoring service.
+  - pollingIntervalSeconds: How often the service will check the bitcoin balance of the monitored addresses in seconds.
+  - monitorName: The name of the monitoring service.
+  - network: The network to monitor (mainnet or testnet).
 
 The service can be configured to monitor other addresses by modifying the `MONITORED_ADDRESSES` array in `docker-compose/monitoring/src/config.ts`.
-
-The metrics endpoint provides balance information for the monitored addresses.
 
 
 ### More information
