@@ -9,5 +9,6 @@ export const MONITORED_ADDRESSES: BitcoinAddress[] = [
 export const MONITOR_CONFIG = {
   pollingIntervalSeconds: 10,
   monitorName: 'bitcoin-balance-monitor',
-  network: 'testnet' as 'mainnet' | 'testnet'
+  network: 'testnet' as 'mainnet' | 'testnet',
+  port: parseInt(process.env.MONITOR_PORT || '8090', 10)
 } 

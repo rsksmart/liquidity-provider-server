@@ -8,7 +8,7 @@ async function main (): Promise<void> {
     network: MONITOR_CONFIG.network
   } as MonitorConfig, MONITORED_ADDRESSES)
     .withBalanceMetric()
-    .withExporters(new ConsoleExporter(), new PrometheusExporter(8080, 'bitcoinbalancemonitor'))
+    .withExporters(new ConsoleExporter(), new PrometheusExporter(MONITOR_CONFIG.port, 'bitcoinbalancemonitor'))
     .build()
     .run()
 

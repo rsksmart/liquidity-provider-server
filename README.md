@@ -64,10 +64,16 @@ on special cases. This script requires an input file whose structure can be foun
 ### Monitoring Service
 The project includes a Bitcoin balance monitoring service that tracks specified BTC addresses and exposes metrics at `http://<host>:8080/metrics` using Prometheus `https://prometheus.io/`.
 
-To run the monitoring service:
+To run the monitoring service with the default port (8090):
 ```bash
 make monitoring
 ```
+
+To run the monitoring service with a custom port (e.g., 8091):
+```bash
+make monitoring MONITOR_PORT=8091
+```
+
 The service is configured in `docker-compose/monitoring/src/config.ts` and supports both testnet and mainnet monitoring:
 
 - MONITORED_ADDRESSES: The set of addresses to be monitored. Each address should have an alias that will be used in the metrics.
@@ -75,6 +81,7 @@ The service is configured in `docker-compose/monitoring/src/config.ts` and suppo
   - pollingIntervalSeconds: How often the service will check the bitcoin balance of the monitored addresses in seconds.
   - monitorName: The name of the monitoring service.
   - network: The network to monitor (mainnet or testnet).
+  - port: The port where the service will be exposed.
 
 The service can be configured to monitor other addresses by modifying the `MONITORED_ADDRESSES` array in `docker-compose/monitoring/src/config.ts`.
 

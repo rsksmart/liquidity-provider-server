@@ -9,8 +9,5 @@ COPY docker-compose/monitoring ./
 # Install dependencies and build
 RUN npm install && npm run build
 
-# Expose port 8080 for metrics
-EXPOSE 8080
-
 # Run the monitoring service
 CMD ["npx", "ts-node", "src/index.ts"] 
