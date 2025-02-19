@@ -79,3 +79,11 @@ utils-docker:
 	rm -rf utils
 	mkdir -p utils
 	docker build -f docker-compose/utils/Dockerfile --output=utils .
+
+MONITOR_PORT ?= 8090
+monitoring:
+	docker build -f docker-compose/monitoring/Dockerfile -t monitoring .
+	docker run \
+		-p $(MONITOR_PORT):$(MONITOR_PORT) \
+		-e MONITOR_PORT=$(MONITOR_PORT) \
+		monitoring
