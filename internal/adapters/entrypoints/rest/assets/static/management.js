@@ -106,7 +106,7 @@ const getTooltipText = (key) => {
     return tooltips[key] || 'No description available';
 };
 
-const createConfirmationConfig = (section, configKey, confirmations) => {
+const createConfirmationConfig = (section, configKey, confirmations) => {    
     const container = document.createElement('div');
     container.classList.add('confirmation-config');
     container.dataset.configKey = configKey;
@@ -118,7 +118,13 @@ const createConfirmationConfig = (section, configKey, confirmations) => {
     const entriesContainer = document.createElement('div');
     entriesContainer.classList.add('entries-container');
 
-    Object.entries(confirmations).forEach(([amountWei, confirmation], index) => {
+    const sortedConfirmations = Object.entries(confirmations).sort(([amountWeiA], [amountWeiB]) => {
+        const valA = parseFloat(weiToEther(amountWeiA));
+        const valB = parseFloat(weiToEther(amountWeiB));
+        return valA - valB;
+    });
+
+    sortedConfirmations.forEach(([amountWei, confirmation], index) => {
         createConfirmationEntry(entriesContainer, configKey, index, amountWei, confirmation);
     });
 
