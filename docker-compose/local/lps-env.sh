@@ -31,6 +31,10 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+# Force Management API to be enabled
+if [ -f "$ENV_FILE" ]; then
+  sed -i '' 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+fi
 
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
