@@ -31,6 +31,10 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+# Force Management API to be enabled
+if [ -f "$ENV_FILE" ]; then
+  sed -i '' 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+fi
 
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
@@ -185,15 +189,27 @@ if [ "$FAIL" = true ]; then
 fi
 
 rm -f cookie_jar.txt
-MANAGEMENT_PWD=$(docker exec lps01 cat /tmp/management_password.txt)
-CSRF_TOKEN=$(curl -s -c cookie_jar.txt -H 'Content-Type: application/json' \
-                          -H 'Accept: */*' \
-                          -H 'Connection: keep-alive' \
-                          -H 'Content-Type: application/json' \
-                          -H 'Origin: http://localhost:8080' \
-                          -H 'Sec-Fetch-Dest: empty' \
-                          -H 'Sec-Fetch-Mode: cors' \
-                          -H 'Sec-Fetch-Site: same-origin' \
+
+PASSWORD_FILE_PATH="/tmp/management_password.txt"
+
+echo "Checking for management_password.txt..."
+if ! docker exec lps01 test -f "$PASSWORD_FILE_PATH"; then
+  echo "management_password.txt not found. Skipping configuration steps"
+  exit 0
+fi
+
+echo "management_password.txt found. Proceeding with configuration."
+
+MANAGEMENT_PWD=$(docker exec lps01 cat "$PASSWORD_FILE_PATH")
+
+CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
+                      -H 'Accept: */*' \
+                      -H 'Connection: keep-alive' \
+                      -H 'Content-Type: application/json' \
+                      -H 'Origin: http://localhost:8080' \
+                      -H 'Sec-Fetch-Dest: empty' \
+                      -H 'Sec-Fetch-Mode: cors' \
+                      -H 'Sec-Fetch-Site: same-origin' \
   "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
 CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
@@ -202,7 +218,6 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/lo
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -211,15 +226,14 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/lo
   --data "{
      \"username\": \"admin\",
      \"password\": \"$MANAGEMENT_PWD\"
-  }"
+  }" || { echo "Error: login to Management UI failed"; exit 1; }
 
 echo "Setting up general regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -243,15 +257,14 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/configuration' \
           },
           "publicLiquidityCheck": true
       }
-  }'
+  }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 
 echo "Setting up pegin regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -266,15 +279,14 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
           "maxValue": "10000000000000000000",
           "minValue": "600000000000000000"
       }
-  }'
+  }' || { echo "Error in configuring pegin regtest configuration"; exit 1; }
 
 echo "Setting up pegout regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -291,4 +303,4 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
           "expireBlocks": 500,
           "bridgeTransactionMin": "1500000000000000000"
       }
-  }'
+  }' || { echo "Error in configuring pegout regtest configuration"; exit 1; }
