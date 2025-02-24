@@ -106,7 +106,7 @@ const getTooltipText = (key) => {
     return tooltips[key] || 'No description available';
 };
 
-const createConfirmationConfig = (section, configKey, confirmations) => {    
+const createConfirmationConfig = (section, configKey, confirmations) => {
     const container = document.createElement('div');
     container.classList.add('confirmation-config');
     container.dataset.configKey = configKey;
