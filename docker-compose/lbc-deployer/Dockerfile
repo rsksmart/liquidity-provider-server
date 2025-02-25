@@ -8,7 +8,7 @@ USER node
 
 WORKDIR /home/node
 
-ARG LBC_GIT_BRANCH="QA-Test"
+ARG LBC_GIT_BRANCH="master"
 
 RUN gitBranch=${LBC_GIT_BRANCH} && \
     git init && \
