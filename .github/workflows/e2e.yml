@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ QA-Test, Stable-Test, master ]
 
+permissions: read-all
+
 jobs:
   e2e-test:
     name: Server initialization and health check
@@ -20,7 +22,9 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Update env file
-        run: cd docker-compose/local/ && ./gh-action-env.sh ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cd docker-compose/local/ && ./gh-action-env.sh $GITHUB_TOKEN
 
       - name: Building LPS environment...
         run: cd docker-compose/local/ && LPS_STAGE=regtest sh lps-env.sh up
