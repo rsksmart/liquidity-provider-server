@@ -93,17 +93,33 @@ services:
     networks:
       - net_lps
     command: ["liquidity-provider-server"]
-  lbc-deployer:
+  rskj:
     build:
-      context: lbc-deployer
+      context: ../rskj
       args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
-    image: lbc-deployer:latest
-    container_name: lbc-deployer01
-    environment:
-      - LPS_STAGE
+        UID: "${LPS_UID}"
+    image: rskj:latest
+    container_name: rskj01
+    ports:
+      - "4444:4444"
+      - "4445:4445"
+    volumes:
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
     networks:
       - net_lps
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=rskj",
+        "-cp",
+        "rskj-core.jar",
+        "-Drsk.conf.file=rsk.conf",
+        "co.rsk.Start",
+        "--${LPS_STAGE}",
+      ]
 
 networks:
   net_lps:

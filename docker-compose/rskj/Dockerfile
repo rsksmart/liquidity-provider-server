@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-slim-buster@sha256:221a061dbd1a81efe42e6ce9bc099f7ce318b1f7f3ba186e387264f14e61dec2 AS builder
+FROM eclipse-temurin:17-jdk@sha256:0613a19436dc8f745914b25235d43f3b0eddb8d432d19edce30ffaf2d2f95403 AS builder
 
 RUN apt-get update -y && \
     apt-get install -y -qq --no-install-recommends curl git gnupg && \
@@ -6,8 +6,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/rskj
 
-ARG RSKJ_RELEASE="ARROWHEAD"
-ARG RSKJ_VERSION="6.3.1"
+ARG RSKJ_RELEASE="LOVELL"
+ARG RSKJ_VERSION="7.0.0"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \
@@ -25,9 +25,9 @@ RUN gpg --keyserver https://secchannel.rsk.co/SUPPORT.asc --recv-keys 1DC9157991
     modifier=$(sed -n 's/^modifier=//p' "$file" | tr -d "\"'") && \
     cp "rskj-core/build/libs/rskj-core-$version_number-$modifier-all.jar" rsk.jar
 
-FROM --platform=linux/amd64 openjdk:8-jdk@sha256:86e863cc57215cfb181bd319736d0baf625fe8f150577f9eb58bd937f5452cb8 AS runner
+FROM --platform=linux/amd64 eclipse-temurin:17-jre@sha256:38e0afc86a10bf4cadbf1586fb617b3a9a4d09c9a0be882e29ada4ed0895fc84
 
-ARG UID=1000
+ARG UID=1001
 ARG HOME="/home/rsk"
 RUN useradd -m -u "$UID" --home="$HOME" rsk
 
