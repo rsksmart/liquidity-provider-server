@@ -64,7 +64,6 @@ services:
       [
         "java",
         "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
         "-Drpc.providers.web.http.hosts.0=localhost",
         "-Drpc.providers.web.http.hosts.1=rskj",
         "-cp",
