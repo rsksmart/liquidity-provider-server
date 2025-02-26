@@ -47,7 +47,7 @@ services:
       - net_lps
   rskj:
     build:
-      context: ../rskj
+      context: ./rskj
       args:
         UID: "${LPS_UID}"
     image: rskj:latest
