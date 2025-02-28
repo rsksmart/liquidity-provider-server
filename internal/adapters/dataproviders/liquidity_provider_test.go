@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"io"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
@@ -18,11 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"io"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (
@@ -569,7 +570,8 @@ func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfig
 			TimeForDeposit: 3600,
 			CallTime:       7212,
 			PenaltyFee:     entities.NewWei(1000000000000000),
-			CallFee:        entities.NewWei(10000000000000000),
+			FixedFee:       entities.NewWei(10000000000000000),
+			PercentageFee:  big.NewFloat(1.25),
 			MaxValue:       entities.NewBigWei(maxBigInt),
 			MinValue:       entities.NewWei(600000000000000000),
 		},
@@ -585,7 +587,8 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 			TimeForDeposit:       3655,
 			ExpireTime:           7201,
 			PenaltyFee:           entities.NewWei(1000000000000000),
-			CallFee:              entities.NewWei(10000000000000000),
+			FixedFee:             entities.NewWei(10000000000000000),
+			PercentageFee:        big.NewFloat(1.25),
 			MaxValue:             entities.NewBigWei(maxBigInt),
 			MinValue:             entities.NewWei(600000000000000000),
 			ExpireBlocks:         500,

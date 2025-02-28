@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -48,13 +49,15 @@ func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider
 		SiteKey:               useCase.captchaSiteKey,
 		LiquidityCheckEnabled: generalConfiguration.PublicLiquidityCheck,
 		Pegin: liquidity_provider.LiquidityProviderDetail{
-			Fee:                   peginConfig.CallFee,
+			FixedFee:              peginConfig.FixedFee,
+			PercentageFee:         peginConfig.PercentageFee,
 			MinTransactionValue:   peginConfig.MinValue,
 			MaxTransactionValue:   peginConfig.MaxValue,
 			RequiredConfirmations: generalConfiguration.BtcConfirmations.Max(),
 		},
 		Pegout: liquidity_provider.LiquidityProviderDetail{
-			Fee:                   pegoutConfig.CallFee,
+			FixedFee:              pegoutConfig.FixedFee,
+			PercentageFee:         pegoutConfig.PercentageFee,
 			MinTransactionValue:   pegoutConfig.MinValue,
 			MaxTransactionValue:   pegoutConfig.MaxValue,
 			RequiredConfirmations: generalConfiguration.RskConfirmations.Max(),

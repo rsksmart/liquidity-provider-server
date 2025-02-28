@@ -2,6 +2,9 @@ package liquidity_provider_test
 
 import (
 	"context"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -10,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestGetDetailUseCase_Run(t *testing.T) {
@@ -24,13 +26,15 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 		SiteKey:               captchaKey,
 		LiquidityCheckEnabled: true,
 		Pegin: lp.LiquidityProviderDetail{
-			Fee:                   entities.NewWei(100),
+			FixedFee:              entities.NewWei(100),
+			PercentageFee:         big.NewFloat(1.25),
 			MinTransactionValue:   entities.NewWei(1000),
 			MaxTransactionValue:   entities.NewWei(10000),
 			RequiredConfirmations: 10,
 		},
 		Pegout: lp.LiquidityProviderDetail{
-			Fee:                   entities.NewWei(200),
+			FixedFee:              entities.NewWei(200),
+			PercentageFee:         big.NewFloat(1.25),
 			MinTransactionValue:   entities.NewWei(2000),
 			MaxTransactionValue:   entities.NewWei(20000),
 			RequiredConfirmations: 20,
@@ -88,7 +92,8 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 		TimeForDeposit: lp.PeginTimeForDeposit,
 		CallTime:       lp.PeginCallTime,
 		PenaltyFee:     entities.NewWei(lp.PeginPenaltyFee),
-		CallFee:        entities.NewWei(100),
+		FixedFee:       entities.NewWei(100),
+		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewWei(10000),
 		MinValue:       entities.NewWei(1000),
 	}).Once()
@@ -96,7 +101,8 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 		TimeForDeposit: lp.PegoutTimeForDeposit,
 		ExpireTime:     lp.PegoutExpireTime,
 		PenaltyFee:     entities.NewWei(lp.PegoutPenaltyFee),
-		CallFee:        entities.NewWei(200),
+		FixedFee:       entities.NewWei(200),
+		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewWei(20000),
 		MinValue:       entities.NewWei(2000),
 		ExpireBlocks:   lp.PegoutExpireBlocks,
