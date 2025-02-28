@@ -52,7 +52,7 @@ func TestDefaultPeginConfiguration(t *testing.T) {
 		TimeForDeposit: 3600,
 		CallTime:       7200,
 		PenaltyFee:     entities.NewWei(10000000000000),
-		FixedFee:       entities.NewWei(100000000000000),
+		FixedFee:       entities.NewWei(500000000000000),
 		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewWei(100000000000000000),
 		MinValue:       entities.NewWei(5000000000000000),

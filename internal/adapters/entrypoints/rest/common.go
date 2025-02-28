@@ -51,29 +51,29 @@ func percentageFeeValidator(fl validator.FieldLevel) bool {
 }
 
 func init() {
-	if err := registerValidations(); err != nil {
-		log.Fatal("Error registering validations: ", err)
-	}
+    if err := registerValidations(); err != nil {
+        log.Fatal("Error registering validations: ", err)
+    }
 }
 
 func registerValidations() error {
-	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	}); err != nil {
-		log.Fatal("registering positive_string validation: ", err)
-	}
+    if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
+        return PositiveStringValidationRule(field.Field().String())
+    }); err != nil {
+        return fmt.Errorf("registering positive_string validation: %w", err)
+    }
 
-	if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
-		log.Fatal("registering percentage_fee validation: ", err)
-	}
+    if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
+        return fmt.Errorf("registering percentage_fee validation: %w", err)
+    }
 
-	if err := RequestValidator.RegisterValidation("non_negative_string", func(field validator.FieldLevel) bool {
-		return NonNegativeStringValidationRule(field.Field().String())
-	}); err != nil {
-		log.Fatal("registering non_negative_string validation: ", err)
-	}
+    if err := RequestValidator.RegisterValidation("non_negative_string", func(field validator.FieldLevel) bool {
+        return NonNegativeStringValidationRule(field.Field().String())
+    }); err != nil {
+        return fmt.Errorf("registering non_negative_string validation: %w", err)
+    }
 
-	return nil
+    return nil
 }
 
 type ErrorDetails = map[string]any
