@@ -23,7 +23,11 @@ function etherToWei(ether) {
 }
 
 function isFeeKey(key) {
-    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
+    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee'].includes(key);
+}
+
+function isPercentageFeeKey(key) {
+    return key === 'percentageFee';
 }
 
 function inferType(value) {
@@ -106,6 +110,10 @@ function hasDuplicateConfirmationAmounts(confirmationArray) {
     return uniqueAmounts.size < amounts.length;
 }
 
+function isToggableFeeKey(key) {
+    return key === 'fixedFee' || key === 'percentageFee';
+}
+
 export {
     weiToEther,
     etherToWei,
@@ -114,5 +122,7 @@ export {
     validateConfig,
     formatGeneralConfig,
     postConfig,
-    hasDuplicateConfirmationAmounts
+    hasDuplicateConfirmationAmounts,
+    isPercentageFeeKey,
+    isToggableFeeKey
 };
