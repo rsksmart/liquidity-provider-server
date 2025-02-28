@@ -3,6 +3,9 @@ package pegout_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -13,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // nolint:funlen
@@ -326,7 +328,8 @@ func getPegoutConfiguration() lpEntity.PegoutConfiguration {
 		TimeForDeposit: 60000,
 		ExpireTime:     600,
 		PenaltyFee:     entities.NewWei(20),
-		CallFee:        entities.NewWei(200),
+		FixedFee:       entities.NewWei(200),
+		PercentageFee:  big.NewFloat(1.3),
 		MaxValue:       entities.NewUWei(10000000000000000000),
 		MinValue:       entities.NewWei(100000000000000000),
 		ExpireBlocks:   70000,

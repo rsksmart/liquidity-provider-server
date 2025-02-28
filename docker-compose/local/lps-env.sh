@@ -275,7 +275,8 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
           "timeForDeposit": 3600,
           "callTime": 7200,
           "penaltyFee": "1000000000000000",
-          "callFee": "10000000000000000",
+          "percentageFee": "1.25",
+          "fixedFee": "5000000000000000",
           "maxValue": "10000000000000000000",
           "minValue": "600000000000000000"
       }
@@ -297,7 +298,8 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
           "timeForDeposit": 3600,
           "expireTime": 10800,
           "penaltyFee": "1000000000000000",
-          "callFee": "10000000000000000",
+          "percentageFee": "1.25",
+          "fixedFee": "5000000000000000",
           "maxValue": "10000000000000000000",
           "minValue": "600000000000000000",
           "expireBlocks": 500,

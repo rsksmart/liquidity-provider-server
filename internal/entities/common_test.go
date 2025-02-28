@@ -3,12 +3,14 @@ package entities_test
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/stretchr/testify/require"
-	"math"
-	"testing"
 )
 
 func TestSigned_CheckIntegrity(t *testing.T) {
@@ -16,7 +18,8 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		TimeForDeposit: 3600,
 		CallTime:       7200,
 		PenaltyFee:     entities.NewUWei(1000000000000000),
-		CallFee:        entities.NewUWei(10000000000000000),
+		FixedFee:       entities.NewUWei(10000000000000000),
+		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewUWei(10000000000000000000),
 		MinValue:       entities.NewUWei(600000000000000000),
 	}
@@ -24,7 +27,8 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		TimeForDeposit:       3600,
 		ExpireTime:           7200,
 		PenaltyFee:           entities.NewUWei(1000000000000000),
-		CallFee:              entities.NewUWei(10000000000000000),
+		FixedFee:             entities.NewUWei(10000000000000000),
+		PercentageFee:        big.NewFloat(1.25),
 		MaxValue:             entities.NewUWei(10000000000000000000),
 		MinValue:             entities.NewUWei(600000000000000000),
 		ExpireBlocks:         500,

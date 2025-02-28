@@ -3,6 +3,9 @@ package pegin_test
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -15,7 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var (
@@ -42,7 +44,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	quoteMatchFunction := mock.MatchedBy(func(q quote.PeginQuote) bool {
 		return q.FedBtcAddress == fedAddress && q.LbcAddress == lbcAddress && q.LpRskAddress == lpRskAddress &&
 			q.BtcRefundAddress == blockchain.BitcoinTestnetP2PKHZeroAddress && q.RskRefundAddress == userRskAddress && q.LpBtcAddress == lpBtcAddress &&
-			q.CallFee.Cmp(config.CallFee) == 0 && q.PenaltyFee.Cmp(config.PenaltyFee) == 0 && q.ContractAddress == userRskAddress &&
+			q.CallFee.Cmp(config.FixedFee) == 0 && q.PenaltyFee.Cmp(config.PenaltyFee) == 0 && q.ContractAddress == userRskAddress &&
 			q.Data == hex.EncodeToString(quoteData) && q.GasLimit == uint32(gasLimit.Uint64()) && q.Value.Cmp(quoteValue) == 0 &&
 			q.Nonce > 0 && q.TimeForDeposit == config.TimeForDeposit && q.LpCallTime == config.CallTime && q.Confirmations == 10 &&
 			q.CallOnRegister == false && q.GasFee.Cmp(entities.NewWei(10000)) == 0 && q.ProductFeeAmount == 0
@@ -332,7 +334,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lbc.On("GetAddress").Return("")
 			peginConfig := getPeginConfiguration()
 			generalConfig := getGeneralConfiguration()
-			peginConfig.CallFee = entities.NewWei(0)
+			peginConfig.FixedFee = entities.NewWei(0)
 			peginConfig.PenaltyFee = entities.NewWei(0)
 			peginConfig.TimeForDeposit = 0
 			peginConfig.CallTime = 0
@@ -349,7 +351,8 @@ func getPeginConfiguration() lpEntity.PeginConfiguration {
 		TimeForDeposit: 600,
 		CallTime:       600,
 		PenaltyFee:     entities.NewWei(50),
-		CallFee:        entities.NewWei(100),
+		FixedFee:       entities.NewWei(100),
+		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewWei(10000),
 		MinValue:       entities.NewWei(1000),
 	}

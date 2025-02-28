@@ -1,16 +1,18 @@
 package pkg
 
 import (
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
 )
 
 type ProviderDetail struct {
-	Fee                   uint64 `json:"fee"  required:""`
-	MinTransactionValue   uint64 `json:"minTransactionValue"  required:""`
-	MaxTransactionValue   uint64 `json:"maxTransactionValue"  required:""`
-	RequiredConfirmations uint16 `json:"requiredConfirmations"  required:""`
+	FixedFee              uint64     `json:"fixedFee" required:""`
+	PercentageFee         *big.Float `json:"percentageFee" required:""`
+	MinTransactionValue   uint64     `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   uint64     `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16     `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -41,7 +43,8 @@ type PeginConfigurationDTO struct {
 	TimeForDeposit uint32 `json:"timeForDeposit" validate:"required"`
 	CallTime       uint32 `json:"callTime" validate:"required"`
 	PenaltyFee     string `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	CallFee        string `json:"callFee" validate:"required,numeric,positive_string"`
+	PercentageFee  string `json:"percentageFee" validate:"required,percentage_fee"`
+	FixedFee       string `json:"fixedFee" validate:"required,numeric,non_negative_string"`
 	MaxValue       string `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue       string `json:"minValue" validate:"required,numeric,positive_string"`
 }
@@ -54,7 +57,8 @@ type PegoutConfigurationDTO struct {
 	TimeForDeposit       uint32 `json:"timeForDeposit" validate:"required"`
 	ExpireTime           uint32 `json:"expireTime" validate:"required"`
 	PenaltyFee           string `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	CallFee              string `json:"callFee" validate:"required,numeric,positive_string"`
+	PercentageFee        string `json:"percentageFee" validate:"required,percentage_fee"`
+	FixedFee             string `json:"fixedFee" validate:"required,numeric,positive_string"`
 	MaxValue             string `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue             string `json:"minValue" validate:"required,numeric,positive_string"`
 	ExpireBlocks         uint64 `json:"expireBlocks" validate:"required"`
@@ -98,20 +102,26 @@ func FromPeginConfigurationDTO(dto PeginConfigurationDTO) liquidity_provider.Peg
 	const base = 10
 	penaltyFee := new(big.Int)
 	penaltyFee.SetString(dto.PenaltyFee, base)
-	callFee := new(big.Int)
-	callFee.SetString(dto.CallFee, base)
-	maxValue := new(big.Int)
-	maxValue.SetString(dto.MaxValue, base)
-	minValue := new(big.Int)
-	minValue.SetString(dto.MinValue, base)
+
+	fixedFee := new(big.Int)
+	fixedFee.SetString(dto.FixedFee, base)
+
+	maxVal := new(big.Int)
+	maxVal.SetString(dto.MaxValue, base)
+
+	minVal := new(big.Int)
+	minVal.SetString(dto.MinValue, base)
+
+	percentageFee, _ := new(big.Float).SetString(dto.PercentageFee)
 
 	return liquidity_provider.PeginConfiguration{
 		TimeForDeposit: dto.TimeForDeposit,
 		CallTime:       dto.CallTime,
 		PenaltyFee:     entities.NewBigWei(penaltyFee),
-		CallFee:        entities.NewBigWei(callFee),
-		MaxValue:       entities.NewBigWei(maxValue),
-		MinValue:       entities.NewBigWei(minValue),
+		PercentageFee:  percentageFee,
+		FixedFee:       entities.NewBigWei(fixedFee),
+		MaxValue:       entities.NewBigWei(maxVal),
+		MinValue:       entities.NewBigWei(minVal),
 	}
 }
 
@@ -119,8 +129,6 @@ func FromPegoutConfigurationDTO(dto PegoutConfigurationDTO) liquidity_provider.P
 	const base = 10
 	penaltyFee := new(big.Int)
 	penaltyFee.SetString(dto.PenaltyFee, base)
-	callFee := new(big.Int)
-	callFee.SetString(dto.CallFee, base)
 	maxValue := new(big.Int)
 	maxValue.SetString(dto.MaxValue, base)
 	minValue := new(big.Int)
@@ -128,11 +136,16 @@ func FromPegoutConfigurationDTO(dto PegoutConfigurationDTO) liquidity_provider.P
 	bridgeTransactionMin := new(big.Int)
 	bridgeTransactionMin.SetString(dto.BridgeTransactionMin, base)
 
+	fixedFee := new(big.Int)
+	fixedFee.SetString(dto.FixedFee, base)
+	percentageFee, _ := new(big.Float).SetString(dto.PercentageFee)
+
 	return liquidity_provider.PegoutConfiguration{
 		TimeForDeposit:       dto.TimeForDeposit,
 		ExpireTime:           dto.ExpireTime,
 		PenaltyFee:           entities.NewBigWei(penaltyFee),
-		CallFee:              entities.NewBigWei(callFee),
+		PercentageFee:        percentageFee,
+		FixedFee:             entities.NewBigWei(fixedFee),
 		MaxValue:             entities.NewBigWei(maxValue),
 		MinValue:             entities.NewBigWei(minValue),
 		ExpireBlocks:         dto.ExpireBlocks,

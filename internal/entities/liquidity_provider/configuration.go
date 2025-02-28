@@ -3,8 +3,10 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"math/big"
 	"slices"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 var (
@@ -17,7 +19,8 @@ type PeginConfiguration struct {
 	TimeForDeposit uint32        `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
 	CallTime       uint32        `json:"callTime" bson:"call_time" validate:"required"`
 	PenaltyFee     *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
-	CallFee        *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
+	PercentageFee  *big.Float    `json:"percentageFee" bson:"percentage_fee" validate:"required"`
+	FixedFee       *entities.Wei `json:"fixedFee" bson:"fixed_fee" validate:"required"`
 	MaxValue       *entities.Wei `json:"maxValue" bson:"max_value" validate:"required"`
 	MinValue       *entities.Wei `json:"minValue" bson:"min_value" validate:"required"`
 }
@@ -26,7 +29,8 @@ type PegoutConfiguration struct {
 	TimeForDeposit       uint32        `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
 	ExpireTime           uint32        `json:"expireTime" bson:"expire_time" validate:"required"`
 	PenaltyFee           *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
-	CallFee              *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
+	PercentageFee        *big.Float    `json:"percentageFee" bson:"percentage_fee" validate:"required"`
+	FixedFee             *entities.Wei `json:"fixedFee" bson:"fixed_fee" validate:"required"`
 	MaxValue             *entities.Wei `json:"maxValue" bson:"max_value" validate:"required"`
 	MinValue             *entities.Wei `json:"minValue" bson:"min_value" validate:"required"`
 	ExpireBlocks         uint64        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`

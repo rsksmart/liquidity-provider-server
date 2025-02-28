@@ -2,6 +2,10 @@ package mongo_test
 
 import (
 	"context"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -14,8 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDb "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"testing"
-	"time"
 )
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
@@ -23,7 +25,8 @@ var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
 		TimeForDeposit: 1,
 		CallTime:       2,
 		PenaltyFee:     entities.NewWei(3),
-		CallFee:        entities.NewWei(4),
+		FixedFee:       entities.NewWei(4),
+		PercentageFee:  big.NewFloat(1.25),
 		MaxValue:       entities.NewWei(5),
 		MinValue:       entities.NewWei(6),
 	},
@@ -36,7 +39,8 @@ var pegoutTestConfig = &entities.Signed[liquidity_provider.PegoutConfiguration]{
 		TimeForDeposit:       1,
 		ExpireTime:           2,
 		PenaltyFee:           entities.NewWei(3),
-		CallFee:              entities.NewWei(4),
+		FixedFee:             entities.NewWei(4),
+		PercentageFee:        big.NewFloat(1.25),
 		MaxValue:             entities.NewWei(5),
 		MinValue:             entities.NewWei(6),
 		ExpireBlocks:         7,

@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	log "github.com/sirupsen/logrus"
 	"math/big"
 	"net/http"
+	"regexp"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -28,13 +30,50 @@ func PositiveStringValidationRule(value string) bool {
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func init() {
-	err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	})
-	if err != nil {
-		log.Fatal("Error registering validation: ", err)
+func NonNegativeStringValidationRule(value string) bool {
+	bigIntValue := new(big.Int)
+	bigIntValue.SetString(value, 10)
+	return bigIntValue.Cmp(big.NewInt(0)) >= 0
+}
+
+func percentageFeeValidator(fl validator.FieldLevel) bool {
+	strVal := fl.Field().String()
+	r := regexp.MustCompile(`^\d{1,3}(\.\d{1,2})?$`)
+	if !r.MatchString(strVal) {
+		return false
 	}
+	val, ok := new(big.Float).SetString(strVal)
+	if !ok {
+		return false
+	}
+	zero, hundred := big.NewFloat(0), big.NewFloat(100)
+	return val.Cmp(zero) >= 0 && val.Cmp(hundred) <= 0
+}
+
+func init() {
+	if err := registerValidations(); err != nil {
+		log.Fatal("Error registering validations: ", err)
+	}
+}
+
+func registerValidations() error {
+	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
+		return PositiveStringValidationRule(field.Field().String())
+	}); err != nil {
+		log.Fatal("registering positive_string validation: ", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
+		log.Fatal("registering percentage_fee validation: ", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("non_negative_string", func(field validator.FieldLevel) bool {
+		return NonNegativeStringValidationRule(field.Field().String())
+	}); err != nil {
+		log.Fatal("registering non_negative_string validation: ", err)
+	}
+
+	return nil
 }
 
 type ErrorDetails = map[string]any

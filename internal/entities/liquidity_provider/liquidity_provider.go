@@ -3,6 +3,8 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
@@ -89,7 +91,8 @@ type RegisteredLiquidityProvider struct {
 }
 
 type LiquidityProviderDetail struct {
-	Fee                   *entities.Wei `json:"fee" validate:"required"`
+	FixedFee              *entities.Wei `json:"fixedFee" validate:"required"`
+	PercentageFee         *big.Float    `json:"percentageFee" validate:"required"`
 	MinTransactionValue   *entities.Wei `json:"minTransactionValue"  validate:"required"`
 	MaxTransactionValue   *entities.Wei `json:"maxTransactionValue"  validate:"required"`
 	RequiredConfirmations uint16        `json:"requiredConfirmations"  validate:"required"`

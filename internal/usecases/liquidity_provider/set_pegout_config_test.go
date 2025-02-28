@@ -2,6 +2,9 @@ package liquidity_provider_test
 
 import (
 	"context"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -12,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var pegoutConfigMock = entities.Signed[lp.PegoutConfiguration]{
@@ -20,7 +22,8 @@ var pegoutConfigMock = entities.Signed[lp.PegoutConfiguration]{
 		TimeForDeposit:       1,
 		ExpireTime:           2,
 		PenaltyFee:           entities.NewWei(3),
-		CallFee:              entities.NewWei(4),
+		FixedFee:             entities.NewWei(4),
+		PercentageFee:        big.NewFloat(1.25),
 		MaxValue:             entities.NewWei(5),
 		MinValue:             entities.NewWei(1),
 		ExpireBlocks:         10,

@@ -2,14 +2,15 @@ package pegout
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"strings"
-	"time"
 )
 
 type GetQuoteUseCase struct {
@@ -96,7 +97,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 
 	gasFeeDao.Mul(daoTxAmounts.DaoGasAmount, gasPrice)
 	fees := quote.Fees{
-		CallFee:          configuration.CallFee,
+		CallFee:          configuration.FixedFee,
 		GasFee:           new(entities.Wei).Add(feeInWei, gasFeeDao),
 		PenaltyFee:       configuration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),

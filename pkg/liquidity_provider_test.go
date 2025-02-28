@@ -1,12 +1,13 @@
 package pkg_test
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func TestToAvailableLiquidityDTO(t *testing.T) {
@@ -29,7 +30,8 @@ func TestFromPeginConfigurationDTO(t *testing.T) {
 		TimeForDeposit: 10,
 		CallTime:       200,
 		PenaltyFee:     "3000000000000000000000",
-		CallFee:        "5000000000000000000000",
+		FixedFee:       "5000000000000000000000",
+		PercentageFee:  "1.3",
 		MaxValue:       "7000000000000000000000",
 		MinValue:       "6000000000000000000000",
 	}
@@ -37,7 +39,8 @@ func TestFromPeginConfigurationDTO(t *testing.T) {
 	assert.Equal(t, uint32(10), configuration.TimeForDeposit)
 	assert.Equal(t, uint32(200), configuration.CallTime)
 	assert.Equal(t, "3000000000000000000000", configuration.PenaltyFee.AsBigInt().String())
-	assert.Equal(t, "5000000000000000000000", configuration.CallFee.AsBigInt().String())
+	assert.Equal(t, "5000000000000000000000", configuration.FixedFee.AsBigInt().String())
+	assert.Equal(t, "1.3", configuration.PercentageFee.String())
 	assert.Equal(t, "7000000000000000000000", configuration.MaxValue.AsBigInt().String())
 	assert.Equal(t, "6000000000000000000000", configuration.MinValue.AsBigInt().String())
 }
@@ -47,7 +50,8 @@ func TestFromPegoutConfigurationDTO(t *testing.T) {
 		TimeForDeposit:       10,
 		ExpireTime:           200,
 		PenaltyFee:           "3000000000000000000000",
-		CallFee:              "5000000000000000000000",
+		FixedFee:             "5000000000000000000000",
+		PercentageFee:        "1.3",
 		MaxValue:             "7000000000000000000000",
 		MinValue:             "6000000000000000000000",
 		ExpireBlocks:         20,
@@ -57,7 +61,8 @@ func TestFromPegoutConfigurationDTO(t *testing.T) {
 	assert.Equal(t, uint32(10), configuration.TimeForDeposit)
 	assert.Equal(t, uint32(200), configuration.ExpireTime)
 	assert.Equal(t, "3000000000000000000000", configuration.PenaltyFee.AsBigInt().String())
-	assert.Equal(t, "5000000000000000000000", configuration.CallFee.AsBigInt().String())
+	assert.Equal(t, "5000000000000000000000", configuration.FixedFee.AsBigInt().String())
+	assert.Equal(t, "1.3", configuration.PercentageFee.String())
 	assert.Equal(t, "7000000000000000000000", configuration.MaxValue.AsBigInt().String())
 	assert.Equal(t, "6000000000000000000000", configuration.MinValue.AsBigInt().String())
 	assert.Equal(t, uint64(20), configuration.ExpireBlocks)

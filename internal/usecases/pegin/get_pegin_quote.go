@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"time"
 )
 
 type GetQuoteUseCase struct {
@@ -99,7 +100,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
 	totalGas := new(entities.Wei).Add(estimatedCallGas, daoTxAmounts.DaoGasAmount)
 	fees := quote.Fees{
-		CallFee:          peginConfiguration.CallFee,
+		CallFee:          peginConfiguration.FixedFee,
 		GasFee:           new(entities.Wei).Mul(totalGas, gasPrice),
 		PenaltyFee:       peginConfiguration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
