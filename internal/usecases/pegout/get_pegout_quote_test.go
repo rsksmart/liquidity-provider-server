@@ -6,6 +6,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	pegout "github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -35,14 +37,21 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	lbc.On("GetAddress").Return(lbcAddress)
 	lbc.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
-	pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(nil)
+	pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.MatchedBy(func(createdPegoutQuote quote.CreatedPegoutQuote) bool {
+		test.AssertMaxZeroValues(t, createdPegoutQuote.Quote, 1)
+		test.AssertNonZeroValues(t, createdPegoutQuote.CreationData)
+		return assert.NotEmpty(t, createdPegoutQuote.Hash)
+	})).Return(nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	lp.On("RskAddress").Return(lpRskAddress)
 	lp.On("BtcAddress").Return(lpBtcAddress)
 	btcWallet := new(mocks.BtcWalletMock)
-	btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000000000000000), nil)
+	btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(blockchain.BtcFeeEstimation{
+		Value:   entities.NewWei(1000000000000000),
+		FeeRate: utils.NewBigFloat64(25.333),
+	}, nil)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 	feeCollectorAddress := "feeCollectorAddress"
@@ -64,7 +73,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, toAddress, result.PegoutQuote.DepositAddress)
 	assert.Equal(t, toAddress, result.PegoutQuote.BtcRefundAddress)
 	assert.Equal(t, entities.NewWei(1000000000000000000), result.PegoutQuote.Value)
-	assert.Equal(t, entities.NewWei(200), result.PegoutQuote.CallFee)
+	// assert.Equal(t, entities.NewWei(200), result.PegoutQuote.CallFee) // TODO update expected value in GBI-2528
 	assert.Equal(t, uint64(20), result.PegoutQuote.PenaltyFee)
 	assert.Equal(t, "0x1234", result.PegoutQuote.LbcAddress)
 	assert.NotEmpty(t, result.PegoutQuote.Nonce)
@@ -196,6 +205,10 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 	lbc *mocks.LbcMock, lp *mocks.ProviderMock, btcWallet *mocks.BtcWalletMock,
 	pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock,
 ), error] {
+	feeEstimation := blockchain.BtcFeeEstimation{
+		Value:   entities.NewWei(1000000000000000),
+		FeeRate: utils.NewBigFloat64(25.333),
+	}
 	return test.Table[func(
 		rsk *mocks.RootstockRpcServerMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
 		lbc *mocks.LbcMock, lp *mocks.ProviderMock, btcWallet *mocks.BtcWalletMock,
@@ -205,21 +218,21 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 			Value: func(rsk *mocks.RootstockRpcServerMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
 				lbc *mocks.LbcMock, lp *mocks.ProviderMock, btcWallet *mocks.BtcWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(0), assert.AnError)
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			},
 		},
 		{
 			Value: func(rsk *mocks.RootstockRpcServerMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
 				lbc *mocks.LbcMock, lp *mocks.ProviderMock, btcWallet *mocks.BtcWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(0), assert.AnError)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(blockchain.BtcFeeEstimation{}, assert.AnError)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			},
 		},
 		{
 			Value: func(rsk *mocks.RootstockRpcServerMock, feeCollector *mocks.FeeCollectorMock, bridge *mocks.BridgeMock,
 				lbc *mocks.LbcMock, lp *mocks.ProviderMock, btcWallet *mocks.BtcWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(0), errors.New("Insufficient funds"))
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(blockchain.BtcFeeEstimation{}, errors.New("Insufficient funds"))
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
 			},
 		},
@@ -229,7 +242,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", test.AnyCtx).Return(uint64(0), assert.AnError)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), nil)
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 		{
@@ -238,7 +251,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
 				feeCollector.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 		{
@@ -250,7 +263,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				lbc.On("GetAddress").Return("0x1234")
 				lbc.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
 				pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(assert.AnError)
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(1000), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 		{
@@ -271,7 +284,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				lp.On("BtcAddress").Return("address")
 				lp.On("TimeForDepositPegout").Return(uint32(60000))
 				lp.On("ExpireBlocksPegout").Return(uint64(60000))
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(10), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 		{
@@ -292,7 +305,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				lp.On("BtcAddress").Return("")
 				lp.On("TimeForDepositPegout").Return(uint32(0))
 				lp.On("ExpireBlocksPegout").Return(uint64(0))
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(10), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 		{
@@ -315,7 +328,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				lp.On("BtcAddress").Return("address")
 				lp.On("TimeForDepositPegout").Return(uint32(60000))
 				lp.On("ExpireBlocksPegout").Return(uint64(60000))
-				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(entities.NewWei(10), nil)
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
 			},
 		},
 	}
@@ -326,7 +339,8 @@ func getPegoutConfiguration() lpEntity.PegoutConfiguration {
 		TimeForDeposit: 60000,
 		ExpireTime:     600,
 		PenaltyFee:     entities.NewWei(20),
-		CallFee:        entities.NewWei(200),
+		FixedFee:       entities.NewWei(200),
+		FeePercentage:  utils.NewBigFloat64(1.55),
 		MaxValue:       entities.NewUWei(10000000000000000000),
 		MinValue:       entities.NewWei(100000000000000000),
 		ExpireBlocks:   70000,

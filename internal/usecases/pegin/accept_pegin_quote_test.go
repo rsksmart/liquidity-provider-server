@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -55,6 +56,7 @@ var federationInfo = blockchain.FederationInfo{
 	ErpKeys:              []string{"04", "05", "06"},
 }
 
+// nolint:funlen
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
 	retainedQuote := quote.RetainedPeginQuote{
@@ -64,10 +66,12 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		RequiredLiquidity: requiredLiquidity,
 		State:             quote.PeginStateWaitingForDeposit,
 	}
+	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
 	quoteRepository.On("GetRetainedQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
 	quoteRepository.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, acceptPeginQuoteHash).Return(creationData).Once()
 	bridge := new(mocks.BridgeMock)
 	bridge.On("FetchFederationInfo").Return(federationInfo, nil)
 	lbcParsedAddress, err := hex.DecodeString(strings.TrimPrefix(testPeginQuote.LbcAddress, "0x"))

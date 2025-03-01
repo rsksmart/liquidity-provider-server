@@ -46,9 +46,17 @@ type RetainedPegoutQuoteDTO struct {
 	BridgeRefundTxHash string   `json:"bridgeRefundTxHash" required:"" description:"The hash of the transaction from the LP to the bridge to convert the refunded RBTC into BTC"`
 }
 
+type PegoutCreationDataDTO struct {
+	GasPrice      uint64  `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	FeePercentage float64 `json:"percentageFee" required:"" description:"The percentage fee used to compute the call fee"`
+	FixedFee      uint64  `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
+	FeeRate       float64 `json:"feeRate" required:"" description:"The fee rate used to compute the gas fee"`
+}
+
 type PegoutQuoteStatusDTO struct {
-	Detail PegoutQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
-	Status RetainedPegoutQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	Detail       PegoutQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
+	Status       RetainedPegoutQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	CreationData PegoutCreationDataDTO  `json:"creationData" required:"" description:"Values used to compute some fields of the quote"`
 }
 
 func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
@@ -86,6 +94,17 @@ func ToRetainedPegoutQuoteDTO(entity quote.RetainedPegoutQuote) RetainedPegoutQu
 		LpBtcTxHash:        entity.LpBtcTxHash,
 		RefundPegoutTxHash: entity.RefundPegoutTxHash,
 		BridgeRefundTxHash: entity.BridgeRefundTxHash,
+	}
+}
+
+func ToPegoutCreationDataDTO(entity quote.PegoutCreationData) PegoutCreationDataDTO {
+	feePercentage, _ := entity.FeePercentage.Native().Float64()
+	feeRate, _ := entity.FeeRate.Native().Float64()
+	return PegoutCreationDataDTO{
+		GasPrice:      entity.GasPrice.Uint64(),
+		FeePercentage: feePercentage,
+		FixedFee:      entity.FixedFee.Uint64(),
+		FeeRate:       feeRate,
 	}
 }
 

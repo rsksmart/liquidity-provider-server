@@ -1,12 +1,16 @@
 package liquidity_provider
 
-import "github.com/rsksmart/liquidity-provider-server/internal/entities"
+import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+)
 
 const (
 	PeginTimeForDeposit = 3600
 	PeginCallTime       = 7200
 	PeginPenaltyFee     = 10000000000000
-	PeginCallFee        = 100000000000000
+	PeginFixedFee       = 100000000000000
+	PeginFeePercentage  = 0.33
 	PeginMinValue       = 5000000000000000
 	PeginMaxValue       = 100000000000000000
 )
@@ -15,7 +19,8 @@ const (
 	PegoutTimeForDeposit       = 3600
 	PegoutExpireTime           = 10800
 	PegoutPenaltyFee           = 10000000000000
-	PegoutCallFee              = 100000000000000
+	PegoutFixedFee             = 100000000000000
+	PegoutFeePercentage        = 0.33
 	PegoutMinValue             = 5000000000000000
 	PegoutMaxValue             = 100000000000000000
 	PegoutExpireBlocks         = 500
@@ -47,9 +52,10 @@ func DefaultPeginConfiguration() PeginConfiguration {
 		TimeForDeposit: PeginTimeForDeposit,
 		CallTime:       PeginCallTime,
 		PenaltyFee:     entities.NewWei(PeginPenaltyFee),
-		CallFee:        entities.NewWei(PeginCallFee),
 		MaxValue:       entities.NewWei(PeginMaxValue),
 		MinValue:       entities.NewWei(PeginMinValue),
+		FeePercentage:  utils.NewBigFloat64(PeginFeePercentage),
+		FixedFee:       entities.NewWei(PeginFixedFee),
 	}
 }
 
@@ -58,11 +64,12 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 		TimeForDeposit:       PegoutTimeForDeposit,
 		ExpireTime:           PegoutExpireTime,
 		PenaltyFee:           entities.NewWei(PegoutPenaltyFee),
-		CallFee:              entities.NewWei(PegoutCallFee),
 		MaxValue:             entities.NewWei(PegoutMaxValue),
 		MinValue:             entities.NewWei(PegoutMinValue),
 		ExpireBlocks:         PegoutExpireBlocks,
 		BridgeTransactionMin: entities.NewWei(PegoutBridgeTransactionMin),
+		FeePercentage:        utils.NewBigFloat64(PegoutFeePercentage),
+		FixedFee:             entities.NewWei(PegoutFixedFee),
 	}
 }
 

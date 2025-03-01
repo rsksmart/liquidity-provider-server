@@ -21,6 +21,7 @@ import (
 	"time"
 )
 
+// nolint:funlen
 func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	tickerChannel := make(chan time.Time)
@@ -58,6 +59,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
 		}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(&quote.PegoutQuote{Value: entities.NewBigWei(math.BigPow(10, 19))}, nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		tickerChannel <- time.Now()
@@ -77,6 +79,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		rskWallet.On("GetBalance", mock.Anything).Return(entities.NewBigWei(math.BigPow(10, 20)), nil).Once()
 		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuotes(mock.Anything, mock.Anything).Return(nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
 			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)

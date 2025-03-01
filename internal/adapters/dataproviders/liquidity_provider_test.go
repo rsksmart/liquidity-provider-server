@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
@@ -569,12 +570,13 @@ func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfig
 			TimeForDeposit: 3600,
 			CallTime:       7212,
 			PenaltyFee:     entities.NewWei(1000000000000000),
-			CallFee:        entities.NewWei(10000000000000000),
+			FixedFee:       entities.NewWei(10000000000000000),
+			FeePercentage:  utils.NewBigFloat64(1.33),
 			MaxValue:       entities.NewBigWei(maxBigInt),
 			MinValue:       entities.NewWei(600000000000000000),
 		},
-		Signature: "671242c9fe5e1183d68e7c45face4ab1be9f304ac661aa778b81fceca000d19360eadf8a9e8ddd1528f485e64cd27d18de989f3d61c55e7ca074df2312623f2f01",
-		Hash:      "609a64fa0aa6a60dd2eee3bf704d4afdc00b69768e271bec72d0c576ff56baf2",
+		Signature: "5a0005192d17b086afb5db3fb22b03cf90d186db31c5f1a4fcd96f167c03afa34545699ec8e02ec22d07e47100e9e10eca020097aa9f8deb443fbde0423b9c8d01",
+		Hash:      "fc4725bce35251b5b2c465cd58a8846d31f7e135e4d30989c21054e44398d46e",
 	}
 }
 func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConfiguration] {
@@ -585,13 +587,14 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 			TimeForDeposit:       3655,
 			ExpireTime:           7201,
 			PenaltyFee:           entities.NewWei(1000000000000000),
-			CallFee:              entities.NewWei(10000000000000000),
+			FixedFee:             entities.NewWei(10000000000000000),
+			FeePercentage:        utils.NewBigFloat64(1.33),
 			MaxValue:             entities.NewBigWei(maxBigInt),
 			MinValue:             entities.NewWei(600000000000000000),
 			ExpireBlocks:         500,
 			BridgeTransactionMin: entities.NewWei(1500000000000000000),
 		},
-		Signature: "e3cd6e7dbf9708158ad03fb51ad493310bb93c4a5d56f6192531bb746f42251301f178ffd2173552181a729c2bb23ab98c9f3786bb7075f416bfe528f3a77d1601",
-		Hash:      "b79d03455e8407660c123700e24af0ea92f6ca83ccb8918e8c155295fc9ac48d",
+		Signature: "e08bb9e50e58c8fbc4a50082c08139622130a2bcd7de83432d597e69c83a0c3b07c89a7f82d39b86aa370f6ffde3e28314499b6c31ba8d9f8bb0c14a2187b67f00",
+		Hash:      "6d65d3a3f8e83fbeac149306a1ff200e2d65b5fc6caa5833ba76dc00cc196167",
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
 type ProviderType string
@@ -89,10 +90,11 @@ type RegisteredLiquidityProvider struct {
 }
 
 type LiquidityProviderDetail struct {
-	Fee                   *entities.Wei `json:"fee" validate:"required"`
-	MinTransactionValue   *entities.Wei `json:"minTransactionValue"  validate:"required"`
-	MaxTransactionValue   *entities.Wei `json:"maxTransactionValue"  validate:"required"`
-	RequiredConfirmations uint16        `json:"requiredConfirmations"  validate:"required"`
+	FixedFee              *entities.Wei   `json:"fixedFee" validate:"required"`
+	FeePercentage         *utils.BigFloat `json:"feePercentage" validate:"required"`
+	MinTransactionValue   *entities.Wei   `json:"minTransactionValue"  validate:"required"`
+	MaxTransactionValue   *entities.Wei   `json:"maxTransactionValue"  validate:"required"`
+	RequiredConfirmations uint16          `json:"requiredConfirmations"  validate:"required"`
 }
 
 type AvailableLiquidity struct {

@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
 type AcceptedQuote struct {
@@ -18,6 +18,12 @@ type Fees struct {
 	GasFee           *entities.Wei
 	PenaltyFee       *entities.Wei
 	ProductFeeAmount uint64
+}
+
+type PegConfiguration interface {
+	GetFixedFee() *entities.Wei
+	GetFeePercentage() *utils.BigFloat
+	ValidateAmount(amount *entities.Wei) error
 }
 
 // ValidateQuoteHash checks if a given string is a valid 32-byte quote hash
@@ -35,4 +41,9 @@ func ValidateQuoteHash(hash string) error {
 	}
 
 	return nil
+}
+
+func CalculateCallFee(amount *entities.Wei, config PegConfiguration) *entities.Wei {
+	// TODO implement in GBI-2528
+	return entities.NewWei(100000000000)
 }

@@ -236,20 +236,22 @@ func TestPegoutBtcTransferWatcher_Prepare(t *testing.T) {
 		}
 		quoteRepository := &mocks.PegoutQuoteRepositoryMock{}
 		quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateSendPegoutSucceeded).Return(quotes, nil)
-		for _, q := range quotes {
+		for i, q := range quotes {
 			quoteRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).
 				Return(&quote.PegoutQuote{Value: q.RequiredLiquidity}, nil)
+			quoteRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 		}
 		useCase := w.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, blockchain.Rpc{}, nil, nil)
 		err := pegoutWatcher.Prepare(context.Background())
 		require.NoError(t, err)
-		for _, q := range quotes {
+		for i, q := range quotes {
 			watchedQuote, ok := pegoutWatcher.GetWatchedQuote(q.QuoteHash)
 			require.True(t, ok)
 			assert.Equal(t, quote.WatchedPegoutQuote{
 				PegoutQuote:   quote.PegoutQuote{Value: q.RequiredLiquidity},
 				RetainedQuote: q,
+				CreationData:  quote.PegoutCreationData{GasPrice: entities.NewWei(int64(i))},
 			}, watchedQuote)
 		}
 		quoteRepository.AssertExpectations(t)
