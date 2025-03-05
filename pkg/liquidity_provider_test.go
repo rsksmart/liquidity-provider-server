@@ -29,7 +29,8 @@ func TestFromPeginConfigurationDTO(t *testing.T) {
 		TimeForDeposit: 10,
 		CallTime:       200,
 		PenaltyFee:     "3000000000000000000000",
-		CallFee:        "5000000000000000000000",
+		FixedFee:       "5000000000000000000000",
+		FeePercentage:  5.443321101,
 		MaxValue:       "7000000000000000000000",
 		MinValue:       "6000000000000000000000",
 	}
@@ -37,7 +38,8 @@ func TestFromPeginConfigurationDTO(t *testing.T) {
 	assert.Equal(t, uint32(10), configuration.TimeForDeposit)
 	assert.Equal(t, uint32(200), configuration.CallTime)
 	assert.Equal(t, "3000000000000000000000", configuration.PenaltyFee.AsBigInt().String())
-	assert.Equal(t, "5000000000000000000000", configuration.CallFee.AsBigInt().String())
+	assert.Equal(t, "5000000000000000000000", configuration.FixedFee.AsBigInt().String())
+	assert.Equal(t, "5.443321101", configuration.FeePercentage.Native().String())
 	assert.Equal(t, "7000000000000000000000", configuration.MaxValue.AsBigInt().String())
 	assert.Equal(t, "6000000000000000000000", configuration.MinValue.AsBigInt().String())
 }
@@ -47,7 +49,8 @@ func TestFromPegoutConfigurationDTO(t *testing.T) {
 		TimeForDeposit:       10,
 		ExpireTime:           200,
 		PenaltyFee:           "3000000000000000000000",
-		CallFee:              "5000000000000000000000",
+		FixedFee:             "5000000000000000000000",
+		FeePercentage:        0.5123333,
 		MaxValue:             "7000000000000000000000",
 		MinValue:             "6000000000000000000000",
 		ExpireBlocks:         20,
@@ -57,7 +60,8 @@ func TestFromPegoutConfigurationDTO(t *testing.T) {
 	assert.Equal(t, uint32(10), configuration.TimeForDeposit)
 	assert.Equal(t, uint32(200), configuration.ExpireTime)
 	assert.Equal(t, "3000000000000000000000", configuration.PenaltyFee.AsBigInt().String())
-	assert.Equal(t, "5000000000000000000000", configuration.CallFee.AsBigInt().String())
+	assert.Equal(t, "5000000000000000000000", configuration.FixedFee.AsBigInt().String())
+	assert.Equal(t, "0.5123333", configuration.FeePercentage.Native().String())
 	assert.Equal(t, "7000000000000000000000", configuration.MaxValue.AsBigInt().String())
 	assert.Equal(t, "6000000000000000000000", configuration.MinValue.AsBigInt().String())
 	assert.Equal(t, uint64(20), configuration.ExpireBlocks)

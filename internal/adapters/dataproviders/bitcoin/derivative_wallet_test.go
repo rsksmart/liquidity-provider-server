@@ -14,6 +14,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -415,7 +416,8 @@ func testEstimateFees(t *testing.T, rskAccount *account.RskAccount, addressInfo 
 	require.NoError(t, err)
 	fee, err := wallet.EstimateTxFees(testnetAddress, amount)
 	require.NoError(t, err)
-	assert.Equal(t, entities.NewWei(600000000000000), fee)
+	assert.Equal(t, entities.NewWei(600000000000000), fee.Value)
+	assert.Equal(t, utils.NewBigFloat64(feeRate), fee.FeeRate)
 	client.AssertExpectations(t)
 }
 
@@ -441,7 +443,8 @@ func testEstimateFeesExtra(t *testing.T, rskAccount *account.RskAccount, address
 	require.NoError(t, err)
 	fee, err := wallet.EstimateTxFees(testnetAddress, amount)
 	require.NoError(t, err)
-	assert.Equal(t, entities.NewWei(600000000000000), fee)
+	assert.Equal(t, entities.NewWei(600000000000000), fee.Value)
+	assert.Equal(t, utils.NewBigFloat64(0.00011), fee.FeeRate)
 	client.AssertExpectations(t)
 }
 

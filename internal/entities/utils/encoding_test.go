@@ -1,6 +1,13 @@
 package utils_test
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"math"
+	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -100,4 +107,114 @@ func TestDecodeKey_LengthErrorDoesNotExposeKey(t *testing.T) {
 	require.Contains(t, err.Error(), "key length is not 32 bytes")
 	require.Contains(t, err.Error(), "16 bytes long")
 	require.NotContains(t, err.Error(), sensitiveKey)
+}
+
+func TestNewBigFloat(t *testing.T) {
+	type args struct {
+		x *big.Float
+	}
+	tests := []struct {
+		name string
+		args args
+		want *utils.BigFloat
+	}{
+		{
+			name: "new BigFloat",
+			args: args{x: big.NewFloat(1.1234554321)},
+			want: utils.NewBigFloat64(1.1234554321),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := utils.NewBigFloat(tt.args.x); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewBigFloat() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewBigFloat64(t *testing.T) {
+	type args struct {
+		x float64
+	}
+	tests := []struct {
+		name string
+		args args
+		want *utils.BigFloat
+	}{
+		{
+			name: "new zero BigFloat",
+			args: args{x: 0},
+			want: utils.NewBigFloat(new(big.Float).SetPrec(53)),
+		},
+		{
+			name: "new BigFloat",
+			args: args{x: 1.55553333111},
+			want: (*utils.BigFloat)(big.NewFloat(1.55553333111)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := utils.NewBigFloat64(tt.args.x); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewBigFloat64() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBigFloat_Native(t *testing.T) {
+	tests := []struct {
+		name string
+		w    *utils.BigFloat
+		want *big.Float
+	}{
+		{
+			name: "as big.Float",
+			w:    utils.NewBigFloat64(123.45567889),
+			want: big.NewFloat(123.45567889),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.w.Native(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AsBigInt() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBigFloat_UnmarshalBSONValue(t *testing.T) {
+	dataTypeCases := test.Table[bsontype.Type, error]{
+		{Value: bson.TypeInt64, Result: entities.DeserializationError},
+		{Value: bson.TypeString, Result: entities.DeserializationError},
+		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
+		{Value: bson.TypeBinary, Result: entities.DeserializationError},
+		{Value: bson.TypeDouble},
+	}
+
+	zeroRepresentation := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	successCases := test.Table[*utils.BigFloat, []byte]{
+		{Value: utils.NewBigFloat64(0), Result: zeroRepresentation},
+		{Value: utils.NewBigFloat64(5.3333), Result: []byte{0xf7, 0x6, 0x5f, 0x98, 0x4c, 0x55, 0x15, 0x40}},
+		{Value: utils.NewBigFloat64(77), Result: []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x40, 0x53, 0x40}},
+		{Value: utils.NewBigFloat64(5678.51251), Result: []byte{0xdf, 0xf8, 0xda, 0x33, 0x83, 0x2e, 0xb6, 0x40}},
+		{Value: utils.NewBigFloat64(math.MaxFloat64 - 500.1235), Result: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xef, 0x7f}},
+		{Value: utils.NewBigFloat64(math.MaxFloat64), Result: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xef, 0x7f}},
+	}
+
+	var nilBigFloat *utils.BigFloat
+	var bytes []byte
+	var bsonTypeResult bsontype.Type
+	var err error
+	bigFloatValue := utils.NewBigFloat64(1.12351251)
+	require.ErrorIs(t, nilBigFloat.UnmarshalBSONValue(bson.TypeString, []byte{}), entities.DeserializationError)
+	test.RunTable(t, dataTypeCases, func(bsonType bsontype.Type) error {
+		return bigFloatValue.UnmarshalBSONValue(bsonType, zeroRepresentation)
+	})
+	test.RunTable(t, successCases, func(value *utils.BigFloat) []byte {
+		bsonTypeResult, bytes, err = value.MarshalBSONValue()
+		require.NoError(t, err)
+		assert.Equal(t, bson.TypeDouble, bsonTypeResult)
+		return bytes
+	})
 }

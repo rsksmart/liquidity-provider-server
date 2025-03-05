@@ -70,7 +70,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var daoTxAmounts usecases.DaoAmounts
 	var hash string
 	var errorArgs usecases.ErrorArgs
-	var gasPrice, feeInWei *entities.Wei
+	var btcFeeEstimation blockchain.BtcFeeEstimation
+	var creationData quote.PegoutCreationData
 	var err error
 
 	gasFeeDao := new(entities.Wei)
@@ -79,7 +80,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseErrorArgs(usecases.GetPegoutQuoteId, err, errorArgs)
 	}
 
-	if feeInWei, err = useCase.btcWallet.EstimateTxFees(request.to, request.valueToTransfer); err != nil &&
+	if btcFeeEstimation, err = useCase.btcWallet.EstimateTxFees(request.to, request.valueToTransfer); err != nil &&
 		strings.Contains(strings.ToLower(err.Error()), "insufficient funds") {
 		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, usecases.NoLiquidityError)
 	} else if err != nil {
@@ -90,14 +91,14 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, err
 	}
 
-	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
-		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	if creationData, err = useCase.buildCreationData(ctx, btcFeeEstimation, configuration); err != nil {
+		return GetPegoutQuoteResult{}, err
 	}
 
-	gasFeeDao.Mul(daoTxAmounts.DaoGasAmount, gasPrice)
+	gasFeeDao.Mul(daoTxAmounts.DaoGasAmount, creationData.GasPrice)
 	fees := quote.Fees{
-		CallFee:          configuration.CallFee,
-		GasFee:           new(entities.Wei).Add(feeInWei, gasFeeDao),
+		CallFee:          quote.CalculateCallFee(request.valueToTransfer, configuration),
+		GasFee:           new(entities.Wei).Add(btcFeeEstimation.Value, gasFeeDao),
 		PenaltyFee:       configuration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
 	}
@@ -105,7 +106,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPegoutQuoteResult{}, err
 	}
 
-	if hash, err = useCase.persistQuote(ctx, pegoutQuote); err != nil {
+	if hash, err = useCase.persistQuote(ctx, pegoutQuote, creationData); err != nil {
 		return GetPegoutQuoteResult{}, err
 	}
 
@@ -192,15 +193,36 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	return daoTxAmounts, nil
 }
 
-func (useCase *GetQuoteUseCase) persistQuote(ctx context.Context, pegoutQuote quote.PegoutQuote) (string, error) {
+func (useCase *GetQuoteUseCase) persistQuote(ctx context.Context, pegoutQuote quote.PegoutQuote, creationData quote.PegoutCreationData) (string, error) {
 	var hash string
 	var err error
 	if hash, err = useCase.contracts.Lbc.HashPegoutQuote(pegoutQuote); err != nil {
 		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
-	if err = useCase.pegoutQuoteRepository.InsertQuote(ctx, hash, pegoutQuote); err != nil {
+	createdQuote := quote.CreatedPegoutQuote{Quote: pegoutQuote, CreationData: creationData, Hash: hash}
+	if err = useCase.pegoutQuoteRepository.InsertQuote(ctx, createdQuote); err != nil {
 		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 	return hash, nil
+}
+
+func (useCase *GetQuoteUseCase) buildCreationData(
+	ctx context.Context,
+	btcFeeEstimation blockchain.BtcFeeEstimation,
+	configuration liquidity_provider.PegoutConfiguration,
+) (quote.PegoutCreationData, error) {
+	var gasPrice *entities.Wei
+	var err error
+
+	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
+		return quote.PegoutCreationData{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+	creationData := quote.PegoutCreationData{
+		FeeRate:       btcFeeEstimation.FeeRate,
+		GasPrice:      gasPrice,
+		FeePercentage: configuration.FeePercentage,
+		FixedFee:      configuration.FixedFee,
+	}
+	return creationData, nil
 }

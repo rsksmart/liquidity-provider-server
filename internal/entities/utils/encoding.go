@@ -2,8 +2,52 @@ package utils
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"math/big"
 )
+
+type BigFloat big.Float
+
+func (bf *BigFloat) Native() *big.Float {
+	return (*big.Float)(bf)
+}
+
+func NewBigFloat64(value float64) *BigFloat {
+	return (*BigFloat)(big.NewFloat(value))
+}
+
+func NewBigFloat(value *big.Float) *BigFloat {
+	return (*BigFloat)(value)
+}
+
+func (bf *BigFloat) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	if bf == nil {
+		return bson.MarshalValue(float64(0))
+	}
+	value, _ := bf.Native().Float64()
+	return bson.MarshalValue(value)
+}
+
+func (bf *BigFloat) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
+	if bf == nil || bsonType != bson.TypeDouble || len(bytes) == 0 {
+		return entities.DeserializationError
+	}
+	var value float64
+	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+		return errors.Join(entities.DeserializationError, err)
+	}
+	result := big.NewFloat(value)
+	bf.Native().Set(result)
+	return nil
+}
+
+func (bf *BigFloat) String() string {
+	return bf.Native().String()
+}
 
 func DecodeKey(key string, expectedBytes int) ([]byte, error) {
 	var err error

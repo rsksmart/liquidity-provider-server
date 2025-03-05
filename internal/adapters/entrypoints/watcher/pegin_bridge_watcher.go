@@ -119,7 +119,7 @@ func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Eve
 		return
 	}
 	if parsedEvent.RetainedQuote.State == quote.PeginStateCallForUserSucceeded {
-		watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.PeginQuote, parsedEvent.RetainedQuote)
+		watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.PeginQuote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
@@ -16,7 +17,8 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		TimeForDeposit: 3600,
 		CallTime:       7200,
 		PenaltyFee:     entities.NewUWei(1000000000000000),
-		CallFee:        entities.NewUWei(10000000000000000),
+		FixedFee:       entities.NewUWei(10000000000000000),
+		FeePercentage:  utils.NewBigFloat64(0.01),
 		MaxValue:       entities.NewUWei(10000000000000000000),
 		MinValue:       entities.NewUWei(600000000000000000),
 	}
@@ -24,7 +26,8 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		TimeForDeposit:       3600,
 		ExpireTime:           7200,
 		PenaltyFee:           entities.NewUWei(1000000000000000),
-		CallFee:              entities.NewUWei(10000000000000000),
+		FixedFee:             entities.NewUWei(10000000000000000),
+		FeePercentage:        utils.NewBigFloat64(0.01),
 		MaxValue:             entities.NewUWei(10000000000000000000),
 		MinValue:             entities.NewUWei(600000000000000000),
 		ExpireBlocks:         500,
@@ -53,8 +56,8 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 		signed entities.Signed[any]
 		err    error
 	}{
-		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daae424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}},
-		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "a2f6a24d88cd648ea11708bdbdda3dad8123b95c244751055275c5ff4ae2dbaf"}},
+		{signed: entities.Signed[any]{Value: peginConfig, Hash: "2f8528af602b84e2b8083ed9bbbf21bca3bcfcc78948ed970c65aa58f4271870"}},
+		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "e405a29c1e0469a284f45aa8b26c95a84d8ee993664e0cf2cc5f1a963212e432"}},
 		{signed: entities.Signed[any]{Value: generalConfig, Hash: "77a1d9b2426955a2dbeb4e6b561607fbd8bd044de7a60c1ed77126e72ea3cb18"}},
 		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daab424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}, err: entities.IntegrityError},
 		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "3b3e7b075eb60b8c249f44a117f406c64992bafda1273f540277448abd14077e"}, err: entities.IntegrityError},

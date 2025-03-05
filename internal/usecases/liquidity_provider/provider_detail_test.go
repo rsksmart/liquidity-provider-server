@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -24,13 +25,15 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 		SiteKey:               captchaKey,
 		LiquidityCheckEnabled: true,
 		Pegin: lp.LiquidityProviderDetail{
-			Fee:                   entities.NewWei(100),
+			FixedFee:              entities.NewWei(100),
+			FeePercentage:         utils.NewBigFloat64(1.33),
 			MinTransactionValue:   entities.NewWei(1000),
 			MaxTransactionValue:   entities.NewWei(10000),
 			RequiredConfirmations: 10,
 		},
 		Pegout: lp.LiquidityProviderDetail{
-			Fee:                   entities.NewWei(200),
+			FixedFee:              entities.NewWei(200),
+			FeePercentage:         utils.NewBigFloat64(2.5),
 			MinTransactionValue:   entities.NewWei(2000),
 			MaxTransactionValue:   entities.NewWei(20000),
 			RequiredConfirmations: 20,
@@ -88,7 +91,8 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 		TimeForDeposit: lp.PeginTimeForDeposit,
 		CallTime:       lp.PeginCallTime,
 		PenaltyFee:     entities.NewWei(lp.PeginPenaltyFee),
-		CallFee:        entities.NewWei(100),
+		FixedFee:       entities.NewWei(100),
+		FeePercentage:  utils.NewBigFloat64(1.33),
 		MaxValue:       entities.NewWei(10000),
 		MinValue:       entities.NewWei(1000),
 	}).Once()
@@ -96,7 +100,8 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 		TimeForDeposit: lp.PegoutTimeForDeposit,
 		ExpireTime:     lp.PegoutExpireTime,
 		PenaltyFee:     entities.NewWei(lp.PegoutPenaltyFee),
-		CallFee:        entities.NewWei(200),
+		FixedFee:       entities.NewWei(200),
+		FeePercentage:  utils.NewBigFloat64(2.5),
 		MaxValue:       entities.NewWei(20000),
 		MinValue:       entities.NewWei(2000),
 		ExpireBlocks:   lp.PegoutExpireBlocks,
