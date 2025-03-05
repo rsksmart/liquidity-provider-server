@@ -1034,6 +1034,19 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/pegin:
+    get:
+      description: ' Get the last pegins on the API. Included in the management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/'
+        required: true
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegin Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
