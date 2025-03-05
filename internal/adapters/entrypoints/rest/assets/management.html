@@ -89,7 +89,22 @@
                         </ul>
                         <div class="tab-content" id="configTabContent">
                             <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
-                                <div id="generalConfig"></div>
+                                <div id="generalConfig">
+                                    <div class="mb-3">
+                                        <label class="form-label">fixedFee</label>
+                                        <div class="input-container">
+                                            <input type="checkbox" class="form-check-input" style="margin-right: 10px;" data-key="fixedFee_enabled">
+                                            <input type="text" class="form-control" style="width: 40%;" data-key="fixedFee" value="0" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">percentageFee</label>
+                                        <div class="input-container">
+                                            <input type="checkbox" class="form-check-input" style="margin-right: 10px;" data-key="percentageFee_enabled">
+                                            <input type="text" class="form-control" style="width: 40%;" data-key="percentageFee" value="0" disabled>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="tab-pane fade" id="peginConfig" role="tabpanel" aria-labelledby="peginConfig-tab">
                                 <div id="peginConfig"></div>

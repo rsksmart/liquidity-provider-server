@@ -5,7 +5,9 @@ import {
     validateConfig,
     formatGeneralConfig,
     postConfig,
-    hasDuplicateConfirmationAmounts
+    hasDuplicateConfirmationAmounts,
+    isPercentageFeeKey,
+    isToggableFeeKey
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -47,29 +49,94 @@ const createInput = (section, key, value) => {
     const inputContainer = document.createElement('div');
     inputContainer.classList.add('input-container');
 
-    const input = document.createElement('input');
-    input.style.marginLeft = "10px";
-    input.dataset.key = key;
-    input.dataset.originalValue = value;
-
     if (typeof value === 'boolean') {
-        input.type = 'checkbox';
-        input.classList.add('form-check-input');
-        input.checked = value;
-        input.addEventListener('change', () => setChanged(section.id));
-    } else {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('form-check-input');
+        checkbox.style.marginRight = "10px";
+        checkbox.dataset.key = key;
+        checkbox.checked = value;
+        checkbox.addEventListener('change', () => setChanged(section.id));
+
+        inputContainer.appendChild(checkbox);
+    } else if (isToggableFeeKey(key)) {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('form-check-input');
+        checkbox.style.marginRight = "10px";
+        checkbox.dataset.key = key + '_enabled';
+
+        const input = document.createElement('input');
         input.type = 'text';
         input.style.width = "40%";
         input.classList.add('form-control');
+        input.dataset.key = key;
+        input.dataset.originalValue = value;
+
+        if (value === '0' || value === 0) {
+            checkbox.checked = false;
+            input.value = '0';
+            input.disabled = true;
+        } else {
+            checkbox.checked = true;
+            input.value = isFeeKey(key) ? weiToEther(value) : value;
+            input.disabled = false;
+        }
+
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                input.disabled = false;
+                if (input.dataset.originalValue === '0' || input.dataset.originalValue === 0) {
+                    input.value = '';
+                } else {
+                    input.value = isFeeKey(key) ? weiToEther(input.dataset.originalValue) : input.dataset.originalValue;
+                }
+            } else {
+                input.disabled = true;
+                input.value = '0';
+            }
+            setChanged(section.id);
+            checkFeeWarnings();
+        });
+
+        input.addEventListener('input', () => setChanged(section.id));
+        inputContainer.appendChild(checkbox);
+        inputContainer.appendChild(input);
+
+        const questionIcon = createQuestionIcon(getTooltipText(key));
+        label.appendChild(questionIcon);
+    } else if (isFeeKey(key)) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.style.width = "40%";
+        input.classList.add('form-control');
+        input.dataset.key = key;
         input.value = isFeeKey(key) ? weiToEther(value) : value;
         input.addEventListener('input', () => setChanged(section.id));
-        if (isFeeKey(key)) {
-            const questionIcon = createQuestionIcon(getTooltipText(key));
-            label.appendChild(questionIcon);
-        }
-    }
+        inputContainer.appendChild(input);
+        const questionIcon = createQuestionIcon(getTooltipText(key));
+        label.appendChild(questionIcon);
+    } else if (isPercentageFeeKey(key)) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.style.width = "40%";
+        input.classList.add('form-control');
+        input.dataset.key = key;
+        input.value = typeof value === 'number' ? value.toString() : value;
+        input.addEventListener('input', () => setChanged(section.id));
 
-    inputContainer.appendChild(input);
+        inputContainer.appendChild(input);
+    } else {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.style.width = "40%";
+        input.classList.add('form-control');
+        input.dataset.key = key;
+        input.value = value;
+        input.addEventListener('input', () => setChanged(section.id));
+
+        inputContainer.appendChild(input);
+    }
     div.appendChild(label);
     div.appendChild(inputContainer);
     section.appendChild(div);
@@ -101,7 +168,9 @@ const getTooltipText = (key) => {
         maxValue: 'The maximum value (in BTC) allowed for a transaction.',
         minValue: 'The minimum value (in BTC) allowed for a transaction.',
         expireBlocks: 'The number of blocks after which a quote is considered expired.',
-        bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.'
+        bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.',
+        fixedFee: 'A fixed fee charged for transactions.',
+        percentageFee: 'A percentage fee charged based on the transaction amount.'
     };
     return tooltips[key] || 'No description available';
 };
@@ -137,7 +206,7 @@ const createConfirmationConfig = (section, configKey, confirmations) => {
     addButton.addEventListener('click', () => {
         const index = entriesContainer.querySelectorAll('.input-group').length;
         createConfirmationEntry(entriesContainer, configKey, index);
-        setChanged(configKey);
+        setChanged(section.id);
     });
 
     container.appendChild(addButton);
@@ -251,6 +320,44 @@ const showErrorToast = (errorMessage) => {
     toast.show();
 };
 
+const showWarningToast = (warningMessage) => {
+    const existingToast = document.getElementById('warningToast');
+    if (existingToast) existingToast.parentNode.removeChild(existingToast);
+    
+    const toastElement = document.createElement('div');
+    toastElement.id = 'warningToast';
+    toastElement.classList.add('toast', 'text-bg-warning');
+    toastElement.setAttribute('role', 'alert');
+    toastElement.setAttribute('aria-live', 'assertive');
+    toastElement.setAttribute('aria-atomic', 'true');
+    toastElement.innerHTML = `
+        <div class="toast-header">
+            <strong class="me-auto">Warning</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${warningMessage}
+        </div>
+    `;
+    document.querySelector('.toast-container').appendChild(toastElement);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+};
+
+function checkFeeWarnings() {
+    const fixedFeeCheckbox = document.querySelector('input[data-key="fixedFee_enabled"]');
+    const percentageFeeCheckbox = document.querySelector('input[data-key="percentageFee_enabled"]');
+    const existingToast = document.getElementById('warningToast');
+    
+    if (fixedFeeCheckbox && percentageFeeCheckbox) {
+        if (!fixedFeeCheckbox.checked && !percentageFeeCheckbox.checked) {
+            if (!existingToast) showWarningToast('It is recommended to enable at least one of "percentageFee" or "fixedFee".');
+        } else {
+            if (existingToast) existingToast.parentNode.removeChild(existingToast);
+        }
+    }
+}
+
 function getConfirmationConfig(sectionId) {
     const entries = document.querySelectorAll(`#${sectionId} .confirmation-config`);
     const config = {};
@@ -303,25 +410,36 @@ function getRegularConfig(sectionId) {
     const config = {};
 
     inputs.forEach(input => {
+        const key = input.dataset.key;
         let value;
-        if (isFeeKey(input.dataset.key)) {
-            try {
-                value = etherToWei(input.value).toString();
-            } catch (error) {
-                showErrorToast(`Invalid input "${input.value}" for field "${input.dataset.key}". Please enter a valid number.`);
-                throw error;
-            }
+
+        if (input.disabled) {
+            value = '0';
         } else {
-            value = input.value;
-            if (!isNaN(value) && !isNaN(parseFloat(value))) {
-                value = Number(value);
+            if (isFeeKey(key)) {
+                try {
+                    value = etherToWei(input.value).toString();
+                } catch (error) {
+                    showErrorToast(`Invalid input "${input.value}" for field "${key}". Please enter a valid number.`);
+                    throw error;
+                }
+            } else if (isPercentageFeeKey(key)) {
+                value = input.value.trim();
+                if (isNaN(value) || value === '') {
+                    showErrorToast(`Invalid input "${input.value}" for percentageFee. Please enter a valid number.`);
+                    throw new Error('Invalid percentageFee');
+                }
+            } else {
+                value = input.value;
+                if (!isNaN(value) && value !== '') value = Number(value);
             }
         }
-        config[input.dataset.key] = value;
+        config[key] = value;
     });
 
     checkboxes.forEach(input => {
-        config[input.dataset.key] = input.checked;
+        const key = input.dataset.key;
+        if (!key.endsWith('_enabled')) config[key] = input.checked;
     });
 
     return config;
@@ -454,4 +572,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
+    checkFeeWarnings();
 });
