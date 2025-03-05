@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	log "github.com/sirupsen/logrus"
+	"math"
 	"math/big"
 	"net/http"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -28,13 +30,57 @@ func PositiveStringValidationRule(value string) bool {
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func init() {
-	err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	})
-	if err != nil {
-		log.Fatal("Error registering validation: ", err)
+func ZeroOrPositiveStringValidationRule(value string) bool {
+	bigIntValue := new(big.Int)
+	bigIntValue.SetString(value, 10)
+	return bigIntValue.Cmp(big.NewInt(0)) >= 0
+}
+
+func NonNegativeStringValidationRule(value string) bool {
+	bigIntValue := new(big.Int)
+	bigIntValue.SetString(value, 10)
+	return bigIntValue.Cmp(big.NewInt(0)) >= 0
+}
+
+func percentageFeeValidator(fl validator.FieldLevel) bool {
+	val := fl.Field().Float()
+	if val < 0 || val > 100 {
+		return false
 	}
+	valTimes100 := val * 100
+	return math.Mod(valTimes100, 1) == 0
+}
+
+func init() {
+	if err := registerValidations(); err != nil {
+		log.Fatal("Error registering validations: ", err)
+	}
+}
+
+func registerValidations() error {
+	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
+		return PositiveStringValidationRule(field.Field().String())
+	}); err != nil {
+		return fmt.Errorf("registering positive_string validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
+		return fmt.Errorf("registering percentage_fee validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("non_negative_string", func(field validator.FieldLevel) bool {
+		return NonNegativeStringValidationRule(field.Field().String())
+	}); err != nil {
+		return fmt.Errorf("registering non_negative_string validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("zero_or_positive_string", func(field validator.FieldLevel) bool {
+		return ZeroOrPositiveStringValidationRule(field.Field().String())
+	}); err != nil {
+		return fmt.Errorf("registering zero_or_positive_string validation: %w", err)
+	}
+
+	return nil
 }
 
 type ErrorDetails = map[string]any
