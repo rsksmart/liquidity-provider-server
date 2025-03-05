@@ -1,10 +1,11 @@
 package pkg
 
 import (
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 type ProviderDetail struct {
@@ -45,8 +46,8 @@ type PeginConfigurationDTO struct {
 	TimeForDeposit uint32  `json:"timeForDeposit" validate:"required"`
 	CallTime       uint32  `json:"callTime" validate:"required"`
 	PenaltyFee     string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	FixedFee       string  `json:"fixedFee" validate:"required,numeric,positive_string"`
-	FeePercentage  float64 `json:"feePercentage" validate:"required,numeric,gt=0"`
+	FixedFee       string  `json:"fixedFee" validate:"required,numeric,zero_or_positive_string"`
+	FeePercentage  float64 `json:"feePercentage" validate:"numeric,percentage_fee,zero_or_positive_string"`
 	MaxValue       string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue       string  `json:"minValue" validate:"required,numeric,positive_string"`
 }
@@ -59,8 +60,8 @@ type PegoutConfigurationDTO struct {
 	TimeForDeposit       uint32  `json:"timeForDeposit" validate:"required"`
 	ExpireTime           uint32  `json:"expireTime" validate:"required"`
 	PenaltyFee           string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	FixedFee             string  `json:"fixedFee" validate:"required,numeric,positive_string"`
-	FeePercentage        float64 `json:"feePercentage" validate:"required,numeric,gt=0"`
+	FixedFee             string  `json:"fixedFee" validate:"required,numeric,zero_or_positive_string"`
+	FeePercentage        float64 `json:"feePercentage" validate:"required,percentage_fee,zero_or_positive_string"`
 	MaxValue             string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue             string  `json:"minValue" validate:"required,numeric,positive_string"`
 	ExpireBlocks         uint64  `json:"expireBlocks" validate:"required"`
@@ -145,6 +146,35 @@ func FromPegoutConfigurationDTO(dto PegoutConfigurationDTO) liquidity_provider.P
 		MinValue:             entities.NewBigWei(minValue),
 		ExpireBlocks:         dto.ExpireBlocks,
 		BridgeTransactionMin: entities.NewBigWei(bridgeTransactionMin),
+	}
+}
+
+func ToPeginConfigurationDTO(config liquidity_provider.PeginConfiguration) PeginConfigurationDTO {
+	feePercentage, _ := config.FeePercentage.Native().Float64()
+
+	return PeginConfigurationDTO{
+		TimeForDeposit: config.TimeForDeposit,
+		CallTime:       config.CallTime,
+		PenaltyFee:     config.PenaltyFee.AsBigInt().String(),
+		FixedFee:       config.FixedFee.AsBigInt().String(),
+		FeePercentage:  feePercentage,
+		MaxValue:       config.MaxValue.AsBigInt().String(),
+		MinValue:       config.MinValue.AsBigInt().String(),
+	}
+}
+
+func ToPegoutConfigurationDTO(config liquidity_provider.PegoutConfiguration) PegoutConfigurationDTO {
+	feePercentage, _ := config.FeePercentage.Native().Float64()
+	return PegoutConfigurationDTO{
+		TimeForDeposit:       config.TimeForDeposit,
+		ExpireTime:           config.ExpireTime,
+		PenaltyFee:           config.PenaltyFee.AsBigInt().String(),
+		FixedFee:             config.FixedFee.AsBigInt().String(),
+		FeePercentage:        feePercentage,
+		MaxValue:             config.MaxValue.AsBigInt().String(),
+		MinValue:             config.MinValue.AsBigInt().String(),
+		ExpireBlocks:         config.ExpireBlocks,
+		BridgeTransactionMin: config.BridgeTransactionMin.AsBigInt().String(),
 	}
 }
 
