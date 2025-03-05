@@ -60,8 +60,8 @@ components:
           description: Available liquidity for PegIn operations in wei
           example: "5000000000000000000"
         pegoutLiquidityAmount:
-          description: Available liquidity for PegOut operations in satoshi
-          example: "500000000"
+          description: Available liquidity for PegOut operations in wei
+          example: "5000000000000000000"
       required:
       - peginLiquidityAmount
       - pegoutLiquidityAmount
@@ -977,6 +977,19 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/pegin:
+    get:
+      description: ' Get the last pegins on the API. Included in the management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/'
+        required: true
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegin Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'
