@@ -52,7 +52,7 @@ type CreatedPegoutQuote struct {
 
 type PegoutCreationData struct {
 	FeeRate       *utils.BigFloat `json:"feeRate" bson:"fee_rate" validate:"required"`
-	FeePercentage *utils.BigFloat `json:"percentageFee" bson:"percentage_fee" validate:"required"`
+	FeePercentage *utils.BigFloat `json:"feePercentage" bson:"percentage_fee" validate:"required"`
 	GasPrice      *entities.Wei   `json:"gasPrice" bson:"gas_price" validate:"required"`
 	FixedFee      *entities.Wei   `json:"fixedFee" bson:"fixed_fee" validate:"required"`
 }

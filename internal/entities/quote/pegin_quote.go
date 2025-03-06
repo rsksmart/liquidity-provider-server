@@ -45,7 +45,7 @@ type CreatedPeginQuote struct {
 
 type PeginCreationData struct {
 	GasPrice      *entities.Wei   `json:"gasPrice" bson:"gas_price" validate:"required"`
-	FeePercentage *utils.BigFloat `json:"percentageFee" bson:"percentage_fee" validate:"required"`
+	FeePercentage *utils.BigFloat `json:"feePercentage" bson:"percentage_fee" validate:"required"`
 	FixedFee      *entities.Wei   `json:"fixedFee" bson:"fixed_fee" validate:"required"`
 }
 
