@@ -73,7 +73,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, toAddress, result.PegoutQuote.DepositAddress)
 	assert.Equal(t, toAddress, result.PegoutQuote.BtcRefundAddress)
 	assert.Equal(t, entities.NewWei(1000000000000000000), result.PegoutQuote.Value)
-	// assert.Equal(t, entities.NewWei(200), result.PegoutQuote.CallFee) // TODO update expected value in GBI-2528
+	assert.Equal(t, entities.NewWei(15500000000000200), result.PegoutQuote.CallFee)
 	assert.Equal(t, uint64(20), result.PegoutQuote.PenaltyFee)
 	assert.Equal(t, "0x1234", result.PegoutQuote.LbcAddress)
 	assert.NotEmpty(t, result.PegoutQuote.Nonce)
