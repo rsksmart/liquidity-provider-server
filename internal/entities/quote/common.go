@@ -46,14 +46,32 @@ func ValidateQuoteHash(hash string) error {
 }
 
 func CalculateCallFee(amount *entities.Wei, config PegConfiguration) *entities.Wei {
+	var percentage *utils.BigFloat
+	var fixedFee *entities.Wei
 	result := new(entities.Wei)
 
-	percentageFee := calculatePercentageFee(amount, config.GetFeePercentage())
-	result.Add(percentageFee, config.GetFixedFee())
+	if config.GetFeePercentage() != nil {
+		percentage = config.GetFeePercentage()
+	} else {
+		percentage = utils.NewBigFloat64(0)
+	}
 
-	log.Debugf("Percentage fee: %v%% of %v = %v", config.GetFeePercentage(), amount, percentageFee)
-	log.Debugf("Fixed fee: %v", config.GetFixedFee())
-	log.Debugf("Call fee: %v + %v = %v", percentageFee, config.GetFixedFee(), result)
+	if amount == nil {
+		amount = entities.NewBigWei(big.NewInt(0))
+	}
+
+	if config.GetFixedFee() != nil {
+		fixedFee = config.GetFixedFee()
+	} else {
+		fixedFee = entities.NewBigWei(big.NewInt(0))
+	}
+
+	percentageFee := calculatePercentageFee(amount, percentage)
+	result.Add(percentageFee, fixedFee)
+
+	log.Debugf("Percentage fee: %v%% of %v = %v", percentage, amount, percentageFee)
+	log.Debugf("Fixed fee: %v", fixedFee)
+	log.Debugf("Call fee: %v + %v = %v", percentageFee, fixedFee, result)
 	return result
 }
 

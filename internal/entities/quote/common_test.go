@@ -117,6 +117,24 @@ func TestCalculateCallFee(t *testing.T) {
 			fixedFee:      entities.NewWei(1110000031224),
 			result:        entities.NewWei(6043334443333364566),
 		},
+		{
+			amount:        entities.NewWei(7777777777777777789),
+			feePercentage: nil,
+			fixedFee:      entities.NewWei(1110000031224),
+			result:        entities.NewWei(1110000031224),
+		},
+		{
+			amount:        entities.NewWei(7777777777777777789),
+			feePercentage: utils.NewBigFloat64(77.7),
+			fixedFee:      nil,
+			result:        entities.NewWei(6043333333333333342),
+		},
+		{
+			amount:        nil,
+			feePercentage: utils.NewBigFloat64(77.7),
+			fixedFee:      entities.NewWei(1110000031224),
+			result:        entities.NewWei(1110000031224),
+		},
 	}
 	log.SetLevel(log.DebugLevel)
 	for _, tt := range testCases {
