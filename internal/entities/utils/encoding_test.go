@@ -227,70 +227,70 @@ func TestBigFloat_MarshalJSON_Nil(t *testing.T) {
 	require.Equal(t, []byte("null"), data)
 }
 
-func TestBigFloat_MarshalJSON(t *testing.T) {
-	tests := []struct {
-		name      string
-		bf        *utils.BigFloat
-		expected  string
-		expectErr bool
-	}{
-		{
-			name:      "Zero BigFloat",
-			bf:        utils.NewBigFloat64(0),
-			expected:  "0",
-			expectErr: false,
-		},
-		{
-			name:      "Positive BigFloat",
-			bf:        utils.NewBigFloat64(123.456),
-			expected:  "123.456",
-			expectErr: false,
-		},
-		{
-			name:      "Negative BigFloat",
-			bf:        utils.NewBigFloat64(-123.456),
-			expected:  "-123.456",
-			expectErr: false,
-		},
-		{
-			name:      "Large BigFloat",
-			bf:        utils.NewBigFloat(big.NewFloat(1e+20)),
-			expected:  "1e+20",
-			expectErr: false,
-		},
-		{
-			name:      "Small BigFloat",
-			bf:        utils.NewBigFloat(big.NewFloat(1e-20)),
-			expected:  "1e-20",
-			expectErr: false,
-		},
-		{
-			name:      "Scientific notation",
-			bf:        utils.NewBigFloat(big.NewFloat(1.2345e+10)),
-			expected:  "1.2345e+10",
-			expectErr: false,
-		},
-		{
-			name:      "Negative scientific notation",
-			bf:        utils.NewBigFloat(big.NewFloat(-1.2345e+10)),
-			expected:  "-1.2345e+10",
-			expectErr: false,
-		},
-		{
-			name:      "Maximum float64",
-			bf:        utils.NewBigFloat(big.NewFloat(math.MaxFloat64)),
-			expected:  "1.7976931348623157e+308",
-			expectErr: false,
-		},
-		{
-			name:      "Minimum positive float64",
-			bf:        utils.NewBigFloat(big.NewFloat(math.SmallestNonzeroFloat64)),
-			expected:  "5e-324",
-			expectErr: false,
-		},
-	}
+var bigFloatMarshalJSONTests = []struct {
+	name      string
+	bf        *utils.BigFloat
+	expected  string
+	expectErr bool
+}{
+	{
+		name:      "Zero BigFloat",
+		bf:        utils.NewBigFloat64(0),
+		expected:  "0",
+		expectErr: false,
+	},
+	{
+		name:      "Positive BigFloat",
+		bf:        utils.NewBigFloat64(123.456),
+		expected:  "123.456",
+		expectErr: false,
+	},
+	{
+		name:      "Negative BigFloat",
+		bf:        utils.NewBigFloat64(-123.456),
+		expected:  "-123.456",
+		expectErr: false,
+	},
+	{
+		name:      "Large BigFloat",
+		bf:        utils.NewBigFloat(big.NewFloat(1e+20)),
+		expected:  "1e+20",
+		expectErr: false,
+	},
+	{
+		name:      "Small BigFloat",
+		bf:        utils.NewBigFloat(big.NewFloat(1e-20)),
+		expected:  "1e-20",
+		expectErr: false,
+	},
+	{
+		name:      "Scientific notation",
+		bf:        utils.NewBigFloat(big.NewFloat(1.2345e+10)),
+		expected:  "1.2345e+10",
+		expectErr: false,
+	},
+	{
+		name:      "Negative scientific notation",
+		bf:        utils.NewBigFloat(big.NewFloat(-1.2345e+10)),
+		expected:  "-1.2345e+10",
+		expectErr: false,
+	},
+	{
+		name:      "Maximum float64",
+		bf:        utils.NewBigFloat(big.NewFloat(math.MaxFloat64)),
+		expected:  "1.7976931348623157e+308",
+		expectErr: false,
+	},
+	{
+		name:      "Minimum positive float64",
+		bf:        utils.NewBigFloat(big.NewFloat(math.SmallestNonzeroFloat64)),
+		expected:  "5e-324",
+		expectErr: false,
+	},
+}
 
-	for _, tt := range tests {
+func TestBigFloat_MarshalJSON(t *testing.T) {
+	for _, tt := range bigFloatMarshalJSONTests {
 		t.Run(tt.name, func(t *testing.T) {
 			data, err := tt.bf.MarshalJSON()
 			if tt.expectErr {
@@ -303,65 +303,65 @@ func TestBigFloat_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestBigFloat_UnmarshalJSON_ValidInputs(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected *big.Float
-	}{
-		{
-			name:     "Valid positive number",
-			input:    "123.456",
-			expected: big.NewFloat(123.456),
-		},
-		{
-			name:     "Valid negative number",
-			input:    "-123.456",
-			expected: big.NewFloat(-123.456),
-		},
-		{
-			name:     "Zero",
-			input:    "0",
-			expected: big.NewFloat(0),
-		},
-		{
-			name:     "Scientific notation",
-			input:    "1.2345e+10",
-			expected: big.NewFloat(1.2345e+10),
-		},
-		{
-			name:     "Negative scientific notation",
-			input:    "-1.2345e+10",
-			expected: big.NewFloat(-1.2345e+10),
-		},
-		{
-			name:     "Whitespace input",
-			input:    "   123.456   ",
-			expected: big.NewFloat(123.456),
-		},
-		{
-			name:     "Maximum float64",
-			input:    "1.7976931348623157e+308",
-			expected: big.NewFloat(math.MaxFloat64),
-		},
-		{
-			name:     "Minimum positive float64",
-			input:    "5e-324",
-			expected: big.NewFloat(math.SmallestNonzeroFloat64),
-		},
-		{
-			name:     "Underflow number",
-			input:    "1e-400",
-			expected: big.NewFloat(0.0),
-		},
-		{
-			name:     "Negative underflow number",
-			input:    "-1e-400",
-			expected: big.NewFloat(math.Copysign(0, -1)),
-		},
-	}
+var bigFloatUnmarshalJSONValidInputs = []struct {
+	name     string
+	input    string
+	expected *big.Float
+}{
+	{
+		name:     "Valid positive number",
+		input:    "123.456",
+		expected: big.NewFloat(123.456),
+	},
+	{
+		name:     "Valid negative number",
+		input:    "-123.456",
+		expected: big.NewFloat(-123.456),
+	},
+	{
+		name:     "Zero",
+		input:    "0",
+		expected: big.NewFloat(0),
+	},
+	{
+		name:     "Scientific notation",
+		input:    "1.2345e+10",
+		expected: big.NewFloat(1.2345e+10),
+	},
+	{
+		name:     "Negative scientific notation",
+		input:    "-1.2345e+10",
+		expected: big.NewFloat(-1.2345e+10),
+	},
+	{
+		name:     "Whitespace input",
+		input:    "   123.456   ",
+		expected: big.NewFloat(123.456),
+	},
+	{
+		name:     "Maximum float64",
+		input:    "1.7976931348623157e+308",
+		expected: big.NewFloat(math.MaxFloat64),
+	},
+	{
+		name:     "Minimum positive float64",
+		input:    "5e-324",
+		expected: big.NewFloat(math.SmallestNonzeroFloat64),
+	},
+	{
+		name:     "Underflow number",
+		input:    "1e-400",
+		expected: big.NewFloat(0.0),
+	},
+	{
+		name:     "Negative underflow number",
+		input:    "-1e-400",
+		expected: big.NewFloat(math.Copysign(0, -1)),
+	},
+}
 
-	for _, tt := range tests {
+func TestBigFloat_UnmarshalJSON_ValidInputs(t *testing.T) {
+	for _, tt := range bigFloatUnmarshalJSONValidInputs {
 		t.Run(tt.name, func(t *testing.T) {
 			var bf utils.BigFloat
 			err := bf.UnmarshalJSON([]byte(tt.input))
