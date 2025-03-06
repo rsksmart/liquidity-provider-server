@@ -88,9 +88,6 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context) (GetPeginReportRe
 }
 
 func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.PeginQuote) *entities.Wei {
-	if len(quotes) == 0 {
-		return entities.NewWei(0)
-	}
 	minimum := quotes[0].Value
 
 	if len(quotes) > 1 {
@@ -105,9 +102,6 @@ func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.
 }
 
 func (useCase *GetPeginReportUseCase) calculateMaximumQuoteValue(quotes []quote.PeginQuote) *entities.Wei {
-	if len(quotes) == 0 {
-		return entities.NewWei(0)
-	}
 	maximum := quotes[0].Value
 
 	if len(quotes) > 1 {
