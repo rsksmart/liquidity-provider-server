@@ -27,6 +27,7 @@ const (
 type PeginQuoteRepository interface {
 	InsertQuote(ctx context.Context, hash string, quote PeginQuote) error
 	GetQuote(ctx context.Context, hash string) (*PeginQuote, error)
+	GetQuotes(ctx context.Context, hashes []string) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error

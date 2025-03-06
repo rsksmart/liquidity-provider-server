@@ -338,3 +338,45 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 		assert.Zero(t, count)
 	})
 }
+
+func TestPeginMongoRepository_GetQuotes(t *testing.T) {
+	t.Run("Successfully retrieves quotes", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
+		log.SetLevel(log.DebugLevel)
+		hashes := []string{testRetainedPegoutQuote.QuoteHash}
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("Find", mock.Anything,
+			bson.M{"hash": bson.M{"$in": hashes}},
+		).Return(mongoDb.NewCursorFromDocuments([]any{testPeginQuote}, nil, nil)).Once()
+		result, err := repo.GetQuotes(context.Background(), hashes)
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.Equal(t, []quote.PeginQuote{testPeginQuote}, result)
+	})
+
+	t.Run("Fails validation for hashes", func(t *testing.T) {
+		client, _ := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
+
+		invalidHashes := []string{"invalidHash"}
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+
+		_, err := repo.GetQuotes(context.Background(), invalidHashes)
+		require.Error(t, err)
+		assert.Equal(t, "invalid quote hash length: expected 64 characters, got 11", err.Error())
+	})
+
+	t.Run("No quotes found", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
+
+		expectedHashes := []string{testRetainedPegoutQuote.QuoteHash}
+		collection.On("Find", mock.Anything, bson.M{"hash": bson.M{"$in": expectedHashes}}).Return(nil, mongoDb.ErrNoDocuments).Once()
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+
+		quotes, err := repo.GetQuotes(context.Background(), expectedHashes)
+		require.NoError(t, err)
+		assert.Nil(t, quotes)
+	})
+}

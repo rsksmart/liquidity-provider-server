@@ -53,16 +53,14 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context) (GetPeginReportRe
 		}, nil
 	}
 
-	quotes := make([]quote.PeginQuote, 0)
+	quoteHashes := make([]string, 0)
 	for _, q := range retained {
-		var peginQuote *quote.PeginQuote
-		peginQuote, err = useCase.peginQuoteRepository.GetQuote(ctx, q.QuoteHash)
-		if err != nil {
-			return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
-		}
-		if peginQuote != nil {
-			quotes = append(quotes, *peginQuote)
-		}
+		quoteHashes = append(quoteHashes, q.QuoteHash)
+	}
+
+	quotes, err := useCase.peginQuoteRepository.GetQuotes(ctx, quoteHashes)
+	if err != nil {
+		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
 	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)

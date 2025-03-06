@@ -27,6 +27,8 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 		{QuoteHash: "hash10"},
 	}
 
+	quoteHashes := []string{"hash1", "hash2", "hash3", "hash4", "hash5", "hash6", "hash7", "hash8", "hash9", "hash10"}
+
 	peginQuotes := []quote.PeginQuote{
 		{Value: entities.NewWei(1000), CallFee: entities.NewWei(10)},
 		{Value: entities.NewWei(2000), CallFee: entities.NewWei(20)},
@@ -51,9 +53,7 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(retainedQuotes, nil).Once()
 
-	for i, retainedQuote := range retainedQuotes {
-		peginQuoteRepository.On("GetQuote", ctx, retainedQuote.QuoteHash).Return(&peginQuotes[i], nil).Once()
-	}
+	peginQuoteRepository.On("GetQuotes", ctx, quoteHashes).Return(peginQuotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
