@@ -30,6 +30,7 @@ type PeginQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPeginQuote) error
 	GetQuote(ctx context.Context, hash string) (*PeginQuote, error)
 	GetPeginCreationData(ctx context.Context, hash string) PeginCreationData
+	GetQuotes(ctx context.Context, hashes []string) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error

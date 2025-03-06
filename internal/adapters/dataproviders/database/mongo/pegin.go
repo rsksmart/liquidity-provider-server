@@ -107,6 +107,39 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	return &result.PeginQuote, nil
 }
 
+func (repo *peginMongoRepository) GetQuotes(ctx context.Context, hashes []string) ([]quote.PeginQuote, error) {
+	var result StoredPeginQuote
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
+
+	collection := repo.conn.Collection(PeginQuoteCollection)
+	filter := bson.M{"hash": bson.M{"$in": hashes}}
+
+	quotesReturn := make([]quote.PeginQuote, 0)
+
+	cursor, err := collection.Find(dbCtx, filter)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	for cursor.Next(ctx) {
+		err := cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		quotesReturn = append(quotesReturn, result.PeginQuote)
+	}
+	logDbInteraction(Read, quotesReturn)
+	return quotesReturn, nil
+}
+
 func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
 	var result quote.RetainedPeginQuote
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)

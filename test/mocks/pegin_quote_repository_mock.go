@@ -185,6 +185,65 @@ func (_c *PeginQuoteRepositoryMock_GetQuote_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// GetQuotes provides a mock function with given fields: ctx, hashes
+func (_m *PeginQuoteRepositoryMock) GetQuotes(ctx context.Context, hashes []string) ([]quote.PeginQuote, error) {
+	ret := _m.Called(ctx, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetQuotes")
+	}
+
+	var r0 []quote.PeginQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]quote.PeginQuote, error)); ok {
+		return rf(ctx, hashes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []quote.PeginQuote); ok {
+		r0 = rf(ctx, hashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.PeginQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, hashes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginQuoteRepositoryMock_GetQuotes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuotes'
+type PeginQuoteRepositoryMock_GetQuotes_Call struct {
+	*mock.Call
+}
+
+// GetQuotes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hashes []string
+func (_e *PeginQuoteRepositoryMock_Expecter) GetQuotes(ctx interface{}, hashes interface{}) *PeginQuoteRepositoryMock_GetQuotes_Call {
+	return &PeginQuoteRepositoryMock_GetQuotes_Call{Call: _e.mock.On("GetQuotes", ctx, hashes)}
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) Run(run func(ctx context.Context, hashes []string)) *PeginQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) Return(_a0 []quote.PeginQuote, _a1 error) *PeginQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) RunAndReturn(run func(context.Context, []string) ([]quote.PeginQuote, error)) *PeginQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRetainedQuote provides a mock function with given fields: ctx, hash
 func (_m *PeginQuoteRepositoryMock) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
 	ret := _m.Called(ctx, hash)
