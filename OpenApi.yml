@@ -221,18 +221,18 @@ components:
       type: object
     PeginCreationDataDTO:
       properties:
+        feePercentage:
+          description: The percentage fee used to compute the call fee
+          type: number
         fixedFee:
           description: The fixed fee used to compute the call fee
           type: integer
         gasPrice:
           description: The gas price used to compute the gas fee
           type: integer
-        percentageFee:
-          description: The percentage fee used to compute the call fee
-          type: number
       required:
       - gasPrice
-      - percentageFee
+      - feePercentage
       - fixedFee
       type: object
     PeginQuoteDTO:
@@ -397,6 +397,9 @@ components:
       type: object
     PegoutCreationDataDTO:
       properties:
+        feePercentage:
+          description: The percentage fee used to compute the call fee
+          type: number
         feeRate:
           description: The fee rate used to compute the gas fee
           type: number
@@ -406,12 +409,9 @@ components:
         gasPrice:
           description: The gas price used to compute the gas fee
           type: integer
-        percentageFee:
-          description: The percentage fee used to compute the call fee
-          type: number
       required:
       - gasPrice
-      - percentageFee
+      - feePercentage
       - fixedFee
       - feeRate
       type: object
