@@ -30,21 +30,9 @@ func PositiveStringValidationRule(value string) bool {
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func ZeroOrPositiveStringValidationRule(value string) bool {
-	bigIntValue := new(big.Int)
-	bigIntValue.SetString(value, 10)
-	return bigIntValue.Cmp(big.NewInt(0)) >= 0
-}
-
-func NonNegativeStringValidationRule(value string) bool {
-	bigIntValue := new(big.Int)
-	bigIntValue.SetString(value, 10)
-	return bigIntValue.Cmp(big.NewInt(0)) >= 0
-}
-
 func percentageFeeValidator(fl validator.FieldLevel) bool {
 	val := fl.Field().Float()
-	if val < 0 || val > 100 {
+	if val < 0 || val >= 100 {
 		return false
 	}
 	valTimes100 := val * 100
@@ -67,19 +55,6 @@ func registerValidations() error {
 	if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
 		return fmt.Errorf("registering percentage_fee validation: %w", err)
 	}
-
-	if err := RequestValidator.RegisterValidation("non_negative_string", func(field validator.FieldLevel) bool {
-		return NonNegativeStringValidationRule(field.Field().String())
-	}); err != nil {
-		return fmt.Errorf("registering non_negative_string validation: %w", err)
-	}
-
-	if err := RequestValidator.RegisterValidation("zero_or_positive_string", func(field validator.FieldLevel) bool {
-		return ZeroOrPositiveStringValidationRule(field.Field().String())
-	}); err != nil {
-		return fmt.Errorf("registering zero_or_positive_string validation: %w", err)
-	}
-
 	return nil
 }
 

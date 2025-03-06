@@ -30,19 +30,16 @@ func (bf *BigFloat) MarshalJSON() ([]byte, error) {
 	if bf == nil {
 		return []byte("null"), nil
 	}
-	valueStr := bf.Native().Text('f', -1)
-	return json.Marshal(valueStr)
+	value, _ := bf.Native().Float64()
+	return json.Marshal(value)
 }
 
 func (bf *BigFloat) UnmarshalJSON(b []byte) error {
-	var valueStr string
-	if err := json.Unmarshal(b, &valueStr); err != nil {
+	var value float64
+	if err := json.Unmarshal(b, &value); err != nil {
 		return err
 	}
-	_, ok := bf.Native().SetString(valueStr)
-	if !ok {
-		return fmt.Errorf("invalid BigFloat value: %s", valueStr)
-	}
+	bf.Native().SetFloat64(value)
 	return nil
 }
 

@@ -46,8 +46,8 @@ type PeginConfigurationDTO struct {
 	TimeForDeposit uint32  `json:"timeForDeposit" validate:"required"`
 	CallTime       uint32  `json:"callTime" validate:"required"`
 	PenaltyFee     string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	FixedFee       string  `json:"fixedFee" validate:"required,numeric,zero_or_positive_string"`
-	FeePercentage  float64 `json:"feePercentage" validate:"numeric,percentage_fee,zero_or_positive_string"`
+	FixedFee       string  `json:"fixedFee" validate:"required,numeric,min=0"`
+	FeePercentage  float64 `json:"feePercentage" validate:"numeric,percentage_fee"`
 	MaxValue       string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue       string  `json:"minValue" validate:"required,numeric,positive_string"`
 }
@@ -60,8 +60,8 @@ type PegoutConfigurationDTO struct {
 	TimeForDeposit       uint32  `json:"timeForDeposit" validate:"required"`
 	ExpireTime           uint32  `json:"expireTime" validate:"required"`
 	PenaltyFee           string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
-	FixedFee             string  `json:"fixedFee" validate:"required,numeric,zero_or_positive_string"`
-	FeePercentage        float64 `json:"feePercentage" validate:"required,percentage_fee,zero_or_positive_string"`
+	FixedFee             string  `json:"fixedFee" validate:"required,numeric,min=0"`
+	FeePercentage        float64 `json:"feePercentage" validate:"required,percentage_fee"`
 	MaxValue             string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue             string  `json:"minValue" validate:"required,numeric,positive_string"`
 	ExpireBlocks         uint64  `json:"expireBlocks" validate:"required"`
