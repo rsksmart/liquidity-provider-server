@@ -475,29 +475,6 @@ func TestLocalLiquidityProvider_PeginConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(message), "Invalid pegin configuration signature")
 	})
-	t.Run("Test ToPeginConfigurationDTO conversion", func(t *testing.T) {
-		config := liquidity_provider.PeginConfiguration{
-			TimeForDeposit: 3600,
-			CallTime:       7200,
-			PenaltyFee:     entities.NewWei(1000000000000000),
-			FixedFee:       entities.NewWei(2000000000000000),
-			FeePercentage:  utils.NewBigFloat64(1.5),
-			MaxValue:       entities.NewWei(1000000000000000000),
-			MinValue:       entities.NewWei(100000000000000000),
-		}
-		dto := pkg.ToPeginConfigurationDTO(config)
-		feePercentage, _ := config.FeePercentage.Native().Float64()
-		expectedDTO := pkg.PeginConfigurationDTO{
-			TimeForDeposit: config.TimeForDeposit,
-			CallTime:       config.CallTime,
-			PenaltyFee:     config.PenaltyFee.AsBigInt().String(),
-			FixedFee:       config.FixedFee.AsBigInt().String(),
-			FeePercentage:  feePercentage,
-			MaxValue:       config.MaxValue.AsBigInt().String(),
-			MinValue:       config.MinValue.AsBigInt().String(),
-		}
-		assert.Equal(t, expectedDTO, dto)
-	})
 }
 
 func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
@@ -560,6 +537,9 @@ func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(message), "Invalid pegout configuration signature")
 	})
+}
+
+func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 	t.Run("Test FromPegoutConfigurationDTO conversion", func(t *testing.T) {
 		dto := pkg.PegoutConfigurationDTO{
 			TimeForDeposit:       3600,
@@ -595,6 +575,29 @@ func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
 		}
 		config := pkg.FromPegoutConfigurationDTO(dto)
 		assert.Equal(t, expectedConfig, config)
+	})
+	t.Run("Test ToPeginConfigurationDTO conversion", func(t *testing.T) {
+		config := liquidity_provider.PeginConfiguration{
+			TimeForDeposit: 3600,
+			CallTime:       7200,
+			PenaltyFee:     entities.NewWei(1000000000000000),
+			FixedFee:       entities.NewWei(2000000000000000),
+			FeePercentage:  utils.NewBigFloat64(1.5),
+			MaxValue:       entities.NewWei(1000000000000000000),
+			MinValue:       entities.NewWei(100000000000000000),
+		}
+		dto := pkg.ToPeginConfigurationDTO(config)
+		feePercentage, _ := config.FeePercentage.Native().Float64()
+		expectedDTO := pkg.PeginConfigurationDTO{
+			TimeForDeposit: config.TimeForDeposit,
+			CallTime:       config.CallTime,
+			PenaltyFee:     config.PenaltyFee.AsBigInt().String(),
+			FixedFee:       config.FixedFee.AsBigInt().String(),
+			FeePercentage:  feePercentage,
+			MaxValue:       config.MaxValue.AsBigInt().String(),
+			MinValue:       config.MinValue.AsBigInt().String(),
+		}
+		assert.Equal(t, expectedDTO, dto)
 	})
 }
 
