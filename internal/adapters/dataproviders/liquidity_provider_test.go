@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"io"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
@@ -13,17 +19,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"io"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (
@@ -473,6 +475,29 @@ func TestLocalLiquidityProvider_PeginConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(message), "Invalid pegin configuration signature")
 	})
+	t.Run("Test ToPeginConfigurationDTO conversion", func(t *testing.T) {
+		config := liquidity_provider.PeginConfiguration{
+			TimeForDeposit: 3600,
+			CallTime:       7200,
+			PenaltyFee:     entities.NewWei(1000000000000000),
+			FixedFee:       entities.NewWei(2000000000000000),
+			FeePercentage:  utils.NewBigFloat64(1.5),
+			MaxValue:       entities.NewWei(1000000000000000000),
+			MinValue:       entities.NewWei(100000000000000000),
+		}
+		dto := pkg.ToPeginConfigurationDTO(config)
+		feePercentage, _ := config.FeePercentage.Native().Float64()
+		expectedDTO := pkg.PeginConfigurationDTO{
+			TimeForDeposit: config.TimeForDeposit,
+			CallTime:       config.CallTime,
+			PenaltyFee:     config.PenaltyFee.AsBigInt().String(),
+			FixedFee:       config.FixedFee.AsBigInt().String(),
+			FeePercentage:  feePercentage,
+			MaxValue:       config.MaxValue.AsBigInt().String(),
+			MinValue:       config.MinValue.AsBigInt().String(),
+		}
+		assert.Equal(t, expectedDTO, dto)
+	})
 }
 
 func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
@@ -535,6 +560,42 @@ func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(message), "Invalid pegout configuration signature")
 	})
+	t.Run("Test FromPegoutConfigurationDTO conversion", func(t *testing.T) {
+		dto := pkg.PegoutConfigurationDTO{
+			TimeForDeposit:       3600,
+			ExpireTime:           7200,
+			PenaltyFee:           "1000000000000000",
+			FixedFee:             "2000000000000000",
+			FeePercentage:        1.5,
+			MaxValue:             "1000000000000000000",
+			MinValue:             "100000000000000000",
+			ExpireBlocks:         500,
+			BridgeTransactionMin: "50000000000000000",
+		}	
+		penaltyFeeBigInt := new(big.Int)
+		penaltyFeeBigInt.SetString(dto.PenaltyFee, 10)
+		fixedFeeBigInt := new(big.Int)
+		fixedFeeBigInt.SetString(dto.FixedFee, 10)
+		maxValueBigInt := new(big.Int)
+		maxValueBigInt.SetString(dto.MaxValue, 10)	
+		minValueBigInt := new(big.Int)
+		minValueBigInt.SetString(dto.MinValue, 10)
+		bridgeTransactionMinBigInt := new(big.Int)
+		bridgeTransactionMinBigInt.SetString(dto.BridgeTransactionMin, 10)
+		expectedConfig := liquidity_provider.PegoutConfiguration{
+			TimeForDeposit:       dto.TimeForDeposit,
+			ExpireTime:           dto.ExpireTime,
+			PenaltyFee:           entities.NewBigWei(penaltyFeeBigInt),
+			FixedFee:             entities.NewBigWei(fixedFeeBigInt),
+			FeePercentage:        utils.NewBigFloat64(dto.FeePercentage),
+			MaxValue:             entities.NewBigWei(maxValueBigInt),
+			MinValue:             entities.NewBigWei(minValueBigInt),
+			ExpireBlocks:         dto.ExpireBlocks,
+			BridgeTransactionMin: entities.NewBigWei(bridgeTransactionMinBigInt),
+		}
+		config := pkg.FromPegoutConfigurationDTO(dto)
+		assert.Equal(t, expectedConfig, config)
+	})
 }
 
 func getGeneralConfigurationMock() *entities.Signed[liquidity_provider.GeneralConfiguration] {
@@ -575,8 +636,8 @@ func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfig
 			MaxValue:       entities.NewBigWei(maxBigInt),
 			MinValue:       entities.NewWei(600000000000000000),
 		},
-		Signature: "5a0005192d17b086afb5db3fb22b03cf90d186db31c5f1a4fcd96f167c03afa34545699ec8e02ec22d07e47100e9e10eca020097aa9f8deb443fbde0423b9c8d01",
-		Hash:      "fc4725bce35251b5b2c465cd58a8846d31f7e135e4d30989c21054e44398d46e",
+		Signature: "bd048ce14c4019414d1dd16772b45260ace58f529300ea9b67831513c8fa42ea764a064c220a8ff31c76274fe7e71732906e5f5010e4a8f0a6dc5067caabde9901",
+		Hash:      "a02af11b36a9ce065a40ea64107f7a0ab9ccfdd309a98c6e2cc9616c9633e462",
 	}
 }
 func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConfiguration] {
@@ -594,7 +655,7 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 			ExpireBlocks:         500,
 			BridgeTransactionMin: entities.NewWei(1500000000000000000),
 		},
-		Signature: "e08bb9e50e58c8fbc4a50082c08139622130a2bcd7de83432d597e69c83a0c3b07c89a7f82d39b86aa370f6ffde3e28314499b6c31ba8d9f8bb0c14a2187b67f00",
-		Hash:      "6d65d3a3f8e83fbeac149306a1ff200e2d65b5fc6caa5833ba76dc00cc196167",
+		Signature: "34412a3d9d528739ca4fb06632b2b81344d693a1b63aba3540ab72450a5cd4003083efd8fb0bfd72a869ba8b07281f9c878b1d1dd66110d2f9662a2eb3e7cb7401",
+		Hash:      "40e2e3f42928a80814f19d897bb3da4119bff12e15cdb60125d9c2f82c590ea3",
 	}
 }
