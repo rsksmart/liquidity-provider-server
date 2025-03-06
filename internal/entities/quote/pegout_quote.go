@@ -2,10 +2,11 @@ package quote
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"time"
 )
 
 const (
@@ -52,7 +53,7 @@ type CreatedPegoutQuote struct {
 
 type PegoutCreationData struct {
 	FeeRate       *utils.BigFloat `json:"feeRate" bson:"fee_rate" validate:"required"`
-	FeePercentage *utils.BigFloat `json:"percentageFee" bson:"percentage_fee" validate:"required"`
+	FeePercentage *utils.BigFloat `json:"percentageFee" bson:"gte=0,lt=100,max_decimal_places=2" validate:"required"`
 	GasPrice      *entities.Wei   `json:"gasPrice" bson:"gas_price" validate:"required"`
 	FixedFee      *entities.Wei   `json:"fixedFee" bson:"fixed_fee" validate:"required"`
 }

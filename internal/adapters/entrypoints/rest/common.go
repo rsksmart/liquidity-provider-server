@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -26,17 +27,24 @@ var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
 
 func PositiveStringValidationRule(value string) bool {
 	bigIntValue := new(big.Int)
-	bigIntValue.SetString(value, 10)
+	_, ok := bigIntValue.SetString(value, 10)
+	if !ok {
+		return false
+	}
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func percentageFeeValidator(fl validator.FieldLevel) bool {
+func decimalPlacesValidator(fl validator.FieldLevel) bool {
 	val := fl.Field().Float()
-	if val < 0 || val >= 100 {
+	param := fl.Param()
+	maxDecimals, err := strconv.Atoi(param)
+	if err != nil {
 		return false
 	}
-	valTimes100 := val * 100
-	return math.Mod(valTimes100, 1) == 0
+	factor := math.Pow10(maxDecimals)
+	valTimesFactor := val * factor
+	diff := math.Abs(valTimesFactor - math.Round(valTimesFactor))
+	return diff < 1e-9
 }
 
 func init() {
@@ -52,8 +60,8 @@ func registerValidations() error {
 		return fmt.Errorf("registering positive_string validation: %w", err)
 	}
 
-	if err := RequestValidator.RegisterValidation("percentage_fee", percentageFeeValidator); err != nil {
-		return fmt.Errorf("registering percentage_fee validation: %w", err)
+	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
+		return fmt.Errorf("registering max_decimal_places validation: %w", err)
 	}
 	return nil
 }
