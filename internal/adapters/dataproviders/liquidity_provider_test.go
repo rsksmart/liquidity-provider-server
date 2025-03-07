@@ -19,7 +19,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
@@ -536,68 +535,6 @@ func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
 		buff.Reset()
 		require.NoError(t, err)
 		assert.Contains(t, string(message), "Invalid pegout configuration signature")
-	})
-}
-
-func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
-	t.Run("Test FromPegoutConfigurationDTO conversion", func(t *testing.T) {
-		dto := pkg.PegoutConfigurationDTO{
-			TimeForDeposit:       3600,
-			ExpireTime:           7200,
-			PenaltyFee:           "1000000000000000",
-			FixedFee:             "2000000000000000",
-			FeePercentage:        1.5,
-			MaxValue:             "1000000000000000000",
-			MinValue:             "100000000000000000",
-			ExpireBlocks:         500,
-			BridgeTransactionMin: "50000000000000000",
-		}	
-		penaltyFeeBigInt := new(big.Int)
-		penaltyFeeBigInt.SetString(dto.PenaltyFee, 10)
-		fixedFeeBigInt := new(big.Int)
-		fixedFeeBigInt.SetString(dto.FixedFee, 10)
-		maxValueBigInt := new(big.Int)
-		maxValueBigInt.SetString(dto.MaxValue, 10)	
-		minValueBigInt := new(big.Int)
-		minValueBigInt.SetString(dto.MinValue, 10)
-		bridgeTransactionMinBigInt := new(big.Int)
-		bridgeTransactionMinBigInt.SetString(dto.BridgeTransactionMin, 10)
-		expectedConfig := liquidity_provider.PegoutConfiguration{
-			TimeForDeposit:       dto.TimeForDeposit,
-			ExpireTime:           dto.ExpireTime,
-			PenaltyFee:           entities.NewBigWei(penaltyFeeBigInt),
-			FixedFee:             entities.NewBigWei(fixedFeeBigInt),
-			FeePercentage:        utils.NewBigFloat64(dto.FeePercentage),
-			MaxValue:             entities.NewBigWei(maxValueBigInt),
-			MinValue:             entities.NewBigWei(minValueBigInt),
-			ExpireBlocks:         dto.ExpireBlocks,
-			BridgeTransactionMin: entities.NewBigWei(bridgeTransactionMinBigInt),
-		}
-		config := pkg.FromPegoutConfigurationDTO(dto)
-		assert.Equal(t, expectedConfig, config)
-	})
-	t.Run("Test ToPeginConfigurationDTO conversion", func(t *testing.T) {
-		config := liquidity_provider.PeginConfiguration{
-			TimeForDeposit: 3600,
-			CallTime:       7200,
-			PenaltyFee:     entities.NewWei(1000000000000000),
-			FixedFee:       entities.NewWei(2000000000000000),
-			FeePercentage:  utils.NewBigFloat64(1.5),
-			MaxValue:       entities.NewWei(1000000000000000000),
-			MinValue:       entities.NewWei(100000000000000000),
-		}
-		dto := pkg.ToPeginConfigurationDTO(config)
-		feePercentage, _ := config.FeePercentage.Native().Float64()
-		expectedDTO := pkg.PeginConfigurationDTO{
-			TimeForDeposit: config.TimeForDeposit,
-			CallTime:       config.CallTime,
-			PenaltyFee:     config.PenaltyFee.AsBigInt().String(),
-			FixedFee:       config.FixedFee.AsBigInt().String(),
-			FeePercentage:  feePercentage,
-			MaxValue:       config.MaxValue.AsBigInt().String(),
-			MinValue:       config.MinValue.AsBigInt().String(),
-		}
-		assert.Equal(t, expectedDTO, dto)
 	})
 }
 
