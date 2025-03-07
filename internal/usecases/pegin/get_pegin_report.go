@@ -91,11 +91,9 @@ func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.
 	}
 	minimum := quotes[0].Value
 
-	if len(quotes) > 1 {
-		for _, q := range quotes[1:] {
-			if q.Value.Cmp(minimum) < 0 {
-				minimum = q.Value
-			}
+	for _, q := range quotes {
+		if q.Value.Cmp(minimum) < 0 {
+			minimum = q.Value
 		}
 	}
 
@@ -108,11 +106,9 @@ func (useCase *GetPeginReportUseCase) calculateMaximumQuoteValue(quotes []quote.
 	}
 	maximum := quotes[0].Value
 
-	if len(quotes) > 1 {
-		for _, q := range quotes[1:] {
-			if q.Value.Cmp(maximum) > 0 {
-				maximum = q.Value
-			}
+	for _, q := range quotes {
+		if q.Value.Cmp(maximum) > 0 {
+			maximum = q.Value
 		}
 	}
 
@@ -139,10 +135,6 @@ func (useCase *GetPeginReportUseCase) calculateAverageQuoteValue(quotes []quote.
 }
 
 func (useCase *GetPeginReportUseCase) calculateTotalFeesCollected(quotes []quote.PeginQuote) *entities.Wei {
-	if len(quotes) == 0 {
-		return entities.NewWei(0)
-	}
-
 	totalFees := entities.NewWei(0)
 
 	for _, q := range quotes {
@@ -153,10 +145,6 @@ func (useCase *GetPeginReportUseCase) calculateTotalFeesCollected(quotes []quote
 }
 
 func (useCase *GetPeginReportUseCase) calculateAverageFeePerQuote(quotes []quote.PeginQuote) (*entities.Wei, error) {
-	if len(quotes) == 0 {
-		return entities.NewWei(0), nil
-	}
-
 	totalFees := useCase.calculateTotalFeesCollected(quotes)
 
 	averageFee, err := totalFees.Div(totalFees, entities.NewWei(int64(len(quotes))))
