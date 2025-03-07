@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	log "github.com/sirupsen/logrus"
+	"math"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -24,17 +27,43 @@ var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
 
 func PositiveStringValidationRule(value string) bool {
 	bigIntValue := new(big.Int)
-	bigIntValue.SetString(value, 10)
+	_, ok := bigIntValue.SetString(value, 10)
+	if !ok {
+		return false
+	}
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func init() {
-	err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	})
+func decimalPlacesValidator(fl validator.FieldLevel) bool {
+	val := fl.Field().Float()
+	param := fl.Param()
+	maxDecimals, err := strconv.Atoi(param)
 	if err != nil {
-		log.Fatal("Error registering validation: ", err)
+		return false
 	}
+	factor := math.Pow10(maxDecimals)
+	valTimesFactor := val * factor
+	diff := math.Abs(valTimesFactor - math.Round(valTimesFactor))
+	return diff < 1e-9
+}
+
+func init() {
+	if err := registerValidations(); err != nil {
+		log.Fatal("Error registering validations: ", err)
+	}
+}
+
+func registerValidations() error {
+	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
+		return PositiveStringValidationRule(field.Field().String())
+	}); err != nil {
+		return fmt.Errorf("registering positive_string validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
+		return fmt.Errorf("registering max_decimal_places validation: %w", err)
+	}
+	return nil
 }
 
 type ErrorDetails = map[string]any

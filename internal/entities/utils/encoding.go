@@ -2,12 +2,14 @@ package utils
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"math/big"
 )
 
 type BigFloat big.Float
@@ -22,6 +24,23 @@ func NewBigFloat64(value float64) *BigFloat {
 
 func NewBigFloat(value *big.Float) *BigFloat {
 	return (*BigFloat)(value)
+}
+
+func (bf *BigFloat) MarshalJSON() ([]byte, error) {
+	if bf == nil {
+		return []byte("null"), nil
+	}
+	value, _ := bf.Native().Float64()
+	return json.Marshal(value)
+}
+
+func (bf *BigFloat) UnmarshalJSON(b []byte) error {
+	var value float64
+	if err := json.Unmarshal(b, &value); err != nil {
+		return err
+	}
+	bf.Native().SetFloat64(value)
+	return nil
 }
 
 func (bf *BigFloat) MarshalBSONValue() (bsontype.Type, []byte, error) {

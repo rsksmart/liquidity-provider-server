@@ -1,14 +1,15 @@
 package utils_test
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"math"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -217,4 +218,396 @@ func TestBigFloat_UnmarshalBSONValue(t *testing.T) {
 		assert.Equal(t, bson.TypeDouble, bsonTypeResult)
 		return bytes
 	})
+}
+
+func TestBigFloat_MarshalJSON_Nil(t *testing.T) {
+	var bf *utils.BigFloat
+	data, err := bf.MarshalJSON()
+	require.NoError(t, err)
+	require.Equal(t, []byte("null"), data)
+}
+
+var bigFloatMarshalJSONTests = []struct {
+	name      string
+	bf        *utils.BigFloat
+	expected  string
+	expectErr bool
+}{
+	{
+		name:      "Zero BigFloat",
+		bf:        utils.NewBigFloat64(0),
+		expected:  "0",
+		expectErr: false,
+	},
+	{
+		name:      "Positive BigFloat",
+		bf:        utils.NewBigFloat64(123.456),
+		expected:  "123.456",
+		expectErr: false,
+	},
+	{
+		name:      "Negative BigFloat",
+		bf:        utils.NewBigFloat64(-123.456),
+		expected:  "-123.456",
+		expectErr: false,
+	},
+	{
+		name:      "Large BigFloat",
+		bf:        utils.NewBigFloat(big.NewFloat(1e+20)),
+		expected:  "1e+20",
+		expectErr: false,
+	},
+	{
+		name:      "Small BigFloat",
+		bf:        utils.NewBigFloat(big.NewFloat(1e-20)),
+		expected:  "1e-20",
+		expectErr: false,
+	},
+	{
+		name:      "Scientific notation",
+		bf:        utils.NewBigFloat(big.NewFloat(1.2345e+10)),
+		expected:  "1.2345e+10",
+		expectErr: false,
+	},
+	{
+		name:      "Negative scientific notation",
+		bf:        utils.NewBigFloat(big.NewFloat(-1.2345e+10)),
+		expected:  "-1.2345e+10",
+		expectErr: false,
+	},
+	{
+		name:      "Maximum float64",
+		bf:        utils.NewBigFloat(big.NewFloat(math.MaxFloat64)),
+		expected:  "1.7976931348623157e+308",
+		expectErr: false,
+	},
+	{
+		name:      "Minimum positive float64",
+		bf:        utils.NewBigFloat(big.NewFloat(math.SmallestNonzeroFloat64)),
+		expected:  "5e-324",
+		expectErr: false,
+	},
+}
+
+func TestBigFloat_MarshalJSON(t *testing.T) {
+	for _, tt := range bigFloatMarshalJSONTests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := tt.bf.MarshalJSON()
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.JSONEq(t, tt.expected, string(data))
+			}
+		})
+	}
+}
+
+var bigFloatUnmarshalJSONValidInputs = []struct {
+	name     string
+	input    string
+	expected *big.Float
+}{
+	{
+		name:     "Valid positive number",
+		input:    "123.456",
+		expected: big.NewFloat(123.456),
+	},
+	{
+		name:     "Valid negative number",
+		input:    "-123.456",
+		expected: big.NewFloat(-123.456),
+	},
+	{
+		name:     "Zero",
+		input:    "0",
+		expected: big.NewFloat(0),
+	},
+	{
+		name:     "Scientific notation",
+		input:    "1.2345e+10",
+		expected: big.NewFloat(1.2345e+10),
+	},
+	{
+		name:     "Negative scientific notation",
+		input:    "-1.2345e+10",
+		expected: big.NewFloat(-1.2345e+10),
+	},
+	{
+		name:     "Whitespace input",
+		input:    "   123.456   ",
+		expected: big.NewFloat(123.456),
+	},
+	{
+		name:     "Maximum float64",
+		input:    "1.7976931348623157e+308",
+		expected: big.NewFloat(math.MaxFloat64),
+	},
+	{
+		name:     "Minimum positive float64",
+		input:    "5e-324",
+		expected: big.NewFloat(math.SmallestNonzeroFloat64),
+	},
+	{
+		name:     "Underflow number",
+		input:    "1e-400",
+		expected: big.NewFloat(0.0),
+	},
+	{
+		name:     "Negative underflow number",
+		input:    "-1e-400",
+		expected: big.NewFloat(math.Copysign(0, -1)),
+	},
+}
+
+func TestBigFloat_UnmarshalJSON_ValidInputs(t *testing.T) {
+	for _, tt := range bigFloatUnmarshalJSONValidInputs {
+		t.Run(tt.name, func(t *testing.T) {
+			var bf utils.BigFloat
+			err := bf.UnmarshalJSON([]byte(tt.input))
+			require.NoError(t, err)
+
+			expectedFloat64, _ := tt.expected.Float64()
+			actualFloat64, _ := bf.Native().Float64()
+			require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
+		})
+	}
+}
+
+func TestBigFloat_UnmarshalJSON_InvalidInputs(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "Invalid string",
+			input: "\"invalid\"",
+		},
+		{
+			name:  "Empty input",
+			input: "",
+		},
+		{
+			name:  "Invalid JSON",
+			input: "{",
+		},
+		{
+			name:  "NaN input",
+			input: "\"NaN\"",
+		},
+		{
+			name:  "Infinity input",
+			input: "\"Infinity\"",
+		},
+		{
+			name:  "Array input",
+			input: "[123.456]",
+		},
+		{
+			name:  "Object input",
+			input: "{\"value\":123.456}",
+		},
+		{
+			name:  "Boolean true input",
+			input: "true",
+		},
+		{
+			name:  "Boolean false input",
+			input: "false",
+		},
+		{
+			name:  "Overflow number",
+			input: "1e+400",
+		},
+		{
+			name:  "Negative overflow number",
+			input: "-1e+400",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var bf utils.BigFloat
+			err := bf.UnmarshalJSON([]byte(tt.input))
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestBigFloat_MarshalJSON_Basic(t *testing.T) {
+	tests := []struct {
+		name     string
+		bf       *utils.BigFloat
+		expected string
+	}{
+		{
+			name:     "Zero BigFloat",
+			bf:       utils.NewBigFloat64(0),
+			expected: "0",
+		},
+		{
+			name:     "Positive BigFloat",
+			bf:       utils.NewBigFloat64(123.456),
+			expected: "123.456",
+		},
+		{
+			name:     "Negative BigFloat",
+			bf:       utils.NewBigFloat64(-123.456),
+			expected: "-123.456",
+		},
+		{
+			name:     "Small BigFloat",
+			bf:       utils.NewBigFloat(big.NewFloat(1e-20)),
+			expected: "1e-20",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := tt.bf.MarshalJSON()
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, string(data))
+		})
+	}
+}
+
+func TestBigFloat_MarshalJSON_Extremes(t *testing.T) {
+	tests := []struct {
+		name     string
+		bf       *utils.BigFloat
+		expected string
+	}{
+		{
+			name:     "Large BigFloat",
+			bf:       utils.NewBigFloat(big.NewFloat(1e+20)),
+			expected: "1e+20",
+		},
+		{
+			name:     "Scientific notation",
+			bf:       utils.NewBigFloat(big.NewFloat(1.2345e+10)),
+			expected: "1.2345e+10",
+		},
+		{
+			name:     "Negative scientific notation",
+			bf:       utils.NewBigFloat(big.NewFloat(-1.2345e+10)),
+			expected: "-1.2345e+10",
+		},
+		{
+			name:     "Maximum float64",
+			bf:       utils.NewBigFloat(big.NewFloat(math.MaxFloat64)),
+			expected: "1.7976931348623157e+308",
+		},
+		{
+			name:     "Minimum positive float64",
+			bf:       utils.NewBigFloat(big.NewFloat(math.SmallestNonzeroFloat64)),
+			expected: "5e-324",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := tt.bf.MarshalJSON()
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, string(data))
+		})
+	}
+}
+
+func TestBigFloat_UnmarshalJSON_ValidInputs_Basic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected *big.Float
+	}{
+		{
+			name:     "Valid positive number",
+			input:    "123.456",
+			expected: big.NewFloat(123.456),
+		},
+		{
+			name:     "Valid negative number",
+			input:    "-123.456",
+			expected: big.NewFloat(-123.456),
+		},
+		{
+			name:     "Zero",
+			input:    "0",
+			expected: big.NewFloat(0),
+		},
+		{
+			name:     "Whitespace input",
+			input:    "   123.456   ",
+			expected: big.NewFloat(123.456),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var bf utils.BigFloat
+			err := bf.UnmarshalJSON([]byte(tt.input))
+			require.NoError(t, err)
+
+			expectedFloat64, _ := tt.expected.Float64()
+			actualFloat64, _ := bf.Native().Float64()
+			require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
+		})
+	}
+}
+
+func TestBigFloat_UnmarshalJSON_ValidInputs_Extremes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected *big.Float
+	}{
+		{
+			name:     "Scientific notation",
+			input:    "1.2345e+10",
+			expected: big.NewFloat(1.2345e+10),
+		},
+		{
+			name:     "Negative scientific notation",
+			input:    "-1.2345e+10",
+			expected: big.NewFloat(-1.2345e+10),
+		},
+		{
+			name:     "Maximum float64",
+			input:    "1.7976931348623157e+308",
+			expected: big.NewFloat(math.MaxFloat64),
+		},
+		{
+			name:     "Minimum positive float64",
+			input:    "5e-324",
+			expected: big.NewFloat(math.SmallestNonzeroFloat64),
+		},
+		{
+			name:     "Underflow number",
+			input:    "1e-400",
+			expected: big.NewFloat(0.0),
+		},
+		{
+			name:     "Negative underflow number",
+			input:    "-1e-400",
+			expected: big.NewFloat(math.Copysign(0, -1)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var bf utils.BigFloat
+			err := bf.UnmarshalJSON([]byte(tt.input))
+			require.NoError(t, err)
+
+			expectedFloat64, _ := tt.expected.Float64()
+			actualFloat64, _ := bf.Native().Float64()
+			require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
+		})
+	}
+}
+
+func TestBigFloat_UnmarshalJSON_NullInput(t *testing.T) {
+	var bf utils.BigFloat
+	err := bf.UnmarshalJSON([]byte("null"))
+	require.NoError(t, err)
+
+	expected := big.NewFloat(0)
+	expectedFloat64, _ := expected.Float64()
+	actualFloat64, _ := bf.Native().Float64()
+	require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
 }
