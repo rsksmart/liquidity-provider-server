@@ -108,7 +108,6 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 }
 
 func (repo *peginMongoRepository) GetQuotes(ctx context.Context, hashes []string) ([]quote.PeginQuote, error) {
-	var result StoredPeginQuote
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
@@ -124,13 +123,12 @@ func (repo *peginMongoRepository) GetQuotes(ctx context.Context, hashes []string
 	quotesReturn := make([]quote.PeginQuote, 0)
 
 	cursor, err := collection.Find(dbCtx, filter)
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 	for cursor.Next(ctx) {
-		err := cursor.Decode(&result)
+		var result StoredPeginQuote
+		err = cursor.Decode(&result)
 		if err != nil {
 			return nil, err
 		}

@@ -473,7 +473,7 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 		assert.Equal(t, "invalid quote hash length: expected 64 characters, got 11", err.Error())
 	})
 
-	t.Run("No quotes found", func(t *testing.T) {
+	t.Run("error reading quotes from DB", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 
 		expectedHashes := []string{testRetainedPegoutQuote.QuoteHash}
@@ -483,7 +483,8 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 		repo := mongo.NewPeginMongoRepository(conn)
 
 		quotes, err := repo.GetQuotes(context.Background(), expectedHashes)
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.Equal(t, "mongo: no documents in result", err.Error())
 		assert.Nil(t, quotes)
 	})
 }
