@@ -83,6 +83,7 @@ func TestToServerInfoDTO(t *testing.T) {
 	assert.Equal(t, "1234567890", dto.Revision)
 }
 
+// nolint:funlen
 func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 	t.Run("Test FromPegoutConfigurationDTO conversion", func(t *testing.T) {
 		dto := pkg.PegoutConfigurationDTO{
