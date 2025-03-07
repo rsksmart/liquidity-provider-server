@@ -119,6 +119,7 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		}
 		config := pkg.FromPegoutConfigurationDTO(dto)
 		assert.Equal(t, expectedConfig, config)
+		test.AssertNonZeroValues(t, dto)
 	})
 	t.Run("Test ToPeginConfigurationDTO conversion", func(t *testing.T) {
 		config := liquidity_provider.PeginConfiguration{
@@ -142,5 +143,6 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 			MinValue:       config.MinValue.AsBigInt().String(),
 		}
 		assert.Equal(t, expectedDTO, dto)
+		test.AssertNonZeroValues(t, dto)
 	})
 }
