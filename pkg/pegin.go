@@ -49,7 +49,7 @@ type RetainedPeginQuoteDTO struct {
 
 type PeginCreationDataDTO struct {
 	GasPrice      uint64  `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
-	FeePercentage float64 `json:"percentageFee" required:"" description:"The percentage fee used to compute the call fee"`
+	FeePercentage float64 `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
 	FixedFee      uint64  `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
 }
 
