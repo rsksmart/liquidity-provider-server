@@ -42,6 +42,7 @@ packages:
       interfaces:
         PeginQuoteRepository:
         PegoutQuoteRepository:
+        PegConfiguration:
   github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain:
     interfaces:
       BitcoinWallet:
