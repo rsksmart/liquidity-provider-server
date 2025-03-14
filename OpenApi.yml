@@ -990,6 +990,13 @@ paths:
         "200":
           description: ""
       summary: Get Pegin Reports
+  /reports/pegout:
+    get:
+      description: ' Get the last pegouts on the API. Included in the management API.'
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegout Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

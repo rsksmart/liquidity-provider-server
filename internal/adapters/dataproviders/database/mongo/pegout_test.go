@@ -570,3 +570,46 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		require.ErrorContains(t, err, "mismatch on updated documents. Expected 2, updated 1")
 	})
 }
+
+func TestPegoutMongoRepository_GetQuotes(t *testing.T) {
+	t.Run("Successfully retrieves quotes", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
+		log.SetLevel(log.DebugLevel)
+		hashes := []string{testRetainedPegoutQuote.QuoteHash}
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("Find", mock.Anything,
+			bson.M{"hash": bson.M{"$in": hashes}},
+		).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutQuote}, nil, nil)).Once()
+		result, err := repo.GetQuotes(context.Background(), hashes)
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.Equal(t, []quote.PegoutQuote{testPegoutQuote}, result)
+	})
+
+	t.Run("Fails validation for hashes", func(t *testing.T) {
+		client, _ := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
+
+		invalidHashes := []string{"invalidHash"}
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		_, err := repo.GetQuotes(context.Background(), invalidHashes)
+		require.Error(t, err)
+		assert.Equal(t, "invalid quote hash length: expected 64 characters, got 11", err.Error())
+	})
+
+	t.Run("error reading quotes from DB", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
+
+		expectedHashes := []string{testRetainedPegoutQuote.QuoteHash}
+		collection.On("Find", mock.Anything, bson.M{"hash": bson.M{"$in": expectedHashes}}).Return(nil, mongoDb.ErrNoDocuments).Once()
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		quotes, err := repo.GetQuotes(context.Background(), expectedHashes)
+		require.Error(t, err)
+		assert.Equal(t, "mongo: no documents in result", err.Error())
+		assert.Nil(t, quotes)
+	})
+}

@@ -31,6 +31,7 @@ const (
 type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, hash string, quote PegoutQuote) error
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
+	GetQuotes(ctx context.Context, hashes []string) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
