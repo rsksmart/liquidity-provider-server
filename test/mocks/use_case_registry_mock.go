@@ -731,6 +731,53 @@ func (_c *UseCaseRegistryMock_GetPegoutQuoteUseCase_Call) RunAndReturn(run func(
 	return _c
 }
 
+// GetPegoutReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetPegoutReportUseCase() *pegout.GetPegoutReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPegoutReportUseCase")
+	}
+
+	var r0 *pegout.GetPegoutReportUseCase
+	if rf, ok := ret.Get(0).(func() *pegout.GetPegoutReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegout.GetPegoutReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetPegoutReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegoutReportUseCase'
+type UseCaseRegistryMock_GetPegoutReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetPegoutReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetPegoutReportUseCase() *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	return &UseCaseRegistryMock_GetPegoutReportUseCase_Call{Call: _e.mock.On("GetPegoutReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Return(_a0 *pegout.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) RunAndReturn(run func() *pegout.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPegoutStatusUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetPegoutStatusUseCase() *pegout.StatusUseCase {
 	ret := _m.Called()

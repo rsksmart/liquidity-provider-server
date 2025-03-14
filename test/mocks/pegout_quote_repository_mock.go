@@ -185,6 +185,65 @@ func (_c *PegoutQuoteRepositoryMock_GetQuote_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// GetQuotes provides a mock function with given fields: ctx, hashes
+func (_m *PegoutQuoteRepositoryMock) GetQuotes(ctx context.Context, hashes []string) ([]quote.PegoutQuote, error) {
+	ret := _m.Called(ctx, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetQuotes")
+	}
+
+	var r0 []quote.PegoutQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]quote.PegoutQuote, error)); ok {
+		return rf(ctx, hashes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []quote.PegoutQuote); ok {
+		r0 = rf(ctx, hashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.PegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, hashes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutQuoteRepositoryMock_GetQuotes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuotes'
+type PegoutQuoteRepositoryMock_GetQuotes_Call struct {
+	*mock.Call
+}
+
+// GetQuotes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hashes []string
+func (_e *PegoutQuoteRepositoryMock_Expecter) GetQuotes(ctx interface{}, hashes interface{}) *PegoutQuoteRepositoryMock_GetQuotes_Call {
+	return &PegoutQuoteRepositoryMock_GetQuotes_Call{Call: _e.mock.On("GetQuotes", ctx, hashes)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotes_Call) Run(run func(ctx context.Context, hashes []string)) *PegoutQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotes_Call) Return(_a0 []quote.PegoutQuote, _a1 error) *PegoutQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotes_Call) RunAndReturn(run func(context.Context, []string) ([]quote.PegoutQuote, error)) *PegoutQuoteRepositoryMock_GetQuotes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRetainedQuote provides a mock function with given fields: ctx, hash
 func (_m *PegoutQuoteRepositoryMock) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
 	ret := _m.Called(ctx, hash)
