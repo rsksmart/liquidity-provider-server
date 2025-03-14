@@ -2,8 +2,9 @@ package quote
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"

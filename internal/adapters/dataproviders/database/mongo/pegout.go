@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"regexp"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
