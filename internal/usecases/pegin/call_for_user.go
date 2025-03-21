@@ -43,6 +43,7 @@ func NewCallForUserUseCase(
 func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	var valueToSend *entities.Wei
 	var peginQuote *quote.PeginQuote
+	var creationData quote.PeginCreationData
 	var err error
 
 	if retainedQuote.State != quote.PeginStateWaitingForDepositConfirmations {
@@ -54,6 +55,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.
 	} else if peginQuote == nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, usecases.QuoteNotFoundError, false)
 	}
+	creationData = useCase.quoteRepository.GetPeginCreationData(ctx, retainedQuote.QuoteHash)
 
 	if err = useCase.validateBitcoinTx(ctx, peginQuote, retainedQuote); err != nil {
 		return err
@@ -66,7 +68,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.
 		return err
 	}
 
-	retainedQuote, err = useCase.performCallForUser(valueToSend, peginQuote, retainedQuote)
+	retainedQuote, err = useCase.performCallForUser(valueToSend, peginQuote, retainedQuote, creationData)
 
 	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		err = errors.Join(err, updateError)
@@ -96,6 +98,7 @@ func (useCase *CallForUserUseCase) publishErrorEvent(
 			Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 			RetainedQuote: retainedQuote,
 			PeginQuote:    peginQuote,
+			CreationData:  quote.PeginCreationDataZeroValue(),
 			Error:         wrappedError,
 		})
 
@@ -134,6 +137,7 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	valueToSend *entities.Wei,
 	peginQuote *quote.PeginQuote,
 	retainedQuote quote.RetainedPeginQuote,
+	creationData quote.PeginCreationData,
 ) (quote.RetainedPeginQuote, error) {
 	var quoteState quote.PeginState
 	var callForUserTx string
@@ -152,6 +156,7 @@ func (useCase *CallForUserUseCase) performCallForUser(
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 		PeginQuote:    *peginQuote,
 		RetainedQuote: retainedQuote,
+		CreationData:  creationData,
 		Error:         err,
 	})
 	return retainedQuote, err

@@ -33,8 +33,9 @@ func NewGetPegoutQuoteStatusHandler(useCase *pegout.StatusUseCase) http.HandlerF
 			return
 		}
 		dto := pkg.PegoutQuoteStatusDTO{
-			Detail: pkg.ToPegoutQuoteDTO(result.PegoutQuote),
-			Status: pkg.ToRetainedPegoutQuoteDTO(result.RetainedQuote),
+			Detail:       pkg.ToPegoutQuoteDTO(result.PegoutQuote),
+			Status:       pkg.ToRetainedPegoutQuoteDTO(result.RetainedQuote),
+			CreationData: pkg.ToPegoutCreationDataDTO(result.CreationData),
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &dto)
 	}

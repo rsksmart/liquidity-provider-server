@@ -155,7 +155,7 @@ func (watcher *PeginDepositAddressWatcher) handleAcceptedPeginQuote(event entiti
 		log.Error(peginBtcDepositWatcherLog("error while importing deposit address (%s): %v", parsedEvent.RetainedQuote.DepositAddress, err))
 		return
 	}
-	watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
+	watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.Quote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
 }
 
 func (watcher *PeginDepositAddressWatcher) checkQuotes(ctx context.Context) {

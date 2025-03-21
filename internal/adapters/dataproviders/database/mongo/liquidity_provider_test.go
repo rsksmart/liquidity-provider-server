@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,8 @@ var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
 		TimeForDeposit: 1,
 		CallTime:       2,
 		PenaltyFee:     entities.NewWei(3),
-		CallFee:        entities.NewWei(4),
+		FixedFee:       entities.NewWei(4),
+		FeePercentage:  utils.NewBigFloat64(4.5),
 		MaxValue:       entities.NewWei(5),
 		MinValue:       entities.NewWei(6),
 	},
@@ -36,7 +38,8 @@ var pegoutTestConfig = &entities.Signed[liquidity_provider.PegoutConfiguration]{
 		TimeForDeposit:       1,
 		ExpireTime:           2,
 		PenaltyFee:           entities.NewWei(3),
-		CallFee:              entities.NewWei(4),
+		FixedFee:             entities.NewWei(4),
+		FeePercentage:        utils.NewBigFloat64(4.5),
 		MaxValue:             entities.NewWei(5),
 		MinValue:             entities.NewWei(6),
 		ExpireBlocks:         7,
@@ -76,7 +79,7 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegin")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegin configuration read successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash}"
+		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
@@ -111,7 +114,7 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegout")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegout configuration read successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash}"
+		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
@@ -216,7 +219,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("pegin")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("pegin configuration upserted successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash} Name:pegin}"
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash} Name:pegin}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PeginConfiguration]{
@@ -243,7 +246,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("pegout")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("pegout configuration upserted successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 CallFee:4 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash} Name:pegout}"
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash} Name:pegout}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PegoutConfiguration]{

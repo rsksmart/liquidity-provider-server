@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestNewErrorResponseWithDetails(t *testing.T) {
@@ -174,4 +175,35 @@ func TestValidateRequest(t *testing.T) {
 		}
 		assert.True(t, response.Recoverable)
 	})
+}
+
+func TestMaxDecimalPlacesValidation(t *testing.T) {
+	type testStruct struct {
+		Number float64 `validate:"max_decimal_places=4"`
+	}
+
+	testCases := []struct {
+		value       float64
+		expectError bool
+		description string
+	}{
+		{value: 1.2345, expectError: false, description: "exactly 4 decimal places"},
+		{value: 1.23456, expectError: true, description: "exceeds 4 decimal places"},
+		{value: 1.0, expectError: false, description: "integer value"},
+		{value: 1e-4, expectError: false, description: "scientific notation within limit"},
+		{value: 1e-5, expectError: true, description: "scientific notation exceeds limit"},
+		{value: 1.123456789, expectError: true, description: "many decimal places"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			ts := testStruct{Number: tc.value}
+			err := rest.RequestValidator.Struct(ts)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -79,6 +79,53 @@ func (_c *PegoutQuoteRepositoryMock_DeleteQuotes_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetPegoutCreationData provides a mock function with given fields: ctx, hash
+func (_m *PegoutQuoteRepositoryMock) GetPegoutCreationData(ctx context.Context, hash string) quote.PegoutCreationData {
+	ret := _m.Called(ctx, hash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPegoutCreationData")
+	}
+
+	var r0 quote.PegoutCreationData
+	if rf, ok := ret.Get(0).(func(context.Context, string) quote.PegoutCreationData); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		r0 = ret.Get(0).(quote.PegoutCreationData)
+	}
+
+	return r0
+}
+
+// PegoutQuoteRepositoryMock_GetPegoutCreationData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegoutCreationData'
+type PegoutQuoteRepositoryMock_GetPegoutCreationData_Call struct {
+	*mock.Call
+}
+
+// GetPegoutCreationData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hash string
+func (_e *PegoutQuoteRepositoryMock_Expecter) GetPegoutCreationData(ctx interface{}, hash interface{}) *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call {
+	return &PegoutQuoteRepositoryMock_GetPegoutCreationData_Call{Call: _e.mock.On("GetPegoutCreationData", ctx, hash)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call) Run(run func(ctx context.Context, hash string)) *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call) Return(_a0 quote.PegoutCreationData) *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call) RunAndReturn(run func(context.Context, string) quote.PegoutCreationData) *PegoutQuoteRepositoryMock_GetPegoutCreationData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetQuote provides a mock function with given fields: ctx, hash
 func (_m *PegoutQuoteRepositoryMock) GetQuote(ctx context.Context, hash string) (*quote.PegoutQuote, error) {
 	ret := _m.Called(ctx, hash)
@@ -329,17 +376,17 @@ func (_c *PegoutQuoteRepositoryMock_GetRetainedQuoteByState_Call) RunAndReturn(r
 	return _c
 }
 
-// InsertQuote provides a mock function with given fields: ctx, hash, _a2
-func (_m *PegoutQuoteRepositoryMock) InsertQuote(ctx context.Context, hash string, _a2 quote.PegoutQuote) error {
-	ret := _m.Called(ctx, hash, _a2)
+// InsertQuote provides a mock function with given fields: ctx, _a1
+func (_m *PegoutQuoteRepositoryMock) InsertQuote(ctx context.Context, _a1 quote.CreatedPegoutQuote) error {
+	ret := _m.Called(ctx, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertQuote")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, quote.PegoutQuote) error); ok {
-		r0 = rf(ctx, hash, _a2)
+	if rf, ok := ret.Get(0).(func(context.Context, quote.CreatedPegoutQuote) error); ok {
+		r0 = rf(ctx, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -354,15 +401,14 @@ type PegoutQuoteRepositoryMock_InsertQuote_Call struct {
 
 // InsertQuote is a helper method to define mock.On call
 //   - ctx context.Context
-//   - hash string
-//   - _a2 quote.PegoutQuote
-func (_e *PegoutQuoteRepositoryMock_Expecter) InsertQuote(ctx interface{}, hash interface{}, _a2 interface{}) *PegoutQuoteRepositoryMock_InsertQuote_Call {
-	return &PegoutQuoteRepositoryMock_InsertQuote_Call{Call: _e.mock.On("InsertQuote", ctx, hash, _a2)}
+//   - _a1 quote.CreatedPegoutQuote
+func (_e *PegoutQuoteRepositoryMock_Expecter) InsertQuote(ctx interface{}, _a1 interface{}) *PegoutQuoteRepositoryMock_InsertQuote_Call {
+	return &PegoutQuoteRepositoryMock_InsertQuote_Call{Call: _e.mock.On("InsertQuote", ctx, _a1)}
 }
 
-func (_c *PegoutQuoteRepositoryMock_InsertQuote_Call) Run(run func(ctx context.Context, hash string, _a2 quote.PegoutQuote)) *PegoutQuoteRepositoryMock_InsertQuote_Call {
+func (_c *PegoutQuoteRepositoryMock_InsertQuote_Call) Run(run func(ctx context.Context, _a1 quote.CreatedPegoutQuote)) *PegoutQuoteRepositoryMock_InsertQuote_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(quote.PegoutQuote))
+		run(args[0].(context.Context), args[1].(quote.CreatedPegoutQuote))
 	})
 	return _c
 }
@@ -372,7 +418,7 @@ func (_c *PegoutQuoteRepositoryMock_InsertQuote_Call) Return(_a0 error) *PegoutQ
 	return _c
 }
 
-func (_c *PegoutQuoteRepositoryMock_InsertQuote_Call) RunAndReturn(run func(context.Context, string, quote.PegoutQuote) error) *PegoutQuoteRepositoryMock_InsertQuote_Call {
+func (_c *PegoutQuoteRepositoryMock_InsertQuote_Call) RunAndReturn(run func(context.Context, quote.CreatedPegoutQuote) error) *PegoutQuoteRepositoryMock_InsertQuote_Call {
 	_c.Call.Return(run)
 	return _c
 }

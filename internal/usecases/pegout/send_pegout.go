@@ -100,6 +100,7 @@ func (useCase *SendPegoutUseCase) publishErrorEvent(
 			PegoutQuote:   pegoutQuote,
 			RetainedQuote: retainedQuote,
 			Error:         wrappedError,
+			CreationData:  quote.PegoutCreationDataZeroValue(),
 		})
 	}
 	return wrappedError
@@ -163,12 +164,15 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		newState = quote.PegoutStateSendPegoutSucceeded
 	}
 
+	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, retainedQuote.QuoteHash)
+
 	retainedQuote.LpBtcTxHash = txHash
 	retainedQuote.State = newState
 	useCase.eventBus.Publish(quote.PegoutBtcSentToUserEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),
 		PegoutQuote:   *pegoutQuote,
 		RetainedQuote: retainedQuote,
+		CreationData:  creationData,
 		Error:         err,
 	})
 	return retainedQuote, err

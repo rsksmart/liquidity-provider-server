@@ -185,7 +185,7 @@ func (watcher *PegoutRskDepositWatcher) handleAcceptedPegoutQuote(event entities
 		log.Info(pegoutRskWatcherLog("Quote %s is already watched", quoteHash))
 		return
 	}
-	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.Quote, parsedEvent.RetainedQuote)
+	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.Quote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
 }
 
 func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromBlock, toBlock uint64) {

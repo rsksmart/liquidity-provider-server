@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -54,27 +55,68 @@ var testRetainedPeginQuote = quote.RetainedPeginQuote{
 	RegisterPeginTxHash: "0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89",
 }
 
+var testPeginCreationData = quote.PeginCreationData{
+	GasPrice:      entities.NewWei(55),
+	FeePercentage: utils.NewBigFloat64(1.5),
+	FixedFee:      entities.NewWei(100000),
+}
+
 func TestPeginMongoRepository_InsertQuote(t *testing.T) {
 	t.Run("Insert pegin quote successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {PeginQuote:{FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1} Hash:any value}"
-		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
-		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginQuote) bool {
+		client, db := getClientAndDatabaseMocks()
+		quoteCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(quoteCollection)
+		db.EXPECT().Collection(mongo.PeginCreationDataCollection).Return(creationDataCollection)
+		quoteCollection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginQuote) bool {
 			return q.Hash == test.AnyString && reflect.TypeOf(quote.PeginQuote{}).NumField() == test.CountNonZeroValues(q.PeginQuote)
+		})).Return(nil, nil).Once()
+		creationDataCollection.EXPECT().InsertOne(mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginCreationData) bool {
+			return q.Hash == test.AnyString && reflect.TypeOf(quote.PeginCreationData{}).NumField() == test.CountNonZeroValues(q.PeginCreationData)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
 		defer assertDbInteractionLog(t, expectedLog)()
-		err := repo.InsertQuote(context.Background(), test.AnyString, testPeginQuote)
-		collection.AssertExpectations(t)
+		createdQuote := quote.CreatedPeginQuote{Hash: test.AnyString, Quote: testPeginQuote, CreationData: testPeginCreationData}
+		err := repo.InsertQuote(context.Background(), createdQuote)
+		quoteCollection.AssertExpectations(t)
+		creationDataCollection.AssertExpectations(t)
 		require.NoError(t, err)
 	})
 	t.Run("Db error when inserting pegin quote", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
-		collection.On("InsertOne", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		client, db := getClientAndDatabaseMocks()
+		quoteCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(quoteCollection)
+		quoteCollection.On("InsertOne", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
-		err := repo.InsertQuote(context.Background(), test.AnyString, testPeginQuote)
-		collection.AssertExpectations(t)
+		createdQuote := quote.CreatedPeginQuote{Hash: test.AnyString, Quote: testPeginQuote, CreationData: testPeginCreationData}
+		err := repo.InsertQuote(context.Background(), createdQuote)
+		quoteCollection.AssertExpectations(t)
+		creationDataCollection.AssertNotCalled(t, "InsertOne")
+		require.Error(t, err)
+	})
+
+	t.Run("Db error when inserting pegin creation data", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		quoteCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(quoteCollection)
+		db.EXPECT().Collection(mongo.PeginCreationDataCollection).Return(creationDataCollection)
+		quoteCollection.On("InsertOne", mock.Anything, mock.Anything).Return(nil, nil).Once()
+		creationDataCollection.On("InsertOne", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+		createdQuote := quote.CreatedPeginQuote{
+			Hash:         test.AnyString,
+			Quote:        testPeginQuote,
+			CreationData: testPeginCreationData,
+		}
+		err := repo.InsertQuote(context.Background(), createdQuote)
+		quoteCollection.AssertExpectations(t)
+		creationDataCollection.AssertExpectations(t)
 		require.Error(t, err)
 	})
 }
@@ -276,18 +318,24 @@ func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 	var hashes = []string{"pegin1", "pegin2", "pegin3"}
 	log.SetLevel(log.DebugLevel)
 	t.Run("Delete quotes successfully", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
 		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
 		require.True(t, ok)
 		parsedClientMock.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		parsedClientMock.On("Collection", mongo.PeginCreationDataCollection).Return(creationDataCollection)
 		quoteCollection.On("DeleteMany", mock.Anything, bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}}).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything,
 			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
+		creationDataCollection.On("DeleteMany", mock.Anything,
+			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
@@ -295,8 +343,9 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 		count, err := repo.DeleteQuotes(context.Background(), hashes)
 		quoteCollection.AssertExpectations(t)
 		retainedCollection.AssertExpectations(t)
+		creationDataCollection.AssertExpectations(t)
 		require.NoError(t, err)
-		assert.Equal(t, uint(6), count)
+		assert.Equal(t, uint(9), count)
 	})
 	t.Run("Db error when deleting pegin quotes", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
@@ -322,20 +371,77 @@ func TestPeginMongoRepository_DeleteQuotes(t *testing.T) {
 		require.Error(t, err)
 		assert.Zero(t, count)
 	})
+	t.Run("Db error when deleting pegin creation data", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
+		retainedCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
+		parsedClient, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
+		require.True(t, ok)
+		parsedClient.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		parsedClient.On("Collection", mongo.PeginCreationDataCollection).Return(creationDataCollection)
+		collection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
+		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
+		creationDataCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		count, err := repo.DeleteQuotes(context.Background(), []string{test.AnyString})
+		collection.AssertExpectations(t)
+		retainedCollection.AssertExpectations(t)
+		creationDataCollection.AssertExpectations(t)
+		require.Error(t, err)
+		assert.Zero(t, count)
+	})
 	t.Run("Error when deletion count missmatch", func(t *testing.T) {
 		client, quoteCollection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 		retainedCollection := &mocks.CollectionBindingMock{}
+		creationDataCollection := &mocks.CollectionBindingMock{}
 		parsedClientMock, ok := client.Database(mongo.DbName).(*mocks.DbBindingMock)
 		require.True(t, ok)
 		parsedClientMock.On("Collection", mongo.RetainedPeginQuoteCollection).Return(retainedCollection)
+		parsedClientMock.On("Collection", mongo.PeginCreationDataCollection).Return(creationDataCollection)
 		quoteCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 4}, nil).Once()
+		creationDataCollection.EXPECT().DeleteMany(mock.Anything, mock.Anything).Return(&mongoDb.DeleteResult{DeletedCount: 1}, nil).Once()
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		count, err := repo.DeleteQuotes(context.Background(), hashes)
 		quoteCollection.AssertExpectations(t)
 		retainedCollection.AssertExpectations(t)
+		creationDataCollection.AssertExpectations(t)
 		require.ErrorContains(t, err, "pegin quote collections didn't match")
 		assert.Zero(t, count)
+	})
+}
+
+func TestPeginMongoRepository_GetPeginCreationData(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	t.Run("read pegin creation data properly", func(t *testing.T) {
+		const (
+			expectedLog = "READ interaction with db: {GasPrice:55 FeePercentage:1.5 FixedFee:100000}"
+			hash        = "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
+		)
+		client, collection := getClientAndCollectionMocks(mongo.PeginCreationDataCollection)
+		collection.EXPECT().FindOne(mock.Anything, bson.D{primitive.E{Key: "hash", Value: hash}}).
+			Return(mongoDb.NewSingleResultFromDocument(testPeginCreationData, nil, nil)).Once()
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		defer assertDbInteractionLog(t, expectedLog)()
+		result := repo.GetPeginCreationData(context.Background(), hash)
+		collection.AssertExpectations(t)
+		assert.Equal(t, testPeginCreationData, result)
+	})
+	t.Run("return zero value on invalid hash", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PeginCreationDataCollection)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		result := repo.GetPeginCreationData(context.Background(), test.AnyString)
+		collection.AssertNotCalled(t, "FindOne")
+		assert.Equal(t, quote.PeginCreationDataZeroValue(), result)
+	})
+	t.Run("return zero value on db error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PeginCreationDataCollection)
+		collection.EXPECT().FindOne(mock.Anything, mock.Anything).
+			Return(mongoDb.NewSingleResultFromDocument(nil, nil, nil)).Once()
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		result := repo.GetPeginCreationData(context.Background(), test.AnyHash)
+		collection.AssertExpectations(t)
+		assert.Equal(t, quote.PeginCreationDataZeroValue(), result)
 	})
 }
 

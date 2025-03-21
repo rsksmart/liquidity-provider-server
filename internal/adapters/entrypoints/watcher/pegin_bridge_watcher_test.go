@@ -31,20 +31,23 @@ func TestPeginBridgeWatcher_Prepare(t *testing.T) {
 	}
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return(quotes, nil)
-	for _, q := range quotes {
+	for i, q := range quotes {
 		quoteRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).
 			Return(&quote.PeginQuote{Value: q.RequiredLiquidity}, nil)
+		quoteRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).
+			Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))})
 	}
 	useCase := w.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	peginWatcher := watcher.NewPeginBridgeWatcher(nil, useCase, blockchain.RskContracts{}, blockchain.Rpc{}, nil, nil)
 	err := peginWatcher.Prepare(context.Background())
 	require.NoError(t, err)
-	for _, q := range quotes {
+	for i, q := range quotes {
 		watchedQuote, ok := peginWatcher.GetWatchedQuote(q.QuoteHash)
 		require.True(t, ok)
 		assert.Equal(t, quote.WatchedPeginQuote{
 			PeginQuote:    quote.PeginQuote{Value: q.RequiredLiquidity},
 			RetainedQuote: q,
+			CreationData:  quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))},
 		}, watchedQuote)
 	}
 	quoteRepository.AssertExpectations(t)

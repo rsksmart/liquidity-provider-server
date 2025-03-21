@@ -3,6 +3,7 @@ package blockchain
 import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"regexp"
 	"time"
@@ -91,7 +92,7 @@ func IsMainnetBtcAddress(address string) bool {
 
 type BitcoinWallet interface {
 	entities.Closeable
-	EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error)
+	EstimateTxFees(toAddress string, value *entities.Wei) (BtcFeeEstimation, error)
 	GetBalance() (*entities.Wei, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error)
 	ImportAddress(address string) error
@@ -150,4 +151,9 @@ type BitcoinBlockInformation struct {
 type MerkleBranch struct {
 	Hashes [][32]byte
 	Path   *big.Int
+}
+
+type BtcFeeEstimation struct {
+	Value   *entities.Wei
+	FeeRate *utils.BigFloat
 }

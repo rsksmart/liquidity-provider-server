@@ -68,24 +68,22 @@ func (_c *BitcoinWalletMock_Address_Call) RunAndReturn(run func() string) *Bitco
 }
 
 // EstimateTxFees provides a mock function with given fields: toAddress, value
-func (_m *BitcoinWalletMock) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
+func (_m *BitcoinWalletMock) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
 	ret := _m.Called(toAddress, value)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EstimateTxFees")
 	}
 
-	var r0 *entities.Wei
+	var r0 blockchain.BtcFeeEstimation
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, *entities.Wei) (*entities.Wei, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, *entities.Wei) (blockchain.BtcFeeEstimation, error)); ok {
 		return rf(toAddress, value)
 	}
-	if rf, ok := ret.Get(0).(func(string, *entities.Wei) *entities.Wei); ok {
+	if rf, ok := ret.Get(0).(func(string, *entities.Wei) blockchain.BtcFeeEstimation); ok {
 		r0 = rf(toAddress, value)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*entities.Wei)
-		}
+		r0 = ret.Get(0).(blockchain.BtcFeeEstimation)
 	}
 
 	if rf, ok := ret.Get(1).(func(string, *entities.Wei) error); ok {
@@ -116,12 +114,12 @@ func (_c *BitcoinWalletMock_EstimateTxFees_Call) Run(run func(toAddress string, 
 	return _c
 }
 
-func (_c *BitcoinWalletMock_EstimateTxFees_Call) Return(_a0 *entities.Wei, _a1 error) *BitcoinWalletMock_EstimateTxFees_Call {
+func (_c *BitcoinWalletMock_EstimateTxFees_Call) Return(_a0 blockchain.BtcFeeEstimation, _a1 error) *BitcoinWalletMock_EstimateTxFees_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *BitcoinWalletMock_EstimateTxFees_Call) RunAndReturn(run func(string, *entities.Wei) (*entities.Wei, error)) *BitcoinWalletMock_EstimateTxFees_Call {
+func (_c *BitcoinWalletMock_EstimateTxFees_Call) RunAndReturn(run func(string, *entities.Wei) (blockchain.BtcFeeEstimation, error)) *BitcoinWalletMock_EstimateTxFees_Call {
 	_c.Call.Return(run)
 	return _c
 }

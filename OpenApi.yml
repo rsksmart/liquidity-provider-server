@@ -198,10 +198,12 @@ components:
       type: object
     PeginConfigurationDTO:
       properties:
-        callFee:
-          type: string
         callTime:
           type: integer
+        feePercentage:
+          type: number
+        fixedFee:
+          type: string
         maxValue:
           type: string
         minValue:
@@ -216,6 +218,22 @@ components:
         configuration:
           $ref: '#/components/schemas/PeginConfigurationDTO'
           type: object
+      type: object
+    PeginCreationDataDTO:
+      properties:
+        feePercentage:
+          description: The percentage fee used to compute the call fee
+          type: number
+        fixedFee:
+          description: The fixed fee used to compute the call fee
+          type: integer
+        gasPrice:
+          description: The gas price used to compute the gas fee
+          type: integer
+      required:
+      - gasPrice
+      - feePercentage
+      - fixedFee
       type: object
     PeginQuoteDTO:
       properties:
@@ -333,6 +351,10 @@ components:
       type: object
     PeginQuoteStatusDTO:
       properties:
+        creationData:
+          $ref: '#/components/schemas/PeginCreationDataDTO'
+          description: Values used to compute some fields of the quote
+          type: object
         detail:
           $ref: '#/components/schemas/PeginQuoteDTO'
           description: Agreed specification of the quote
@@ -344,17 +366,20 @@ components:
       required:
       - detail
       - status
+      - creationData
       type: object
     PegoutConfigurationDTO:
       properties:
         bridgeTransactionMin:
           type: string
-        callFee:
-          type: string
         expireBlocks:
           type: integer
         expireTime:
           type: integer
+        feePercentage:
+          type: number
+        fixedFee:
+          type: string
         maxValue:
           type: string
         minValue:
@@ -369,6 +394,26 @@ components:
         configuration:
           $ref: '#/components/schemas/PegoutConfigurationDTO'
           type: object
+      type: object
+    PegoutCreationDataDTO:
+      properties:
+        feePercentage:
+          description: The percentage fee used to compute the call fee
+          type: number
+        feeRate:
+          description: The fee rate used to compute the gas fee
+          type: number
+        fixedFee:
+          description: The fixed fee used to compute the call fee
+          type: integer
+        gasPrice:
+          description: The gas price used to compute the gas fee
+          type: integer
+      required:
+      - gasPrice
+      - feePercentage
+      - fixedFee
+      - feeRate
       type: object
     PegoutQuoteDTO:
       properties:
@@ -455,6 +500,10 @@ components:
       type: object
     PegoutQuoteStatusDTO:
       properties:
+        creationData:
+          $ref: '#/components/schemas/PegoutCreationDataDTO'
+          description: Values used to compute some fields of the quote
+          type: object
         detail:
           $ref: '#/components/schemas/PegoutQuoteDTO'
           description: Agreed specification of the quote
@@ -466,10 +515,16 @@ components:
       required:
       - detail
       - status
+      - creationData
       type: object
     ProviderDetail:
       properties:
         fee:
+          deprecated: true
+          type: integer
+        feePercentage:
+          type: number
+        fixedFee:
           type: integer
         maxTransactionValue:
           type: integer
@@ -479,6 +534,8 @@ components:
           type: integer
       required:
       - fee
+      - fixedFee
+      - feePercentage
       - minTransactionValue
       - maxTransactionValue
       - requiredConfirmations
