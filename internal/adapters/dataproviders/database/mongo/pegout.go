@@ -71,6 +71,37 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	return &result.PegoutQuote, nil
 }
 
+func (repo *pegoutMongoRepository) GetQuotes(ctx context.Context, hashes []string) ([]quote.PegoutQuote, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
+
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+	filter := bson.M{"hash": bson.M{"$in": hashes}}
+
+	quotesReturn := make([]quote.PegoutQuote, 0)
+
+	cursor, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	for cursor.Next(ctx) {
+		var result StoredPegoutQuote
+		err = cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		quotesReturn = append(quotesReturn, result.PegoutQuote)
+	}
+	logDbInteraction(Read, quotesReturn)
+	return quotesReturn, nil
+}
+
 func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
 	var result quote.RetainedPegoutQuote
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
