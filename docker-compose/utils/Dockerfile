@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.22.8@sha256:0ca97f4ab335f4b284a5b8190980c7cdc21d320d529f2b643e8a8733a69bfb6b AS builder
+FROM --platform=linux/amd64 golang:1.23.7@sha256:cb45cf739cf6bc9eaeacf75d3cd7c157e7d39b757216d813d8115d026ee32e75 AS builder
 
 WORKDIR /code
 
