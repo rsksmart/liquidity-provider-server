@@ -172,7 +172,7 @@ docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lp
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
 FAIL=true
-for ((i=1;i<=10;i++));
+for _ in $(seq 1 10);
 do
   sleep 5
   curl -s "http://localhost:8080/health" \
