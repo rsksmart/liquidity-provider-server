@@ -212,7 +212,8 @@ CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
                       -H 'Sec-Fetch-Site: same-origin' \
   "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
-CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
+# shellcheck disable=SC2001
+CSRF_TOKEN=$(echo "$CSRF_TOKEN" | sed 's/&#43;/+/g')
 curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
