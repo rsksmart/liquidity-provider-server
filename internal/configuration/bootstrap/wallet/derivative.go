@@ -15,6 +15,7 @@ type DerivativeWalletFactory struct {
 	rskAccount *account.RskAccount
 	env        environment.Environment
 	rskClient  *rootstock.RskClient
+	timeouts   environment.ApplicationTimeouts
 }
 
 func NewDerivativeFactory(args FactoryCreationArgs) (AbstractFactory, error) {
@@ -31,6 +32,7 @@ func NewDerivativeFactory(args FactoryCreationArgs) (AbstractFactory, error) {
 		rskAccount: rskAccount,
 		env:        args.Env,
 		rskClient:  args.RskClient,
+		timeouts:   args.Timeouts,
 	}, nil
 }
 
@@ -61,6 +63,6 @@ func (factory *DerivativeWalletFactory) BitcoinPaymentWallet(walletId string) (b
 }
 
 func (factory *DerivativeWalletFactory) RskWallet() (rootstock.RskSignerWallet, error) {
-	wallet := rootstock.NewRskWalletImpl(factory.rskClient, factory.rskAccount, factory.env.Rsk.ChainId)
+	wallet := rootstock.NewRskWalletImpl(factory.rskClient, factory.rskAccount, factory.env.Rsk.ChainId, factory.timeouts.MiningWait.Seconds())
 	return wallet, nil
 }

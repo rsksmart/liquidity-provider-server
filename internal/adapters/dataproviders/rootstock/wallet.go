@@ -14,16 +14,18 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
+	"time"
 )
 
 type RskWalletImpl struct {
-	client  RpcClientBinding
-	account *account.RskAccount
-	chainId uint64
+	client        RpcClientBinding
+	account       *account.RskAccount
+	chainId       uint64
+	miningTimeout time.Duration
 }
 
-func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64) *RskWalletImpl {
-	return &RskWalletImpl{client: client.client, account: account, chainId: chainId}
+func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64, miningTimeout time.Duration) *RskWalletImpl {
+	return &RskWalletImpl{client: client.client, account: account, chainId: chainId, miningTimeout: miningTimeout}
 }
 
 func (wallet *RskWalletImpl) Address() common.Address {
@@ -73,14 +75,11 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return "", err
 	}
 
-	newCtx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
-	defer cancel()
-
 	if config.GasPrice == nil || config.Value == nil || config.GasLimit == nil {
 		return "", errors.New("incomplete transaction arguments")
 	}
 
-	if nonce, err = wallet.client.PendingNonceAt(newCtx, wallet.Address()); err != nil {
+	if nonce, err = wallet.client.PendingNonceAt(ctx, wallet.Address()); err != nil {
 		return "", err
 	}
 
@@ -96,8 +95,8 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return "", err
 	}
 
-	sendError := wallet.client.SendTransaction(newCtx, signedTx)
-	receipt, err := awaitTxWithCtx(wallet.client, "SendRbtc", newCtx, func() (*geth.Transaction, error) {
+	sendError := wallet.client.SendTransaction(ctx, signedTx)
+	receipt, err := AwaitTxWithCtx(wallet.client, wallet.miningTimeout, "SendRbtc", ctx, func() (*geth.Transaction, error) {
 		return signedTx, sendError
 	})
 

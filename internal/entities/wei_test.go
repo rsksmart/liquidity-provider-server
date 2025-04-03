@@ -162,7 +162,22 @@ func TestWei_ToSatoshi(t *testing.T) {
 		{
 			name: "1 wei to sat",
 			w:    entities.NewWei(1),
-			want: new(big.Float).Quo(new(big.Float).SetInt64(1), new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil))),
+			want: big.NewFloat(1),
+		},
+		{
+			name: "72160329123080000 wei to 7216033 sat",
+			w:    entities.NewWei(72160329123080000),
+			want: big.NewFloat(7216033),
+		},
+		{
+			name: "4360000000000000 wei to 436000 sat",
+			w:    entities.NewWei(4360000000000000),
+			want: big.NewFloat(436000),
+		},
+		{
+			name: "1 RBTC to 100000000 sat",
+			w:    entities.NewWei(1000000000000000000),
+			want: big.NewFloat(100000000),
 		},
 	}
 	for _, tt := range tests {
@@ -275,7 +290,9 @@ func TestWei_Scan(t *testing.T) {
 			if err := tt.w.Scan(tt.args.src); (err != nil) != tt.wantErr {
 				t.Errorf("Scan() error = %v, wantErr %v", err, tt.wantErr)
 			} else if !tt.wantErr {
-				val, ok := new(big.Int).SetString(tt.args.src.(string), 10)
+				stringArg, ok := tt.args.src.(string)
+				require.True(t, ok)
+				val, ok := new(big.Int).SetString(stringArg, 10)
 				if !ok {
 					t.Fatal("invalid arg")
 				}
@@ -370,7 +387,8 @@ func TestWei_Cmp(t *testing.T) {
 
 func TestWei_MarshalJSON(t *testing.T) {
 	bigIntToBytes := func(i *big.Int) []byte {
-		bytes, _ := i.MarshalJSON()
+		bytes, err := i.MarshalJSON()
+		require.NoError(t, err)
 		return bytes
 	}
 	tests := []struct {
@@ -402,7 +420,8 @@ func TestWei_MarshalJSON(t *testing.T) {
 
 func TestWei_UnmarshalJSON(t *testing.T) {
 	bigIntToBytes := func(i *big.Int) []byte {
-		bytes, _ := i.MarshalJSON()
+		bytes, err := i.MarshalJSON()
+		require.NoError(t, err)
 		return bytes
 	}
 	type args struct {
@@ -455,13 +474,15 @@ func TestWei_UnmarshalBSONValue(t *testing.T) {
 	var nilWei *entities.Wei
 	var bytes []byte
 	var bsonTypeResult bsontype.Type
+	var err error
 	weiValue := entities.NewWei(1)
 	require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeInt64, []byte{}), entities.DeserializationError)
 	test.RunTable(t, dataTypeCases, func(bsonType bsontype.Type) error {
 		return weiValue.UnmarshalBSONValue(bsonType, zeroRepresentation)
 	})
 	test.RunTable(t, successCases, func(value *entities.Wei) []byte {
-		bsonTypeResult, bytes, _ = value.MarshalBSONValue()
+		bsonTypeResult, bytes, err = value.MarshalBSONValue()
+		require.NoError(t, err)
 		assert.Equal(t, bson.TypeString, bsonTypeResult)
 		return bytes
 	})

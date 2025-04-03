@@ -16,17 +16,25 @@ import (
 	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+	"time"
 )
 
 var dummyClient = rootstock.NewRskClient(nil)
 
+func TestNewRskBridgeImpl(t *testing.T) {
+	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, IrisActivationHeight: 100, ErpKeys: []string{"key1", "key2", "key3"}}
+	client := rootstock.NewRskClient(&mocks.RpcClientBindingMock{})
+	bridge := rootstock.NewRskBridgeImpl(config, &mocks.RskBridgeBindingMock{}, client, &chaincfg.TestNet3Params, rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)}, &mocks.TransactionSignerMock{}, time.Duration(1))
+	test.AssertNonZeroValues(t, bridge)
+}
+
 func TestRskBridgeImpl_GetAddress(t *testing.T) {
-	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{Address: test.AnyAddress}, nil, dummyClient, nil, rootstock.RetryParams{}, nil)
+	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{Address: test.AnyAddress}, nil, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 	assert.Equal(t, test.AnyAddress, bridge.GetAddress())
 }
 
 func TestRskBridgeImpl_GetRequiredTxConfirmations(t *testing.T) {
-	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{RequiredConfirmations: 10}, nil, dummyClient, nil, rootstock.RetryParams{}, nil)
+	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{RequiredConfirmations: 10}, nil, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 	assert.Equal(t, uint64(10), bridge.GetRequiredTxConfirmations())
 }
 
@@ -34,7 +42,7 @@ func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return(test.AnyAddress, nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Equal(t, test.AnyAddress, result)
 		require.NoError(t, err)
@@ -43,7 +51,7 @@ func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 	t.Run("Error handling on GetFederationAddress call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return("", assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Empty(t, result)
 		require.Error(t, err)
@@ -54,7 +62,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetMinimumLockTxValue", mock.Anything).Return(big.NewInt(5), nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.IsType(t, &entities.Wei{}, result)
 		assert.Equal(t, entities.NewWei(50000000000), result)
@@ -64,7 +72,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 	t.Run("Error handling on GetMinimumLockTxValue call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetMinimumLockTxValue", mock.Anything).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.Nil(t, result)
 		require.Error(t, err)
@@ -97,7 +105,7 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		redeemScriptBytes, testError = hex.DecodeString(redeemScriptString)
 		require.NoError(t, testError)
 		bridgeMock.On("GetActivePowpegRedeemScript", mock.Anything).Return(redeemScriptBytes, nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Equal(t, blockchain.FlyoverDerivation{
 			Address:      "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
@@ -111,7 +119,7 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		var result blockchain.FlyoverDerivation
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.On("GetActivePowpegRedeemScript", mock.Anything).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Empty(t, result)
 		require.ErrorContains(t, testError, "error retreiving fed redeem script from bridge")
@@ -129,7 +137,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		bridgeMock.On("GetActiveFederationCreationBlockHeight", mock.Anything).Return(big.NewInt(500), nil).Once()
 
 		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100, ErpKeys: []string{"key1", "key2", "key3"}},
-			bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil)
+			bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		fedInfo, err := bridge.FetchFederationInfo()
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.FederationInfo{
@@ -148,7 +156,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		for _, setUp := range fetchFedInfoErrorSetUps() {
 			bridgeMock := &mocks.RskBridgeBindingMock{}
 			setUp(bridgeMock)
-			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil)
+			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 			result, err := bridge.FetchFederationInfo()
 			require.Error(t, err)
 			assert.Empty(t, result)
@@ -202,7 +210,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	t.Run("Should handle error getting best chain height", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(nil, assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.Error(t, err)
@@ -212,7 +220,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	t.Run("Should return WaitingForBridgeError if block is higher than best chain height", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(300), nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
@@ -222,7 +230,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(false, assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.Error(t, err)
@@ -232,7 +240,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(true, nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.NoError(t, err)
@@ -243,7 +251,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(false, nil).Once()
 		bridgeMock.EXPECT().RegisterBtcCoinbaseTransaction(mock.Anything, coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue).Return(nil, assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.ErrorContains(t, err, "register coinbase transaction error")
@@ -256,7 +264,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(false, nil).Once()
 		bridgeMock.EXPECT().RegisterBtcCoinbaseTransaction(mock.Anything, coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue).Return(tx, nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.NotEmpty(t, result)
 		require.ErrorContains(t, err, "register coinbase transaction error: transaction reverted (0xfe6fc232343284368505aa7bad1ccdd865498df6e6691b53e128f14e5e21bb74)")
@@ -272,7 +280,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 			return opts.From == parsedAddress && opts.GasLimit == 100000
 		})
 		bridgeMock.EXPECT().RegisterBtcCoinbaseTransaction(matchFunc, coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue).Return(tx, nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.NotEmpty(t, result)
 		require.NoError(t, err)

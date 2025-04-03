@@ -2,12 +2,13 @@ package rootstock
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
-	"math/big"
 )
 
 type RpcClientBinding interface {
@@ -69,6 +70,8 @@ type LbcBinding interface {
 	ParseRegister(log types.Log) (*bindings.LiquidityBridgeContractRegister, error)
 	ProductFeePercentage(opts *bind.CallOpts) (*big.Int, error)
 	IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
+	UpdateProvider(opts *bind.TransactOpts, _name string, _url string) (*types.Transaction, error)
+	RefundUserPegOut(opts *bind.TransactOpts, quoteHash [32]byte) (*types.Transaction, error)
 }
 
 type LbcAdapter interface {

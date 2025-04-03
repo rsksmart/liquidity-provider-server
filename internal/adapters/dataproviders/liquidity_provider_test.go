@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -352,7 +353,7 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing
 func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
 	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "general-configuration")
-	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31)
+	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
 	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
@@ -414,7 +415,7 @@ func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
 func TestLocalLiquidityProvider_PeginConfiguration(t *testing.T) {
 	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "pegin-configuration")
-	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31)
+	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
 	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
@@ -477,7 +478,7 @@ func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
 	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "pegout-configuration")
 	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
-	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31)
+	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
 	t.Run("Return signed pegout configuration from db", func(t *testing.T) {

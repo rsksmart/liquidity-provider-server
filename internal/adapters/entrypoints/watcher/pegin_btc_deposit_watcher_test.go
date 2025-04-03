@@ -227,7 +227,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		expiredQuote := quote.PeginQuote{Nonce: 6, AgreementTimestamp: 1}
 		t.Run("should handle error when expiring quotes", func(t *testing.T) {
 			resetMocks()
-			checkFunction := test.AssertLogContains(t, "Error updating expired quote (any hash)")
+			checkFunction := test.AssertLogContains(t, "Error updating expired quote (d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb)")
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			btcRpc.On("GetHeight").Return(big.NewInt(9), nil).Once()
 			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()

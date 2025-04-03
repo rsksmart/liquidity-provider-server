@@ -6,12 +6,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"time"
 )
 
 const testLogLevel = log.DebugLevel
 
 func setUpLps(referenceChannel chan<- *lps.Application, hooks ...log.Hook) {
-	initCtx, cancel := context.WithTimeout(context.Background(), lps.BootstrapTimeout)
+	initCtx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 
 	env := environment.LoadEnv()
 
@@ -23,7 +24,7 @@ func setUpLps(referenceChannel chan<- *lps.Application, hooks ...log.Hook) {
 	log.Debugf("Environment loaded: %+v", env)
 
 	log.Info("Initializing application...")
-	app := lps.NewApplication(initCtx, *env)
+	app := lps.NewApplication(initCtx, *env, environment.DefaultTimeouts())
 	log.Info("Application initialized successfully")
 	cancel()
 	log.Info("Starting application...")

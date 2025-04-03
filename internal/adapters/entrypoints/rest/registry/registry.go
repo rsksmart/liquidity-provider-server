@@ -34,4 +34,5 @@ type UseCaseRegistry interface {
 	GetPeginStatusUseCase() *pegin.StatusUseCase
 	GetPegoutStatusUseCase() *pegout.StatusUseCase
 	GetAvailableLiquidityUseCase() *liquidity_provider.GetAvailableLiquidityUseCase
+	GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase
 }

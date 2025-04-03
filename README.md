@@ -56,6 +56,35 @@ mentioned before are the minimal dependencies, but in order to run a fully funct
 The [cmd/utils](cmd/utils) directory contains scripts with different utilities for the liquidity providers. You can either run them directly
 with `go run` or build them with `make utils`. You can run the scripts with the `--help` flag to see the available options. The current utilities are:
 - **update_provider_url**: updates the URL of a liquidity provider provided when the discovery function of the Liquidity Bridge Contract is executed.
+- **register_pegin**: register a PegIn transaction within the Liquidity Bridge Contract. Most times, this script is only required to execute refunds
+on special cases. This script requires an input file whose structure can be found [the input-example.json](cmd/utils/register_pegin/input-example.json) file.
+- **refund_user_pegout**: executes a refund for a user's peg-out operation through the Liquidity Bridge Contract. This is used when a peg-out operation needs to be refunded back to the user's RSK address. The script requires the quote hash of the operation to refund.
+- **key_conversion**: shows the corresponding BTC and RSK address for a given private key and encrypts it into a keystore, accepts the key either in WIF or hex format. The key can be provided through the terminal, a file or an existing keystore.
+
+### Monitoring Service
+The project includes a Bitcoin balance monitoring service that tracks specified BTC addresses and exposes metrics at `http://<host>:8080/metrics` using Prometheus `https://prometheus.io/`.
+
+To run the monitoring service with the default port (8090):
+```bash
+make monitoring
+```
+
+To run the monitoring service with a custom port (e.g., 8091):
+```bash
+make monitoring MONITOR_PORT=8091
+```
+
+The service is configured in `docker-compose/monitoring/src/config.ts` and supports both testnet and mainnet monitoring:
+
+- MONITORED_ADDRESSES: The set of addresses to be monitored. Each address should have an alias that will be used in the metrics.
+- MONITOR_CONFIG: The configuration for the monitoring service.
+  - pollingIntervalSeconds: How often the service will check the bitcoin balance of the monitored addresses in seconds.
+  - monitorName: The name of the monitoring service.
+  - network: The network to monitor (mainnet or testnet).
+  - port: The port where the service will be exposed.
+
+The service can be configured to monitor other addresses by modifying the `MONITORED_ADDRESSES` array in `docker-compose/monitoring/src/config.ts`.
+
 
 ### More information
 If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).

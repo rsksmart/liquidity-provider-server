@@ -1,7 +1,7 @@
 # Liquidity Provider Server - Liquidity Provider specification
 The intent of this document is to explain all the points that the liquidity provider (LP) should know in order to operate his instance of the liquidity
 provider server (LPS).
-This document contains both technical and non-technical information, so it is recommended to be reviewed by the LP itself and the person who is in change of 
+This document contains both technical and non-technical information, so it is recommended to be reviewed by the LP itself and the person who is in change of
 setting up the environment where the LPS is going to be deployed.
 
 ## Table of contents
@@ -20,17 +20,17 @@ If you are a liquidity provider, and you're not interested in the technical deta
 - [Wallet Management](#wallet-management)
 
 ## Context
-In the Flyover Protocol, there are two main actors, the regular user (user), who is party interested in executing Peg-In/Peg-Out operations and the Liquidity 
-Provider (LP), who puts liquidity to speed up the operation for the user in exchange for a fee as a reward. In order to do this, the user and the LP need to 
+In the Flyover Protocol, there are two main actors, the regular user (user), who is party interested in executing Peg-In/Peg-Out operations and the Liquidity
+Provider (LP), who puts liquidity to speed up the operation for the user in exchange for a fee as a reward. In order to do this, the user and the LP need to
 agree on the terms of the service (a Peg-In/Peg-Out *Quote*). This implies that the different LPs may offer different quotes, so the user needs to be able to
 interact with each LP to receive quote details and decide which one is going to use for the operation.
 
-The user interacts with the Flyover Protocol through the [Flyover SDK](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk). This 
+The user interacts with the Flyover Protocol through the [Flyover SDK](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk). This
 SDK fetches the list of the available LP from the liquidity bridge contract (LBC), this contract returns a list where each element has some information about
-the LP, among this information will be the URL of the liquidity provider server (LPS) instance of that LP so the user can communicate with it. This means 
+the LP, among this information will be the URL of the liquidity provider server (LPS) instance of that LP so the user can communicate with it. This means
 that **the LPS has an API that every user interacts with to do the quote agreement**.
 
-The LP also needs to interact with the protocol to perform some management operations related to topics such as collateral, funds, fees management, configuration, 
+The LP also needs to interact with the protocol to perform some management operations related to topics such as collateral, funds, fees management, configuration,
 etc. The LP does this operation through the LPS, that's the reason why the LPS also has an API that the LP interacts with to perform various management operations.
 
 To summarize, the LPS has two main APIs:
@@ -55,14 +55,14 @@ environment where the LPS will run.
 By default, the Management API is disabled, and it can be enabled only by setting the `ENABLE_MANAGEMENT_API` environment variable to `true`. This is a security measure
 to ensure that the API will only be accessible if it is explicitly enabled by the LP (or the person setting up the environment).
 
-Once this variable is set to true **it is responsibility of the LP and the person setting up the environment to ensure that the API is properly secured**. 
+Once this variable is set to true **it is responsibility of the LP and the person setting up the environment to ensure that the API is properly secured**.
 
 ### Management UI Access
 The LPS provides a Management UI out of the box to facilitate the interaction with the Management API. To go to that UI you just need to go to
 `<LPS URL>/management` page in your browser.
 
 In order to interact with this API, the LP needs to be authenticated. The authentication mechanisms consists in user/password credentials. There is a default credentials
-pair which is `admin` as username and a random password that the LPS will generate on its startup in the file `management_password.txt` inside the temporal directory 
+pair which is `admin` as username and a random password that the LPS will generate on its startup in the file `management_password.txt` inside the temporal directory
 of your OS. E. g.: `/tmp/management_password.txt`.
 
 The first time that the LP enters the Management UI he will be asked to provide the default credentials and set the new ones to use from that point to the future.
@@ -108,13 +108,14 @@ whether it should be treated as public or secured as a private endpoint.
 |      /management/logout       |    POST    |    PRIVATE     |           Logout from the Management API            |
 |    /management/credentials    |    POST    |    PRIVATE     |     Update credentials for Management API login     |
 |          /management          |    GET     |    PRIVATE     |                 Serve Management UI                 |
+|           /version            |    GET     |     PUBLIC     |               Get server version info               |
 
 ## Wallet management
 The LPS performs operations in behalf of the LP during the process of the protocol, it means that it requires access to both LP's Bitcoin and
 Rootstock wallets. To be more specific, it requires access to the RSK wallet of the LP and by having it, it also has access to the BTC wallet
 associated with that RSK wallet.
 
-The LPS has the following options to be provided with the access of that wallet, and depending on the option picked by the LP (set with 
+The LPS has the following options to be provided with the access of that wallet, and depending on the option picked by the LP (set with
 the value of the `WALLET` environment variable), the LP will need to manage those wallets in a different way:
 
 ### Run LPS using local wallet integration
@@ -168,5 +169,3 @@ of the ways that the AWS client allows (through a file in home directory, enviro
 the secrets to use through the environment variables (that are listed below). This is the recommended option for productive environments.
 - `KEY_SECRET`
 - `PASSWORD_SECRET`
-
-

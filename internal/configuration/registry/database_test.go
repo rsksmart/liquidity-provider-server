@@ -6,13 +6,14 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestNewDatabaseRegistry(t *testing.T) {
 	t.Run("should return a new database registry", func(t *testing.T) {
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		dbRegistry := registry.NewDatabaseRegistry(conn)
 		assert.NotNil(t, dbRegistry.PeginRepository)
 		assert.NotNil(t, dbRegistry.PegoutRepository)

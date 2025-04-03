@@ -18,11 +18,6 @@ const (
 	penalizationCheckInterval        = 10 * time.Minute
 )
 
-// Watchers timeouts
-const (
-	watcherValidationTimeout = 15 * time.Second
-)
-
 type Watcher interface {
 	entities.Closeable
 	Prepare(ctx context.Context) error
