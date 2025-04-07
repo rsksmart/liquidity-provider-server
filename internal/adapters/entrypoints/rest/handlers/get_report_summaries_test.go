@@ -28,7 +28,18 @@ func (m *MockPeginQuoteRepository) ListQuotesByDateRange(ctx context.Context, st
 	if err != nil {
 		return nil, nil, err
 	}
-	return args.Get(0).([]quote.PeginQuote), args.Get(1).([]quote.RetainedPeginQuote), nil
+	
+	quotes, ok := args.Get(0).([]quote.PeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, nil, errors.New("invalid pegin quotes type")
+	}
+	
+	retainedQuotes, ok := args.Get(1).([]quote.RetainedPeginQuote)
+	if !ok && args.Get(1) != nil {
+		return nil, nil, errors.New("invalid retained pegin quotes type")
+	}
+	
+	return quotes, retainedQuotes, nil
 }
 
 func (m *MockPeginQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PeginQuote, error) {
@@ -37,7 +48,13 @@ func (m *MockPeginQuoteRepository) GetQuote(ctx context.Context, quoteHash strin
 	if err != nil {
 		return nil, err
 	}
-	return args.Get(0).(*quote.PeginQuote), nil
+	
+	quote, ok := args.Get(0).(*quote.PeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid pegin quote type")
+	}
+	
+	return quote, nil
 }
 
 type MockPegoutQuoteRepository struct {
@@ -50,7 +67,18 @@ func (m *MockPegoutQuoteRepository) ListQuotesByDateRange(ctx context.Context, s
 	if err != nil {
 		return nil, nil, err
 	}
-	return args.Get(0).([]quote.PegoutQuote), args.Get(1).([]quote.RetainedPegoutQuote), nil
+	
+	quotes, ok := args.Get(0).([]quote.PegoutQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, nil, errors.New("invalid pegout quotes type")
+	}
+	
+	retainedQuotes, ok := args.Get(1).([]quote.RetainedPegoutQuote)
+	if !ok && args.Get(1) != nil {
+		return nil, nil, errors.New("invalid retained pegout quotes type")
+	}
+	
+	return quotes, retainedQuotes, nil
 }
 
 func (m *MockPegoutQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PegoutQuote, error) {
@@ -59,7 +87,13 @@ func (m *MockPegoutQuoteRepository) GetQuote(ctx context.Context, quoteHash stri
 	if err != nil {
 		return nil, err
 	}
-	return args.Get(0).(*quote.PegoutQuote), nil
+	
+	quote, ok := args.Get(0).(*quote.PegoutQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid pegout quote type")
+	}
+	
+	return quote, nil
 }
 
 type MockSummariesUseCase struct {
