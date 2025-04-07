@@ -43,12 +43,24 @@ func (m *mockPeginQuoteRepo) GetQuote(ctx context.Context, hash string) (*quote.
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*quote.PeginQuote), args.Error(1)
+	
+	quote, ok := args.Get(0).(*quote.PeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid pegin quote type")
+	}
+	
+	return quote, args.Error(1)
 }
 
 func (m *mockPeginQuoteRepo) GetPeginCreationData(ctx context.Context, hash string) quote.PeginCreationData {
 	args := m.Called(ctx, hash)
-	return args.Get(0).(quote.PeginCreationData)
+	
+	data, ok := args.Get(0).(quote.PeginCreationData)
+	if !ok && args.Get(0) != nil {
+		panic("invalid pegin creation data type")
+	}
+	
+	return data
 }
 
 func (m *mockPeginQuoteRepo) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
@@ -56,7 +68,13 @@ func (m *mockPeginQuoteRepo) GetRetainedQuote(ctx context.Context, hash string) 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*quote.RetainedPeginQuote), args.Error(1)
+	
+	quote, ok := args.Get(0).(*quote.RetainedPeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid retained pegin quote type")
+	}
+	
+	return quote, args.Error(1)
 }
 
 func (m *mockPeginQuoteRepo) GetRetainedQuoteByDepositAddress(ctx context.Context, address string) (*quote.RetainedPeginQuote, error) {
@@ -64,22 +82,51 @@ func (m *mockPeginQuoteRepo) GetRetainedQuoteByDepositAddress(ctx context.Contex
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*quote.RetainedPeginQuote), args.Error(1)
+	
+	quote, ok := args.Get(0).(*quote.RetainedPeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid retained pegin quote type")
+	}
+	
+	return quote, args.Error(1)
 }
 
 func (m *mockPeginQuoteRepo) GetRetainedQuoteByState(ctx context.Context, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
 	args := m.Called(ctx, states)
-	return args.Get(0).([]quote.RetainedPeginQuote), args.Error(1)
+	
+	quotes, ok := args.Get(0).([]quote.RetainedPeginQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid retained pegin quotes type")
+	}
+	
+	return quotes, args.Error(1)
 }
 
 func (m *mockPeginQuoteRepo) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
 	args := m.Called(ctx, startDate, endDate)
-	return args.Get(0).([]quote.PeginQuote), args.Get(1).([]quote.RetainedPeginQuote), args.Error(2)
+	
+	quotes, ok1 := args.Get(0).([]quote.PeginQuote)
+	if !ok1 && args.Get(0) != nil {
+		return nil, nil, errors.New("invalid pegin quotes type")
+	}
+	
+	retainedQuotes, ok2 := args.Get(1).([]quote.RetainedPeginQuote)
+	if !ok2 && args.Get(1) != nil {
+		return nil, nil, errors.New("invalid retained pegin quotes type")
+	}
+	
+	return quotes, retainedQuotes, args.Error(2)
 }
 
 func (m *mockPeginQuoteRepo) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
 	args := m.Called(ctx, quotes)
-	return args.Get(0).(uint), args.Error(1)
+	
+	count, ok := args.Get(0).(uint)
+	if !ok && args.Get(0) != nil {
+		return 0, errors.New("invalid count type")
+	}
+	
+	return count, args.Error(1)
 }
 
 type mockPegoutQuoteRepo struct {
@@ -111,12 +158,24 @@ func (m *mockPegoutQuoteRepo) GetQuote(ctx context.Context, hash string) (*quote
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*quote.PegoutQuote), args.Error(1)
+	
+	quote, ok := args.Get(0).(*quote.PegoutQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid pegout quote type")
+	}
+	
+	return quote, args.Error(1)
 }
 
 func (m *mockPegoutQuoteRepo) GetPegoutCreationData(ctx context.Context, hash string) quote.PegoutCreationData {
 	args := m.Called(ctx, hash)
-	return args.Get(0).(quote.PegoutCreationData)
+	
+	data, ok := args.Get(0).(quote.PegoutCreationData)
+	if !ok && args.Get(0) != nil {
+		panic("invalid pegout creation data type")
+	}
+	
+	return data
 }
 
 func (m *mockPegoutQuoteRepo) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
@@ -124,27 +183,62 @@ func (m *mockPegoutQuoteRepo) GetRetainedQuote(ctx context.Context, hash string)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*quote.RetainedPegoutQuote), args.Error(1)
+	
+	quote, ok := args.Get(0).(*quote.RetainedPegoutQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid retained pegout quote type")
+	}
+	
+	return quote, args.Error(1)
 }
 
 func (m *mockPegoutQuoteRepo) GetRetainedQuoteByState(ctx context.Context, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
 	args := m.Called(ctx, states)
-	return args.Get(0).([]quote.RetainedPegoutQuote), args.Error(1)
+	
+	quotes, ok := args.Get(0).([]quote.RetainedPegoutQuote)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid retained pegout quotes type")
+	}
+	
+	return quotes, args.Error(1)
 }
 
 func (m *mockPegoutQuoteRepo) ListPegoutDepositsByAddress(ctx context.Context, address string) ([]quote.PegoutDeposit, error) {
 	args := m.Called(ctx, address)
-	return args.Get(0).([]quote.PegoutDeposit), args.Error(1)
+	
+	deposits, ok := args.Get(0).([]quote.PegoutDeposit)
+	if !ok && args.Get(0) != nil {
+		return nil, errors.New("invalid pegout deposits type")
+	}
+	
+	return deposits, args.Error(1)
 }
 
 func (m *mockPegoutQuoteRepo) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
 	args := m.Called(ctx, startDate, endDate)
-	return args.Get(0).([]quote.PegoutQuote), args.Get(1).([]quote.RetainedPegoutQuote), args.Error(2)
+	
+	quotes, ok1 := args.Get(0).([]quote.PegoutQuote)
+	if !ok1 && args.Get(0) != nil {
+		return nil, nil, errors.New("invalid pegout quotes type")
+	}
+	
+	retainedQuotes, ok2 := args.Get(1).([]quote.RetainedPegoutQuote)
+	if !ok2 && args.Get(1) != nil {
+		return nil, nil, errors.New("invalid retained pegout quotes type")
+	}
+	
+	return quotes, retainedQuotes, args.Error(2)
 }
 
 func (m *mockPegoutQuoteRepo) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
 	args := m.Called(ctx, quotes)
-	return args.Get(0).(uint), args.Error(1)
+	
+	count, ok := args.Get(0).(uint)
+	if !ok && args.Get(0) != nil {
+		return 0, errors.New("invalid count type")
+	}
+	
+	return count, args.Error(1)
 }
 
 func (m *mockPegoutQuoteRepo) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {

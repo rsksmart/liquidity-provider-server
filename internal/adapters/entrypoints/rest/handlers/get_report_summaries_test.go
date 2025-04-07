@@ -105,7 +105,13 @@ func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.
 	if args.Get(0) == nil {
 		return liquidity_provider.SummariesResponse{}, args.Error(1)
 	}
-	return args.Get(0).(liquidity_provider.SummariesResponse), args.Error(1)
+	
+	response, ok := args.Get(0).(liquidity_provider.SummariesResponse)
+	if !ok {
+		return liquidity_provider.SummariesResponse{}, errors.New("invalid summaries response type")
+	}
+	
+	return response, args.Error(1)
 }
 
 func validateDateParametersForTest(w http.ResponseWriter, req *http.Request) (startDate time.Time, endDate time.Time, valid bool) {
