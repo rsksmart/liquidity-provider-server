@@ -157,7 +157,7 @@ func (m *mockPegoutQuoteRepo) UpsertPegoutDeposits(ctx context.Context, deposits
 	return args.Error(0)
 }
 
-func TestSummariesUseCase_Run(t *testing.T) {
+func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 	startDate := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2023, 1, 31, 23, 59, 59, 0, time.UTC)
 

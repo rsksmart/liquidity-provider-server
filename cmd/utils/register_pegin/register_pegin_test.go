@@ -3,6 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"flag"
+	"math/big"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -13,10 +18,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
-	"math/big"
-	"os"
-	"testing"
-	"time"
 )
 
 // nolint:funlen
@@ -173,7 +174,7 @@ func TestRegisterPegInScriptInput_ToEnv(t *testing.T) {
 	})
 }
 
-func TestParseRegisterPegInScriptInput(t *testing.T) {
+func TestParseRegisterPegInScriptInput(t *testing.T) { //nolint:funlen
 	parse := func() { /* mock function to prevent calling flag.Parse inside a test */ }
 	input := RegisterPegInScriptInput{
 		BaseInput: scripts.BaseInput{

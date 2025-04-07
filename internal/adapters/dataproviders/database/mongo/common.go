@@ -80,7 +80,7 @@ func (c *Connection) CheckConnection(ctx context.Context) bool {
 	return err == nil
 }
 
-func ListQuotesByDateRange[S any, Q any, R any](
+func ListQuotesByDateRange[S any, Q any, R any]( //nolint:funlen,cyclop
 	ctx context.Context,
 	conn *Connection,
 	startDate, endDate time.Time,
@@ -158,7 +158,7 @@ func ListQuotesByDateRange[S any, Q any, R any](
 			}
 		}
 	}
-	if len(additionalHashes) > 0 {
+	if len(additionalHashes) > 0 { //nolint:nestif
 		additionalHashesList := make([]string, 0, len(additionalHashes))
 		for hash := range additionalHashes {
 			additionalHashesList = append(additionalHashesList, hash)

@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -141,13 +142,13 @@ type TestRetainedQuote struct {
 	State     string
 }
 
-func TestListQuotesByDateRange(t *testing.T) {
+func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 	startTimestamp := startDate.Unix()
 	endTimestamp := endDate.Unix()
 
-	setupBasicMocks := func() (*mocks.DbClientBindingMock, *mocks.DbBindingMock, *mocks.CollectionBindingMock, *mocks.CollectionBindingMock) {
+	setupBasicMocks := func() (*mocks.DbClientBindingMock, *mocks.DbBindingMock, *mocks.CollectionBindingMock, *mocks.CollectionBindingMock) { //nolint:unparam
 		client, db := getClientAndDatabaseMocks()
 		quoteCollection := &mocks.CollectionBindingMock{}
 		retainedCollection := &mocks.CollectionBindingMock{}
@@ -211,9 +212,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(quotes))
-		assert.Equal(t, 2, len(retained))
+		require.NoError(t, err)
+		assert.Len(t, quotes, 2)
+		assert.Len(t, retained, 2)
 		assert.Equal(t, TestQuote{Value: 1}, quotes[0])
 		assert.Equal(t, TestQuote{Value: 2}, quotes[1])
 		assert.Equal(t, TestRetainedQuote{QuoteHash: "hash1", State: "state1"}, retained[0])
@@ -256,7 +257,7 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, quotes)
 		assert.Empty(t, retained)
 	})
@@ -279,9 +280,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.Error(t, err)
-		assert.Nil(t, quotes)
-		assert.Nil(t, retained)
+		require.Error(t, err)
+		assert.Empty(t, quotes)
+		assert.Empty(t, retained)
 	})
 
 	t.Run("database error on retained collection", func(t *testing.T) {
@@ -324,9 +325,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.Error(t, err)
-		assert.Nil(t, quotes)
-		assert.Nil(t, retained)
+		require.Error(t, err)
+		assert.Empty(t, quotes)
+		assert.Empty(t, retained)
 	})
 
 	t.Run("error in quote cursor All", func(t *testing.T) {
@@ -347,9 +348,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.Error(t, err)
-		assert.Nil(t, quotes)
-		assert.Nil(t, retained)
+		require.Error(t, err)
+		assert.Empty(t, quotes)
+		assert.Empty(t, retained)
 		assert.Equal(t, assert.AnError, err)
 	})
 
@@ -407,9 +408,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(quotes))
-		assert.Equal(t, 2, len(retained))
+		require.NoError(t, err)
+		assert.Len(t, quotes, 2)
+		assert.Len(t, retained, 2)
 		assert.Contains(t, []int{1, 2}, quotes[0].Value)
 		assert.Contains(t, []int{1, 2}, quotes[1].Value)
 		assert.Contains(t, []string{"state1", "state2"}, retained[0].State)
@@ -463,9 +464,9 @@ func TestListQuotesByDateRange(t *testing.T) {
 			},
 		)
 
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(quotes))
-		assert.Equal(t, 2, len(retained))
+		require.NoError(t, err)
+		assert.Len(t, quotes, 1)
+		assert.Len(t, retained, 2)
 		assert.Equal(t, TestQuote{Value: 1}, quotes[0])
 		assert.Equal(t, "state1", retained[0].State)
 		assert.Equal(t, "state2", retained[1].State)

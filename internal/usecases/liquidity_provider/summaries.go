@@ -2,8 +2,8 @@ package liquidity_provider
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -62,7 +62,7 @@ func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time
 	}, nil
 }
 
-func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
+func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) { //nolint:funlen,cyclop
 	var data SummaryData
 	quotes, retainedQuotes, err := u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 	if err != nil {
@@ -79,14 +79,14 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	uniqueQuoteHashes := make(map[string]bool)
 	
 	for i := range quotes {
-		quoteHash := fmt.Sprintf("%d", quotes[i].Nonce)
+		quoteHash := strconv.FormatInt(quotes[i].Nonce, 10)
 		uniqueQuoteHashes[quoteHash] = true
 		totalAmount.Add(totalAmount, quotes[i].Total())		
 		quoteCopy := quotes[i]
 		processedQuotes[quoteHash] = &quoteCopy
 	}
 	
-	if len(retainedQuotes) > 0 {
+	if len(retainedQuotes) > 0 { //nolint:nestif
 		data.TotalQuotesCount = int64(len(retainedQuotes))		
 		var hashesToFetch []string
 		for _, retainedQuote := range retainedQuotes {
@@ -145,7 +145,7 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	return data, nil
 }
 
-func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
+func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) { //nolint:funlen,cyclop
 	var data SummaryData
 	quotes, retainedQuotes, err := u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 	if err != nil {
@@ -163,14 +163,14 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	uniqueQuoteHashes := make(map[string]bool)
 	
 	for i := range quotes {
-		quoteHash := fmt.Sprintf("%d", quotes[i].Nonce)
+		quoteHash := strconv.FormatInt(quotes[i].Nonce, 10)
 		uniqueQuoteHashes[quoteHash] = true
 		totalAmount.Add(totalAmount, quotes[i].Total())
 		quoteCopy := quotes[i]
 		processedQuotes[quoteHash] = &quoteCopy
 	}
 	
-	if len(retainedQuotes) > 0 {
+	if len(retainedQuotes) > 0 { //nolint:nestif
 		data.TotalQuotesCount = int64(len(retainedQuotes))		
 		var hashesToFetch []string
 		for _, retainedQuote := range retainedQuotes {

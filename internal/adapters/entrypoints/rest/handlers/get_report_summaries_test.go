@@ -24,12 +24,20 @@ type MockPeginQuoteRepository struct {
 
 func (m *MockPeginQuoteRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
 	args := m.Called(ctx, startDate, endDate)
-	return args.Get(0).([]quote.PeginQuote), args.Get(1).([]quote.RetainedPeginQuote), args.Error(2)
+	err := args.Error(2)
+	if err != nil {
+		return nil, nil, err
+	}
+	return args.Get(0).([]quote.PeginQuote), args.Get(1).([]quote.RetainedPeginQuote), nil
 }
 
 func (m *MockPeginQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PeginQuote, error) {
 	args := m.Called(ctx, quoteHash)
-	return args.Get(0).(*quote.PeginQuote), args.Error(1)
+	err := args.Error(1)
+	if err != nil {
+		return nil, err
+	}
+	return args.Get(0).(*quote.PeginQuote), nil
 }
 
 type MockPegoutQuoteRepository struct {
@@ -38,12 +46,20 @@ type MockPegoutQuoteRepository struct {
 
 func (m *MockPegoutQuoteRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
 	args := m.Called(ctx, startDate, endDate)
-	return args.Get(0).([]quote.PegoutQuote), args.Get(1).([]quote.RetainedPegoutQuote), args.Error(2)
+	err := args.Error(2)
+	if err != nil {
+		return nil, nil, err
+	}
+	return args.Get(0).([]quote.PegoutQuote), args.Get(1).([]quote.RetainedPegoutQuote), nil
 }
 
 func (m *MockPegoutQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PegoutQuote, error) {
 	args := m.Called(ctx, quoteHash)
-	return args.Get(0).(*quote.PegoutQuote), args.Error(1)
+	err := args.Error(1)
+	if err != nil {
+		return nil, err
+	}
+	return args.Get(0).(*quote.PegoutQuote), nil
 }
 
 type MockSummariesUseCase struct {
@@ -124,7 +140,7 @@ func getReportSummariesHandlerForTest(useCase *MockSummariesUseCase) http.Handle
 	}
 }
 
-func TestGetReportSummariesHandler(t *testing.T) {
+func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name           string
 		url            string
@@ -207,7 +223,7 @@ func TestGetReportSummariesHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUseCase := new(MockSummariesUseCase)			
-			req, err := http.NewRequest("GET", tt.url, nil)
+			req, err := http.NewRequestWithContext(context.Background(), "GET", tt.url, nil)
 			require.NoError(t, err)
 			
 			if tt.expectedStatus == http.StatusOK || tt.expectedStatus == http.StatusInternalServerError {
