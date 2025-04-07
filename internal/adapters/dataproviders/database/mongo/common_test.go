@@ -148,13 +148,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	startTimestamp := startDate.Unix()
 	endTimestamp := endDate.Unix()
 
-	setupBasicMocks := func() (*mocks.DbClientBindingMock, *mocks.DbBindingMock, *mocks.CollectionBindingMock, *mocks.CollectionBindingMock) { //nolint:unparam
+	getClientAndMockCollections := func() (*mocks.DbClientBindingMock, *mocks.CollectionBindingMock, *mocks.CollectionBindingMock) {
 		client, db := getClientAndDatabaseMocks()
 		quoteCollection := &mocks.CollectionBindingMock{}
 		retainedCollection := &mocks.CollectionBindingMock{}
 		db.On("Collection", "quoteCollection").Return(quoteCollection)
 		db.On("Collection", "retainedCollection").Return(retainedCollection)
-		return client, db, quoteCollection, retainedCollection
+		return client, quoteCollection, retainedCollection
 	}
 
 	createQuoteFilter := func() bson.D {
@@ -167,7 +167,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	}
 
 	t.Run("successful retrieval of quotes", func(t *testing.T) {
-		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+		client, quoteCollection, retainedCollection := getClientAndMockCollections()
 
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
@@ -222,7 +222,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("empty result set", func(t *testing.T) {
-		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+		client, quoteCollection, retainedCollection := getClientAndMockCollections()
 
 		quoteFilter := createQuoteFilter()
 		quoteCursor := createCursorFromList(t, []TestStoredQuote{})
@@ -263,7 +263,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("database error on quote collection", func(t *testing.T) {
-		client, _, quoteCollection, _ := setupBasicMocks()
+		client, quoteCollection, _ := getClientAndMockCollections()
 		quoteFilter := createQuoteFilter()
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(nil, assert.AnError)
 
@@ -286,7 +286,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("database error on retained collection", func(t *testing.T) {
-		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+		client, quoteCollection, retainedCollection := getClientAndMockCollections()
 
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
@@ -331,7 +331,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("error in quote cursor All", func(t *testing.T) {
-		client, _, quoteCollection, _ := setupBasicMocks()
+		client, quoteCollection, _ := getClientAndMockCollections()
 		quoteFilter := createQuoteFilter()
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(nil, assert.AnError)
 
@@ -355,7 +355,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("fetches additional quotes referenced by retained quotes", func(t *testing.T) {
-		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+		client, quoteCollection, retainedCollection := getClientAndMockCollections()
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
 		}
@@ -418,7 +418,7 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 	})
 
 	t.Run("handles error when fetching additional quotes", func(t *testing.T) {
-		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+		client, quoteCollection, retainedCollection := getClientAndMockCollections()
 
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
