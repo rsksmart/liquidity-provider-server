@@ -4,6 +4,7 @@ package mocks
 
 import (
 	context "context"
+	"time"
 
 	quote "github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	mock "github.com/stretchr/testify/mock"
@@ -654,6 +655,75 @@ func (_c *PegoutQuoteRepositoryMock_UpsertPegoutDeposits_Call) Return(_a0 error)
 }
 
 func (_c *PegoutQuoteRepositoryMock_UpsertPegoutDeposits_Call) RunAndReturn(run func(context.Context, []quote.PegoutDeposit) error) *PegoutQuoteRepositoryMock_UpsertPegoutDeposits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListQuotesByDateRange provides a mock function with given fields: ctx, startDate, endDate
+func (_m *PegoutQuoteRepositoryMock) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
+	ret := _m.Called(ctx, startDate, endDate)
+
+	if len(ret) == 0 {
+		return []quote.PegoutQuote{}, []quote.RetainedPegoutQuote{}, nil
+	}
+
+	var r0 []quote.PegoutQuote
+	var r1 []quote.RetainedPegoutQuote
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error)); ok {
+		return rf(ctx, startDate, endDate)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []quote.PegoutQuote); ok {
+		r0 = rf(ctx, startDate, endDate)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.PegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) []quote.RetainedPegoutQuote); ok {
+		r1 = rf(ctx, startDate, endDate)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]quote.RetainedPegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, time.Time, time.Time) error); ok {
+		r2 = rf(ctx, startDate, endDate)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListQuotesByDateRange'
+type PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call struct {
+	*mock.Call
+}
+
+// ListQuotesByDateRange is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startDate time.Time
+//   - endDate time.Time
+func (_e *PegoutQuoteRepositoryMock_Expecter) ListQuotesByDateRange(ctx interface{}, startDate interface{}, endDate interface{}) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	return &PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call{Call: _e.mock.On("ListQuotesByDateRange", ctx, startDate, endDate)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Run(run func(ctx context.Context, startDate time.Time, endDate time.Time)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time))
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 []quote.PegoutQuote, _a1 []quote.RetainedPegoutQuote, _a2 error) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
 	_c.Call.Return(run)
 	return _c
 }
