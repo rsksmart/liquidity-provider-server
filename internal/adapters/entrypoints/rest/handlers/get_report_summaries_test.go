@@ -13,42 +13,37 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 )
 
-func HandlerWithMock(useCase interface {
-	Run(ctx context.Context, startDate, endDate time.Time) (liquidity_provider.SummariesResponse, error)
-}) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		start := req.URL.Query().Get("startDate")
-		end := req.URL.Query().Get("endDate")
+type MockPeginQuoteRepository struct {
+	mock.Mock
+}
 
-		if start == "" || end == "" {
-			http.Error(w, "Missing startDate or endDate query parameter", http.StatusBadRequest)
-			return
-		}
+func (m *MockPeginQuoteRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
+	args := m.Called(ctx, startDate, endDate)
+	return args.Get(0).([]quote.PeginQuote), args.Get(1).([]quote.RetainedPeginQuote), args.Error(2)
+}
 
-		startDate, err := time.Parse("2006-01-02", start)
-		if err != nil {
-			http.Error(w, "Invalid startDate format", http.StatusBadRequest)
-			return
-		}
+func (m *MockPeginQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PeginQuote, error) {
+	args := m.Called(ctx, quoteHash)
+	return args.Get(0).(*quote.PeginQuote), args.Error(1)
+}
 
-		endDate, err := time.Parse("2006-01-02", end)
-		if err != nil {
-			http.Error(w, "Invalid endDate format", http.StatusBadRequest)
-			return
-		}
+type MockPegoutQuoteRepository struct {
+	mock.Mock
+}
 
-		response, err := useCase.Run(req.Context(), startDate, endDate)
-		if err != nil {
-			http.Error(w, "Failed to retrieve report data", http.StatusInternalServerError)
-			return
-		}
+func (m *MockPegoutQuoteRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
+	args := m.Called(ctx, startDate, endDate)
+	return args.Get(0).([]quote.PegoutQuote), args.Get(1).([]quote.RetainedPegoutQuote), args.Error(2)
+}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(response)
-	}
+func (m *MockPegoutQuoteRepository) GetQuote(ctx context.Context, quoteHash string) (*quote.PegoutQuote, error) {
+	args := m.Called(ctx, quoteHash)
+	return args.Get(0).(*quote.PegoutQuote), args.Error(1)
 }
 
 type MockSummariesUseCase struct {
@@ -61,6 +56,72 @@ func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.
 		return liquidity_provider.SummariesResponse{}, args.Error(1)
 	}
 	return args.Get(0).(liquidity_provider.SummariesResponse), args.Error(1)
+}
+
+func validateDateParametersForTest(w http.ResponseWriter, req *http.Request) (startDate time.Time, endDate time.Time, valid bool) {
+	start := req.URL.Query().Get("startDate")
+	end := req.URL.Query().Get("endDate")
+	
+	if start == "" || end == "" {
+		missing := []string{}
+		if start == "" {
+			missing = append(missing, "startDate")
+		}
+		if end == "" {
+			missing = append(missing, "endDate")
+		}
+		jsonErr := rest.NewErrorResponseWithDetails("missing required parameters", map[string]any{
+			"missing": missing,
+		}, true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return time.Time{}, time.Time{}, false
+	}
+
+	var err error
+	startDate, err = time.Parse("2006-01-02", start)
+	if err != nil {
+		jsonErr := rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return time.Time{}, time.Time{}, false
+	}
+
+	endDate, err = time.Parse("2006-01-02", end)
+	if err != nil {
+		jsonErr := rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return time.Time{}, time.Time{}, false
+	}
+
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+
+	if endDate.Before(startDate) {
+		details := map[string]any{
+			"startDate": startDate.Format("2006-01-02"),
+			"endDate":   endDate.Format("2006-01-02"),
+		}
+		jsonErr := rest.NewErrorResponseWithDetails("invalid date range", details, true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return time.Time{}, time.Time{}, false
+	}
+
+	return startDate, endDate, true
+}
+
+func getReportSummariesHandlerForTest(useCase *MockSummariesUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		startDate, endDate, valid := validateDateParametersForTest(w, req)
+		if !valid {
+			return
+		}
+
+		response, err := useCase.Run(req.Context(), startDate, endDate)
+		if err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("An error occurred while processing your request", rest.DetailsFromError(err), false)
+			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			return
+		}
+		rest.JsonResponseWithBody(w, http.StatusOK, &response)
+	}
 }
 
 func TestGetReportSummariesHandler(t *testing.T) {
@@ -91,10 +152,10 @@ func TestGetReportSummariesHandler(t *testing.T) {
 					AcceptedQuotesCount:       4,
 					TotalQuotedAmount:         "500",
 					TotalAcceptedQuotedAmount: "400",
-					TotalFeesCollected:        "25",
+					TotalFeesCollected:        "40",
 					RefundedQuotesCount:       1,
-					TotalPenaltyAmount:        "10",
-					LpEarnings:                "15",
+					TotalPenaltyAmount:        "0",
+					LpEarnings:                "20",
 				},
 			},
 			mockErr: nil,
@@ -128,6 +189,13 @@ func TestGetReportSummariesHandler(t *testing.T) {
 			mockErr:        nil,
 		},
 		{
+			name:           "EndDate before StartDate",
+			url:            "/report/summaries?startDate=2023-02-01&endDate=2023-01-31",
+			expectedStatus: http.StatusBadRequest,
+			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockErr:        nil,
+		},
+		{
 			name:           "Internal error from use case",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusInternalServerError,
@@ -138,39 +206,42 @@ func TestGetReportSummariesHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUseCase := new(MockSummariesUseCase)
-			if startDateOK := len(tt.url) > 0 && tt.url != "/report/summaries?endDate=2023-01-31" && !isInvalidDateFormat(tt.url, "startDate"); startDateOK {
-				if endDateOK := len(tt.url) > 0 && tt.url != "/report/summaries?startDate=2023-01-01" && !isInvalidDateFormat(tt.url, "endDate"); endDateOK {
-					startDate, _ := time.Parse("2006-01-02", "2023-01-01")
-					endDate, _ := time.Parse("2006-01-02", "2023-01-31")
-					mockUseCase.On("Run", mock.Anything, startDate, endDate).Return(tt.mockResponse, tt.mockErr)
+			mockUseCase := new(MockSummariesUseCase)			
+			req, err := http.NewRequest("GET", tt.url, nil)
+			require.NoError(t, err)
+			
+			if tt.expectedStatus == http.StatusOK || tt.expectedStatus == http.StatusInternalServerError {
+				q := req.URL.Query()
+				startDateStr := q.Get("startDate")
+				endDateStr := q.Get("endDate")
+				
+				startDate, err := time.Parse("2006-01-02", startDateStr)
+				if err == nil {
+					endDate, err := time.Parse("2006-01-02", endDateStr)
+					if err == nil {
+						endDateWithTime := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+						mockUseCase.On("Run", mock.Anything, startDate, endDateWithTime).Return(tt.mockResponse, tt.mockErr)
+					}
 				}
 			}
 
-			req, err := http.NewRequest("GET", tt.url, nil)
-			require.NoError(t, err)
-			rr := httptest.NewRecorder()
-			handler := HandlerWithMock(mockUseCase)
+			rr := httptest.NewRecorder()			
+			handler := getReportSummariesHandlerForTest(mockUseCase)
 			handler.ServeHTTP(rr, req)
-
 			assert.Equal(t, tt.expectedStatus, rr.Code, "Expected status %d but got %d", tt.expectedStatus, rr.Code)
-
 			if tt.expectedStatus == http.StatusOK {
 				var response liquidity_provider.SummariesResponse
 				err := json.NewDecoder(rr.Body).Decode(&response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.mockResponse, response)
+			} else if tt.expectedStatus == http.StatusBadRequest || tt.expectedStatus == http.StatusInternalServerError {
+				var errorResponse rest.ErrorResponse
+				err := json.NewDecoder(rr.Body).Decode(&errorResponse)
+				require.NoError(t, err)
+				assert.NotEmpty(t, errorResponse.Message)
 			}
+			
 			mockUseCase.AssertExpectations(t)
 		})
 	}
-}
-
-func isInvalidDateFormat(url string, param string) bool {
-	if param == "startDate" {
-		return url == "/report/summaries?startDate=01/01/2023&endDate=2023-01-31"
-	} else if param == "endDate" {
-		return url == "/report/summaries?startDate=2023-01-01&endDate=31/01/2023"
-	}
-	return false
 }

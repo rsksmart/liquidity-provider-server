@@ -2,7 +2,6 @@ package mongo_test
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -119,6 +117,16 @@ func getClientAndDatabaseMocks() (*mocks.DbClientBindingMock, *mocks.DbBindingMo
 	return client, db
 }
 
+func createCursorFromList[T any](t *testing.T, documents []T) *mongodriver.Cursor {
+	docsInterface := make([]interface{}, len(documents))
+	for i, v := range documents {
+		docsInterface[i] = v
+	}
+	cursor, err := mongodriver.NewCursorFromDocuments(docsInterface, nil, nil)
+	assert.NoError(t, err)
+	return cursor
+}
+
 type TestStoredQuote struct {
 	Hash      string
 	TestQuote TestQuote
@@ -133,83 +141,32 @@ type TestRetainedQuote struct {
 	State     string
 }
 
-type errorCursor struct {
-	*mongodriver.Cursor
-	err error
-}
-
-func (c *errorCursor) All(ctx context.Context, results interface{}) error {
-	return c.err
-}
-
-type mockCursor struct {
-	err     error
-	docs    []interface{}
-	current int
-}
-
-func newMockCursor(err error, docs []interface{}) *mockCursor {
-	return &mockCursor{
-		err:     err,
-		docs:    docs,
-		current: -1,
-	}
-}
-
-func (m *mockCursor) ID() int64 { return 0 }
-
-func (m *mockCursor) Next(ctx context.Context) bool {
-	if m.err != nil {
-		return false
-	}
-	m.current++
-	return m.current < len(m.docs)
-}
-
-func (m *mockCursor) Decode(val interface{}) error {
-	if m.err != nil {
-		return m.err
-	}
-	if m.current < 0 || m.current >= len(m.docs) {
-		return fmt.Errorf("no document to decode")
-	}
-	data, err := bson.Marshal(m.docs[m.current])
-	if err != nil {
-		return err
-	}
-	return bson.Unmarshal(data, val)
-}
-
-func (m *mockCursor) Err() error { return m.err }
-
-func (m *mockCursor) Close(ctx context.Context) error { return nil }
-
-func (m *mockCursor) All(ctx context.Context, results interface{}) error {
-	if m.err != nil {
-		return m.err
-	}
-	data, err := bson.Marshal(m.docs)
-	if err != nil {
-		return err
-	}
-	return bson.Unmarshal(data, results)
-}
-
 func TestListQuotesByDateRange(t *testing.T) {
 	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 	startTimestamp := startDate.Unix()
 	endTimestamp := endDate.Unix()
 
-	t.Run("successful retrieval of quotes", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
-
+	setupBasicMocks := func() (*mocks.DbClientBindingMock, *mocks.DbBindingMock, *mocks.CollectionBindingMock, *mocks.CollectionBindingMock) {
+		client, db := getClientAndDatabaseMocks()
 		quoteCollection := &mocks.CollectionBindingMock{}
 		retainedCollection := &mocks.CollectionBindingMock{}
 		db.On("Collection", "quoteCollection").Return(quoteCollection)
 		db.On("Collection", "retainedCollection").Return(retainedCollection)
+		return client, db, quoteCollection, retainedCollection
+	}
+
+	createQuoteFilter := func() bson.D {
+		return bson.D{
+			{Key: "agreement_timestamp", Value: bson.D{
+				{Key: "$gte", Value: startTimestamp},
+				{Key: "$lte", Value: endTimestamp},
+			}},
+		}
+	}
+
+	t.Run("successful retrieval of quotes", func(t *testing.T) {
+		client, _, quoteCollection, retainedCollection := setupBasicMocks()
 
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
@@ -220,35 +177,25 @@ func TestListQuotesByDateRange(t *testing.T) {
 			{QuoteHash: "hash2", State: "state2"},
 		}
 
-		quoteFilter := bson.D{
-			{Key: "agreement_timestamp", Value: bson.D{
-				{Key: "$gte", Value: startTimestamp},
-				{Key: "$lte", Value: endTimestamp},
-			}},
-		}
-
-		// Convert storedQuotes to []interface{}
-		storedQuotesInterface := make([]interface{}, len(storedQuotes))
-		for i, v := range storedQuotes {
-			storedQuotesInterface[i] = v
-		}
-		quoteCursor, err := mongodriver.NewCursorFromDocuments(storedQuotesInterface, nil, nil)
-		require.NoError(t, err)
+		quoteFilter := createQuoteFilter()
+		quoteCursor := createCursorFromList(t, storedQuotes)
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(quoteCursor, nil)
 
 		retainedFilter := bson.D{
-			{Key: "quote_hash", Value: bson.D{
-				{Key: "$in", Value: []string{"hash1", "hash2"}},
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "quote_hash", Value: bson.D{
+					{Key: "$in", Value: []string{"hash1", "hash2"}},
+				}}},
+				bson.D{
+					{Key: "updated_at", Value: bson.D{
+						{Key: "$gte", Value: startTimestamp},
+						{Key: "$lte", Value: endTimestamp},
+					}},
+				},
 			}},
 		}
 
-		// Convert retainedQuotes to []interface{}
-		retainedQuotesInterface := make([]interface{}, len(retainedQuotes))
-		for i, v := range retainedQuotes {
-			retainedQuotesInterface[i] = v
-		}
-		retainedCursor, err := mongodriver.NewCursorFromDocuments(retainedQuotesInterface, nil, nil)
-		require.NoError(t, err)
+		retainedCursor := createCursorFromList(t, retainedQuotes)
 		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(retainedCursor, nil)
 
 		conn := mongo.NewConnection(client, time.Duration(1))
@@ -259,47 +206,41 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
-		require.NoError(t, err)
-		assert.Len(t, quotes, 2)
-		assert.Len(t, retained, 2)
-		assert.Equal(t, 1, quotes[0].Value)
-		assert.Equal(t, 2, quotes[1].Value)
-		assert.Equal(t, "state1", retained[0].State)
-		assert.Equal(t, "state2", retained[1].State)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(quotes))
+		assert.Equal(t, 2, len(retained))
+		assert.Equal(t, TestQuote{Value: 1}, quotes[0])
+		assert.Equal(t, TestQuote{Value: 2}, quotes[1])
+		assert.Equal(t, TestRetainedQuote{QuoteHash: "hash1", State: "state1"}, retained[0])
+		assert.Equal(t, TestRetainedQuote{QuoteHash: "hash2", State: "state2"}, retained[1])
 	})
 
 	t.Run("empty result set", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
+		client, _, quoteCollection, retainedCollection := setupBasicMocks()
 
-		quoteCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-		db.On("Collection", "quoteCollection").Return(quoteCollection)
-		db.On("Collection", "retainedCollection").Return(retainedCollection)
-
-		quoteFilter := bson.D{
-			{Key: "agreement_timestamp", Value: bson.D{
-				{Key: "$gte", Value: startTimestamp},
-				{Key: "$lte", Value: endTimestamp},
-			}},
-		}
-		quoteCursor, err := mongodriver.NewCursorFromDocuments([]interface{}{}, nil, nil)
-		require.NoError(t, err)
+		quoteFilter := createQuoteFilter()
+		quoteCursor := createCursorFromList(t, []TestStoredQuote{})
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(quoteCursor, nil)
 
 		retainedFilter := bson.D{
-			{Key: "quote_hash", Value: bson.D{
-				{Key: "$in", Value: []string{}},
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "quote_hash", Value: bson.D{
+					{Key: "$in", Value: []string{}},
+				}}},
+				bson.D{
+					{Key: "updated_at", Value: bson.D{
+						{Key: "$gte", Value: startTimestamp},
+						{Key: "$lte", Value: endTimestamp},
+					}},
+				},
 			}},
 		}
-		retainedCursor, err := mongodriver.NewCursorFromDocuments([]interface{}{}, nil, nil)
-		require.NoError(t, err)
+		retainedCursor := createCursorFromList(t, []TestRetainedQuote{})
 		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(retainedCursor, nil)
 
 		conn := mongo.NewConnection(client, time.Duration(1))
@@ -310,24 +251,20 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.Empty(t, quotes)
 		assert.Empty(t, retained)
 	})
 
 	t.Run("database error on quote collection", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
-
-		quoteCollection := &mocks.CollectionBindingMock{}
-		db.On("Collection", "quoteCollection").Return(quoteCollection)
-		quoteCollection.On("Find", mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		client, _, quoteCollection, _ := setupBasicMocks()
+		quoteFilter := createQuoteFilter()
+		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(nil, assert.AnError)
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		quotes, retained, err := mongo.ListQuotesByDateRange[TestStoredQuote, TestQuote, TestRetainedQuote](
@@ -337,49 +274,41 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, quotes)
 		assert.Nil(t, retained)
 	})
 
 	t.Run("database error on retained collection", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
-
-		quoteCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-		db.On("Collection", "quoteCollection").Return(quoteCollection)
-		db.On("Collection", "retainedCollection").Return(retainedCollection)
+		client, _, quoteCollection, retainedCollection := setupBasicMocks()
 
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
 		}
-		quoteFilter := bson.D{
-			{Key: "agreement_timestamp", Value: bson.D{
-				{Key: "$gte", Value: startTimestamp},
-				{Key: "$lte", Value: endTimestamp},
-			}},
-		}
 
-		storedQuotesInterface := make([]interface{}, len(storedQuotes))
-		for i, v := range storedQuotes {
-			storedQuotesInterface[i] = v
-		}
-		quoteCursor, err := mongodriver.NewCursorFromDocuments(storedQuotesInterface, nil, nil)
-		require.NoError(t, err)
+		quoteFilter := createQuoteFilter()
+		quoteCursor := createCursorFromList(t, storedQuotes)
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(quoteCursor, nil)
 
 		retainedFilter := bson.D{
-			{Key: "quote_hash", Value: bson.D{
-				{Key: "$in", Value: []string{"hash1"}},
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "quote_hash", Value: bson.D{
+					{Key: "$in", Value: []string{"hash1"}},
+				}}},
+				bson.D{
+					{Key: "updated_at", Value: bson.D{
+						{Key: "$gte", Value: startTimestamp},
+						{Key: "$lte", Value: endTimestamp},
+					}},
+				},
 			}},
 		}
+
 		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(nil, assert.AnError)
 
 		conn := mongo.NewConnection(client, time.Duration(1))
@@ -390,35 +319,20 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, quotes)
 		assert.Nil(t, retained)
 	})
 
-	t.Run("error_in_quote_cursor_All", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
-
-		quoteCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-		db.On("Collection", "quoteCollection").Return(quoteCollection)
-		db.On("Collection", "retainedCollection").Return(retainedCollection)
-
-		errorCursor := newMockCursor(assert.AnError, []interface{}{})
-
-		quoteFilter := bson.D{
-			{Key: "agreement_timestamp", Value: bson.D{
-				{Key: "$gte", Value: startTimestamp},
-				{Key: "$lte", Value: endTimestamp},
-			}},
-		}
-		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(errorCursor, nil)
+	t.Run("error in quote cursor All", func(t *testing.T) {
+		client, _, quoteCollection, _ := setupBasicMocks()
+		quoteFilter := createQuoteFilter()
+		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(nil, assert.AnError)
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		quotes, retained, err := mongo.ListQuotesByDateRange[TestStoredQuote, TestQuote, TestRetainedQuote](
@@ -428,8 +342,8 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
@@ -439,37 +353,103 @@ func TestListQuotesByDateRange(t *testing.T) {
 		assert.Equal(t, assert.AnError, err)
 	})
 
-	t.Run("error_in_retained_cursor_All", func(t *testing.T) {
-		client := &mocks.DbClientBindingMock{}
-		db := &mocks.DbBindingMock{}
-		client.On("Database", mongo.DbName).Return(db)
-
-		quoteCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-		db.On("Collection", "quoteCollection").Return(quoteCollection)
-		db.On("Collection", "retainedCollection").Return(retainedCollection)
-
+	t.Run("fetches additional quotes referenced by retained quotes", func(t *testing.T) {
+		client, _, quoteCollection, retainedCollection := setupBasicMocks()
 		storedQuotes := []TestStoredQuote{
 			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
 		}
-		quoteCursor, err := mongodriver.NewCursorFromDocuments([]interface{}{storedQuotes[0]}, nil, nil)
+		retainedQuotes := []TestRetainedQuote{
+			{QuoteHash: "hash1", State: "state1"},
+			{QuoteHash: "hash2", State: "state2"},
+		}
+		additionalQuotes := []TestStoredQuote{
+			{Hash: "hash2", TestQuote: TestQuote{Value: 2}},
+		}
+
+		quoteFilter := createQuoteFilter()
+		quoteCursor := createCursorFromList(t, storedQuotes)
+		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(quoteCursor, nil)
+
+		retainedFilter := bson.D{
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "quote_hash", Value: bson.D{
+					{Key: "$in", Value: []string{"hash1"}},
+				}}},
+				bson.D{
+					{Key: "updated_at", Value: bson.D{
+						{Key: "$gte", Value: startTimestamp},
+						{Key: "$lte", Value: endTimestamp},
+					}},
+				},
+			}},
+		}
+		retainedCursor := createCursorFromList(t, retainedQuotes)
+		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(retainedCursor, nil)
+
+		additionalFilter := bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "$in", Value: []string{"hash2"}},
+			}},
+		}
+		additionalCursor := createCursorFromList(t, additionalQuotes)
+		quoteCollection.On("Find", mock.Anything, additionalFilter).Return(additionalCursor, nil)
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		quotes, retained, err := mongo.ListQuotesByDateRange[TestStoredQuote, TestQuote, TestRetainedQuote](
+			context.Background(),
+			conn,
+			startDate,
+			endDate,
+			"quoteCollection",
+			"retainedCollection",
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
+			},
+		)
+
 		assert.NoError(t, err)
+		assert.Equal(t, 2, len(quotes))
+		assert.Equal(t, 2, len(retained))
+		assert.Contains(t, []int{1, 2}, quotes[0].Value)
+		assert.Contains(t, []int{1, 2}, quotes[1].Value)
+		assert.Contains(t, []string{"state1", "state2"}, retained[0].State)
+		assert.Contains(t, []string{"state1", "state2"}, retained[1].State)
+	})
 
-		quoteFilter := bson.D{
-			{Key: "agreement_timestamp", Value: bson.D{
-				{Key: "$gte", Value: startTimestamp},
-				{Key: "$lte", Value: endTimestamp},
-			}},
+	t.Run("handles error when fetching additional quotes", func(t *testing.T) {
+		client, _, quoteCollection, retainedCollection := setupBasicMocks()
+
+		storedQuotes := []TestStoredQuote{
+			{Hash: "hash1", TestQuote: TestQuote{Value: 1}},
 		}
+		retainedQuotes := []TestRetainedQuote{
+			{QuoteHash: "hash1", State: "state1"},
+			{QuoteHash: "hash2", State: "state2"}, 
+		}
+		quoteFilter := createQuoteFilter()
+		quoteCursor := createCursorFromList(t, storedQuotes)
 		quoteCollection.On("Find", mock.Anything, quoteFilter).Return(quoteCursor, nil)
-
 		retainedFilter := bson.D{
-			{Key: "quote_hash", Value: bson.D{
-				{Key: "$in", Value: []string{"hash1"}},
+			{Key: "$or", Value: bson.A{
+				bson.D{{Key: "quote_hash", Value: bson.D{
+					{Key: "$in", Value: []string{"hash1"}},
+				}}},
+				bson.D{
+					{Key: "updated_at", Value: bson.D{
+						{Key: "$gte", Value: startTimestamp},
+						{Key: "$lte", Value: endTimestamp},
+					}},
+				},
 			}},
 		}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(nil, assert.AnError)
-
+		retainedCursor := createCursorFromList(t, retainedQuotes)
+		retainedCollection.On("Find", mock.Anything, retainedFilter).Return(retainedCursor, nil)
+		additionalFilter := bson.D{
+			{Key: "_id", Value: bson.D{
+				{Key: "$in", Value: []string{"hash2"}},
+			}},
+		}
+		quoteCollection.On("Find", mock.Anything, additionalFilter).Return(nil, assert.AnError)
 		conn := mongo.NewConnection(client, time.Duration(1))
 		quotes, retained, err := mongo.ListQuotesByDateRange[TestStoredQuote, TestQuote, TestRetainedQuote](
 			context.Background(),
@@ -478,14 +458,16 @@ func TestListQuotesByDateRange(t *testing.T) {
 			endDate,
 			"quoteCollection",
 			"retainedCollection",
-			func(stored TestStoredQuote) (string, TestQuote) {
-				return stored.Hash, stored.TestQuote
+			func(s TestStoredQuote) (string, TestQuote) {
+				return s.Hash, s.TestQuote
 			},
 		)
 
-		assert.Error(t, err)
-		assert.Nil(t, quotes)
-		assert.Nil(t, retained)
-		assert.Equal(t, assert.AnError, err)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(quotes))
+		assert.Equal(t, 2, len(retained))
+		assert.Equal(t, TestQuote{Value: 1}, quotes[0])
+		assert.Equal(t, "state1", retained[0].State)
+		assert.Equal(t, "state2", retained[1].State)
 	})
 }

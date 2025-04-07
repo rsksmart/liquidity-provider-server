@@ -2,6 +2,7 @@ package liquidity_provider
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -68,44 +69,74 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 		log.Printf("Error listing pegin quotes: %v", err)
 		return data, err
 	}
-	data.TotalQuotesCount = int64(len(quotes) + len(retainedQuotes))
 	var totalAmount = entities.NewWei(0)
 	var acceptedTotalAmount = entities.NewWei(0)
 	var totalFees = entities.NewWei(0)
 	var callFees = entities.NewWei(0)
 	var totalPenalty = entities.NewWei(0)
-	for _, retainedQuote := range retainedQuotes {
-		quote, err := u.peginRepo.GetQuote(ctx, retainedQuote.QuoteHash)
-		if err != nil {
-			log.Printf("Error getting pegin quote %s: %v", retainedQuote.QuoteHash, err)
-			continue
-		}
-		if quote == nil {
-			log.Printf("Pegin quote not found for hash %s", retainedQuote.QuoteHash)
-			continue
-		}
-		totalAmount.Add(totalAmount, quote.Total())
-		accepted := isAcceptedPegin(*quote, retainedQuote)
-		if accepted {
-			data.AcceptedQuotesCount++
-			acceptedTotalAmount.Add(acceptedTotalAmount, quote.Total())
-			callFees.Add(callFees, quote.CallFee)
-			totalFees.Add(totalFees, quote.CallFee)
-			totalFees.Add(totalFees, quote.GasFee)
-			totalFees.Add(totalFees, entities.NewUWei(quote.ProductFeeAmount))
-		}
-		refunded := isRefundedPegin(*quote, retainedQuote)
-		if refunded {
-			data.RefundedQuotesCount++
-			totalPenalty.Add(totalPenalty, quote.PenaltyFee)
-		}
+	
+	processedQuotes := make(map[string]*quote.PeginQuote)
+	uniqueQuoteHashes := make(map[string]bool)
+	
+	for i := range quotes {
+		quoteHash := fmt.Sprintf("%d", quotes[i].Nonce)
+		uniqueQuoteHashes[quoteHash] = true
+		totalAmount.Add(totalAmount, quotes[i].Total())		
+		quoteCopy := quotes[i]
+		processedQuotes[quoteHash] = &quoteCopy
 	}
-	for _, quote := range quotes {
-		totalAmount.Add(totalAmount, quote.Total())
+	
+	if len(retainedQuotes) > 0 {
+		data.TotalQuotesCount = int64(len(retainedQuotes))		
+		var hashesToFetch []string
+		for _, retainedQuote := range retainedQuotes {
+			uniqueQuoteHashes[retainedQuote.QuoteHash] = true			
+			if _, exists := processedQuotes[retainedQuote.QuoteHash]; !exists {
+				hashesToFetch = append(hashesToFetch, retainedQuote.QuoteHash)
+			}
+		}
+		for _, hash := range hashesToFetch {
+			quoteObj, err := u.peginRepo.GetQuote(ctx, hash)
+			if err != nil {
+				log.Printf("Error getting pegin quote %s: %v", hash, err)
+				continue
+			}
+			if quoteObj == nil {
+				log.Printf("Pegin quote not found for hash %s", hash)
+				continue
+			}
+			processedQuotes[hash] = quoteObj
+			totalAmount.Add(totalAmount, quoteObj.Total())
+		}
+		
+		for _, retainedQuote := range retainedQuotes {
+			quoteObj, exists := processedQuotes[retainedQuote.QuoteHash]
+			if !exists {
+				continue
+			}
+			
+			accepted := isAcceptedPegin(*quoteObj, retainedQuote)
+			if accepted {
+				data.AcceptedQuotesCount++
+				acceptedTotalAmount.Add(acceptedTotalAmount, quoteObj.Total())
+				callFees.Add(callFees, quoteObj.CallFee)				
+				totalFees.Add(totalFees, quoteObj.CallFee)
+				totalFees.Add(totalFees, quoteObj.GasFee)
+				totalFees.Add(totalFees, entities.NewUWei(quoteObj.ProductFeeAmount))
+			}
+			
+			refunded := isRefundedPegin(*quoteObj, retainedQuote)
+			if refunded {
+				data.RefundedQuotesCount++
+				totalPenalty.Add(totalPenalty, quoteObj.PenaltyFee)
+			}
+		}
+	} else {
+		data.TotalQuotesCount = int64(len(quotes))
 	}
 
 	lpEarnings := new(entities.Wei)
-	lpEarnings.Sub(callFees, totalPenalty)
+	lpEarnings.Sub(callFees, totalPenalty)	
 	data.TotalQuotedAmount = totalAmount.String()
 	data.TotalAcceptedQuotedAmount = acceptedTotalAmount.String()
 	data.TotalFeesCollected = totalFees.String()
@@ -116,53 +147,79 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 
 func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
 	var data SummaryData
-
 	quotes, retainedQuotes, err := u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 	if err != nil {
 		log.Printf("Error listing pegout quotes: %v", err)
 		return data, err
 	}
-	data.TotalQuotesCount = int64(len(quotes) + len(retainedQuotes))
+	
 	var totalAmount = entities.NewWei(0)
 	var acceptedTotalAmount = entities.NewWei(0)
 	var totalFees = entities.NewWei(0)
-	var callFees = entities.NewWei(0)
+	var callFees = entities.NewWei(0) 
 	var totalPenalty = entities.NewWei(0)
-
-	for _, retainedQuote := range retainedQuotes {
-		quote, err := u.pegoutRepo.GetQuote(ctx, retainedQuote.QuoteHash)
-		if err != nil {
-			log.Printf("Error getting pegout quote %s: %v", retainedQuote.QuoteHash, err)
-			continue
-		}
-		if quote == nil {
-			log.Printf("Pegout quote not found for hash %s", retainedQuote.QuoteHash)
-			continue
-		}
-		totalAmount.Add(totalAmount, quote.Total())
-		accepted := isAcceptedPegout(*quote, retainedQuote)
-
-		if accepted {
-			data.AcceptedQuotesCount++
-			acceptedTotalAmount.Add(acceptedTotalAmount, quote.Total())
-			callFees.Add(callFees, quote.CallFee)
-			totalFees.Add(totalFees, quote.CallFee)
-			totalFees.Add(totalFees, quote.GasFee)
-			totalFees.Add(totalFees, entities.NewUWei(quote.ProductFeeAmount))
-		}
-
-		refunded := isRefundedPegout(*quote, retainedQuote)
-		if refunded {
-			data.RefundedQuotesCount++
-			totalPenalty.Add(totalPenalty, entities.NewUWei(quote.PenaltyFee))
-		}
+	
+	processedQuotes := make(map[string]*quote.PegoutQuote)
+	uniqueQuoteHashes := make(map[string]bool)
+	
+	for i := range quotes {
+		quoteHash := fmt.Sprintf("%d", quotes[i].Nonce)
+		uniqueQuoteHashes[quoteHash] = true
+		totalAmount.Add(totalAmount, quotes[i].Total())
+		quoteCopy := quotes[i]
+		processedQuotes[quoteHash] = &quoteCopy
 	}
-	for _, quote := range quotes {
-		totalAmount.Add(totalAmount, quote.Total())
+	
+	if len(retainedQuotes) > 0 {
+		data.TotalQuotesCount = int64(len(retainedQuotes))		
+		var hashesToFetch []string
+		for _, retainedQuote := range retainedQuotes {
+			uniqueQuoteHashes[retainedQuote.QuoteHash] = true			
+			if _, exists := processedQuotes[retainedQuote.QuoteHash]; !exists {
+				hashesToFetch = append(hashesToFetch, retainedQuote.QuoteHash)
+			}
+		}
+		for _, hash := range hashesToFetch {
+			quoteObj, err := u.pegoutRepo.GetQuote(ctx, hash)
+			if err != nil {
+				log.Printf("Error getting pegout quote %s: %v", hash, err)
+				continue
+			}
+			if quoteObj == nil {
+				log.Printf("Pegout quote not found for hash %s", hash)
+				continue
+			}
+			
+			processedQuotes[hash] = quoteObj
+			totalAmount.Add(totalAmount, quoteObj.Total())
+		}
+		
+		for _, retainedQuote := range retainedQuotes {
+			quoteObj, exists := processedQuotes[retainedQuote.QuoteHash]
+			if !exists {
+				continue
+			}
+			accepted := isAcceptedPegout(*quoteObj, retainedQuote)
+			if accepted {
+				data.AcceptedQuotesCount++
+				acceptedTotalAmount.Add(acceptedTotalAmount, quoteObj.Total())
+				callFees.Add(callFees, quoteObj.CallFee)				
+				totalFees.Add(totalFees, quoteObj.CallFee)
+				totalFees.Add(totalFees, quoteObj.GasFee)
+				totalFees.Add(totalFees, entities.NewUWei(quoteObj.ProductFeeAmount))
+			}			
+			refunded := isRefundedPegout(*quoteObj, retainedQuote)
+			if refunded {
+				data.RefundedQuotesCount++
+				totalPenalty.Add(totalPenalty, entities.NewUWei(quoteObj.PenaltyFee))
+			}
+		}
+	} else {
+		data.TotalQuotesCount = int64(len(quotes))
 	}
 
 	lpEarnings := new(entities.Wei)
-	lpEarnings.Sub(callFees, totalPenalty)
+	lpEarnings.Sub(callFees, totalPenalty)	
 	data.TotalQuotedAmount = totalAmount.String()
 	data.TotalAcceptedQuotedAmount = acceptedTotalAmount.String()
 	data.TotalFeesCollected = totalFees.String()
@@ -171,23 +228,18 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	return data, nil
 }
 
-func isAcceptedPegin(q quote.PeginQuote, retained quote.RetainedPeginQuote) bool {
-	return retained.Signature != "" &&
-		retained.DepositAddress != "" &&
-		(retained.State == quote.PeginStateCallForUserSucceeded)
-}
-func isRefundedPegin(q quote.PeginQuote, retained quote.RetainedPeginQuote) bool {
-	return retained.State == quote.PeginStateCallForUserFailed ||
-		retained.State == quote.PeginStateRegisterPegInFailed ||
-		(retained.UserBtcTxHash != "" && retained.CallForUserTxHash == "")
+func isAcceptedPegin(_ quote.PeginQuote, retained quote.RetainedPeginQuote) bool {
+	return retained.State == quote.PeginStateCallForUserSucceeded
 }
 
-func isAcceptedPegout(q quote.PegoutQuote, retained quote.RetainedPegoutQuote) bool {
-	return retained.Signature != "" &&
-		(retained.State == quote.PegoutStateBridgeTxSucceeded)
+func isRefundedPegin(_ quote.PeginQuote, retained quote.RetainedPeginQuote) bool {
+	return retained.State == quote.PeginStateCallForUserFailed
 }
 
-func isRefundedPegout(q quote.PegoutQuote, retained quote.RetainedPegoutQuote) bool {
-	return retained.State == quote.PegoutStateBridgeTxFailed ||
-		retained.State == quote.PegoutStateTimeForDepositElapsed
+func isAcceptedPegout(_ quote.PegoutQuote, retained quote.RetainedPegoutQuote) bool {
+	return retained.State == quote.PegoutStateBridgeTxSucceeded
+}
+
+func isRefundedPegout(_ quote.PegoutQuote, retained quote.RetainedPegoutQuote) bool {
+	return retained.State == quote.PegoutStateBridgeTxFailed
 }

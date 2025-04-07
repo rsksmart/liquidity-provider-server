@@ -18,8 +18,8 @@ type mockPeginQuoteRepo struct {
 	mock.Mock
 }
 
-func (m *mockPeginQuoteRepo) InsertQuote(ctx context.Context, hash string, q quote.PeginQuote) error {
-	args := m.Called(ctx, hash, q)
+func (m *mockPeginQuoteRepo) InsertQuote(ctx context.Context, q quote.CreatedPeginQuote) error {
+	args := m.Called(ctx, q)
 	return args.Error(0)
 }
 
@@ -44,6 +44,11 @@ func (m *mockPeginQuoteRepo) GetQuote(ctx context.Context, hash string) (*quote.
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*quote.PeginQuote), args.Error(1)
+}
+
+func (m *mockPeginQuoteRepo) GetPeginCreationData(ctx context.Context, hash string) quote.PeginCreationData {
+	args := m.Called(ctx, hash)
+	return args.Get(0).(quote.PeginCreationData)
 }
 
 func (m *mockPeginQuoteRepo) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
@@ -81,8 +86,8 @@ type mockPegoutQuoteRepo struct {
 	mock.Mock
 }
 
-func (m *mockPegoutQuoteRepo) InsertQuote(ctx context.Context, hash string, q quote.PegoutQuote) error {
-	args := m.Called(ctx, hash, q)
+func (m *mockPegoutQuoteRepo) InsertQuote(ctx context.Context, q quote.CreatedPegoutQuote) error {
+	args := m.Called(ctx, q)
 	return args.Error(0)
 }
 
@@ -107,6 +112,11 @@ func (m *mockPegoutQuoteRepo) GetQuote(ctx context.Context, hash string) (*quote
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*quote.PegoutQuote), args.Error(1)
+}
+
+func (m *mockPegoutQuoteRepo) GetPegoutCreationData(ctx context.Context, hash string) quote.PegoutCreationData {
+	args := m.Called(ctx, hash)
+	return args.Get(0).(quote.PegoutCreationData)
 }
 
 func (m *mockPegoutQuoteRepo) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
@@ -237,7 +247,7 @@ func TestSummariesUseCase_Run(t *testing.T) {
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
 
-		assert.Equal(t, int64(len(peginQuotes)+len(retainedPeginQuotes)), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.TotalQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.RefundedQuotesCount)
 		assert.Equal(t, "660", result.PeginSummary.TotalQuotedAmount)
@@ -245,7 +255,7 @@ func TestSummariesUseCase_Run(t *testing.T) {
 		assert.Equal(t, "10", result.PeginSummary.TotalFeesCollected)
 		assert.Equal(t, "2", result.PeginSummary.TotalPenaltyAmount)
 		assert.Equal(t, "3", result.PeginSummary.LpEarnings)
-		assert.Equal(t, int64(len(pegoutQuotes)+len(retainedPegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.RefundedQuotesCount)
 		assert.Equal(t, "1540", result.PegoutSummary.TotalQuotedAmount)
@@ -449,7 +459,7 @@ func TestSummariesUseCase_Run(t *testing.T) {
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
 
-		assert.Equal(t, int64(2), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.TotalQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(0), result.PeginSummary.RefundedQuotesCount)
 		assert.Equal(t, "220", result.PeginSummary.TotalQuotedAmount)
@@ -457,7 +467,7 @@ func TestSummariesUseCase_Run(t *testing.T) {
 		assert.Equal(t, "10", result.PeginSummary.TotalFeesCollected)
 		assert.Equal(t, "0", result.PeginSummary.TotalPenaltyAmount)
 		assert.Equal(t, "5", result.PeginSummary.LpEarnings)
-		assert.Equal(t, int64(2), result.PegoutSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(0), result.PegoutSummary.RefundedQuotesCount)
 		assert.Equal(t, "660", result.PegoutSummary.TotalQuotedAmount)
@@ -549,7 +559,7 @@ func TestSummariesUseCase_Run(t *testing.T) {
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 
 		require.NoError(t, err)
-		assert.Equal(t, int64(3), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.TotalQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(0), result.PeginSummary.RefundedQuotesCount)
 		peginRepo.AssertExpectations(t)
