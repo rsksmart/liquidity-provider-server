@@ -43,6 +43,7 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]PegoutQuote, []RetainedPegoutQuote, error)
 }
 
 type CreatedPegoutQuote struct {

@@ -1,9 +1,10 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
-	"net/http"
 )
 
 type PublicEndpoint struct {
@@ -98,6 +99,13 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Path:    "/version",
 				Method:  http.MethodGet,
 				Handler: handlers.NewVersionInfoHandler(useCaseRegistry.GetServerInfoUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/report/summaries",
+				Method:  http.MethodGet,
+				Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
 			},
 		},
 	}

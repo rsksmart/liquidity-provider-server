@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -207,4 +209,18 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 		return 0, errors.New("pegin quote collections didn't match")
 	}
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
+}
+
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
+	return ListQuotesByDateRange[StoredPeginQuote, quote.PeginQuote, quote.RetainedPeginQuote](
+		ctx,
+		repo.conn,
+		startDate,
+		endDate,
+		PeginQuoteCollection,
+		RetainedPeginQuoteCollection,
+		func(stored StoredPeginQuote) (string, quote.PeginQuote) {
+			return stored.Hash, stored.PeginQuote
+		},
+	)
 }

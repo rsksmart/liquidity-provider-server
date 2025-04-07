@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -11,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"regexp"
 )
 
 const (
@@ -318,4 +320,18 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		logDbInteraction(Upsert, deposits)
 	}
 	return err
+}
+
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
+	return ListQuotesByDateRange[StoredPegoutQuote, quote.PegoutQuote, quote.RetainedPegoutQuote](
+		ctx,
+		repo.conn,
+		startDate,
+		endDate,
+		PegoutQuoteCollection,
+		RetainedPegoutQuoteCollection,
+		func(stored StoredPegoutQuote) (string, quote.PegoutQuote) {
+			return stored.Hash, stored.PegoutQuote
+		},
+	)
 }
