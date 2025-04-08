@@ -43,6 +43,7 @@ type PegoutQuoteRepository interface {
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	UpdateRetainedQuotes(ctx context.Context, quotes []RetainedPegoutQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PegoutState) ([]RetainedPegoutQuote, error)
+	GetQuotesByState(ctx context.Context, filter GetPegoutQuotesByStateFilter) ([]PegoutQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
@@ -50,6 +51,12 @@ type PegoutQuoteRepository interface {
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PegoutQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
 	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
+}
+
+type GetPegoutQuotesByStateFilter struct {
+	States    []PegoutState
+	StartDate uint32
+	EndDate   uint32
 }
 
 type CreatedPegoutQuote struct {
