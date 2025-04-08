@@ -36,6 +36,13 @@ type PeginQuoteRepository interface {
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (PeginQuoteResult, error)
+}
+
+type PeginQuoteResult struct {
+	Quotes           []PeginQuote
+	RetainedQuotes   []RetainedPeginQuote
+	QuoteHashToIndex map[string]int
 }
 
 type CreatedPeginQuote struct {
@@ -116,6 +123,10 @@ type RetainedPeginQuote struct {
 	UserBtcTxHash       string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
 	CallForUserTxHash   string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
 	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
+}
+
+func (r RetainedPeginQuote) GetQuoteHash() string {
+	return r.QuoteHash
 }
 
 type WatchedPeginQuote struct {

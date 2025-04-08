@@ -520,7 +520,6 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           type: integer
         feePercentage:
           type: number
@@ -682,6 +681,34 @@ components:
         db:
           type: string
         rsk:
+          type: string
+      type: object
+    SummariesResponse:
+      properties:
+        peginSummary:
+          $ref: '#/components/schemas/SummaryData'
+          type: object
+        pegoutSummary:
+          $ref: '#/components/schemas/SummaryData'
+          type: object
+      type: object
+    SummaryData:
+      properties:
+        confirmedQuotesCount:
+          type: integer
+        lpEarnings:
+          type: string
+        refundedQuotesCount:
+          type: integer
+        totalAcceptedQuotedAmount:
+          type: string
+        totalAcceptedQuotesCount:
+          type: integer
+        totalFeesCollected:
+          type: string
+        totalPenaltyAmount:
+          type: string
+        totalQuotedAmount:
           type: string
       type: object
     pkg.AcceptQuoteRequest:
@@ -1034,6 +1061,34 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /report/summaries:
+    get:
+      description: ' Returns financial data for a given period'
+      parameters:
+      - description: Start date in YYYY-MM-DD format
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date in YYYY-MM-DD format
+          format: string
+          type: string
+      - description: End date in YYYY-MM-DD format
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date in YYYY-MM-DD format
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummariesResponse'
+          description: Financial data for the given period
+      summary: Summaries
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

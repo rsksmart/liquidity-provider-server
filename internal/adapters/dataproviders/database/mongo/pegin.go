@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -207,4 +209,39 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 		return 0, errors.New("pegin quote collections didn't match")
 	}
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
+}
+
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PeginQuoteResult, error) {
+	query := QuoteQuery{
+		Ctx:                ctx,
+		Conn:               repo.conn,
+		StartDate:          startDate,
+		EndDate:            endDate,
+		QuoteCollection:    PeginQuoteCollection,
+		RetainedCollection: RetainedPeginQuoteCollection,
+	}
+	result := ListQuotesByDateRange[quote.PeginQuote, quote.RetainedPeginQuote](
+		query,
+		func(doc bson.D) quote.PeginQuote {
+			var stored StoredPeginQuote
+			bsonBytes, err := bson.Marshal(doc)
+			if err != nil {
+				log.Errorf("Error marshaling BSON: %v", err)
+				return quote.PeginQuote{}
+			}
+			if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+				log.Errorf("Error unmarshaling BSON: %v", err)
+				return quote.PeginQuote{}
+			}
+			return stored.PeginQuote
+		},
+	)
+	if result.Error != nil {
+		return quote.PeginQuoteResult{}, result.Error
+	}
+	return quote.PeginQuoteResult{
+		Quotes:           result.Quotes,
+		RetainedQuotes:   result.RetainedQuotes,
+		QuoteHashToIndex: result.QuoteHashToIndex,
+	}, nil
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -11,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"regexp"
 )
 
 const (
@@ -318,4 +320,39 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		logDbInteraction(Upsert, deposits)
 	}
 	return err
+}
+
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PegoutQuoteResult, error) {
+	query := QuoteQuery{
+		Ctx:                ctx,
+		Conn:               repo.conn,
+		StartDate:          startDate,
+		EndDate:            endDate,
+		QuoteCollection:    PegoutQuoteCollection,
+		RetainedCollection: RetainedPegoutQuoteCollection,
+	}
+	result := ListQuotesByDateRange[quote.PegoutQuote, quote.RetainedPegoutQuote](
+		query,
+		func(doc bson.D) quote.PegoutQuote {
+			var stored StoredPegoutQuote
+			bsonBytes, err := bson.Marshal(doc)
+			if err != nil {
+				log.Errorf("Error marshaling BSON: %v", err)
+				return quote.PegoutQuote{}
+			}
+			if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+				log.Errorf("Error unmarshaling BSON: %v", err)
+				return quote.PegoutQuote{}
+			}
+			return stored.PegoutQuote
+		},
+	)
+	if result.Error != nil {
+		return quote.PegoutQuoteResult{}, result.Error
+	}
+	return quote.PegoutQuoteResult{
+		Quotes:           result.Quotes,
+		RetainedQuotes:   result.RetainedQuotes,
+		QuoteHashToIndex: result.QuoteHashToIndex,
+	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -194,7 +195,6 @@ func TestMaxDecimalPlacesValidation(t *testing.T) {
 		{value: 1e-5, expectError: true, description: "scientific notation exceeds limit"},
 		{value: 1.123456789, expectError: true, description: "many decimal places"},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			ts := testStruct{Number: tc.value}
@@ -203,6 +203,106 @@ func TestMaxDecimalPlacesValidation(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func getDateRangeTestCases() []struct { //nolint:funlen
+	name           string
+	queryParams    map[string]string
+	expectedValid  bool
+	expectedStatus int
+} {
+	return []struct {
+		name           string
+		queryParams    map[string]string
+		expectedValid  bool
+		expectedStatus int
+	}{
+		{
+			name: "valid date range",
+			queryParams: map[string]string{
+				"startDate": "2023-01-01",
+				"endDate":   "2023-01-31",
+			},
+			expectedValid:  true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "missing startDate",
+			queryParams: map[string]string{
+				"endDate": "2023-01-31",
+			},
+			expectedValid:  false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "missing endDate",
+			queryParams: map[string]string{
+				"startDate": "2023-01-01",
+			},
+			expectedValid:  false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "invalid startDate format",
+			queryParams: map[string]string{
+				"startDate": "01/01/2023",
+				"endDate":   "2023-01-31",
+			},
+			expectedValid:  false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "invalid endDate format",
+			queryParams: map[string]string{
+				"startDate": "2023-01-01",
+				"endDate":   "31/01/2023",
+			},
+			expectedValid:  false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "endDate before startDate",
+			queryParams: map[string]string{
+				"startDate": "2023-02-01",
+				"endDate":   "2023-01-31",
+			},
+			expectedValid:  false,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+}
+
+func TestValidateDateRange(t *testing.T) {
+	dateFormat := "2006-01-02"
+	tests := getDateRangeTestCases()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			q := req.URL.Query()
+			for key, value := range tt.queryParams {
+				q.Add(key, value)
+			}
+			req.URL.RawQuery = q.Encode()
+			startDate, endDate, valid := rest.ValidateDateRange(w, req, dateFormat)
+			assert.Equal(t, tt.expectedValid, valid)
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if valid {
+				expectedStartDate, err := time.Parse(dateFormat, tt.queryParams["startDate"])
+				require.NoError(t, err)
+				expectedEndDate, err := time.Parse(dateFormat, tt.queryParams["endDate"])
+				require.NoError(t, err)
+				expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 23, 59, 59, 0, time.UTC)
+				assert.Equal(t, expectedStartDate, startDate)
+				assert.Equal(t, expectedEndDate, endDate)
+			} else {
+				var errorResponse rest.ErrorResponse
+				err := json.NewDecoder(w.Body).Decode(&errorResponse)
+				require.NoError(t, err)
+				assert.True(t, errorResponse.Recoverable)
 			}
 		})
 	}
