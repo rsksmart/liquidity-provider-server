@@ -9,25 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestGetPegoutReportUseCase_Run(t *testing.T) {
 	ctx := context.Background()
-
-	retainedQuotes := []quote.RetainedPegoutQuote{
-		{QuoteHash: "hash1"},
-		{QuoteHash: "hash2"},
-		{QuoteHash: "hash3"},
-		{QuoteHash: "hash4"},
-		{QuoteHash: "hash5"},
-		{QuoteHash: "hash6"},
-		{QuoteHash: "hash7"},
-		{QuoteHash: "hash8"},
-		{QuoteHash: "hash9"},
-		{QuoteHash: "hash10"},
-	}
-
-	quoteHashes := []string{"hash1", "hash2", "hash3", "hash4", "hash5", "hash6", "hash7", "hash8", "hash9", "hash10"}
 
 	pegoutQuotes := []quote.PegoutQuote{
 		{Value: entities.NewWei(1000), CallFee: entities.NewWei(10)},
@@ -50,14 +36,16 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 	expectedAverageFee := entities.NewWei(55)
 
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-		Return(retainedQuotes, nil).Once()
-
-	pegoutQuoteRepository.On("GetQuotes", ctx, quoteHashes).Return(pegoutQuotes, nil).Once()
+	filter := quote.GetPegoutQuotesByStateFilter{
+		States:    []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded},
+		StartDate: uint32(time.Now().Unix()),
+		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	}
+	pegoutQuoteRepository.On("GetQuotesByState", ctx, filter).Return(pegoutQuotes, nil).Once()
 
 	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	pegoutQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -72,15 +60,19 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 func TestGetPegoutReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	retainedQuotes := []quote.RetainedPegoutQuote{}
-
+	quotes := make([]quote.PegoutQuote, 0)
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-		Return(retainedQuotes, nil).Once()
+
+	filter := quote.GetPegoutQuotesByStateFilter{
+		States:    []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded},
+		StartDate: uint32(time.Now().Unix()),
+		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	}
+	pegoutQuoteRepository.On("GetQuotesByState", ctx, filter).Return(quotes, nil).Once()
 
 	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	pegoutQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -96,12 +88,16 @@ func TestGetPegoutReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-		Return(nil, assert.AnError).Once()
+	filter := quote.GetPegoutQuotesByStateFilter{
+		States:    []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded},
+		StartDate: uint32(time.Now().Unix()),
+		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	}
+	pegoutQuoteRepository.On("GetQuotesByState", ctx, filter).Return(nil, assert.AnError).Once()
 
 	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	pegoutQuoteRepository.AssertExpectations(t)
 	require.Error(t, err)

@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"time"
 )
 
 type GetPegoutReportUseCase struct {
@@ -28,21 +29,29 @@ type GetPegoutReportResult struct {
 	AverageFeePerQuote *entities.Wei
 }
 
-func (useCase *GetPegoutReportUseCase) Run(ctx context.Context) (GetPegoutReportResult, error) {
+func (useCase *GetPegoutReportUseCase) Run(
+	ctx context.Context,
+	startDate time.Time,
+	endDate time.Time,
+) (GetPegoutReportResult, error) {
 	var err error
-	var retained []quote.RetainedPegoutQuote
+	var quotes []quote.PegoutQuote
 	var minimumQuoteValue *entities.Wei
 	var maximumQuoteValue *entities.Wei
 	var averageQuoteValue *entities.Wei
 	var totalFeesCollected *entities.Wei
 	var averageFeePerQuote *entities.Wei
 
-	retained, err = useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
-
+	filter := quote.GetPegoutQuotesByStateFilter{
+		States:    []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded},
+		StartDate: uint32(startDate.Unix()),
+		EndDate:   uint32(endDate.Unix()),
+	}
+	quotes, err = useCase.pegoutQuoteRepository.GetQuotesByState(ctx, filter)
 	if err != nil {
 		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
-	if len(retained) == 0 {
+	if len(quotes) == 0 {
 		return GetPegoutReportResult{
 			NumberOfQuotes:     0,
 			MinimumQuoteValue:  entities.NewWei(0),
@@ -51,16 +60,6 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context) (GetPegoutReport
 			TotalFeesCollected: entities.NewWei(0),
 			AverageFeePerQuote: entities.NewWei(0),
 		}, nil
-	}
-
-	quoteHashes := make([]string, 0)
-	for _, q := range retained {
-		quoteHashes = append(quoteHashes, q.QuoteHash)
-	}
-
-	quotes, err := useCase.pegoutQuoteRepository.GetQuotes(ctx, quoteHashes)
-	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 
 	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)

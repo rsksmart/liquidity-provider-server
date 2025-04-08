@@ -2,6 +2,7 @@ package mongo_test
 
 import (
 	"context"
+	"errors"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -718,5 +719,117 @@ func TestPegoutMongoRepository_GetQuotes(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "mongo: no documents in result", err.Error())
 		assert.Nil(t, quotes)
+	})
+}
+
+// nolint:funlen
+func TestPegoutMongoRepository_GetQuotesByStates(t *testing.T) {
+	t.Run("Successfully retrieves quotes", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		retainedCollection := &mocks.CollectionBindingMock{}
+		pegoutCollection := &mocks.CollectionBindingMock{}
+
+		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection)
+
+		states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+		startDate := uint32(1727000000)
+		endDate := uint32(1728000000)
+
+		expectedQuotes := []quote.PegoutQuote{testPegoutQuote}
+
+		retainedCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			return true
+		}), mock.Anything).Return(mongoDb.NewCursorFromDocuments([]any{testRetainedPegoutQuote}, nil, nil))
+
+		pegoutCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			return true
+		}), mock.Anything).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutQuote}, nil, nil))
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		filter := quote.GetPegoutQuotesByStateFilter{
+			States:    states,
+			StartDate: startDate,
+			EndDate:   endDate,
+		}
+		result, err := repo.GetQuotesByState(context.Background(), filter)
+
+		require.NoError(t, err)
+		assert.Equal(t, expectedQuotes, result)
+
+		retainedCollection.AssertExpectations(t)
+		pegoutCollection.AssertExpectations(t)
+	})
+
+	t.Run("Fails when retainedCollection.Find returns an error", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		retainedCollection := &mocks.CollectionBindingMock{}
+
+		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+
+		states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+		startDate := uint32(1727000000)
+		endDate := uint32(1728000000)
+
+		expectedError := errors.New("database connection error")
+		retainedCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			return true
+		}), mock.Anything).Return(nil, expectedError)
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		filter := quote.GetPegoutQuotesByStateFilter{
+			States:    states,
+			StartDate: startDate,
+			EndDate:   endDate,
+		}
+		result, err := repo.GetQuotesByState(context.Background(), filter)
+
+		require.Error(t, err)
+		assert.Equal(t, expectedError, err)
+		assert.Nil(t, result)
+
+		retainedCollection.AssertExpectations(t)
+	})
+	t.Run("Fails when pegoutCollection.Find returns an error", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		retainedCollection := &mocks.CollectionBindingMock{}
+		pegoutCollection := &mocks.CollectionBindingMock{}
+
+		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
+		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection)
+
+		states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+		startDate := uint32(1727000000)
+		endDate := uint32(1728000000)
+
+		retainedCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			return true
+		}), mock.Anything).Return(mongoDb.NewCursorFromDocuments([]any{testRetainedPegoutQuote}, nil, nil))
+
+		expectedError := errors.New("pegout collection query error")
+		pegoutCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			return true
+		}), mock.Anything).Return(nil, expectedError)
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		filter := quote.GetPegoutQuotesByStateFilter{
+			States:    states,
+			StartDate: startDate,
+			EndDate:   endDate,
+		}
+		result, err := repo.GetQuotesByState(context.Background(), filter)
+
+		require.Error(t, err)
+		assert.Equal(t, expectedError, err)
+		assert.Nil(t, result)
+
+		retainedCollection.AssertExpectations(t)
+		pegoutCollection.AssertExpectations(t)
 	})
 }

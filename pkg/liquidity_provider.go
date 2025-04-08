@@ -86,12 +86,12 @@ type CredentialsUpdateRequest struct {
 	NewPassword string `json:"newPassword" validate:"required"`
 }
 
-type GetReportsPeginRequest struct {
+type GetReportsPeginPegoutRequest struct {
 	StartDate string `json:"startDate" validate:"required,datetime=2006-01-02"`
 	EndDate   string `json:"endDate" validate:"required,datetime=2006-01-02"`
 }
 
-func (r *GetReportsPeginRequest) ValidateGetReportsPeginRequest() error {
+func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() error {
 	if r.StartDate == "" {
 		return errors.New("startDate is required")
 	}
@@ -117,7 +117,7 @@ func (r *GetReportsPeginRequest) ValidateGetReportsPeginRequest() error {
 	return nil
 }
 
-func (r *GetReportsPeginRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
+func (r *GetReportsPeginPegoutRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
 	startTime, err = time.Parse("2006-01-02", r.StartDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
