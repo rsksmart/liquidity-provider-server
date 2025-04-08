@@ -11,12 +11,12 @@ import (
 // NewGetReportsPeginHandler
 // @Title Get Pegin Reports
 // @Description Get the last pegins on the API. Included in the management API.
-// @Param GetReportsPeginRequest body pkg.GetReportsPeginRequest true "Date range for the report with startDate and endDate"
+// @Param GetReportsPeginRequest body pkg.GetReportsPeginPegoutRequest true "Date range for the report with startDate and endDate"
 // @Success 200 pkg.GetPeginReportResponse
 // @Route /reports/pegin [get]
 func NewGetReportsPeginHandler(useCase *pegin.GetPeginReportUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var requestBody pkg.GetReportsPeginRequest
+		var requestBody pkg.GetReportsPeginPegoutRequest
 		var err error
 		if err = json.NewDecoder(req.Body).Decode(&requestBody); err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Invalid request body", rest.DetailsFromError(err), false)
@@ -24,7 +24,7 @@ func NewGetReportsPeginHandler(useCase *pegin.GetPeginReportUseCase) http.Handle
 			return
 		}
 
-		if err = requestBody.ValidateGetReportsPeginRequest(); err != nil {
+		if err = requestBody.ValidateGetReportsPeginPegoutRequest(); err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
