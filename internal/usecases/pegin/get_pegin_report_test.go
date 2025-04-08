@@ -3,6 +3,7 @@ package pegin_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -45,7 +46,7 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -60,15 +61,19 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 func TestGetPeginReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	retainedQuotes := []quote.RetainedPeginQuote{}
-
+	quotes := make([]quote.PeginQuote, 0)
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
-		Return(retainedQuotes, nil).Once()
+	filter := quote.GetPeginQuotesByStateFilter{
+		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
+		StartDate: uint32(time.Now().Unix()),
+		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	}
+	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
+		Return(quotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -84,12 +89,17 @@ func TestGetPeginReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
+	filter := quote.GetPeginQuotesByStateFilter{
+		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
+		StartDate: uint32(time.Now().Unix()),
+		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	}
+	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
 		Return(nil, assert.AnError).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
-	result, err := useCase.Run(ctx)
+	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
 	peginQuoteRepository.AssertExpectations(t)
 	require.Error(t, err)
