@@ -43,7 +43,14 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
-	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]PegoutQuote, []RetainedPegoutQuote, error)
+	// ListQuotesByDateRange returns quotes and retained quotes within a date range
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (PegoutQuoteResult, error)
+}
+
+// PegoutQuoteResult holds the results of a pegout quote listing operation
+type PegoutQuoteResult struct {
+	Quotes         []PegoutQuote
+	RetainedQuotes []RetainedPegoutQuote
 }
 
 type CreatedPegoutQuote struct {
@@ -130,6 +137,11 @@ type RetainedPegoutQuote struct {
 	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
 	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+}
+
+// GetQuoteHash returns the quote hash for the retained quote
+func (r RetainedPegoutQuote) GetQuoteHash() string {
+	return r.QuoteHash
 }
 
 type WatchedPegoutQuote struct {

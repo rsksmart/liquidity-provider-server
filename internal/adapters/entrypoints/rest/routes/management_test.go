@@ -1,6 +1,9 @@
 package routes_test
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -11,8 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestGetManagementEndpoints(t *testing.T) {
@@ -24,6 +25,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().ChangeStatusUseCase().Return(&liquidity_provider.ChangeStatusUseCase{})
 	registryMock.EXPECT().ResignationUseCase().Return(&liquidity_provider.ResignUseCase{})
 	registryMock.EXPECT().WithdrawCollateralUseCase().Return(&liquidity_provider.WithdrawCollateralUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&liquidity_provider.SummariesUseCase{})
 	registryMock.EXPECT().GetConfigurationUseCase().Return(&liquidity_provider.GetConfigUseCase{})
 	registryMock.EXPECT().SetGeneralConfigUseCase().Return(&liquidity_provider.SetGeneralConfigUseCase{})
 	registryMock.EXPECT().SetPeginConfigUseCase().Return(&liquidity_provider.SetPeginConfigUseCase{})
@@ -39,7 +41,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 17)
+	assert.Len(t, endpoints, 18)
 	for _, endpoint := range endpoints {
 		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath {
 			lowerCaseMethod := strings.ToLower(endpoint.Method)

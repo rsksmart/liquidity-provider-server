@@ -414,42 +414,31 @@ func (_c *PeginQuoteRepositoryMock_InsertRetainedQuote_Call) RunAndReturn(run fu
 }
 
 // ListQuotesByDateRange provides a mock function with given fields: ctx, startDate, endDate
-func (_m *PeginQuoteRepositoryMock) ListQuotesByDateRange(ctx context.Context, startDate time.Time, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
+func (_m *PeginQuoteRepositoryMock) ListQuotesByDateRange(ctx context.Context, startDate time.Time, endDate time.Time) (quote.PeginQuoteResult, error) {
 	ret := _m.Called(ctx, startDate, endDate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListQuotesByDateRange")
 	}
 
-	var r0 []quote.PeginQuote
-	var r1 []quote.RetainedPeginQuote
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error)); ok {
+	var r0 quote.PeginQuoteResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) (quote.PeginQuoteResult, error)); ok {
 		return rf(ctx, startDate, endDate)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []quote.PeginQuote); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) quote.PeginQuoteResult); ok {
 		r0 = rf(ctx, startDate, endDate)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]quote.PeginQuote)
-		}
+		r0 = ret.Get(0).(quote.PeginQuoteResult)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) []quote.RetainedPeginQuote); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
 		r1 = rf(ctx, startDate, endDate)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]quote.RetainedPeginQuote)
-		}
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, time.Time, time.Time) error); ok {
-		r2 = rf(ctx, startDate, endDate)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // PeginQuoteRepositoryMock_ListQuotesByDateRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListQuotesByDateRange'
@@ -472,12 +461,12 @@ func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 []quote.PeginQuote, _a1 []quote.RetainedPeginQuote, _a2 error) *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 quote.PeginQuoteResult, _a1 error) *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error)) *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call {
+func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time) (quote.PeginQuoteResult, error)) *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call {
 	_c.Call.Return(run)
 	return _c
 }

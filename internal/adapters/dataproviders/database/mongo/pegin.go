@@ -211,16 +211,32 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }
 
-func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
-	return ListQuotesByDateRange[StoredPeginQuote, quote.PeginQuote, quote.RetainedPeginQuote](
-		ctx,
-		repo.conn,
-		startDate,
-		endDate,
-		PeginQuoteCollection,
-		RetainedPeginQuoteCollection,
-		func(stored StoredPeginQuote) (string, quote.PeginQuote) {
-			return stored.Hash, stored.PeginQuote
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PeginQuoteResult, error) {
+	query := QuoteQuery{
+		Ctx:                ctx,
+		Conn:               repo.conn,
+		StartDate:          startDate,
+		EndDate:            endDate,
+		QuoteCollection:    PeginQuoteCollection,
+		RetainedCollection: RetainedPeginQuoteCollection,
+	}
+
+	result := ListQuotesByDateRange[quote.PeginQuote, quote.RetainedPeginQuote](
+		query,
+		func(doc bson.D) quote.PeginQuote {
+			var stored StoredPeginQuote
+			bsonBytes, _ := bson.Marshal(doc)
+			bson.Unmarshal(bsonBytes, &stored)
+			return stored.PeginQuote
 		},
 	)
+
+	if result.Error != nil {
+		return quote.PeginQuoteResult{}, result.Error
+	}
+
+	return quote.PeginQuoteResult{
+		Quotes:         result.Quotes,
+		RetainedQuotes: result.RetainedQuotes,
+	}, nil
 }

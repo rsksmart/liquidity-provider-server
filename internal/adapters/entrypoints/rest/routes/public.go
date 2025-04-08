@@ -101,12 +101,5 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewVersionInfoHandler(useCaseRegistry.GetServerInfoUseCase()),
 			},
 		},
-		{
-			Endpoint: Endpoint{
-				Path:    "/report/summaries",
-				Method:  http.MethodGet,
-				Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
-			},
-		},
 	}
 }

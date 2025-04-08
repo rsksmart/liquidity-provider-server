@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -80,16 +79,71 @@ func (c *Connection) CheckConnection(ctx context.Context) bool {
 	return err == nil
 }
 
-func ListQuotesByDateRange[S any, Q any, R any]( //nolint:funlen,cyclop
+// QuoteResult holds the result of a quote listing operation
+type QuoteResult[Q any, R QuoteHashProvider] struct {
+	Quotes         []Q
+	RetainedQuotes []R
+	Error          error
+}
+
+// QuoteQuery represents parameters for querying quotes
+type QuoteQuery struct {
+	Ctx                context.Context
+	Conn               *Connection
+	StartDate          time.Time
+	EndDate            time.Time
+	QuoteCollection    string
+	RetainedCollection string
+}
+
+// ListQuotesByDateRange retrieves quotes and retained quotes within a date range
+func ListQuotesByDateRange[Q any, R QuoteHashProvider](
+	query QuoteQuery,
+	mapper func(bson.D) Q,
+) QuoteResult[Q, R] {
+	dbCtx, cancel := context.WithTimeout(query.Ctx, query.Conn.timeout)
+	defer cancel()
+
+	// Step 1: Fetch quotes by date range
+	quotes, quoteHashes, err := fetchQuotesByDateRange(dbCtx, query.Conn, query.StartDate, query.EndDate, query.QuoteCollection, mapper)
+	if err != nil {
+		return QuoteResult[Q, R]{Error: err}
+	}
+
+	// Step 2: Fetch retained quotes
+	retainedQuotes, additionalHashes, err := fetchRetainedQuotes[R](dbCtx, query.Conn, query.StartDate, query.EndDate, query.RetainedCollection, quoteHashes)
+	if err != nil {
+		return QuoteResult[Q, R]{Error: err}
+	}
+
+	// Step 3: Fetch any additional quotes referenced by retained quotes
+	if len(additionalHashes) > 0 {
+		additionalQuotes, err := fetchAdditionalQuotes(dbCtx, query.Conn, query.QuoteCollection, additionalHashes, mapper)
+		if err != nil {
+			log.Errorf("Error processing additional quotes: %v", err)
+		} else {
+			quotes = append(quotes, additionalQuotes...)
+		}
+	}
+
+	logDbInteraction(Read, fmt.Sprintf("Found %d quotes and %d retained quotes in date range",
+		len(quotes), len(retainedQuotes)))
+
+	return QuoteResult[Q, R]{
+		Quotes:         quotes,
+		RetainedQuotes: retainedQuotes,
+		Error:          nil,
+	}
+}
+
+// fetchQuotesByDateRange retrieves quotes from the database within the specified date range
+func fetchQuotesByDateRange[Q any](
 	ctx context.Context,
 	conn *Connection,
 	startDate, endDate time.Time,
-	quoteCollection, retainedCollection string,
-	extractor func(S) (string, Q),
-) ([]Q, []R, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, conn.timeout)
-	defer cancel()
-
+	collectionName string,
+	mapper func(bson.D) Q,
+) ([]Q, []string, error) {
 	quoteFilter := bson.D{
 		{Key: "agreement_timestamp", Value: bson.D{
 			{Key: "$gte", Value: startDate.Unix()},
@@ -97,96 +151,150 @@ func ListQuotesByDateRange[S any, Q any, R any]( //nolint:funlen,cyclop
 		}},
 	}
 
-	var storedQuotes []S
-	quoteCursor, err := conn.Collection(quoteCollection).Find(dbCtx, quoteFilter)
+	var storedQuotes []bson.D
+	quoteCursor, err := conn.Collection(collectionName).Find(ctx, quoteFilter)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
+	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
 		return nil, nil, err
 	}
-	
+
 	quoteHashes := make([]string, 0, len(storedQuotes))
 	quotes := make([]Q, 0, len(storedQuotes))
 
 	for _, stored := range storedQuotes {
-		hash, quoteObj := extractor(stored)
-		quoteHashes = append(quoteHashes, hash)
+		quoteObj := mapper(stored)
 		quotes = append(quotes, quoteObj)
+
+		// Extract hash from the BSON document
+		hashValue, ok := getStringValueFromBSON(stored, "hash")
+		if ok {
+			quoteHashes = append(quoteHashes, hashValue)
+		}
 	}
 
-	retainedFilter := bson.D{
+	return quotes, quoteHashes, nil
+}
+
+// getStringValueFromBSON extracts a string value from a BSON document by key
+func getStringValueFromBSON(doc bson.D, key string) (string, bool) {
+	// Convert bson.D to bson.Raw for direct lookup
+	data, err := bson.Marshal(doc)
+	if err != nil {
+		return "", false
+	}
+
+	// Use the Raw.Lookup method to find the value
+	rawValue := bson.Raw(data).Lookup(key)
+
+	// Extract string value if possible
+	return rawValue.StringValueOK()
+}
+
+// QuoteHashProvider defines an interface for objects that can provide a hash
+type QuoteHashProvider interface {
+	GetQuoteHash() string
+}
+
+// fetchRetainedQuotes retrieves retained quotes and identifies any additional quote hashes to fetch
+func fetchRetainedQuotes[R QuoteHashProvider](
+	ctx context.Context,
+	conn *Connection,
+	startDate, endDate time.Time,
+	collectionName string,
+	existingQuoteHashes []string,
+) ([]R, []string, error) {
+	retainedFilter := createRetainedFilter(startDate, endDate, existingQuoteHashes)
+
+	var retainedQuotes []R
+	retainedCursor, err := conn.Collection(collectionName).Find(ctx, retainedFilter)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err = retainedCursor.All(ctx, &retainedQuotes); err != nil {
+		return nil, nil, err
+	}
+
+	additionalHashes := findAdditionalQuoteHashes(retainedQuotes, existingQuoteHashes)
+	return retainedQuotes, additionalHashes, nil
+}
+
+// createRetainedFilter creates a filter for retained quotes
+func createRetainedFilter(startDate, endDate time.Time, quoteHashes []string) bson.D {
+	return bson.D{
 		{Key: "$or", Value: bson.A{
 			bson.D{{Key: "quote_hash", Value: bson.D{
 				{Key: "$in", Value: quoteHashes},
 			}}},
 			bson.D{
-				{Key: "updated_at", Value: bson.D{
+				{Key: "created_at", Value: bson.D{
 					{Key: "$gte", Value: startDate.Unix()},
 					{Key: "$lte", Value: endDate.Unix()},
 				}},
 			},
 		}},
 	}
+}
 
-	var retainedQuotes []R
-	retainedCursor, err := conn.Collection(retainedCollection).Find(dbCtx, retainedFilter)
+// findAdditionalQuoteHashes identifies quote hashes in retained quotes that are not in existingQuoteHashes
+func findAdditionalQuoteHashes[R QuoteHashProvider](retainedQuotes []R, existingQuoteHashes []string) []string {
+	// Create a map for faster lookup
+	existingMap := make(map[string]bool, len(existingQuoteHashes))
+	for _, hash := range existingQuoteHashes {
+		existingMap[hash] = true
+	}
+
+	// Store additional hashes
+	additionalMap := make(map[string]bool)
+
+	for i := range retainedQuotes {
+		hash := retainedQuotes[i].GetQuoteHash()
+		if !existingMap[hash] {
+			additionalMap[hash] = true
+		}
+	}
+
+	// Convert the map to a slice
+	additionalHashes := make([]string, 0, len(additionalMap))
+	for hash := range additionalMap {
+		additionalHashes = append(additionalHashes, hash)
+	}
+
+	return additionalHashes
+}
+
+// fetchAdditionalQuotes retrieves quotes by their hash
+func fetchAdditionalQuotes[Q any](
+	ctx context.Context,
+	conn *Connection,
+	collectionName string,
+	hashes []string,
+	mapper func(bson.D) Q,
+) ([]Q, error) {
+	quoteFilter := bson.D{
+		{Key: "hash", Value: bson.D{
+			{Key: "$in", Value: hashes},
+		}},
+	}
+
+	var storedQuotes []bson.D
+	quoteCursor, err := conn.Collection(collectionName).Find(ctx, quoteFilter)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
-		return nil, nil, err
+	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
+		return nil, err
 	}
 
-	additionalHashes := make(map[string]bool)
-	for _, retained := range retainedQuotes {
-		v := reflect.ValueOf(retained)
-		hashField := v.FieldByName("QuoteHash")
-		if hashField.IsValid() && hashField.Kind() == reflect.String {
-			hash := hashField.String()			
-			found := false
-			for _, existingHash := range quoteHashes {
-				if existingHash == hash {
-					found = true
-					break
-				}
-			}
-			if !found {
-				additionalHashes[hash] = true
-			}
-		}
-	}
-	if len(additionalHashes) > 0 { //nolint:nestif
-		additionalHashesList := make([]string, 0, len(additionalHashes))
-		for hash := range additionalHashes {
-			additionalHashesList = append(additionalHashesList, hash)
-		}
-		additionalFilter := bson.D{
-			{Key: "_id", Value: bson.D{
-				{Key: "$in", Value: additionalHashesList},
-			}},
-		}
-		var additionalStoredQuotes []S
-		additionalCursor, err := conn.Collection(quoteCollection).Find(dbCtx, additionalFilter)
-		if err != nil {
-			log.Errorf("Error fetching additional quotes: %v", err)
-		} else {
-			if err = additionalCursor.All(dbCtx, &additionalStoredQuotes); err != nil {
-				log.Errorf("Error processing additional quotes: %v", err)
-			} else {
-				for _, stored := range additionalStoredQuotes {
-					hash, quoteObj := extractor(stored)
-					quoteHashes = append(quoteHashes, hash)
-					quotes = append(quotes, quoteObj)
-				}
-			}
-		}
+	quotes := make([]Q, 0, len(storedQuotes))
+	for _, stored := range storedQuotes {
+		quoteObj := mapper(stored)
+		quotes = append(quotes, quoteObj)
 	}
 
-	logDbInteraction(Read, fmt.Sprintf("Found %d quotes and %d retained quotes in date range",
-		len(quotes), len(retainedQuotes)))
-
-	return quotes, retainedQuotes, nil
+	return quotes, nil
 }

@@ -322,16 +322,32 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
-	return ListQuotesByDateRange[StoredPegoutQuote, quote.PegoutQuote, quote.RetainedPegoutQuote](
-		ctx,
-		repo.conn,
-		startDate,
-		endDate,
-		PegoutQuoteCollection,
-		RetainedPegoutQuoteCollection,
-		func(stored StoredPegoutQuote) (string, quote.PegoutQuote) {
-			return stored.Hash, stored.PegoutQuote
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PegoutQuoteResult, error) {
+	query := QuoteQuery{
+		Ctx:                ctx,
+		Conn:               repo.conn,
+		StartDate:          startDate,
+		EndDate:            endDate,
+		QuoteCollection:    PegoutQuoteCollection,
+		RetainedCollection: RetainedPegoutQuoteCollection,
+	}
+
+	result := ListQuotesByDateRange[quote.PegoutQuote, quote.RetainedPegoutQuote](
+		query,
+		func(doc bson.D) quote.PegoutQuote {
+			var stored StoredPegoutQuote
+			bsonBytes, _ := bson.Marshal(doc)
+			bson.Unmarshal(bsonBytes, &stored)
+			return stored.PegoutQuote
 		},
 	)
+
+	if result.Error != nil {
+		return quote.PegoutQuoteResult{}, result.Error
+	}
+
+	return quote.PegoutQuoteResult{
+		Quotes:         result.Quotes,
+		RetainedQuotes: result.RetainedQuotes,
+	}, nil
 }

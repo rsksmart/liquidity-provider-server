@@ -4,16 +4,27 @@ import (
 	"net/http"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 )
 
-const dateFormat = "2006-01-02"
+// DateParamResult holds the result of date parameter validation
+type DateParamResult struct {
+	StartDate time.Time
+	EndDate   time.Time
+	Valid     bool
+	Error     *rest.ErrorResponse
+}
 
-func validateDateParameters(w http.ResponseWriter, req *http.Request) (startDate time.Time, endDate time.Time, valid bool) {
+// validateDateParameters validates the startDate and endDate query parameters
+func validateDateParameters(w http.ResponseWriter, req *http.Request) DateParamResult {
+	result := DateParamResult{Valid: false}
+
 	start := req.URL.Query().Get("startDate")
 	end := req.URL.Query().Get("endDate")
-	
+
 	if start == "" || end == "" {
 		missing := []string{}
 		if start == "" {
@@ -22,41 +33,43 @@ func validateDateParameters(w http.ResponseWriter, req *http.Request) (startDate
 		if end == "" {
 			missing = append(missing, "endDate")
 		}
-		jsonErr := rest.NewErrorResponseWithDetails("missing required parameters", map[string]any{
+		result.Error = rest.NewErrorResponseWithDetails("missing required parameters", map[string]any{
 			"missing": missing,
 		}, true)
-		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		rest.JsonErrorResponse(w, http.StatusBadRequest, result.Error)
+		return result
 	}
 
 	var err error
-	startDate, err = time.ParseInLocation(dateFormat, start, time.UTC)
+	result.StartDate, err = time.Parse(liquidity_provider.DateFormat, start)
 	if err != nil {
-		jsonErr := rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
-		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		result.Error = rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, result.Error)
+		return result
 	}
 
-	endDate, err = time.ParseInLocation(dateFormat, end, time.UTC)
+	result.EndDate, err = time.Parse(liquidity_provider.DateFormat, end)
 	if err != nil {
-		jsonErr := rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
-		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		result.Error = rest.NewErrorResponseWithDetails("invalid date format", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, result.Error)
+		return result
 	}
 
-	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+	// Set end date to end of day
+	result.EndDate = time.Date(result.EndDate.Year(), result.EndDate.Month(), result.EndDate.Day(), 23, 59, 59, 0, time.UTC)
 
-	if endDate.Before(startDate) {
+	if result.EndDate.Before(result.StartDate) {
 		details := map[string]any{
-			"startDate": startDate.Format(dateFormat),
-			"endDate":   endDate.Format(dateFormat),
+			"startDate": result.StartDate.Format(liquidity_provider.DateFormat),
+			"endDate":   result.EndDate.Format(liquidity_provider.DateFormat),
 		}
-		jsonErr := rest.NewErrorResponseWithDetails("invalid date range", details, true)
-		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		result.Error = rest.NewErrorResponseWithDetails("invalid date range", details, true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, result.Error)
+		return result
 	}
 
-	return startDate, endDate, true
+	result.Valid = true
+	return result
 }
 
 // NewGetReportSummariesHandler handles GET /report/summaries
@@ -68,13 +81,14 @@ func validateDateParameters(w http.ResponseWriter, req *http.Request) (startDate
 // @Router /report/summaries [get]
 func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, valid := validateDateParameters(w, req)
-		if !valid {
+		result := validateDateParameters(w, req)
+		if !result.Valid {
 			return
 		}
 
-		response, err := useCase.Run(req.Context(), startDate, endDate)
+		response, err := useCase.Run(req.Context(), result.StartDate, result.EndDate)
 		if err != nil {
+			log.Errorf("Error running summaries use case: %v", err)
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
