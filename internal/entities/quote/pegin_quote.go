@@ -2,9 +2,9 @@ package quote
 
 import (
 	"context"
-	"time"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"time"
 )
 
 const (
@@ -34,8 +34,15 @@ type PeginQuoteRepository interface {
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
+	GetQuotesByState(ctx context.Context, filter GetPeginQuotesByStateFilter) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
+}
+
+type GetPeginQuotesByStateFilter struct {
+	States    []PeginState
+	StartDate uint32
+	EndDate   uint32
 }
 
 type CreatedPeginQuote struct {
