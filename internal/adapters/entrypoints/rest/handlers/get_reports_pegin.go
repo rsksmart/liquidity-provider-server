@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -10,14 +11,33 @@ import (
 // NewGetReportsPeginHandler
 // @Title Get Pegin Reports
 // @Description Get the last pegins on the API. Included in the management API.
-// @Param PeginReportsRequest  body pkg.PeginReportsRequest true "Date range for the report, case not provided will be last 30 days"
+// @Param GetReportsPeginRequest body pkg.GetReportsPeginRequest true "Date range for the report with startDate and endDate"
 // @Success 200 pkg.GetPeginReportResponse
 // @Route /reports/pegin [get]
 func NewGetReportsPeginHandler(useCase *pegin.GetPeginReportUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		var requestBody pkg.GetReportsPeginRequest
 		var err error
+		if err = json.NewDecoder(req.Body).Decode(&requestBody); err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("Invalid request body", rest.DetailsFromError(err), false)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
 
-		peginReport, err := useCase.Run(req.Context())
+		if err = requestBody.ValidateGetReportsPeginRequest(); err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), false)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+
+		startTime, endTime, err := requestBody.GetTimestamps()
+		if err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("Date conversion error", rest.DetailsFromError(err), false)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+
+		peginReport, err := useCase.Run(req.Context(), startTime, endTime)
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

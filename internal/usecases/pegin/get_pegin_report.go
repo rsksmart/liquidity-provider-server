@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"time"
 )
 
 type GetPeginReportUseCase struct {
@@ -28,21 +29,27 @@ type GetPeginReportResult struct {
 	AverageFeePerQuote *entities.Wei
 }
 
-func (useCase *GetPeginReportUseCase) Run(ctx context.Context) (GetPeginReportResult, error) {
+func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetPeginReportResult, error) {
 	var err error
-	var retained []quote.RetainedPeginQuote
+	var quotes []quote.PeginQuote
 	var minimumQuoteValue *entities.Wei
 	var maximumQuoteValue *entities.Wei
 	var averageQuoteValue *entities.Wei
 	var totalFeesCollected *entities.Wei
 	var averageFeePerQuote *entities.Wei
 
-	retained, err = useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, quote.PeginStateRegisterPegInSucceeded)
+	filter := quote.GetPeginQuotesByStateFilter{
+		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
+		StartDate: uint32(startDate.Unix()),
+		EndDate:   uint32(endDate.Unix()),
+	}
+
+	quotes, err = useCase.peginQuoteRepository.GetQuotesByState(ctx, filter)
 
 	if err != nil {
 		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
-	if len(retained) == 0 {
+	if len(quotes) == 0 {
 		return GetPeginReportResult{
 			NumberOfQuotes:     0,
 			MinimumQuoteValue:  entities.NewWei(0),
@@ -51,16 +58,6 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context) (GetPeginReportRe
 			TotalFeesCollected: entities.NewWei(0),
 			AverageFeePerQuote: entities.NewWei(0),
 		}, nil
-	}
-
-	quoteHashes := make([]string, 0)
-	for _, q := range retained {
-		quoteHashes = append(quoteHashes, q.QuoteHash)
-	}
-
-	quotes, err := useCase.peginQuoteRepository.GetQuotes(ctx, quoteHashes)
-	if err != nil {
-		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
 	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)
