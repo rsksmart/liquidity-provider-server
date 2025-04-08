@@ -218,8 +218,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -270,8 +275,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -300,8 +310,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -352,8 +367,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -382,8 +402,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -449,8 +474,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)
@@ -512,8 +542,13 @@ func TestListQuotesByDateRange(t *testing.T) { //nolint:funlen,maintidx
 			query,
 			func(doc bson.D) TestQuote {
 				var stored TestStoredQuote
-				bsonBytes, _ := bson.Marshal(doc)
-				bson.Unmarshal(bsonBytes, &stored)
+				bsonBytes, err := bson.Marshal(doc)
+				if err != nil {
+					return TestQuote{}
+				}
+				if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+					return TestQuote{}
+				}
 				return stored.TestQuote
 			},
 		)

@@ -126,6 +126,14 @@ func (u *SummariesUseCase) processPeginData(ctx context.Context, quotes []quote.
 	// Calculate metrics based on retained quotes and their quotes
 	data.TotalQuotedAmount = totalAmount.String()
 
+	// Process retained quotes and calculate additional metrics
+	u.processPeginRetainedQuotes(&data, quotesByHash, retainedQuotes)
+
+	return data
+}
+
+// processPeginRetainedQuotes processes each retained quote and updates the SummaryData
+func (u *SummariesUseCase) processPeginRetainedQuotes(data *SummaryData, quotesByHash map[string]*quote.PeginQuote, retainedQuotes []quote.RetainedPeginQuote) {
 	// Calculate accepted and refunded metrics
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
@@ -166,8 +174,6 @@ func (u *SummariesUseCase) processPeginData(ctx context.Context, quotes []quote.
 	data.TotalFeesCollected = totalFees.String()
 	data.TotalPenaltyAmount = totalPenalty.String()
 	data.LpEarnings = lpEarnings.String()
-
-	return data
 }
 
 func calculateTotalAmount(quotes []quote.PeginQuote) *entities.Wei {
@@ -297,6 +303,14 @@ func (u *SummariesUseCase) processPegoutData(ctx context.Context, quotes []quote
 	// Calculate metrics based on retained quotes and their quotes
 	data.TotalQuotedAmount = totalAmount.String()
 
+	// Process retained quotes and calculate additional metrics
+	u.processPegoutRetainedQuotes(&data, quotesByHash, retainedQuotes)
+
+	return data
+}
+
+// processPegoutRetainedQuotes processes each retained quote and updates the SummaryData
+func (u *SummariesUseCase) processPegoutRetainedQuotes(data *SummaryData, quotesByHash map[string]*quote.PegoutQuote, retainedQuotes []quote.RetainedPegoutQuote) {
 	// Calculate accepted and refunded metrics
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
@@ -338,8 +352,6 @@ func (u *SummariesUseCase) processPegoutData(ctx context.Context, quotes []quote
 	data.TotalFeesCollected = totalFees.String()
 	data.TotalPenaltyAmount = totalPenalty.String()
 	data.LpEarnings = lpEarnings.String()
-
-	return data
 }
 
 func calculatePegoutTotalAmount(quotes []quote.PegoutQuote) *entities.Wei {

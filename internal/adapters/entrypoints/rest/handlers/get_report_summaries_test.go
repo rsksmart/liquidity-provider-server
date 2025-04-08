@@ -22,6 +22,9 @@ type MockSummariesUseCase struct {
 
 func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (liquidity_provider.SummariesResponse, error) {
 	args := m.Called(ctx, startDate, endDate)
+	if args.Get(0) == nil {
+		return liquidity_provider.SummariesResponse{}, args.Error(1)
+	}
 	return args.Get(0).(liquidity_provider.SummariesResponse), args.Error(1)
 }
 
@@ -185,7 +188,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			}
 
 			handler := getReportSummariesHandlerForTest(mockUseCase)
-			req, err := http.NewRequest(http.MethodGet, tt.url, nil)
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.url, nil)
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()

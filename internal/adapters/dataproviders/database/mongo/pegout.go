@@ -336,8 +336,15 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		query,
 		func(doc bson.D) quote.PegoutQuote {
 			var stored StoredPegoutQuote
-			bsonBytes, _ := bson.Marshal(doc)
-			bson.Unmarshal(bsonBytes, &stored)
+			bsonBytes, err := bson.Marshal(doc)
+			if err != nil {
+				log.Errorf("Error marshaling BSON: %v", err)
+				return quote.PegoutQuote{}
+			}
+			if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
+				log.Errorf("Error unmarshaling BSON: %v", err)
+				return quote.PegoutQuote{}
+			}
 			return stored.PegoutQuote
 		},
 	)
