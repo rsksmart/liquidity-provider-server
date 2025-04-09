@@ -141,6 +141,18 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	}
 	fetchMissingQuotes(ctx, quotesByHash, retainedQuotes, totalAmount, getQuote)
 	data.PaidQuotesAmount = totalAmount
+	processRetainedQuotes(&data, quotesByHash, retainedQuotes, isPaid, isRefunded, feeProvider)
+	return data
+}
+
+func processRetainedQuotes[Q any, R quote.RetainedQuote, F quote.FeeProvider](
+	data *SummaryData,
+	quotesByHash map[string]*Q,
+	retainedQuotes []R,
+	isPaid func(R) bool,
+	isRefunded func(R) bool,
+	feeProvider func(*Q) F,
+) {
 	data.PaidQuotesCount = 0
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
@@ -174,7 +186,6 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	data.TotalFeesCollected = totalFees
 	data.TotalPenaltyAmount = totalPenalty
 	data.LpEarnings = lpEarnings
-	return data
 }
 
 func calculateTotalAmount[T any](quotes []T) *entities.Wei {
