@@ -118,7 +118,7 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	retainedQuotes []R,
 	quoteHashToIndex map[string]int,
 	getQuote func(context.Context, string) (*Q, error),
-	isAccepted func(R) bool,
+	isPaid func(R) bool,
 	isRefunded func(R) bool,
 	feeProvider func(*Q) F,
 ) SummaryData {
@@ -144,11 +144,11 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 			continue
 		}
 		fees := feeProvider(quoteObj)
-		if isAccepted(retained) {
-			data.ConfirmedQuotesCount++
-			if q, ok := any(quoteObj).(quote.Quote); ok {
-				acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
-			}
+		data.ConfirmedQuotesCount++
+		if q, ok := any(quoteObj).(quote.Quote); ok {
+			acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
+		}
+		if isPaid(retained) {
 			callFee := fees.GetCallFee()
 			callFees.Add(callFees, callFee)
 			totalFees.Add(totalFees, callFee)
@@ -243,7 +243,7 @@ func aggregateData[Q any, RQ quote.RetainedQuote](
 	startDate, endDate time.Time,
 	listQuotes func(context.Context, time.Time, time.Time) (quote.QuoteResult[Q, RQ], error),
 	getQuote func(context.Context, string) (*Q, error),
-	isAccepted func(RQ) bool,
+	isPaid func(RQ) bool,
 	isRefunded func(RQ) bool,
 	toFeeProvider func(*Q) quote.FeeProvider,
 ) (SummaryData, error) {
@@ -258,7 +258,7 @@ func aggregateData[Q any, RQ quote.RetainedQuote](
 		result.GetRetainedQuotes(),
 		result.GetQuoteHashToIndex(),
 		getQuote,
-		isAccepted,
+		isPaid,
 		isRefunded,
 		toFeeProvider,
 	), nil
@@ -276,7 +276,7 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 		ctx, startDate, endDate,
 		listPeginQuotes,
 		u.peginRepo.GetQuote,
-		isAcceptedPegin,
+		isPaidPegin,
 		isRefundedPegin,
 		mapPeginQuote,
 	)
@@ -294,7 +294,7 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 		ctx, startDate, endDate,
 		listPegoutQuotes,
 		u.pegoutRepo.GetQuote,
-		isAcceptedPegout,
+		isPaidPegout,
 		isRefundedPegout,
 		mapPegoutQuote,
 	)
@@ -305,11 +305,11 @@ func (a *feeAdapter) GetGasFee() *entities.Wei     { return a.gasFee }
 func (a *feeAdapter) GetProductFee() *entities.Wei { return a.productFee }
 func (a *feeAdapter) GetPenaltyFee() *entities.Wei { return a.penaltyFee }
 
-func isAcceptedPegout(retained quote.RetainedPegoutQuote) bool {
+func isPaidPegout(retained quote.RetainedPegoutQuote) bool {
 	return retained.State == quote.PegoutStateSendPegoutSucceeded
 }
 
-func isAcceptedPegin(retained quote.RetainedPeginQuote) bool {
+func isPaidPegin(retained quote.RetainedPeginQuote) bool {
 	return retained.State == quote.PeginStateCallForUserSucceeded
 }
 
