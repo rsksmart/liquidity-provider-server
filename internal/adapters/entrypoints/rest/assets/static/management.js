@@ -577,9 +577,10 @@ const displaySummaryData = (container, data) => {
     const table = document.createElement('table');
     table.classList.add('table', 'table-striped'); 
     const rows = [
-        { label: 'Total Accepted Quotes', value: data.totalAcceptedQuotesCount },
-        { label: 'Confirmed Quotes', value: data.confirmedQuotesCount },
-        { label: 'Total Quoted Amount', value: data.totalQuotedAmount },
+        { label: 'Total Quotes', value: data.totalQuotesCount },
+        { label: 'Accepted Quotes', value: data.acceptedQuotesCount },
+        { label: 'Paid Quotes', value: data.paidQuotesCount },
+        { label: 'Paid Quotes Amount', value: data.paidQuotesAmount },
         { label: 'Total Accepted Amount', value: data.totalAcceptedQuotedAmount },
         { label: 'Total Fees Collected', value: data.totalFeesCollected },
         { label: 'Refunded Quotes', value: data.refundedQuotesCount },

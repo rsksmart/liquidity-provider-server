@@ -80,10 +80,9 @@ func (c *Connection) CheckConnection(ctx context.Context) bool {
 }
 
 type QuoteResult[Q any, R QuoteHashProvider] struct {
-	Quotes           []Q
-	RetainedQuotes   []R
-	QuoteHashToIndex map[string]int
-	Error            error
+	Quotes         []Q
+	RetainedQuotes []R
+	Error          error
 }
 
 type QuoteQuery struct {
@@ -105,37 +104,24 @@ func ListQuotesByDateRange[Q any, R QuoteHashProvider](
 	if err != nil {
 		return QuoteResult[Q, R]{Error: err}
 	}
-	quoteHashToIndex := make(map[string]int, len(quoteHashes))
-	for i, hash := range quoteHashes {
-		if hash != "" {
-			quoteHashToIndex[hash] = i
-		}
-	}
 	retainedQuotes, additionalHashes, err := fetchRetainedQuotes[R](dbCtx, query.Conn, query.StartDate, query.EndDate, query.RetainedCollection, quoteHashes)
 	if err != nil {
 		return QuoteResult[Q, R]{Error: err}
 	}
 	if len(additionalHashes) > 0 {
-		additionalQuotes, additionalHashIndices, err := fetchAdditionalQuotes(dbCtx, query.Conn, query.QuoteCollection, additionalHashes, mapper)
+		additionalQuotes, err := fetchAdditionalQuotes(dbCtx, query.Conn, query.QuoteCollection, additionalHashes, mapper)
 		if err != nil {
 			log.Errorf("Error processing additional quotes: %v", err)
 		} else {
-			baseIndex := len(quotes)
-			for i, hash := range additionalHashIndices {
-				if hash != "" {
-					quoteHashToIndex[hash] = baseIndex + i
-				}
-			}
 			quotes = append(quotes, additionalQuotes...)
 		}
 	}
 	logDbInteraction(Read, fmt.Sprintf("Found %d quotes and %d retained quotes in date range",
 		len(quotes), len(retainedQuotes)))
 	return QuoteResult[Q, R]{
-		Quotes:           quotes,
-		RetainedQuotes:   retainedQuotes,
-		QuoteHashToIndex: quoteHashToIndex,
-		Error:            nil,
+		Quotes:         quotes,
+		RetainedQuotes: retainedQuotes,
+		Error:          nil,
 	}
 }
 
@@ -247,7 +233,7 @@ func fetchAdditionalQuotes[Q any](
 	collectionName string,
 	hashes []string,
 	mapper func(bson.D) Q,
-) ([]Q, []string, error) {
+) ([]Q, error) {
 	quoteFilter := bson.D{
 		{Key: "hash", Value: bson.D{
 			{Key: "$in", Value: hashes},
@@ -256,22 +242,15 @@ func fetchAdditionalQuotes[Q any](
 	var storedQuotes []bson.D
 	quoteCursor, err := conn.Collection(collectionName).Find(ctx, quoteFilter)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	quotes := make([]Q, 0, len(storedQuotes))
-	resultHashes := make([]string, 0, len(storedQuotes))
 	for _, stored := range storedQuotes {
 		quoteObj := mapper(stored)
 		quotes = append(quotes, quoteObj)
-		hashValue, ok := getStringValueFromBSON(stored, "hash")
-		if ok {
-			resultHashes = append(resultHashes, hashValue)
-		} else {
-			resultHashes = append(resultHashes, "")
-		}
 	}
-	return quotes, resultHashes, nil
+	return quotes, nil
 }

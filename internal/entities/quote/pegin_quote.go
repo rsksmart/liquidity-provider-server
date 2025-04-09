@@ -40,9 +40,8 @@ type PeginQuoteRepository interface {
 }
 
 type PeginQuoteResult struct {
-	Quotes           []PeginQuote
-	RetainedQuotes   []RetainedPeginQuote
-	QuoteHashToIndex map[string]int
+	Quotes         []PeginQuote
+	RetainedQuotes []RetainedPeginQuote
 }
 
 type CreatedPeginQuote struct {

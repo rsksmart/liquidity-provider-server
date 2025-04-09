@@ -47,9 +47,8 @@ type PegoutQuoteRepository interface {
 }
 
 type PegoutQuoteResult struct {
-	Quotes           []PegoutQuote
-	RetainedQuotes   []RetainedPegoutQuote
-	QuoteHashToIndex map[string]int
+	Quotes         []PegoutQuote
+	RetainedQuotes []RetainedPegoutQuote
 }
 
 type CreatedPegoutQuote struct {

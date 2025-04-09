@@ -685,22 +685,24 @@ components:
       type: object
     SummaryData:
       properties:
-        confirmedQuotesCount:
+        acceptedQuotesCount:
           type: integer
         lpEarnings:
           $ref: '#/components/schemas/Wei'
+        paidQuotesAmount:
+          $ref: '#/components/schemas/Wei'
+        paidQuotesCount:
+          type: integer
         refundedQuotesCount:
           type: integer
         totalAcceptedQuotedAmount:
           $ref: '#/components/schemas/Wei'
-        totalAcceptedQuotesCount:
-          type: integer
         totalFeesCollected:
           $ref: '#/components/schemas/Wei'
         totalPenaltyAmount:
           $ref: '#/components/schemas/Wei'
-        totalQuotedAmount:
-          $ref: '#/components/schemas/Wei'
+        totalQuotesCount:
+          type: integer
       type: object
     SummaryResult:
       properties:

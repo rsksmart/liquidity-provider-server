@@ -20,9 +20,10 @@ type SummaryResult struct {
 }
 
 type SummaryData struct {
-	TotalAcceptedQuotesCount  int64         `json:"totalAcceptedQuotesCount"`
-	ConfirmedQuotesCount      int64         `json:"confirmedQuotesCount"`
-	TotalQuotedAmount         *entities.Wei `json:"totalQuotedAmount"`
+	TotalQuotesCount          int64         `json:"totalQuotesCount"`
+	AcceptedQuotesCount       int64         `json:"acceptedQuotesCount"`
+	PaidQuotesCount           int64         `json:"paidQuotesCount"`
+	PaidQuotesAmount          *entities.Wei `json:"paidQuotesAmount"`
 	TotalAcceptedQuotedAmount *entities.Wei `json:"totalAcceptedQuotedAmount"`
 	TotalFeesCollected        *entities.Wei `json:"totalFeesCollected"`
 	RefundedQuotesCount       int64         `json:"refundedQuotesCount"`
@@ -38,9 +39,8 @@ type feeAdapter struct {
 }
 
 type quoteResultAdapter[Q any, R quote.RetainedQuote] struct {
-	quotes           []Q
-	retainedQuotes   []R
-	quoteHashToIndex map[string]int
+	quotes         []Q
+	retainedQuotes []R
 }
 
 type SummariesUseCase struct {
@@ -50,9 +50,10 @@ type SummariesUseCase struct {
 
 func NewSummaryData() SummaryData {
 	return SummaryData{
-		TotalAcceptedQuotesCount:  0,
-		ConfirmedQuotesCount:      0,
-		TotalQuotedAmount:         entities.NewWei(0),
+		TotalQuotesCount:          0,
+		AcceptedQuotesCount:       0,
+		PaidQuotesCount:           0,
+		PaidQuotesAmount:          entities.NewWei(0),
 		TotalAcceptedQuotedAmount: entities.NewWei(0),
 		TotalFeesCollected:        entities.NewWei(0),
 		RefundedQuotesCount:       0,
@@ -116,7 +117,6 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	ctx context.Context,
 	quotes []Q,
 	retainedQuotes []R,
-	quoteHashToIndex map[string]int,
 	getQuote func(context.Context, string) (*Q, error),
 	isPaid func(R) bool,
 	isRefunded func(R) bool,
@@ -124,31 +124,39 @@ func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 ) SummaryData {
 	data := NewSummaryData()
 	totalAmount := calculateTotalAmount(quotes)
+	data.TotalQuotesCount = int64(len(quotes))
 	if len(retainedQuotes) == 0 {
-		data.TotalAcceptedQuotesCount = int64(len(quotes))
-		data.TotalQuotedAmount = totalAmount
+		data.PaidQuotesAmount = totalAmount
+		data.PaidQuotesCount = 0
 		return data
 	}
-	data.TotalAcceptedQuotesCount = int64(len(retainedQuotes))
-	quotesByHash := createQuoteHashMap(quotes, quoteHashToIndex)
+	data.AcceptedQuotesCount = int64(len(retainedQuotes))
+	quotesByHash := make(map[string]*Q)
+	for i := range quotes {
+		if retainedQuote, ok := any(&quotes[i]).(quote.RetainedQuote); ok {
+			hash := retainedQuote.GetQuoteHash()
+			quoteCopy := quotes[i]
+			quotesByHash[hash] = &quoteCopy
+		}
+	}
 	fetchMissingQuotes(ctx, quotesByHash, retainedQuotes, totalAmount, getQuote)
-	data.TotalQuotedAmount = totalAmount
+	data.PaidQuotesAmount = totalAmount
+	data.PaidQuotesCount = 0
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
 	callFees := entities.NewWei(0)
 	totalPenalty := entities.NewWei(0)
 	for _, retained := range retainedQuotes {
-		quoteHash := retained.GetQuoteHash()
-		quoteObj, exists := quotesByHash[quoteHash]
+		quoteObj, exists := quotesByHash[retained.GetQuoteHash()]
 		if !exists {
 			continue
 		}
 		fees := feeProvider(quoteObj)
-		data.ConfirmedQuotesCount++
 		if q, ok := any(quoteObj).(quote.Quote); ok {
 			acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 		}
 		if isPaid(retained) {
+			data.PaidQuotesCount++
 			callFee := fees.GetCallFee()
 			callFees.Add(callFees, callFee)
 			totalFees.Add(totalFees, callFee)
@@ -183,17 +191,6 @@ func calculateTotalAmount[T any](quotes []T) *entities.Wei {
 	return totalAmount
 }
 
-func createQuoteHashMap[T any](quotes []T, quoteHashToIndex map[string]int) map[string]*T {
-	quotesByHash := make(map[string]*T, len(quoteHashToIndex))
-	for hash, index := range quoteHashToIndex {
-		if index >= 0 && index < len(quotes) {
-			quoteCopy := quotes[index]
-			quotesByHash[hash] = &quoteCopy
-		}
-	}
-	return quotesByHash
-}
-
 func fetchMissingQuotes[Q any, R quote.RetainedQuote](
 	ctx context.Context,
 	quotesByHash map[string]*Q,
@@ -224,17 +221,15 @@ func fetchMissingQuotes[Q any, R quote.RetainedQuote](
 
 func adaptPeginResult(result quote.PeginQuoteResult) quote.QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote] {
 	return quoteResultAdapter[quote.PeginQuote, quote.RetainedPeginQuote]{
-		quotes:           result.Quotes,
-		retainedQuotes:   result.RetainedQuotes,
-		quoteHashToIndex: result.QuoteHashToIndex,
+		quotes:         result.Quotes,
+		retainedQuotes: result.RetainedQuotes,
 	}
 }
 
 func adaptPegoutResult(result quote.PegoutQuoteResult) quote.QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote] {
 	return quoteResultAdapter[quote.PegoutQuote, quote.RetainedPegoutQuote]{
-		quotes:           result.Quotes,
-		retainedQuotes:   result.RetainedQuotes,
-		quoteHashToIndex: result.QuoteHashToIndex,
+		quotes:         result.Quotes,
+		retainedQuotes: result.RetainedQuotes,
 	}
 }
 
@@ -256,7 +251,6 @@ func aggregateData[Q any, RQ quote.RetainedQuote](
 		ctx,
 		result.GetQuotes(),
 		result.GetRetainedQuotes(),
-		result.GetQuoteHashToIndex(),
 		getQuote,
 		isPaid,
 		isRefunded,
@@ -327,8 +321,4 @@ func (a quoteResultAdapter[Q, R]) GetQuotes() []Q {
 
 func (a quoteResultAdapter[Q, R]) GetRetainedQuotes() []R {
 	return a.retainedQuotes
-}
-
-func (a quoteResultAdapter[Q, R]) GetQuoteHashToIndex() map[string]int {
-	return a.quoteHashToIndex
 }

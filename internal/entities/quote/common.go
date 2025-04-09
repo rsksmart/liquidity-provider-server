@@ -47,7 +47,6 @@ type FeeProvider interface {
 type QuoteResult[Q any, R RetainedQuote] interface {
 	GetQuotes() []Q
 	GetRetainedQuotes() []R
-	GetQuoteHashToIndex() map[string]int
 }
 
 // ValidateQuoteHash checks if a given string is a valid 32-byte quote hash

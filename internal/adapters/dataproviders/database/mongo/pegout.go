@@ -351,8 +351,7 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		return quote.PegoutQuoteResult{}, result.Error
 	}
 	return quote.PegoutQuoteResult{
-		Quotes:           result.Quotes,
-		RetainedQuotes:   result.RetainedQuotes,
-		QuoteHashToIndex: result.QuoteHashToIndex,
+		Quotes:         result.Quotes,
+		RetainedQuotes: result.RetainedQuotes,
 	}, nil
 }

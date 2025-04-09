@@ -240,8 +240,7 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 		return quote.PeginQuoteResult{}, result.Error
 	}
 	return quote.PeginQuoteResult{
-		Quotes:           result.Quotes,
-		RetainedQuotes:   result.RetainedQuotes,
-		QuoteHashToIndex: result.QuoteHashToIndex,
+		Quotes:         result.Quotes,
+		RetainedQuotes: result.RetainedQuotes,
 	}, nil
 }
