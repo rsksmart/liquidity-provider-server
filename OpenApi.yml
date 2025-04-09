@@ -145,6 +145,13 @@ components:
       - quote
       - quoteHash
       type: object
+    GetReportsPeginPegoutRequest:
+      properties:
+        endDate:
+          type: string
+        startDate:
+          type: string
+      type: object
     HealthResponse:
       properties:
         services:
@@ -520,7 +527,6 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           type: integer
         feePercentage:
           type: number
@@ -715,6 +721,13 @@ components:
           type: integer
       required:
       - collateral
+      type: object
+    pkg.GetReportsPeginPegoutRequest:
+      properties:
+        endDate:
+          type: string
+        startDate:
+          type: string
       type: object
 info:
   title: Liquidity Provider Server
@@ -1041,7 +1054,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/'
+              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
         required: true
       responses:
         "200":
@@ -1050,6 +1063,12 @@ paths:
   /reports/pegout:
     get:
       description: ' Get the last pegouts on the API. Included in the management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
+        required: true
       responses:
         "200":
           description: ""
