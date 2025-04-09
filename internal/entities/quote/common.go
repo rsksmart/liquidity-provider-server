@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 )
 
 type AcceptedQuote struct {
@@ -26,6 +27,27 @@ type PegConfiguration interface {
 	GetFixedFee() *entities.Wei
 	GetFeePercentage() *utils.BigFloat
 	ValidateAmount(amount *entities.Wei) error
+}
+
+type Quote interface {
+	Total() *entities.Wei
+}
+
+type RetainedQuote interface {
+	GetQuoteHash() string
+}
+
+type FeeProvider interface {
+	GetCallFee() *entities.Wei
+	GetGasFee() *entities.Wei
+	GetProductFee() *entities.Wei
+	GetPenaltyFee() *entities.Wei
+}
+
+type QuoteResult[Q any, R RetainedQuote] interface {
+	GetQuotes() []Q
+	GetRetainedQuotes() []R
+	GetQuoteHashToIndex() map[string]int
 }
 
 // ValidateQuoteHash checks if a given string is a valid 32-byte quote hash

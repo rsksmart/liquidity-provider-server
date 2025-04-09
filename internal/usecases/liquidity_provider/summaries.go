@@ -14,7 +14,7 @@ const (
 	DateFormat = time.DateOnly
 )
 
-type SummariesResponse struct {
+type SummaryResult struct {
 	PeginSummary  SummaryData `json:"peginSummary"`
 	PegoutSummary SummaryData `json:"pegoutSummary"`
 }
@@ -30,21 +30,6 @@ type SummaryData struct {
 	LpEarnings                *entities.Wei `json:"lpEarnings"`
 }
 
-type Quote interface {
-	Total() *entities.Wei
-}
-
-type RetainedQuote interface {
-	GetQuoteHash() string
-}
-
-type FeeProvider interface {
-	GetCallFee() *entities.Wei
-	GetGasFee() *entities.Wei
-	GetProductFee() *entities.Wei
-	GetPenaltyFee() *entities.Wei
-}
-
 type feeAdapter struct {
 	callFee    *entities.Wei
 	gasFee     *entities.Wei
@@ -52,13 +37,7 @@ type feeAdapter struct {
 	penaltyFee *entities.Wei
 }
 
-type QuoteResult[Q any, R RetainedQuote] interface {
-	GetQuotes() []Q
-	GetRetainedQuotes() []R
-	GetQuoteHashToIndex() map[string]int
-}
-
-type quoteResultAdapter[Q any, R RetainedQuote] struct {
+type quoteResultAdapter[Q any, R quote.RetainedQuote] struct {
 	quotes           []Q
 	retainedQuotes   []R
 	quoteHashToIndex map[string]int
@@ -92,24 +71,24 @@ func NewSummariesUseCase(
 	}
 }
 
-func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (SummariesResponse, error) {
+func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (SummaryResult, error) {
 	peginData, err := u.aggregatePeginData(ctx, startDate, endDate)
 	if err != nil {
 		log.Errorf("Error aggregating pegin data: %v", err)
-		return SummariesResponse{}, err
+		return SummaryResult{}, err
 	}
 	pegoutData, err := u.aggregatePegoutData(ctx, startDate, endDate)
 	if err != nil {
 		log.Errorf("Error aggregating pegout data: %v", err)
-		return SummariesResponse{}, err
+		return SummaryResult{}, err
 	}
-	return SummariesResponse{
+	return SummaryResult{
 		PeginSummary:  peginData,
 		PegoutSummary: pegoutData,
 	}, nil
 }
 
-func mapPeginQuote(q *quote.PeginQuote) FeeProvider {
+func mapPeginQuote(q *quote.PeginQuote) quote.FeeProvider {
 	if q == nil {
 		return &feeAdapter{}
 	}
@@ -121,7 +100,7 @@ func mapPeginQuote(q *quote.PeginQuote) FeeProvider {
 	}
 }
 
-func mapPegoutQuote(q *quote.PegoutQuote) FeeProvider {
+func mapPegoutQuote(q *quote.PegoutQuote) quote.FeeProvider {
 	if q == nil {
 		return &feeAdapter{}
 	}
@@ -133,7 +112,7 @@ func mapPegoutQuote(q *quote.PegoutQuote) FeeProvider {
 	}
 }
 
-func processQuoteData[Q any, R RetainedQuote, F FeeProvider](
+func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	ctx context.Context,
 	quotes []Q,
 	retainedQuotes []R,
@@ -167,7 +146,7 @@ func processQuoteData[Q any, R RetainedQuote, F FeeProvider](
 		fees := feeProvider(quoteObj)
 		if isAccepted(retained) {
 			data.ConfirmedQuotesCount++
-			if q, ok := any(quoteObj).(Quote); ok {
+			if q, ok := any(quoteObj).(quote.Quote); ok {
 				acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 			}
 			callFee := fees.GetCallFee()
@@ -194,7 +173,7 @@ func calculateTotalAmount[T any](quotes []T) *entities.Wei {
 	totalAmount := entities.NewWei(0)
 	for i := range quotes {
 		var total *entities.Wei
-		if q, ok := any(&quotes[i]).(Quote); ok {
+		if q, ok := any(&quotes[i]).(quote.Quote); ok {
 			total = q.Total()
 		}
 		if total != nil {
@@ -215,7 +194,7 @@ func createQuoteHashMap[T any](quotes []T, quoteHashToIndex map[string]int) map[
 	return quotesByHash
 }
 
-func fetchMissingQuotes[Q any, R RetainedQuote](
+func fetchMissingQuotes[Q any, R quote.RetainedQuote](
 	ctx context.Context,
 	quotesByHash map[string]*Q,
 	retainedQuotes []R,
@@ -237,13 +216,13 @@ func fetchMissingQuotes[Q any, R RetainedQuote](
 			continue
 		}
 		quotesByHash[quoteHash] = quoteObj
-		if q, ok := any(quoteObj).(Quote); ok {
+		if q, ok := any(quoteObj).(quote.Quote); ok {
 			totalAmount.Add(totalAmount, q.Total())
 		}
 	}
 }
 
-func adaptPeginResult(result quote.PeginQuoteResult) QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote] {
+func adaptPeginResult(result quote.PeginQuoteResult) quote.QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote] {
 	return quoteResultAdapter[quote.PeginQuote, quote.RetainedPeginQuote]{
 		quotes:           result.Quotes,
 		retainedQuotes:   result.RetainedQuotes,
@@ -251,7 +230,7 @@ func adaptPeginResult(result quote.PeginQuoteResult) QuoteResult[quote.PeginQuot
 	}
 }
 
-func adaptPegoutResult(result quote.PegoutQuoteResult) QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote] {
+func adaptPegoutResult(result quote.PegoutQuoteResult) quote.QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote] {
 	return quoteResultAdapter[quote.PegoutQuote, quote.RetainedPegoutQuote]{
 		quotes:           result.Quotes,
 		retainedQuotes:   result.RetainedQuotes,
@@ -259,14 +238,14 @@ func adaptPegoutResult(result quote.PegoutQuoteResult) QuoteResult[quote.PegoutQ
 	}
 }
 
-func aggregateData[Q any, RQ RetainedQuote](
+func aggregateData[Q any, RQ quote.RetainedQuote](
 	ctx context.Context,
 	startDate, endDate time.Time,
-	listQuotes func(context.Context, time.Time, time.Time) (QuoteResult[Q, RQ], error),
+	listQuotes func(context.Context, time.Time, time.Time) (quote.QuoteResult[Q, RQ], error),
 	getQuote func(context.Context, string) (*Q, error),
 	isAccepted func(RQ) bool,
 	isRefunded func(RQ) bool,
-	toFeeProvider func(*Q) FeeProvider,
+	toFeeProvider func(*Q) quote.FeeProvider,
 ) (SummaryData, error) {
 	result, err := listQuotes(ctx, startDate, endDate)
 	if err != nil {
@@ -286,7 +265,7 @@ func aggregateData[Q any, RQ RetainedQuote](
 }
 
 func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	listPeginQuotes := func(ctx context.Context, start, end time.Time) (QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote], error) {
+	listPeginQuotes := func(ctx context.Context, start, end time.Time) (quote.QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote], error) {
 		result, err := u.peginRepo.ListQuotesByDateRange(ctx, start, end)
 		if err != nil {
 			return nil, err
@@ -304,7 +283,7 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 }
 
 func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	listPegoutQuotes := func(ctx context.Context, start, end time.Time) (QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote], error) {
+	listPegoutQuotes := func(ctx context.Context, start, end time.Time) (quote.QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote], error) {
 		result, err := u.pegoutRepo.ListQuotesByDateRange(ctx, start, end)
 		if err != nil {
 			return nil, err

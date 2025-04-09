@@ -683,7 +683,26 @@ components:
         rsk:
           type: string
       type: object
-    SummariesResponse:
+    SummaryData:
+      properties:
+        confirmedQuotesCount:
+          type: integer
+        lpEarnings:
+          $ref: '#/components/schemas/Wei'
+        refundedQuotesCount:
+          type: integer
+        totalAcceptedQuotedAmount:
+          $ref: '#/components/schemas/Wei'
+        totalAcceptedQuotesCount:
+          type: integer
+        totalFeesCollected:
+          $ref: '#/components/schemas/Wei'
+        totalPenaltyAmount:
+          $ref: '#/components/schemas/Wei'
+        totalQuotedAmount:
+          $ref: '#/components/schemas/Wei'
+      type: object
+    SummaryResult:
       properties:
         peginSummary:
           $ref: '#/components/schemas/SummaryData'
@@ -692,25 +711,8 @@ components:
           $ref: '#/components/schemas/SummaryData'
           type: object
       type: object
-    SummaryData:
-      properties:
-        confirmedQuotesCount:
-          type: integer
-        lpEarnings:
-          type: string
-        refundedQuotesCount:
-          type: integer
-        totalAcceptedQuotedAmount:
-          type: string
-        totalAcceptedQuotesCount:
-          type: integer
-        totalFeesCollected:
-          type: string
-        totalPenaltyAmount:
-          type: string
-        totalQuotedAmount:
-          type: string
-      type: object
+    Wei: {}
+    entities.Wei: {}
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -1086,7 +1088,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SummariesResponse'
+                $ref: '#/components/schemas/SummaryResult'
           description: Financial data for the given period
       summary: Summaries
   /userQuotes:

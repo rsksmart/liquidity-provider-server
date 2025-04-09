@@ -21,14 +21,14 @@ type MockSummariesUseCase struct {
 	mock.Mock
 }
 
-func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (liquidity_provider.SummariesResponse, error) {
+func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (liquidity_provider.SummaryResult, error) {
 	args := m.Called(ctx, startDate, endDate)
 	if args.Get(0) == nil {
-		return liquidity_provider.SummariesResponse{}, args.Error(1)
+		return liquidity_provider.SummaryResult{}, args.Error(1)
 	}
-	response, ok := args.Get(0).(liquidity_provider.SummariesResponse)
+	response, ok := args.Get(0).(liquidity_provider.SummaryResult)
 	if !ok {
-		return liquidity_provider.SummariesResponse{}, errors.New("invalid response type")
+		return liquidity_provider.SummaryResult{}, errors.New("invalid response type")
 	}
 	return response, args.Error(1)
 }
@@ -54,14 +54,14 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		name           string
 		url            string
 		expectedStatus int
-		mockResponse   liquidity_provider.SummariesResponse
+		mockResponse   liquidity_provider.SummaryResult
 		mockErr        error
 	}{
 		{
 			name:           "Success with valid date range",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusOK,
-			mockResponse: liquidity_provider.SummariesResponse{
+			mockResponse: liquidity_provider.SummaryResult{
 				PeginSummary: liquidity_provider.SummaryData{
 					TotalAcceptedQuotesCount:  10,
 					ConfirmedQuotesCount:      8,
@@ -89,42 +89,42 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Missing startDate parameter",
 			url:            "/report/summaries?endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
 		},
 		{
 			name:           "Missing endDate parameter",
 			url:            "/report/summaries?startDate=2023-01-01",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
 		},
 		{
 			name:           "Invalid startDate format",
 			url:            "/report/summaries?startDate=01/01/2023&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
 		},
 		{
 			name:           "Invalid endDate format",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=31/01/2023",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
 		},
 		{
 			name:           "EndDate before StartDate",
 			url:            "/report/summaries?startDate=2023-02-01&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
 		},
 		{
 			name:           "Error in use case",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusInternalServerError,
-			mockResponse:   liquidity_provider.SummariesResponse{},
+			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        errors.New("test error"),
 		},
 	}
@@ -146,7 +146,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			handler.ServeHTTP(rr, req)
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			if tt.expectedStatus == http.StatusOK {
-				var response liquidity_provider.SummariesResponse
+				var response liquidity_provider.SummaryResult
 				err = json.Unmarshal(rr.Body.Bytes(), &response)
 				require.NoError(t, err)
 

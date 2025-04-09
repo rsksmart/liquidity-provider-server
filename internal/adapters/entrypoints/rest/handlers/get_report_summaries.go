@@ -14,7 +14,7 @@ import (
 // @Description Returns financial data for a given period
 // @Param startDate query string true "Start date in YYYY-MM-DD format" Format(date)
 // @Param endDate query string true "End date in YYYY-MM-DD format" Format(date)
-// @Success 200 {object} liquidity_provider.SummariesResponse "Financial data for the given period"
+// @Success 200 {object} liquidity_provider.SummaryResult "Financial data for the given period"
 // @Router /report/summaries [get]
 func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
