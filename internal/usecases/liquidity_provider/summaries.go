@@ -31,18 +31,6 @@ type SummaryData struct {
 	LpEarnings                *entities.Wei `json:"lpEarnings"`
 }
 
-type feeAdapter struct {
-	callFee    *entities.Wei
-	gasFee     *entities.Wei
-	productFee *entities.Wei
-	penaltyFee *entities.Wei
-}
-
-type quoteResultAdapter[Q any, R quote.RetainedQuote] struct {
-	quotes         []Q
-	retainedQuotes []R
-}
-
 type SummariesUseCase struct {
 	peginRepo  quote.PeginQuoteRepository
 	pegoutRepo quote.PegoutQuoteRepository
@@ -62,123 +50,95 @@ func NewSummaryData() SummaryData {
 	}
 }
 
-func NewSummariesUseCase(
-	peginRepo quote.PeginQuoteRepository,
-	pegoutRepo quote.PegoutQuoteRepository,
-) *SummariesUseCase {
-	return &SummariesUseCase{
-		peginRepo:  peginRepo,
-		pegoutRepo: pegoutRepo,
-	}
+func NewSummariesUseCase(peginRepo quote.PeginQuoteRepository, pegoutRepo quote.PegoutQuoteRepository) *SummariesUseCase {
+	return &SummariesUseCase{peginRepo: peginRepo, pegoutRepo: pegoutRepo}
 }
 
 func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (SummaryResult, error) {
-	peginData, err := u.aggregatePeginData(ctx, startDate, endDate)
+	peginData, err := u.aggregateData(ctx, startDate, endDate, true)
 	if err != nil {
-		log.Errorf("Error aggregating pegin data: %v", err)
+		log.Errorf("Error aggregating data: %v", err)
 		return SummaryResult{}, err
 	}
-	pegoutData, err := u.aggregatePegoutData(ctx, startDate, endDate)
+	pegoutData, err := u.aggregateData(ctx, startDate, endDate, false)
 	if err != nil {
-		log.Errorf("Error aggregating pegout data: %v", err)
+		log.Errorf("Error aggregating data: %v", err)
 		return SummaryResult{}, err
 	}
-	return SummaryResult{
-		PeginSummary:  peginData,
-		PegoutSummary: pegoutData,
-	}, nil
+	return SummaryResult{PeginSummary: peginData, PegoutSummary: pegoutData}, nil
 }
 
-func mapPeginQuote(q *quote.PeginQuote) quote.FeeProvider {
-	if q == nil {
-		return &feeAdapter{}
+func buildQuotesHashMap(quotes []quote.Quote) map[string]quote.Quote {
+	quotesByHash := make(map[string]quote.Quote)
+	for i := range quotes {
+		if rq, ok := quotes[i].(quote.RetainedQuote); ok {
+			quotesByHash[rq.GetQuoteHash()] = quotes[i]
+		} else if hasher, ok := quotes[i].(interface{ GetHash() string }); ok {
+			quotesByHash[hasher.GetHash()] = quotes[i]
+		}
 	}
-	return &feeAdapter{
-		callFee:    q.CallFee,
-		gasFee:     q.GasFee,
-		productFee: entities.NewUWei(q.ProductFeeAmount),
-		penaltyFee: q.PenaltyFee,
-	}
+	return quotesByHash
 }
 
-func mapPegoutQuote(q *quote.PegoutQuote) quote.FeeProvider {
-	if q == nil {
-		return &feeAdapter{}
-	}
-	return &feeAdapter{
-		callFee:    q.CallFee,
-		gasFee:     q.GasFee,
-		productFee: entities.NewUWei(q.ProductFeeAmount),
-		penaltyFee: entities.NewUWei(q.PenaltyFee),
-	}
-}
-
-func processQuoteData[Q any, R quote.RetainedQuote, F quote.FeeProvider](
+func processRetainedQuote(
 	ctx context.Context,
-	quotes []Q,
-	retainedQuotes []R,
-	getQuote func(context.Context, string) (*Q, error),
-	isPaid func(R) bool,
-	isRefunded func(R) bool,
-	feeProvider func(*Q) F,
-) SummaryData {
+	retained quote.RetainedQuote,
+	quotesByHash map[string]quote.Quote,
+	getQuote func(context.Context, string) (quote.Quote, error),
+	data *SummaryData,
+	totalAmount, acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
+) {
+	hash := retained.GetQuoteHash()
+	q, exists := quotesByHash[hash]
+	if !exists {
+		var err error
+		q, err = getQuote(ctx, hash)
+		if err != nil || q == nil {
+			if err != nil {
+				log.Errorf("Error getting quote %s: %v", hash, err)
+			}
+			return
+		}
+		quotesByHash[hash] = q
+		totalAmount.Add(totalAmount, q.Total())
+	}
+	if q != nil {
+		callFee, gasFee, productFee, penaltyFee := getFees(q)
+		acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
+		if isPaidQuote(retained) {
+			data.PaidQuotesCount++
+			callFees.Add(callFees, callFee)
+			totalFees.Add(totalFees, callFee)
+			totalFees.Add(totalFees, gasFee)
+			totalFees.Add(totalFees, productFee)
+		}
+		if isRefundedQuote(retained) {
+			data.RefundedQuotesCount++
+			totalPenalty.Add(totalPenalty, penaltyFee)
+		}
+	}
+}
+
+func processQuoteData(ctx context.Context, quotes []quote.Quote, retainedQuotes []quote.RetainedQuote, getQuote func(context.Context, string) (quote.Quote, error)) SummaryData {
 	data := NewSummaryData()
-	totalAmount := calculateTotalAmount(quotes)
 	data.TotalQuotesCount = int64(len(quotes))
+	totalAmount := entities.NewWei(0)
+	for i := range quotes {
+		totalAmount.Add(totalAmount, quotes[i].Total())
+	}
+	data.PaidQuotesAmount = totalAmount
 	if len(retainedQuotes) == 0 {
-		data.PaidQuotesAmount = totalAmount
-		data.PaidQuotesCount = 0
 		return data
 	}
 	data.AcceptedQuotesCount = int64(len(retainedQuotes))
-	quotesByHash := make(map[string]*Q)
-	for i := range quotes {
-		if retainedQuote, ok := any(&quotes[i]).(quote.RetainedQuote); ok {
-			hash := retainedQuote.GetQuoteHash()
-			quoteCopy := quotes[i]
-			quotesByHash[hash] = &quoteCopy
-		}
-	}
-	fetchMissingQuotes(ctx, quotesByHash, retainedQuotes, totalAmount, getQuote)
-	data.PaidQuotesAmount = totalAmount
-	processRetainedQuotes(&data, quotesByHash, retainedQuotes, isPaid, isRefunded, feeProvider)
-	return data
-}
-
-func processRetainedQuotes[Q any, R quote.RetainedQuote, F quote.FeeProvider](
-	data *SummaryData,
-	quotesByHash map[string]*Q,
-	retainedQuotes []R,
-	isPaid func(R) bool,
-	isRefunded func(R) bool,
-	feeProvider func(*Q) F,
-) {
-	data.PaidQuotesCount = 0
+	quotesByHash := buildQuotesHashMap(quotes)
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
 	callFees := entities.NewWei(0)
 	totalPenalty := entities.NewWei(0)
 	for _, retained := range retainedQuotes {
-		quoteObj, exists := quotesByHash[retained.GetQuoteHash()]
-		if !exists {
-			continue
-		}
-		fees := feeProvider(quoteObj)
-		if q, ok := any(quoteObj).(quote.Quote); ok {
-			acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
-		}
-		if isPaid(retained) {
-			data.PaidQuotesCount++
-			callFee := fees.GetCallFee()
-			callFees.Add(callFees, callFee)
-			totalFees.Add(totalFees, callFee)
-			totalFees.Add(totalFees, fees.GetGasFee())
-			totalFees.Add(totalFees, fees.GetProductFee())
-		}
-		if isRefunded(retained) {
-			data.RefundedQuotesCount++
-			totalPenalty.Add(totalPenalty, fees.GetPenaltyFee())
-		}
+		processRetainedQuote(ctx, retained, quotesByHash, getQuote, &data, 
+			totalAmount, acceptedTotalAmount, totalFees, callFees, totalPenalty)
 	}
 	lpEarnings := new(entities.Wei)
 	lpEarnings.Sub(callFees, totalPenalty)
@@ -186,150 +146,82 @@ func processRetainedQuotes[Q any, R quote.RetainedQuote, F quote.FeeProvider](
 	data.TotalFeesCollected = totalFees
 	data.TotalPenaltyAmount = totalPenalty
 	data.LpEarnings = lpEarnings
+	return data
 }
 
-func calculateTotalAmount[T any](quotes []T) *entities.Wei {
-	totalAmount := entities.NewWei(0)
-	for i := range quotes {
-		var total *entities.Wei
-		if q, ok := any(&quotes[i]).(quote.Quote); ok {
-			total = q.Total()
-		}
-		if total != nil {
-			totalAmount.Add(totalAmount, total)
-		}
-	}
-	return totalAmount
-}
-
-func fetchMissingQuotes[Q any, R quote.RetainedQuote](
-	ctx context.Context,
-	quotesByHash map[string]*Q,
-	retainedQuotes []R,
-	totalAmount *entities.Wei,
-	getQuote func(context.Context, string) (*Q, error),
-) {
-	for _, retained := range retainedQuotes {
-		quoteHash := retained.GetQuoteHash()
-		if _, exists := quotesByHash[quoteHash]; exists {
-			continue
-		}
-		quoteObj, err := getQuote(ctx, quoteHash)
+func (u *SummariesUseCase) aggregateData(ctx context.Context, startDate, endDate time.Time, isPegin bool) (SummaryData, error) {
+	var quotes []quote.Quote
+	var retainedQuotes []quote.RetainedQuote
+	var getQuote func(context.Context, string) (quote.Quote, error)
+	if isPegin {
+		peginResult, err := u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 		if err != nil {
-			log.Errorf("Error getting quote %s: %v", quoteHash, err)
-			continue
+			log.Errorf("Error listing quotes: %v", err)
+			return NewSummaryData(), err
 		}
-		if quoteObj == nil {
-			log.Debugf("Quote not found for hash %s", quoteHash)
-			continue
+		for i := range peginResult.Quotes {
+			quotes = append(quotes, &peginResult.Quotes[i])
 		}
-		quotesByHash[quoteHash] = quoteObj
-		if q, ok := any(quoteObj).(quote.Quote); ok {
-			totalAmount.Add(totalAmount, q.Total())
+		for _, rq := range peginResult.RetainedQuotes {
+			retainedQuotes = append(retainedQuotes, rq)
 		}
-	}
-}
-
-func adaptPeginResult(result quote.PeginQuoteResult) quote.QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote] {
-	return quoteResultAdapter[quote.PeginQuote, quote.RetainedPeginQuote]{
-		quotes:         result.Quotes,
-		retainedQuotes: result.RetainedQuotes,
-	}
-}
-
-func adaptPegoutResult(result quote.PegoutQuoteResult) quote.QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote] {
-	return quoteResultAdapter[quote.PegoutQuote, quote.RetainedPegoutQuote]{
-		quotes:         result.Quotes,
-		retainedQuotes: result.RetainedQuotes,
-	}
-}
-
-func aggregateData[Q any, RQ quote.RetainedQuote](
-	ctx context.Context,
-	startDate, endDate time.Time,
-	listQuotes func(context.Context, time.Time, time.Time) (quote.QuoteResult[Q, RQ], error),
-	getQuote func(context.Context, string) (*Q, error),
-	isPaid func(RQ) bool,
-	isRefunded func(RQ) bool,
-	toFeeProvider func(*Q) quote.FeeProvider,
-) (SummaryData, error) {
-	result, err := listQuotes(ctx, startDate, endDate)
-	if err != nil {
-		log.Errorf("Error listing quotes: %v", err)
-		return NewSummaryData(), err
-	}
-	return processQuoteData(
-		ctx,
-		result.GetQuotes(),
-		result.GetRetainedQuotes(),
-		getQuote,
-		isPaid,
-		isRefunded,
-		toFeeProvider,
-	), nil
-}
-
-func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	listPeginQuotes := func(ctx context.Context, start, end time.Time) (quote.QuoteResult[quote.PeginQuote, quote.RetainedPeginQuote], error) {
-		result, err := u.peginRepo.ListQuotesByDateRange(ctx, start, end)
+		getQuote = func(ctx context.Context, hash string) (quote.Quote, error) {
+			return u.peginRepo.GetQuote(ctx, hash)
+		}
+	} else {
+		pegoutResult, err := u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 		if err != nil {
-			return nil, err
+			log.Errorf("Error listing quotes: %v", err)
+			return NewSummaryData(), err
 		}
-		return adaptPeginResult(result), nil
-	}
-	return aggregateData(
-		ctx, startDate, endDate,
-		listPeginQuotes,
-		u.peginRepo.GetQuote,
-		isPaidPegin,
-		isRefundedPegin,
-		mapPeginQuote,
-	)
-}
-
-func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	listPegoutQuotes := func(ctx context.Context, start, end time.Time) (quote.QuoteResult[quote.PegoutQuote, quote.RetainedPegoutQuote], error) {
-		result, err := u.pegoutRepo.ListQuotesByDateRange(ctx, start, end)
-		if err != nil {
-			return nil, err
+		for i := range pegoutResult.Quotes {
+			quotes = append(quotes, &pegoutResult.Quotes[i])
 		}
-		return adaptPegoutResult(result), nil
+		for _, rq := range pegoutResult.RetainedQuotes {
+			retainedQuotes = append(retainedQuotes, rq)
+		}
+		getQuote = func(ctx context.Context, hash string) (quote.Quote, error) {
+			return u.pegoutRepo.GetQuote(ctx, hash)
+		}
 	}
-	return aggregateData(
-		ctx, startDate, endDate,
-		listPegoutQuotes,
-		u.pegoutRepo.GetQuote,
-		isPaidPegout,
-		isRefundedPegout,
-		mapPegoutQuote,
-	)
+	return processQuoteData(ctx, quotes, retainedQuotes, getQuote), nil
 }
 
-func (a *feeAdapter) GetCallFee() *entities.Wei    { return a.callFee }
-func (a *feeAdapter) GetGasFee() *entities.Wei     { return a.gasFee }
-func (a *feeAdapter) GetProductFee() *entities.Wei { return a.productFee }
-func (a *feeAdapter) GetPenaltyFee() *entities.Wei { return a.penaltyFee }
-
-func isPaidPegout(retained quote.RetainedPegoutQuote) bool {
-	return retained.State == quote.PegoutStateSendPegoutSucceeded
+func getFees(q quote.Quote) (callFee, gasFee, productFee, penaltyFee *entities.Wei) {
+	callFee, gasFee, productFee, penaltyFee = entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)
+	switch v := q.(type) {
+	case *quote.PeginQuote:
+		if v != nil {
+			callFee, gasFee = v.CallFee, v.GasFee
+			productFee = entities.NewUWei(v.ProductFeeAmount)
+			penaltyFee = v.PenaltyFee
+		}
+	case *quote.PegoutQuote:
+		if v != nil {
+			callFee, gasFee = v.CallFee, v.GasFee
+			productFee = entities.NewUWei(v.ProductFeeAmount)
+			penaltyFee = entities.NewUWei(v.PenaltyFee)
+		}
+	}
+	return
 }
 
-func isPaidPegin(retained quote.RetainedPeginQuote) bool {
-	return retained.State == quote.PeginStateCallForUserSucceeded
+func isPaidQuote(retained quote.RetainedQuote) bool {
+	switch r := retained.(type) {
+	case quote.RetainedPeginQuote:
+		return r.State == quote.PeginStateCallForUserSucceeded
+	case quote.RetainedPegoutQuote:
+		return r.State == quote.PegoutStateSendPegoutSucceeded
+	}
+	return false
 }
 
-func isRefundedPegout(retained quote.RetainedPegoutQuote) bool {
-	return retained.State == quote.PegoutStateRefundPegOutSucceeded
-}
-
-func isRefundedPegin(retained quote.RetainedPeginQuote) bool {
-	return retained.State == quote.PeginStateRegisterPegInSucceeded
-}
-
-func (a quoteResultAdapter[Q, R]) GetQuotes() []Q {
-	return a.quotes
-}
-
-func (a quoteResultAdapter[Q, R]) GetRetainedQuotes() []R {
-	return a.retainedQuotes
+func isRefundedQuote(retained quote.RetainedQuote) bool {
+	switch r := retained.(type) {
+	case quote.RetainedPeginQuote:
+		return r.State == quote.PeginStateRegisterPegInSucceeded
+	case quote.RetainedPegoutQuote:
+		return r.State == quote.PegoutStateRefundPegOutSucceeded
+	}
+	return false
 }
