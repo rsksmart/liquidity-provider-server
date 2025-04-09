@@ -20,14 +20,14 @@ type SummariesResponse struct {
 }
 
 type SummaryData struct {
-	TotalAcceptedQuotesCount  int64  `json:"totalAcceptedQuotesCount"`
-	ConfirmedQuotesCount      int64  `json:"confirmedQuotesCount"`
-	TotalQuotedAmount         string `json:"totalQuotedAmount"`
-	TotalAcceptedQuotedAmount string `json:"totalAcceptedQuotedAmount"`
-	TotalFeesCollected        string `json:"totalFeesCollected"`
-	RefundedQuotesCount       int64  `json:"refundedQuotesCount"`
-	TotalPenaltyAmount        string `json:"totalPenaltyAmount"`
-	LpEarnings                string `json:"lpEarnings"`
+	TotalAcceptedQuotesCount  int64         `json:"totalAcceptedQuotesCount"`
+	ConfirmedQuotesCount      int64         `json:"confirmedQuotesCount"`
+	TotalQuotedAmount         *entities.Wei `json:"totalQuotedAmount"`
+	TotalAcceptedQuotedAmount *entities.Wei `json:"totalAcceptedQuotedAmount"`
+	TotalFeesCollected        *entities.Wei `json:"totalFeesCollected"`
+	RefundedQuotesCount       int64         `json:"refundedQuotesCount"`
+	TotalPenaltyAmount        *entities.Wei `json:"totalPenaltyAmount"`
+	LpEarnings                *entities.Wei `json:"lpEarnings"`
 }
 
 type Quote interface {
@@ -73,12 +73,12 @@ func NewSummaryData() SummaryData {
 	return SummaryData{
 		TotalAcceptedQuotesCount:  0,
 		ConfirmedQuotesCount:      0,
-		TotalQuotedAmount:         "0",
-		TotalAcceptedQuotedAmount: "0",
-		TotalFeesCollected:        "0",
+		TotalQuotedAmount:         entities.NewWei(0),
+		TotalAcceptedQuotedAmount: entities.NewWei(0),
+		TotalFeesCollected:        entities.NewWei(0),
 		RefundedQuotesCount:       0,
-		TotalPenaltyAmount:        "0",
-		LpEarnings:                "0",
+		TotalPenaltyAmount:        entities.NewWei(0),
+		LpEarnings:                entities.NewWei(0),
 	}
 }
 
@@ -147,13 +147,13 @@ func processQuoteData[Q any, R RetainedQuote, F FeeProvider](
 	totalAmount := calculateTotalAmount(quotes)
 	if len(retainedQuotes) == 0 {
 		data.TotalAcceptedQuotesCount = int64(len(quotes))
-		data.TotalQuotedAmount = totalAmount.String()
+		data.TotalQuotedAmount = totalAmount
 		return data
 	}
 	data.TotalAcceptedQuotesCount = int64(len(retainedQuotes))
 	quotesByHash := createQuoteHashMap(quotes, quoteHashToIndex)
 	fetchMissingQuotes(ctx, quotesByHash, retainedQuotes, totalAmount, getQuote)
-	data.TotalQuotedAmount = totalAmount.String()
+	data.TotalQuotedAmount = totalAmount
 	acceptedTotalAmount := entities.NewWei(0)
 	totalFees := entities.NewWei(0)
 	callFees := entities.NewWei(0)
@@ -183,10 +183,10 @@ func processQuoteData[Q any, R RetainedQuote, F FeeProvider](
 	}
 	lpEarnings := new(entities.Wei)
 	lpEarnings.Sub(callFees, totalPenalty)
-	data.TotalAcceptedQuotedAmount = acceptedTotalAmount.String()
-	data.TotalFeesCollected = totalFees.String()
-	data.TotalPenaltyAmount = totalPenalty.String()
-	data.LpEarnings = lpEarnings.String()
+	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
+	data.TotalFeesCollected = totalFees
+	data.TotalPenaltyAmount = totalPenalty
+	data.LpEarnings = lpEarnings
 	return data
 }
 

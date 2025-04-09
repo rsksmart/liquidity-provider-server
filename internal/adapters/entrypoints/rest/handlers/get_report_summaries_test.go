@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -64,22 +65,22 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				PeginSummary: liquidity_provider.SummaryData{
 					TotalAcceptedQuotesCount:  10,
 					ConfirmedQuotesCount:      8,
-					TotalQuotedAmount:         "1000",
-					TotalAcceptedQuotedAmount: "800",
-					TotalFeesCollected:        "50",
+					TotalQuotedAmount:         entities.NewWei(1000),
+					TotalAcceptedQuotedAmount: entities.NewWei(800),
+					TotalFeesCollected:        entities.NewWei(50),
 					RefundedQuotesCount:       2,
-					TotalPenaltyAmount:        "20",
-					LpEarnings:                "30",
+					TotalPenaltyAmount:        entities.NewWei(20),
+					LpEarnings:                entities.NewWei(30),
 				},
 				PegoutSummary: liquidity_provider.SummaryData{
 					TotalAcceptedQuotesCount:  5,
 					ConfirmedQuotesCount:      4,
-					TotalQuotedAmount:         "500",
-					TotalAcceptedQuotedAmount: "400",
-					TotalFeesCollected:        "40",
+					TotalQuotedAmount:         entities.NewWei(500),
+					TotalAcceptedQuotedAmount: entities.NewWei(400),
+					TotalFeesCollected:        entities.NewWei(40),
 					RefundedQuotesCount:       1,
-					TotalPenaltyAmount:        "0",
-					LpEarnings:                "20",
+					TotalPenaltyAmount:        entities.NewWei(0),
+					LpEarnings:                entities.NewWei(20),
 				},
 			},
 			mockErr: nil,
