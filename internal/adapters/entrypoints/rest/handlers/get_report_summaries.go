@@ -25,7 +25,7 @@ func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) 
 			jsonErr := rest.NewErrorResponseWithDetails("Invalid date range", details, true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
-		}	
+		}
 		if validationErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat); validationErr != nil {
 			log.Errorf("Error validating date range: %v", validationErr)
 			details := rest.DetailsFromError(validationErr)

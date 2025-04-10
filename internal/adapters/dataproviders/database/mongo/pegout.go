@@ -331,7 +331,7 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		QuoteCollection:    PegoutQuoteCollection,
 		RetainedCollection: RetainedPegoutQuoteCollection,
 	}
-	result := ListQuotesByDateRange[quote.PegoutQuote, quote.RetainedPegoutQuote](
+	result, err := ListQuotesByDateRange[quote.PegoutQuote, quote.RetainedPegoutQuote](
 		query,
 		func(doc bson.D) quote.PegoutQuote {
 			var stored StoredPegoutQuote
@@ -347,8 +347,8 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 			return stored.PegoutQuote
 		},
 	)
-	if result.Error != nil {
-		return quote.PegoutQuoteResult{}, result.Error
+	if err != nil {
+		return quote.PegoutQuoteResult{}, err
 	}
 	return quote.PegoutQuoteResult{
 		Quotes:         result.Quotes,

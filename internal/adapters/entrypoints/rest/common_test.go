@@ -311,17 +311,17 @@ func TestParseDateRange(t *testing.T) {
 }
 
 func TestValidateDateRange(t *testing.T) {
-	dateFormat := "2006-01-02"	
+	dateFormat := "2006-01-02"
 	validStart, err := time.Parse(dateFormat, "2023-01-01")
 	require.NoError(t, err)
 	validEnd, err := time.Parse(dateFormat, "2023-01-31")
 	require.NoError(t, err)
-	validEnd = time.Date(validEnd.Year(), validEnd.Month(), validEnd.Day(), 23, 59, 59, 0, time.UTC)	
+	validEnd = time.Date(validEnd.Year(), validEnd.Month(), validEnd.Day(), 23, 59, 59, 0, time.UTC)
 	invalidStart, err := time.Parse(dateFormat, "2023-02-01")
 	require.NoError(t, err)
 	invalidEnd, err := time.Parse(dateFormat, "2023-01-31")
 	require.NoError(t, err)
-	invalidEnd = time.Date(invalidEnd.Year(), invalidEnd.Month(), invalidEnd.Day(), 23, 59, 59, 0, time.UTC)	
+	invalidEnd = time.Date(invalidEnd.Year(), invalidEnd.Month(), invalidEnd.Day(), 23, 59, 59, 0, time.UTC)
 	tests := []struct {
 		name        string
 		startDate   time.Time

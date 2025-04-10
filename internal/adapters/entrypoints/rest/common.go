@@ -184,7 +184,7 @@ func ParseDateRange(req *http.Request, dateFormat string) (time.Time, time.Time,
 
 func ValidateDateRange(startDate, endDate time.Time, dateFormat string) error {
 	if endDate.Before(startDate) {
-		return fmt.Errorf("invalid date range: end date %s is before start date %s", 
+		return fmt.Errorf("invalid date range: end date %s is before start date %s",
 			endDate.Format(dateFormat), startDate.Format(dateFormat))
 	}
 	return nil

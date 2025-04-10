@@ -220,7 +220,7 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 		QuoteCollection:    PeginQuoteCollection,
 		RetainedCollection: RetainedPeginQuoteCollection,
 	}
-	result := ListQuotesByDateRange[quote.PeginQuote, quote.RetainedPeginQuote](
+	result, err := ListQuotesByDateRange[quote.PeginQuote, quote.RetainedPeginQuote](
 		query,
 		func(doc bson.D) quote.PeginQuote {
 			var stored StoredPeginQuote
@@ -236,8 +236,8 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 			return stored.PeginQuote
 		},
 	)
-	if result.Error != nil {
-		return quote.PeginQuoteResult{}, result.Error
+	if err != nil {
+		return quote.PeginQuoteResult{}, err
 	}
 	return quote.PeginQuoteResult{
 		Quotes:         result.Quotes,

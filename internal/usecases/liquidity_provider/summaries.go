@@ -137,7 +137,7 @@ func processQuoteData(ctx context.Context, quotes []quote.Quote, retainedQuotes 
 	callFees := entities.NewWei(0)
 	totalPenalty := entities.NewWei(0)
 	for _, retained := range retainedQuotes {
-		processRetainedQuote(ctx, retained, quotesByHash, getQuote, &data, 
+		processRetainedQuote(ctx, retained, quotesByHash, getQuote, &data,
 			totalAmount, acceptedTotalAmount, totalFees, callFees, totalPenalty)
 	}
 	lpEarnings := new(entities.Wei)

@@ -79,10 +79,18 @@ func (c *Connection) CheckConnection(ctx context.Context) bool {
 	return err == nil
 }
 
-type QuoteResult[Q any, R QuoteHashProvider] struct {
-	Quotes         []Q
-	RetainedQuotes []R
-	Error          error
+type ListQuotesResult[Q any, R QuoteHashProvider] struct {
+	Quotes           []Q
+	RetainedQuotes   []R
+	quoteHashToIndex map[string]int
+}
+
+func (r *ListQuotesResult[Q, R]) GetQuoteByHash(hash string) (Q, bool) {
+	if idx, ok := r.quoteHashToIndex[hash]; ok && idx < len(r.Quotes) {
+		return r.Quotes[idx], true
+	}
+	var zero Q
+	return zero, false
 }
 
 type QuoteQuery struct {
@@ -94,35 +102,20 @@ type QuoteQuery struct {
 	RetainedCollection string
 }
 
-func ListQuotesByDateRange[Q any, R QuoteHashProvider](
-	query QuoteQuery,
-	mapper func(bson.D) Q,
-) QuoteResult[Q, R] {
-	dbCtx, cancel := context.WithTimeout(query.Ctx, query.Conn.timeout)
-	defer cancel()
-	quotes, quoteHashes, err := fetchQuotesByDateRange(dbCtx, query.Conn, query.StartDate, query.EndDate, query.QuoteCollection, mapper)
+func extractHash(stored bson.D) (string, error) {
+	var doc map[string]interface{}
+	bsonBytes, err := bson.Marshal(stored)
 	if err != nil {
-		return QuoteResult[Q, R]{Error: err}
+		return "", err
 	}
-	retainedQuotes, additionalHashes, err := fetchRetainedQuotes[R](dbCtx, query.Conn, query.StartDate, query.EndDate, query.RetainedCollection, quoteHashes)
-	if err != nil {
-		return QuoteResult[Q, R]{Error: err}
+	if err := bson.Unmarshal(bsonBytes, &doc); err != nil {
+		return "", err
 	}
-	if len(additionalHashes) > 0 {
-		additionalQuotes, err := fetchAdditionalQuotes(dbCtx, query.Conn, query.QuoteCollection, additionalHashes, mapper)
-		if err != nil {
-			log.Errorf("Error processing additional quotes: %v", err)
-		} else {
-			quotes = append(quotes, additionalQuotes...)
-		}
+	hash, ok := doc["hash"].(string)
+	if !ok || hash == "" {
+		return "", nil
 	}
-	logDbInteraction(Read, fmt.Sprintf("Found %d quotes and %d retained quotes in date range",
-		len(quotes), len(retainedQuotes)))
-	return QuoteResult[Q, R]{
-		Quotes:         quotes,
-		RetainedQuotes: retainedQuotes,
-		Error:          nil,
-	}
+	return hash, nil
 }
 
 func fetchQuotesByDateRange[Q any](
@@ -131,65 +124,86 @@ func fetchQuotesByDateRange[Q any](
 	startDate, endDate time.Time,
 	collectionName string,
 	mapper func(bson.D) Q,
-) ([]Q, []string, error) {
+) ([]Q, []string, map[string]int, error) {
 	quoteFilter := bson.D{
 		{Key: "agreement_timestamp", Value: bson.D{
 			{Key: "$gte", Value: startDate.Unix()},
 			{Key: "$lte", Value: endDate.Unix()},
 		}},
 	}
-	var storedQuotes []bson.D
 	quoteCursor, err := conn.Collection(collectionName).Find(ctx, quoteFilter)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+	var storedQuotes []bson.D
 	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+	quoteHashToIndex := make(map[string]int)
 	quoteHashes := make([]string, 0, len(storedQuotes))
 	quotes := make([]Q, 0, len(storedQuotes))
-	for _, stored := range storedQuotes {
-		quoteObj := mapper(stored)
-		quotes = append(quotes, quoteObj)
-		hashValue, ok := getStringValueFromBSON(stored, "hash")
-		if ok {
-			quoteHashes = append(quoteHashes, hashValue)
+	for i, stored := range storedQuotes {
+		quotes = append(quotes, mapper(stored))
+		hashVal, extractErr := extractHash(stored)
+		if extractErr == nil && hashVal != "" {
+			quoteHashToIndex[hashVal] = i
+			quoteHashes = append(quoteHashes, hashVal)
+		} else if extractErr != nil {
+			log.Errorf("Error extracting hash: %v", extractErr)
 		}
 	}
-	return quotes, quoteHashes, nil
+	return quotes, quoteHashes, quoteHashToIndex, nil
 }
 
-func getStringValueFromBSON(doc bson.D, key string) (string, bool) {
-	data, err := bson.Marshal(doc)
-	if err != nil {
-		return "", false
-	}
-	rawValue := bson.Raw(data).Lookup(key)
-	return rawValue.StringValueOK()
-}
-
-type QuoteHashProvider interface {
-	GetQuoteHash() string
-}
-
-func fetchRetainedQuotes[R QuoteHashProvider](
+func fetchRetainedQuotesByFilter[R any](
 	ctx context.Context,
 	conn *Connection,
-	startDate, endDate time.Time,
 	collectionName string,
-	existingQuoteHashes []string,
-) ([]R, []string, error) {
-	retainedFilter := createRetainedFilter(startDate, endDate, existingQuoteHashes)
-	var retainedQuotes []R
-	retainedCursor, err := conn.Collection(collectionName).Find(ctx, retainedFilter)
+	filter bson.D,
+) ([]R, error) {
+	retainedCursor, err := conn.Collection(collectionName).Find(ctx, filter)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	var retainedQuotes []R
 	if err = retainedCursor.All(ctx, &retainedQuotes); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	additionalHashes := findAdditionalQuoteHashes(retainedQuotes, existingQuoteHashes)
-	return retainedQuotes, additionalHashes, nil
+	return retainedQuotes, nil
+}
+
+func ListQuotesByDateRange[Q any, R QuoteHashProvider](
+	query QuoteQuery,
+	mapper func(bson.D) Q,
+) (ListQuotesResult[Q, R], error) {
+	dbCtx, cancel := context.WithTimeout(query.Ctx, query.Conn.timeout)
+	defer cancel()
+	result := ListQuotesResult[Q, R]{
+		quoteHashToIndex: make(map[string]int),
+	}
+	quotes, quoteHashes, hashToIndex, err := fetchQuotesByDateRange(
+		dbCtx, query.Conn, query.StartDate, query.EndDate,
+		query.QuoteCollection, mapper,
+	)
+	if err != nil {
+		return result, err
+	}
+	result.Quotes = quotes
+	result.quoteHashToIndex = hashToIndex
+	retainedFilter := createRetainedFilter(query.StartDate, query.EndDate, quoteHashes)
+	retainedQuotes, err := fetchRetainedQuotesByFilter[R](
+		dbCtx, query.Conn, query.RetainedCollection, retainedFilter,
+	)
+	if err != nil {
+		result.Quotes = nil
+		return result, err
+	}
+	result.RetainedQuotes = retainedQuotes
+	additionalHashes := findAdditionalQuoteHashes(result.RetainedQuotes, quoteHashes)
+	processAdditionalQuotes(dbCtx, query.Conn, query.QuoteCollection, additionalHashes, mapper, &result)
+	logDbInteraction(Read, fmt.Sprintf("Found %d quotes and %d retained quotes in date range",
+		len(result.Quotes), len(result.RetainedQuotes)))
+	return result, nil
 }
 
 func createRetainedFilter(startDate, endDate time.Time, quoteHashes []string) bson.D {
@@ -209,7 +223,7 @@ func createRetainedFilter(startDate, endDate time.Time, quoteHashes []string) bs
 }
 
 func findAdditionalQuoteHashes[R QuoteHashProvider](retainedQuotes []R, existingQuoteHashes []string) []string {
-	existingMap := make(map[string]bool, len(existingQuoteHashes))
+	existingMap := make(map[string]bool)
 	for _, hash := range existingQuoteHashes {
 		existingMap[hash] = true
 	}
@@ -227,30 +241,44 @@ func findAdditionalQuoteHashes[R QuoteHashProvider](retainedQuotes []R, existing
 	return additionalHashes
 }
 
-func fetchAdditionalQuotes[Q any](
+func processAdditionalQuotes[Q any, R QuoteHashProvider](
 	ctx context.Context,
 	conn *Connection,
 	collectionName string,
-	hashes []string,
+	additionalHashes []string,
 	mapper func(bson.D) Q,
-) ([]Q, error) {
-	quoteFilter := bson.D{
+	result *ListQuotesResult[Q, R],
+) {
+	if len(additionalHashes) == 0 {
+		return
+	}
+	additionalFilter := bson.D{
 		{Key: "hash", Value: bson.D{
-			{Key: "$in", Value: hashes},
+			{Key: "$in", Value: additionalHashes},
 		}},
 	}
-	var storedQuotes []bson.D
-	quoteCursor, err := conn.Collection(collectionName).Find(ctx, quoteFilter)
+	additionalCursor, err := conn.Collection(collectionName).Find(ctx, additionalFilter)
 	if err != nil {
-		return nil, err
+		log.Errorf("Error fetching additional quotes: %v", err)
+		return
 	}
-	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
-		return nil, err
+	var additionalStoredQuotes []bson.D
+	if err = additionalCursor.All(ctx, &additionalStoredQuotes); err != nil {
+		log.Errorf("Error reading additional quotes: %v", err)
+		return
 	}
-	quotes := make([]Q, 0, len(storedQuotes))
-	for _, stored := range storedQuotes {
-		quoteObj := mapper(stored)
-		quotes = append(quotes, quoteObj)
+	baseIndex := len(result.Quotes)
+	for i, stored := range additionalStoredQuotes {
+		result.Quotes = append(result.Quotes, mapper(stored))
+		hash, err := extractHash(stored)
+		if err == nil && hash != "" {
+			result.quoteHashToIndex[hash] = baseIndex + i
+		} else if err != nil {
+			log.Errorf("Error extracting hash: %v", err)
+		}
 	}
-	return quotes, nil
+}
+
+type QuoteHashProvider interface {
+	GetQuoteHash() string
 }
