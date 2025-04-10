@@ -35,8 +35,13 @@ func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.
 
 func getReportSummariesHandlerForTest(useCase *MockSummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, valid := rest.ValidateDateRange(w, req, liquidity_provider.DateFormat)
-		if !valid {
+		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
+		if err != nil {
+			rest.JsonErrorResponse(w, http.StatusBadRequest, rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(err), true))
+			return
+		}
+		if validationErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat); validationErr != nil {
+			rest.JsonErrorResponse(w, http.StatusBadRequest, rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(validationErr), true))
 			return
 		}
 		response, err := useCase.Run(req.Context(), startDate, endDate)

@@ -18,8 +18,19 @@ import (
 // @Router /report/summaries [get]
 func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, valid := rest.ValidateDateRange(w, req, liquidity_provider.DateFormat)
-		if !valid {
+		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
+		if err != nil {
+			log.Errorf("Error parsing date range: %v", err)
+			details := rest.DetailsFromError(err)
+			jsonErr := rest.NewErrorResponseWithDetails("Invalid date range", details, true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}	
+		if validationErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat); validationErr != nil {
+			log.Errorf("Error validating date range: %v", validationErr)
+			details := rest.DetailsFromError(validationErr)
+			jsonErr := rest.NewErrorResponseWithDetails("Invalid date range", details, true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
 		response, err := useCase.Run(req.Context(), startDate, endDate)

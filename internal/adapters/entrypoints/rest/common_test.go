@@ -275,34 +275,80 @@ func getDateRangeTestCases() []struct { //nolint:funlen
 	}
 }
 
-func TestValidateDateRange(t *testing.T) {
+func TestParseDateRange(t *testing.T) {
 	dateFormat := "2006-01-02"
 	tests := getDateRangeTestCases()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			q := req.URL.Query()
 			for key, value := range tt.queryParams {
 				q.Add(key, value)
 			}
 			req.URL.RawQuery = q.Encode()
-			startDate, endDate, valid := rest.ValidateDateRange(w, req, dateFormat)
-			assert.Equal(t, tt.expectedValid, valid)
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if valid {
-				expectedStartDate, err := time.Parse(dateFormat, tt.queryParams["startDate"])
+			startDate, endDate, err := rest.ParseDateRange(req, dateFormat)
+			if tt.name == "valid_date_range" || tt.name == "endDate_before_startDate" {
 				require.NoError(t, err)
-				expectedEndDate, err := time.Parse(dateFormat, tt.queryParams["endDate"])
-				require.NoError(t, err)
+				expectedStartDate, parseErr := time.Parse(dateFormat, tt.queryParams["startDate"])
+				require.NoError(t, parseErr)
+				expectedEndDate, parseErr := time.Parse(dateFormat, tt.queryParams["endDate"])
+				require.NoError(t, parseErr)
 				expectedEndDate = time.Date(expectedEndDate.Year(), expectedEndDate.Month(), expectedEndDate.Day(), 23, 59, 59, 0, time.UTC)
 				assert.Equal(t, expectedStartDate, startDate)
 				assert.Equal(t, expectedEndDate, endDate)
+			} else if tt.name == "missing_startDate" || tt.name == "missing_endDate" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "missing required parameters")
+			} else if tt.name == "invalid_startDate_format" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid start date format")
+			} else if tt.name == "invalid_endDate_format" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid end date format")
+			}
+		})
+	}
+}
+
+func TestValidateDateRange(t *testing.T) {
+	dateFormat := "2006-01-02"	
+	validStart, err := time.Parse(dateFormat, "2023-01-01")
+	require.NoError(t, err)
+	validEnd, err := time.Parse(dateFormat, "2023-01-31")
+	require.NoError(t, err)
+	validEnd = time.Date(validEnd.Year(), validEnd.Month(), validEnd.Day(), 23, 59, 59, 0, time.UTC)	
+	invalidStart, err := time.Parse(dateFormat, "2023-02-01")
+	require.NoError(t, err)
+	invalidEnd, err := time.Parse(dateFormat, "2023-01-31")
+	require.NoError(t, err)
+	invalidEnd = time.Date(invalidEnd.Year(), invalidEnd.Month(), invalidEnd.Day(), 23, 59, 59, 0, time.UTC)	
+	tests := []struct {
+		name        string
+		startDate   time.Time
+		endDate     time.Time
+		expectError bool
+	}{
+		{
+			name:        "valid_date_range",
+			startDate:   validStart,
+			endDate:     validEnd,
+			expectError: false,
+		},
+		{
+			name:        "end_before_start",
+			startDate:   invalidStart,
+			endDate:     invalidEnd,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := rest.ValidateDateRange(tt.startDate, tt.endDate, dateFormat)
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid date range")
 			} else {
-				var errorResponse rest.ErrorResponse
-				err := json.NewDecoder(w.Body).Decode(&errorResponse)
 				require.NoError(t, err)
-				assert.True(t, errorResponse.Recoverable)
 			}
 		})
 	}

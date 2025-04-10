@@ -16,11 +16,12 @@ import (
 
 const (
 	HeaderContentType = "Content-Type"
-)
 
-const (
 	ContentTypeJson = "application/json"
 	ContentTypeForm = "application/x-www-form-urlencoded"
+
+	StartDateParam = "startDate"
+	EndDateParam   = "endDate"
 )
 
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
@@ -156,47 +157,35 @@ func RequiredQueryParam(name string) error {
 	return fmt.Errorf("required query parameter %s is missing", name)
 }
 
-func ValidateDateRange(w http.ResponseWriter, req *http.Request, dateFormat string) (time.Time, time.Time, bool) {
-	startParam := "startDate"
-	endParam := "endDate"
-	start := req.URL.Query().Get(startParam)
-	end := req.URL.Query().Get(endParam)
+func ParseDateRange(req *http.Request, dateFormat string) (time.Time, time.Time, error) {
+	start := req.URL.Query().Get(StartDateParam)
+	end := req.URL.Query().Get(EndDateParam)
 	if start == "" || end == "" {
 		missing := []string{}
 		if start == "" {
-			missing = append(missing, startParam)
+			missing = append(missing, StartDateParam)
 		}
 		if end == "" {
-			missing = append(missing, endParam)
+			missing = append(missing, EndDateParam)
 		}
-		jsonErr := NewErrorResponseWithDetails("missing required parameters", map[string]any{
-			"missing": missing,
-		}, true)
-		JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		return time.Time{}, time.Time{}, fmt.Errorf("missing required parameters: %v", missing)
 	}
-	var err error
 	startDate, err := time.Parse(dateFormat, start)
 	if err != nil {
-		jsonErr := NewErrorResponseWithDetails("invalid date format", DetailsFromError(err), true)
-		JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid start date format: %w", err)
 	}
 	endDate, err := time.Parse(dateFormat, end)
 	if err != nil {
-		jsonErr := NewErrorResponseWithDetails("invalid date format", DetailsFromError(err), true)
-		JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid end date format: %w", err)
 	}
 	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, time.UTC)
+	return startDate, endDate, nil
+}
+
+func ValidateDateRange(startDate, endDate time.Time, dateFormat string) error {
 	if endDate.Before(startDate) {
-		details := map[string]any{
-			startParam: startDate.Format(dateFormat),
-			endParam:   endDate.Format(dateFormat),
-		}
-		jsonErr := NewErrorResponseWithDetails("invalid date range", details, true)
-		JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-		return time.Time{}, time.Time{}, false
+		return fmt.Errorf("invalid date range: end date %s is before start date %s", 
+			endDate.Format(dateFormat), startDate.Format(dateFormat))
 	}
-	return startDate, endDate, true
+	return nil
 }
