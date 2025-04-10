@@ -322,11 +322,10 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PegoutQuoteResult, error) {
-	result := quote.PegoutQuoteResult{
-		Quotes:         make([]quote.PegoutQuote, 0),
-		RetainedQuotes: make([]quote.RetainedPegoutQuote, 0),
-	}
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
+	quotes := make([]quote.PegoutQuote, 0)
+	retainedQuotes := make([]quote.RetainedPegoutQuote, 0)
+
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	startTimestamp := uint32(startDate.Unix())
@@ -343,16 +342,16 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	}
 	quoteCursor, err := quoteCollection.Find(dbCtx, quoteFilter)
 	if err != nil {
-		return result, err
+		return quotes, retainedQuotes, err
 	}
 	defer quoteCursor.Close(dbCtx)
 	var storedQuotes []StoredPegoutQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
-		return result, err
+		return quotes, retainedQuotes, err
 	}
 	quoteHashes := make([]string, 0, len(storedQuotes))
 	for _, stored := range storedQuotes {
-		result.Quotes = append(result.Quotes, stored.PegoutQuote)
+		quotes = append(quotes, stored.PegoutQuote)
 		quoteHashes = append(quoteHashes, stored.Hash)
 	}
 	if len(quoteHashes) > 0 {
@@ -367,13 +366,16 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		}
 		retainedCursor, err := retainedCollection.Find(dbCtx, retainedFilter)
 		if err != nil {
-			return result, err
+			return quotes, retainedQuotes, err
 		}
 		defer retainedCursor.Close(dbCtx)
-		if err = retainedCursor.All(dbCtx, &result.RetainedQuotes); err != nil {
-			return result, err
+		if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
+			return quotes, retainedQuotes, err
 		}
 	}
-	logDbInteraction(Read, result)
-	return result, nil
+	logDbInteraction(Read, map[string]interface{}{
+		"quotes":         quotes,
+		"retainedQuotes": retainedQuotes,
+	})
+	return quotes, retainedQuotes, nil
 }

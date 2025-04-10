@@ -84,19 +84,13 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			},
 		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PeginQuoteResult{
-				Quotes:         peginQuotes,
-				RetainedQuotes: retainedPeginQuotes,
-			}, nil)
+			Return(peginQuotes, retainedPeginQuotes, nil)
 		peginRepo.On("GetQuote", mock.Anything, "hash1").
 			Return(&peginQuotes[0], nil)
 		peginRepo.On("GetQuote", mock.Anything, "hash2").
 			Return(&peginQuotes[1], nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PegoutQuoteResult{
-				Quotes:         pegoutQuotes,
-				RetainedQuotes: retainedPegoutQuotes,
-			}, nil)
+			Return(pegoutQuotes, retainedPegoutQuotes, nil)
 		pegoutRepo.On("GetQuote", mock.Anything, "hash3").
 			Return(&pegoutQuotes[0], nil)
 		pegoutRepo.On("GetQuote", mock.Anything, "hash4").
@@ -154,15 +148,9 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		}
 		retainedPegoutQuotes := []quote.RetainedPegoutQuote{}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PeginQuoteResult{
-				Quotes:         peginQuotes,
-				RetainedQuotes: retainedPeginQuotes,
-			}, nil)
+			Return(peginQuotes, retainedPeginQuotes, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PegoutQuoteResult{
-				Quotes:         pegoutQuotes,
-				RetainedQuotes: retainedPegoutQuotes,
-			}, nil)
+			Return(pegoutQuotes, retainedPegoutQuotes, nil)
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
@@ -222,17 +210,11 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			ProductFeeAmount: 9,
 		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PeginQuoteResult{
-				Quotes:         peginQuotes,
-				RetainedQuotes: retainedPeginQuotes,
-			}, nil)
+			Return(peginQuotes, retainedPeginQuotes, nil)
 		peginRepo.On("GetQuote", mock.Anything, "hash1").
 			Return(&peginQuote, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PegoutQuoteResult{
-				Quotes:         pegoutQuotes,
-				RetainedQuotes: retainedPegoutQuotes,
-			}, nil)
+			Return(pegoutQuotes, retainedPegoutQuotes, nil)
 		pegoutRepo.On("GetQuote", mock.Anything, "hash3").
 			Return(&pegoutQuote, nil)
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
@@ -261,7 +243,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PeginQuoteResult{}, errors.New("db error"))
+			Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, errors.New("db error"))
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)
@@ -273,9 +255,9 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PeginQuoteResult{}, nil)
+			Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(quote.PegoutQuoteResult{}, errors.New("db error"))
+			Return([]quote.PegoutQuote{}, []quote.RetainedPegoutQuote{}, errors.New("db error"))
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)

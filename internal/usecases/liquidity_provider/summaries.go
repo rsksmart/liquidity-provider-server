@@ -204,44 +204,44 @@ func processPegoutQuoteData(ctx context.Context, quotes []*quote.PegoutQuote, re
 
 func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
 	var (
-		peginResult quote.PeginQuoteResult
-		err         error
+		quotes         []quote.PeginQuote
+		retainedQuotes []quote.RetainedPeginQuote
+		err            error
 	)
-	peginResult, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	quotes, retainedQuotes, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 	if err != nil {
 		return NewSummaryData(), err
 	}
-	quotes := make([]*quote.PeginQuote, len(peginResult.Quotes))
-	for i := range peginResult.Quotes {
-		quotes[i] = &peginResult.Quotes[i]
+	quotesPtr := make([]*quote.PeginQuote, len(quotes))
+	for i := range quotes {
+		quotesPtr[i] = &quotes[i]
 	}
-	retainedQuotes := peginResult.RetainedQuotes
 	getQuote := func(ctx context.Context, hash string) (*quote.PeginQuote, error) {
 		q, err := u.peginRepo.GetQuote(ctx, hash)
 		return q, err
 	}
-	return processPeginQuoteData(ctx, quotes, retainedQuotes, getQuote), nil
+	return processPeginQuoteData(ctx, quotesPtr, retainedQuotes, getQuote), nil
 }
 
 func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
 	var (
-		pegoutResult quote.PegoutQuoteResult
-		err          error
+		quotes         []quote.PegoutQuote
+		retainedQuotes []quote.RetainedPegoutQuote
+		err            error
 	)
-	pegoutResult, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	quotes, retainedQuotes, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
 	if err != nil {
 		return NewSummaryData(), err
 	}
-	quotes := make([]*quote.PegoutQuote, len(pegoutResult.Quotes))
-	for i := range pegoutResult.Quotes {
-		quotes[i] = &pegoutResult.Quotes[i]
+	quotesPtr := make([]*quote.PegoutQuote, len(quotes))
+	for i := range quotes {
+		quotesPtr[i] = &quotes[i]
 	}
-	retainedQuotes := pegoutResult.RetainedQuotes
 	getQuote := func(ctx context.Context, hash string) (*quote.PegoutQuote, error) {
 		q, err := u.pegoutRepo.GetQuote(ctx, hash)
 		return q, err
 	}
-	return processPegoutQuoteData(ctx, quotes, retainedQuotes, getQuote), nil
+	return processPegoutQuoteData(ctx, quotesPtr, retainedQuotes, getQuote), nil
 }
 
 func getPeginFees(q *quote.PeginQuote) (callFee, gasFee, productFee, penaltyFee *entities.Wei) {
