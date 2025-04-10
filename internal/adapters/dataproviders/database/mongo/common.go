@@ -7,6 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -79,7 +80,7 @@ func (c *Connection) CheckConnection(ctx context.Context) bool {
 	return err == nil
 }
 
-type ListQuotesResult[Q any, R QuoteHashProvider] struct {
+type ListQuotesResult[Q any, R quote.RetainedQuote] struct {
 	Quotes           []Q
 	RetainedQuotes   []R
 	quoteHashToIndex map[string]int
@@ -172,7 +173,7 @@ func fetchRetainedQuotesByFilter[R any](
 	return retainedQuotes, nil
 }
 
-func ListQuotesByDateRange[Q any, R QuoteHashProvider](
+func ListQuotesByDateRange[Q any, R quote.RetainedQuote](
 	query QuoteQuery,
 	mapper func(bson.D) Q,
 ) (ListQuotesResult[Q, R], error) {
@@ -222,7 +223,7 @@ func createRetainedFilter(startDate, endDate time.Time, quoteHashes []string) bs
 	}
 }
 
-func findAdditionalQuoteHashes[R QuoteHashProvider](retainedQuotes []R, existingQuoteHashes []string) []string {
+func findAdditionalQuoteHashes[R quote.RetainedQuote](retainedQuotes []R, existingQuoteHashes []string) []string {
 	existingMap := make(map[string]bool)
 	for _, hash := range existingQuoteHashes {
 		existingMap[hash] = true
@@ -241,7 +242,7 @@ func findAdditionalQuoteHashes[R QuoteHashProvider](retainedQuotes []R, existing
 	return additionalHashes
 }
 
-func processAdditionalQuotes[Q any, R QuoteHashProvider](
+func processAdditionalQuotes[Q any, R quote.RetainedQuote](
 	ctx context.Context,
 	conn *Connection,
 	collectionName string,
@@ -277,8 +278,4 @@ func processAdditionalQuotes[Q any, R QuoteHashProvider](
 			log.Errorf("Error extracting hash: %v", err)
 		}
 	}
-}
-
-type QuoteHashProvider interface {
-	GetQuoteHash() string
 }
