@@ -29,26 +29,6 @@ type PegConfiguration interface {
 	ValidateAmount(amount *entities.Wei) error
 }
 
-type Quote interface {
-	Total() *entities.Wei
-}
-
-type RetainedQuote interface {
-	GetQuoteHash() string
-}
-
-type FeeProvider interface {
-	GetCallFee() *entities.Wei
-	GetGasFee() *entities.Wei
-	GetProductFee() *entities.Wei
-	GetPenaltyFee() *entities.Wei
-}
-
-type QuoteResult[Q any, R RetainedQuote] interface {
-	GetQuotes() []Q
-	GetRetainedQuotes() []R
-}
-
 // ValidateQuoteHash checks if a given string is a valid 32-byte quote hash
 // Returns nil if valid, error otherwise
 func ValidateQuoteHash(hash string) error {

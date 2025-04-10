@@ -21,23 +21,22 @@ func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) 
 		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
 		if err != nil {
 			log.Errorf("Error parsing date range: %v", err)
-			details := rest.DetailsFromError(err)
-			jsonErr := rest.NewErrorResponseWithDetails("Invalid date range", details, true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			rest.JsonErrorResponse(w, http.StatusBadRequest,
+				rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(err), true))
 			return
 		}
-		if validationErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat); validationErr != nil {
-			log.Errorf("Error validating date range: %v", validationErr)
-			details := rest.DetailsFromError(validationErr)
-			jsonErr := rest.NewErrorResponseWithDetails("Invalid date range", details, true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		validateErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat)
+		if validateErr != nil {
+			log.Errorf("Error validating date range: %v", validateErr)
+			rest.JsonErrorResponse(w, http.StatusBadRequest,
+				rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(validateErr), true))
 			return
 		}
 		response, err := useCase.Run(req.Context(), startDate, endDate)
 		if err != nil {
 			log.Errorf("Error running summaries use case: %v", err)
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			rest.JsonErrorResponse(w, http.StatusInternalServerError,
+				rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false))
 			return
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
