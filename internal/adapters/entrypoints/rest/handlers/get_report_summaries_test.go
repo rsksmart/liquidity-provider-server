@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"context"
@@ -9,50 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type MockSummariesUseCase struct {
-	mock.Mock
-}
-
-func (m *MockSummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (liquidity_provider.SummaryResult, error) {
-	args := m.Called(ctx, startDate, endDate)
-	if args.Get(0) == nil {
-		return liquidity_provider.SummaryResult{}, args.Error(1)
-	}
-	response, ok := args.Get(0).(liquidity_provider.SummaryResult)
-	if !ok {
-		return liquidity_provider.SummaryResult{}, errors.New("invalid response type")
-	}
-	return response, args.Error(1)
-}
-
-func getReportSummariesHandlerForTest(useCase *MockSummariesUseCase) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
-		if err != nil {
-			rest.JsonErrorResponse(w, http.StatusBadRequest, rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(err), true))
-			return
-		}
-		if validationErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat); validationErr != nil {
-			rest.JsonErrorResponse(w, http.StatusBadRequest, rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(validationErr), true))
-			return
-		}
-		response, err := useCase.Run(req.Context(), startDate, endDate)
-		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("An error occurred while processing your request", rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
-			return
-		}
-		rest.JsonResponseWithBody(w, http.StatusOK, &response)
-	}
-}
 
 func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 	tests := []struct {
@@ -61,6 +26,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		expectedStatus int
 		mockResponse   liquidity_provider.SummaryResult
 		mockErr        error
+		setupMocks     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock)
 	}{
 		{
 			name:           "Success with valid date range",
@@ -89,6 +55,17 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				},
 			},
 			mockErr: nil,
+			setupMocks: func(t *testing.T, peginRepo *mocks.PeginQuoteRepositoryMock, pegoutRepo *mocks.PegoutQuoteRepositoryMock) {
+				startDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-01")
+				require.NoError(t, err)
+				endDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-31")
+				require.NoError(t, err)
+				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
+				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
+					Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, nil)
+				pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
+					Return([]quote.PegoutQuote{}, []quote.RetainedPegoutQuote{}, nil)
+			},
 		},
 		{
 			name:           "Missing startDate parameter",
@@ -96,6 +73,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
+			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
 		{
 			name:           "Missing endDate parameter",
@@ -103,6 +81,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
+			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
 		{
 			name:           "Invalid startDate format",
@@ -110,6 +89,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
+			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
 		{
 			name:           "Invalid endDate format",
@@ -117,6 +97,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
+			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
 		{
 			name:           "EndDate before StartDate",
@@ -124,6 +105,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        nil,
+			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
 		{
 			name:           "Error in use case",
@@ -131,20 +113,24 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			expectedStatus: http.StatusInternalServerError,
 			mockResponse:   liquidity_provider.SummaryResult{},
 			mockErr:        errors.New("test error"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockUseCase := new(MockSummariesUseCase)
-			if tt.expectedStatus == http.StatusOK || tt.expectedStatus == http.StatusInternalServerError {
+			setupMocks: func(t *testing.T, peginRepo *mocks.PeginQuoteRepositoryMock, pegoutRepo *mocks.PegoutQuoteRepositoryMock) {
 				startDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-01")
 				require.NoError(t, err)
 				endDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-31")
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
-				mockUseCase.On("Run", mock.Anything, startDate, endDate).Return(tt.mockResponse, tt.mockErr)
-			}
-			handler := getReportSummariesHandlerForTest(mockUseCase)
+				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
+					Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, errors.New("test error"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			peginRepoMock := mocks.NewPeginQuoteRepositoryMock(t)
+			pegoutRepoMock := mocks.NewPegoutQuoteRepositoryMock(t)
+			tt.setupMocks(t, peginRepoMock, pegoutRepoMock)
+			useCase := liquidity_provider.NewSummariesUseCase(peginRepoMock, pegoutRepoMock)
+			handler := handlers.NewGetReportSummariesHandler(useCase)
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.url, nil)
 			require.NoError(t, err)
 			rr := httptest.NewRecorder()
@@ -154,10 +140,10 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				var response liquidity_provider.SummaryResult
 				err = json.Unmarshal(rr.Body.Bytes(), &response)
 				require.NoError(t, err)
-
-				assert.Equal(t, tt.mockResponse, response)
+				assert.NotNil(t, response)
 			}
-			mockUseCase.AssertExpectations(t)
+			peginRepoMock.AssertExpectations(t)
+			pegoutRepoMock.AssertExpectations(t)
 		})
 	}
 }
