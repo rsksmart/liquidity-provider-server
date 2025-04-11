@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -11,26 +10,24 @@ import (
 // NewGetReportsPegoutHandler
 // @Title Get Pegout Reports
 // @Description Get the last pegouts on the API. Included in the management API.
-// @Param GetReportsPeginRequest body pkg.GetReportsPeginPegoutRequest true "Date range for the report with startDate and endDate"
+// @Param startDate query string true "Start date for the report"
+// @Param endDate query string true "End date for the report"
 // @Success 200 pkg.GetPegoutReportResponse
 // @Route /reports/pegout [get]
 func NewGetReportsPegoutHandler(useCase *pegout.GetPegoutReportUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var requestBody pkg.GetReportsPeginPegoutRequest
+		var requestParams pkg.GetReportsPeginPegoutRequest
 		var err error
-		if err = json.NewDecoder(req.Body).Decode(&requestBody); err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails("Invalid request body", rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		}
+		requestParams.StartDate = req.URL.Query().Get("startDate")
+		requestParams.EndDate = req.URL.Query().Get("endDate")
 
-		if err = requestBody.ValidateGetReportsPeginPegoutRequest(); err != nil {
+		if err = requestParams.ValidateGetReportsPeginPegoutRequest(); err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
 
-		startTime, endTime, err := requestBody.GetTimestamps()
+		startTime, endTime, err := requestParams.GetTimestamps()
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Date conversion error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
