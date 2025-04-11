@@ -216,8 +216,8 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	retainedQuotes := make([]quote.RetainedPeginQuote, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
-	startTimestamp := uint32(startDate.Unix())
-	endTimestamp := uint32(endDate.Unix())
+	startTimestamp := int64(startDate.Unix())
+	endTimestamp := int64(endDate.Unix())
 	quoteCollection := repo.conn.Collection(PeginQuoteCollection)
 	quoteFilter := bson.D{
 		primitive.E{
