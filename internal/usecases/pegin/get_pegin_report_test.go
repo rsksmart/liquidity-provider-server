@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:funlen
 func TestGetPeginReportUseCase_Run(t *testing.T) {
 	ctx := context.Background()
 
@@ -46,7 +47,10 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
-	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
+	startDate := time.Now()
+	endDate := time.Now().Add(time.Hour * 24 * 365 * 10)
+
+	result, err := useCase.Run(ctx, startDate, endDate)
 
 	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -61,15 +65,11 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 func TestGetPeginReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	quotes := make([]quote.PeginQuote, 0)
+	retainedQuotes := []quote.RetainedPeginQuote{}
+
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(time.Now().Unix()),
-		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
-	}
-	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
-		Return(quotes, nil).Once()
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
+		Return(retainedQuotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
@@ -89,12 +89,7 @@ func TestGetPeginReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(time.Now().Unix()),
-		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
-	}
-	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(nil, assert.AnError).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)

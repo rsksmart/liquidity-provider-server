@@ -38,26 +38,42 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 	var totalFeesCollected *entities.Wei
 	var averageFeePerQuote *entities.Wei
 
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(startDate.Unix()),
-		EndDate:   uint32(endDate.Unix()),
+	states := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
+	retainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, states...)
+
+	if err != nil {
+		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
-	quotes, err = useCase.peginQuoteRepository.GetQuotesByState(ctx, filter)
+	quoteHashes := make([]string, 0, len(retainedQuotes))
+	for _, q := range retainedQuotes {
+		quoteHashes = append(quoteHashes, q.QuoteHash)
+	}
+
+	filters := []quote.QueryFilter{
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$gte",
+			Value:    startDate.Unix(),
+		},
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$lte",
+			Value:    endDate.Unix(),
+		},
+	}
+
+	if len(quoteHashes) == 0 {
+		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
+	}
+
+	quotes, err = useCase.peginQuoteRepository.GetQuotes(ctx, filters, quoteHashes)
 
 	if err != nil {
 		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 	if len(quotes) == 0 {
-		return GetPeginReportResult{
-			NumberOfQuotes:     0,
-			MinimumQuoteValue:  entities.NewWei(0),
-			MaximumQuoteValue:  entities.NewWei(0),
-			AverageQuoteValue:  entities.NewWei(0),
-			TotalFeesCollected: entities.NewWei(0),
-			AverageFeePerQuote: entities.NewWei(0),
-		}, nil
+		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
 	}
 
 	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)
@@ -72,14 +88,21 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
+	return useCase.buildReturn(len(quotes), minimumQuoteValue, maximumQuoteValue, averageQuoteValue, totalFeesCollected, averageFeePerQuote), nil
+}
+
+func (useCase *GetPeginReportUseCase) buildReturn(
+	numberOfQuotes int,
+	minimum, maximum, averageQuote, totalFees, averageFess *entities.Wei,
+) GetPeginReportResult {
 	return GetPeginReportResult{
-		NumberOfQuotes:     len(quotes),
-		MinimumQuoteValue:  minimumQuoteValue,
-		MaximumQuoteValue:  maximumQuoteValue,
-		AverageQuoteValue:  averageQuoteValue,
-		TotalFeesCollected: totalFeesCollected,
-		AverageFeePerQuote: averageFeePerQuote,
-	}, nil
+		NumberOfQuotes:     numberOfQuotes,
+		MinimumQuoteValue:  minimum,
+		MaximumQuoteValue:  maximum,
+		AverageQuoteValue:  averageQuote,
+		TotalFeesCollected: totalFees,
+		AverageFeePerQuote: averageFess,
+	}
 }
 
 func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.PeginQuote) *entities.Wei {

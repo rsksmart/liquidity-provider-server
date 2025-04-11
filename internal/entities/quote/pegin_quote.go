@@ -35,7 +35,6 @@ type PeginQuoteRepository interface {
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
-	GetQuotesByState(ctx context.Context, filter GetPeginQuotesByStateFilter) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
@@ -47,10 +46,10 @@ type PeginQuoteWithRetained struct {
 	RetainedQuote RetainedPeginQuote
 }
 
-type GetPeginQuotesByStateFilter struct {
-	States    []PeginState
-	StartDate uint32
-	EndDate   uint32
+type QueryFilter struct {
+	Field    string      // Field name to filter on
+	Operator string      // Operator: "$eq", "$gt", "$lt", "$gte", "$lte", "$in", etc.
+	Value    interface{} // Value to compare against
 }
 
 type CreatedPeginQuote struct {
