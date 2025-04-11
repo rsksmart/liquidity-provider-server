@@ -277,5 +277,5 @@ func isPeginRefundedQuote(retained quote.RetainedPeginQuote) bool {
 }
 
 func isPegoutRefundedQuote(retained quote.RetainedPegoutQuote) bool {
-	return retained.State == quote.PegoutStateRefundPegOutSucceeded
+	return retained.State == quote.PegoutStateRefundPegOutSucceeded || retained.State == quote.PegoutStateBridgeTxSucceeded
 }
