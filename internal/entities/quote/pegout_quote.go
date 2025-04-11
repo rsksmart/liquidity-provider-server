@@ -132,10 +132,6 @@ type RetainedPegoutQuote struct {
 	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
 }
 
-func (r RetainedPegoutQuote) GetQuoteHash() string {
-	return r.QuoteHash
-}
-
 type WatchedPegoutQuote struct {
 	PegoutQuote   PegoutQuote
 	RetainedQuote RetainedPegoutQuote

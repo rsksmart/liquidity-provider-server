@@ -2,9 +2,8 @@ package mongo
 
 import (
 	"context"
-	"time"
-
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 const (

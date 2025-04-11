@@ -2,16 +2,15 @@ package mongo_test
 
 import (
 	"context"
-	"sync"
-	"testing"
-	"time"
-
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"sync"
+	"testing"
+	"time"
 )
 
 func TestNewConnection(t *testing.T) {

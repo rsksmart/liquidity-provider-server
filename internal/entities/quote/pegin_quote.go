@@ -119,10 +119,6 @@ type RetainedPeginQuote struct {
 	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
 }
 
-func (r RetainedPeginQuote) GetQuoteHash() string {
-	return r.QuoteHash
-}
-
 type WatchedPeginQuote struct {
 	PeginQuote    PeginQuote
 	RetainedQuote RetainedPeginQuote
