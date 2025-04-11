@@ -322,37 +322,60 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) (quote.PegoutQuoteResult, error) {
-	query := QuoteQuery{
-		Ctx:                ctx,
-		Conn:               repo.conn,
-		StartDate:          startDate,
-		EndDate:            endDate,
-		QuoteCollection:    PegoutQuoteCollection,
-		RetainedCollection: RetainedPegoutQuoteCollection,
-	}
-	result := ListQuotesByDateRange[quote.PegoutQuote, quote.RetainedPegoutQuote](
-		query,
-		func(doc bson.D) quote.PegoutQuote {
-			var stored StoredPegoutQuote
-			bsonBytes, err := bson.Marshal(doc)
-			if err != nil {
-				log.Errorf("Error marshaling BSON: %v", err)
-				return quote.PegoutQuote{}
-			}
-			if err := bson.Unmarshal(bsonBytes, &stored); err != nil {
-				log.Errorf("Error unmarshaling BSON: %v", err)
-				return quote.PegoutQuote{}
-			}
-			return stored.PegoutQuote
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuote, []quote.RetainedPegoutQuote, error) {
+	quotes := make([]quote.PegoutQuote, 0)
+	retainedQuotes := make([]quote.RetainedPegoutQuote, 0)
+
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	startTimestamp := int64(startDate.Unix())
+	endTimestamp := int64(endDate.Unix())
+	quoteCollection := repo.conn.Collection(PegoutQuoteCollection)
+	quoteFilter := bson.D{
+		primitive.E{
+			Key: "agreement_timestamp",
+			Value: bson.D{
+				primitive.E{Key: "$gte", Value: startTimestamp},
+				primitive.E{Key: "$lte", Value: endTimestamp},
+			},
 		},
-	)
-	if result.Error != nil {
-		return quote.PegoutQuoteResult{}, result.Error
 	}
-	return quote.PegoutQuoteResult{
-		Quotes:           result.Quotes,
-		RetainedQuotes:   result.RetainedQuotes,
-		QuoteHashToIndex: result.QuoteHashToIndex,
-	}, nil
+	quoteCursor, err := quoteCollection.Find(dbCtx, quoteFilter)
+	if err != nil {
+		return quotes, retainedQuotes, err
+	}
+	defer quoteCursor.Close(dbCtx)
+	var storedQuotes []StoredPegoutQuote
+	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
+		return quotes, retainedQuotes, err
+	}
+	quoteHashes := make([]string, 0, len(storedQuotes))
+	for _, stored := range storedQuotes {
+		quotes = append(quotes, stored.PegoutQuote)
+		quoteHashes = append(quoteHashes, stored.Hash)
+	}
+	if len(quoteHashes) > 0 {
+		retainedCollection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+		retainedFilter := bson.D{
+			primitive.E{
+				Key: "quote_hash",
+				Value: bson.D{
+					primitive.E{Key: "$in", Value: quoteHashes},
+				},
+			},
+		}
+		retainedCursor, err := retainedCollection.Find(dbCtx, retainedFilter)
+		if err != nil {
+			return quotes, retainedQuotes, err
+		}
+		defer retainedCursor.Close(dbCtx)
+		if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
+			return quotes, retainedQuotes, err
+		}
+	}
+	logDbInteraction(Read, map[string]interface{}{
+		"quotes":         quotes,
+		"retainedQuotes": retainedQuotes,
+	})
+	return quotes, retainedQuotes, nil
 }

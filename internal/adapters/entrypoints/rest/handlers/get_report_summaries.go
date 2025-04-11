@@ -14,19 +14,29 @@ import (
 // @Description Returns financial data for a given period
 // @Param startDate query string true "Start date in YYYY-MM-DD format" Format(date)
 // @Param endDate query string true "End date in YYYY-MM-DD format" Format(date)
-// @Success 200 {object} liquidity_provider.SummariesResponse "Financial data for the given period"
+// @Success 200 {object} liquidity_provider.SummaryResult "Financial data for the given period"
 // @Router /report/summaries [get]
 func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, valid := rest.ValidateDateRange(w, req, liquidity_provider.DateFormat)
-		if !valid {
+		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
+		if err != nil {
+			log.Errorf("Error parsing date range: %v", err)
+			rest.JsonErrorResponse(w, http.StatusBadRequest,
+				rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(err), true))
+			return
+		}
+		validateErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat)
+		if validateErr != nil {
+			log.Errorf("Error validating date range: %v", validateErr)
+			rest.JsonErrorResponse(w, http.StatusBadRequest,
+				rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(validateErr), true))
 			return
 		}
 		response, err := useCase.Run(req.Context(), startDate, endDate)
 		if err != nil {
 			log.Errorf("Error running summaries use case: %v", err)
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			rest.JsonErrorResponse(w, http.StatusInternalServerError,
+				rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false))
 			return
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
