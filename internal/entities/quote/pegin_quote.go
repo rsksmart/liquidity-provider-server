@@ -29,20 +29,19 @@ type PeginQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPeginQuote) error
 	GetQuote(ctx context.Context, hash string) (*PeginQuote, error)
 	GetPeginCreationData(ctx context.Context, hash string) PeginCreationData
-	GetQuotes(ctx context.Context, hashes []string) ([]PeginQuote, error)
+	GetQuotes(ctx context.Context, filters []QueryFilter, hashFilters []string) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
-	GetQuotesByState(ctx context.Context, filter GetPeginQuotesByStateFilter) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 }
 
-type GetPeginQuotesByStateFilter struct {
-	States    []PeginState
-	StartDate uint32
-	EndDate   uint32
+type QueryFilter struct {
+	Field    string      // Field name to filter on
+	Operator string      // Operator: "$eq", "$gt", "$lt", "$gte", "$lte", "$in", etc.
+	Value    interface{} // Value to compare against
 }
 
 type CreatedPeginQuote struct {

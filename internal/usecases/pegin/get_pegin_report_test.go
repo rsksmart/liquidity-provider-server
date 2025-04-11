@@ -12,8 +12,24 @@ import (
 	"time"
 )
 
+// nolint:funlen
 func TestGetPeginReportUseCase_Run(t *testing.T) {
 	ctx := context.Background()
+
+	retainedQuotes := []quote.RetainedPeginQuote{
+		{QuoteHash: "hash1"},
+		{QuoteHash: "hash2"},
+		{QuoteHash: "hash3"},
+		{QuoteHash: "hash4"},
+		{QuoteHash: "hash5"},
+		{QuoteHash: "hash6"},
+		{QuoteHash: "hash7"},
+		{QuoteHash: "hash8"},
+		{QuoteHash: "hash9"},
+		{QuoteHash: "hash10"},
+	}
+
+	quoteHashes := []string{"hash1", "hash2", "hash3", "hash4", "hash5", "hash6", "hash7", "hash8", "hash9", "hash10"}
 
 	peginQuotes := []quote.PeginQuote{
 		{Value: entities.NewWei(1000), CallFee: entities.NewWei(10)},
@@ -35,18 +51,32 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 	expectedTotalFees := entities.NewWei(550)
 	expectedAverageFee := entities.NewWei(55)
 
-	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(time.Now().Unix()),
-		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
+	startDate := time.Now()
+	endDate := time.Now().Add(time.Hour * 24 * 365 * 10)
+
+	filters := []quote.QueryFilter{
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$gte",
+			Value:    startDate.Unix(),
+		},
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$lte",
+			Value:    endDate.Unix(),
+		},
 	}
 
-	peginQuoteRepository.On("GetQuotesByState", ctx, filter).Return(peginQuotes, nil).Once()
+	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
+
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
+		Return(retainedQuotes, nil).Once()
+
+	peginQuoteRepository.On("GetQuotes", ctx, filters, quoteHashes).Return(peginQuotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
-	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
+	result, err := useCase.Run(ctx, startDate, endDate)
 
 	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
@@ -61,15 +91,11 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 func TestGetPeginReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	quotes := make([]quote.PeginQuote, 0)
+	retainedQuotes := []quote.RetainedPeginQuote{}
+
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(time.Now().Unix()),
-		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
-	}
-	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
-		Return(quotes, nil).Once()
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
+		Return(retainedQuotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
@@ -89,12 +115,7 @@ func TestGetPeginReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
-	filter := quote.GetPeginQuotesByStateFilter{
-		States:    []quote.PeginState{quote.PeginStateRegisterPegInSucceeded},
-		StartDate: uint32(time.Now().Unix()),
-		EndDate:   uint32(time.Now().Add(time.Hour * 24 * 365 * 10).Unix()),
-	}
-	peginQuoteRepository.On("GetQuotesByState", ctx, filter).
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(nil, assert.AnError).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
