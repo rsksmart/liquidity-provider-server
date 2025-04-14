@@ -2,10 +2,11 @@ package pegin
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"time"
 )
 
 type GetPeginReportUseCase struct {
@@ -50,24 +51,11 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 		quoteHashes = append(quoteHashes, q.QuoteHash)
 	}
 
-	filters := []quote.QueryFilter{
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$gte",
-			Value:    startDate.Unix(),
-		},
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$lte",
-			Value:    endDate.Unix(),
-		},
-	}
-
 	if len(quoteHashes) == 0 {
 		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
 	}
 
-	quotes, err = useCase.peginQuoteRepository.GetQuotes(ctx, filters, quoteHashes)
+	quotes, err = useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, quoteHashes, startDate, endDate)
 
 	if err != nil {
 		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
