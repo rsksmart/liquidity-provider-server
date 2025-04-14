@@ -99,13 +99,12 @@ func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() er
 		return errors.New("endDate is required")
 	}
 
-	const dateFormat = "2006-01-02"
-	startDate, err := time.Parse(dateFormat, r.StartDate)
+	startDate, err := time.Parse(time.DateOnly, r.StartDate)
 	if err != nil {
 		return errors.New("startDate must be in format YYYY-MM-DD")
 	}
 
-	endDate, err := time.Parse(dateFormat, r.EndDate)
+	endDate, err := time.Parse(time.DateOnly, r.EndDate)
 	if err != nil {
 		return errors.New("endDate must be in format YYYY-MM-DD")
 	}
@@ -118,12 +117,12 @@ func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() er
 }
 
 func (r *GetReportsPeginPegoutRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
-	startTime, err = time.Parse("2006-01-02", r.StartDate)
+	startTime, err = time.Parse(time.DateOnly, r.StartDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 
-	endTime, err = time.Parse("2006-01-02", r.EndDate)
+	endTime, err = time.Parse(time.DateOnly, r.EndDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
