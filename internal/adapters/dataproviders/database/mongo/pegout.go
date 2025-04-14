@@ -110,18 +110,22 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	return &result.PegoutQuote, nil
 }
 
-func (repo *pegoutMongoRepository) GetQuotes(ctx context.Context, hashes []string) ([]quote.PegoutQuote, error) {
+func (repo *pegoutMongoRepository) GetQuotes(
+	ctx context.Context,
+	filters []quote.QueryFilter,
+	hashFilters []string,
+) ([]quote.PegoutQuote, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	for _, hash := range hashes {
+	for _, hash := range hashFilters {
 		if err := quote.ValidateQuoteHash(hash); err != nil {
 			return nil, err
 		}
 	}
 
 	collection := repo.conn.Collection(PegoutQuoteCollection)
-	filter := bson.M{"hash": bson.M{"$in": hashes}}
+	filter := repo.buildFilter(filters, hashFilters)
 
 	quotesReturn := make([]quote.PegoutQuote, 0)
 
@@ -351,95 +355,32 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-func (repo *pegoutMongoRepository) GetQuotesByState(ctx context.Context, filter quote.GetPegoutQuotesByStateFilter) ([]quote.PegoutQuote, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
+func (repo *pegoutMongoRepository) buildFilter(filters []quote.QueryFilter, hashFilters []string) bson.M {
+	filter := bson.M{}
 
-	quoteHashes, err := repo.getRetainedQuoteHashes(dbCtx, filter.States)
-	if err != nil {
-		return nil, err
+	if len(hashFilters) > 0 {
+		filter["hash"] = bson.M{"$in": hashFilters}
 	}
 
-	if len(quoteHashes) == 0 {
-		return []quote.PegoutQuote{}, nil
+	for _, f := range filters {
+		if f.Field == "" || f.Operator == "" {
+			continue
+		}
+
+		repo.applyFilter(filter, f)
 	}
 
-	pegoutQuotes, err := repo.getPegoutQuotesByHashesAndDate(dbCtx, quoteHashes, filter.StartDate, filter.EndDate)
-	if err != nil {
-		return nil, err
-	}
-
-	logDbInteraction(Read, pegoutQuotes)
-	return pegoutQuotes, nil
+	return filter
 }
 
-func (repo *pegoutMongoRepository) getRetainedQuoteHashes(ctx context.Context, states []quote.PegoutState) ([]string, error) {
-	retainedCollection := repo.conn.Collection(RetainedPegoutQuoteCollection)
-	retainedFilter := bson.D{
-		primitive.E{
-			Key:   "state",
-			Value: bson.D{primitive.E{Key: "$in", Value: states}},
-		},
+func (repo *pegoutMongoRepository) applyFilter(filter bson.M, f quote.QueryFilter) {
+	if existingFilter, exists := filter[f.Field]; exists {
+		if filterMap, ok := existingFilter.(bson.M); ok {
+			filterMap[f.Operator] = f.Value
+		} else {
+			filter[f.Field] = bson.M{f.Operator: f.Value}
+		}
+	} else {
+		filter[f.Field] = bson.M{f.Operator: f.Value}
 	}
-
-	projection := bson.D{
-		primitive.E{Key: "quote_hash", Value: 1},
-		primitive.E{Key: "_id", Value: 0},
-	}
-
-	retainedCursor, err := retainedCollection.Find(ctx, retainedFilter, options.Find().SetProjection(projection))
-	if err != nil {
-		return nil, err
-	}
-	defer retainedCursor.Close(ctx)
-
-	var retainedResults []struct {
-		QuoteHash string `bson:"quote_hash"`
-	}
-
-	if err = retainedCursor.All(ctx, &retainedResults); err != nil {
-		return nil, err
-	}
-
-	quoteHashes := make([]string, len(retainedResults))
-	for i, result := range retainedResults {
-		quoteHashes[i] = result.QuoteHash
-	}
-
-	return quoteHashes, nil
-}
-
-func (repo *pegoutMongoRepository) getPegoutQuotesByHashesAndDate(
-	ctx context.Context,
-	quoteHashes []string,
-	startDate, endDate uint32) ([]quote.PegoutQuote, error) {
-
-	pegoutCollection := repo.conn.Collection(PegoutQuoteCollection)
-	pegoutFilter := bson.D{
-		primitive.E{
-			Key:   "hash",
-			Value: bson.D{primitive.E{Key: "$in", Value: quoteHashes}},
-		},
-		primitive.E{
-			Key: "agreement_timestamp",
-			Value: bson.D{
-				primitive.E{Key: "$gte", Value: startDate},
-				primitive.E{Key: "$lte", Value: endDate},
-			},
-		},
-	}
-
-	sortOptions := options.Find().SetSort(bson.D{primitive.E{Key: "agreement_timestamp", Value: -1}})
-	pegoutCursor, err := pegoutCollection.Find(ctx, pegoutFilter, sortOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer pegoutCursor.Close(ctx)
-
-	var pegoutQuotes []quote.PegoutQuote
-	if err = pegoutCursor.All(ctx, &pegoutQuotes); err != nil {
-		return nil, err
-	}
-
-	return pegoutQuotes, nil
 }

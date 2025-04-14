@@ -489,7 +489,7 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 	t.Run("error reading quotes from DB", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 
-		expectedHashes := []string{testRetainedPegoutQuote.QuoteHash}
+		expectedHashes := []string{testRetainedPeginQuote.QuoteHash}
 		collection.On("Find", mock.Anything, bson.M{"hash": bson.M{"$in": expectedHashes}}).Return(nil, mongoDb.ErrNoDocuments).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
