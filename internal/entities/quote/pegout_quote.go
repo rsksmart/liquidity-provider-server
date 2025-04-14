@@ -33,14 +33,13 @@ type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
 	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
-	GetQuotes(ctx context.Context, hashes []string) ([]PegoutQuote, error)
+	GetQuotes(ctx context.Context, filters []QueryFilter, hashFilters []string) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	UpdateRetainedQuotes(ctx context.Context, quotes []RetainedPegoutQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PegoutState) ([]RetainedPegoutQuote, error)
-	GetQuotesByState(ctx context.Context, filter GetPegoutQuotesByStateFilter) ([]PegoutQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error

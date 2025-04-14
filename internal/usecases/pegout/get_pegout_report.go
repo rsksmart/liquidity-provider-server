@@ -29,11 +29,7 @@ type GetPegoutReportResult struct {
 	AverageFeePerQuote *entities.Wei
 }
 
-func (useCase *GetPegoutReportUseCase) Run(
-	ctx context.Context,
-	startDate time.Time,
-	endDate time.Time,
-) (GetPegoutReportResult, error) {
+func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetPegoutReportResult, error) {
 	var err error
 	var quotes []quote.PegoutQuote
 	var minimumQuoteValue *entities.Wei
@@ -42,46 +38,70 @@ func (useCase *GetPegoutReportUseCase) Run(
 	var totalFeesCollected *entities.Wei
 	var averageFeePerQuote *entities.Wei
 
-	filter := quote.GetPegoutQuotesByStateFilter{
-		States:    []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded},
-		StartDate: uint32(startDate.Unix()),
-		EndDate:   uint32(endDate.Unix()),
-	}
-	quotes, err = useCase.pegoutQuoteRepository.GetQuotesByState(ctx, filter)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+	retainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, states...)
+
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+	}
+
+	quoteHashes := make([]string, 0, len(retainedQuotes))
+	for _, q := range retainedQuotes {
+		quoteHashes = append(quoteHashes, q.QuoteHash)
+	}
+	filters := []quote.QueryFilter{
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$gte",
+			Value:    startDate.Unix(),
+		},
+		{
+			Field:    "agreement_timestamp",
+			Operator: "$lte",
+			Value:    endDate.Unix(),
+		},
+	}
+
+	if len(quoteHashes) == 0 {
+		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
+	}
+
+	quotes, err = useCase.pegoutQuoteRepository.GetQuotes(ctx, filters, quoteHashes)
+
+	if err != nil {
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 	if len(quotes) == 0 {
-		return GetPegoutReportResult{
-			NumberOfQuotes:     0,
-			MinimumQuoteValue:  entities.NewWei(0),
-			MaximumQuoteValue:  entities.NewWei(0),
-			AverageQuoteValue:  entities.NewWei(0),
-			TotalFeesCollected: entities.NewWei(0),
-			AverageFeePerQuote: entities.NewWei(0),
-		}, nil
+		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
 	}
 
 	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)
 	maximumQuoteValue = useCase.calculateMaximumQuoteValue(quotes)
 	averageQuoteValue, err = useCase.calculateAverageQuoteValue(quotes)
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 	totalFeesCollected = useCase.calculateTotalFeesCollected(quotes)
 	averageFeePerQuote, err = useCase.calculateAverageFeePerQuote(quotes)
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
+	return useCase.buildReturn(len(quotes), minimumQuoteValue, maximumQuoteValue, averageQuoteValue, totalFeesCollected, averageFeePerQuote), nil
+}
+
+func (useCase *GetPegoutReportUseCase) buildReturn(
+	numberOfQuotes int,
+	minimum, maximum, averageQuote, totalFees, averageFess *entities.Wei,
+) GetPegoutReportResult {
 	return GetPegoutReportResult{
-		NumberOfQuotes:     len(quotes),
-		MinimumQuoteValue:  minimumQuoteValue,
-		MaximumQuoteValue:  maximumQuoteValue,
-		AverageQuoteValue:  averageQuoteValue,
-		TotalFeesCollected: totalFeesCollected,
-		AverageFeePerQuote: averageFeePerQuote,
-	}, nil
+		NumberOfQuotes:     numberOfQuotes,
+		MinimumQuoteValue:  minimum,
+		MaximumQuoteValue:  maximum,
+		AverageQuoteValue:  averageQuote,
+		TotalFeesCollected: totalFees,
+		AverageFeePerQuote: averageFess,
+	}
 }
 
 func (useCase *GetPegoutReportUseCase) calculateMinimumQuoteValue(quotes []quote.PegoutQuote) *entities.Wei {
