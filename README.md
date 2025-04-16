@@ -38,18 +38,11 @@ The LPS has two main APIs:
 * User/Public API: This API is used by the user to interact with the LP to agree on a quote, the API can be accessed via the Flyover dApp. See [Using the Public API](#using-the-public-api)
 * LP/Management API: This API is used by the LP to interact with the LPS to perform management operations. It can be accessed via `<LPS URL>/management`. See [LP Management](./management.md) Section
 
-:::note
-
-The Management UI and Public API share the same server, accessible through the same URL. However, the Management API requires authentication for access, while the Public API does not. While authentication is a security measure, it's still recommended to deploy the Management API behind a [Web Application Firewall (WAF)](https://en.wikipedia.org/wiki/Web_application_firewall) or Virtual Private Network (VPN) for added protection.
-
-:::
-
-:::info[Info]
+> **Note**
+> The Management UI and Public API share the same server, accessible through the same URL. However, the Management API requires authentication for access, while the Public API does not. While authentication is a security measure, it's still recommended to deploy the Management API behind a [Web Application Firewall (WAF)](https://en.wikipedia.org/wiki/Web_application_firewall) or Virtual Private Network (VPN) for added protection.
 
 API limitations can vary based on the specific infrastructure of each Liquidity Provider Server (LPS). 
 The current implementation does not impose explicit rate limits.
-
-:::
 
 ## Configuring the Liquidity Provider Server
 
@@ -200,9 +193,3 @@ The service can be configured to monitor other addresses by modifying the `MONIT
 If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).
 
 If you're interested in becoming a liquidity provider then you can read the [Liquidity Provider Management](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md) file.
-
-:::danger[Troubleshooting]
-
-Encountering difficulties with the SDK setup, LPS configuration, or specific Flyover issues? Join the [Rootstock Discord community](http://discord.gg/rootstock) for expert support and assistance. Our dedicated team is ready to help you resolve any problems you may encounter.
-
-:::
