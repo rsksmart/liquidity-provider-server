@@ -1,19 +1,31 @@
-# docker-compose for Liquidity Provider Server
+# Docker Setup for Liquidity Provider Server
 
-This docker-compose files can be used to quickly spin up an environment with the server and its
-dependant services (`bitcoind` and `rskj`) for either `regtest` or `testnet`
+The provided docker-compose files can be used to quickly spin up an environment with the Liquidity Provider Server and its dependent services (`bitcoind` and `rskj`) for either `regtest` or `testnet`.
 
-## Deploy locally
-* Use scripts located on `local` directory
-* If there is any changes on the Liquidity Bridge Contratcs you need to deploy localy in your environemnt and then grab the  LiquidityBridgeContractProxy address.
-- - export LBC_ADDR="NEW ADDRESS"
-- - export LPS_STAGE=regtest
-- chmod +x lps-env.sh
-- - ./lps-env.sh up
+## Deploy Locally
 
-## Deploy on dev server with testnet config
+* Use scripts located in the `local` directory
+* If there are any changes to the Liquidity Bridge Contracts that you need to deploy locally in your environment, you'll need to:
+  * Get the LiquidityBridgeContractProxy address from your deployment
+  * Export it as an environment variable:
+    ```bash
+    export LBC_ADDR="NEW_ADDRESS"
+    export LPS_STAGE=regtest
+    ```
+  * Make the script executable and run it:
+    ```bash
+    chmod +x lps-env.sh
+    ./lps-env.sh up
+    ```
 
-```
+## Deploy on Development Server with Testnet Config
+
+```bash
 docker-compose --env-file .env.testnet down && 
-docker-compose --env-file .env.testnet build --no-cache && docker-compose --env-file .env.testnet up -d
+docker-compose --env-file .env.testnet build --no-cache && 
+docker-compose --env-file .env.testnet up -d
 ```
+
+:::danger[Troubleshooting]
+Encountering difficulties with the Docker setup or Flyover issues? Join the [Rootstock Discord community](http://discord.gg/rootstock) for expert support and assistance. Our dedicated team is ready to help you resolve any problems you may encounter.
+:::
