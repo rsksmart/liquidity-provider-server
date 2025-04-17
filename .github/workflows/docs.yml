@@ -38,6 +38,7 @@ jobs:
       # Step 2: Transform Each File and Copy to Devportal Repository
       - name: Transform Files for Devportal
         run: |
+          set -e
           mkdir -p transformed
 
           BASE_SRC="."
