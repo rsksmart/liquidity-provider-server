@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # Step 1: Clone the Devportal Repository
       - name: Clone Devportal Repository
@@ -156,26 +156,6 @@ jobs:
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
           cp ${TRANSFORMED_FILE} ${BASE_DST}/management.md
-
-          #####################################
-          #  Integration Tests                #
-          #####################################
-          if [ -f ${BASE_SRC}/docs/integration-tests.md ]; then
-            TEMP_FILE="temp_integration-tests.md"
-            tail -n +2 ${BASE_SRC}/docs/integration-tests.md > ${TEMP_FILE}
-            TRANSFORMED_FILE="transformed/integration-tests.md"
-            echo "---" > ${TRANSFORMED_FILE}
-            echo "sidebar_label: Integration Tests" >> ${TRANSFORMED_FILE}
-            echo "sidebar_position: 240" >> ${TRANSFORMED_FILE}
-            echo "title: Liquidity Provider Server Integration Tests" >> ${TRANSFORMED_FILE}
-            echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg, testing]" >> ${TRANSFORMED_FILE}
-            echo "description: Learn how to run integration tests for the Liquidity Provider Server (LPS) in both test instance and running instance modes." >> ${TRANSFORMED_FILE}
-            echo "---" >> ${TRANSFORMED_FILE}
-            echo "" >> ${TRANSFORMED_FILE}
-            cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
-            rm ${TEMP_FILE}
-            cp ${TRANSFORMED_FILE} ${BASE_DST}/integration-tests.md
-          fi
 
       # Step 3: Commit and Push Changes to Devportal Repository
       - name: Commit and Push Changes
