@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -112,24 +113,18 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 
 func (repo *pegoutMongoRepository) GetQuotes(
 	ctx context.Context,
-	filters []quote.QueryFilter,
-	hashFilters []string,
+	criteria *mongo_interfaces.Criteria,
 ) ([]quote.PegoutQuote, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	for _, hash := range hashFilters {
-		if err := quote.ValidateQuoteHash(hash); err != nil {
-			return nil, err
-		}
-	}
+	filter := criteria.ToBson()
+	opts := criteria.GetFindOptions()
 
 	collection := repo.conn.Collection(PegoutQuoteCollection)
-	filter := repo.buildFilter(filters, hashFilters)
-
 	quotesReturn := make([]quote.PegoutQuote, 0)
 
-	cursor, err := collection.Find(dbCtx, filter)
+	cursor, err := collection.Find(dbCtx, filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -353,34 +348,4 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		logDbInteraction(Upsert, deposits)
 	}
 	return err
-}
-
-func (repo *pegoutMongoRepository) buildFilter(filters []quote.QueryFilter, hashFilters []string) bson.M {
-	filter := bson.M{}
-
-	if len(hashFilters) > 0 {
-		filter["hash"] = bson.M{"$in": hashFilters}
-	}
-
-	for _, f := range filters {
-		if f.Field == "" || f.Operator == "" {
-			continue
-		}
-
-		repo.applyFilter(filter, f)
-	}
-
-	return filter
-}
-
-func (repo *pegoutMongoRepository) applyFilter(filter bson.M, f quote.QueryFilter) {
-	if existingFilter, exists := filter[f.Field]; exists {
-		if filterMap, ok := existingFilter.(bson.M); ok {
-			filterMap[f.Operator] = f.Value
-		} else {
-			filter[f.Field] = bson.M{f.Operator: f.Value}
-		}
-	} else {
-		filter[f.Field] = bson.M{f.Operator: f.Value}
-	}
 }

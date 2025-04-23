@@ -2,6 +2,7 @@ package pegin_test
 
 import (
 	"context"
+	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
@@ -54,25 +55,17 @@ func TestGetPeginReportUseCase_Run(t *testing.T) {
 	startDate := time.Now()
 	endDate := time.Now().Add(time.Hour * 24 * 365 * 10)
 
-	filters := []quote.QueryFilter{
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$gte",
-			Value:    startDate.Unix(),
-		},
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$lte",
-			Value:    endDate.Unix(),
-		},
-	}
+	criteria := mongo_interfaces.NewCriteria()
+	criteria.AddCondition("hash", mongo_interfaces.IN, quoteHashes)
+	criteria.AddCondition("agreement_timestamp", mongo_interfaces.GTE, startDate.Unix())
+	criteria.AddCondition("agreement_timestamp", mongo_interfaces.LTE, endDate.Unix())
 
 	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
 
 	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(retainedQuotes, nil).Once()
 
-	peginQuoteRepository.On("GetQuotes", ctx, filters, quoteHashes).Return(peginQuotes, nil).Once()
+	peginQuoteRepository.On("GetQuotes", ctx, criteria).Return(peginQuotes, nil).Once()
 
 	useCase := pegin.NewGetPeginReportUseCase(peginQuoteRepository)
 
