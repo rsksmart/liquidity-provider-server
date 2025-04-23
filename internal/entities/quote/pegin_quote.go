@@ -46,12 +46,6 @@ type PeginQuoteWithRetained struct {
 	RetainedQuote RetainedPeginQuote
 }
 
-type QueryFilter struct {
-	Field    string      // Field name to filter on
-	Operator string      // Operator: "$eq", "$gt", "$lt", "$gte", "$lte", "$in", etc.
-	Value    interface{} // Value to compare against
-}
-
 type CreatedPeginQuote struct {
 	Hash         string
 	Quote        PeginQuote

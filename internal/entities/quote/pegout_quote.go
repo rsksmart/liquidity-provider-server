@@ -52,12 +52,6 @@ type PegoutQuoteRepository interface {
 	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
 }
 
-type GetPegoutQuotesByStateFilter struct {
-	States    []PegoutState
-	StartDate uint32
-	EndDate   uint32
-}
-
 type CreatedPegoutQuote struct {
 	Hash         string
 	Quote        PegoutQuote
