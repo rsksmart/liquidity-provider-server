@@ -23,6 +23,8 @@ var (
 
 func main() {
 	memguard.CatchInterrupt()
+	defer memguard.Purge()
+
 	env := environment.LoadEnv()
 	timeouts, err := environment.TimeoutsFromEnv(env.Timeouts)
 	if err != nil {
