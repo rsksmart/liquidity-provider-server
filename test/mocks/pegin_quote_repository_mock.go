@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	quote "github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -185,9 +186,9 @@ func (_c *PeginQuoteRepositoryMock_GetQuote_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// GetQuotes provides a mock function with given fields: ctx, filters, hashFilters
-func (_m *PeginQuoteRepositoryMock) GetQuotes(ctx context.Context, filters []quote.QueryFilter, hashFilters []string) ([]quote.PeginQuote, error) {
-	ret := _m.Called(ctx, filters, hashFilters)
+// GetQuotes provides a mock function with given fields: ctx, criteria
+func (_m *PeginQuoteRepositoryMock) GetQuotes(ctx context.Context, criteria *mongo_interfaces.Criteria) ([]quote.PeginQuote, error) {
+	ret := _m.Called(ctx, criteria)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetQuotes")
@@ -195,19 +196,19 @@ func (_m *PeginQuoteRepositoryMock) GetQuotes(ctx context.Context, filters []quo
 
 	var r0 []quote.PeginQuote
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []quote.QueryFilter, []string) ([]quote.PeginQuote, error)); ok {
-		return rf(ctx, filters, hashFilters)
+	if rf, ok := ret.Get(0).(func(context.Context, *mongo_interfaces.Criteria) ([]quote.PeginQuote, error)); ok {
+		return rf(ctx, criteria)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []quote.QueryFilter, []string) []quote.PeginQuote); ok {
-		r0 = rf(ctx, filters, hashFilters)
+	if rf, ok := ret.Get(0).(func(context.Context, *mongo_interfaces.Criteria) []quote.PeginQuote); ok {
+		r0 = rf(ctx, criteria)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]quote.PeginQuote)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []quote.QueryFilter, []string) error); ok {
-		r1 = rf(ctx, filters, hashFilters)
+	if rf, ok := ret.Get(1).(func(context.Context, *mongo_interfaces.Criteria) error); ok {
+		r1 = rf(ctx, criteria)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -222,15 +223,14 @@ type PeginQuoteRepositoryMock_GetQuotes_Call struct {
 
 // GetQuotes is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filters []quote.QueryFilter
-//   - hashFilters []string
-func (_e *PeginQuoteRepositoryMock_Expecter) GetQuotes(ctx interface{}, filters interface{}, hashFilters interface{}) *PeginQuoteRepositoryMock_GetQuotes_Call {
-	return &PeginQuoteRepositoryMock_GetQuotes_Call{Call: _e.mock.On("GetQuotes", ctx, filters, hashFilters)}
+//   - criteria *mongo_interfaces.Criteria
+func (_e *PeginQuoteRepositoryMock_Expecter) GetQuotes(ctx interface{}, criteria interface{}) *PeginQuoteRepositoryMock_GetQuotes_Call {
+	return &PeginQuoteRepositoryMock_GetQuotes_Call{Call: _e.mock.On("GetQuotes", ctx, criteria)}
 }
 
-func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) Run(run func(ctx context.Context, filters []quote.QueryFilter, hashFilters []string)) *PeginQuoteRepositoryMock_GetQuotes_Call {
+func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) Run(run func(ctx context.Context, criteria *mongo_interfaces.Criteria)) *PeginQuoteRepositoryMock_GetQuotes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]quote.QueryFilter), args[2].([]string))
+		run(args[0].(context.Context), args[1].(*mongo_interfaces.Criteria))
 	})
 	return _c
 }
@@ -240,7 +240,7 @@ func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) Return(_a0 []quote.PeginQuote
 	return _c
 }
 
-func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) RunAndReturn(run func(context.Context, []quote.QueryFilter, []string) ([]quote.PeginQuote, error)) *PeginQuoteRepositoryMock_GetQuotes_Call {
+func (_c *PeginQuoteRepositoryMock_GetQuotes_Call) RunAndReturn(run func(context.Context, *mongo_interfaces.Criteria) ([]quote.PeginQuote, error)) *PeginQuoteRepositoryMock_GetQuotes_Call {
 	_c.Call.Return(run)
 	return _c
 }

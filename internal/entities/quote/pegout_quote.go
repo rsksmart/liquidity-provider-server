@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -33,7 +34,7 @@ type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
 	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
-	GetQuotes(ctx context.Context, filters []QueryFilter, hashFilters []string) ([]PegoutQuote, error)
+	GetQuotes(ctx context.Context, criteria *mongo_interfaces.Criteria) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
@@ -44,12 +45,6 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
-}
-
-type GetPegoutQuotesByStateFilter struct {
-	States    []PegoutState
-	StartDate uint32
-	EndDate   uint32
 }
 
 type CreatedPegoutQuote struct {

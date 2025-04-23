@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -109,24 +110,19 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 
 func (repo *peginMongoRepository) GetQuotes(
 	ctx context.Context,
-	filters []quote.QueryFilter,
-	hashFilters []string,
+	criteria *mongo_interfaces.Criteria,
 ) ([]quote.PeginQuote, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	for _, hash := range hashFilters {
-		if err := quote.ValidateQuoteHash(hash); err != nil {
-			return nil, err
-		}
-	}
+	filter := criteria.ToBson()
+	opts := criteria.GetFindOptions()
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
-	filter := repo.buildFilter(filters, hashFilters)
 
 	quotesReturn := make([]quote.PeginQuote, 0)
 
-	cursor, err := collection.Find(dbCtx, filter)
+	cursor, err := collection.Find(dbCtx, filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -242,34 +238,4 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 		return 0, errors.New("pegin quote collections didn't match")
 	}
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
-}
-
-func (repo *peginMongoRepository) buildFilter(filters []quote.QueryFilter, hashFilters []string) bson.M {
-	filter := bson.M{}
-
-	if len(hashFilters) > 0 {
-		filter["hash"] = bson.M{"$in": hashFilters}
-	}
-
-	for _, f := range filters {
-		if f.Field == "" || f.Operator == "" {
-			continue
-		}
-
-		repo.applyFilter(filter, f)
-	}
-
-	return filter
-}
-
-func (repo *peginMongoRepository) applyFilter(filter bson.M, f quote.QueryFilter) {
-	if existingFilter, exists := filter[f.Field]; exists {
-		if filterMap, ok := existingFilter.(bson.M); ok {
-			filterMap[f.Operator] = f.Value
-		} else {
-			filter[f.Field] = bson.M{f.Operator: f.Value}
-		}
-	} else {
-		filter[f.Field] = bson.M{f.Operator: f.Value}
-	}
 }

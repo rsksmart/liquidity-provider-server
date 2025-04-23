@@ -2,6 +2,7 @@ package pegout
 
 import (
 	"context"
+	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -32,11 +33,14 @@ type GetPegoutReportResult struct {
 func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetPegoutReportResult, error) {
 	var err error
 	var quotes []quote.PegoutQuote
-	var minimumQuoteValue *entities.Wei
-	var maximumQuoteValue *entities.Wei
-	var averageQuoteValue *entities.Wei
-	var totalFeesCollected *entities.Wei
-	var averageFeePerQuote *entities.Wei
+	response := GetPegoutReportResult{
+		NumberOfQuotes:     0,
+		MinimumQuoteValue:  entities.NewWei(0),
+		MaximumQuoteValue:  entities.NewWei(0),
+		AverageQuoteValue:  entities.NewWei(0),
+		TotalFeesCollected: entities.NewWei(0),
+		AverageFeePerQuote: entities.NewWei(0),
+	}
 
 	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
 	retainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, states...)
@@ -49,59 +53,39 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.T
 	for _, q := range retainedQuotes {
 		quoteHashes = append(quoteHashes, q.QuoteHash)
 	}
-	filters := []quote.QueryFilter{
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$gte",
-			Value:    startDate.Unix(),
-		},
-		{
-			Field:    "agreement_timestamp",
-			Operator: "$lte",
-			Value:    endDate.Unix(),
-		},
-	}
 
 	if len(quoteHashes) == 0 {
-		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
+		return response, nil
 	}
 
-	quotes, err = useCase.pegoutQuoteRepository.GetQuotes(ctx, filters, quoteHashes)
+	criteria := mongo_interfaces.NewCriteria()
+	criteria.AddCondition("hash", mongo_interfaces.IN, quoteHashes)
+	criteria.AddCondition("agreement_timestamp", mongo_interfaces.GTE, startDate.Unix())
+	criteria.AddCondition("agreement_timestamp", mongo_interfaces.LTE, endDate.Unix())
+
+	quotes, err = useCase.pegoutQuoteRepository.GetQuotes(ctx, criteria)
 
 	if err != nil {
 		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 	if len(quotes) == 0 {
-		return useCase.buildReturn(0, entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0), entities.NewWei(0)), nil
+		return response, nil
 	}
 
-	minimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)
-	maximumQuoteValue = useCase.calculateMaximumQuoteValue(quotes)
-	averageQuoteValue, err = useCase.calculateAverageQuoteValue(quotes)
+	response.NumberOfQuotes = len(quotes)
+	response.MinimumQuoteValue = useCase.calculateMinimumQuoteValue(quotes)
+	response.MaximumQuoteValue = useCase.calculateMaximumQuoteValue(quotes)
+	response.AverageQuoteValue, err = useCase.calculateAverageQuoteValue(quotes)
 	if err != nil {
 		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
-	totalFeesCollected = useCase.calculateTotalFeesCollected(quotes)
-	averageFeePerQuote, err = useCase.calculateAverageFeePerQuote(quotes)
+	response.TotalFeesCollected = useCase.calculateTotalFeesCollected(quotes)
+	response.AverageFeePerQuote, err = useCase.calculateAverageFeePerQuote(quotes)
 	if err != nil {
 		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
 	}
 
-	return useCase.buildReturn(len(quotes), minimumQuoteValue, maximumQuoteValue, averageQuoteValue, totalFeesCollected, averageFeePerQuote), nil
-}
-
-func (useCase *GetPegoutReportUseCase) buildReturn(
-	numberOfQuotes int,
-	minimum, maximum, averageQuote, totalFees, averageFess *entities.Wei,
-) GetPegoutReportResult {
-	return GetPegoutReportResult{
-		NumberOfQuotes:     numberOfQuotes,
-		MinimumQuoteValue:  minimum,
-		MaximumQuoteValue:  maximum,
-		AverageQuoteValue:  averageQuote,
-		TotalFeesCollected: totalFees,
-		AverageFeePerQuote: averageFess,
-	}
+	return response, nil
 }
 
 func (useCase *GetPegoutReportUseCase) calculateMinimumQuoteValue(quotes []quote.PegoutQuote) *entities.Wei {
