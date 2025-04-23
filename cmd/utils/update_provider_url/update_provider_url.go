@@ -54,6 +54,7 @@ func (args UpdateProviderArgs) Url() string {
 func main() {
 	const errorCode = 2
 	scripts.SetUsageMessage("This script is used to update the provider information displayed in the Liquidity Bridge Contract when the discovery function is executed.")
+	defer scripts.EnableSecureBuffers()()
 	scriptInput := new(UpdateProviderScriptInput)
 	ReadUpdateProviderScriptInput(scriptInput)
 

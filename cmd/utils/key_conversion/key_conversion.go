@@ -43,6 +43,7 @@ func main() {
 		"This script can be used to get the corresponding BTC address, RSK address, hex private key and WIF " +
 			"private key from a specific private key. Also, it generates a keystore file to contain the provided key.",
 	)
+	defer scripts.EnableSecureBuffers()()
 	scriptInput := new(KeyConversionScriptInput)
 	ReadKeyConversionScriptInput(scriptInput)
 	rskAccount, err := ParseKeyConversionScriptInput(flag.Parse, term.ReadPassword, scriptInput)

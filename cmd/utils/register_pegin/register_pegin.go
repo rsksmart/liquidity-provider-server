@@ -66,6 +66,7 @@ func main() {
 			" In order to execute such refund, an input file with the details of the quote, the LP signature of the quote," +
 			" and the hash of the Bitcoin transaction to be registered must be provided.",
 	)
+	defer scripts.EnableSecureBuffers()()
 	ctx := context.Background()
 
 	scriptInput := new(RegisterPegInScriptInput)
