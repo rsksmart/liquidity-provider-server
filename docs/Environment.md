@@ -1,4 +1,4 @@
-In this section, we will cover how to setup [environment variables](#environment-variables) for the Liquidity Provider Server (LPS), [AWS](#aws-variables), and [other variables configurations](#other-variables).
+In this section, we will cover how to setup environment variables for the Liquidity Provider Server (LPS), [AWS](#aws-variables), and [other variables configurations](#other-variables).
 
 ## LPS Environment Variables
 
@@ -63,7 +63,7 @@ These are the environment variables required by the liquidity provider server (L
 | `PEGOUT_DEPOSIT_CHECK_TIMEOUT` | The time in seconds that the LPS will wait for every pegout deposit check repetition. If not provided default value will be the one defined in timeout.go. | `10` | NO |
 
 ## AWS variables
-You may notice that in `sample-config.env` there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.
+You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.
 
 ## Other variables
-You may notice that in `sample-config.env` there are variables that aren't in the table and don't belong to AWS. Those variables are used to run scripts or to set up the local environment, they should not be present in a productive environment for this application.
+You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are variables that aren't in the table and don't belong to AWS. Those variables are used to run scripts or to set up the local environment, they should not be present in a productive environment for this application.
