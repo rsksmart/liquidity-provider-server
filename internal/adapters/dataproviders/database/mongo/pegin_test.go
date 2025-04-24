@@ -3,7 +3,6 @@ package mongo_test
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -464,12 +463,7 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 		startDateTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 		endDateTime := time.Date(2025, 1, 1, 23, 59, 59, 0, time.UTC)
 
-		criteria := mongo_interfaces.NewCriteria()
-		criteria.AddCondition("hash", mongo_interfaces.IN, hashList)
-		criteria.AddCondition("agreement_timestamp", mongo_interfaces.GTE, startDateTime)
-		criteria.AddCondition("agreement_timestamp", mongo_interfaces.LTE, endDateTime)
-
-		result, err := repo.GetQuotes(context.Background(), criteria)
+		result, err := repo.GetQuotesByHashesAndDate(context.Background(), hashList, startDateTime, endDateTime)
 
 		require.NoError(t, err)
 		assert.Equal(t, expectedQuotes, result)
@@ -481,14 +475,16 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 	t.Run("error reading quotes from DB", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 
-		collection.On("Find", mock.Anything, primitive.M{}, mock.Anything).Return(nil, mongoDb.ErrNoDocuments).Once()
+		collection.On("Find", mock.Anything, mock.Anything).Return(nil, mongoDb.ErrNoDocuments).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
 
-		criteria := mongo_interfaces.NewCriteria()
+		hashList := []string{"27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f"}
+		startDateTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDateTime := time.Date(2025, 1, 1, 23, 59, 59, 0, time.UTC)
 
-		quotes, err := repo.GetQuotes(context.Background(), criteria)
+		quotes, err := repo.GetQuotesByHashesAndDate(context.Background(), hashList, startDateTime, endDateTime)
 		require.Error(t, err)
 		assert.Equal(t, "mongo: no documents in result", err.Error())
 		assert.Nil(t, quotes)
