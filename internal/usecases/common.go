@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
 )
 
 // used for error logging
@@ -58,6 +59,7 @@ const (
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
+	SummariesUseCaseId         UseCaseId = "Summaries"
 )
 
 var (
