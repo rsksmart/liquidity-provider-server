@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -43,11 +42,11 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.T
 		AverageFeePerQuote: entities.NewWei(0),
 	}
 
-	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
 	retainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, states...)
 
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 
 	quoteHashes := make([]string, 0, len(retainedQuotes))
@@ -59,15 +58,10 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.T
 		return response, nil
 	}
 
-	criteria := mongo_interfaces.NewCriteria()
-	criteria.AddCondition("hash", mongo_interfaces.IN, quoteHashes)
-	criteria.AddCondition("agreement_timestamp", mongo_interfaces.GTE, startDate.Unix())
-	criteria.AddCondition("agreement_timestamp", mongo_interfaces.LTE, endDate.Unix())
-
 	quotes, err = useCase.pegoutQuoteRepository.GetQuotesByHashesAndDate(ctx, quoteHashes, startDate, endDate)
 
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 	if len(quotes) == 0 {
 		return response, nil
@@ -78,12 +72,12 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.T
 	response.MaximumQuoteValue = useCase.calculateMaximumQuoteValue(quotes)
 	response.AverageQuoteValue, err = useCase.calculateAverageQuoteValue(quotes)
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 	response.TotalFeesCollected = useCase.calculateTotalFeesCollected(quotes)
 	response.AverageFeePerQuote, err = useCase.calculateAverageFeePerQuote(quotes)
 	if err != nil {
-		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 
 	return response, nil
