@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
@@ -31,7 +30,7 @@ type PeginQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPeginQuote) error
 	GetQuote(ctx context.Context, hash string) (*PeginQuote, error)
 	GetPeginCreationData(ctx context.Context, hash string) PeginCreationData
-	GetQuotes(ctx context.Context, criteria *mongo_interfaces.Criteria) ([]PeginQuote, error)
+	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error

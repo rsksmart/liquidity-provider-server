@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -13,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"regexp"
+	"time"
 )
 
 const (
@@ -111,20 +111,31 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	return &result.PegoutQuote, nil
 }
 
-func (repo *pegoutMongoRepository) GetQuotes(
+func (repo *pegoutMongoRepository) GetQuotesByHashesAndDate(
 	ctx context.Context,
-	criteria *mongo_interfaces.Criteria,
+	hashes []string,
+	startDate, endDate time.Time,
 ) ([]quote.PegoutQuote, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	filter := criteria.ToBson()
-	opts := criteria.GetFindOptions()
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
 
 	collection := repo.conn.Collection(PegoutQuoteCollection)
 	quotesReturn := make([]quote.PegoutQuote, 0)
+	filter := bson.M{
+		"hash": bson.M{"$in": hashes},
+		"agreement_timestamp": bson.M{
+			"$gte": startDate.Unix(),
+			"$lte": endDate.Unix(),
+		},
+	}
 
-	cursor, err := collection.Find(dbCtx, filter, opts)
+	cursor, err := collection.Find(dbCtx, filter)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package pegin
 
 import (
 	"context"
-	mongo_interfaces "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -58,12 +57,7 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 		return response, nil
 	}
 
-	criteria := mongo_interfaces.NewCriteria()
-	criteria.AddCondition("hash", mongo_interfaces.IN, quoteHashes)
-	criteria.AddCondition("agreement_timestamp", mongo_interfaces.GTE, startDate.Unix())
-	criteria.AddCondition("agreement_timestamp", mongo_interfaces.LTE, endDate.Unix())
-
-	quotes, err = useCase.peginQuoteRepository.GetQuotes(ctx, criteria)
+	quotes, err = useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, quoteHashes, startDate, endDate)
 
 	if err != nil {
 		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)

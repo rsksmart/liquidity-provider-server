@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/interfaces"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 const (
@@ -108,21 +108,33 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	return &result.PeginQuote, nil
 }
 
-func (repo *peginMongoRepository) GetQuotes(
+func (repo *peginMongoRepository) GetQuotesByHashesAndDate(
 	ctx context.Context,
-	criteria *mongo_interfaces.Criteria,
+	hashes []string,
+	startDate,
+	endDate time.Time,
 ) ([]quote.PeginQuote, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	filter := criteria.ToBson()
-	opts := criteria.GetFindOptions()
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
+	filter := bson.M{
+		"hash": bson.M{"$in": hashes},
+		"agreement_timestamp": bson.M{
+			"$gte": startDate.Unix(),
+			"$lte": endDate.Unix(),
+		},
+	}
 
 	quotesReturn := make([]quote.PeginQuote, 0)
 
-	cursor, err := collection.Find(dbCtx, filter, opts)
+	cursor, err := collection.Find(dbCtx, filter)
 	if err != nil {
 		return nil, err
 	}
