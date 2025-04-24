@@ -1,8 +1,8 @@
 # Docker Setup for Liquidity Provider Server
 
-The provided docker-compose files can be used to quickly spin up an environment with the Liquidity Provider Server and its dependent services (`bitcoind` and `rskj`) for either `regtest` or `testnet`.
+The provided docker-compose files can be used to quickly spin up an environment with the Liquidity Provider Server and its dependent services (`bitcoind` and `rskj`) for either `regtest` or `testnet`. Note that different environments require different setup files - the regtest environment requires a regtest federation and localstack, making the setup process different from testnet or mainnet.
 
-## Deploy Locally
+## Deploy Locally (Regtest Environment)
 
 * Use scripts located in the `local` directory
 * If there are any changes to the Liquidity Bridge Contracts that you need to deploy locally in your environment, you'll need to:
@@ -20,9 +20,11 @@ The provided docker-compose files can be used to quickly spin up an environment 
 
 ## Deploy on Development Server with Testnet Config
 
+For testnet or mainnet environments, use the docker-compose files directly:
+
 ```bash
-docker-compose --env-file .env.testnet down && 
-docker-compose --env-file .env.testnet build --no-cache && 
+docker-compose --env-file .env.testnet down &&
+docker-compose --env-file .env.testnet build --no-cache &&
 docker-compose --env-file .env.testnet up -d
 ```
 

@@ -15,11 +15,11 @@ To summarize, the LPS has two main APIs:
 - **User/Public API**: This API is used by the user to interact with the LP to agree on a quote.
 - **LP/Management API**: This API is used by the LP to interact with the LPS to perform management operations.
 
-![User fetching LP list](https://raw.githubusercontent.com/rsksmart/liquidity-provider-server/refs/heads/flyover-2.3.0/docs/lp-management/img.png)
+![User fetching LP list](https://raw.githubusercontent.com/rsksmart/liquidity-provider-server/refs/heads/master/docs/lp-management/img.png)
 
 If we zoom in on one LPS:
 
-![Internal view of LPS](https://raw.githubusercontent.com/rsksmart/liquidity-provider-server/refs/heads/flyover-2.3.0/docs/lp-management/img_1.png)
+![Internal view of LPS](https://raw.githubusercontent.com/rsksmart/liquidity-provider-server/refs/heads/master/docs/lp-management/img_1.png)
 
 The fact that the LPS's API is divided into a public one and a private one implies that the Management API has some security requirements that need to be addressed to ensure that it will only be used by the LP. Some of these measures are provided out of the box by the LPS, but some others require additional configuration for the environment where the LPS will run.
 

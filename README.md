@@ -1,4 +1,7 @@
 # Liquidity Provider Server
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
+[![CodeQL](https://github.com/rsksmart/liquidity-provider-server/workflows/CodeQL/badge.svg)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql-analysis.yml)
+[![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/workflows/Liquidity%20Provider%20Server%20CI/badge.svg)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml)
 
 The Liquidity Provider Server (LPS) is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both Rootstock and Bitcoin networks.
 
@@ -6,8 +9,8 @@ Liquidity Providers (LPs) interact with the protocol to perform management opera
 
 ## Actors in the Flyover Protocol
 
-In the Flyover Protocol, there are three main Actors: 
-1. The regular user (user), who is the party interested in executing Peg-In/Peg-Out operations 
+In the Flyover Protocol, there are three main Actors:
+1. The regular user (user), who is the party interested in executing Peg-In/Peg-Out operations
 2. The Liquidity Provider (LP), who provides liquidity to speed up the operation for the user in exchange for a fee as a reward
 3. The integrator who integrates the flyover SDK into their dapp/protocol. In order to do this, the user and the LP need to agree on the terms of the service (a Peg-In/Peg-Out Quote). This implies that the different LPs may offer different quotes, so the user needs to be able to interact with each LP to receive quote details and decide which one is going to be used for the operation.
 
@@ -35,20 +38,20 @@ If you want to play with the code and make modifications to it then run the foll
 ## LPS APIs
 
 The LPS has two main APIs:
-* User/Public API: This API is used by the user to interact with the LP to agree on a quote, the API can be accessed via the Flyover dApp. See [Using the Public API](#using-the-public-api)
+* User/Public API: This API is used by the user to interact with the LP to agree on a quote. See [Using the Public API](#using-the-public-api)
 * LP/Management API: This API is used by the LP to interact with the LPS to perform management operations. It can be accessed via `<LPS URL>/management`. See [LP Management](./management.md) Section
 
 > **Note**
 > The Management UI and Public API share the same server, accessible through the same URL. However, the Management API requires authentication for access, while the Public API does not. While authentication is a security measure, it's still recommended to deploy the Management API behind a [Web Application Firewall (WAF)](https://en.wikipedia.org/wiki/Web_application_firewall) or Virtual Private Network (VPN) for added protection.
 
-API limitations can vary based on the specific infrastructure of each Liquidity Provider Server (LPS). 
+API limitations can vary based on the specific infrastructure of each Liquidity Provider Server (LPS).
 The current implementation does not impose explicit rate limits.
 
 ## Configuring the Liquidity Provider Server
 
 A Liquidity Provider Server acts as a crucial component of the Flyover protocol by managing liquidity between the Bitcoin and Rootstock networks. Interacting directly with the [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract), the LP server fulfills requests for token swaps by holding reserves of both BTC and RBTC. It executes complex operations such as collateral management, fund transfers, and fee adjustments.
 
-By default, the Management API is disabled, and it can be enabled only by setting the `ENABLE_MANAGEMENT_API` environment variable to `true`. This is a security measure to ensure that the API will only be accessible if it is explicitly enabled by the LP (or the person setting up the environment). 
+By default, the Management API is disabled, and it can be enabled only by setting the `ENABLE_MANAGEMENT_API` environment variable to `true`. This is a security measure to ensure that the API will only be accessible if it is explicitly enabled by the LP (or the person setting up the environment).
 
 :::warning[Warning]
 
@@ -80,8 +83,8 @@ P.S.: if you run the server locally you'll see that the docker compose includes 
 ### Using the Public API
 
 Parameters:
-* PUBLIC: accessible by anyone 
-* PRIVATE: only accessible by LP 
+* PUBLIC: accessible by anyone
+* PRIVATE: only accessible by LP
 * ANY: is up to the administrator to set it as private or public
 
 See the [full details of the endpoints](https://github.com/rsksmart/liquidity-provider-server/blob/QA-Test/OpenApi.yml) and how to call them.
@@ -89,7 +92,7 @@ See the [full details of the endpoints](https://github.com/rsksmart/liquidity-pr
 ### Accessing the Management UI
 The LPS provides a Management UI out of the box to facilitate the interaction with the Management API. To go to that UI you just need to go to `<LPS URL>/management` page in your browser.
 
-In order to interact with this API, the LP needs to be authenticated. The authentication mechanism consists in user/password credentials. There is a default credentials pair which is admin as username and a random password that the LPS will generate on its startup in the file management_password.txt inside the temporal directory of your OS. E.g.: `/tmp/management_password.txt`.
+In order to interact with this API, the LP needs to be authenticated. The authentication mechanism consists in user/password credentials. There is a default credentials pair which is admin as username and a random password that the LPS will generate on its startup in the file `management_password.txt` inside the temporal directory of your OS. E.g.: `/tmp/management_password.txt`.
 
 The first time that the LP enters the Management UI he will be asked to provide the default credentials and set the new ones to use from that point to the future. After logging in, the LP will have access to all the operations of the Management API.
 
@@ -108,7 +111,7 @@ The LPS handles two main operations as part of the Flyover protocol:
 The LPS performs operations on behalf of the LP during the process of the protocol, which means that it requires access to both LP's Bitcoin and Rootstock wallets. To be more specific, it requires access to the Rootstock wallet of the LP and by having it, it also has access to the BTC wallet associated with that Rootstock wallet.
 
 ### Initial Bitcoin wallet funding recommendation
-The number of UTXOs available in the Bitcoin wallet of the LP is directly related with the number of PegOuts that the LP can perform in the same block. This is why it is recommended to make the initial funding of the Bitcoin wallet with multiple transactions so there are many UTXOs available for the server to operate. This only applies to the initial funding, because the refunds after every PegOut will generate more UTXOs for the server to use.  
+The number of UTXOs available in the Bitcoin wallet of the LP is directly related with the number of PegOuts that the LP can perform in the same block. This is why it is recommended to make the initial funding of the Bitcoin wallet with multiple transactions so there are many UTXOs available for the server to operate. This only applies to the initial funding, because the refunds after every PegOut will generate more UTXOs for the server to use.
 
 ### LP Refunds
 Since the Flyover Protocol is a repayment protocol, after spending the funds on behalf of the user, the LP receives a refund for the money spent plus a fee for the service. However, there are some specific conditions in order to ensure the correct behavior of all the involved parties, these conditions are:
@@ -121,7 +124,7 @@ To manage wallets effectively, the LPS requires secure access to the LP's Rootst
 The LPS currently offers the following options for managing access to the Rootstock wallet; the preferred integration method is determined by the `WALLET` environment variable setting.
 
 #### Run LPS using local wallet integration
-With this option, the LPS needs access to the wallet's [keystore file](https://ethereum.org/en/glossary/#keystore) and the password to decrypt it. There are multiple ways to provide this information to the LPS, which can be checked in the [secret management section](#secrets-management). With this, the LPS would keep the wallet in memory (with the proper security considerations to prevent the exposure of sensitive data stored in memory) and sign the Rootstock and Bitcoin transactions. It's important to note that with this approach, the knowledge of the private key is inside the organization running the LPS. 
+With this option, the LPS needs access to the wallet's [keystore file](https://ethereum.org/en/glossary/#keystore) and the password to decrypt it. There are multiple ways to provide this information to the LPS, which can be checked in the [secret management section](#secrets-management). With this, the LPS would keep the wallet in memory (with the proper security considerations to prevent the exposure of sensitive data stored in memory) and sign the Rootstock and Bitcoin transactions. It's important to note that with this approach, the knowledge of the private key is inside the organization running the LPS.
 
 Regarding the LP, through the Management UI the LPS allows the LP to perform all the necessary operations related to the protocol, and regarding the wallet itself, the LPS informs both RSK and BTC addresses to which the LP should send funds in order to add liquidity to the wallets.
 
@@ -137,7 +140,7 @@ Using the wallet management option involves working with [secrets](https://githu
 The option to select of the following can be set through the value of the `SECRET_SRC` environment variable:
 
 ### AWS Secrets Manager
-In this option the LPS will get the secrets from [AWS secrets manager service](https://aws.amazon.com/secrets-manager/), this means that the LPS will need to be provided with the AWS keys in any of the ways that the AWS client allows (through a file in home directory, environment variables, etc). In this case, the LPS should receive the name of the secrets to use through the environment variables (that are listed below). This is the recommended option for production environments. 
+In this option the LPS will get the secrets from [AWS secrets manager service](https://aws.amazon.com/secrets-manager/), this means that the LPS will need to be provided with the AWS keys in any of the ways that the AWS client allows (through a file in home directory, environment variables, etc). In this case, the LPS should receive the name of the secrets to use through the environment variables (that are listed below). This is the recommended option for production environments.
 1. KEY_SECRET
 2. PASSWORD_SECRET
 
@@ -151,7 +154,7 @@ Regardless of the option chosen by the LP to handle the wallet management, the L
 * `rsk-wallet`: this wallet will be used to track the UTXOs available to spend with the LP wallet. It requires a rescan of the network, and it only imports the LP public key on the first start of the LPS, after that, it just validates that the wallet is created and the public key is imported
 * `pegin-watchonly-wallet`: this wallet will be used to track the deposit addresses of the accepted PegIn operations. It doesn't require rescan, and it imports a new address every time a PegIn is accepted.
 
-> The LPS expects this watch-only wallets to be unencrypted, there aren't any security implications in this since they handle public information only. 
+> The LPS expects this watch-only wallets to be unencrypted, there aren't any security implications in this since they handle public information only.
 > Regarding the secrets themselves, it is up to the LP to decide the way how those secrets will be fetched for the wallet integration. See [how to manage secrets](https://github.com/rsksmart/liquidity-provider-server/blob/QA-Test/docs/LP-Management.md#secrets-management).
 
 ## LPS Utilities
