@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
+	"time"
 )
 
 const registerCoinbaseTxGasLimit = 100000
@@ -26,6 +27,7 @@ type rskBridgeImpl struct {
 	btcParams             *chaincfg.Params
 	retryParams           RetryParams
 	signer                TransactionSigner
+	miningTimeout         time.Duration
 }
 
 type RskBridgeConfig struct {
@@ -42,6 +44,7 @@ func NewRskBridgeImpl(
 	btcParams *chaincfg.Params,
 	retryParams RetryParams,
 	signer TransactionSigner,
+	miningTimeout time.Duration,
 ) blockchain.RootstockBridge {
 	return &rskBridgeImpl{
 		address:               config.Address,
@@ -53,6 +56,7 @@ func NewRskBridgeImpl(
 		btcParams:             btcParams,
 		retryParams:           retryParams,
 		signer:                signer,
+		miningTimeout:         miningTimeout,
 	}
 }
 
@@ -190,7 +194,7 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params blockchain.Bt
 		GasLimit: registerCoinbaseTxGasLimit,
 	}
 
-	receipt, err := awaitTx(bridge.client, "RegisterBtcCoinbaseTransaction", func() (*geth.Transaction, error) {
+	receipt, err := awaitTx(bridge.client, bridge.miningTimeout, "RegisterBtcCoinbaseTransaction", func() (*geth.Transaction, error) {
 		return bridge.contract.RegisterBtcCoinbaseTransaction(opts, params.BtcTxSerialized, params.BlockHash,
 			params.SerializedPmt, params.WitnessMerkleRoot, params.WitnessReservedValue)
 	})

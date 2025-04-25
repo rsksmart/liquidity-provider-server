@@ -40,7 +40,8 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 	s.Run("Should call registerPegIn after proper confirmations", func() {
 		eventChannel := make(chan *bindings.LiquidityBridgeContractPegInRegistered)
 		var quoteHash [32]byte
-		hashBytes, _ := hex.DecodeString(quote.QuoteHash)
+		hashBytes, err := hex.DecodeString(quote.QuoteHash)
+		s.Require().NoError(err)
 		copy(quoteHash[:], hashBytes)
 		subscription, err := s.lbc.WatchPegInRegistered(
 			nil,
@@ -144,7 +145,8 @@ func callForUserTest(s *IntegrationTestSuite, quote pkg.GetPeginQuoteResponse, a
 	floatAmount, _ := amountToPay.ToRbtc().Float64()
 	btcAmount, err := btcutil.NewAmount(floatAmount)
 	s.NoError(err)
-	amount, _ := btcutil.NewAmount(0.00025)
+	amount, err := btcutil.NewAmount(0.00025)
+	s.NoError(err)
 	err = s.btc.WalletPassphrase(s.config.Btc.WalletPassword, 60)
 	s.Require().NoError(err)
 	err = s.btc.SetTxFee(amount)

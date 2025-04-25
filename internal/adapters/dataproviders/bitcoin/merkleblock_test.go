@@ -7,13 +7,15 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"slices"
 	"testing"
 )
 
 func TestNewMerkleBlock_Witness(t *testing.T) {
 	t.Run("Should build the merkle block for testnet", func(t *testing.T) {
-		txHash, _ := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
+		txHash, err := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
+		require.NoError(t, err)
 		block := getTestBlock(t, testnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
@@ -31,7 +33,8 @@ func TestNewMerkleBlock_Witness(t *testing.T) {
 		}
 	})
 	t.Run("Should build the merkle block for mainnet", func(t *testing.T) {
-		txHash, _ := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
+		txHash, err := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
+		require.NoError(t, err)
 		block := getTestBlock(t, mainnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
@@ -53,7 +56,8 @@ func TestNewMerkleBlock_Witness(t *testing.T) {
 
 func TestNewMerkleBlock_NoWitness(t *testing.T) {
 	t.Run("Should build the merkle block for testnet", func(t *testing.T) {
-		txHash, _ := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
+		txHash, err := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
+		require.NoError(t, err)
 		block := getTestBlock(t, testnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
@@ -71,7 +75,8 @@ func TestNewMerkleBlock_NoWitness(t *testing.T) {
 		}
 	})
 	t.Run("Should build the merkle block for mainnet", func(t *testing.T) {
-		txHash, _ := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
+		txHash, err := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
+		require.NoError(t, err)
 		block := getTestBlock(t, mainnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
@@ -94,9 +99,9 @@ func TestNewMerkleBlock_NoWitness(t *testing.T) {
 func toChainHashSlice(input []string) []*chainhash.Hash {
 	result := make([]*chainhash.Hash, 0)
 	for _, hash := range input {
-		hashBytes, _ := hex.DecodeString(hash[2:])
+		hashBytes, _ := hex.DecodeString(hash[2:]) // nolint:errcheck
 		slices.Reverse(hashBytes)
-		parsedBytes, _ := chainhash.NewHash(hashBytes)
+		parsedBytes, _ := chainhash.NewHash(hashBytes) // nolint:errcheck
 		result = append(result, parsedBytes)
 	}
 	return result

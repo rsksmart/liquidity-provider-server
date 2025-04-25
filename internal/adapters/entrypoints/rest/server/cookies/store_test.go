@@ -25,14 +25,16 @@ func TestUniqueSessionStore_New(t *testing.T) {
 		cookie         *http.Cookie
 		firstSessionId string
 	)
-	k1, _ := hex.DecodeString(key1String)
-	k2, _ := hex.DecodeString(key2String)
+	k1, err := hex.DecodeString(key1String)
+	require.NoError(t, err)
+	k2, err := hex.DecodeString(key2String)
+	require.NoError(t, err)
 	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
 	t.Run("should return an error if the session name is different", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		session, err := store.New(req, test.AnyHash)
+		session, err := store.New(req, test.AnyString)
 		assertDummySession(t, session)
-		require.ErrorContains(t, err, "UniqueSessionStore is expecting cookie session name and received any hash")
+		require.ErrorContains(t, err, "UniqueSessionStore is expecting cookie session name and received any value")
 	})
 	t.Run("should return an new session the first time", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -60,8 +62,10 @@ func TestUniqueSessionStore_New(t *testing.T) {
 		})
 		t.Run("should return error when session not recognized", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			otherId, _ := utils.GetRandomBytes(32)
-			otherCookie, _ := securecookie.EncodeMulti(cookieName, hex.EncodeToString(otherId), securecookie.CodecsFromPairs(k1, k2)...)
+			otherId, err := utils.GetRandomBytes(32)
+			require.NoError(t, err)
+			otherCookie, err := securecookie.EncodeMulti(cookieName, hex.EncodeToString(otherId), securecookie.CodecsFromPairs(k1, k2)...)
+			require.NoError(t, err)
 			req.AddCookie(&http.Cookie{Name: cookieName, Value: otherCookie})
 			session, err := store.New(req, cookieName)
 			assertDummySession(t, session)
@@ -80,8 +84,10 @@ func TestUniqueSessionStore_New(t *testing.T) {
 }
 
 func TestUniqueSessionStore_Get(t *testing.T) {
-	k1, _ := hex.DecodeString(key1String)
-	k2, _ := hex.DecodeString(key2String)
+	k1, err := hex.DecodeString(key1String)
+	require.NoError(t, err)
+	k2, err := hex.DecodeString(key2String)
+	require.NoError(t, err)
 	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	newSession, err := store.New(req, cookieName)
@@ -94,8 +100,10 @@ func TestUniqueSessionStore_Get(t *testing.T) {
 func TestUniqueSessionStore_Save(t *testing.T) {
 	var session *sessions.Session
 	var err error
-	k1, _ := hex.DecodeString(key1String)
-	k2, _ := hex.DecodeString(key2String)
+	k1, err := hex.DecodeString(key1String)
+	require.NoError(t, err)
+	k2, err := hex.DecodeString(key2String)
+	require.NoError(t, err)
 	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -130,8 +138,10 @@ func TestUniqueSessionStore_Save(t *testing.T) {
 }
 
 func TestUniqueSessionStore_CloseUniqueSession(t *testing.T) {
-	k1, _ := hex.DecodeString(key1String)
-	k2, _ := hex.DecodeString(key2String)
+	k1, err := hex.DecodeString(key1String)
+	require.NoError(t, err)
+	k2, err := hex.DecodeString(key2String)
+	require.NoError(t, err)
 	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	res := httptest.NewRecorder()

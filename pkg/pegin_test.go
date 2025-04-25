@@ -59,6 +59,56 @@ func TestToPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
 }
 
+func TestFromPeginQuoteDTO(t *testing.T) {
+	dto := pkg.PeginQuoteDTO{
+		FedBTCAddr:         "0x12",
+		LBCAddr:            "0x34",
+		LPRSKAddr:          "0x56",
+		BTCRefundAddr:      "btc1",
+		RSKRefundAddr:      "0x90",
+		LPBTCAddr:          "btc2",
+		CallFee:            5,
+		PenaltyFee:         10,
+		ContractAddr:       "0xab",
+		Data:               "cd",
+		GasLimit:           15,
+		Nonce:              20,
+		Value:              25,
+		AgreementTimestamp: 25,
+		TimeForDeposit:     30,
+		LpCallTime:         35,
+		Confirmations:      40,
+		CallOnRegister:     true,
+		GasFee:             45,
+		ProductFeeAmount:   50,
+	}
+	peginQuote := pkg.FromPeginQuoteDTO(dto)
+
+	assert.Equal(t, dto.FedBTCAddr, peginQuote.FedBtcAddress)
+	assert.Equal(t, dto.LBCAddr, peginQuote.LbcAddress)
+	assert.Equal(t, dto.LPRSKAddr, peginQuote.LpRskAddress)
+	assert.Equal(t, dto.BTCRefundAddr, peginQuote.BtcRefundAddress)
+	assert.Equal(t, dto.RSKRefundAddr, peginQuote.RskRefundAddress)
+	assert.Equal(t, dto.LPBTCAddr, peginQuote.LpBtcAddress)
+	assert.Equal(t, entities.NewUWei(dto.CallFee), peginQuote.CallFee)
+	assert.Equal(t, entities.NewUWei(dto.PenaltyFee), peginQuote.PenaltyFee)
+	assert.Equal(t, dto.ContractAddr, peginQuote.ContractAddress)
+	assert.Equal(t, dto.Data, peginQuote.Data)
+	assert.Equal(t, dto.GasLimit, peginQuote.GasLimit)
+	assert.Equal(t, dto.Nonce, peginQuote.Nonce)
+	assert.Equal(t, entities.NewUWei(dto.Value), peginQuote.Value)
+	assert.Equal(t, dto.AgreementTimestamp, peginQuote.AgreementTimestamp)
+	assert.Equal(t, dto.TimeForDeposit, peginQuote.TimeForDeposit)
+	assert.Equal(t, dto.LpCallTime, peginQuote.LpCallTime)
+	assert.Equal(t, dto.Confirmations, peginQuote.Confirmations)
+	assert.Equal(t, dto.CallOnRegister, peginQuote.CallOnRegister)
+	assert.Equal(t, entities.NewUWei(dto.GasFee), peginQuote.GasFee)
+	assert.Equal(t, dto.ProductFeeAmount, peginQuote.ProductFeeAmount)
+	const expectedFields = 20
+	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
+	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
+}
+
 func TestToRetainedPeginQuoteDTO(t *testing.T) {
 	peginQuote := quote.RetainedPeginQuote{
 		QuoteHash:           "0x12",

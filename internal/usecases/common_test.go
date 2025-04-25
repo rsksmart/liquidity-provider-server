@@ -27,7 +27,7 @@ type rpcMock struct {
 
 func (m *rpcMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
 	args := m.Called(ctx, addr, value, data)
-	return args.Get(0).(*entities.Wei), args.Error(1)
+	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
 }
 
 type bridgeMock struct {
@@ -37,7 +37,7 @@ type bridgeMock struct {
 
 func (m *bridgeMock) GetMinimumLockTxValue() (*entities.Wei, error) {
 	args := m.Called()
-	return args.Get(0).(*entities.Wei), args.Error(1)
+	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
 }
 
 func TestCalculateDaoAmounts(t *testing.T) {
@@ -81,7 +81,8 @@ func TestCalculateDaoAmounts(t *testing.T) {
 	}
 
 	test.RunTable(t, cases, func(args testArgs) u.DaoAmounts {
-		amounts, _ := u.CalculateDaoAmounts(ctx, &rpc, args.value, args.percentage, feeCollectorAddress)
+		amounts, err := u.CalculateDaoAmounts(ctx, &rpc, args.value, args.percentage, feeCollectorAddress)
+		require.NoError(t, err)
 		return amounts
 	})
 

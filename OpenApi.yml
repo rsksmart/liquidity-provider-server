@@ -604,6 +604,20 @@ components:
       - refundPegoutTxHash
       - bridgeRefundTxHash
       type: object
+    ServerInfoDTO:
+      properties:
+        revision:
+          description: Version commit hash
+          example: b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d
+          type: string
+        version:
+          description: Server version tag
+          example: v1.0.0
+          type: string
+      required:
+      - version
+      - revision
+      type: object
     Services:
       properties:
         btc:
@@ -983,6 +997,17 @@ paths:
                 $ref: '#/components/schemas/DepositEventDTO'
           description: Successfully retrieved the user quotes
       summary: GetUserQuotes
+  /version:
+    get:
+      description: ' Returns the server version and revision'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfoDTO'
+          description: ""
+      summary: Get server version
 servers:
 - description: ' Testnet'
   url: https://lps.testnet.flyover.rif.technology

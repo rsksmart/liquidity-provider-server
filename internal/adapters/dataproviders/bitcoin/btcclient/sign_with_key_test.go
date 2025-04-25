@@ -17,7 +17,7 @@ var (
 )
 
 func TestFutureSignRawTransactionWithKeyResult_Receive(t *testing.T) {
-	channel := make(btcclient.FutureSignRawTransactionWithKeyResult, 0)
+	channel := make(btcclient.FutureSignRawTransactionWithKeyResult)
 	responseBytes := signWithKeyResponse
 	res := &rpcclient.Response{}
 

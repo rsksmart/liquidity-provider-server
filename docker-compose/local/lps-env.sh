@@ -2,6 +2,27 @@
 
 set -e
 
+COMMIT_HASH=$(git rev-parse HEAD)
+COMMIT_TAG=$(git describe --exact-match --tags || echo "")
+export COMMIT_HASH
+export COMMIT_TAG
+
+# Detect OS
+OS_TYPE="$(uname)"
+
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    # macOS
+    echo "Running on macOS"
+    SED_INPLACE=("sed" "-i" "")
+elif [[ "$OS_TYPE" == "Linux" ]]; then
+    # Assume Ubuntu or other Linux
+    echo "Running on Linux"
+    SED_INPLACE=("sed" "-i")
+else
+    echo "Unsupported OS: $OS_TYPE"
+    exit 1
+fi
+
 if [ -z "${LPS_STAGE}" ]; then
   echo "LPS_STAGE is not set. Exit 1"
   exit 1
@@ -16,7 +37,8 @@ else
 fi
 
 if [ -z "${LPS_UID}" ]; then
-  export LPS_UID=$(id -u)
+  LPS_UID=$(id -u)
+  export LPS_UID
   if [ "$LPS_UID" = "0" ]; then
     echo "Please set LPS_UID env var or run as a non-root user"
     exit 1
@@ -25,6 +47,10 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
+# Force Management API to be enabled
+if [ -f "$ENV_FILE" ]; then
+  "${SED_INPLACE[@]}" 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+fi
 
 SCRIPT_CMD=$1
 if [ -z "${SCRIPT_CMD}" ]; then
@@ -58,7 +84,7 @@ elif [ "$SCRIPT_CMD" = "deploy" ]; then
   exit 0
 elif [ "$SCRIPT_CMD" = "import-rsk-db" ]; then
   echo "Importing rsk db..."
-  docker compose --env-file "$ENV_FILE" run -d rskj java -Xmx6g -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=rskj -cp rskj-core.jar co.rsk.Start --${LPS_STAGE} --import
+  docker compose --env-file "$ENV_FILE" run -d rskj java -Xmx6g -Drpc.providers.web.http.bind_address=0.0.0.0 -Drpc.providers.web.http.hosts.0=localhost -Drpc.providers.web.http.hosts.1=rskj -cp rskj-core.jar co.rsk.Start --"${LPS_STAGE}" --import
   exit 0
 elif [ "$SCRIPT_CMD" = "start-bitcoind" ]; then
   echo "Starting bitcoind..."
@@ -90,7 +116,7 @@ echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_H
 # start bitcoind and RSKJ dependant services
 docker compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
 
-# read env vars
+# shellcheck disable=SC1090
 . ./"$ENV_FILE"
 
 echo "Waiting for RskJ to be up and running..."
@@ -127,8 +153,6 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
 
 if [ "$LPS_STAGE" = "regtest" ]; then
-  PROVIDER_RSK_ADDR_LINE=$(cat "$ENV_FILE" | grep "$LIQUIDITY_PROVIDER_RSK_ADDR" | head -n 1 | tr -d '\r')
-  PROVIDER_RSK_ADDR="${PROVIDER_RSK_ADDR_LINE#"$LIQUIDITY_PROVIDER_RSK_ADDR="}"
   PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
   if [ "$PROVIDER_TX_COUNT" = "0x0" ]; then
     echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
@@ -160,11 +184,11 @@ echo "LBC deployed at $LBC_ADDR"
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
 
-docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build --build-arg COMMIT_HASH="$(git rev-parse HEAD)" lps
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
 FAIL=true
-for i in {1..10}
+for _ in $(seq 1 10);
 do
   sleep 5
   curl -s "http://localhost:8080/health" \
@@ -181,24 +205,36 @@ if [ "$FAIL" = true ]; then
 fi
 
 rm -f cookie_jar.txt
-MANAGEMENT_PWD=$(docker exec lps01 cat /tmp/management_password.txt)
-CSRF_TOKEN=$(curl -s -c cookie_jar.txt -H 'Content-Type: application/json' \
-                          -H 'Accept: */*' \
-                          -H 'Connection: keep-alive' \
-                          -H 'Content-Type: application/json' \
-                          -H 'Origin: http://localhost:8080' \
-                          -H 'Sec-Fetch-Dest: empty' \
-                          -H 'Sec-Fetch-Mode: cors' \
-                          -H 'Sec-Fetch-Site: same-origin' \
+
+PASSWORD_FILE_PATH="/tmp/management_password.txt"
+
+echo "Checking for management_password.txt..."
+if ! docker exec lps01 test -f "$PASSWORD_FILE_PATH"; then
+  echo "management_password.txt not found. Skipping configuration steps"
+  exit 0
+fi
+
+echo "management_password.txt found. Proceeding with configuration."
+
+MANAGEMENT_PWD=$(docker exec lps01 cat "$PASSWORD_FILE_PATH")
+
+CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
+                      -H 'Accept: */*' \
+                      -H 'Connection: keep-alive' \
+                      -H 'Content-Type: application/json' \
+                      -H 'Origin: http://localhost:8080' \
+                      -H 'Sec-Fetch-Dest: empty' \
+                      -H 'Sec-Fetch-Mode: cors' \
+                      -H 'Sec-Fetch-Site: same-origin' \
   "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
+# shellcheck disable=SC2001
 CSRF_TOKEN=$(echo "$CSRF_TOKEN" | sed 's/&#43;/+/g')
 curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -207,15 +243,14 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/lo
   --data "{
      \"username\": \"admin\",
      \"password\": \"$MANAGEMENT_PWD\"
-  }"
+  }" || { echo "Error: login to Management UI failed"; exit 1; }
 
 echo "Setting up general regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -239,15 +274,14 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/configuration' \
           },
           "publicLiquidityCheck": true
       }
-  }'
+  }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 
 echo "Setting up pegin regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -262,15 +296,14 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
           "maxValue": "10000000000000000000",
           "minValue": "600000000000000000"
       }
-  }'
+  }' || { echo "Error in configuring pegin regtest configuration"; exit 1; }
 
 echo "Setting up pegout regtest configuration"
-curl -s -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Content-Type: application/json' \
   -H 'Origin: http://localhost:8080' \
   -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
@@ -287,4 +320,4 @@ curl -s -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
           "expireBlocks": 500,
           "bridgeTransactionMin": "1500000000000000000"
       }
-  }'
+  }' || { echo "Error in configuring pegout regtest configuration"; exit 1; }

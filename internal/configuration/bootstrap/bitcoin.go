@@ -95,6 +95,6 @@ func checkBtcdVersion(c *rpcclient.Client) (int32, error) {
 		}
 		return unknownBtcdVersion, nil
 	} else {
-		return 0, fmt.Errorf("unable to detect btcd version: %w", networkErr)
+		return 0, fmt.Errorf("unable to detect btcd version: %w", err)
 	}
 }

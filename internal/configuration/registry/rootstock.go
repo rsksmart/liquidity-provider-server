@@ -15,7 +15,7 @@ type Rootstock struct {
 	Client    *rootstock.RskClient
 }
 
-func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory) (*Rootstock, error) {
+func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory, timeouts environment.ApplicationTimeouts) (*Rootstock, error) {
 	var bridgeAddress, lbcAddress common.Address
 	var err error
 
@@ -58,6 +58,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				btcParams,
 				rootstock.DefaultRetryParams,
 				wallet,
+				timeouts.MiningWait.Seconds(),
 			),
 			Lbc: rootstock.NewLiquidityBridgeContractImpl(
 				client,
@@ -65,6 +66,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				rootstock.NewLbcAdapter(lbc),
 				wallet,
 				rootstock.DefaultRetryParams,
+				timeouts.MiningWait.Seconds(),
 			),
 			FeeCollector: rootstock.NewFeeCollectorImpl(rootstock.NewLbcAdapter(lbc), rootstock.DefaultRetryParams),
 		},

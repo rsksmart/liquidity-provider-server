@@ -1,0 +1,26 @@
+{
+  "quote": {
+    "fedBTCAddr": "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p",
+    "lbcAddr": "0x7557fcE0BbFAe81a9508FF469D481f2c72a8B5f3",
+    "lpRSKAddr": "0x9d93929a9099be4355fc2389fbf253982f9df47c",
+    "btcRefundAddr": "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8",
+    "rskRefundAddr": "0x79568c2989232dCa1840087D73d403602364c0D4",
+    "lpBTCAddr": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6",
+    "callFee": 10000000000000000,
+    "penaltyFee": 1000000000000000,
+    "contractAddr": "0x79568c2989232dCa1840087D73d403602364c0D4",
+    "data": "",
+    "gasLimit": 46000,
+    "nonce": 8941842587185974000,
+    "value": 600000000000000000,
+    "agreementTimestamp": 1732101992,
+    "timeForDeposit": 3600,
+    "lpCallTime": 7200,
+    "confirmations": 10,
+    "callOnRegister": false,
+    "gasFee": 0,
+    "productFeeAmount": 0
+  },
+  "signature": "7290e2c28751d7e4ba2ea5fe5f8b1d3a0bfcd55089fddc0e74fe6809afb8195622801d2dd8267ea3cc4088f5e4b133e0e22dcc403ee0f838efbb277f493c8cde1b",
+  "btcTxHash": "e57767cefb13bb962e9729d99adbb7147f6054af6e8f4d7c4cd47e74cf9ccaa4"
+}

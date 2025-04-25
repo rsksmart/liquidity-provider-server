@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
@@ -29,7 +30,7 @@ const (
 	AnyRskAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
 	AnyBtcAddress = "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe"
 	AnyString     = "any value"
-	AnyHash       = "any hash"
+	AnyHash       = "d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb"
 	AnyUrl        = "url.com"
 	keyPath       = "../../docker-compose/localstack/local-key.json"
 	KeyPassword   = "test"
@@ -55,12 +56,23 @@ func RunTable[V, R any](t *testing.T, table Table[V, R], validationFunction func
 func CountNonZeroValues(aStruct any) int {
 	value := reflect.ValueOf(aStruct)
 	count := 0
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
 	for i := 0; i < value.NumField(); i++ {
 		if !value.Field(i).IsZero() {
 			count++
 		}
 	}
 	return count
+}
+
+func AssertNonZeroValues(t *testing.T, aStruct any) {
+	structType := reflect.TypeOf(aStruct)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	require.Equal(t, structType.NumField(), CountNonZeroValues(aStruct))
 }
 
 type ThreadSafeBuffer struct {
@@ -167,4 +179,21 @@ func ReadFile(t *testing.T, path string) []byte {
 	fileBytes, err := io.ReadAll(file)
 	require.NoError(t, err)
 	return fileBytes
+}
+
+// WriteTestFile writes a file to the temp directory with the given name and content, returning the path to the file.
+// The file is written with 0644 permissions.
+func WriteTestFile(t *testing.T, name string, content []byte) string {
+	tempDir := os.TempDir()
+	testFile := filepath.Join(tempDir, name)
+	if _, err := os.Stat(testFile); err == nil {
+		require.NoError(t, os.Remove(testFile))
+	}
+	err := os.WriteFile(testFile, content, os.FileMode(0644))
+	require.NoError(t, err)
+	return filepath.Join(tempDir, name)
+}
+
+func ResetFlagSet() {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
