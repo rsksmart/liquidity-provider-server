@@ -15,7 +15,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/ethereum/go-ethereum v1.14.13
 	github.com/go-playground/validator/v10 v10.17.0
-	github.com/gorilla/csrf v1.7.3
+	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/securecookie v1.1.2
