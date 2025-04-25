@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
 // NewGetReportSummariesHandler handles GET /report/summaries
@@ -14,7 +15,7 @@ import (
 // @Description Returns financial data for a given period
 // @Param startDate query string true "Start date in YYYY-MM-DD format" Format(date)
 // @Param endDate query string true "End date in YYYY-MM-DD format" Format(date)
-// @Success 200 {object} liquidity_provider.SummaryResult "Financial data for the given period"
+// @Success 200 {object} pkg.SummaryResultDTO "Financial data for the given period"
 // @Router /report/summaries [get]
 func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -39,6 +40,7 @@ func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) 
 				rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false))
 			return
 		}
-		rest.JsonResponseWithBody(w, http.StatusOK, &response)
+		dto := pkg.ToSummaryResultDTO(response)
+		rest.JsonResponseWithBody(w, http.StatusOK, &dto)
 	}
 }

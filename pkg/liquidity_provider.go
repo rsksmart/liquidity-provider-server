@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	lp "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 )
 
 type ProviderDetail struct {
@@ -92,6 +93,44 @@ type AvailableLiquidityDTO struct {
 type ServerInfoDTO struct {
 	Version  string `json:"version" example:"v1.0.0" description:"Server version tag"  required:""`
 	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
+}
+
+type SummaryDataDTO struct {
+	TotalQuotesCount          int64    `json:"totalQuotesCount"`
+	AcceptedQuotesCount       int64    `json:"acceptedQuotesCount"`
+	PaidQuotesCount           int64    `json:"paidQuotesCount"`
+	PaidQuotesAmount          *big.Int `json:"paidQuotesAmount"`
+	TotalAcceptedQuotedAmount *big.Int `json:"totalAcceptedQuotedAmount"`
+	TotalFeesCollected        *big.Int `json:"totalFeesCollected"`
+	RefundedQuotesCount       int64    `json:"refundedQuotesCount"`
+	TotalPenaltyAmount        *big.Int `json:"totalPenaltyAmount"`
+	LpEarnings                *big.Int `json:"lpEarnings"`
+}
+
+type SummaryResultDTO struct {
+	PeginSummary  SummaryDataDTO `json:"peginSummary"`
+	PegoutSummary SummaryDataDTO `json:"pegoutSummary"`
+}
+
+func ToSummaryDataDTO(data lp.SummaryData) SummaryDataDTO {
+	return SummaryDataDTO{
+		TotalQuotesCount:          data.TotalQuotesCount,
+		AcceptedQuotesCount:       data.AcceptedQuotesCount,
+		PaidQuotesCount:           data.PaidQuotesCount,
+		PaidQuotesAmount:          data.PaidQuotesAmount.AsBigInt(),
+		TotalAcceptedQuotedAmount: data.TotalAcceptedQuotedAmount.AsBigInt(),
+		TotalFeesCollected:        data.TotalFeesCollected.AsBigInt(),
+		RefundedQuotesCount:       data.RefundedQuotesCount,
+		TotalPenaltyAmount:        data.TotalPenaltyAmount.AsBigInt(),
+		LpEarnings:                data.LpEarnings.AsBigInt(),
+	}
+}
+
+func ToSummaryResultDTO(result lp.SummaryResult) SummaryResultDTO {
+	return SummaryResultDTO{
+		PeginSummary:  ToSummaryDataDTO(result.PeginSummary),
+		PegoutSummary: ToSummaryDataDTO(result.PegoutSummary),
+	}
 }
 
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {

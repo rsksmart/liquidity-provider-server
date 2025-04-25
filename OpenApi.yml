@@ -520,6 +520,7 @@ components:
     ProviderDetail:
       properties:
         fee:
+          deprecated: true
           type: integer
         feePercentage:
           type: number

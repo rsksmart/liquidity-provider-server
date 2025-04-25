@@ -266,6 +266,6 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	if err := retainedCursor.Err(); err != nil {
 		return result, err
 	}
-	logDbInteraction(Read, result)
+	logDbInteraction(Read, len(result))
 	return result, nil
 }
