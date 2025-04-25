@@ -23,6 +23,7 @@ type Environment struct {
 	Provider         ProviderEnv
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
+	Timeouts         TimeoutEnv
 }
 
 type MongoEnv struct {
@@ -55,6 +56,19 @@ type BtcEnv struct {
 	Username string `env:"BTC_USERNAME" validate:"required"`
 	Password string `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint string `env:"BTC_ENDPOINT" validate:"required"`
+}
+
+type TimeoutEnv struct {
+	Bootstrap           uint64 `env:"BOOTSTRAP_TIMEOUT"`
+	WatcherPreparation  uint64 `env:"WATCHER_PREPARATION_TIMEOUT"`
+	WatcherValidation   uint64 `env:"WATCHER_VALIDATION_TIMEOUT"`
+	DatabaseInteraction uint64 `env:"DATABASE_INTERACTION_TIMEOUT"`
+	MiningWait          uint64 `env:"MINING_WAIT_TIMEOUT"`
+	DatabaseConnection  uint64 `env:"DATABASE_CONNECTION_TIMEOUT"`
+	ServerReadHeader    uint64 `env:"SERVER_READ_HEADER_TIMEOUT"`
+	ServerWrite         uint64 `env:"SERVER_WRITE_TIMEOUT"`
+	ServerIdle          uint64 `env:"SERVER_IDLE_TIMEOUT"`
+	PegoutDepositCheck  uint64 `env:"PEGOUT_DEPOSIT_CHECK_TIMEOUT"`
 }
 
 func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {

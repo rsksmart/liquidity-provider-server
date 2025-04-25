@@ -23,6 +23,7 @@ build/
 /utils/*
 /**/.env.regtest
 /**/gh_token.txt
+/**/geth_keystore/
 /**/local/cookie_jar.txt
 !sample-config.env
 /**/*.env

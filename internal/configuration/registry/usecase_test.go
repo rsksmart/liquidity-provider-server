@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNewUseCaseRegistry(t *testing.T) {
@@ -25,13 +26,13 @@ func TestNewUseCaseRegistry(t *testing.T) {
 
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
-		conn := mongo.NewConnection(client)
+		conn := mongo.NewConnection(client, time.Duration(1))
 		dbRegistry := registry.NewDatabaseRegistry(conn)
 
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		walletFactoryMock.On("RskWallet").Return(new(mocks.RskSignerWalletMock), nil)
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 
 		connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))

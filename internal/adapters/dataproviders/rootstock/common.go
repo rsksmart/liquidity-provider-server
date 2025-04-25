@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"errors"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,9 +14,8 @@ import (
 )
 
 const (
-	rpcCallRetryMax     = 3
-	rpcCallRetrySleep   = 1 * time.Minute
-	txMiningWaitTimeout = 2 * time.Minute
+	rpcCallRetryMax   = 3
+	rpcCallRetrySleep = 1 * time.Minute
 )
 
 var DefaultRetryParams = RetryParams{
@@ -92,27 +92,39 @@ func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, err
 	return result, err
 }
 
-func awaitTx(client RpcClientBinding, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
-	return awaitTxWithCtx(client, logName, context.Background(), txCall)
+func awaitTx(client RpcClientBinding, miningTimeout time.Duration, logName string, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+	return AwaitTxWithCtx(client, miningTimeout, logName, context.Background(), txCall)
 }
 
-func awaitTxWithCtx(client RpcClientBinding, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (r *geth.Receipt, e error) {
+func AwaitTxWithCtx(client RpcClientBinding, miningTimeout time.Duration, logName string, ctx context.Context, txCall func() (*geth.Transaction, error)) (*geth.Receipt, error) {
 	var tx *geth.Transaction
 	var err error
 
 	log.Infof("Executing %s transaction...", logName)
+	deadline, ok := ctx.Deadline()
+	if ok {
+		log.Debugf("Waiting for transaction to be mined until %v...", deadline)
+	}
 	tx, err = txCall()
 	if err != nil {
 		return nil, err
+	} else if tx == nil {
+		return nil, errors.New("invalid transaction")
 	}
-	ctx, cancel := context.WithTimeout(ctx, txMiningWaitTimeout)
-	defer func() {
-		cancel()
-		if r.Status == 1 {
-			log.Infof("Transaction %s (%s) executed successfully\n", logName, tx.Hash().String())
-		} else {
-			log.Infof("Transaction %s (%s) failed\n", logName, tx.Hash().String())
-		}
-	}()
-	return bind.WaitMined(ctx, client, tx)
+
+	ctx, cancel := context.WithTimeout(ctx, miningTimeout)
+	defer cancel()
+
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if err != nil || receipt == nil {
+		log.Infof("Error waiting for transaction %s (%s) to be mined: %v", logName, tx.Hash().String(), err)
+		return nil, err
+	}
+
+	if receipt.Status == 1 {
+		log.Infof("Transaction %s (%s) executed successfully", logName, tx.Hash().String())
+	} else {
+		log.Infof("Transaction %s (%s) reverted", logName, tx.Hash().String())
+	}
+	return receipt, nil
 }

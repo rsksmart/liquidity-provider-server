@@ -149,7 +149,7 @@ func (s *IntegrationTestSuite) setupRsk() error {
 func (s *IntegrationTestSuite) AssertFields(expectedFields []string, object map[string]any) {
 	for _, field := range expectedFields {
 		_, exists := object[field]
-		s.Require().True(exists, fmt.Sprintf("Field %v is missing", field))
+		s.Require().True(exists, "Field %v is missing", field)
 	}
 }
 

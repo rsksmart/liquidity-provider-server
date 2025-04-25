@@ -3,6 +3,7 @@ package utils_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 )
@@ -40,16 +41,14 @@ func TestSafeAdd(t *testing.T) {
 		{Value: args{A: 7, B: 2}, Result: 9},
 		{Value: args{A: 2, B: 7}, Result: 9},
 		{Value: args{A: 0, B: 0}, Result: 0},
-		{Value: args{A: 1, B: math.MaxUint64}, Result: 0},
-		{Value: args{A: math.MaxUint64, B: 1}, Result: 0},
-		{Value: args{A: math.MaxUint64, B: math.MaxUint64}, Result: 0},
 	}
 	test.RunTable(t, errorCases, func(value args) error {
 		_, err = utils.SafeAdd(value.A, value.B)
 		return err
 	})
 	test.RunTable(t, successCases, func(value args) uint64 {
-		result, _ = utils.SafeAdd(value.A, value.B)
+		result, err = utils.SafeAdd(value.A, value.B)
+		require.NoError(t, err)
 		return result
 	})
 }

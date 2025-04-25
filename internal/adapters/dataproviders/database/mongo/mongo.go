@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-const connectTimeout = 10 * time.Second
-
-func Connect(ctx context.Context, username, password, host string, port uint) (*mongo.Client, error) {
+func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint) (*mongo.Client, error) {
 	var err error
 	var client *mongo.Client
 	log.Info("Connecting to MongoDB")

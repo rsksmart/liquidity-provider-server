@@ -61,8 +61,6 @@ func TestSetPegoutConfigUseCase_Run_ValidateBridgeMin(t *testing.T) {
 
 	useCase := liquidity_provider.NewSetPegoutConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
 
-	invalidMock := pegoutConfigMock.Value
-	invalidMock.BridgeTransactionMin = entities.NewWei(5)
 	err := useCase.Run(context.Background(), pegoutConfigMock.Value)
 	require.ErrorIs(t, err, usecases.TxBelowMinimumError)
 	lpRepository.AssertExpectations(t)

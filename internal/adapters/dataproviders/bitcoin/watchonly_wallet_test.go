@@ -204,7 +204,7 @@ func TestWatchOnlyWallet_GetTransactions(t *testing.T) {
 
 		parsedAddress, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
 		require.NoError(t, err)
-		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
 		client.On("ListUnspentMinMaxAddresses", 0, 9999999, []btcutil.Address{parsedAddress}).Return(result, nil).Once()
 		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
 		require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestWatchOnlyWallet_GetTransactions(t *testing.T) {
 	})
 	t.Run("Error on RPC call", func(t *testing.T) {
 		client := &mocks.ClientAdapterMock{}
-		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Times(5)
 		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
 		require.NoError(t, err)
 		transactions, err := wallet.GetTransactions("invalidAddress")
@@ -255,7 +255,7 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 	t.Run("valid address", func(t *testing.T) {
 		client := &mocks.ClientAdapterMock{}
 		client.On("ImportAddressRescan", testnetAddress, "", false).Return(nil).Once()
-		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
 		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
 		require.NoError(t, err)
 		err = wallet.ImportAddress(testnetAddress)
@@ -264,7 +264,7 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 
 		client = &mocks.ClientAdapterMock{}
 		client.On("ImportAddressRescan", mainnetAddress, "", false).Return(nil).Once()
-		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
 		wallet, err = bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.MainNetParams, client, bitcoin.PeginWalletId))
 		require.NoError(t, err)
 		err = wallet.ImportAddress(mainnetAddress)

@@ -1,7 +1,9 @@
-FROM --platform=linux/amd64 golang:1.22.8@sha256:0ca97f4ab335f4b284a5b8190980c7cdc21d320d529f2b643e8a8733a69bfb6b AS builder
+FROM --platform=linux/amd64 golang:1.23.8@sha256:e54daaadd35ebb90fc1404ecdc6eb7338ae13555f71a71856ad96976ae084e44 AS builder
 
 ARG COMMIT_HASH
-ENV COMMIT_HASH=${COMMIT_HASH}
+ARG COMMIT_TAG
+ENV COMMIT_HASH_VALUE=${COMMIT_HASH}
+ENV COMMIT_TAG_VALUE=${COMMIT_TAG}
 
 WORKDIR /code
 
@@ -10,7 +12,12 @@ COPY cmd ./cmd
 COPY pkg ./pkg
 COPY internal ./internal
 
-RUN make build
+RUN if [[ "$LPS_STAGE" != "regtest" ]]; \
+    then test -n "$COMMIT_TAG_VALUE" && \
+    test -n "$COMMIT_HASH_VALUE" &&     \
+    make build;                         \
+    else make build;                    \
+    fi
 
 FROM --platform=linux/amd64 alpine:3.19.1@sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b
 

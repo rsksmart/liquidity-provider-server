@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"strings"
 	"testing"
 	"time"
 )
@@ -127,7 +126,7 @@ func TestUpdatePegoutQuoteDepositUseCase_Run_NotValid(t *testing.T) {
 			quoteReporitory.AssertNotCalled(t, "UpsertPegoutDeposit")
 			assert.Equal(t, quote.WatchedPegoutQuote{}, watchedPegoutQuote)
 			require.Error(t, err)
-			assert.True(t, strings.Contains(err.Error(), "deposit not valid for quote"))
+			assert.Contains(t, err.Error(), "deposit not valid for quote")
 		})
 	}
 }

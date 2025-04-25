@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	dbTimeout = 3 * time.Second
-	DbName    = "flyover"
+	DbName = "flyover"
 )
 
 type DbInteraction string
@@ -36,13 +35,14 @@ func logDbInteraction(interaction DbInteraction, value any) {
 }
 
 type Connection struct {
-	client DbClientBinding
-	db     DbBinding
+	client  DbClientBinding
+	db      DbBinding
+	timeout time.Duration
 }
 
-func NewConnection(client DbClientBinding) *Connection {
+func NewConnection(client DbClientBinding, timeout time.Duration) *Connection {
 	db := client.Database(DbName)
-	return &Connection{client: client, db: db}
+	return &Connection{client: client, db: db, timeout: timeout}
 }
 
 func (c *Connection) GetDb() DbBinding {
@@ -54,7 +54,7 @@ func (c *Connection) Collection(collection string) CollectionBinding {
 }
 
 func (c *Connection) Shutdown(closeChannel chan<- bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	err := c.client.Disconnect(ctx)
 
 	cancel()

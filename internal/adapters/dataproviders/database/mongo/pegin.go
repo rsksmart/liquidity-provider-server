@@ -30,7 +30,7 @@ type StoredPeginQuote struct {
 }
 
 func (repo *peginMongoRepository) InsertQuote(ctx context.Context, hash string, peginQuote quote.PeginQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(PeginQuoteCollection)
 	storedQuote := StoredPeginQuote{
@@ -48,8 +48,12 @@ func (repo *peginMongoRepository) InsertQuote(ctx context.Context, hash string, 
 
 func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PeginQuote, error) {
 	var result StoredPeginQuote
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
@@ -66,8 +70,12 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 
 func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
 	var result quote.RetainedPeginQuote
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		return nil, err
+	}
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
@@ -83,7 +91,7 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 }
 
 func (repo *peginMongoRepository) InsertRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	_, err := collection.InsertOne(dbCtx, retainedQuote)
@@ -96,7 +104,7 @@ func (repo *peginMongoRepository) InsertRetainedQuote(ctx context.Context, retai
 }
 
 func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
@@ -117,7 +125,7 @@ func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retai
 
 func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
 	result := make([]quote.RetainedPeginQuote, 0)
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
@@ -134,7 +142,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 }
 
 func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, dbTimeout*2)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()
 
 	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}

@@ -61,7 +61,8 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	btcTxHash := "0x5b5c5d"
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	require.NoError(t, err)
 	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
@@ -105,7 +106,7 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	lbc.On("IsPegOutQuoteCompleted", sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 
 	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
+	err = useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.NoError(t, err)
 	btcWallet.AssertExpectations(t)
@@ -426,7 +427,8 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	require.NoError(t, err)
 	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return("", assert.AnError).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
@@ -466,7 +468,7 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 
 	rpc := blockchain.Rpc{Rsk: rsk}
 	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)
+	err = useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.Error(t, err)
 	btcWallet.AssertExpectations(t)
@@ -481,7 +483,8 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 	btcTxHash := "0x5b5c5d"
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil)
-	quoteHash, _ := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
+	require.NoError(t, err)
 	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil)
 	rsk := new(mocks.RootstockRpcServerMock)
 	mutex := new(mocks.MutexMock)
@@ -489,9 +492,8 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 	mutex.On("Unlock").Return()
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil)
 	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(blockchain.TransactionReceipt{
-		TransactionHash: sendPegoutRetainedQuote.UserRskTxHash, Value: entities.NewWei(8500),
-		BlockHash: blockHash, BlockNumber: blockNumber, From: "0x1234", To: "0x5678",
-		CumulativeGasUsed: big.NewInt(500), GasUsed: big.NewInt(500),
+		TransactionHash: sendPegoutRetainedQuote.UserRskTxHash, Value: entities.NewWei(8500), BlockHash: blockHash,
+		BlockNumber: blockNumber, From: "0x1234", To: "0x5678", CumulativeGasUsed: big.NewInt(500), GasUsed: big.NewInt(500),
 	}, nil)
 	rsk.On("GetBlockByHash", test.AnyCtx, blockHash).Return(blockchain.BlockInfo{
 		Hash: blockHash, Number: blockNumber, Timestamp: time.Unix(int64(now+10), 0), Nonce: 1,
@@ -530,7 +532,7 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 		setup(&caseQuote, quoteRepository, eventBus)
 		rpc := blockchain.Rpc{Rsk: rsk}
 		useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
-		err := useCase.Run(context.Background(), caseQuote)
+		err = useCase.Run(context.Background(), caseQuote)
 		quoteRepository.AssertExpectations(t)
 		require.Error(t, err)
 		btcWallet.AssertExpectations(t)
