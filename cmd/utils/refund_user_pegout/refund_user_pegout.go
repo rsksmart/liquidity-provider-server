@@ -25,6 +25,7 @@ func main() {
 			" It is intended for use when the final user does not receive their funds." +
 			" To perform this refund, you must provide the hash of the quote agreed for the service.",
 	)
+	defer scripts.EnableSecureBuffers()()
 	scriptInput := new(RefundUserPegOutScriptInput)
 	ReadRefundUserPegOutScriptInput(scriptInput)
 	env, err := ParseRefundUserPegOutScriptInput(flag.Parse, scriptInput, term.ReadPassword)
