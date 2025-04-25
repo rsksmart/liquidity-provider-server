@@ -62,9 +62,9 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
 				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, nil)
+					Return([]quote.PeginQuoteWithRetained{}, nil)
 				pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PegoutQuote{}, []quote.RetainedPegoutQuote{}, nil)
+					Return([]quote.PegoutQuoteWithRetained{}, nil)
 			},
 		},
 		{
@@ -120,7 +120,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
 				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, errors.New("test error"))
+					Return([]quote.PeginQuoteWithRetained{}, errors.New("test error"))
 			},
 		},
 	}

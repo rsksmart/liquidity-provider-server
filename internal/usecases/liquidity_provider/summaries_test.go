@@ -83,29 +83,41 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 				State:     quote.PegoutStateSendPegoutFailed,
 			},
 		}
+		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
+			{
+				Quote:         peginQuotes[0],
+				RetainedQuote: &retainedPeginQuotes[0],
+			},
+			{
+				Quote:         peginQuotes[1],
+				RetainedQuote: &retainedPeginQuotes[1],
+			},
+		}
+		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
+			{
+				Quote:         pegoutQuotes[0],
+				RetainedQuote: &retainedPegoutQuotes[0],
+			},
+			{
+				Quote:         pegoutQuotes[1],
+				RetainedQuote: &retainedPegoutQuotes[1],
+			},
+		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(peginQuotes, retainedPeginQuotes, nil)
-		peginRepo.On("GetQuote", mock.Anything, "hash1").
-			Return(&peginQuotes[0], nil)
-		peginRepo.On("GetQuote", mock.Anything, "hash2").
-			Return(&peginQuotes[1], nil)
+			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(pegoutQuotes, retainedPegoutQuotes, nil)
-		pegoutRepo.On("GetQuote", mock.Anything, "hash3").
-			Return(&pegoutQuotes[0], nil)
-		pegoutRepo.On("GetQuote", mock.Anything, "hash4").
-			Return(&pegoutQuotes[1], nil)
+			Return(pegoutQuotesWithRetained, nil)
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
-		assert.Equal(t, int64(len(peginQuotes)), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
 		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PeginSummary.PaidQuotesAmount.Cmp(entities.NewWei(110)))
 		assert.Equal(t, 0, result.PeginSummary.TotalFeesCollected.Cmp(entities.NewWei(10)))
 		assert.Equal(t, 0, result.PeginSummary.TotalPenaltyAmount.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PeginSummary.LpEarnings.Cmp(entities.NewWei(5)))
-		assert.Equal(t, int64(len(pegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
+		assert.Equal(t, int64(len(pegoutQuotesWithRetained)), result.PegoutSummary.TotalQuotesCount)
 		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PegoutSummary.PaidQuotesAmount.Cmp(entities.NewWei(330)))
@@ -134,7 +146,6 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 				ProductFeeAmount: 6,
 			},
 		}
-		retainedPeginQuotes := []quote.RetainedPeginQuote{}
 		pegoutQuotes := []quote.PegoutQuote{
 			{
 				Value:            entities.NewWei(300),
@@ -144,23 +155,38 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 				ProductFeeAmount: 9,
 			},
 		}
-		retainedPegoutQuotes := []quote.RetainedPegoutQuote{}
+		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
+			{
+				Quote:         peginQuotes[0],
+				RetainedQuote: nil,
+			},
+			{
+				Quote:         peginQuotes[1],
+				RetainedQuote: nil,
+			},
+		}
+		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
+			{
+				Quote:         pegoutQuotes[0],
+				RetainedQuote: nil,
+			},
+		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(peginQuotes, retainedPeginQuotes, nil)
+			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(pegoutQuotes, retainedPegoutQuotes, nil)
+			Return(pegoutQuotesWithRetained, nil)
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
-		assert.Equal(t, int64(len(peginQuotes)), result.PeginSummary.TotalQuotesCount)
-		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.AcceptedQuotesCount)
+		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(0), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(0), result.PeginSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PeginSummary.PaidQuotesAmount.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PeginSummary.TotalFeesCollected.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PeginSummary.TotalPenaltyAmount.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PeginSummary.LpEarnings.Cmp(entities.NewWei(0)))
-		assert.Equal(t, int64(len(pegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
-		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.AcceptedQuotesCount)
+		assert.Equal(t, int64(len(pegoutQuotesWithRetained)), result.PegoutSummary.TotalQuotesCount)
+		assert.Equal(t, int64(0), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(0), result.PegoutSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PegoutSummary.PaidQuotesAmount.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PegoutSummary.TotalFeesCollected.Cmp(entities.NewWei(0)))
@@ -172,31 +198,20 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 	t.Run("Success with only retained quotes (no regular quotes)", func(t *testing.T) {
 		peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
-		peginQuotes := []quote.PeginQuote{}
-		retainedPeginQuotes := []quote.RetainedPeginQuote{
-			{
-				QuoteHash:         "hash1",
-				Signature:         "sig1",
-				DepositAddress:    "addr1",
-				State:             quote.PeginStateCallForUserSucceeded,
-				UserBtcTxHash:     "user_tx1",
-				CallForUserTxHash: "call_tx1",
-			},
-		}
-		pegoutQuotes := []quote.PegoutQuote{}
-		retainedPegoutQuotes := []quote.RetainedPegoutQuote{
-			{
-				QuoteHash: "hash3",
-				Signature: "sig3",
-				State:     quote.PegoutStateSendPegoutSucceeded,
-			},
-		}
 		peginQuote := quote.PeginQuote{
 			Value:            entities.NewWei(100),
 			CallFee:          entities.NewWei(5),
 			GasFee:           entities.NewWei(2),
 			PenaltyFee:       entities.NewWei(1),
 			ProductFeeAmount: 3,
+		}
+		retainedPeginQuote := quote.RetainedPeginQuote{
+			QuoteHash:         "hash1",
+			Signature:         "sig1",
+			DepositAddress:    "addr1",
+			State:             quote.PeginStateCallForUserSucceeded,
+			UserBtcTxHash:     "user_tx1",
+			CallForUserTxHash: "call_tx1",
 		}
 		pegoutQuote := quote.PegoutQuote{
 			Value:            entities.NewWei(300),
@@ -205,26 +220,39 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			PenaltyFee:       10,
 			ProductFeeAmount: 9,
 		}
+		retainedPegoutQuote := quote.RetainedPegoutQuote{
+			QuoteHash: "hash3",
+			Signature: "sig3",
+			State:     quote.PegoutStateSendPegoutSucceeded,
+		}
+		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
+			{
+				Quote:         peginQuote,
+				RetainedQuote: &retainedPeginQuote,
+			},
+		}
+		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
+			{
+				Quote:         pegoutQuote,
+				RetainedQuote: &retainedPegoutQuote,
+			},
+		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(peginQuotes, retainedPeginQuotes, nil)
-		peginRepo.On("GetQuote", mock.Anything, "hash1").
-			Return(&peginQuote, nil)
+			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return(pegoutQuotes, retainedPegoutQuotes, nil)
-		pegoutRepo.On("GetQuote", mock.Anything, "hash3").
-			Return(&pegoutQuote, nil)
+			Return(pegoutQuotesWithRetained, nil)
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
-		assert.Equal(t, int64(len(peginQuotes)), result.PeginSummary.TotalQuotesCount)
-		assert.Equal(t, int64(len(retainedPeginQuotes)), result.PeginSummary.AcceptedQuotesCount)
+		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
+		assert.Equal(t, int64(1), result.PeginSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PeginSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PeginSummary.PaidQuotesAmount.Cmp(entities.NewWei(110)))
 		assert.Equal(t, 0, result.PeginSummary.TotalFeesCollected.Cmp(entities.NewWei(10)))
 		assert.Equal(t, 0, result.PeginSummary.TotalPenaltyAmount.Cmp(entities.NewWei(0)))
 		assert.Equal(t, 0, result.PeginSummary.LpEarnings.Cmp(entities.NewWei(5)))
-		assert.Equal(t, int64(len(pegoutQuotes)), result.PegoutSummary.TotalQuotesCount)
-		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.AcceptedQuotesCount)
+		assert.Equal(t, int64(len(pegoutQuotesWithRetained)), result.PegoutSummary.TotalQuotesCount)
+		assert.Equal(t, int64(1), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PegoutSummary.PaidQuotesAmount.Cmp(entities.NewWei(330)))
 		assert.Equal(t, 0, result.PegoutSummary.TotalFeesCollected.Cmp(entities.NewWei(30)))
@@ -237,7 +265,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, errors.New("db error"))
+			Return([]quote.PeginQuoteWithRetained{}, errors.New("db error"))
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)
@@ -249,9 +277,9 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return([]quote.PeginQuote{}, []quote.RetainedPeginQuote{}, nil)
+			Return([]quote.PeginQuoteWithRetained{}, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-			Return([]quote.PegoutQuote{}, []quote.RetainedPegoutQuote{}, errors.New("db error"))
+			Return([]quote.PegoutQuoteWithRetained{}, errors.New("db error"))
 		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)

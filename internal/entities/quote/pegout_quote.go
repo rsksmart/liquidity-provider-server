@@ -43,7 +43,7 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
-	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]PegoutQuote, []RetainedPegoutQuote, error)
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]PegoutQuoteWithRetained, error)
 }
 
 type CreatedPegoutQuote struct {
@@ -177,4 +177,9 @@ type PegoutBtcSentToUserEvent struct {
 	RetainedQuote RetainedPegoutQuote
 	CreationData  PegoutCreationData
 	Error         error
+}
+
+type PegoutQuoteWithRetained struct {
+	Quote         PegoutQuote
+	RetainedQuote *RetainedPegoutQuote
 }

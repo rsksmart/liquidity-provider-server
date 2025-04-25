@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -67,20 +65,82 @@ func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time
 	return SummaryResult{PeginSummary: peginData, PegoutSummary: pegoutData}, nil
 }
 
-func processPeginRetainedQuote(
-	ctx context.Context,
-	repo quote.PeginQuoteRepository,
-	retained quote.RetainedPeginQuote,
+func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
+	var (
+		quotePairs []quote.PeginQuoteWithRetained
+		err        error
+	)
+	quotePairs, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	if err != nil {
+		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
+	}
+	data := NewSummaryData()
+	acceptedQuotesCount := 0
+	acceptedTotalAmount := entities.NewWei(0)
+	totalFees := entities.NewWei(0)
+	callFees := entities.NewWei(0)
+	totalPenalty := entities.NewWei(0)
+	for _, pair := range quotePairs {
+		if pair.RetainedQuote != nil {
+			acceptedQuotesCount++
+			processPeginPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
+		}
+	}
+	data.TotalQuotesCount = int64(len(quotePairs))
+	data.AcceptedQuotesCount = int64(acceptedQuotesCount)
+	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
+	data.TotalFeesCollected = totalFees
+	data.TotalPenaltyAmount = totalPenalty
+	lpEarnings := new(entities.Wei)
+	lpEarnings.Add(lpEarnings, callFees)
+	lpEarnings.Sub(lpEarnings, totalPenalty)
+	data.LpEarnings = lpEarnings
+	return data, nil
+}
+
+func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
+	var (
+		quotePairs []quote.PegoutQuoteWithRetained
+		err        error
+	)
+	quotePairs, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	if err != nil {
+		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
+	}
+	data := NewSummaryData()
+	acceptedQuotesCount := 0
+	acceptedTotalAmount := entities.NewWei(0)
+	totalFees := entities.NewWei(0)
+	callFees := entities.NewWei(0)
+	totalPenalty := entities.NewWei(0)
+	for _, pair := range quotePairs {
+		if pair.RetainedQuote != nil {
+			acceptedQuotesCount++
+			processPegoutPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
+		}
+	}
+	data.TotalQuotesCount = int64(len(quotePairs))
+	data.AcceptedQuotesCount = int64(acceptedQuotesCount)
+	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
+	data.TotalFeesCollected = totalFees
+	data.TotalPenaltyAmount = totalPenalty
+	lpEarnings := new(entities.Wei)
+	lpEarnings.Add(lpEarnings, callFees)
+	lpEarnings.Sub(lpEarnings, totalPenalty)
+	data.LpEarnings = lpEarnings
+	return data, nil
+}
+
+func processPeginPair(
+	pair quote.PeginQuoteWithRetained,
 	data *SummaryData,
 	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
 ) {
-	q, err := repo.GetQuote(ctx, retained.QuoteHash)
-	if err != nil || q == nil {
-		if err != nil {
-			log.Errorf("Error getting quote %s: %v", retained.QuoteHash, err)
-		}
+	if pair.RetainedQuote == nil {
 		return
 	}
+	q := pair.Quote
+	retained := *pair.RetainedQuote
 	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)
@@ -99,20 +159,16 @@ func processPeginRetainedQuote(
 	}
 }
 
-func processPegoutRetainedQuote(
-	ctx context.Context,
-	repo quote.PegoutQuoteRepository,
-	retained quote.RetainedPegoutQuote,
+func processPegoutPair(
+	pair quote.PegoutQuoteWithRetained,
 	data *SummaryData,
 	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
 ) {
-	q, err := repo.GetQuote(ctx, retained.QuoteHash)
-	if err != nil || q == nil {
-		if err != nil {
-			log.Errorf("Error getting quote %s: %v", retained.QuoteHash, err)
-		}
+	if pair.RetainedQuote == nil {
 		return
 	}
+	q := pair.Quote
+	retained := *pair.RetainedQuote
 	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)
@@ -129,78 +185,6 @@ func processPegoutRetainedQuote(
 		data.RefundedQuotesCount++
 		totalPenalty.Add(totalPenalty, penaltyFee)
 	}
-}
-
-func (u *SummariesUseCase) processPeginQuoteData(ctx context.Context, retainedQuotes []quote.RetainedPeginQuote) SummaryData {
-	data := NewSummaryData()
-	data.AcceptedQuotesCount = int64(len(retainedQuotes))
-	acceptedTotalAmount := entities.NewWei(0)
-	totalFees := entities.NewWei(0)
-	callFees := entities.NewWei(0)
-	totalPenalty := entities.NewWei(0)
-	for _, retained := range retainedQuotes {
-		processPeginRetainedQuote(ctx, u.peginRepo, retained, &data,
-			acceptedTotalAmount, totalFees, callFees, totalPenalty)
-	}
-	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
-	data.TotalFeesCollected = totalFees
-	data.TotalPenaltyAmount = totalPenalty
-	lpEarnings := new(entities.Wei)
-	lpEarnings.Add(lpEarnings, callFees)
-	lpEarnings.Sub(lpEarnings, totalPenalty)
-	data.LpEarnings = lpEarnings
-	return data
-}
-
-func (u *SummariesUseCase) processPegoutQuoteData(ctx context.Context, retainedQuotes []quote.RetainedPegoutQuote) SummaryData {
-	data := NewSummaryData()
-	data.AcceptedQuotesCount = int64(len(retainedQuotes))
-	acceptedTotalAmount := entities.NewWei(0)
-	totalFees := entities.NewWei(0)
-	callFees := entities.NewWei(0)
-	totalPenalty := entities.NewWei(0)
-	for _, retained := range retainedQuotes {
-		processPegoutRetainedQuote(ctx, u.pegoutRepo, retained, &data,
-			acceptedTotalAmount, totalFees, callFees, totalPenalty)
-	}
-	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
-	data.TotalFeesCollected = totalFees
-	data.TotalPenaltyAmount = totalPenalty
-	lpEarnings := new(entities.Wei)
-	lpEarnings.Add(lpEarnings, callFees)
-	lpEarnings.Sub(lpEarnings, totalPenalty)
-	data.LpEarnings = lpEarnings
-	return data
-}
-
-func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	var (
-		quotes         []quote.PeginQuote
-		retainedQuotes []quote.RetainedPeginQuote
-		err            error
-	)
-	quotes, retainedQuotes, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
-	if err != nil {
-		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
-	}
-	data := u.processPeginQuoteData(ctx, retainedQuotes)
-	data.TotalQuotesCount = int64(len(quotes))
-	return data, nil
-}
-
-func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
-	var (
-		quotes         []quote.PegoutQuote
-		retainedQuotes []quote.RetainedPegoutQuote
-		err            error
-	)
-	quotes, retainedQuotes, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
-	if err != nil {
-		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
-	}
-	data := u.processPegoutQuoteData(ctx, retainedQuotes)
-	data.TotalQuotesCount = int64(len(quotes))
-	return data, nil
 }
 
 func isPeginPaidQuote(retained quote.RetainedPeginQuote) bool {

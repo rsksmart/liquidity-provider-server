@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -211,59 +212,60 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }
 
-func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuote, []quote.RetainedPeginQuote, error) {
-	quotes := make([]quote.PeginQuote, 0)
-	retainedQuotes := make([]quote.RetainedPeginQuote, 0)
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
+	result := make([]quote.PeginQuoteWithRetained, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
-	startTimestamp := int64(startDate.Unix())
-	endTimestamp := int64(endDate.Unix())
-	quoteCollection := repo.conn.Collection(PeginQuoteCollection)
-	quoteFilter := bson.D{
-		primitive.E{
-			Key: "agreement_timestamp",
-			Value: bson.D{
-				primitive.E{Key: "$gte", Value: startTimestamp},
-				primitive.E{Key: "$lte", Value: endTimestamp},
-			},
-		},
-	}
-	quoteCursor, err := quoteCollection.Find(dbCtx, quoteFilter)
+	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
+		{Key: "$gte", Value: startDate.Unix()},
+		{Key: "$lte", Value: endDate.Unix()},
+	}}}
+	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+	quoteCursor, err := repo.conn.Collection(PeginQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
 	if err != nil {
-		return quotes, retainedQuotes, err
+		return nil, err
 	}
 	defer quoteCursor.Close(dbCtx)
 	var storedQuotes []StoredPeginQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
-		return quotes, retainedQuotes, err
+		return nil, err
 	}
-	quoteHashes := make([]string, 0, len(storedQuotes))
-	for _, stored := range storedQuotes {
-		quotes = append(quotes, stored.PeginQuote)
-		quoteHashes = append(quoteHashes, stored.Hash)
+	if len(storedQuotes) == 0 {
+		logDbInteraction(Read, map[string]interface{}{"quotePairs": 0})
+		return result, nil
 	}
-	if len(quoteHashes) > 0 {
-		retainedCollection := repo.conn.Collection(RetainedPeginQuoteCollection)
-		retainedFilter := bson.D{
-			primitive.E{
-				Key: "quote_hash",
-				Value: bson.D{
-					primitive.E{Key: "$in", Value: quoteHashes},
-				},
-			},
-		}
-		retainedCursor, err := retainedCollection.Find(dbCtx, retainedFilter)
-		if err != nil {
-			return quotes, retainedQuotes, err
-		}
-		defer retainedCursor.Close(dbCtx)
-		if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
-			return quotes, retainedQuotes, err
+	hashToIndex := make(map[string]int, len(storedQuotes))
+	quoteHashes := make([]string, len(storedQuotes))
+	result = make([]quote.PeginQuoteWithRetained, len(storedQuotes))
+	for i, stored := range storedQuotes {
+		quoteHashes[i] = stored.Hash
+		hashToIndex[stored.Hash] = i
+		result[i] = quote.PeginQuoteWithRetained{
+			Quote:         stored.PeginQuote,
+			RetainedQuote: nil,
 		}
 	}
-	logDbInteraction(Read, map[string]interface{}{
-		"quotes":         quotes,
-		"retainedQuotes": retainedQuotes,
-	})
-	return quotes, retainedQuotes, nil
+	retainedCursor, err := repo.conn.Collection(RetainedPeginQuoteCollection).Find(
+		dbCtx,
+		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
+	)
+	if err != nil {
+		return result, err
+	}
+	defer retainedCursor.Close(dbCtx)
+	var retainedQuote quote.RetainedPeginQuote
+	for retainedCursor.Next(dbCtx) {
+		if err := retainedCursor.Decode(&retainedQuote); err != nil {
+			return result, err
+		}
+		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
+			quoteCopy := retainedQuote
+			result[idx].RetainedQuote = &quoteCopy
+		}
+	}
+	if err := retainedCursor.Err(); err != nil {
+		return result, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
 }
