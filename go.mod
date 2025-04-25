@@ -1,6 +1,6 @@
 module github.com/rsksmart/liquidity-provider-server
 
-go 1.23.7
+go 1.23.8
 
 require (
 	github.com/awnumar/memguard v0.22.5
@@ -15,7 +15,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/ethereum/go-ethereum v1.14.13
 	github.com/go-playground/validator/v10 v10.17.0
-	github.com/gorilla/csrf v1.7.2
+	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/securecookie v1.1.2
@@ -23,8 +23,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	go.mongodb.org/mongo-driver v1.13.1
-	golang.org/x/crypto v0.35.0
-	golang.org/x/term v0.29.0
+	golang.org/x/crypto v0.37.0
+	golang.org/x/term v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -81,10 +81,10 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
