@@ -1,7 +1,7 @@
 # Liquidity Provider Server
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge?branch=master)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
-[![CodeQL](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml?query=branch%3Amaster)
-[![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml?query=branch%3Amaster)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
+[![CodeQL](https://github.com/rsksmart/liquidity-provider-server/workflows/CodeQL/badge.svg)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql-analysis.yml)
+[![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/workflows/Liquidity%20Provider%20Server%20CI/badge.svg)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml)
 
 The Liquidity Provider Server (LPS) is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both Rootstock and Bitcoin networks.
 
@@ -193,6 +193,6 @@ The service can be configured to monitor other addresses by modifying the `MONIT
 
 ## More Information
 
-If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/flyover-sdk/blob/main/README.md).
+If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).
 
 If you're interested in becoming a liquidity provider then you can read the [Liquidity Provider Management](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md) file.
