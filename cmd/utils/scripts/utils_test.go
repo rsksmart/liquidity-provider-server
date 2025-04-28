@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"github.com/awnumar/memguard"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -81,4 +82,18 @@ func TestSetUsageMessage(t *testing.T) {
 	readBytes, err := io.ReadAll(buff)
 	require.NoError(t, err)
 	assert.Contains(t, string(readBytes), msg)
+}
+
+func TestEnableSecureBuffers(t *testing.T) {
+	mySecret := memguard.NewEnclave([]byte{21, 07, 20, 00})
+	mySensitiveFunction := func() {
+		defer scripts.EnableSecureBuffers()()
+		buffer, err := mySecret.Open()
+		require.NoError(t, err)
+		require.Equal(t, []byte{21, 07, 20, 00}, buffer.Bytes())
+	}
+	mySensitiveFunction()
+	buffer, err := mySecret.Open()
+	require.Error(t, err)
+	require.Nil(t, buffer)
 }

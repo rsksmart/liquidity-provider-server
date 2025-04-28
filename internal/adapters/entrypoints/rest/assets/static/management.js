@@ -1,5 +1,5 @@
-import { 
-    weiToEther, 
+import {
+    weiToEther,
     etherToWei,
     isFeeKey,
     validateConfig,
@@ -325,10 +325,9 @@ const showErrorToast = (errorMessage) => {
             <strong class="me-auto">Error</strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
-        <div class="toast-body">
-            ${errorMessage}
-        </div>
+        <div class="toast-body"></div>
     `;
+    toastElement.querySelector('.toast-body').textContent = errorMessage;
     document.querySelector('.toast-container').appendChild(toastElement);
     const toast = new bootstrap.Toast(toastElement);
     toast.show();

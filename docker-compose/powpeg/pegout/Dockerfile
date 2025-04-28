@@ -33,10 +33,10 @@ COPY --chown=root:root --chmod=444 reg2.key "$HOME/reg2.key"
 COPY --chown=root:root --chmod=444 regtest-fed.conf "$HOME/regtest-fed.conf"
 COPY --chown=root:root --chmod=444 regtest-fed.conf "/etc/rsk/node.conf"
 
-RUN chmod 400 "$HOME/reg2.key" && chown 1000 "$HOME/reg2.key"
+RUN chmod 400 "$HOME/reg2.key" && chown 1001 "$HOME/reg2.key"
 
-RUN mkdir -p "$HOME/.rsk"; chown 1000 "$HOME/.rsk"
-RUN mkdir -p "$HOME/logs"; chown 1000 "$HOME/logs"
+RUN mkdir -p "$HOME/.rsk"; chown 1001 "$HOME/.rsk"
+RUN mkdir -p "$HOME/logs"; chown 1001 "$HOME/logs"
 
 WORKDIR "$HOME"
 

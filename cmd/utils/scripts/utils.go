@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/awnumar/memguard"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
@@ -21,7 +22,8 @@ type RskClientFactory = func(context.Context, environment.RskEnv) (*rootstock.Rs
 
 func ExitWithError(code int, message string, err error) {
 	fmt.Printf("%s: %s\n", message, err.Error())
-	os.Exit(code)
+	memguard.Purge() // We add it here because exit doesn't execute deferred functions
+	memguard.SafeExit(code)
 }
 
 func GetWallet(
@@ -76,5 +78,23 @@ func SetUsageMessage(msg string) {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", msg)
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
+	}
+}
+
+// EnableSecureBuffers is a function that sets up secure memory buffers by calling memguard.CatchInterrupt().
+// This function returns another function that must be called at the end of the program to purge the secure memory buffers.
+// Every LPS script that interacts with a wallet must call this function at the beginning of the script.
+// An example of the correct way of calling this function is:
+//
+//	func main() {
+//		defer scripts.EnableSecureBuffers()()
+//		// Your script logic here
+//	}
+func EnableSecureBuffers() func() {
+	memguard.CatchInterrupt()
+	fmt.Println("Secure buffers enabled")
+	return func() {
+		memguard.Purge()
+		fmt.Println("Sensitive buffers were destroyed successfully")
 	}
 }

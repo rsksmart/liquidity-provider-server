@@ -7,6 +7,22 @@ COMMIT_TAG=$(git describe --exact-match --tags || echo "")
 export COMMIT_HASH
 export COMMIT_TAG
 
+# Detect OS
+OS_TYPE="$(uname)"
+
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    # macOS
+    echo "Running on macOS"
+    SED_INPLACE=("sed" "-i" "")
+elif [[ "$OS_TYPE" == "Linux" ]]; then
+    # Assume Ubuntu or other Linux
+    echo "Running on Linux"
+    SED_INPLACE=("sed" "-i")
+else
+    echo "Unsupported OS: $OS_TYPE"
+    exit 1
+fi
+
 if [ -z "${LPS_STAGE}" ]; then
   echo "LPS_STAGE is not set. Exit 1"
   exit 1
@@ -33,7 +49,7 @@ echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
 # Force Management API to be enabled
 if [ -f "$ENV_FILE" ]; then
-  sed -i '' 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+  "${SED_INPLACE[@]}" 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
 fi
 
 SCRIPT_CMD=$1
@@ -172,7 +188,7 @@ docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lp
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
 FAIL=true
-for ((i=1;i<=10;i++));
+for _ in $(seq 1 10);
 do
   sleep 5
   curl -s "http://localhost:8080/health" \
@@ -212,7 +228,8 @@ CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
                       -H 'Sec-Fetch-Site: same-origin' \
   "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
-CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
+# shellcheck disable=SC2001
+CSRF_TOKEN=$(echo "$CSRF_TOKEN" | sed 's/&#43;/+/g')
 curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
