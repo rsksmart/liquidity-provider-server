@@ -145,7 +145,7 @@ func (repo *lpMongoRepository) AddTrustedAccount(ctx context.Context, account li
 	existingAccount, err := repo.GetTrustedAccount(ctx, account.Address)
 	if err == nil && existingAccount != nil {
 		return liquidity_provider.ErrDuplicateAddress
-	} else if err != nil && err != liquidity_provider.ErrTrustedAccountNotFound {
+	} else if err != nil && !errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) {
 		return err
 	}
 	_, err = collection.InsertOne(dbCtx, account)
@@ -161,7 +161,7 @@ func (repo *lpMongoRepository) UpdateTrustedAccount(ctx context.Context, account
 	defer cancel()
 	collection := repo.conn.Collection(TrustedAccountCollection)
 	_, err := repo.GetTrustedAccount(ctx, account.Address)
-	if err != nil && err != liquidity_provider.ErrTrustedAccountNotFound {
+	if err != nil && !errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) {
 		return err
 	}
 	filter := bson.M{"address": account.Address}
