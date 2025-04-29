@@ -10,7 +10,7 @@ import (
 
 // NewDeleteTrustedAccountHandler
 // @Title Delete Trusted Account
-// @Description Deletes a trusted account from the system by address
+// @Description Deletes a trusted account
 // @Param TrustedAccountAddressRequest body handlers.TrustedAccountAddressRequest true "Address of the trusted account to delete"
 // @Success 204 object
 // @Route /management/trusted-accounts/delete [post]

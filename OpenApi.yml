@@ -816,13 +816,13 @@ paths:
       summary: Management Logout
   /management/trusted-accounts:
     get:
-      description: ' Returns all trusted accounts in the system'
+      description: ' Returns all trusted accounts'
       responses:
         "200":
           description: ""
       summary: Get Trusted Accounts
     post:
-      description: ' Updates an existing trusted account in the system'
+      description: ' Updates an existing trusted account'
       requestBody:
         content:
           application/json:
@@ -848,7 +848,7 @@ paths:
       summary: Add Trusted Account
   /management/trusted-accounts/delete:
     post:
-      description: ' Deletes a trusted account from the system by address'
+      description: ' Deletes a trusted account'
       requestBody:
         content:
           application/json:

@@ -13,7 +13,7 @@ import (
 
 // NewSetTrustedAccountHandler
 // @Title Update Trusted Account
-// @Description Updates an existing trusted account in the system
+// @Description Updates an existing trusted account
 // @Param TrustedAccountRequest body pkg.TrustedAccountRequest true "Details of the trusted account to update"
 // @Success 204 object
 // @Route /management/trusted-accounts [post]

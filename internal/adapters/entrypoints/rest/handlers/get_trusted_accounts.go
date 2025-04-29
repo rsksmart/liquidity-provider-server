@@ -10,7 +10,7 @@ import (
 
 // NewGetTrustedAccountsHandler
 // @Title Get Trusted Accounts
-// @Description Returns all trusted accounts in the system
+// @Description Returns all trusted accounts
 // @Success 200 object
 // @Route /management/trusted-accounts [get]
 func NewGetTrustedAccountsHandler(useCase *liquidity_provider.GetTrustedAccountsUseCase) http.HandlerFunc {
