@@ -1,12 +1,13 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"net/http"
 )
 
 const (
@@ -105,6 +106,26 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    IconPath,
 			Method:  http.MethodGet,
 			Handler: http.FileServer(http.FS(assets.FileSystem)),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetTrustedAccountsHandler(useCaseRegistry.GetTrustedAccountsUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPost,
+			Handler: handlers.NewSetTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts/add",
+			Method:  http.MethodPost,
+			Handler: handlers.NewAddTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts/delete",
+			Method:  http.MethodPost,
+			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
 		},
 	}
 }

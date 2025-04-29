@@ -94,6 +94,21 @@ type ServerInfoDTO struct {
 	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
 }
 
+type TrustedAccountRequest struct {
+	Address        string `json:"address" validate:"required"`
+	Name           string `json:"name" validate:"required"`
+	BtcLockingCap  string `json:"btc_locking_cap" validate:"required"`
+	RbtcLockingCap string `json:"rbtc_locking_cap" validate:"required"`
+}
+
+type TrustedAccountAddressRequest struct {
+	Address string `json:"address" validate:"required"`
+}
+
+type TrustedAccountsResponse struct {
+	Accounts []liquidity_provider.TrustedAccountDetails `json:"accounts"`
+}
+
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
 	return AvailableLiquidityDTO{
 		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),

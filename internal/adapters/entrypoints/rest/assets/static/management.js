@@ -7,7 +7,8 @@ import {
     postConfig,
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
-    isToggableFeeKey
+    isToggableFeeKey,
+    formatCap
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -571,6 +572,146 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
     }
 };
 
+const fetchTrustedAccounts = async (csrfToken) => {
+    const loadingBar = document.getElementById('trustedAccountsLoadingBar');
+    loadingBar.style.display = 'block';
+    try {
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        const data = await response.json();
+        console.log(data);
+        const accountsData = data.accounts || [];
+        populateTrustedAccountsTable(accountsData, csrfToken);
+    } catch (error) {
+        console.error('Error fetching trusted accounts:', error);
+        showErrorToast('Failed to load trusted accounts.');
+    } finally {
+        loadingBar.style.display = 'none';
+    }
+};
+
+const populateTrustedAccountsTable = (accounts, csrfToken) => {
+    const tableBody = document.getElementById('trustedAccountsTable');
+    tableBody.innerHTML = '';
+    if (!accounts || accounts.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center');
+        cell.textContent = 'No trusted accounts found.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+    
+    accounts.forEach(account => {
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        nameCell.textContent = account.name || 'Unknown';
+        const addressCell = document.createElement('td');
+        addressCell.classList.add('address-cell');
+        addressCell.textContent = account.address;
+        
+        const btcCapCell = document.createElement('td');
+        btcCapCell.classList.add('cap-cell');
+        const btcValue = weiToEther(account.btc_locking_cap);
+        btcCapCell.textContent = formatCap(btcValue, 'BTC');
+        
+        const rbtcCapCell = document.createElement('td');
+        rbtcCapCell.classList.add('cap-cell');
+        const rbtcValue = weiToEther(account.rbtc_locking_cap);
+        rbtcCapCell.textContent = formatCap(rbtcValue, 'rBTC');
+        
+        const actionsCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
+        deleteButton.textContent = 'Remove';
+        deleteButton.addEventListener('click', () => removeTrustedAccount(account.address, csrfToken));
+        actionsCell.appendChild(deleteButton);
+        
+        row.appendChild(nameCell);
+        row.appendChild(addressCell);
+        row.appendChild(btcCapCell);
+        row.appendChild(rbtcCapCell);
+        row.appendChild(actionsCell);
+        tableBody.appendChild(row);
+    });
+};
+
+const addTrustedAccount = async (csrfToken) => {
+    const name = document.getElementById('accountName').value.trim();
+    const address = document.getElementById('accountAddress').value.trim();
+    let btcLockingCap = document.getElementById('btc_locking_cap').value.trim();
+    let rbtcLockingCap = document.getElementById('rbtc_locking_cap').value.trim();
+    if (!name || !address) {
+        showErrorToast('Account name and address are required.');
+        return;
+    }
+    try {
+        btcLockingCap = btcLockingCap ? etherToWei(btcLockingCap).toString() : '0';
+        rbtcLockingCap = rbtcLockingCap ? etherToWei(rbtcLockingCap).toString() : '0';
+        const response = await fetch('/management/trusted-accounts/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({
+                name,
+                address,
+                btc_locking_cap: btcLockingCap,
+                rbtc_locking_cap: rbtcLockingCap
+            })
+        });
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addTrustedAccountModal'));
+            modal.hide();            
+            document.getElementById('accountName').value = '';
+            document.getElementById('accountAddress').value = '';
+            document.getElementById('btc_locking_cap').value = '';
+            document.getElementById('rbtc_locking_cap').value = '';
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error adding trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error adding trusted account: ${error.message}`);
+    }
+};
+
+const removeTrustedAccount = async (address, csrfToken) => {
+    if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
+    try {
+        const response = await fetch('/management/trusted-accounts/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ address })
+        });
+        if (response.ok) {
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error removing trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error removing trusted account: ${error.message}`);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const csrfToken = data.CsrfToken;
     const configurations = data.Configuration;
@@ -581,6 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton', csrfToken));
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
+    document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
 
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
@@ -590,4 +732,5 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
     checkFeeWarnings();
+    fetchTrustedAccounts(csrfToken);
 });

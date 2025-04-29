@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	entities_lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
@@ -58,6 +59,9 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	trustedAccountRepository      entities_lp.TrustedAccountRepository
+	setTrustedAccountUseCase      *liquidity_provider.SetTrustedAccountUseCase
+	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
 }
 
 // NewUseCaseRegistry
@@ -233,6 +237,15 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		trustedAccountRepository:  databaseRegistry.TrustedAccountRepository,
+		setTrustedAccountUseCase: liquidity_provider.NewSetTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		getTrustedAccountsUseCase: liquidity_provider.NewGetTrustedAccountsUseCase(
+			databaseRegistry.TrustedAccountRepository,
+		),
 	}
 }
 
@@ -346,4 +359,12 @@ func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provi
 
 func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	return registry.getServerInfoUseCase
+}
+
+func (registry *UseCaseRegistry) GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase {
+	return registry.getTrustedAccountsUseCase
+}
+
+func (registry *UseCaseRegistry) SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase {
+	return registry.setTrustedAccountUseCase
 }

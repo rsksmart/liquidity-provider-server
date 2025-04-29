@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
 )
 
 // used for error logging
@@ -48,6 +49,7 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
+	SetTrustedAccountId        UseCaseId = "SetTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
@@ -172,6 +174,29 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 		Signature: hex.EncodeToString(signature),
 	}
 	return signedConfig, nil
+}
+
+func SignTrustedAccount(
+	useCaseId UseCaseId,
+	signer entities.Signer,
+	hashFunction entities.HashFunction,
+	account liquidity_provider.TrustedAccountDetails,
+) (entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+	accountBytes, err := json.Marshal(account)
+	if err != nil {
+		return entities.Signed[liquidity_provider.TrustedAccountDetails]{}, WrapUseCaseError(useCaseId, err)
+	}
+	hash := hashFunction(accountBytes)
+	signature, err := signer.SignBytes(hash)
+	if err != nil {
+		return entities.Signed[liquidity_provider.TrustedAccountDetails]{}, WrapUseCaseError(useCaseId, err)
+	}
+	signedAccount := entities.Signed[liquidity_provider.TrustedAccountDetails]{
+		Value:     account,
+		Hash:      hex.EncodeToString(hash),
+		Signature: hex.EncodeToString(signature),
+	}
+	return signedAccount, nil
 }
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.

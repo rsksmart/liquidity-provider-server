@@ -35,4 +35,6 @@ type UseCaseRegistry interface {
 	GetPegoutStatusUseCase() *pegout.StatusUseCase
 	GetAvailableLiquidityUseCase() *liquidity_provider.GetAvailableLiquidityUseCase
 	GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase
+	GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase
+	SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase
 }
