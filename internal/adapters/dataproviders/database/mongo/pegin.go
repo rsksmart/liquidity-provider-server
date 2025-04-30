@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 const (
@@ -105,6 +106,48 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	}
 	logDbInteraction(Read, result.PeginQuote)
 	return &result.PeginQuote, nil
+}
+
+func (repo *peginMongoRepository) GetQuotesByHashesAndDate(
+	ctx context.Context,
+	hashes []string,
+	startDate,
+	endDate time.Time,
+) ([]quote.PeginQuote, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
+
+	collection := repo.conn.Collection(PeginQuoteCollection)
+	filter := bson.M{
+		"hash": bson.M{"$in": hashes},
+		"agreement_timestamp": bson.M{
+			"$gte": startDate.Unix(),
+			"$lte": endDate.Unix(),
+		},
+	}
+
+	quotesReturn := make([]quote.PeginQuote, 0)
+
+	cursor, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	for cursor.Next(ctx) {
+		var result StoredPeginQuote
+		err = cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		quotesReturn = append(quotesReturn, result.PeginQuote)
+	}
+	logDbInteraction(Read, quotesReturn)
+	return quotesReturn, nil
 }
 
 func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {

@@ -58,6 +58,8 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	getPeginReportUseCase         *pegin.GetPeginReportUseCase
+	getPegoutReportUseCase        *pegout.GetPegoutReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -233,6 +235,8 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		getPeginReportUseCase:     pegin.NewGetPeginReportUseCase(databaseRegistry.PeginRepository),
+		getPegoutReportUseCase:    pegout.NewGetPegoutReportUseCase(databaseRegistry.PegoutRepository),
 	}
 }
 
@@ -346,4 +350,12 @@ func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provi
 
 func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	return registry.getServerInfoUseCase
+}
+
+func (registry *UseCaseRegistry) GetPeginReportUseCase() *pegin.GetPeginReportUseCase {
+	return registry.getPeginReportUseCase
+}
+
+func (registry *UseCaseRegistry) GetPegoutReportUseCase() *pegout.GetPegoutReportUseCase {
+	return registry.getPegoutReportUseCase
 }

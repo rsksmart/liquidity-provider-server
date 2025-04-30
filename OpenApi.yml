@@ -145,6 +145,13 @@ components:
       - quote
       - quoteHash
       type: object
+    GetReportsPeginPegoutRequest:
+      properties:
+        endDate:
+          type: string
+        startDate:
+          type: string
+      type: object
     HealthResponse:
       properties:
         services:
@@ -716,6 +723,13 @@ components:
       required:
       - collateral
       type: object
+    pkg.GetReportsPeginPegoutRequest:
+      properties:
+        endDate:
+          type: string
+        startDate:
+          type: string
+      type: object
 info:
   title: Liquidity Provider Server
   version: 1.2.1
@@ -1034,6 +1048,32 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/pegin:
+    get:
+      description: ' Get the last pegins on the API. Included in the management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
+        required: true
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegin Reports
+  /reports/pegout:
+    get:
+      description: ' Get the last pegouts on the API. Included in the management API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
+        required: true
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegout Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

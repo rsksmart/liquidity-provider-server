@@ -1,7 +1,9 @@
 package pkg
 
 import (
+	"errors"
 	"math/big"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -82,6 +84,66 @@ type CredentialsUpdateRequest struct {
 	OldPassword string `json:"oldPassword" validate:"required"`
 	NewUsername string `json:"newUsername" validate:"required"`
 	NewPassword string `json:"newPassword" validate:"required"`
+}
+
+type GetReportsPeginPegoutRequest struct {
+	StartDate string `json:"startDate" validate:"required,datetime=2006-01-02"`
+	EndDate   string `json:"endDate" validate:"required,datetime=2006-01-02"`
+}
+
+func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() error {
+	if r.StartDate == "" {
+		return errors.New("startDate is required")
+	}
+	if r.EndDate == "" {
+		return errors.New("endDate is required")
+	}
+
+	startDate, err := time.Parse(time.DateOnly, r.StartDate)
+	if err != nil {
+		return errors.New("startDate must be in format YYYY-MM-DD")
+	}
+
+	endDate, err := time.Parse(time.DateOnly, r.EndDate)
+	if err != nil {
+		return errors.New("endDate must be in format YYYY-MM-DD")
+	}
+
+	if endDate.Before(startDate) || endDate.Equal(startDate) {
+		return errors.New("endDate must be after startDate")
+	}
+
+	return nil
+}
+
+func (r *GetReportsPeginPegoutRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
+	startTime, err = time.Parse(time.DateOnly, r.StartDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	endTime, err = time.Parse(time.DateOnly, r.EndDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	startTime = time.Date(
+		startTime.Year(),
+		startTime.Month(),
+		startTime.Day(),
+		0, 0, 0, 0,
+		time.UTC,
+	)
+
+	endTime = time.Date(
+		endTime.Year(),
+		endTime.Month(),
+		endTime.Day(),
+		23, 59, 59, 0,
+		time.UTC,
+	)
+
+	return startTime, endTime, nil
 }
 
 type AvailableLiquidityDTO struct {
