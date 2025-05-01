@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetTrustedAccountUseCase_Run(t *testing.T) {
+func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 	t.Run("Success case", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}

@@ -37,19 +37,22 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	_, err := db.Collection(DepositEventsCollection).Indexes().CreateOne(
+	_, depositErr := db.Collection(DepositEventsCollection).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: "tx_hash", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)
-	_, err = db.Collection(TrustedAccountCollection).Indexes().CreateOne(
+	if depositErr != nil {
+		return depositErr
+	}
+	_, trustedAccountErr := db.Collection(TrustedAccountCollection).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: "address", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)
-	return err
+	return trustedAccountErr
 }
