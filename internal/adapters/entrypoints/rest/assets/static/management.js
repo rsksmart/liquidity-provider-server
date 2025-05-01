@@ -654,9 +654,9 @@ const addTrustedAccount = async (csrfToken) => {
         return;
     }
     try {
-        btcLockingCap = btcLockingCap ? etherToWei(btcLockingCap).toString() : '0';
-        rbtcLockingCap = rbtcLockingCap ? etherToWei(rbtcLockingCap).toString() : '0';
-        const response = await fetch('/management/trusted-accounts/add', {
+        btcLockingCap = btcLockingCap ? new Decimal(etherToWei(btcLockingCap)).toNumber() : 0;
+        rbtcLockingCap = rbtcLockingCap ? new Decimal(etherToWei(rbtcLockingCap)).toNumber() : 0;
+        const response = await fetch('/management/trusted-accounts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -691,8 +691,8 @@ const addTrustedAccount = async (csrfToken) => {
 const removeTrustedAccount = async (address, csrfToken) => {
     if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
     try {
-        const response = await fetch('/management/trusted-accounts/delete', {
-            method: 'POST',
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken

@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	ErrTrustedAccountNotFound = errors.New("trusted account not found")
-	ErrDuplicateAddress       = errors.New("address already exists")
+	ErrTrustedAccountNotFound  = errors.New("trusted account not found")
+	ErrDuplicateTrustedAccount = errors.New("trusted account already exists")
 )
 
 type TrustedAccountDetails struct {
@@ -17,8 +17,6 @@ type TrustedAccountDetails struct {
 	Name             string        `json:"name" bson:"name" validate:"required"`
 	Btc_locking_cap  *entities.Wei `json:"btc_locking_cap" bson:"btc_locking_cap" validate:"required"`
 	Rbtc_locking_cap *entities.Wei `json:"rbtc_locking_cap" bson:"rbtc_locking_cap" validate:"required"`
-	Signature        string        `json:"signature" bson:"signature"`
-	Hash             string        `json:"hash" bson:"hash"`
 }
 
 type TrustedAccountRepository interface {

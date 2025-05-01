@@ -176,29 +176,6 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 	return signedConfig, nil
 }
 
-func SignTrustedAccount(
-	useCaseId UseCaseId,
-	signer entities.Signer,
-	hashFunction entities.HashFunction,
-	account liquidity_provider.TrustedAccountDetails,
-) (entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
-	accountBytes, err := json.Marshal(account)
-	if err != nil {
-		return entities.Signed[liquidity_provider.TrustedAccountDetails]{}, WrapUseCaseError(useCaseId, err)
-	}
-	hash := hashFunction(accountBytes)
-	signature, err := signer.SignBytes(hash)
-	if err != nil {
-		return entities.Signed[liquidity_provider.TrustedAccountDetails]{}, WrapUseCaseError(useCaseId, err)
-	}
-	signedAccount := entities.Signed[liquidity_provider.TrustedAccountDetails]{
-		Value:     account,
-		Hash:      hex.EncodeToString(hash),
-		Signature: hex.EncodeToString(signature),
-	}
-	return signedAccount, nil
-}
-
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
 // IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
 func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {

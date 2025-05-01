@@ -3,11 +3,12 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint) (*mongo.Client, error) {
@@ -40,6 +41,13 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: "tx_hash", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	_, err = db.Collection(TrustedAccountCollection).Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys:    bson.D{{Key: "address", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)

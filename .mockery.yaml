@@ -38,6 +38,7 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
+      TrustedAccountRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/quote:
       interfaces:
         PeginQuoteRepository:

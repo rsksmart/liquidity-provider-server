@@ -8,30 +8,30 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-type SetTrustedAccountUseCase struct {
+type AddTrustedAccountUseCase struct {
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository
 	signer                   entities.Signer
 	hashFunc                 entities.HashFunction
 }
 
-func NewSetTrustedAccountUseCase(
+func NewAddTrustedAccountUseCase(
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository,
 	signer entities.Signer,
 	hashFunc entities.HashFunction,
-) *SetTrustedAccountUseCase {
-	return &SetTrustedAccountUseCase{
+) *AddTrustedAccountUseCase {
+	return &AddTrustedAccountUseCase{
 		trustedAccountRepository: trustedAccountRepository,
 		signer:                   signer,
 		hashFunc:                 hashFunc,
 	}
 }
 
-func (useCase *SetTrustedAccountUseCase) Run(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+func (useCase *AddTrustedAccountUseCase) Run(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
 	_, err := usecases.SignConfiguration(usecases.SetTrustedAccountId, useCase.signer, useCase.hashFunc, account)
 	if err != nil {
 		return err
 	}
-	err = useCase.trustedAccountRepository.UpdateTrustedAccount(ctx, account)
+	err = useCase.trustedAccountRepository.AddTrustedAccount(ctx, account)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.SetTrustedAccountId, err)
 	}

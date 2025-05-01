@@ -22,7 +22,7 @@ func NewGetTrustedAccountsHandler(useCase *liquidity_provider.GetTrustedAccounts
 			return
 		}
 		response := pkg.TrustedAccountsResponse{
-			Accounts: accounts,
+			Accounts: pkg.ToTrustedAccountsDTO(accounts),
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
 	}

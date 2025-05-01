@@ -94,11 +94,18 @@ type ServerInfoDTO struct {
 	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
 }
 
+type TrustedAccountDTO struct {
+	Address        string   `json:"address" example:"0x1234567890abcdef" description:"Trusted account address" required:""`
+	Name           string   `json:"name" example:"Example Trusted Account" description:"Trusted account name" required:""`
+	BtcLockingCap  *big.Int `json:"btc_locking_cap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
+	RbtcLockingCap *big.Int `json:"rbtc_locking_cap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
+}
+
 type TrustedAccountRequest struct {
-	Address        string `json:"address" validate:"required"`
-	Name           string `json:"name" validate:"required"`
-	BtcLockingCap  string `json:"btc_locking_cap" validate:"required"`
-	RbtcLockingCap string `json:"rbtc_locking_cap" validate:"required"`
+	Address        string   `json:"address" validate:"required"`
+	Name           string   `json:"name" validate:"required"`
+	BtcLockingCap  *big.Int `json:"btc_locking_cap" validate:"required"`
+	RbtcLockingCap *big.Int `json:"rbtc_locking_cap" validate:"required"`
 }
 
 type TrustedAccountAddressRequest struct {
@@ -106,7 +113,7 @@ type TrustedAccountAddressRequest struct {
 }
 
 type TrustedAccountsResponse struct {
-	Accounts []liquidity_provider.TrustedAccountDetails `json:"accounts"`
+	Accounts []TrustedAccountDTO `json:"accounts"`
 }
 
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
@@ -198,4 +205,21 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 		Version:  entity.Version,
 		Revision: entity.Revision,
 	}
+}
+
+func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) TrustedAccountDTO {
+	return TrustedAccountDTO{
+		Address:        entity.Address,
+		Name:           entity.Name,
+		BtcLockingCap:  entity.Btc_locking_cap.AsBigInt(),
+		RbtcLockingCap: entity.Rbtc_locking_cap.AsBigInt(),
+	}
+}
+
+func ToTrustedAccountsDTO(entities []liquidity_provider.TrustedAccountDetails) []TrustedAccountDTO {
+	result := make([]TrustedAccountDTO, len(entities))
+	for i, entity := range entities {
+		result[i] = ToTrustedAccountDTO(entity)
+	}
+	return result
 }

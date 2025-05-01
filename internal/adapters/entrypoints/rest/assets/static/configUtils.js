@@ -124,7 +124,8 @@ const formatCap = (value, unit) => {
         const num = parseFloat(value);
         return parseFloat(num.toFixed(4)).toString() + ' ' + unit;
     } catch (e) {
-        return value + ' ' + unit;
+        console.error('Error formatting cap:', e);
+        return `Error: ${e.message || 'Failed to format value'}`;
     }
 };
 

@@ -115,17 +115,17 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		{
 			Path:    "/management/trusted-accounts",
 			Method:  http.MethodPost,
+			Handler: handlers.NewAddTrustedAccountHandler(useCaseRegistry.AddTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPut,
 			Handler: handlers.NewSetTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
 		},
 		{
-			Path:    "/management/trusted-accounts/add",
-			Method:  http.MethodPost,
-			Handler: handlers.NewAddTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
-		},
-		{
-			Path:    "/management/trusted-accounts/delete",
-			Method:  http.MethodPost,
-			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodDelete,
+			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.DeleteTrustedAccountUseCase()),
 		},
 	}
 }

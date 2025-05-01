@@ -61,6 +61,8 @@ type UseCaseRegistry struct {
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
 	trustedAccountRepository      entities_lp.TrustedAccountRepository
 	setTrustedAccountUseCase      *liquidity_provider.SetTrustedAccountUseCase
+	addTrustedAccountUseCase      *liquidity_provider.AddTrustedAccountUseCase
+	deleteTrustedAccountUseCase   *liquidity_provider.DeleteTrustedAccountUseCase
 	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
 }
 
@@ -243,6 +245,14 @@ func NewUseCaseRegistry(
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),
+		addTrustedAccountUseCase: liquidity_provider.NewAddTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		deleteTrustedAccountUseCase: liquidity_provider.NewDeleteTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+		),
 		getTrustedAccountsUseCase: liquidity_provider.NewGetTrustedAccountsUseCase(
 			databaseRegistry.TrustedAccountRepository,
 		),
@@ -367,4 +377,12 @@ func (registry *UseCaseRegistry) GetTrustedAccountsUseCase() *liquidity_provider
 
 func (registry *UseCaseRegistry) SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase {
 	return registry.setTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase {
+	return registry.addTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase {
+	return registry.deleteTrustedAccountUseCase
 }

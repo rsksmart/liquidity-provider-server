@@ -11,10 +11,10 @@ import (
 // NewDeleteTrustedAccountHandler
 // @Title Delete Trusted Account
 // @Description Deletes a trusted account
-// @Param TrustedAccountAddressRequest body handlers.TrustedAccountAddressRequest true "Address of the trusted account to delete"
+// @Param TrustedAccountAddressRequest body pkg.TrustedAccountAddressRequest true "Address of the trusted account to delete"
 // @Success 204 object
-// @Route /management/trusted-accounts/delete [post]
-func NewDeleteTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.HandlerFunc {
+// @Route /management/trusted-accounts [delete]
+func NewDeleteTrustedAccountHandler(useCase *lpuc.DeleteTrustedAccountUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := &pkg.TrustedAccountAddressRequest{}
@@ -23,12 +23,12 @@ func NewDeleteTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http
 		} else if err = rest.ValidateRequest(w, request); err != nil {
 			return
 		}
-		err = useCase.Delete(req.Context(), request.Address)
+		err = useCase.Run(req.Context(), request.Address)
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
-		rest.JsonResponse(w, http.StatusOK)
+		rest.JsonResponse(w, http.StatusNoContent)
 	}
 }

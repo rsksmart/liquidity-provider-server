@@ -37,4 +37,6 @@ type UseCaseRegistry interface {
 	GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase
 	GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase
 	SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase
+	AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase
+	DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase
 }

@@ -34,6 +34,8 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
 	registryMock.EXPECT().GetTrustedAccountsUseCase().Return(&liquidity_provider.GetTrustedAccountsUseCase{})
 	registryMock.EXPECT().SetTrustedAccountUseCase().Return(&liquidity_provider.SetTrustedAccountUseCase{})
+	registryMock.EXPECT().AddTrustedAccountUseCase().Return(&liquidity_provider.AddTrustedAccountUseCase{})
+	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
 
 	endpoints := routes.GetManagementEndpoints(environment.Environment{}, registryMock, &mocks.StoreMock{})
 	specBytes := test.ReadFile(t, "OpenApi.yml")

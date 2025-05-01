@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"math/big"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -16,7 +15,7 @@ import (
 // @Description Updates an existing trusted account
 // @Param TrustedAccountRequest body pkg.TrustedAccountRequest true "Details of the trusted account to update"
 // @Success 204 object
-// @Route /management/trusted-accounts [post]
+// @Route /management/trusted-accounts [put]
 func NewSetTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
@@ -26,23 +25,11 @@ func NewSetTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.Ha
 		} else if err = rest.ValidateRequest(w, request); err != nil {
 			return
 		}
-		btcLockingCap, ok := new(big.Int).SetString(request.BtcLockingCap, 10)
-		if !ok {
-			jsonErr := rest.NewErrorResponse("Invalid BTC locking cap value", true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		}
-		rbtcLockingCap, ok := new(big.Int).SetString(request.RbtcLockingCap, 10)
-		if !ok {
-			jsonErr := rest.NewErrorResponse("Invalid RBTC locking cap value", true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		}
 		accountDetails := lp.TrustedAccountDetails{
 			Address:          request.Address,
 			Name:             request.Name,
-			Btc_locking_cap:  entities.NewBigWei(btcLockingCap),
-			Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap),
+			Btc_locking_cap:  entities.NewBigWei(request.BtcLockingCap),
+			Rbtc_locking_cap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
 		if err != nil {
@@ -50,6 +37,6 @@ func NewSetTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.Ha
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
-		rest.JsonResponse(w, http.StatusOK)
+		rest.JsonResponse(w, http.StatusNoContent)
 	}
 }
