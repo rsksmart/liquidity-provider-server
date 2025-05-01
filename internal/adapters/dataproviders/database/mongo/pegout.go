@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -11,8 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"regexp"
-	"time"
 )
 
 const (
@@ -359,4 +360,62 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		logDbInteraction(Upsert, deposits)
 	}
 	return err
+}
+
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
+	result := make([]quote.PegoutQuoteWithRetained, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
+		{Key: "$gte", Value: startDate.Unix()},
+		{Key: "$lte", Value: endDate.Unix()},
+	}}}
+	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+	quoteCursor, err := repo.conn.Collection(PegoutQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
+	if err != nil {
+		return nil, err
+	}
+	defer quoteCursor.Close(dbCtx)
+	var storedQuotes []StoredPegoutQuote
+	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
+		return nil, err
+	}
+	if len(storedQuotes) == 0 {
+		logDbInteraction(Read, map[string]interface{}{"quotePairs": 0})
+		return result, nil
+	}
+	hashToIndex := make(map[string]int, len(storedQuotes))
+	quoteHashes := make([]string, len(storedQuotes))
+	result = make([]quote.PegoutQuoteWithRetained, len(storedQuotes))
+	for i, stored := range storedQuotes {
+		quoteHashes[i] = stored.Hash
+		hashToIndex[stored.Hash] = i
+		result[i] = quote.PegoutQuoteWithRetained{
+			Quote:         stored.PegoutQuote,
+			RetainedQuote: nil,
+		}
+	}
+	retainedCursor, err := repo.conn.Collection(RetainedPegoutQuoteCollection).Find(
+		dbCtx,
+		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
+	)
+	if err != nil {
+		return result, err
+	}
+	defer retainedCursor.Close(dbCtx)
+	var retainedQuote quote.RetainedPegoutQuote
+	for retainedCursor.Next(dbCtx) {
+		if err := retainedCursor.Decode(&retainedQuote); err != nil {
+			return result, err
+		}
+		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
+			quoteCopy := retainedQuote
+			result[idx].RetainedQuote = &quoteCopy
+		}
+	}
+	if err := retainedCursor.Err(); err != nil {
+		return result, err
+	}
+	logDbInteraction(Read, len(result))
+	return result, nil
 }
