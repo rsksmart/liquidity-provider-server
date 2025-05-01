@@ -677,3 +677,49 @@ func TestPegoutMongoRepository_GetPegoutCreationData(t *testing.T) {
 		assert.Equal(t, quote.PegoutCreationDataZeroValue(), result)
 	})
 }
+
+func TestPegoutMongoRepository_GetQuotes(t *testing.T) {
+	t.Run("Get quotes with hash filters and timestamp filters", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		pegoutCollection := &mocks.CollectionBindingMock{}
+
+		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection)
+
+		hashList := []string{"27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f"}
+		expectedQuotes := []quote.PegoutQuote{testPegoutQuote}
+		pegoutCollection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.M) bool {
+			return true
+		}), mock.Anything).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutQuote}, nil, nil))
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		startDateTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDateTime := time.Date(2025, 1, 1, 23, 59, 59, 0, time.UTC)
+
+		result, err := repo.GetQuotesByHashesAndDate(context.Background(), hashList, startDateTime, endDateTime)
+
+		require.NoError(t, err)
+		assert.Equal(t, expectedQuotes, result)
+
+		pegoutCollection.AssertExpectations(t)
+		pegoutCollection.AssertExpectations(t)
+	})
+
+	t.Run("error reading quotes from DB", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegoutQuoteCollection)
+
+		collection.On("Find", mock.Anything, mock.Anything).Return(nil, mongoDb.ErrNoDocuments).Once()
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPegoutMongoRepository(conn)
+
+		hashList := []string{"27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f"}
+		startDateTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDateTime := time.Date(2025, 1, 1, 23, 59, 59, 0, time.UTC)
+
+		quotes, err := repo.GetQuotesByHashesAndDate(context.Background(), hashList, startDateTime, endDateTime)
+		require.Error(t, err)
+		assert.Equal(t, "mongo: no documents in result", err.Error())
+		assert.Nil(t, quotes)
+	})
+}

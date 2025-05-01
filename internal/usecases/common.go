@@ -60,6 +60,8 @@ const (
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
 	SummariesUseCaseId         UseCaseId = "Summaries"
+	GetPeginReportId           UseCaseId = "GetPeginReport"
+	GetPegoutReportId          UseCaseId = "GetPegoutReport"
 )
 
 var (

@@ -14,6 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"regexp"
+	"time"
 )
 
 const (
@@ -110,6 +112,46 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	}
 	logDbInteraction(Read, result.PegoutQuote)
 	return &result.PegoutQuote, nil
+}
+
+func (repo *pegoutMongoRepository) GetQuotesByHashesAndDate(
+	ctx context.Context,
+	hashes []string,
+	startDate, endDate time.Time,
+) ([]quote.PegoutQuote, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	for _, hash := range hashes {
+		if err := quote.ValidateQuoteHash(hash); err != nil {
+			return nil, err
+		}
+	}
+
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+	quotesReturn := make([]quote.PegoutQuote, 0)
+	filter := bson.M{
+		"hash": bson.M{"$in": hashes},
+		"agreement_timestamp": bson.M{
+			"$gte": startDate.Unix(),
+			"$lte": endDate.Unix(),
+		},
+	}
+
+	cursor, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	for cursor.Next(ctx) {
+		var result StoredPegoutQuote
+		err = cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		quotesReturn = append(quotesReturn, result.PegoutQuote)
+	}
+	logDbInteraction(Read, quotesReturn)
+	return quotesReturn, nil
 }
 
 func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {

@@ -126,3 +126,12 @@ type DepositEventDTO struct {
 	BlockNumber uint64    `json:"-"`
 	From        string    `json:"from" example:"0x0" description:"From Address"`
 }
+
+type GetPegoutReportResponse struct {
+	NumberOfQuotes     int      `json:"numberOfQuotes" required:"" description:"Number of finalized pegout quotes"`
+	MinimumQuoteValue  *big.Int `json:"minimumQuoteValue" required:"" description:"Minimum value of the quote"`
+	MaximumQuoteValue  *big.Int `json:"maximumQuoteValue" required:"" description:"Maximum value of the quote"`
+	AverageQuoteValue  *big.Int `json:"averageQuoteValue" required:"" description:"Average value of the quote"`
+	TotalFeesCollected *big.Int `json:"totalFeesCollected" required:"" description:"Total fees collected"`
+	AverageFeePerQuote *big.Int `json:"averageFeePerQuote" required:"" description:"Average fee per quote"`
+}

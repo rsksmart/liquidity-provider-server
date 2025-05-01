@@ -1,8 +1,10 @@
 package pkg_test
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -145,5 +147,147 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		}
 		assert.Equal(t, expectedDTO, dto)
 		test.AssertNonZeroValues(t, dto)
+	})
+}
+
+// nolint:funlen
+func TestGetReportsPeginPegoutRequest_ValidateGetReportsPeginPegoutRequest(t *testing.T) {
+	t.Run("valid dates", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "2023-01-02",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		assert.NoError(t, err)
+	})
+
+	t.Run("empty startDate", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "",
+			EndDate:   "2023-01-02",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "startDate is required", err.Error())
+	})
+
+	t.Run("empty endDate", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate is required", err.Error())
+	})
+
+	t.Run("invalid startDate format", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "01/01/2023",
+			EndDate:   "2023-01-02",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "startDate must be in format YYYY-MM-DD", err.Error())
+	})
+
+	t.Run("invalid endDate format", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "01/02/2023",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate must be in format YYYY-MM-DD", err.Error())
+	})
+
+	t.Run("endDate equal to startDate", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "2023-01-01",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate must be after startDate", err.Error())
+	})
+
+	t.Run("endDate before startDate", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-02",
+			EndDate:   "2023-01-01",
+		}
+		err := request.ValidateGetReportsPeginPegoutRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate must be after startDate", err.Error())
+	})
+}
+
+// nolint:funlen
+func TestGetReportsPeginPegoutRequest_GetTimestamps(t *testing.T) {
+	t.Run("valid dates", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "2023-01-02",
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 2, 23, 59, 59, 0, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("invalid startDate format", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "01/01/2023",
+			EndDate:   "2023-01-02",
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.Error(t, err)
+		assert.True(t, startTime.IsZero())
+		assert.True(t, endTime.IsZero())
+	})
+
+	t.Run("invalid endDate format", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-01-01",
+			EndDate:   "01/02/2023",
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.Error(t, err)
+		assert.True(t, startTime.IsZero())
+		assert.True(t, endTime.IsZero())
+	})
+
+	t.Run("sets time component correctly", func(t *testing.T) {
+		request := pkg.GetReportsPeginPegoutRequest{
+			StartDate: "2023-05-15",
+			EndDate:   "2023-06-20",
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		// Start time should be at 00:00:00
+		assert.Equal(t, 0, startTime.Hour())
+		assert.Equal(t, 0, startTime.Minute())
+		assert.Equal(t, 0, startTime.Second())
+		assert.Equal(t, 0, startTime.Nanosecond())
+
+		// End time should be at 23:59:59
+		assert.Equal(t, 23, endTime.Hour())
+		assert.Equal(t, 59, endTime.Minute())
+		assert.Equal(t, 59, endTime.Second())
+		assert.Equal(t, 0, endTime.Nanosecond())
+
+		// Dates should be preserved
+		assert.Equal(t, 2023, startTime.Year())
+		assert.Equal(t, time.Month(5), startTime.Month())
+		assert.Equal(t, 15, startTime.Day())
+
+		assert.Equal(t, 2023, endTime.Year())
+		assert.Equal(t, time.Month(6), endTime.Month())
+		assert.Equal(t, 20, endTime.Day())
 	})
 }
