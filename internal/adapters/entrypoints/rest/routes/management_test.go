@@ -43,8 +43,8 @@ func TestGetManagementEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 18)
-	assert.Len(t, endpoints, 19)
+	assert.Len(t, endpoints, 20)
+	assert.Len(t, endpoints, 20)
 	for _, endpoint := range endpoints {
 		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath {
 			lowerCaseMethod := strings.ToLower(endpoint.Method)
