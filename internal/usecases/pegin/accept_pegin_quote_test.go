@@ -3,6 +3,10 @@ package pegin_test
 import (
 	"context"
 	"encoding/hex"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -13,9 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"strings"
-	"testing"
-	"time"
 )
 
 var anyScript = "any script"
@@ -54,6 +55,8 @@ var federationInfo = blockchain.FederationInfo{
 	IrisActivationHeight: 500,
 	ErpKeys:              []string{"04", "05", "06"},
 }
+
+var trustedAccountRepository = new(mocks.TrustedAccountRepositoryMock)
 
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
@@ -98,8 +101,8 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex)
-	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)
@@ -137,8 +140,8 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
-	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
 	quoteRepository.AssertExpectations(t)
@@ -169,8 +172,8 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
-	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
 	quoteRepository.AssertExpectations(t)
@@ -202,8 +205,8 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
-	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
 	quoteRepository.AssertExpectations(t)
@@ -244,8 +247,8 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
-	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)
@@ -276,8 +279,8 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		setup(&caseHash, quoteRepository, bridge, btc, lp, rsk)
 		contracts := blockchain.RskContracts{Bridge: bridge}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex)
-		result, err := useCase.Run(context.Background(), caseHash)
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+		result, err := useCase.Run(context.Background(), caseHash, "")
 
 		rsk.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)

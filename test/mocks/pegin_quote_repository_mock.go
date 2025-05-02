@@ -270,6 +270,65 @@ func (_c *PeginQuoteRepositoryMock_GetRetainedQuoteByState_Call) RunAndReturn(ru
 	return _c
 }
 
+// GetRetainedQuotesForTrustedAccount provides a mock function with given fields: ctx, address
+func (_m *PeginQuoteRepositoryMock) GetRetainedQuotesForTrustedAccount(ctx context.Context, address string) ([]quote.RetainedPeginQuote, error) {
+	ret := _m.Called(ctx, address)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetainedQuotesForTrustedAccount")
+	}
+
+	var r0 []quote.RetainedPeginQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]quote.RetainedPeginQuote, error)); ok {
+		return rf(ctx, address)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []quote.RetainedPeginQuote); ok {
+		r0 = rf(ctx, address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.RetainedPeginQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetainedQuotesForTrustedAccount'
+type PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call struct {
+	*mock.Call
+}
+
+// GetRetainedQuotesForTrustedAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - address string
+func (_e *PeginQuoteRepositoryMock_Expecter) GetRetainedQuotesForTrustedAccount(ctx interface{}, address interface{}) *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call {
+	return &PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call{Call: _e.mock.On("GetRetainedQuotesForTrustedAccount", ctx, address)}
+}
+
+func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call) Run(run func(ctx context.Context, address string)) *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call) Return(_a0 []quote.RetainedPeginQuote, _a1 error) *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call) RunAndReturn(run func(context.Context, string) ([]quote.RetainedPeginQuote, error)) *PeginQuoteRepositoryMock_GetRetainedQuotesForTrustedAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InsertQuote provides a mock function with given fields: ctx, hash, _a2
 func (_m *PeginQuoteRepositoryMock) InsertQuote(ctx context.Context, hash string, _a2 quote.PeginQuote) error {
 	ret := _m.Called(ctx, hash, _a2)

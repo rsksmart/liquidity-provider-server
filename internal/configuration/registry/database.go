@@ -11,6 +11,7 @@ type Database struct {
 	PegoutRepository            quote.PegoutQuoteRepository
 	LiquidityProviderRepository liquidity_provider.LiquidityProviderRepository
 	Connection                  *mongo.Connection
+	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 }
 
 func NewDatabaseRegistry(connection *mongo.Connection) *Database {
