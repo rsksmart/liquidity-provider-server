@@ -2,8 +2,9 @@ package quote
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 const (
@@ -33,6 +34,7 @@ type PeginQuoteRepository interface {
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
+	GetRetainedQuotesForTrustedAccount(ctx context.Context, address string) ([]RetainedPeginQuote, error)
 }
 
 type PeginQuote struct {
@@ -93,6 +95,7 @@ type RetainedPeginQuote struct {
 	UserBtcTxHash       string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
 	CallForUserTxHash   string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
 	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
+	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 type WatchedPeginQuote struct {

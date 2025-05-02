@@ -1,15 +1,19 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
 )
 
 // used for error logging
@@ -207,4 +211,33 @@ func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockc
 		}
 	}
 	return nil
+}
+
+// RecoverSignerAddress recovers the address from a signature. Important function for the management
+// of trusted accounts.
+func RecoverSignerAddress(quoteHash, signature string) string {
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		return ""
+	}
+
+	hashBytes, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return ""
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("\x19Ethereum Signed Message:\n32")
+	buf.Write(hashBytes)
+	prefixedHash := crypto.Keccak256(buf.Bytes())
+
+	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	if err != nil {
+		return ""
+	}
+
+	pubKeyHash := crypto.Keccak256Hash(pubKey[1:])
+	address := common.BytesToAddress(pubKeyHash[12:]).Hex() // Last 20 bytes of hash
+
+	return address
 }

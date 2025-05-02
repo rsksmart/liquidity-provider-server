@@ -33,7 +33,7 @@ func NewAcceptPeginQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerF
 			return
 		}
 
-		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash)
+		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, "")
 		if errors.Is(err, usecases.QuoteNotFoundError) {
 			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
