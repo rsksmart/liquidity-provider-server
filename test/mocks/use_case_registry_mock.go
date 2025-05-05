@@ -1389,49 +1389,49 @@ func (_c *UseCaseRegistryMock_SetPegoutConfigUseCase_Call) RunAndReturn(run func
 	return _c
 }
 
-// SetTrustedAccountUseCase provides a mock function with no fields
-func (_m *UseCaseRegistryMock) SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase {
+// UpdateTrustedAccountUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetTrustedAccountUseCase")
+		panic("no return value specified for UpdateTrustedAccountUseCase")
 	}
 
-	var r0 *liquidity_provider.SetTrustedAccountUseCase
-	if rf, ok := ret.Get(0).(func() *liquidity_provider.SetTrustedAccountUseCase); ok {
+	var r0 *liquidity_provider.UpdateTrustedAccountUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.UpdateTrustedAccountUseCase); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*liquidity_provider.SetTrustedAccountUseCase)
+			r0 = ret.Get(0).(*liquidity_provider.UpdateTrustedAccountUseCase)
 		}
 	}
 
 	return r0
 }
 
-// UseCaseRegistryMock_SetTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTrustedAccountUseCase'
-type UseCaseRegistryMock_SetTrustedAccountUseCase_Call struct {
+// UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateTrustedAccountUseCase'
+type UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call struct {
 	*mock.Call
 }
 
-// SetTrustedAccountUseCase is a helper method to define mock.On call
-func (_e *UseCaseRegistryMock_Expecter) SetTrustedAccountUseCase() *UseCaseRegistryMock_SetTrustedAccountUseCase_Call {
-	return &UseCaseRegistryMock_SetTrustedAccountUseCase_Call{Call: _e.mock.On("SetTrustedAccountUseCase")}
+// UpdateTrustedAccountUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) UpdateTrustedAccountUseCase() *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
+	return &UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call{Call: _e.mock.On("UpdateTrustedAccountUseCase")}
 }
 
-func (_c *UseCaseRegistryMock_SetTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_SetTrustedAccountUseCase_Call {
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_SetTrustedAccountUseCase_Call) Return(_a0 *liquidity_provider.SetTrustedAccountUseCase) *UseCaseRegistryMock_SetTrustedAccountUseCase_Call {
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) Return(_a0 *liquidity_provider.UpdateTrustedAccountUseCase) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_SetTrustedAccountUseCase_Call) RunAndReturn(run func() *liquidity_provider.SetTrustedAccountUseCase) *UseCaseRegistryMock_SetTrustedAccountUseCase_Call {
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) RunAndReturn(run func() *liquidity_provider.UpdateTrustedAccountUseCase) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -58,7 +58,7 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
-	setTrustedAccountUseCase      *liquidity_provider.SetTrustedAccountUseCase
+	updateTrustedAccountUseCase   *liquidity_provider.UpdateTrustedAccountUseCase
 	addTrustedAccountUseCase      *liquidity_provider.AddTrustedAccountUseCase
 	deleteTrustedAccountUseCase   *liquidity_provider.DeleteTrustedAccountUseCase
 	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
@@ -237,7 +237,7 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
-		setTrustedAccountUseCase: liquidity_provider.NewSetTrustedAccountUseCase(
+		updateTrustedAccountUseCase: liquidity_provider.NewUpdateTrustedAccountUseCase(
 			databaseRegistry.TrustedAccountRepository,
 			rskRegistry.Wallet,
 			signingHashFunction,
@@ -372,8 +372,8 @@ func (registry *UseCaseRegistry) GetTrustedAccountsUseCase() *liquidity_provider
 	return registry.getTrustedAccountsUseCase
 }
 
-func (registry *UseCaseRegistry) SetTrustedAccountUseCase() *liquidity_provider.SetTrustedAccountUseCase {
-	return registry.setTrustedAccountUseCase
+func (registry *UseCaseRegistry) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {
+	return registry.updateTrustedAccountUseCase
 }
 
 func (registry *UseCaseRegistry) AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase {

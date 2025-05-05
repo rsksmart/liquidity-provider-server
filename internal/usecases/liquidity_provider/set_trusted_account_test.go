@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
+func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 	t.Run("Success case", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}
@@ -39,7 +39,7 @@ func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 				a.Signature == expectedSignedAccount.Signature &&
 				a.Hash == expectedSignedAccount.Hash
 		})).Return(nil)
-		useCase := lp.NewSetTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.NoError(t, err)
 		repo.AssertExpectations(t)
@@ -59,7 +59,7 @@ func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return(nil, errors.New("signing error"))
-		useCase := lp.NewSetTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
 		repo.AssertNotCalled(t, "UpdateTrustedAccount")
@@ -82,10 +82,10 @@ func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		repo.On("UpdateTrustedAccount", mock.Anything, mock.MatchedBy(func(a entities.Signed[liquidity_provider.TrustedAccountDetails]) bool {
 			return a.Value.Address == account.Address && a.Value.Name == account.Name
 		})).Return(assert.AnError)
-		useCase := lp.NewSetTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), usecases.SetTrustedAccountId)
+		require.Contains(t, err.Error(), usecases.UpdateTrustedAccountId)
 		repo.AssertExpectations(t)
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
@@ -106,7 +106,7 @@ func TestSetTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		repo.On("UpdateTrustedAccount", mock.Anything, mock.MatchedBy(func(a entities.Signed[liquidity_provider.TrustedAccountDetails]) bool {
 			return a.Value.Address == account.Address && a.Value.Name == account.Name
 		})).Return(liquidity_provider.ErrTrustedAccountNotFound)
-		useCase := lp.NewSetTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), liquidity_provider.ErrTrustedAccountNotFound.Error())

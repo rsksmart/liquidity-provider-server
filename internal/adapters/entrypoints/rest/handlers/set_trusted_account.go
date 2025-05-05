@@ -17,7 +17,7 @@ import (
 // @Param TrustedAccountRequest body pkg.TrustedAccountRequest true "Details of the trusted account to update"
 // @Success 204 object
 // @Route /management/trusted-accounts [put]
-func NewUpdateTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.HandlerFunc {
+func NewUpdateTrustedAccountHandler(useCase *lpuc.UpdateTrustedAccountUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := &pkg.TrustedAccountRequest{}

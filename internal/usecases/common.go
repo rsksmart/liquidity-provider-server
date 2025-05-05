@@ -49,7 +49,7 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
-	SetTrustedAccountId        UseCaseId = "SetTrustedAccountUseCase"
+	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
 	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
 	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
