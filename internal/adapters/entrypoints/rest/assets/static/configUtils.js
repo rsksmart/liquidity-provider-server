@@ -1,4 +1,5 @@
 function weiToEther(wei) {
+    if (wei === null || wei === undefined) return '0';
     try {
         const decimalValue = new Decimal(wei);
         return decimalValue.dividedBy(new Decimal(1e18)).toString();
@@ -118,6 +119,15 @@ function hasDuplicateConfirmationAmounts(confirmationArray) {
 function isToggableFeeKey(key) {
     return key === 'fixedFee' || key === 'feePercentage';
 }
+const formatCap = (value, unit) => {
+    try {
+        const num = parseFloat(value);
+        return parseFloat(num.toFixed(4)).toString() + ' ' + unit;
+    } catch (e) {
+        console.error('Error formatting cap:', e);
+        return `Error: ${e.message || 'Failed to format value'}`;
+    }
+};
 
 export {
     weiToEther,
@@ -129,5 +139,6 @@ export {
     postConfig,
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
-    isToggableFeeKey
+    isToggableFeeKey,
+    formatCap
 };
