@@ -2,8 +2,6 @@ package mongo_test
 
 import (
 	"context"
-	"testing"
-	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -18,6 +16,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDb "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"testing"
+	"time"
 )
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{

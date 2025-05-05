@@ -147,3 +147,56 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		test.AssertNonZeroValues(t, dto)
 	})
 }
+
+func TestToTrustedAccountDTO(t *testing.T) {
+	btcLockingCap := new(big.Int)
+	btcLockingCap.SetString("5000000000000000000", 10)
+	rbtcLockingCap := new(big.Int)
+	rbtcLockingCap.SetString("7000000000000000000", 10)
+	trustedAccount := liquidity_provider.TrustedAccountDetails{
+		Address:          "0x1234567890abcdef",
+		Name:             "Test Trusted Account",
+		Btc_locking_cap:  entities.NewBigWei(btcLockingCap),
+		Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap),
+	}
+	dto := pkg.ToTrustedAccountDTO(trustedAccount)
+	assert.Equal(t, "0x1234567890abcdef", dto.Address)
+	assert.Equal(t, "Test Trusted Account", dto.Name)
+	assert.Equal(t, "5000000000000000000", dto.BtcLockingCap.String())
+	assert.Equal(t, "7000000000000000000", dto.RbtcLockingCap.String())
+}
+
+func TestToTrustedAccountsDTO(t *testing.T) {
+	btcLockingCap1 := new(big.Int)
+	btcLockingCap1.SetString("5000000000000000000", 10)
+	rbtcLockingCap1 := new(big.Int)
+	rbtcLockingCap1.SetString("7000000000000000000", 10)
+	btcLockingCap2 := new(big.Int)
+	btcLockingCap2.SetString("9000000000000000000", 10)
+	rbtcLockingCap2 := new(big.Int)
+	rbtcLockingCap2.SetString("3000000000000000000", 10)
+	trustedAccounts := []liquidity_provider.TrustedAccountDetails{
+		{
+			Address:          "0x1234567890abcdef",
+			Name:             "Test Trusted Account 1",
+			Btc_locking_cap:  entities.NewBigWei(btcLockingCap1),
+			Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap1),
+		},
+		{
+			Address:          "0xabcdef1234567890",
+			Name:             "Test Trusted Account 2",
+			Btc_locking_cap:  entities.NewBigWei(btcLockingCap2),
+			Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap2),
+		},
+	}
+	dtos := pkg.ToTrustedAccountsDTO(trustedAccounts)
+	assert.Equal(t, 2, len(dtos))
+	assert.Equal(t, "0x1234567890abcdef", dtos[0].Address)
+	assert.Equal(t, "Test Trusted Account 1", dtos[0].Name)
+	assert.Equal(t, "5000000000000000000", dtos[0].BtcLockingCap.String())
+	assert.Equal(t, "7000000000000000000", dtos[0].RbtcLockingCap.String())
+	assert.Equal(t, "0xabcdef1234567890", dtos[1].Address)
+	assert.Equal(t, "Test Trusted Account 2", dtos[1].Name)
+	assert.Equal(t, "9000000000000000000", dtos[1].BtcLockingCap.String())
+	assert.Equal(t, "3000000000000000000", dtos[1].RbtcLockingCap.String())
+}

@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"errors"
-
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"go.mongodb.org/mongo-driver/bson"
