@@ -45,7 +45,7 @@ func TestNewGetTrustedAccountsHandler(t *testing.T) {
 		var response pkg.TrustedAccountsResponse
 		err := json.Unmarshal(recorder.Body.Bytes(), &response)
 		require.NoError(t, err)
-		require.Equal(t, 2, len(response.Accounts))
+		require.Len(t, response.Accounts, 2)
 		assert.Equal(t, "0x123", response.Accounts[0].Address)
 		assert.Equal(t, "Test Account 1", response.Accounts[0].Name)
 		assert.Equal(t, "0x456", response.Accounts[1].Address)

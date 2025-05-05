@@ -190,7 +190,7 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 		},
 	}
 	dtos := pkg.ToTrustedAccountsDTO(trustedAccounts)
-	assert.Equal(t, 2, len(dtos))
+	assert.Len(t, dtos, 2)
 	assert.Equal(t, "0x1234567890abcdef", dtos[0].Address)
 	assert.Equal(t, "Test Trusted Account 1", dtos[0].Name)
 	assert.Equal(t, "5000000000000000000", dtos[0].BtcLockingCap.String())

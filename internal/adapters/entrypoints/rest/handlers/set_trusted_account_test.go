@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createValidRequest() (*http.Request, *pkg.TrustedAccountRequest) {
+func createValidRequest() *http.Request {
 	btcLockingCap := new(big.Int)
 	btcLockingCap.SetString("1000000000000000000", 10)
 	rbtcLockingCap := new(big.Int)
@@ -29,15 +29,18 @@ func createValidRequest() (*http.Request, *pkg.TrustedAccountRequest) {
 		BtcLockingCap:  btcLockingCap,
 		RbtcLockingCap: rbtcLockingCap,
 	}
-	jsonBody, _ := json.Marshal(reqBody)
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		panic(err)
+	}
 	request := httptest.NewRequest("PUT", "/management/trusted-accounts", bytes.NewBuffer(jsonBody))
 	request.Header.Set("Content-Type", "application/json")
-	return request, reqBody
+	return request
 }
 
-func TestNewUpdateTrustedAccountHandler(t *testing.T) {
+func TestNewUpdateTrustedAccountHandler(t *testing.T) { //nolint:funlen
 	t.Run("should return 204 on success", func(t *testing.T) {
-		request, _ := createValidRequest()
+		request := createValidRequest()
 		recorder := httptest.NewRecorder()
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}
@@ -85,7 +88,7 @@ func TestNewUpdateTrustedAccountHandler(t *testing.T) {
 	})
 
 	t.Run("should return 404 when account not found", func(t *testing.T) {
-		request, _ := createValidRequest()
+		request := createValidRequest()
 		recorder := httptest.NewRecorder()
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}
