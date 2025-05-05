@@ -120,7 +120,7 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		{
 			Path:    "/management/trusted-accounts",
 			Method:  http.MethodPut,
-			Handler: handlers.NewSetTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
+			Handler: handlers.NewUpdateTrustedAccountHandler(useCaseRegistry.SetTrustedAccountUseCase()),
 		},
 		{
 			Path:    "/management/trusted-accounts",

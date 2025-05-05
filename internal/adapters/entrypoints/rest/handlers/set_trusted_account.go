@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -10,13 +11,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-// NewSetTrustedAccountHandler
+// NewUpdateTrustedAccountHandler
 // @Title Update Trusted Account
 // @Description Updates an existing trusted account
 // @Param TrustedAccountRequest body pkg.TrustedAccountRequest true "Details of the trusted account to update"
 // @Success 204 object
 // @Route /management/trusted-accounts [put]
-func NewSetTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.HandlerFunc {
+func NewUpdateTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := &pkg.TrustedAccountRequest{}
@@ -32,7 +33,11 @@ func NewSetTrustedAccountHandler(useCase *lpuc.SetTrustedAccountUseCase) http.Ha
 			Rbtc_locking_cap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
-		if err != nil {
+		if errors.Is(err, lp.ErrTrustedAccountNotFound) {
+			jsonErr := rest.NewErrorResponse(lp.ErrTrustedAccountNotFound.Error(), true)
+			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
+			return
+		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return

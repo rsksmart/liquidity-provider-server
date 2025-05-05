@@ -684,11 +684,6 @@ components:
         rsk:
           type: string
       type: object
-    TrustedAccountAddressRequest:
-      properties:
-        address:
-          type: string
-      type: object
     TrustedAccountRequest:
       properties:
         address:
@@ -822,12 +817,15 @@ paths:
   /management/trusted-accounts:
     delete:
       description: ' Deletes a trusted account'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TrustedAccountAddressRequest'
+      parameters:
+      - description: Address of the trusted account to delete
+        in: query
+        name: address
         required: true
+        schema:
+          description: Address of the trusted account to delete
+          format: string
+          type: string
       responses:
         "204":
           description: ""

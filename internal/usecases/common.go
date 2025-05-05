@@ -50,6 +50,8 @@ const (
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
 	SetTrustedAccountId        UseCaseId = "SetTrustedAccountUseCase"
+	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
+	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"

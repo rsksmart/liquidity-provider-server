@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -37,7 +38,11 @@ func NewAddTrustedAccountHandler(useCase *lpuc.AddTrustedAccountUseCase) http.Ha
 			Rbtc_locking_cap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
-		if err != nil {
+		if errors.Is(err, lp.ErrDuplicateTrustedAccount) {
+			jsonErr := rest.NewErrorResponse(lp.ErrDuplicateTrustedAccount.Error(), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return

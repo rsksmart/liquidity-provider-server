@@ -691,13 +691,12 @@ const addTrustedAccount = async (csrfToken) => {
 const removeTrustedAccount = async (address, csrfToken) => {
     if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
     try {
-        const response = await fetch('/management/trusted-accounts', {
+        const response = await fetch(`/management/trusted-accounts?address=${encodeURIComponent(address)}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({ address })
+            }
         });
         if (response.ok) {
             showSuccessToast();

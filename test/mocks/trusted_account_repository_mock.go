@@ -5,7 +5,9 @@ package mocks
 import (
 	context "context"
 
+	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 	liquidity_provider "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -23,7 +25,7 @@ func (_m *TrustedAccountRepositoryMock) EXPECT() *TrustedAccountRepositoryMock_E
 }
 
 // AddTrustedAccount provides a mock function with given fields: ctx, account
-func (_m *TrustedAccountRepositoryMock) AddTrustedAccount(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+func (_m *TrustedAccountRepositoryMock) AddTrustedAccount(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails]) error {
 	ret := _m.Called(ctx, account)
 
 	if len(ret) == 0 {
@@ -31,7 +33,7 @@ func (_m *TrustedAccountRepositoryMock) AddTrustedAccount(ctx context.Context, a
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, liquidity_provider.TrustedAccountDetails) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, entities.Signed[liquidity_provider.TrustedAccountDetails]) error); ok {
 		r0 = rf(ctx, account)
 	} else {
 		r0 = ret.Error(0)
@@ -47,14 +49,14 @@ type TrustedAccountRepositoryMock_AddTrustedAccount_Call struct {
 
 // AddTrustedAccount is a helper method to define mock.On call
 //   - ctx context.Context
-//   - account liquidity_provider.TrustedAccountDetails
+//   - account entities.Signed[liquidity_provider.TrustedAccountDetails]
 func (_e *TrustedAccountRepositoryMock_Expecter) AddTrustedAccount(ctx interface{}, account interface{}) *TrustedAccountRepositoryMock_AddTrustedAccount_Call {
 	return &TrustedAccountRepositoryMock_AddTrustedAccount_Call{Call: _e.mock.On("AddTrustedAccount", ctx, account)}
 }
 
-func (_c *TrustedAccountRepositoryMock_AddTrustedAccount_Call) Run(run func(ctx context.Context, account liquidity_provider.TrustedAccountDetails)) *TrustedAccountRepositoryMock_AddTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_AddTrustedAccount_Call) Run(run func(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails])) *TrustedAccountRepositoryMock_AddTrustedAccount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(liquidity_provider.TrustedAccountDetails))
+		run(args[0].(context.Context), args[1].(entities.Signed[liquidity_provider.TrustedAccountDetails]))
 	})
 	return _c
 }
@@ -64,7 +66,7 @@ func (_c *TrustedAccountRepositoryMock_AddTrustedAccount_Call) Return(_a0 error)
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_AddTrustedAccount_Call) RunAndReturn(run func(context.Context, liquidity_provider.TrustedAccountDetails) error) *TrustedAccountRepositoryMock_AddTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_AddTrustedAccount_Call) RunAndReturn(run func(context.Context, entities.Signed[liquidity_provider.TrustedAccountDetails]) error) *TrustedAccountRepositoryMock_AddTrustedAccount_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -234,7 +236,7 @@ func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) RunAndReturn(run 
 }
 
 // UpdateTrustedAccount provides a mock function with given fields: ctx, account
-func (_m *TrustedAccountRepositoryMock) UpdateTrustedAccount(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+func (_m *TrustedAccountRepositoryMock) UpdateTrustedAccount(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails]) error {
 	ret := _m.Called(ctx, account)
 
 	if len(ret) == 0 {
@@ -242,7 +244,7 @@ func (_m *TrustedAccountRepositoryMock) UpdateTrustedAccount(ctx context.Context
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, liquidity_provider.TrustedAccountDetails) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, entities.Signed[liquidity_provider.TrustedAccountDetails]) error); ok {
 		r0 = rf(ctx, account)
 	} else {
 		r0 = ret.Error(0)
@@ -258,14 +260,14 @@ type TrustedAccountRepositoryMock_UpdateTrustedAccount_Call struct {
 
 // UpdateTrustedAccount is a helper method to define mock.On call
 //   - ctx context.Context
-//   - account liquidity_provider.TrustedAccountDetails
+//   - account entities.Signed[liquidity_provider.TrustedAccountDetails]
 func (_e *TrustedAccountRepositoryMock_Expecter) UpdateTrustedAccount(ctx interface{}, account interface{}) *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call {
 	return &TrustedAccountRepositoryMock_UpdateTrustedAccount_Call{Call: _e.mock.On("UpdateTrustedAccount", ctx, account)}
 }
 
-func (_c *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call) Run(run func(ctx context.Context, account liquidity_provider.TrustedAccountDetails)) *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call) Run(run func(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails])) *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(liquidity_provider.TrustedAccountDetails))
+		run(args[0].(context.Context), args[1].(entities.Signed[liquidity_provider.TrustedAccountDetails]))
 	})
 	return _c
 }
@@ -275,7 +277,7 @@ func (_c *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call) Return(_a0 err
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call) RunAndReturn(run func(context.Context, liquidity_provider.TrustedAccountDetails) error) *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call) RunAndReturn(run func(context.Context, entities.Signed[liquidity_provider.TrustedAccountDetails]) error) *TrustedAccountRepositoryMock_UpdateTrustedAccount_Call {
 	_c.Call.Return(run)
 	return _c
 }

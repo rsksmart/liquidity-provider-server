@@ -27,11 +27,11 @@ func NewSetTrustedAccountUseCase(
 }
 
 func (useCase *SetTrustedAccountUseCase) Run(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
-	_, err := usecases.SignConfiguration(usecases.SetTrustedAccountId, useCase.signer, useCase.hashFunc, account)
+	signedAccount, err := usecases.SignConfiguration(usecases.SetTrustedAccountId, useCase.signer, useCase.hashFunc, account)
 	if err != nil {
 		return err
 	}
-	err = useCase.trustedAccountRepository.UpdateTrustedAccount(ctx, account)
+	err = useCase.trustedAccountRepository.UpdateTrustedAccount(ctx, signedAccount)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.SetTrustedAccountId, err)
 	}

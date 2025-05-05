@@ -24,6 +24,12 @@ var testAccount = liquidity_provider.TrustedAccountDetails{
 	Rbtc_locking_cap: entities.NewWei(2000000000000000000),
 }
 
+var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails]{
+	Value:     testAccount,
+	Signature: "signature",
+	Hash:      "hash",
+}
+
 func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account found successfully", func(t *testing.T) {
@@ -101,51 +107,46 @@ func TestLpMongoRepository_GetAllTrustedAccounts(t *testing.T) {
 func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account updated successfully", func(t *testing.T) {
-		const expectedLog = "UPDATE interaction with db: {Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000}"
+		const expectedLog = "UPDATE interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
-		filter := bson.M{"address": testAccount.Address}
-		opts := options.Update().SetUpsert(true)
-		update := bson.M{"$set": testAccount}
+		filter := bson.M{"address": signedTestAccount.Value.Address}
+		opts := options.Update()
+		update := bson.M{"$set": signedTestAccount}
 		collection.On("UpdateOne", mock.Anything, filter, update, opts).Return(&mongoDb.UpdateResult{}, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		err := repo.UpdateTrustedAccount(context.Background(), testAccount)
+		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.NoError(t, err)
 	})
-	t.Run("trusted account not found but upserted", func(t *testing.T) {
-		const expectedLog = "UPDATE interaction with db: {Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000}"
+	t.Run("trusted account not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(liquidity_provider.TrustedAccountDetails{}, mongoDb.ErrNoDocuments, nil)).Once()
-		filter := bson.M{"address": testAccount.Address}
-		opts := options.Update().SetUpsert(true)
-		update := bson.M{"$set": testAccount}
-		collection.On("UpdateOne", mock.Anything, filter, update, opts).Return(&mongoDb.UpdateResult{}, nil).Once()
-		defer assertDbInteractionLog(t, expectedLog)()
-		err := repo.UpdateTrustedAccount(context.Background(), testAccount)
-		require.NoError(t, err)
+		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
+		require.Error(t, err)
+		assert.Equal(t, liquidity_provider.ErrTrustedAccountNotFound, err)
 	})
 	t.Run("Db error checking existing account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
-		err := repo.UpdateTrustedAccount(context.Background(), testAccount)
+		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
 	t.Run("Db error updating account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
-		filter := bson.M{"address": testAccount.Address}
-		opts := options.Update().SetUpsert(true)
-		update := bson.M{"$set": testAccount}
+		filter := bson.M{"address": signedTestAccount.Value.Address}
+		opts := options.Update()
+		update := bson.M{"$set": signedTestAccount}
 		collection.On("UpdateOne", mock.Anything, filter, update, opts).Return(nil, assert.AnError).Once()
-		err := repo.UpdateTrustedAccount(context.Background(), testAccount)
+		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
 }
@@ -153,41 +154,41 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account added successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000}"
+		const expectedLog = "INSERT interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(liquidity_provider.TrustedAccountDetails{}, mongoDb.ErrNoDocuments, nil)).Once()
-		collection.On("InsertOne", mock.Anything, testAccount).Return(&mongoDb.InsertOneResult{}, nil).Once()
+		collection.On("InsertOne", mock.Anything, signedTestAccount).Return(&mongoDb.InsertOneResult{}, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
-		err := repo.AddTrustedAccount(context.Background(), testAccount)
+		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.NoError(t, err)
 	})
 	t.Run("trusted account already exists", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
-		err := repo.AddTrustedAccount(context.Background(), testAccount)
+		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 		assert.Equal(t, liquidity_provider.ErrDuplicateTrustedAccount, err)
 	})
 	t.Run("Db error checking existing account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
-		err := repo.AddTrustedAccount(context.Background(), testAccount)
+		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 		collection.AssertNotCalled(t, "InsertOne")
 	})
 	t.Run("Db error inserting account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.M{"address": testAccount.Address}).
+		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(liquidity_provider.TrustedAccountDetails{}, mongoDb.ErrNoDocuments, nil)).Once()
-		collection.On("InsertOne", mock.Anything, testAccount).Return(nil, assert.AnError).Once()
-		err := repo.AddTrustedAccount(context.Background(), testAccount)
+		collection.On("InsertOne", mock.Anything, signedTestAccount).Return(nil, assert.AnError).Once()
+		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
 }

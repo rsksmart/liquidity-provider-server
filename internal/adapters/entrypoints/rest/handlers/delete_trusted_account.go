@@ -1,30 +1,34 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	lpuc "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
 // NewDeleteTrustedAccountHandler
 // @Title Delete Trusted Account
 // @Description Deletes a trusted account
-// @Param TrustedAccountAddressRequest body pkg.TrustedAccountAddressRequest true "Address of the trusted account to delete"
+// @Param address query string true "Address of the trusted account to delete"
 // @Success 204 object
 // @Route /management/trusted-accounts [delete]
 func NewDeleteTrustedAccountHandler(useCase *lpuc.DeleteTrustedAccountUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
-		request := &pkg.TrustedAccountAddressRequest{}
-		if err = rest.DecodeRequest(w, req, request); err != nil {
-			return
-		} else if err = rest.ValidateRequest(w, request); err != nil {
+		address := req.URL.Query().Get("address")
+		if address == "" {
+			rest.ValidateRequestError(w, rest.RequiredQueryParam(address))
 			return
 		}
-		err = useCase.Run(req.Context(), request.Address)
-		if err != nil {
+		err = useCase.Run(req.Context(), address)
+		if errors.Is(err, lp.ErrTrustedAccountNotFound) {
+			jsonErr := rest.NewErrorResponse(lp.ErrTrustedAccountNotFound.Error(), true)
+			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
+			return
+		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return

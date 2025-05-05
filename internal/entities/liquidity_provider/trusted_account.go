@@ -22,7 +22,7 @@ type TrustedAccountDetails struct {
 type TrustedAccountRepository interface {
 	GetTrustedAccount(ctx context.Context, address string) (*TrustedAccountDetails, error)
 	GetAllTrustedAccounts(ctx context.Context) ([]TrustedAccountDetails, error)
-	AddTrustedAccount(ctx context.Context, account TrustedAccountDetails) error
-	UpdateTrustedAccount(ctx context.Context, account TrustedAccountDetails) error
+	AddTrustedAccount(ctx context.Context, account entities.Signed[TrustedAccountDetails]) error
+	UpdateTrustedAccount(ctx context.Context, account entities.Signed[TrustedAccountDetails]) error
 	DeleteTrustedAccount(ctx context.Context, address string) error
 }

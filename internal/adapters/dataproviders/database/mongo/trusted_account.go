@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -53,11 +54,11 @@ func (repo *trustedAccountMongoRepository) GetAllTrustedAccounts(ctx context.Con
 	return accounts, nil
 }
 
-func (repo *trustedAccountMongoRepository) AddTrustedAccount(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+func (repo *trustedAccountMongoRepository) AddTrustedAccount(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails]) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(TrustedAccountCollection)
-	existingAccount, err := repo.GetTrustedAccount(ctx, account.Address)
+	existingAccount, err := repo.GetTrustedAccount(ctx, account.Value.Address)
 	if err == nil && existingAccount != nil {
 		return liquidity_provider.ErrDuplicateTrustedAccount
 	} else if err != nil && !errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) {
@@ -71,16 +72,16 @@ func (repo *trustedAccountMongoRepository) AddTrustedAccount(ctx context.Context
 	return nil
 }
 
-func (repo *trustedAccountMongoRepository) UpdateTrustedAccount(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+func (repo *trustedAccountMongoRepository) UpdateTrustedAccount(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails]) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(TrustedAccountCollection)
-	_, err := repo.GetTrustedAccount(ctx, account.Address)
-	if err != nil && !errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) {
+	_, err := repo.GetTrustedAccount(ctx, account.Value.Address)
+	if err != nil {
 		return err
 	}
-	filter := bson.M{"address": account.Address}
-	opts := options.Update().SetUpsert(true)
+	filter := bson.M{"address": account.Value.Address}
+	opts := options.Update()
 	update := bson.M{"$set": account}
 	_, err = collection.UpdateOne(dbCtx, filter, update, opts)
 	if err != nil {
