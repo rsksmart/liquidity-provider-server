@@ -2,10 +2,11 @@ package quote
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"time"
 )
 
 const (
@@ -29,7 +30,8 @@ const (
 )
 
 type PegoutQuoteRepository interface {
-	InsertQuote(ctx context.Context, hash string, quote PegoutQuote) error
+	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
+	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
@@ -41,6 +43,28 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+}
+
+type CreatedPegoutQuote struct {
+	Hash         string
+	Quote        PegoutQuote
+	CreationData PegoutCreationData
+}
+
+type PegoutCreationData struct {
+	FeeRate       *utils.BigFloat `json:"feeRate" bson:"fee_rate" validate:"required"`
+	FeePercentage *utils.BigFloat `json:"feePercentage" bson:"gte=0,lt=100,max_decimal_places=2" validate:"required"`
+	GasPrice      *entities.Wei   `json:"gasPrice" bson:"gas_price" validate:"required"`
+	FixedFee      *entities.Wei   `json:"fixedFee" bson:"fixed_fee" validate:"required"`
+}
+
+func PegoutCreationDataZeroValue() PegoutCreationData {
+	return PegoutCreationData{
+		FeeRate:       utils.NewBigFloat64(0),
+		FeePercentage: utils.NewBigFloat64(0),
+		GasPrice:      entities.NewWei(0),
+		FixedFee:      entities.NewWei(0),
+	}
 }
 
 type PegoutQuote struct {
@@ -110,16 +134,18 @@ type RetainedPegoutQuote struct {
 type WatchedPegoutQuote struct {
 	PegoutQuote   PegoutQuote
 	RetainedQuote RetainedPegoutQuote
+	CreationData  PegoutCreationData
 }
 
-func NewWatchedPegoutQuote(pegoutQuote PegoutQuote, retainedQuote RetainedPegoutQuote) WatchedPegoutQuote {
-	return WatchedPegoutQuote{PegoutQuote: pegoutQuote, RetainedQuote: retainedQuote}
+func NewWatchedPegoutQuote(pegoutQuote PegoutQuote, retainedQuote RetainedPegoutQuote, creationData PegoutCreationData) WatchedPegoutQuote {
+	return WatchedPegoutQuote{PegoutQuote: pegoutQuote, RetainedQuote: retainedQuote, CreationData: creationData}
 }
 
 type AcceptedPegoutQuoteEvent struct {
 	entities.Event
 	Quote         PegoutQuote
 	RetainedQuote RetainedPegoutQuote
+	CreationData  PegoutCreationData
 }
 
 type PegoutDeposit struct {
@@ -148,5 +174,6 @@ type PegoutBtcSentToUserEvent struct {
 	entities.Event
 	PegoutQuote   PegoutQuote
 	RetainedQuote RetainedPegoutQuote
+	CreationData  PegoutCreationData
 	Error         error
 }

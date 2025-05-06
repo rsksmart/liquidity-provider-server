@@ -73,6 +73,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{testRetainedQuotes[1]}, nil).Once()
 		for i, q := range testRetainedQuotes {
 			pegoutRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PegoutQuote{Nonce: int64(i + 1), ExpireBlock: uint32((i + 1) * 1000)}, nil).Once()
+			pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, q.QuoteHash).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 		}
 
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
@@ -144,6 +145,11 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 			{Nonce: 2, ExpireBlock: 1234},
 			{Nonce: 3, ExpireBlock: 6241},
 		}
+		quotesCreationData := []quote.PegoutCreationData{
+			{GasPrice: entities.NewWei(1)},
+			{GasPrice: entities.NewWei(2)},
+			{GasPrice: entities.NewWei(3)},
+		}
 		latestBlock := uint64(7000)
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 		lbc := &mocks.LbcMock{}
@@ -163,6 +169,9 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash1).Return(&testQuotes[0], nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash2).Return(&testQuotes[1], nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash3).Return(&testQuotes[2], nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, quoteHash1).Return(quotesCreationData[0]).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, quoteHash2).Return(quotesCreationData[1]).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, quoteHash3).Return(quotesCreationData[2]).Once()
 
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		initCacheUseCase := pegout.NewInitPegoutDepositCacheUseCase(pegoutRepository, contracts, rpc)
@@ -528,6 +537,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 			}, nil).Twice()
 		lbc.On("GetDepositEvents", mock.Anything, uint64(21), mock.MatchedBy(matchUinPtr(22))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testPegoutQuote, nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, testRetainedQuote.QuoteHash).Return(quote.PegoutCreationDataZeroValue()).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		lbc.On("IsPegOutQuoteCompleted", testRetainedQuote.QuoteHash).Return(false, nil).Once()

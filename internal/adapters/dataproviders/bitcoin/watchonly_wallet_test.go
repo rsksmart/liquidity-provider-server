@@ -166,7 +166,7 @@ func TestWatchOnlyWallet_EstimateTxFees(t *testing.T) {
 	require.NoError(t, err)
 	result, err := wallet.EstimateTxFees("address", nil)
 	require.ErrorContains(t, err, "cannot estimate from a watch-only wallet")
-	require.Nil(t, result)
+	require.Empty(t, result)
 }
 
 // TestWatchOnlyWallet_GetTransactions This test are reused from the bitcoind wallet tests suite since they share behavior

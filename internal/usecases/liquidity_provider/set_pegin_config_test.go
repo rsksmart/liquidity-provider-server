@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -18,7 +19,8 @@ var peginConfigMock = entities.Signed[lp.PeginConfiguration]{
 		TimeForDeposit: 1,
 		CallTime:       2,
 		PenaltyFee:     entities.NewWei(3),
-		CallFee:        entities.NewWei(4),
+		FixedFee:       entities.NewWei(4),
+		FeePercentage:  utils.NewBigFloat64(4.5),
 		MaxValue:       entities.NewWei(5),
 		MinValue:       entities.NewWei(1),
 	},
