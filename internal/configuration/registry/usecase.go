@@ -62,6 +62,7 @@ type UseCaseRegistry struct {
 	addTrustedAccountUseCase      *liquidity_provider.AddTrustedAccountUseCase
 	deleteTrustedAccountUseCase   *liquidity_provider.DeleteTrustedAccountUseCase
 	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
+	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
 }
 
 // NewUseCaseRegistry
@@ -252,6 +253,11 @@ func NewUseCaseRegistry(
 		),
 		getTrustedAccountsUseCase: liquidity_provider.NewGetTrustedAccountsUseCase(
 			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
+		),
+		getTrustedAccountUseCase: liquidity_provider.NewGetTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 	}
 }
@@ -370,6 +376,10 @@ func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.Serv
 
 func (registry *UseCaseRegistry) GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase {
 	return registry.getTrustedAccountsUseCase
+}
+
+func (registry *UseCaseRegistry) GetTrustedAccountUseCase() *liquidity_provider.GetTrustedAccountUseCase {
+	return registry.getTrustedAccountUseCase
 }
 
 func (registry *UseCaseRegistry) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {

@@ -216,10 +216,10 @@ func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) Truste
 	}
 }
 
-func ToTrustedAccountsDTO(entities []liquidity_provider.TrustedAccountDetails) []TrustedAccountDTO {
-	result := make([]TrustedAccountDTO, len(entities))
-	for i, entity := range entities {
-		result[i] = ToTrustedAccountDTO(entity)
+func ToTrustedAccountsDTO(signedEntities []entities.Signed[liquidity_provider.TrustedAccountDetails]) []TrustedAccountDTO {
+	result := make([]TrustedAccountDTO, len(signedEntities))
+	for i, signedEntity := range signedEntities {
+		result[i] = ToTrustedAccountDTO(signedEntity.Value)
 	}
 	return result
 }

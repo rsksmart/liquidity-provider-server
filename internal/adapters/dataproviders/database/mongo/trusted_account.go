@@ -21,23 +21,23 @@ func NewTrustedAccountRepository(conn *Connection) liquidity_provider.TrustedAcc
 	return &trustedAccountMongoRepository{conn: conn}
 }
 
-func (repo *trustedAccountMongoRepository) GetTrustedAccount(ctx context.Context, address string) (*liquidity_provider.TrustedAccountDetails, error) {
+func (repo *trustedAccountMongoRepository) GetTrustedAccount(ctx context.Context, address string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
-	account := &liquidity_provider.TrustedAccountDetails{}
+	signedAccount := &entities.Signed[liquidity_provider.TrustedAccountDetails]{}
 	collection := repo.conn.Collection(TrustedAccountCollection)
 	filter := bson.M{"address": address}
-	err := collection.FindOne(dbCtx, filter).Decode(account)
+	err := collection.FindOne(dbCtx, filter).Decode(signedAccount)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, liquidity_provider.ErrTrustedAccountNotFound
 	} else if err != nil {
 		return nil, err
 	}
-	logDbInteraction(Read, account)
-	return account, nil
+	logDbInteraction(Read, signedAccount)
+	return signedAccount, nil
 }
 
-func (repo *trustedAccountMongoRepository) GetAllTrustedAccounts(ctx context.Context) ([]liquidity_provider.TrustedAccountDetails, error) {
+func (repo *trustedAccountMongoRepository) GetAllTrustedAccounts(ctx context.Context) ([]entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(TrustedAccountCollection)
@@ -46,12 +46,12 @@ func (repo *trustedAccountMongoRepository) GetAllTrustedAccounts(ctx context.Con
 		return nil, err
 	}
 	defer cursor.Close(dbCtx)
-	var accounts []liquidity_provider.TrustedAccountDetails
-	if err = cursor.All(dbCtx, &accounts); err != nil {
+	var signedAccounts []entities.Signed[liquidity_provider.TrustedAccountDetails]
+	if err = cursor.All(dbCtx, &signedAccounts); err != nil {
 		return nil, err
 	}
-	logDbInteraction(Read, accounts)
-	return accounts, nil
+	logDbInteraction(Read, signedAccounts)
+	return signedAccounts, nil
 }
 
 func (repo *trustedAccountMongoRepository) AddTrustedAccount(ctx context.Context, account entities.Signed[liquidity_provider.TrustedAccountDetails]) error {

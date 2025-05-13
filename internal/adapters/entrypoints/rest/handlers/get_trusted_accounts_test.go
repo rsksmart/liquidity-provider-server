@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -21,24 +22,38 @@ import (
 func TestNewGetTrustedAccountsHandler(t *testing.T) {
 	t.Run("should return 200 with accounts on success", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest("GET", "/management/trusted-accounts", nil)
-		mockAccounts := []liquidity_provider.TrustedAccountDetails{
+		request := httptest.NewRequest("GET", "/management/trusted-accounts", nil)		
+		mockHashBytes := []byte("mockhash12345678")
+		mockHashHex := hex.EncodeToString(mockHashBytes)
+		account1 := liquidity_provider.TrustedAccountDetails{
+			Address:          "0x123",
+			Name:             "Test Account 1",
+			Btc_locking_cap:  entities.NewWei(100),
+			Rbtc_locking_cap: entities.NewWei(200),
+		}
+		account2 := liquidity_provider.TrustedAccountDetails{
+			Address:          "0x456",
+			Name:             "Test Account 2",
+			Btc_locking_cap:  entities.NewWei(300),
+			Rbtc_locking_cap: entities.NewWei(400),
+		}
+		mockSignedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			{
-				Address:          "0x123",
-				Name:             "Test Account 1",
-				Btc_locking_cap:  entities.NewWei(100),
-				Rbtc_locking_cap: entities.NewWei(200),
+				Value:     account1,
+				Hash:      mockHashHex,
+				Signature: "sig1",
 			},
 			{
-				Address:          "0x456",
-				Name:             "Test Account 2",
-				Btc_locking_cap:  entities.NewWei(300),
-				Rbtc_locking_cap: entities.NewWei(400),
+				Value:     account2,
+				Hash:      mockHashHex,
+				Signature: "sig2",
 			},
 		}
-		repo := &mocks.TrustedAccountRepositoryMock{}
-		repo.On("GetAllTrustedAccounts", mock.Anything).Return(mockAccounts, nil)
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo)
+		repo := mocks.NewTrustedAccountRepositoryMock(t)
+		repo.On("GetAllTrustedAccounts", mock.Anything).Return(mockSignedAccounts, nil)
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return(mockHashBytes)
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
 		handler := http.HandlerFunc(handlers.NewGetTrustedAccountsHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusOK, recorder.Code)
@@ -51,17 +66,19 @@ func TestNewGetTrustedAccountsHandler(t *testing.T) {
 		assert.Equal(t, "0x456", response.Accounts[1].Address)
 		assert.Equal(t, "Test Account 2", response.Accounts[1].Name)
 		repo.AssertExpectations(t)
+		hashMock.AssertExpectations(t)
 	})
-
 	t.Run("should return 500 on error", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest("GET", "/management/trusted-accounts", nil)
-		repo := &mocks.TrustedAccountRepositoryMock{}
+		repo := mocks.NewTrustedAccountRepositoryMock(t)
 		repo.On("GetAllTrustedAccounts", mock.Anything).Return(nil, errors.New("database error"))
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo)
+		hashMock := &mocks.HashMock{}
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
 		handler := http.HandlerFunc(handlers.NewGetTrustedAccountsHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 		repo.AssertExpectations(t)
+		hashMock.AssertNotCalled(t, "Hash")
 	})
 }

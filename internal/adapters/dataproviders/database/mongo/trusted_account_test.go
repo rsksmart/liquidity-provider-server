@@ -33,16 +33,16 @@ var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails
 func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account found successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: &{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000}"
+		const expectedLog = "READ interaction with db: &{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		filter := bson.M{"address": testAccount.Address}
 		collection.On("FindOne", mock.Anything, filter).
-			Return(mongoDb.NewSingleResultFromDocument(testAccount, nil, nil)).Once()
+			Return(mongoDb.NewSingleResultFromDocument(signedTestAccount, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetTrustedAccount(context.Background(), testAccount.Address)
 		require.NoError(t, err)
-		assert.Equal(t, &testAccount, result)
+		assert.Equal(t, &signedTestAccount, result)
 	})
 	t.Run("trusted account not found", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
@@ -70,21 +70,20 @@ func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 func TestLpMongoRepository_GetAllTrustedAccounts(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("all trusted accounts found successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: [{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000}]"
+		const expectedLog = "READ interaction with db: [{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}]"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
-		accounts := []liquidity_provider.TrustedAccountDetails{testAccount}
-		accountsAny := make([]any, len(accounts))
-		for i, account := range accounts {
+		signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{signedTestAccount}
+		accountsAny := make([]any, len(signedAccounts))
+		for i, account := range signedAccounts {
 			accountsAny[i] = account
 		}
 		collection.On("Find", mock.Anything, bson.M{}).
 			Return(mongoDb.NewCursorFromDocuments(accountsAny, nil, nil)).Once()
-
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetAllTrustedAccounts(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, accounts, result)
+		assert.Equal(t, signedAccounts, result)
 	})
 	t.Run("Db error finding trusted accounts", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)

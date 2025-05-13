@@ -119,23 +119,23 @@ func (_c *TrustedAccountRepositoryMock_DeleteTrustedAccount_Call) RunAndReturn(r
 }
 
 // GetAllTrustedAccounts provides a mock function with given fields: ctx
-func (_m *TrustedAccountRepositoryMock) GetAllTrustedAccounts(ctx context.Context) ([]liquidity_provider.TrustedAccountDetails, error) {
+func (_m *TrustedAccountRepositoryMock) GetAllTrustedAccounts(ctx context.Context) ([]entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllTrustedAccounts")
 	}
 
-	var r0 []liquidity_provider.TrustedAccountDetails
+	var r0 []entities.Signed[liquidity_provider.TrustedAccountDetails]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]liquidity_provider.TrustedAccountDetails, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) ([]entities.Signed[liquidity_provider.TrustedAccountDetails], error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []liquidity_provider.TrustedAccountDetails); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) []entities.Signed[liquidity_provider.TrustedAccountDetails]); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]liquidity_provider.TrustedAccountDetails)
+			r0 = ret.Get(0).([]entities.Signed[liquidity_provider.TrustedAccountDetails])
 		}
 	}
 
@@ -166,34 +166,34 @@ func (_c *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call) Run(run func(
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call) Return(_a0 []liquidity_provider.TrustedAccountDetails, _a1 error) *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call {
+func (_c *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call) Return(_a0 []entities.Signed[liquidity_provider.TrustedAccountDetails], _a1 error) *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call) RunAndReturn(run func(context.Context) ([]liquidity_provider.TrustedAccountDetails, error)) *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call {
+func (_c *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call) RunAndReturn(run func(context.Context) ([]entities.Signed[liquidity_provider.TrustedAccountDetails], error)) *TrustedAccountRepositoryMock_GetAllTrustedAccounts_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetTrustedAccount provides a mock function with given fields: ctx, address
-func (_m *TrustedAccountRepositoryMock) GetTrustedAccount(ctx context.Context, address string) (*liquidity_provider.TrustedAccountDetails, error) {
+func (_m *TrustedAccountRepositoryMock) GetTrustedAccount(ctx context.Context, address string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 	ret := _m.Called(ctx, address)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetTrustedAccount")
 	}
 
-	var r0 *liquidity_provider.TrustedAccountDetails
+	var r0 *entities.Signed[liquidity_provider.TrustedAccountDetails]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*liquidity_provider.TrustedAccountDetails, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error)); ok {
 		return rf(ctx, address)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *liquidity_provider.TrustedAccountDetails); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) *entities.Signed[liquidity_provider.TrustedAccountDetails]); ok {
 		r0 = rf(ctx, address)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*liquidity_provider.TrustedAccountDetails)
+			r0 = ret.Get(0).(*entities.Signed[liquidity_provider.TrustedAccountDetails])
 		}
 	}
 
@@ -225,12 +225,12 @@ func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) Return(_a0 *liquidity_provider.TrustedAccountDetails, _a1 error) *TrustedAccountRepositoryMock_GetTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) Return(_a0 *entities.Signed[liquidity_provider.TrustedAccountDetails], _a1 error) *TrustedAccountRepositoryMock_GetTrustedAccount_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) RunAndReturn(run func(context.Context, string) (*liquidity_provider.TrustedAccountDetails, error)) *TrustedAccountRepositoryMock_GetTrustedAccount_Call {
+func (_c *TrustedAccountRepositoryMock_GetTrustedAccount_Call) RunAndReturn(run func(context.Context, string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error)) *TrustedAccountRepositoryMock_GetTrustedAccount_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -46,7 +46,6 @@ func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
-
 	t.Run("SignConfiguration error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}
@@ -66,7 +65,6 @@ func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
-
 	t.Run("UpdateTrustedAccount error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}
@@ -90,7 +88,6 @@ func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
-
 	t.Run("Account not found error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}

@@ -584,20 +584,38 @@ const fetchTrustedAccounts = async (csrfToken) => {
             }
         });
         const data = await response.json();
-        console.log(data);
-        const accountsData = data.accounts || [];
-        populateTrustedAccountsTable(accountsData, csrfToken);
+        if (!response.ok) {
+            const errorMessage = data.details?.error || data.message || 'Unknown error';
+            populateTrustedAccountsTable([], csrfToken, errorMessage);
+            showErrorToast(`Failed to load trusted accounts: ${errorMessage}`);
+        } else {
+            const accountsData = data.accounts || [];
+            populateTrustedAccountsTable(accountsData, csrfToken);
+        }
     } catch (error) {
         console.error('Error fetching trusted accounts:', error);
-        showErrorToast('Failed to load trusted accounts.');
+        populateTrustedAccountsTable([], csrfToken, error.message);
+        showErrorToast(`Failed to load trusted accounts: ${error.message}`);
     } finally {
         loadingBar.style.display = 'none';
     }
 };
 
-const populateTrustedAccountsTable = (accounts, csrfToken) => {
+const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) => {
     const tableBody = document.getElementById('trustedAccountsTable');
     tableBody.innerHTML = '';
+    
+    if (errorMessage) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center', 'text-danger');
+        cell.textContent = `Error: ${errorMessage}`;
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+    
     if (!accounts || accounts.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');

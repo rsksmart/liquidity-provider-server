@@ -7,30 +7,28 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 )
 
-type GetTrustedAccountsUseCase struct {
+type GetTrustedAccountUseCase struct {
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository
 	hashFunction             entities.HashFunction
 }
 
-func NewGetTrustedAccountsUseCase(
+func NewGetTrustedAccountUseCase(
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository,
 	hashFunction entities.HashFunction,
-) *GetTrustedAccountsUseCase {
-	return &GetTrustedAccountsUseCase{
+) *GetTrustedAccountUseCase {
+	return &GetTrustedAccountUseCase{
 		trustedAccountRepository: trustedAccountRepository,
 		hashFunction:             hashFunction,
 	}
 }
 
-func (useCase *GetTrustedAccountsUseCase) Run(ctx context.Context) ([]entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
-	signedAccounts, err := useCase.trustedAccountRepository.GetAllTrustedAccounts(ctx)
+func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+	signedAccount, err := useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	if err != nil {
 		return nil, err
 	}
-	for _, account := range signedAccounts {
-		if err := account.CheckIntegrity(useCase.hashFunction); err != nil {
-			return nil, liquidity_provider.ErrTamperedTrustedAccount
-		}
+	if err := signedAccount.CheckIntegrity(useCase.hashFunction); err != nil {
+		return nil, liquidity_provider.ErrTamperedTrustedAccount
 	}
-	return signedAccounts, nil
+	return signedAccount, nil
 }
