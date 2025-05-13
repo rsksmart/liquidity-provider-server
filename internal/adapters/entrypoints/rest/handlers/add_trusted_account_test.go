@@ -39,6 +39,7 @@ func createValidAddRequest() *http.Request {
 	return request
 }
 
+// nolint:funlen
 func TestNewAddTrustedAccountHandler(t *testing.T) {
 	t.Run("should return 204 on success", func(t *testing.T) {
 		request := createValidAddRequest()

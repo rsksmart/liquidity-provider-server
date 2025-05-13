@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:funlen
 func TestNewGetTrustedAccountsHandler(t *testing.T) {
 	t.Run("should return 200 with accounts on success", func(t *testing.T) {
 		recorder := httptest.NewRecorder()

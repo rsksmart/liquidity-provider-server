@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:funlen
 func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 	t.Run("should return accounts and nil when accounts are found and integrity check passes", func(t *testing.T) {
 		mockHashBytes := []byte("mockhash12345678")
@@ -51,7 +52,6 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
-
 	t.Run("should return error when repository returns error", func(t *testing.T) {
 		repoErr := assert.AnError
 		repo := mocks.NewTrustedAccountRepositoryMock(t)
@@ -65,7 +65,6 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		repo.AssertExpectations(t)
 		hashMock.AssertNotCalled(t, "Hash")
 	})
-
 	t.Run("should return error when integrity check fails for any account", func(t *testing.T) {
 		validHashBytes := []byte("valid-hash-bytes")
 		validHashHex := hex.EncodeToString(validHashBytes)
