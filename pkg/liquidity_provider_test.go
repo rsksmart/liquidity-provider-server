@@ -175,21 +175,35 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 	btcLockingCap2.SetString("9000000000000000000", 10)
 	rbtcLockingCap2 := new(big.Int)
 	rbtcLockingCap2.SetString("3000000000000000000", 10)
-	trustedAccounts := []liquidity_provider.TrustedAccountDetails{
+	
+	account1 := liquidity_provider.TrustedAccountDetails{
+		Address:          "0x1234567890abcdef",
+		Name:             "Test Trusted Account 1",
+		Btc_locking_cap:  entities.NewBigWei(btcLockingCap1),
+		Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap1),
+	}
+	
+	account2 := liquidity_provider.TrustedAccountDetails{
+		Address:          "0xabcdef1234567890",
+		Name:             "Test Trusted Account 2",
+		Btc_locking_cap:  entities.NewBigWei(btcLockingCap2),
+		Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap2),
+	}
+	
+	signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{
 		{
-			Address:          "0x1234567890abcdef",
-			Name:             "Test Trusted Account 1",
-			Btc_locking_cap:  entities.NewBigWei(btcLockingCap1),
-			Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap1),
+			Value:     account1,
+			Signature: "signature1",
+			Hash:      "hash1",
 		},
 		{
-			Address:          "0xabcdef1234567890",
-			Name:             "Test Trusted Account 2",
-			Btc_locking_cap:  entities.NewBigWei(btcLockingCap2),
-			Rbtc_locking_cap: entities.NewBigWei(rbtcLockingCap2),
+			Value:     account2,
+			Signature: "signature2",
+			Hash:      "hash2",
 		},
 	}
-	dtos := pkg.ToTrustedAccountsDTO(trustedAccounts)
+	
+	dtos := pkg.ToTrustedAccountsDTO(signedAccounts)
 	assert.Len(t, dtos, 2)
 	assert.Equal(t, "0x1234567890abcdef", dtos[0].Address)
 	assert.Equal(t, "Test Trusted Account 1", dtos[0].Name)
