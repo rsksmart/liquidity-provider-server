@@ -156,10 +156,10 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 	totalWithNewQuote = new(entities.Wei).Add(totalWithNewQuote, peginQuote.GasFee)
 
 	// Check if the sum exceeds the locking cap
-	if totalWithNewQuote.Cmp(trustedAccount.Rbtc_locking_cap) > 0 {
+	if totalWithNewQuote.Cmp(trustedAccount.RbtcLockingCap) > 0 {
 		errorArgs["address"] = trustedAccount.Address
 		errorArgs["currentLocked"] = totalLocked.String()
-		errorArgs["lockingCap"] = trustedAccount.Rbtc_locking_cap.String()
+		errorArgs["lockingCap"] = trustedAccount.RbtcLockingCap.String()
 		return usecases.WrapUseCaseErrorArgs(
 			usecases.AcceptPeginQuoteId,
 			usecases.LockingCapExceededError,

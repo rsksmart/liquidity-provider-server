@@ -133,8 +133,8 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 
 	lockingCap := entities.NewWei(100000)
 	trustedAccountDetails := liquidity_provider.TrustedAccountDetails{
-		Address:          ownerAccountAddress,
-		Rbtc_locking_cap: lockingCap,
+		Address:        ownerAccountAddress,
+		RbtcLockingCap: lockingCap,
 	}
 	trustedAccountBytes, err := json.Marshal(trustedAccountDetails)
 	require.NoError(t, err)

@@ -212,10 +212,13 @@ func assertHasCsrfMiddleware(t *testing.T, router *mux.Router, endpoint routes.E
 }
 
 func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
+	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
+
 	registryMock.EXPECT().HealthUseCase().Return(&usecases.HealthUseCase{})
 	registryMock.EXPECT().GetProvidersUseCase().Return(&liquidity_provider.GetProvidersUseCase{})
 	registryMock.EXPECT().GetPeginQuoteUseCase().Return(&pegin.GetQuoteUseCase{})
-	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(&pegin.AcceptQuoteUseCase{})
+	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(acceptQuoteUseCase)
+	registryMock.EXPECT().GetAcceptPeginQuoteWithTrustedAccountUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetPegoutQuoteUseCase().Return(&pegout.GetQuoteUseCase{})
 	registryMock.EXPECT().GetAcceptPegoutQuoteUseCase().Return(&pegout.AcceptQuoteUseCase{})
 	registryMock.EXPECT().GetUserDepositsUseCase().Return(&pegout.GetUserDepositsUseCase{})
@@ -223,6 +226,7 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().GetPeginStatusUseCase().Return(&pegin.StatusUseCase{})
 	registryMock.EXPECT().GetPegoutStatusUseCase().Return(&pegout.StatusUseCase{})
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
+	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 
 	registryMock.EXPECT().GetPeginCollateralUseCase().Return(&pegin.GetCollateralUseCase{})
 	registryMock.EXPECT().AddPeginCollateralUseCase().Return(&pegin.AddCollateralUseCase{})
