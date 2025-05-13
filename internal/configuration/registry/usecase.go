@@ -76,6 +76,18 @@ func NewUseCaseRegistry(
 	messaging *Messaging,
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
+	// Create the AcceptQuoteUseCase instance once to use for both standard and trusted account versions
+	acceptQuoteUseCase := pegin.NewAcceptQuoteUseCase(
+		databaseRegistry.PeginRepository,
+		rskRegistry.Contracts,
+		messaging.Rpc,
+		liquidityProvider,
+		liquidityProvider,
+		messaging.EventBus,
+		mutexes.PeginLiquidityMutex(),
+		databaseRegistry.TrustedAccountRepository,
+	)
+
 	return &UseCaseRegistry{
 		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
 			messaging.Rpc,
@@ -104,17 +116,10 @@ func NewUseCaseRegistry(
 			messaging.Rpc,
 			mutexes.RskWalletMutex(),
 		),
-		acceptPeginQuoteUseCase: pegin.NewAcceptQuoteUseCase(
-			databaseRegistry.PeginRepository,
-			rskRegistry.Contracts,
-			messaging.Rpc,
-			liquidityProvider,
-			liquidityProvider,
-			messaging.EventBus,
-			mutexes.PeginLiquidityMutex(),
-		),
-		getWatchedPeginQuoteUseCase: watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
-		expiredPeginQuoteUseCase:    pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
+		acceptPeginQuoteUseCase:                   acceptQuoteUseCase,
+		acceptPeginQuoteWithTrustedAccountUseCase: acceptQuoteUseCase,
+		getWatchedPeginQuoteUseCase:               watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
+		expiredPeginQuoteUseCase:                  pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
@@ -272,6 +277,10 @@ func (registry *UseCaseRegistry) GetRegistrationUseCase() *liquidity_provider.Re
 
 func (registry *UseCaseRegistry) GetAcceptPeginQuoteUseCase() *pegin.AcceptQuoteUseCase {
 	return registry.acceptPeginQuoteUseCase
+}
+
+func (registry *UseCaseRegistry) GetAcceptPeginQuoteWithTrustedAccountUseCase() *pegin.AcceptQuoteUseCase {
+	return registry.acceptPeginQuoteWithTrustedAccountUseCase
 }
 
 func (registry *UseCaseRegistry) GetProviderDetailUseCase() *liquidity_provider.GetDetailUseCase {

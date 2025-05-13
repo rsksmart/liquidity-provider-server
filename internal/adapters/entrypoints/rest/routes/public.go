@@ -1,9 +1,10 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
-	"net/http"
 )
 
 type PublicEndpoint struct {
@@ -42,6 +43,13 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewAcceptPeginQuoteHandler(useCaseRegistry.GetAcceptPeginQuoteUseCase()),
 			},
 			RequiresCaptcha: true,
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/acceptQuoteFromTrustedAccount",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPeginQuoteFromTrustedAccountHandler(useCaseRegistry.GetAcceptPeginQuoteWithTrustedAccountUseCase()),
+			},
 		},
 		{
 			Endpoint: Endpoint{

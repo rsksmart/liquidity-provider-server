@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -12,26 +11,21 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-// AcceptQuoteUseCaseInterface defines the interface for the use case
-type AcceptQuoteUseCaseInterface interface {
-	Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error)
+// NewAcceptPeginQuoteFromTrustedAccountHandler
+// @Title Accept Quote From Trusted Account
+// @Description Accepts Quote with trusted account signature
+// @Param Request body pkg.AcceptQuoteFromTrustedAccountRequest true "Quote Hash and Signature"
+// @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
+// @Route /pegin/acceptQuoteFromTrustedAccount [post]
+func NewAcceptPeginQuoteFromTrustedAccountHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
+	return NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase)
 }
 
-// NewAcceptPeginQuoteHandler
-// @Title Accept Quote
-// @Description Accepts Quote
-// @Param QuoteHash body pkg.AcceptQuoteRequest true "Quote Hash"
-// @Success 200  object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
-// @Route /pegin/acceptQuote [post]
-func NewAcceptPeginQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
-	return NewAcceptPeginQuoteHandlerWithInterface(useCase)
-}
-
-// NewAcceptPeginQuoteHandlerWithInterface is like NewAcceptPeginQuoteHandler but accepts an interface instead of a concrete type for testing
-func NewAcceptPeginQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+// NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface is like NewAcceptPeginQuoteFromTrustedAccountHandler but accepts an interface instead of a concrete type for testing
+func NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
-		acceptRequest := pkg.AcceptQuoteRequest{}
+		acceptRequest := pkg.AcceptQuoteFromTrustedAccountRequest{}
 		if err = rest.DecodeRequest(w, req, &acceptRequest); err != nil {
 			return
 		} else if err = rest.ValidateRequest(w, &acceptRequest); err != nil {
@@ -44,7 +38,7 @@ func NewAcceptPeginQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface
 			return
 		}
 
-		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, "")
+		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
 		if errors.Is(err, usecases.QuoteNotFoundError) {
 			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
@@ -55,6 +49,10 @@ func NewAcceptPeginQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface
 			return
 		} else if errors.Is(err, usecases.NoLiquidityError) {
 			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+			return
+		} else if errors.Is(err, usecases.LockingCapExceededError) {
+			jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
 			return
 		} else if err != nil {

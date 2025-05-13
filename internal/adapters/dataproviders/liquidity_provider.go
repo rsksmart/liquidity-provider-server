@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -14,7 +15,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 type LocalLiquidityProvider struct {
@@ -160,7 +160,7 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 }
 
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
-	configuration, err := validateConfiguration("general", lp, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration("general", lp.signer, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)
 	})
 	if err != nil {
@@ -170,7 +170,7 @@ func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liqu
 }
 
 func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
-	configuration, err := validateConfiguration("pegout", lp, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration("pegout", lp.signer, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
 		return lp.lpRepository.GetPegoutConfiguration(ctx)
 	})
 	if err != nil {
@@ -180,7 +180,7 @@ func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liqui
 }
 
 func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
-	configuration, err := validateConfiguration("pegin", lp, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration("pegin", lp.signer, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
 		return lp.lpRepository.GetPeginConfiguration(ctx)
 	})
 	if err != nil {
@@ -189,27 +189,6 @@ func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquid
 	return configuration.Value
 }
 
-func validateConfiguration[T liquidity_provider.ConfigurationType](
-	displayName string,
-	lp *LocalLiquidityProvider,
-	readFunction func() (*entities.Signed[T], error),
-) (*entities.Signed[T], error) {
-	configuration, err := readFunction()
-	if err != nil {
-		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
-		return nil, err
-	}
-	if configuration == nil {
-		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
-		return nil, errors.New("configuration not found")
-	}
-	if err = configuration.CheckIntegrity(crypto.Keccak256); err != nil {
-		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
-		return nil, err
-	}
-	if !lp.signer.Validate(configuration.Signature, configuration.Hash) {
-		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
-		return nil, errors.New("invalid signature")
-	}
-	return configuration, nil
+func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {
+	return lp.signer
 }

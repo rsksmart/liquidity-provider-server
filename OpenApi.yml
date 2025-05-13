@@ -29,6 +29,20 @@ components:
       - signature
       - lbcAddress
       type: object
+    AcceptQuoteFromTrustedAccountRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
     AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -520,7 +534,6 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           type: integer
         feePercentage:
           type: number
@@ -877,6 +890,23 @@ paths:
                 $ref: '#/components/schemas/AcceptPeginRespose'
           description: ""
       summary: Accept Quote
+  /pegin/acceptQuoteFromTrustedAccount:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptQuoteFromTrustedAccountRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPeginRespose'
+          description: ""
+      summary: Accept Quote From Trusted Account
   /pegin/addCollateral:
     post:
       description: ' Adds PegIn Collateral'

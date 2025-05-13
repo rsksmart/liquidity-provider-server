@@ -3,6 +3,10 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"strings"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,8 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 const id = "anyUseCase"
@@ -286,4 +288,105 @@ func TestValidateBridgeUtxoMin(t *testing.T) {
 		require.ErrorIs(t, err, u.TxBelowMinimumError)
 		bridge.AssertExpectations(t)
 	})
+}
+
+// nolint:funlen
+func TestRecoverSignerAddress(t *testing.T) {
+	testCases := []struct {
+		name            string
+		quoteHash       string
+		signature       string
+		expectedAddress string
+		expectError     bool
+	}{
+		{
+			name:            "valid signature and hash",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "0x233845a26a4dA08E16218e7B401501D048670674",
+			expectError:     false,
+		},
+		{
+			name:            "invalid hash format",
+			quoteHash:       "invalid-hex",
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "invalid signature format",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "invalid-signature",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "signature too short",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "5f1a", // Too short
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "hash too short",
+			quoteHash:       "c8d4", // Too short
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "empty hash",
+			quoteHash:       "",
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "empty signature",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:      "signature with wrong recovery ID",
+			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			// This is the valid signature with the last byte changed from 1c to 1d (invalid recovery ID)
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1d",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:      "signature with recovery ID = 27 (0x1b)",
+			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			// This is a signature with recovery ID 27 (0x1b) which should adjust to 0
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1b",
+			expectedAddress: "0xf719893448f705385d9f7192d2f72c894767d9dc", // Actual recovered address for this signature
+			expectError:     false,
+		},
+		{
+			name:      "signature with recovery ID = 28 (0x1c)",
+			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			// Valid signature with recovery ID 28 (0x1c) which should adjust to 1
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "0x233845a26a4dA08E16218e7B401501D048670674",
+			expectError:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			recoveredAddress, err := u.RecoverSignerAddress(tc.quoteHash, tc.signature)
+
+			if tc.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t,
+					strings.ToLower(tc.expectedAddress),
+					strings.ToLower(recoveredAddress),
+					"Address recovery should match the expected signer address")
+			}
+		})
+	}
 }

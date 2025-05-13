@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -8,6 +9,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -79,6 +83,7 @@ var (
 	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
 	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
 	IllegalQuoteStateError      = errors.New("illegal quote state")
+	LockingCapExceededError     = errors.New("locking cap exceeded")
 )
 
 type ErrorArgs map[string]string
@@ -211,4 +216,63 @@ func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockc
 		}
 	}
 	return nil
+}
+
+// RecoverSignerAddress recovers the address from a signature. Important function for the management
+// of trusted accounts.
+func RecoverSignerAddress(quoteHash, signature string) (string, error) {
+	if quoteHash == "" {
+		return "", errors.New("empty hash provided")
+	}
+
+	if signature == "" {
+		return "", errors.New("empty signature provided")
+	}
+
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		return "", errors.New("error decoding signature: " + err.Error())
+	}
+
+	// Ethereum signatures should be 65 bytes (r,s,v) where v is the recovery ID
+	if len(signatureBytes) != 65 {
+		return "", errors.New("invalid signature length, expected 65 bytes, got " + strconv.Itoa(len(signatureBytes)))
+	}
+
+	hashBytes, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return "", errors.New("error decoding hash: " + err.Error())
+	}
+
+	// Hash should be 32 bytes
+	if len(hashBytes) != 32 {
+		return "", errors.New("invalid hash length, expected 32 bytes, got " + strconv.Itoa(len(hashBytes)))
+	}
+
+	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
+	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
+	v := signatureBytes[64]
+	if v >= 27 {
+		signatureBytes[64] = v - 27
+	}
+
+	// Create the Ethereum prefixed message
+	var buf bytes.Buffer
+	buf.WriteString("\x19Ethereum Signed Message:\n32")
+	buf.Write(hashBytes)
+	prefixedHash := crypto.Keccak256(buf.Bytes())
+
+	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	if err != nil {
+		return "", errors.New("error recovering public key: " + err.Error())
+	}
+
+	// Convert the public key to an Ethereum address
+	pubKeyECDSA, err := crypto.UnmarshalPubkey(pubKey)
+	if err != nil {
+		return "", errors.New("error unmarshalling public key: " + err.Error())
+	}
+
+	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	return address, nil
 }

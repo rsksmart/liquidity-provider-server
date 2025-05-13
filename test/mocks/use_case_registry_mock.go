@@ -355,6 +355,53 @@ func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call) RunAndReturn(run 
 	return _c
 }
 
+// GetAcceptPeginQuoteWithTrustedAccountUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetAcceptPeginQuoteWithTrustedAccountUseCase() *pegin.AcceptQuoteUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAcceptPeginQuoteWithTrustedAccountUseCase")
+	}
+
+	var r0 *pegin.AcceptQuoteUseCase
+	if rf, ok := ret.Get(0).(func() *pegin.AcceptQuoteUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegin.AcceptQuoteUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAcceptPeginQuoteWithTrustedAccountUseCase'
+type UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call struct {
+	*mock.Call
+}
+
+// GetAcceptPeginQuoteWithTrustedAccountUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetAcceptPeginQuoteWithTrustedAccountUseCase() *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call {
+	return &UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call{Call: _e.mock.On("GetAcceptPeginQuoteWithTrustedAccountUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call) Return(_a0 *pegin.AcceptQuoteUseCase) *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call) RunAndReturn(run func() *pegin.AcceptQuoteUseCase) *UseCaseRegistryMock_GetAcceptPeginQuoteWithTrustedAccountUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAcceptPegoutQuoteUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetAcceptPegoutQuoteUseCase() *pegout.AcceptQuoteUseCase {
 	ret := _m.Called()
