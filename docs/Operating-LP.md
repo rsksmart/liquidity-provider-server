@@ -37,7 +37,7 @@ There are several benefits for LPs:
 ## Fees
 
 * Network Fee:
-A fee charged by the Rootstock network to cover transaction processing costs (gas). This fee is not included in the quote but is paid directly by users when making transactions on the Rootstock network. get_pegin_quote.go:100
+A fee charged by the Rootstock network to cover transaction processing costs (gas). This fee is not included in the quote but is paid directly by users when making transactions on the Rootstock network.
 
 * Gas Fee:
 This fee covers the gas costs for all transactions performed by the Liquidity Provider during the pegin or pegout process.
