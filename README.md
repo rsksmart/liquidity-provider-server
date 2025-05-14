@@ -193,6 +193,6 @@ The service can be configured to monitor other addresses by modifying the `MONIT
 
 ## More Information
 
-If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/unified-bridges-sdk/tree/main/packages/flyover-sdk).
+If you're looking forward to integrate with Flyover Protocol then you can check the [Flyover SDK repository](https://github.com/rsksmart/flyover-sdk/blob/main/README.md).
 
 If you're interested in becoming a liquidity provider then you can read the [Liquidity Provider Management](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md) file.
