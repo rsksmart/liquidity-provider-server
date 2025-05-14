@@ -27,6 +27,9 @@ func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string
 	if err != nil {
 		return nil, err
 	}
+	if signedAccount == nil {
+		return nil, liquidity_provider.ErrTrustedAccountNotFound
+	}
 	if err := signedAccount.CheckIntegrity(useCase.hashFunction); err != nil {
 		return nil, liquidity_provider.ErrTamperedTrustedAccount
 	}

@@ -21,10 +21,10 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 		mockHashHex := hex.EncodeToString(mockHashBytes)
 		signedAccount := &entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			Value: liquidity_provider.TrustedAccountDetails{
-				Address:          "0x123",
-				Name:             "Test Account",
-				Btc_locking_cap:  entities.NewWei(100),
-				Rbtc_locking_cap: entities.NewWei(200),
+				Address:        "0x123",
+				Name:           "Test Account",
+				BtcLockingCap:  entities.NewWei(100),
+				RbtcLockingCap: entities.NewWei(200),
 			},
 			Hash:      mockHashHex,
 			Signature: "valid-signature",
@@ -57,10 +57,10 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 		actualHashBytes := []byte("actual-hash-value")
 		signedAccount := &entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			Value: liquidity_provider.TrustedAccountDetails{
-				Address:          "0x123",
-				Name:             "Test Account",
-				Btc_locking_cap:  entities.NewWei(100),
-				Rbtc_locking_cap: entities.NewWei(200),
+				Address:        "0x123",
+				Name:           "Test Account",
+				BtcLockingCap:  entities.NewWei(100),
+				RbtcLockingCap: entities.NewWei(200),
 			},
 			Hash:      storedHashHex,
 			Signature: "signature",

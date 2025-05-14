@@ -637,12 +637,12 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         
         const btcCapCell = document.createElement('td');
         btcCapCell.classList.add('cap-cell');
-        const btcValue = weiToEther(account.btc_locking_cap);
+        const btcValue = weiToEther(account.btcLockingCap);
         btcCapCell.textContent = formatCap(btcValue, 'BTC');
         
         const rbtcCapCell = document.createElement('td');
         rbtcCapCell.classList.add('cap-cell');
-        const rbtcValue = weiToEther(account.rbtc_locking_cap);
+        const rbtcValue = weiToEther(account.rbtcLockingCap);
         rbtcCapCell.textContent = formatCap(rbtcValue, 'rBTC');
         
         const actionsCell = document.createElement('td');
@@ -672,20 +672,20 @@ const addTrustedAccount = async (csrfToken) => {
         return;
     }
     try {
-        btcLockingCap = btcLockingCap ? new Decimal(etherToWei(btcLockingCap)).toNumber() : 0;
-        rbtcLockingCap = rbtcLockingCap ? new Decimal(etherToWei(rbtcLockingCap)).toNumber() : 0;
+        btcLockingCap = btcLockingCap ? etherToWei(btcLockingCap) : "0";
+        rbtcLockingCap = rbtcLockingCap ? etherToWei(rbtcLockingCap) : "0";
         const response = await fetch('/management/trusted-accounts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             },
-            body: JSON.stringify({
-                name,
-                address,
-                btc_locking_cap: btcLockingCap,
-                rbtc_locking_cap: rbtcLockingCap
-            })
+            body: `{
+                "name": ${JSON.stringify(name)},
+                "address": ${JSON.stringify(address)},
+                "btcLockingCap": ${btcLockingCap},
+                "rbtcLockingCap": ${rbtcLockingCap}
+            }`
         });
         if (response.ok) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('addTrustedAccountModal'));

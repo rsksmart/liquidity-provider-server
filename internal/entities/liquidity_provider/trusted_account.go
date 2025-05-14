@@ -14,10 +14,10 @@ var (
 )
 
 type TrustedAccountDetails struct {
-	Address          string        `json:"address" bson:"address" validate:"required"`
-	Name             string        `json:"name" bson:"name" validate:"required"`
-	Btc_locking_cap  *entities.Wei `json:"btc_locking_cap" bson:"btc_locking_cap" validate:"required"`
-	Rbtc_locking_cap *entities.Wei `json:"rbtc_locking_cap" bson:"rbtc_locking_cap" validate:"required"`
+	Address        string        `json:"address" bson:"address" validate:"required"`
+	Name           string        `json:"name" bson:"name" validate:"required"`
+	BtcLockingCap  *entities.Wei `json:"btcLockingCap" bson:"btc_locking_cap" validate:"required"`
+	RbtcLockingCap *entities.Wei `json:"rbtcLockingCap" bson:"rbtc_locking_cap" validate:"required"`
 }
 
 type TrustedAccountRepository interface {

@@ -97,15 +97,15 @@ type ServerInfoDTO struct {
 type TrustedAccountDTO struct {
 	Address        string   `json:"address" example:"0x1234567890abcdef" description:"Trusted account address" required:""`
 	Name           string   `json:"name" example:"Example Trusted Account" description:"Trusted account name" required:""`
-	BtcLockingCap  *big.Int `json:"btc_locking_cap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
-	RbtcLockingCap *big.Int `json:"rbtc_locking_cap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
 }
 
 type TrustedAccountRequest struct {
 	Address        string   `json:"address" validate:"required"`
 	Name           string   `json:"name" validate:"required"`
-	BtcLockingCap  *big.Int `json:"btc_locking_cap" validate:"required"`
-	RbtcLockingCap *big.Int `json:"rbtc_locking_cap" validate:"required"`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" validate:"required"`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" validate:"required"`
 }
 
 type TrustedAccountAddressRequest struct {
@@ -211,8 +211,8 @@ func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) Truste
 	return TrustedAccountDTO{
 		Address:        entity.Address,
 		Name:           entity.Name,
-		BtcLockingCap:  entity.Btc_locking_cap.AsBigInt(),
-		RbtcLockingCap: entity.Rbtc_locking_cap.AsBigInt(),
+		BtcLockingCap:  entity.BtcLockingCap.AsBigInt(),
+		RbtcLockingCap: entity.RbtcLockingCap.AsBigInt(),
 	}
 }
 

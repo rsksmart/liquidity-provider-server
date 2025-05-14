@@ -18,10 +18,10 @@ import (
 )
 
 var testAccount = liquidity_provider.TrustedAccountDetails{
-	Address:          "0x1234567890abcdef1234567890abcdef12345678",
-	Name:             "Test Account",
-	Btc_locking_cap:  entities.NewWei(1000000000000000000),
-	Rbtc_locking_cap: entities.NewWei(2000000000000000000),
+	Address:        "0x1234567890abcdef1234567890abcdef12345678",
+	Name:           "Test Account",
+	BtcLockingCap:  entities.NewWei(1000000000000000000),
+	RbtcLockingCap: entities.NewWei(2000000000000000000),
 }
 
 var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails]{
@@ -33,7 +33,7 @@ var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails
 func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account found successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: &{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
+		const expectedLog = "READ interaction with db: &{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account BtcLockingCap:1000000000000000000 RbtcLockingCap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		filter := bson.M{"address": testAccount.Address}
@@ -70,7 +70,7 @@ func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 func TestLpMongoRepository_GetAllTrustedAccounts(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("all trusted accounts found successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: [{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}]"
+		const expectedLog = "READ interaction with db: [{Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account BtcLockingCap:1000000000000000000 RbtcLockingCap:2000000000000000000} Signature:signature Hash:hash}]"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{signedTestAccount}
@@ -106,7 +106,7 @@ func TestLpMongoRepository_GetAllTrustedAccounts(t *testing.T) {
 func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account updated successfully", func(t *testing.T) {
-		const expectedLog = "UPDATE interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
+		const expectedLog = "UPDATE interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account BtcLockingCap:1000000000000000000 RbtcLockingCap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
@@ -153,7 +153,7 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account added successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account Btc_locking_cap:1000000000000000000 Rbtc_locking_cap:2000000000000000000} Signature:signature Hash:hash}"
+		const expectedLog = "INSERT interaction with db: {Value:{Address:0x1234567890abcdef1234567890abcdef12345678 Name:Test Account BtcLockingCap:1000000000000000000 RbtcLockingCap:2000000000000000000} Signature:signature Hash:hash}"
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).

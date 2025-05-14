@@ -32,10 +32,10 @@ func NewAddTrustedAccountHandler(useCase *lpuc.AddTrustedAccountUseCase) http.Ha
 			return
 		}
 		accountDetails := lp.TrustedAccountDetails{
-			Address:          request.Address,
-			Name:             request.Name,
-			Btc_locking_cap:  entities.NewBigWei(request.BtcLockingCap),
-			Rbtc_locking_cap: entities.NewBigWei(request.RbtcLockingCap),
+			Address:        request.Address,
+			Name:           request.Name,
+			BtcLockingCap:  entities.NewBigWei(request.BtcLockingCap),
+			RbtcLockingCap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
 		if errors.Is(err, lp.ErrDuplicateTrustedAccount) {

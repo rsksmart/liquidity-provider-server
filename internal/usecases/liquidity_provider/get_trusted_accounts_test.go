@@ -22,20 +22,20 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			{
 				Value: liquidity_provider.TrustedAccountDetails{
-					Address:          "0x123",
-					Name:             "Test Account 1",
-					Btc_locking_cap:  entities.NewWei(100),
-					Rbtc_locking_cap: entities.NewWei(200),
+					Address:        "0x123",
+					Name:           "Test Account 1",
+					BtcLockingCap:  entities.NewWei(100),
+					RbtcLockingCap: entities.NewWei(200),
 				},
 				Hash:      mockHashHex,
 				Signature: "valid-signature-1",
 			},
 			{
 				Value: liquidity_provider.TrustedAccountDetails{
-					Address:          "0x456",
-					Name:             "Test Account 2",
-					Btc_locking_cap:  entities.NewWei(300),
-					Rbtc_locking_cap: entities.NewWei(400),
+					Address:        "0x456",
+					Name:           "Test Account 2",
+					BtcLockingCap:  entities.NewWei(300),
+					RbtcLockingCap: entities.NewWei(400),
 				},
 				Hash:      mockHashHex,
 				Signature: "valid-signature-2",
@@ -72,20 +72,20 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			{
 				Value: liquidity_provider.TrustedAccountDetails{
-					Address:          "0x123",
-					Name:             "Test Account 1",
-					Btc_locking_cap:  entities.NewWei(100),
-					Rbtc_locking_cap: entities.NewWei(200),
+					Address:        "0x123",
+					Name:           "Test Account 1",
+					BtcLockingCap:  entities.NewWei(100),
+					RbtcLockingCap: entities.NewWei(200),
 				},
 				Hash:      validHashHex,
 				Signature: "valid-signature",
 			},
 			{
 				Value: liquidity_provider.TrustedAccountDetails{
-					Address:          "0x456",
-					Name:             "Test Account 2",
-					Btc_locking_cap:  entities.NewWei(300),
-					Rbtc_locking_cap: entities.NewWei(400),
+					Address:        "0x456",
+					Name:           "Test Account 2",
+					BtcLockingCap:  entities.NewWei(300),
+					RbtcLockingCap: entities.NewWei(400),
 				},
 				Hash:      tamperedHashHex,
 				Signature: "signature",

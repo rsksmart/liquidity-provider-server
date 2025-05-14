@@ -688,11 +688,11 @@ components:
       properties:
         address:
           type: string
-        btc_locking_cap:
+        btcLockingCap:
           $ref: '#/components/schemas/'
         name:
           type: string
-        rbtc_locking_cap:
+        rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
     pkg.AcceptQuoteRequest:
@@ -731,11 +731,11 @@ components:
       properties:
         address:
           type: string
-        btc_locking_cap:
+        btcLockingCap:
           $ref: '#/components/schemas/'
         name:
           type: string
-        rbtc_locking_cap:
+        rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
 info:

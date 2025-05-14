@@ -21,10 +21,10 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer := &mocks.TransactionSignerMock{}
 		hashMock := &mocks.HashMock{}
 		account := liquidity_provider.TrustedAccountDetails{
-			Address:          "0x123456",
-			Name:             "Test Account",
-			Btc_locking_cap:  entities.NewWei(1000),
-			Rbtc_locking_cap: entities.NewWei(1000),
+			Address:        "0x123456",
+			Name:           "Test Account",
+			BtcLockingCap:  entities.NewWei(1000),
+			RbtcLockingCap: entities.NewWei(1000),
 		}
 		expectedSignedAccount := entities.Signed[liquidity_provider.TrustedAccountDetails]{
 			Value:     account,
@@ -52,10 +52,10 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer := &mocks.TransactionSignerMock{}
 		hashMock := &mocks.HashMock{}
 		account := liquidity_provider.TrustedAccountDetails{
-			Address:          "0x123456",
-			Name:             "Test Account",
-			Btc_locking_cap:  entities.NewWei(1000),
-			Rbtc_locking_cap: entities.NewWei(1000),
+			Address:        "0x123456",
+			Name:           "Test Account",
+			BtcLockingCap:  entities.NewWei(1000),
+			RbtcLockingCap: entities.NewWei(1000),
 		}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return(nil, errors.New("signing error"))
@@ -72,10 +72,10 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer := &mocks.TransactionSignerMock{}
 		hashMock := &mocks.HashMock{}
 		account := liquidity_provider.TrustedAccountDetails{
-			Address:          "0x123456",
-			Name:             "Test Account",
-			Btc_locking_cap:  entities.NewWei(1000),
-			Rbtc_locking_cap: entities.NewWei(1000),
+			Address:        "0x123456",
+			Name:           "Test Account",
+			BtcLockingCap:  entities.NewWei(1000),
+			RbtcLockingCap: entities.NewWei(1000),
 		}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
@@ -96,10 +96,10 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer := &mocks.TransactionSignerMock{}
 		hashMock := &mocks.HashMock{}
 		account := liquidity_provider.TrustedAccountDetails{
-			Address:          "0x123456",
-			Name:             "Test Account",
-			Btc_locking_cap:  entities.NewWei(1000),
-			Rbtc_locking_cap: entities.NewWei(1000),
+			Address:        "0x123456",
+			Name:           "Test Account",
+			BtcLockingCap:  entities.NewWei(1000),
+			RbtcLockingCap: entities.NewWei(1000),
 		}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
