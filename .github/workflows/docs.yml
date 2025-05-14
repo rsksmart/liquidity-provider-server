@@ -42,7 +42,25 @@ jobs:
           mkdir -p transformed
 
           BASE_SRC="."
-          BASE_DST="devportal/docs/02-developers/06-integrate/02-flyover/LP"
+          BASE_DST="devportal/docs/02-developers/06-integrate/02-flyover"
+
+          #####################################
+          #  Usecases                         #
+          #####################################
+          TEMP_FILE="temp_index.md"
+          tail -n +2 ${BASE_SRC}/docs/Usecases.md > ${TEMP_FILE}
+          TRANSFORMED_FILE="transformed/index.md"
+          echo "---" > ${TRANSFORMED_FILE}
+          echo "sidebar_label: RBTC Flyover" >> ${TRANSFORMED_FILE}
+          echo "sidebar_position: 100" >> ${TRANSFORMED_FILE}
+          echo "title: RBTC Flyover - Overview" >> ${TRANSFORMED_FILE}
+          echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg]" >> ${TRANSFORMED_FILE}
+          echo "description: The RBTC Flyover enables fast, trust-minimized onboarding of users into the Rootstock ecosystem from Bitcoin with less friction. It improves the usability for bitcoiners and integrators to interact with the Rootstock ecosystem via the Powpeg and Flyover SDK." >> ${TRANSFORMED_FILE}
+          echo "---" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
+          rm ${TEMP_FILE}
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/index.md
 
           #####################################
           #  Get Started (README)            #
@@ -64,8 +82,8 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          mkdir -p ${BASE_DST}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/get-started.md
+          mkdir -p ${BASE_DST}/LP
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/get-started.md
 
           #####################################
           #  Security                         #
@@ -83,7 +101,7 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/security.md
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/security.md
 
           #####################################
           #  Docker Setup                     #
@@ -101,7 +119,7 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/docker-setup.md
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/docker-setup.md
 
           #####################################
           #  Protocol Design                  #
@@ -119,7 +137,7 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/design.md
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/design.md
 
           #####################################
           #  Environment Variables            #
@@ -137,7 +155,7 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/setting-variables.md
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/setting-variables.md
 
           #####################################
           #  LP Management                    #
@@ -155,7 +173,47 @@ jobs:
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
           rm ${TEMP_FILE}
-          cp ${TRANSFORMED_FILE} ${BASE_DST}/management.md
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/management.md
+
+          #####################################
+          #  Operating LP                     #
+          #####################################
+          TEMP_FILE="temp_lp-onboarding.md"
+          tail -n +2 ${BASE_SRC}/docs/Operating-LP.md > ${TEMP_FILE}
+          TRANSFORMED_FILE="transformed/lp-onboarding.md"
+          echo "---" > ${TRANSFORMED_FILE}
+          echo "sidebar_label: Liquidity Provider Onboarding" >> ${TRANSFORMED_FILE}
+          echo "sidebar_position: 200" >> ${TRANSFORMED_FILE}
+          echo "title: RBTC Flyover - LP Onboarding" >> ${TRANSFORMED_FILE}
+          echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg]" >> ${TRANSFORMED_FILE}
+          echo "description: The Flyover SDK streamlines integration between client applications and the Flyover Protocol. This easy-to-use JavaScript/TypeScript toolkit provides configuration options for Liquidity Providers (LPs) and custom network setups for connecting to Rootstock." >> ${TRANSFORMED_FILE}
+          echo "---" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
+          rm ${TEMP_FILE}
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/index.md
+
+          #####################################
+          #  Advanced Operations              #
+          #####################################
+          TEMP_FILE="temp_advanced-operations.md"
+          tail -n +2 ${BASE_SRC}/docs/Advanced-Operations.md > ${TEMP_FILE}
+          TRANSFORMED_FILE="transformed/advanced-operations.md"
+          echo "---" > ${TRANSFORMED_FILE}
+          echo "sidebar_label: Advanced Operations" >> ${TRANSFORMED_FILE}
+          echo "sidebar_position: 240" >> ${TRANSFORMED_FILE}
+          echo "title: Flyover SDK - Advanced Operations" >> ${TRANSFORMED_FILE}
+          echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg]" >> ${TRANSFORMED_FILE}
+          echo "description: The Flyover SDK streamlines integration between client applications and the Flyover Protocol. This easy-to-use JavaScript/TypeScript toolkit provides configuration options for Liquidity Providers (LPs) and custom network setups for connecting to Rootstock." >> ${TRANSFORMED_FILE}
+          echo "---" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          echo ":::info[Note]" >> ${TRANSFORMED_FILE}
+          echo "If you wish to suggest changes on this document, please open a PR on the [Liquidity Provider Server Repository](https://github.com/rsksmart/liquidity-provider-server.git)" >> ${TRANSFORMED_FILE}
+          echo ":::" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
+          rm ${TEMP_FILE}
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/advanced-operations.md
 
       # Step 3: Commit and Push Changes to Devportal Repository
       - name: Commit and Push Changes
@@ -165,7 +223,7 @@ jobs:
           cd devportal
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/02-developers/06-integrate/02-flyover/LP/*
+          git add docs/02-developers/06-integrate/02-flyover/
           git commit -m "Automated update from Liquidity Provider Server repository"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/rsksmart/devportal.git
           git push -f origin ${BRANCH_NAME}
