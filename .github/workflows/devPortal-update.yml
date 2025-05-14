@@ -181,7 +181,7 @@ jobs:
           echo "sidebar_position: 200" >> ${TRANSFORMED_FILE}
           echo "title: RBTC Flyover - LP Onboarding" >> ${TRANSFORMED_FILE}
           echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg]" >> ${TRANSFORMED_FILE}
-          echo "description: Step-by-step operational guide outlining requirements, dependencies, fees, liquidity needs and best practices for running a Liquidity Provider Server." >> ${TRANSFORMED_FILE}
+          echo "description: The Flyover SDK streamlines integration between client applications and the Flyover Protocol. This easy-to-use JavaScript/TypeScript toolkit provides configuration options for Liquidity Providers (LPs) and custom network setups for connecting to Rootstock." >> ${TRANSFORMED_FILE}
           echo "---" >> ${TRANSFORMED_FILE}
           echo "" >> ${TRANSFORMED_FILE}
           cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
@@ -199,7 +199,7 @@ jobs:
           echo "sidebar_position: 240" >> ${TRANSFORMED_FILE}
           echo "title: Flyover SDK - Advanced Operations" >> ${TRANSFORMED_FILE}
           echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg]" >> ${TRANSFORMED_FILE}
-          echo "description: Advanced topics covering custom network setups, captcha token handling and Flyover SDK utility helpers for sophisticated client integrations." >> ${TRANSFORMED_FILE}
+          echo "description: The Flyover SDK streamlines integration between client applications and the Flyover Protocol. This easy-to-use JavaScript/TypeScript toolkit provides configuration options for Liquidity Providers (LPs) and custom network setups for connecting to Rootstock." >> ${TRANSFORMED_FILE}
           echo "---" >> ${TRANSFORMED_FILE}
           echo "" >> ${TRANSFORMED_FILE}
           echo ":::info[Note]" >> ${TRANSFORMED_FILE}
