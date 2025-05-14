@@ -56,7 +56,7 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
 
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded).
 		Return(retainedQuotes, nil).Once()
 
 	pegoutQuoteRepository.On("GetQuotesByHashesAndDate", ctx, quoteHashes, startDate, endDate).Return(pegoutQuotes, nil).Once()
@@ -81,7 +81,7 @@ func TestGetPegoutReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	retainedQuotes := []quote.RetainedPegoutQuote{}
 
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded).
 		Return(retainedQuotes, nil).Once()
 
 	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
@@ -102,7 +102,7 @@ func TestGetPegoutReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
 	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded).
 		Return(nil, assert.AnError).Once()
 
 	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
