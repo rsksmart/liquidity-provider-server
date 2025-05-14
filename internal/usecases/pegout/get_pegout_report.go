@@ -41,7 +41,7 @@ func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.T
 		AverageFeePerQuote: entities.NewWei(0),
 	}
 
-	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
 	retainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, states...)
 
 	if err != nil {
