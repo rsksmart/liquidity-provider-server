@@ -536,7 +536,7 @@ func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fr
 	return result, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
+func (lbc *liquidityBridgeContractImpl) GetPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
 	var lbcEvent *bindings.LiquidityBridgeContractPenalized
 	result := make([]liquidity_provider.PunishmentEvent, 0)
 
