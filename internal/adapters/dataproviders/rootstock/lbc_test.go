@@ -1324,7 +1324,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 	})
 }
 
-func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
+func TestLiquidityBridgeContractImpl_GetPunishmentEvents(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	iteratorMock := &mocks.EventIteratorAdapterMock[bindings.LiquidityBridgeContractPenalized]{}
 	filterMatchFunc := func(from uint64, to uint64) func(opts *bind.FilterOpts) bool {
@@ -1347,7 +1347,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		}
 		iteratorMock.On("Error").Return(nil).Once()
 		iteratorMock.On("Close").Return(nil).Once()
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPunishmentEvents(context.Background(), from, &to)
 		require.NoError(t, err)
 		assert.Equal(t, parsedPenalizations, result)
 		lbcMock.AssertExpectations(t)
@@ -1360,7 +1360,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 			Return(nil, assert.AnError).Once()
 		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType(penalizedIteratorString)).
 			Return(nil)
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPunishmentEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)
@@ -1375,7 +1375,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		iteratorMock.On("Next").Return(false).Once()
 		iteratorMock.On("Error").Return(assert.AnError).Once()
 		iteratorMock.On("Close").Return(nil).Once()
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPunishmentEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)

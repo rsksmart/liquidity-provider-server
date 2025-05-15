@@ -21,7 +21,7 @@ func NewPenalizationAlertUseCase(contracts blockchain.RskContracts, sender entit
 
 func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toBlock uint64) error {
 	var body string
-	events, err := useCase.contracts.Lbc.GetPeginPunishmentEvents(ctx, fromBlock, &toBlock)
+	events, err := useCase.contracts.Lbc.GetPunishmentEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.PenalizationId, err)
 	}

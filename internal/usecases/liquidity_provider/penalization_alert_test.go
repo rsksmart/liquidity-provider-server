@@ -36,7 +36,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 	}
 	toBlock := uint64(10)
 	lbc.On(
-		"GetPeginPunishmentEvents",
+		"GetPunishmentEvents",
 		test.AnyCtx,
 		uint64(5),
 		&toBlock,
@@ -66,7 +66,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
 	lbc := &mocks.LbcMock{}
 	sender := &mocks.AlertSenderMock{}
-	lbc.On("GetPeginPunishmentEvents", test.AnyCtx, uint64(5), mock.Anything).
+	lbc.On("GetPunishmentEvents", test.AnyCtx, uint64(5), mock.Anything).
 		Return([]lp.PunishmentEvent{}, assert.AnError).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, "recipient")
