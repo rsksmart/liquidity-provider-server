@@ -46,3 +46,17 @@ pre {
     50% { width: 50%; }
     100% { width: 100%; }
 }
+
+#summariesResult {
+    margin-top: 20px;
+}
+
+#peginSummary table,
+#pegoutSummary table {
+    margin-bottom: 0;
+}
+
+#peginSummary th,
+#pegoutSummary th {
+    width: 60%;
+}

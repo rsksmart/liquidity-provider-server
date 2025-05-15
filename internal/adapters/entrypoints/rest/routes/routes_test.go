@@ -2,6 +2,11 @@ package routes_test
 
 import (
 	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"testing"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -16,10 +21,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"slices"
-	"testing"
 )
 
 // nolint:gosec // Linter is assuming the header name is a password
@@ -222,6 +223,7 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().GetPeginStatusUseCase().Return(&pegin.StatusUseCase{})
 	registryMock.EXPECT().GetPegoutStatusUseCase().Return(&pegout.StatusUseCase{})
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&liquidity_provider.SummariesUseCase{})
 
 	registryMock.EXPECT().GetPeginCollateralUseCase().Return(&pegin.GetCollateralUseCase{})
 	registryMock.EXPECT().AddPeginCollateralUseCase().Return(&pegin.AddCollateralUseCase{})
