@@ -12,7 +12,6 @@ type Database struct {
 	LiquidityProviderRepository liquidity_provider.LiquidityProviderRepository
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	Connection                  *mongo.Connection
-	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 }
 
 func NewDatabaseRegistry(connection *mongo.Connection) *Database {

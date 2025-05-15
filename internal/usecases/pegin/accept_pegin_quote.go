@@ -131,7 +131,7 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	})
 	if err != nil {
-		return liquidity_provider.TrustedAccountDetails{}, err
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.ErrTamperedTrustedAccount
 	}
 	return trustedAccount.Value, nil
 }

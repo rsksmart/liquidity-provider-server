@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
@@ -39,6 +40,7 @@ func NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase AcceptQuo
 		}
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
+		// nolint:nestif
 		if errors.Is(err, usecases.QuoteNotFoundError) {
 			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
@@ -54,6 +56,10 @@ func NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase AcceptQuo
 		} else if errors.Is(err, usecases.LockingCapExceededError) {
 			jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+			return
+		} else if errors.Is(err, liquidity_provider.ErrTamperedTrustedAccount) {
+			jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)

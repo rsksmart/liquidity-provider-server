@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -57,7 +58,7 @@ func TestAcceptPeginQuoteFromTrustedAccountHandler(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-// nolint:funlen
+// nolint:funlen,maintidx
 func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
 		// Create a request with malformed JSON (missing closing brace)
@@ -248,6 +249,74 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		assert.Equal(t, "not enough liquidity", errorResponse["message"])
 	})
 
+	t.Run("should return 409 when locking cap exceeded", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		signature := "validSignature123"
+
+		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+			QuoteHash: quoteHash,
+			Signature: signature,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.LockingCapExceededError)
+
+		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusConflict, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Equal(t, "locking cap exceeded", errorResponse["message"])
+	})
+
+	t.Run("should return 500 when trusted account is tampered", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		signature := "validSignature123"
+
+		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+			QuoteHash: quoteHash,
+			Signature: signature,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, liquidity_provider.ErrTamperedTrustedAccount)
+
+		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Equal(t, "error fetching trusted account", errorResponse["message"])
+	})
+
 	t.Run("should return 500 on unexpected errors", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
@@ -281,39 +350,5 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
 		assert.Equal(t, "unknown error", errorResponse["message"])
-	})
-
-	t.Run("should return 409 when locking cap exceeded", func(t *testing.T) {
-		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
-
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
-			QuoteHash: quoteHash,
-			Signature: signature,
-		}
-		jsonBody, err := json.Marshal(reqBody)
-		require.NoError(t, err)
-
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
-		request.Header.Set("Content-Type", "application/json")
-		recorder := httptest.NewRecorder()
-
-		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
-		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.LockingCapExceededError)
-
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
-		handler := http.HandlerFunc(handlerFunc)
-
-		handler.ServeHTTP(recorder, request)
-
-		assert.Equal(t, http.StatusConflict, recorder.Code)
-
-		mockUseCase.AssertExpectations(t)
-
-		var errorResponse map[string]interface{}
-		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
-		require.NoError(t, err)
-		assert.Contains(t, errorResponse, "message")
-		assert.Equal(t, "locking cap exceeded", errorResponse["message"])
 	})
 }

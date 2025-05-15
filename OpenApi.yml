@@ -709,6 +709,20 @@ components:
         rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
+    pkg.AcceptPeginRespose:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
