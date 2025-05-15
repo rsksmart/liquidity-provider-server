@@ -2,6 +2,11 @@ package routes_test
 
 import (
 	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"testing"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -16,10 +21,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"slices"
-	"testing"
 )
 
 // nolint:gosec // Linter is assuming the header name is a password
@@ -238,6 +239,10 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().LoginUseCase().Return(&liquidity_provider.LoginUseCase{})
 	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
 	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
+	registryMock.EXPECT().GetTrustedAccountsUseCase().Return(&liquidity_provider.GetTrustedAccountsUseCase{})
+	registryMock.EXPECT().UpdateTrustedAccountUseCase().Return(&liquidity_provider.UpdateTrustedAccountUseCase{})
+	registryMock.EXPECT().AddTrustedAccountUseCase().Return(&liquidity_provider.AddTrustedAccountUseCase{})
+	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
 }
 
 func assertHasCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {

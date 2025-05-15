@@ -684,6 +684,17 @@ components:
         rsk:
           type: string
       type: object
+    TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
+      type: object
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -715,6 +726,17 @@ components:
           type: integer
       required:
       - collateral
+      type: object
+    pkg.TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
       type: object
 info:
   title: Liquidity Provider Server
@@ -792,6 +814,52 @@ paths:
         "204":
           description: ""
       summary: Management Logout
+  /management/trusted-accounts:
+    delete:
+      description: ' Deletes a trusted account'
+      parameters:
+      - description: Address of the trusted account to delete
+        in: query
+        name: address
+        required: true
+        schema:
+          description: Address of the trusted account to delete
+          format: string
+          type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete Trusted Account
+    get:
+      description: ' Returns all trusted accounts'
+      responses:
+        "200":
+          description: ""
+      summary: Get Trusted Accounts
+    post:
+      description: ' Adds a new trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Add Trusted Account
+    put:
+      description: ' Updates an existing trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Update Trusted Account
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'
