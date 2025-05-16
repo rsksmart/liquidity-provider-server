@@ -2,12 +2,12 @@ name: Update Devportal Documentation (Flyover LPS)
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - '*.md'
       - 'docs/**/*.md'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - '*.md'
       - 'docs/**/*.md'
