@@ -12,21 +12,21 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-// NewAcceptPeginQuoteFromTrustedAccountHandler
-// @Title Accept Quote From Trusted Account
+// NewAcceptPeginAuthenticatedQuoteHandler
+// @Title Accept authenticated quote
 // @Description Accepts Quote with trusted account signature
-// @Param Request body pkg.AcceptQuoteFromTrustedAccountRequest true "Quote Hash and Signature"
+// @Param Request body pkg.AcceptAuthenticatedQuoteRequest true "Quote Hash and Signature"
 // @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
-// @Route /pegin/acceptQuoteFromTrustedAccount [post]
-func NewAcceptPeginQuoteFromTrustedAccountHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
-	return NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase)
+// @Route /pegin/acceptAuthenticatedQuote [post]
+func NewAcceptPeginAuthenticatedQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
+	return NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase)
 }
 
-// NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface is like NewAcceptPeginQuoteFromTrustedAccountHandler but accepts an interface instead of a concrete type for testing
-func NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+// NewAcceptPeginAuthenticatedQuoteHandlerWithInterface is like NewAcceptPeginAuthenticatedQuoteHandler but accepts an interface instead of a concrete type for testing
+func NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
-		acceptRequest := pkg.AcceptQuoteFromTrustedAccountRequest{}
+		acceptRequest := pkg.AcceptAuthenticatedQuoteRequest{}
 		if err = rest.DecodeRequest(w, req, &acceptRequest); err != nil {
 			return
 		} else if err = rest.ValidateRequest(w, &acceptRequest); err != nil {

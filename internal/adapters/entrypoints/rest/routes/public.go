@@ -46,9 +46,9 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 		},
 		{
 			Endpoint: Endpoint{
-				Path:    "/pegin/acceptQuoteFromTrustedAccount",
+				Path:    "/pegin/acceptAuthenticatedQuote",
 				Method:  http.MethodPost,
-				Handler: handlers.NewAcceptPeginQuoteFromTrustedAccountHandler(useCaseRegistry.GetAcceptPeginQuoteWithTrustedAccountUseCase()),
+				Handler: handlers.NewAcceptPeginAuthenticatedQuoteHandler(useCaseRegistry.GetAcceptPeginAuthenticatedQuoteUseCase()),
 			},
 		},
 		{

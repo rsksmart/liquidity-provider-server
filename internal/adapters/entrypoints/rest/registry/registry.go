@@ -10,7 +10,7 @@ import (
 type UseCaseRegistry interface {
 	GetPeginQuoteUseCase() *pegin.GetQuoteUseCase
 	GetAcceptPeginQuoteUseCase() *pegin.AcceptQuoteUseCase
-	GetAcceptPeginQuoteWithTrustedAccountUseCase() *pegin.AcceptQuoteUseCase
+	GetAcceptPeginAuthenticatedQuoteUseCase() *pegin.AcceptQuoteUseCase
 	GetProviderDetailUseCase() *liquidity_provider.GetDetailUseCase
 	GetPegoutQuoteUseCase() *pegout.GetQuoteUseCase
 	GetAcceptPegoutQuoteUseCase() *pegout.AcceptQuoteUseCase

@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAcceptPeginQuoteFromTrustedAccountHandler(t *testing.T) {
+func TestAcceptPeginAuthenticatedQuoteHandler(t *testing.T) {
 	quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	signature := "validSignature123"
 	acceptedQuote := quote.AcceptedQuote{
@@ -27,21 +27,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandler(t *testing.T) {
 		DepositAddress: "depositAddress456",
 	}
 
-	reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+	reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 		QuoteHash: quoteHash,
 		Signature: signature,
 	}
 	jsonBody, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
-	request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+	request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 
 	mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 	mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(acceptedQuote, nil)
 
-	handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+	handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 	handler := http.HandlerFunc(handlerFunc)
 
 	handler.ServeHTTP(recorder, request)
@@ -59,17 +59,17 @@ func TestAcceptPeginQuoteFromTrustedAccountHandler(t *testing.T) {
 }
 
 // nolint:funlen,maintidx
-func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
+func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
 		// Create a request with malformed JSON (missing closing brace)
 		malformedJSON := []byte(`{"quoteHash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "signature": "validSignature123"`)
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(malformedJSON))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(malformedJSON))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -87,20 +87,20 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 	})
 
 	t.Run("should handle request validation failure - missing signature", func(t *testing.T) {
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 			Signature: "", // Empty signature will fail validation
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -118,20 +118,20 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 	})
 
 	t.Run("should return 400 on invalid quote hash format", func(t *testing.T) {
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: "123456789XABCDEF", // Invalid - contains non-hex character 'X'
 			Signature: "validSignature123",
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -151,21 +151,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.QuoteNotFoundError)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -185,21 +185,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.ExpiredQuoteError)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -219,21 +219,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.NoLiquidityError)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -253,21 +253,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.LockingCapExceededError)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -287,21 +287,21 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, liquidity_provider.ErrTamperedTrustedAccount)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -321,14 +321,14 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		signature := "validSignature123"
 
-		reqBody := pkg.AcceptQuoteFromTrustedAccountRequest{
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
 
-		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuoteFromTrustedAccount", bytes.NewBuffer(jsonBody))
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
@@ -336,7 +336,7 @@ func TestAcceptPeginQuoteFromTrustedAccountHandlerErrorCases(t *testing.T) {
 		unexpectedError := errors.New("unexpected database error")
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, unexpectedError)
 
-		handlerFunc := handlers.NewAcceptPeginQuoteFromTrustedAccountHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
