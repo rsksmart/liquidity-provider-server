@@ -31,7 +31,12 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
 		lbc := &mocks.LbcMock{}
 		lbc.On("GetPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
-		useCase := liquidity_provider.NewPenalizationAlertUseCase(blockchain.RskContracts{Lbc: lbc}, &mocks.AlertSenderMock{}, test.AnyString)
+		useCase := liquidity_provider.NewPenalizationAlertUseCase(
+			blockchain.RskContracts{Lbc: lbc},
+			&mocks.AlertSenderMock{},
+			test.AnyString,
+			mocks.NewLiquidityProviderRepositoryMock(t),
+		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
@@ -50,7 +55,12 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
 		lbc := &mocks.LbcMock{}
 		lbc.On("GetPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return([]lp.PunishmentEvent{}, nil)
-		useCase := liquidity_provider.NewPenalizationAlertUseCase(blockchain.RskContracts{Lbc: lbc}, &mocks.AlertSenderMock{}, test.AnyString)
+		useCase := liquidity_provider.NewPenalizationAlertUseCase(
+			blockchain.RskContracts{Lbc: lbc},
+			&mocks.AlertSenderMock{},
+			test.AnyString,
+			mocks.NewLiquidityProviderRepositoryMock(t),
+		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)

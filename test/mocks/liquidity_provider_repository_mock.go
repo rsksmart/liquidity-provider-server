@@ -256,6 +256,53 @@ func (_c *LiquidityProviderRepositoryMock_GetPegoutConfiguration_Call) RunAndRet
 	return _c
 }
 
+// InsertPenalization provides a mock function with given fields: ctx, event
+func (_m *LiquidityProviderRepositoryMock) InsertPenalization(ctx context.Context, event liquidity_provider.PunishmentEvent) error {
+	ret := _m.Called(ctx, event)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertPenalization")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, liquidity_provider.PunishmentEvent) error); ok {
+		r0 = rf(ctx, event)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// LiquidityProviderRepositoryMock_InsertPenalization_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertPenalization'
+type LiquidityProviderRepositoryMock_InsertPenalization_Call struct {
+	*mock.Call
+}
+
+// InsertPenalization is a helper method to define mock.On call
+//   - ctx context.Context
+//   - event liquidity_provider.PunishmentEvent
+func (_e *LiquidityProviderRepositoryMock_Expecter) InsertPenalization(ctx interface{}, event interface{}) *LiquidityProviderRepositoryMock_InsertPenalization_Call {
+	return &LiquidityProviderRepositoryMock_InsertPenalization_Call{Call: _e.mock.On("InsertPenalization", ctx, event)}
+}
+
+func (_c *LiquidityProviderRepositoryMock_InsertPenalization_Call) Run(run func(ctx context.Context, event liquidity_provider.PunishmentEvent)) *LiquidityProviderRepositoryMock_InsertPenalization_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(liquidity_provider.PunishmentEvent))
+	})
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_InsertPenalization_Call) Return(_a0 error) *LiquidityProviderRepositoryMock_InsertPenalization_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_InsertPenalization_Call) RunAndReturn(run func(context.Context, liquidity_provider.PunishmentEvent) error) *LiquidityProviderRepositoryMock_InsertPenalization_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertCredentials provides a mock function with given fields: ctx, credentials
 func (_m *LiquidityProviderRepositoryMock) UpsertCredentials(ctx context.Context, credentials entities.Signed[liquidity_provider.HashedCredentials]) error {
 	ret := _m.Called(ctx, credentials)

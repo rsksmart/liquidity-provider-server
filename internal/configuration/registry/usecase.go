@@ -177,6 +177,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
+			databaseRegistry.LiquidityProviderRepository,
 		),
 		addPeginCollateralUseCase:  pegin.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
 		addPegoutCollateralUseCase: pegout.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),

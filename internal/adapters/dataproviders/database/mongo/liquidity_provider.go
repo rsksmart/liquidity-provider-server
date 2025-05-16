@@ -11,7 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const LiquidityProviderCollection = "liquidityProvider"
+const (
+	LiquidityProviderCollection = "liquidityProvider"
+	PunishmentEventCollection   = "punishmentEvent"
+)
 
 type ConfigurationName string
 
@@ -97,6 +100,19 @@ func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credential
 		Name:   credentialsId,
 	}
 	return upsertConfiguration(dbCtx, repo, configToStore, false)
+}
+
+func (repo *lpMongoRepository) InsertPenalization(ctx context.Context, punishmentEvent liquidity_provider.PunishmentEvent) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	collection := repo.conn.Collection(PunishmentEventCollection)
+	_, err := collection.InsertOne(dbCtx, punishmentEvent)
+	if err != nil {
+		return err
+	} else {
+		logDbInteraction(Insert, punishmentEvent)
+		return nil
+	}
 }
 
 func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](
