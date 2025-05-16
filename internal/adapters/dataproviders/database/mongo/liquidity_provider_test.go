@@ -15,9 +15,16 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDb "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"reflect"
 	"testing"
 	"time"
 )
+
+var testPenalization = &liquidity_provider.PunishmentEvent{
+	LiquidityProvider: "0x0000000000000000000000000000000000000000",
+	QuoteHash:         "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819",
+	Penalty:           entities.NewWei(100),
+}
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
 	Value: liquidity_provider.PeginConfiguration{
@@ -317,6 +324,29 @@ func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertCredentials(context.Background(), *testCredentials)
+		require.Error(t, err)
+	})
+}
+
+func TestLpMongoRepository_InsertPenalization(t *testing.T) {
+	t.Run("Insert penalization successfully", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PunishmentEventCollection)
+		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q liquidity_provider.PunishmentEvent) bool {
+			return q.QuoteHash == testPenalization.QuoteHash && reflect.TypeOf(liquidity_provider.PunishmentEvent{}).NumField() == test.CountNonZeroValues(q)
+		})).Return(nil, nil).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewLiquidityProviderRepository(conn)
+		err := repo.InsertPenalization(context.Background(), *testPenalization)
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+	})
+	t.Run("Db error inserting penalization", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PunishmentEventCollection)
+		collection.On("InsertOne", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewLiquidityProviderRepository(conn)
+		err := repo.InsertPenalization(context.Background(), *testPenalization)
+		collection.AssertExpectations(t)
 		require.Error(t, err)
 	})
 }

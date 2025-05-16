@@ -78,6 +78,7 @@ type LiquidityProviderRepository interface {
 	UpsertGeneralConfiguration(ctx context.Context, configuration entities.Signed[GeneralConfiguration]) error
 	GetCredentials(ctx context.Context) (*entities.Signed[HashedCredentials], error)
 	UpsertCredentials(ctx context.Context, credentials entities.Signed[HashedCredentials]) error
+	InsertPenalization(ctx context.Context, event PunishmentEvent) error
 }
 
 type RegisteredLiquidityProvider struct {
@@ -103,9 +104,9 @@ type AvailableLiquidity struct {
 }
 
 type PunishmentEvent struct {
-	LiquidityProvider string
-	Penalty           *entities.Wei
-	QuoteHash         string
+	LiquidityProvider string        `json:"liquidityProvider" bson:"liquidity_provider" validate:"required"`
+	Penalty           *entities.Wei `json:"penalty" bson:"penalty" validate:"required"`
+	QuoteHash         string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
 }
 
 type Credentials struct {
