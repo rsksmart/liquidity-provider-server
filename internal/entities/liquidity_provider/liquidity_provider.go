@@ -79,6 +79,7 @@ type LiquidityProviderRepository interface {
 	GetCredentials(ctx context.Context) (*entities.Signed[HashedCredentials], error)
 	UpsertCredentials(ctx context.Context, credentials entities.Signed[HashedCredentials]) error
 	InsertPenalization(ctx context.Context, event PunishmentEvent) error
+	GetPenalizationsByQuoteHashes(ctx context.Context, quoteHashes []string) ([]PunishmentEvent, error)
 }
 
 type RegisteredLiquidityProvider struct {
