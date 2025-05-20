@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 )
 
@@ -58,8 +59,9 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
-	getPeginReportUseCase         *pegin.GetPeginReportUseCase
-	getPegoutReportUseCase        *pegout.GetPegoutReportUseCase
+	getPeginReportUseCase         *reports.GetPeginReportUseCase
+	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
+	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -236,8 +238,13 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
-		getPeginReportUseCase:     pegin.NewGetPeginReportUseCase(databaseRegistry.PeginRepository),
-		getPegoutReportUseCase:    pegout.NewGetPegoutReportUseCase(databaseRegistry.PegoutRepository),
+		getPeginReportUseCase:     reports.NewGetPeginReportUseCase(databaseRegistry.PeginRepository),
+		getPegoutReportUseCase:    reports.NewGetPegoutReportUseCase(databaseRegistry.PegoutRepository),
+		getRevenueReportUseCase: reports.NewGetRevenueReportUseCase(
+			databaseRegistry.PeginRepository,
+			databaseRegistry.PegoutRepository,
+			databaseRegistry.LiquidityProviderRepository,
+		),
 	}
 }
 
@@ -353,10 +360,14 @@ func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.Serv
 	return registry.getServerInfoUseCase
 }
 
-func (registry *UseCaseRegistry) GetPeginReportUseCase() *pegin.GetPeginReportUseCase {
+func (registry *UseCaseRegistry) GetPeginReportUseCase() *reports.GetPeginReportUseCase {
 	return registry.getPeginReportUseCase
 }
 
-func (registry *UseCaseRegistry) GetPegoutReportUseCase() *pegout.GetPegoutReportUseCase {
+func (registry *UseCaseRegistry) GetPegoutReportUseCase() *reports.GetPegoutReportUseCase {
 	return registry.getPegoutReportUseCase
+}
+
+func (registry *UseCaseRegistry) GetRevenueReportUseCase() *reports.GetRevenueReportUseCase {
+	return registry.getRevenueReportUseCase
 }

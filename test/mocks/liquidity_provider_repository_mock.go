@@ -256,6 +256,65 @@ func (_c *LiquidityProviderRepositoryMock_GetPegoutConfiguration_Call) RunAndRet
 	return _c
 }
 
+// GetPenalizationsByQuoteHashes provides a mock function with given fields: ctx, quoteHashes
+func (_m *LiquidityProviderRepositoryMock) GetPenalizationsByQuoteHashes(ctx context.Context, quoteHashes []string) ([]liquidity_provider.PunishmentEvent, error) {
+	ret := _m.Called(ctx, quoteHashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPenalizationsByQuoteHashes")
+	}
+
+	var r0 []liquidity_provider.PunishmentEvent
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]liquidity_provider.PunishmentEvent, error)); ok {
+		return rf(ctx, quoteHashes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []liquidity_provider.PunishmentEvent); ok {
+		r0 = rf(ctx, quoteHashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]liquidity_provider.PunishmentEvent)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, quoteHashes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPenalizationsByQuoteHashes'
+type LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call struct {
+	*mock.Call
+}
+
+// GetPenalizationsByQuoteHashes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - quoteHashes []string
+func (_e *LiquidityProviderRepositoryMock_Expecter) GetPenalizationsByQuoteHashes(ctx interface{}, quoteHashes interface{}) *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call {
+	return &LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call{Call: _e.mock.On("GetPenalizationsByQuoteHashes", ctx, quoteHashes)}
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call) Run(run func(ctx context.Context, quoteHashes []string)) *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call) Return(_a0 []liquidity_provider.PunishmentEvent, _a1 error) *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call) RunAndReturn(run func(context.Context, []string) ([]liquidity_provider.PunishmentEvent, error)) *LiquidityProviderRepositoryMock_GetPenalizationsByQuoteHashes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InsertPenalization provides a mock function with given fields: ctx, event
 func (_m *LiquidityProviderRepositoryMock) InsertPenalization(ctx context.Context, event liquidity_provider.PunishmentEvent) error {
 	ret := _m.Called(ctx, event)

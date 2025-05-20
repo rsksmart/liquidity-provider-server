@@ -1,4 +1,4 @@
-package pegin
+package reports
 
 import (
 	"context"
@@ -8,19 +8,19 @@ import (
 	"time"
 )
 
-type GetPeginReportUseCase struct {
-	peginQuoteRepository quote.PeginQuoteRepository
+type GetPegoutReportUseCase struct {
+	pegoutQuoteRepository quote.PegoutQuoteRepository
 }
 
-func NewGetPeginReportUseCase(
-	peginQuoteRepository quote.PeginQuoteRepository,
-) *GetPeginReportUseCase {
-	return &GetPeginReportUseCase{
-		peginQuoteRepository: peginQuoteRepository,
+func NewGetPegoutReportUseCase(
+	pegoutQuoteRepository quote.PegoutQuoteRepository,
+) *GetPegoutReportUseCase {
+	return &GetPegoutReportUseCase{
+		pegoutQuoteRepository: pegoutQuoteRepository,
 	}
 }
 
-type GetPeginReportResult struct {
+type GetPegoutReportResult struct {
 	NumberOfQuotes     int
 	MinimumQuoteValue  *entities.Wei
 	MaximumQuoteValue  *entities.Wei
@@ -29,10 +29,10 @@ type GetPeginReportResult struct {
 	AverageFeePerQuote *entities.Wei
 }
 
-func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetPeginReportResult, error) {
+func (useCase *GetPegoutReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetPegoutReportResult, error) {
 	var err error
-	var quotes []quote.PeginQuote
-	var response = GetPeginReportResult{
+	var quotes []quote.PegoutQuote
+	response := GetPegoutReportResult{
 		NumberOfQuotes:     0,
 		MinimumQuoteValue:  entities.NewWei(0),
 		MaximumQuoteValue:  entities.NewWei(0),
@@ -41,11 +41,11 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 		AverageFeePerQuote: entities.NewWei(0),
 	}
 
-	states := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
-	retainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, states...)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
+	retainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, states...)
 
 	if err != nil {
-		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 
 	quoteHashes := make([]string, 0, len(retainedQuotes))
@@ -57,10 +57,10 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 		return response, nil
 	}
 
-	quotes, err = useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, quoteHashes, startDate, endDate)
+	quotes, err = useCase.pegoutQuoteRepository.GetQuotesByHashesAndDate(ctx, quoteHashes, startDate, endDate)
 
 	if err != nil {
-		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 	if len(quotes) == 0 {
 		return response, nil
@@ -71,18 +71,18 @@ func (useCase *GetPeginReportUseCase) Run(ctx context.Context, startDate time.Ti
 	response.MaximumQuoteValue = useCase.calculateMaximumQuoteValue(quotes)
 	response.AverageQuoteValue, err = useCase.calculateAverageQuoteValue(quotes)
 	if err != nil {
-		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 	response.TotalFeesCollected = useCase.calculateTotalFeesCollected(quotes)
 	response.AverageFeePerQuote, err = useCase.calculateAverageFeePerQuote(quotes)
 	if err != nil {
-		return GetPeginReportResult{}, usecases.WrapUseCaseError(usecases.GetPeginReportId, err)
+		return GetPegoutReportResult{}, usecases.WrapUseCaseError(usecases.GetPegoutReportId, err)
 	}
 
 	return response, nil
 }
 
-func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.PeginQuote) *entities.Wei {
+func (useCase *GetPegoutReportUseCase) calculateMinimumQuoteValue(quotes []quote.PegoutQuote) *entities.Wei {
 	if len(quotes) == 0 {
 		return entities.NewWei(0)
 	}
@@ -97,7 +97,7 @@ func (useCase *GetPeginReportUseCase) calculateMinimumQuoteValue(quotes []quote.
 	return minimum
 }
 
-func (useCase *GetPeginReportUseCase) calculateMaximumQuoteValue(quotes []quote.PeginQuote) *entities.Wei {
+func (useCase *GetPegoutReportUseCase) calculateMaximumQuoteValue(quotes []quote.PegoutQuote) *entities.Wei {
 	if len(quotes) == 0 {
 		return entities.NewWei(0)
 	}
@@ -112,7 +112,7 @@ func (useCase *GetPeginReportUseCase) calculateMaximumQuoteValue(quotes []quote.
 	return maximum
 }
 
-func (useCase *GetPeginReportUseCase) calculateAverageQuoteValue(quotes []quote.PeginQuote) (*entities.Wei, error) {
+func (useCase *GetPegoutReportUseCase) calculateAverageQuoteValue(quotes []quote.PegoutQuote) (*entities.Wei, error) {
 	if len(quotes) == 0 {
 		return entities.NewWei(0), nil
 	}
@@ -131,7 +131,7 @@ func (useCase *GetPeginReportUseCase) calculateAverageQuoteValue(quotes []quote.
 	return average, nil
 }
 
-func (useCase *GetPeginReportUseCase) calculateTotalFeesCollected(quotes []quote.PeginQuote) *entities.Wei {
+func (useCase *GetPegoutReportUseCase) calculateTotalFeesCollected(quotes []quote.PegoutQuote) *entities.Wei {
 	totalFees := entities.NewWei(0)
 
 	for _, q := range quotes {
@@ -141,7 +141,7 @@ func (useCase *GetPeginReportUseCase) calculateTotalFeesCollected(quotes []quote
 	return totalFees
 }
 
-func (useCase *GetPeginReportUseCase) calculateAverageFeePerQuote(quotes []quote.PeginQuote) (*entities.Wei, error) {
+func (useCase *GetPegoutReportUseCase) calculateAverageFeePerQuote(quotes []quote.PegoutQuote) (*entities.Wei, error) {
 	totalFees := useCase.calculateTotalFeesCollected(quotes)
 
 	averageFee, err := totalFees.Div(totalFees, entities.NewWei(int64(len(quotes))))

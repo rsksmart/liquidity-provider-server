@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 )
 
 type UseCaseRegistry interface {
@@ -35,6 +36,7 @@ type UseCaseRegistry interface {
 	GetPegoutStatusUseCase() *pegout.StatusUseCase
 	GetAvailableLiquidityUseCase() *liquidity_provider.GetAvailableLiquidityUseCase
 	GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase
-	GetPeginReportUseCase() *pegin.GetPeginReportUseCase
-	GetPegoutReportUseCase() *pegout.GetPegoutReportUseCase
+	GetPeginReportUseCase() *reports.GetPeginReportUseCase
+	GetPegoutReportUseCase() *reports.GetPegoutReportUseCase
+	GetRevenueReportUseCase() *reports.GetRevenueReportUseCase
 }
