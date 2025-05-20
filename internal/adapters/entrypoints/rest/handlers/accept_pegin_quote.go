@@ -8,11 +8,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-// AcceptQuoteUseCaseInterface defines the interface for the use case
 type AcceptQuoteUseCaseInterface interface {
 	Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error)
 }
@@ -23,12 +21,7 @@ type AcceptQuoteUseCaseInterface interface {
 // @Param QuoteHash body pkg.AcceptQuoteRequest true "Quote Hash"
 // @Success 200  object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
-func NewAcceptPeginQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
-	return NewAcceptPeginQuoteHandlerWithInterface(useCase)
-}
-
-// NewAcceptPeginQuoteHandlerWithInterface is like NewAcceptPeginQuoteHandler but accepts an interface instead of a concrete type for testing
-func NewAcceptPeginQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		acceptRequest := pkg.AcceptQuoteRequest{}

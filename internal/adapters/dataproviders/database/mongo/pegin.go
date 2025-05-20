@@ -210,7 +210,7 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }
 
-func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string) ([]quote.RetainedPeginQuote, error) {
+func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
 	result := make([]quote.RetainedPeginQuote, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
@@ -219,10 +219,7 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 	filter := bson.D{
 		primitive.E{Key: "owner_account_address", Value: address},
 		primitive.E{Key: "state", Value: bson.D{
-			primitive.E{Key: "$in", Value: []quote.PeginState{
-				quote.PeginStateWaitingForDeposit,
-				quote.PeginStateWaitingForDepositConfirmations,
-			}},
+			primitive.E{Key: "$in", Value: states},
 		}},
 	}
 

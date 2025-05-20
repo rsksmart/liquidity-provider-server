@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
@@ -126,6 +125,7 @@ func ValidateConfiguration[T ConfigurationType](
 	displayName string,
 	signer entities.Signer,
 	readFunction func() (*entities.Signed[T], error),
+	hashFunction entities.HashFunction,
 ) (*entities.Signed[T], error) {
 	configuration, err := readFunction()
 	if err != nil {
@@ -136,7 +136,7 @@ func ValidateConfiguration[T ConfigurationType](
 		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
 		return nil, errors.New("configuration not found")
 	}
-	if err = configuration.CheckIntegrity(crypto.Keccak256); err != nil {
+	if err = configuration.CheckIntegrity(hashFunction); err != nil {
 		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
 		return nil, err
 	}

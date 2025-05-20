@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"strconv"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -20,6 +18,8 @@ import (
 // used for error logging
 
 type UseCaseId string
+
+const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
 	GetPeginQuoteId            UseCaseId = "GetPeginQuote"
@@ -231,22 +231,22 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 
 	signatureBytes, err := hex.DecodeString(signature)
 	if err != nil {
-		return "", errors.New("error decoding signature: " + err.Error())
+		return "", fmt.Errorf("error decoding signature: %w", err)
 	}
 
 	// Ethereum signatures should be 65 bytes (r,s,v) where v is the recovery ID
 	if len(signatureBytes) != 65 {
-		return "", errors.New("invalid signature length, expected 65 bytes, got " + strconv.Itoa(len(signatureBytes)))
+		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
 	}
 
 	hashBytes, err := hex.DecodeString(quoteHash)
 	if err != nil {
-		return "", errors.New("error decoding hash: " + err.Error())
+		return "", fmt.Errorf("error decoding hash: %w", err)
 	}
 
 	// Hash should be 32 bytes
 	if len(hashBytes) != 32 {
-		return "", errors.New("invalid hash length, expected 32 bytes, got " + strconv.Itoa(len(hashBytes)))
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hashBytes))
 	}
 
 	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
@@ -258,7 +258,7 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 
 	// Create the Ethereum prefixed message
 	var buf bytes.Buffer
-	buf.WriteString("\x19Ethereum Signed Message:\n32")
+	buf.WriteString(EthereumSignedMessagePrefix)
 	buf.Write(hashBytes)
 	prefixedHash := crypto.Keccak256(buf.Bytes())
 

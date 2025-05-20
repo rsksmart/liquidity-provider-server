@@ -41,7 +41,7 @@ func TestAcceptPeginAuthenticatedQuoteHandler(t *testing.T) {
 	mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 	mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(acceptedQuote, nil)
 
-	handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+	handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 	handler := http.HandlerFunc(handlerFunc)
 
 	handler.ServeHTTP(recorder, request)
@@ -69,7 +69,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -100,7 +100,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -131,7 +131,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -165,7 +165,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.QuoteNotFoundError)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -199,7 +199,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.ExpiredQuoteError)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -233,7 +233,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.NoLiquidityError)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -267,7 +267,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, usecases.LockingCapExceededError)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -301,7 +301,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, liquidity_provider.ErrTamperedTrustedAccount)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)
@@ -336,7 +336,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		unexpectedError := errors.New("unexpected database error")
 		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, unexpectedError)
 
-		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(mockUseCase)
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
 
 		handler.ServeHTTP(recorder, request)

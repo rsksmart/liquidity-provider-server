@@ -307,6 +307,27 @@ func TestRecoverSignerAddress(t *testing.T) {
 			expectError:     false,
 		},
 		{
+			name:            "valid signature and hash mainnet",
+			quoteHash:       "249e59bf1a92a867629f111222fa63946370640030faaa5fdb79744fd0539f81",
+			signature:       "229ac43839c3a66520f3f96b1b8f124608dd652c0c9071629a9d8457c292b0257eb3300d2c3b7f5be30c35c9bd15b05582e00070052a4006b8768afab853872a1c",
+			expectedAddress: "0x82a06ebdb97776a2da4041df8f2b2ea8d3257852",
+			expectError:     false,
+		},
+		{
+			name:            "valid signature and hash testnet",
+			quoteHash:       "3431bf06ab6ebde3e1297d5eaa5563edf500fea7dcdc466be1a8492e78dd6d80",
+			signature:       "a316d2dd76e2a325efdfee6b6686fa2c73aedad0090a1cbf286a5799f03548892943d436af4543c7b33548a6e24c1546ed51b844e0b9ab9b8da37aa30dd8f7031b",
+			expectedAddress: "0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b",
+			expectError:     false,
+		},
+		{
+			name:            "valid signature and hash dev",
+			quoteHash:       "e795e119e597f411d379197f11680840f995128a1502024dee5d8a1480658ed5",
+			signature:       "72a8cfd0da1b4c008b209b404574469a1c935c5e6252ef3d53688320d2f0060449c0033709f3460ab34bd17aa6141d8e5485476793382391ca33d8cc5c6895831c",
+			expectedAddress: "0xdfcf32644e6cc5badd1188cddf66f66e21b24375",
+			expectError:     false,
+		},
+		{
 			name:            "invalid hash format",
 			quoteHash:       "invalid-hex",
 			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -64,6 +63,8 @@ var federationInfo = blockchain.FederationInfo{
 }
 var trustedAccountRepository = new(mocks.TrustedAccountRepositoryMock)
 
+var signingHashFunction = crypto.Keccak256
+
 // nolint:funlen
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	requiredLiquidity := entities.NewWei(9280000)
@@ -110,7 +111,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertExpectations(t)
@@ -174,7 +175,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
 		quoteRepository.On("GetRetainedQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
 		quoteRepository.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
-		quoteRepository.On("GetRetainedQuotesForAddress", test.AnyCtx, ownerAccountAddress).Return([]quote.RetainedPeginQuote{}, nil)
+		quoteRepository.On("GetRetainedQuotesForAddress", test.AnyCtx, ownerAccountAddress, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil)
 		quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, acceptPeginQuoteHash).Return(creationData).Once()
 
 		bridge.On("FetchFederationInfo").Return(federationInfo, nil)
@@ -203,10 +204,9 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		mutex.On("Lock").Return().On("Unlock").Return()
 		rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
 
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository)
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, acceptPeginQuoteHashSignature)
 
-		fmt.Println("194 TestAcceptQuoteWithoutCaptchaUseCase_Run: result", result)
 		rsk.AssertExpectations(t)
 		quoteRepository.AssertExpectations(t)
 		trustedAccountRepository.AssertExpectations(t)
@@ -234,7 +234,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		// We don't expect these to be called because signature validation should fail first
 		quoteRepository.On("GetRetainedQuote", mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository)
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 
 		result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, invalidSignature)
 
@@ -279,9 +279,9 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 		quoteRepository.On("GetQuote", mock.Anything, acceptPeginQuoteHash).Return(&newQuote, nil)
 		quoteRepository.On("GetRetainedQuote", mock.Anything, acceptPeginQuoteHash).Return(nil, nil)
-		quoteRepository.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress).Return([]quote.RetainedPeginQuote{existingQuote1, existingQuote2}, nil)
+		quoteRepository.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{existingQuote1, existingQuote2}, nil)
 
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository)
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, acceptPeginQuoteHashSignature)
 
 		require.Error(t, err)
@@ -313,7 +313,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -345,7 +345,7 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -378,7 +378,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertNotCalled(t, "GasPrice")
@@ -420,7 +420,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 
 	contracts := blockchain.RskContracts{Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
 	rsk.AssertExpectations(t)
@@ -452,7 +452,7 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		setup(&caseHash, quoteRepository, bridge, btc, lp, rsk)
 		contracts := blockchain.RskContracts{Bridge: bridge}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository)
+		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), caseHash, "")
 
 		rsk.AssertExpectations(t)

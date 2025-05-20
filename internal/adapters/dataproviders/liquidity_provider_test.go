@@ -19,6 +19,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
@@ -54,7 +55,7 @@ func TestLocalLiquidityProvider_SignQuote(t *testing.T) {
 	var buffer bytes.Buffer
 	hashBytes, err := hex.DecodeString(quoteHash)
 	require.NoError(t, err)
-	buffer.WriteString("\x19Ethereum Signed Message:\n32")
+	buffer.WriteString(usecases.EthereumSignedMessagePrefix)
 	buffer.Write(hashBytes)
 	signer := new(mocks.TransactionSignerMock)
 	signatureBytes, err := hex.DecodeString(signatureBeforeSum)

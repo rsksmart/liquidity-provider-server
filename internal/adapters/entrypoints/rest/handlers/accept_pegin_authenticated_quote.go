@@ -8,7 +8,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
@@ -18,12 +17,7 @@ import (
 // @Param Request body pkg.AcceptAuthenticatedQuoteRequest true "Quote Hash and Signature"
 // @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptAuthenticatedQuote [post]
-func NewAcceptPeginAuthenticatedQuoteHandler(useCase *pegin.AcceptQuoteUseCase) http.HandlerFunc {
-	return NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase)
-}
-
-// NewAcceptPeginAuthenticatedQuoteHandlerWithInterface is like NewAcceptPeginAuthenticatedQuoteHandler but accepts an interface instead of a concrete type for testing
-func NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+func NewAcceptPeginAuthenticatedQuoteHandler(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		acceptRequest := pkg.AcceptAuthenticatedQuoteRequest{}
@@ -40,30 +34,8 @@ func NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase AcceptQuoteUse
 		}
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
-		// nolint:nestif
-		if errors.Is(err, usecases.QuoteNotFoundError) {
-			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
-			return
-		} else if errors.Is(err, usecases.ExpiredQuoteError) {
-			jsonErr := rest.NewErrorResponseWithDetails("expired quote", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusGone, jsonErr)
-			return
-		} else if errors.Is(err, usecases.NoLiquidityError) {
-			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-			return
-		} else if errors.Is(err, usecases.LockingCapExceededError) {
-			jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-			return
-		} else if errors.Is(err, liquidity_provider.ErrTamperedTrustedAccount) {
-			jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
-			return
-		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if err != nil {
+			handleAcceptQuoteError(w, err)
 			return
 		}
 
@@ -72,5 +44,28 @@ func NewAcceptPeginAuthenticatedQuoteHandlerWithInterface(useCase AcceptQuoteUse
 			BitcoinDepositAddressHash: acceptedQuote.DepositAddress,
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
+	}
+}
+
+func handleAcceptQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, usecases.QuoteNotFoundError):
+		jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
+	case errors.Is(err, usecases.ExpiredQuoteError):
+		jsonErr := rest.NewErrorResponseWithDetails("expired quote", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusGone, jsonErr)
+	case errors.Is(err, usecases.NoLiquidityError):
+		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	case errors.Is(err, usecases.LockingCapExceededError):
+		jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	case errors.Is(err, liquidity_provider.ErrTamperedTrustedAccount):
+		jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+	default:
+		jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
+		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 	}
 }

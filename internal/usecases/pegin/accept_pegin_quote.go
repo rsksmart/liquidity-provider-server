@@ -21,6 +21,7 @@ type AcceptQuoteUseCase struct {
 	eventBus                 entities.EventBus
 	peginLiquidityMutex      sync.Locker
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository
+	hashFunction             entities.HashFunction
 }
 
 func NewAcceptQuoteUseCase(
@@ -32,6 +33,7 @@ func NewAcceptQuoteUseCase(
 	eventBus entities.EventBus,
 	peginLiquidityMutex sync.Locker,
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository,
+	hashFunction entities.HashFunction,
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
 		quoteRepository:          quoteRepository,
@@ -42,6 +44,7 @@ func NewAcceptQuoteUseCase(
 		eventBus:                 eventBus,
 		peginLiquidityMutex:      peginLiquidityMutex,
 		trustedAccountRepository: trustedAccountRepository,
+		hashFunction:             hashFunction,
 	}
 }
 
@@ -129,7 +132,7 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 
 	trustedAccount, err := liquidity_provider.ValidateConfiguration("accept pegin quote", signer, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
-	})
+	}, useCase.hashFunction)
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.ErrTamperedTrustedAccount
 	}
@@ -139,8 +142,13 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, peginQuote *quote.PeginQuote) error {
 	errorArgs := usecases.NewErrorArgs()
 
+	activeQuotesStates := []quote.PeginState{
+		quote.PeginStateWaitingForDeposit,
+		quote.PeginStateWaitingForDepositConfirmations,
+	}
+
 	// Get all retained quotes for this trusted account
-	quotes, err := useCase.quoteRepository.GetRetainedQuotesForAddress(ctx, trustedAccount.Address)
+	quotes, err := useCase.quoteRepository.GetRetainedQuotesForAddress(ctx, trustedAccount.Address, activeQuotesStates...)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}

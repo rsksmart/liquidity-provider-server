@@ -451,24 +451,94 @@ func TestPeginMongoRepository_GetPeginCreationData(t *testing.T) {
 
 // nolint:funlen
 func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
-	client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
 	const address = "0xAA9cAf1e3967600578727F975F283446A3Da6612"
 
-	t.Run("Get retained pegin quotes for address successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: [{QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:WaitingForDeposit UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89 OwnerAccountAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612} {QuoteHash:second DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:123 RequiredLiquidity:777 State:WaitingForDepositConfirmations UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89 OwnerAccountAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612}]"
+	t.Run("Get retained pegin quotes for address with specific state", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		const expectedLog = "READ interaction with db: [{QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:WaitingForDeposit UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89 OwnerAccountAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612}]"
+
+		mockQuote := testRetainedPeginQuote
+		mockQuote.State = quote.PeginStateWaitingForDeposit
+		mockQuote.OwnerAccountAddress = address
+
+		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			// Assert that the filter structure matches what we expect
+			assert.Len(t, filter, 2)
+			assert.Equal(t, "owner_account_address", filter[0].Key)
+			assert.Equal(t, address, filter[0].Value)
+			assert.Equal(t, "state", filter[1].Key)
+			stateFilter, ok := filter[1].Value.(bson.D)
+			assert.True(t, ok)
+			assert.Len(t, stateFilter, 1)
+			assert.Equal(t, "$in", stateFilter[0].Key)
+			stateValues, ok := stateFilter[0].Value.([]quote.PeginState)
+			assert.True(t, ok)
+			assert.Len(t, stateValues, 1)
+			assert.Contains(t, stateValues, quote.PeginStateWaitingForDeposit)
+
+			return true
+		})).Return(mongoDb.NewCursorFromDocuments([]any{mockQuote}, nil, nil)).Once()
+
+		defer assertDbInteractionLog(t, expectedLog)()
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PeginStateWaitingForDeposit)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.Equal(t, mockQuote, result[0])
+	})
+
+	t.Run("Get retained pegin quotes for address with multiple specific states", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		const expectedLog = "READ interaction with db: [{QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:b24831aac7230910087d9818b378a31679be5e3991a7227cc160bc3add09e1645a26e9c740e3467f53953d7ec086c82bf8ef0eb03c118d0382ee6049a8f0119f1c RequiredLiquidity:100 State:CallForUserSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89 OwnerAccountAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612} {QuoteHash:second DepositAddress:2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG Signature:123 RequiredLiquidity:777 State:RegisterPegInSucceeded UserBtcTxHash:619c4d69ccaa5f78aaa2284817cf070609ac40af3792916ca3d0ef82b14af75f CallForUserTxHash:0x2c73de184c80797c04a655217d121588e8d5c228d3e0cc26187cb249123aa7c3 RegisterPeginTxHash:0x3a0feaef4d803468ba5bfc1db78f4d2568de1b7cf002dec5991c469e6719db89 OwnerAccountAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612}]"
 
 		firstQuote := testRetainedPeginQuote
-		firstQuote.State = quote.PeginStateWaitingForDeposit
+		firstQuote.State = quote.PeginStateCallForUserSucceeded
 		firstQuote.OwnerAccountAddress = address
 
 		secondQuote := testRetainedPeginQuote
 		secondQuote.QuoteHash = "second"
 		secondQuote.Signature = "123"
 		secondQuote.RequiredLiquidity = entities.NewWei(777)
-		secondQuote.State = quote.PeginStateWaitingForDepositConfirmations
+		secondQuote.State = quote.PeginStateRegisterPegInSucceeded
 		secondQuote.OwnerAccountAddress = address
+
+		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
+			// Assert that the filter structure matches what we expect
+			assert.Len(t, filter, 2)
+			assert.Equal(t, "owner_account_address", filter[0].Key)
+			assert.Equal(t, address, filter[0].Value)
+			assert.Equal(t, "state", filter[1].Key)
+			stateFilter, ok := filter[1].Value.(bson.D)
+			assert.True(t, ok)
+			assert.Len(t, stateFilter, 1)
+			assert.Equal(t, "$in", stateFilter[0].Key)
+			stateValues, ok := stateFilter[0].Value.([]quote.PeginState)
+			assert.True(t, ok)
+			assert.Len(t, stateValues, 2)
+			assert.Contains(t, stateValues, quote.PeginStateCallForUserSucceeded)
+			assert.Contains(t, stateValues, quote.PeginStateRegisterPegInSucceeded)
+
+			return true
+		})).Return(mongoDb.NewCursorFromDocuments([]any{firstQuote, secondQuote}, nil, nil)).Once()
+
+		defer assertDbInteractionLog(t, expectedLog)()
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PeginStateCallForUserSucceeded, quote.PeginStateRegisterPegInSucceeded)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.Equal(t, firstQuote, result[0])
+		assert.Equal(t, secondQuote, result[1])
+	})
+
+	t.Run("Empty result with no matching quotes", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		const expectedLog = "READ interaction with db: []"
 
 		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
 			// Assert that the filter structure matches what we expect
@@ -487,37 +557,10 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 			assert.Contains(t, stateValues, quote.PeginStateWaitingForDepositConfirmations)
 
 			return true
-		})).Return(mongoDb.NewCursorFromDocuments([]any{firstQuote, secondQuote}, nil, nil)).Once()
+		})).Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
 
 		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address)
-
-		collection.AssertExpectations(t)
-		require.NoError(t, err)
-		assert.Len(t, result, 2)
-		assert.Equal(t, firstQuote, result[0])
-		assert.Equal(t, secondQuote, result[1])
-	})
-
-	t.Run("Empty result with no matching quotes", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: []"
-		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
-
-		expectedFilter := bson.D{
-			primitive.E{Key: "owner_account_address", Value: address},
-			primitive.E{Key: "state", Value: bson.D{
-				primitive.E{Key: "$in", Value: []quote.PeginState{
-					quote.PeginStateWaitingForDeposit,
-					quote.PeginStateWaitingForDepositConfirmations,
-				}},
-			}},
-		}
-
-		collection.On("Find", mock.Anything, expectedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
-
-		defer assertDbInteractionLog(t, expectedLog)()
-		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address)
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
 
 		collection.AssertExpectations(t)
 		require.NoError(t, err)
@@ -525,6 +568,7 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 	})
 
 	t.Run("Db error when getting retained pegin quotes for address", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 
 		collection.On("Find", mock.Anything, mock.Anything).

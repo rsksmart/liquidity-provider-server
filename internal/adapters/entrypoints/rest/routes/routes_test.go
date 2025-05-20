@@ -217,7 +217,6 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().HealthUseCase().Return(&usecases.HealthUseCase{})
 	registryMock.EXPECT().GetProvidersUseCase().Return(&liquidity_provider.GetProvidersUseCase{})
 	registryMock.EXPECT().GetPeginQuoteUseCase().Return(&pegin.GetQuoteUseCase{})
-	registryMock.EXPECT().GetAcceptPeginAuthenticatedQuoteUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetPegoutQuoteUseCase().Return(&pegout.GetQuoteUseCase{})
 	registryMock.EXPECT().GetAcceptPegoutQuoteUseCase().Return(&pegout.AcceptQuoteUseCase{})

@@ -36,7 +36,7 @@ type PeginQuoteRepository interface {
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
-	GetRetainedQuotesForAddress(ctx context.Context, address string) ([]RetainedPeginQuote, error)
+	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
 }
 
 type CreatedPeginQuote struct {
