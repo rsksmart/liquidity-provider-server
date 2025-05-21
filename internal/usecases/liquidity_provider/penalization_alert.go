@@ -5,41 +5,41 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 )
 
 type PenalizationAlertUseCase struct {
-	contracts blockchain.RskContracts
-	sender    entities.AlertSender
-	recipient string
-	repo      liquidity_provider.LiquidityProviderRepository
+	contracts                blockchain.RskContracts
+	sender                   entities.AlertSender
+	recipient                string
+	penalizedEventRepository penalization.PenalizedEventRepository
 }
 
 func NewPenalizationAlertUseCase(
 	contracts blockchain.RskContracts,
 	sender entities.AlertSender,
 	recipient string,
-	repo liquidity_provider.LiquidityProviderRepository,
+	penalizedEventRepository penalization.PenalizedEventRepository,
 ) *PenalizationAlertUseCase {
 	return &PenalizationAlertUseCase{
-		contracts: contracts,
-		sender:    sender,
-		recipient: recipient,
-		repo:      repo,
+		contracts:                contracts,
+		sender:                   sender,
+		recipient:                recipient,
+		penalizedEventRepository: penalizedEventRepository,
 	}
 }
 
 func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toBlock uint64) error {
 	var body string
-	events, err := useCase.contracts.Lbc.GetPunishmentEvents(ctx, fromBlock, &toBlock)
+	events, err := useCase.contracts.Lbc.GetPenalizedEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.PenalizationId, err)
 	}
 
 	for _, event := range events {
-		err := useCase.repo.InsertPenalization(ctx, event)
+		err := useCase.penalizedEventRepository.InsertPenalization(ctx, event)
 		if err != nil {
 			log.Error(usecases.PenalizationId, err)
 		}

@@ -179,7 +179,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
-			databaseRegistry.LiquidityProviderRepository,
+			databaseRegistry.PenalizedEventRepository,
 		),
 		addPeginCollateralUseCase:  pegin.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
 		addPegoutCollateralUseCase: pegout.NewAddCollateralUseCase(rskRegistry.Contracts, liquidityProvider),
@@ -243,7 +243,7 @@ func NewUseCaseRegistry(
 		getRevenueReportUseCase: reports.NewGetRevenueReportUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
-			databaseRegistry.LiquidityProviderRepository,
+			databaseRegistry.PenalizedEventRepository,
 		),
 	}
 }

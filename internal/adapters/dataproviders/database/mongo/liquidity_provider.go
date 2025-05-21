@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,7 +13,6 @@ import (
 
 const (
 	LiquidityProviderCollection = "liquidityProvider"
-	PunishmentEventCollection   = "punishmentEvent"
 )
 
 type ConfigurationName string
@@ -101,52 +99,6 @@ func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credential
 		Name:   credentialsId,
 	}
 	return upsertConfiguration(dbCtx, repo, configToStore, false)
-}
-
-func (repo *lpMongoRepository) InsertPenalization(ctx context.Context, punishmentEvent liquidity_provider.PunishmentEvent) error {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-	collection := repo.conn.Collection(PunishmentEventCollection)
-	_, err := collection.InsertOne(dbCtx, punishmentEvent)
-	if err != nil {
-		return err
-	} else {
-		logDbInteraction(Insert, punishmentEvent)
-		return nil
-	}
-}
-
-func (repo *lpMongoRepository) GetPenalizationsByQuoteHashes(ctx context.Context, quoteHashes []string) ([]liquidity_provider.PunishmentEvent, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	for _, hash := range quoteHashes {
-		if err := quote.ValidateQuoteHash(hash); err != nil {
-			return nil, err
-		}
-	}
-
-	collection := repo.conn.Collection(PunishmentEventCollection)
-	filter := bson.M{
-		"quote_hash": bson.M{"$in": quoteHashes},
-	}
-
-	punishments := make([]liquidity_provider.PunishmentEvent, 0)
-
-	cursor, err := collection.Find(dbCtx, filter)
-	if err != nil {
-		return nil, err
-	}
-	for cursor.Next(ctx) {
-		var result liquidity_provider.PunishmentEvent
-		err = cursor.Decode(&result)
-		if err != nil {
-			return nil, err
-		}
-		punishments = append(punishments, result)
-	}
-	logDbInteraction(Read, punishments)
-	return punishments, nil
 }
 
 func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](

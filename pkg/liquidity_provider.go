@@ -147,9 +147,9 @@ func (r *GetReportsByPeriodRequest) GetTimestamps() (startTime, endTime time.Tim
 }
 
 type GetRevenueReportResponse struct {
-	TotalQuoteCallFees *big.Int
-	TotalPenalizations *big.Int
-	TotalProfit        *big.Int
+	TotalQuoteCallFees *big.Int `json:"total_quote_call_fees" validate:"required"`
+	TotalPenalizations *big.Int `json:"total_penalizations" validate:"required"`
+	TotalProfit        *big.Int `json:"total_profit" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {
