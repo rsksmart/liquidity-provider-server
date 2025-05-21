@@ -375,13 +375,19 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	if err != nil {
 		return nil, err
 	}
-	defer quoteCursor.Close(dbCtx)
+	defer func() {
+		if quoteCursor != nil {
+			if err := quoteCursor.Close(dbCtx); err != nil {
+				log.Error("Error closing quote cursor: ", err)
+			}
+		}
+	}()
 	var storedQuotes []StoredPegoutQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
 		return nil, err
 	}
 	if len(storedQuotes) == 0 {
-		logDbInteraction(Read, map[string]interface{}{"quotePairs": 0})
+		logDbInteraction(Read, result)
 		return result, nil
 	}
 	hashToIndex := make(map[string]int, len(storedQuotes))
@@ -402,7 +408,13 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	if err != nil {
 		return result, err
 	}
-	defer retainedCursor.Close(dbCtx)
+	defer func() {
+		if retainedCursor != nil {
+			if err := retainedCursor.Close(dbCtx); err != nil {
+				log.Error("Error closing retained cursor: ", err)
+			}
+		}
+	}()
 	var retainedQuote quote.RetainedPegoutQuote
 	for retainedCursor.Next(dbCtx) {
 		if err := retainedCursor.Decode(&retainedQuote); err != nil {
