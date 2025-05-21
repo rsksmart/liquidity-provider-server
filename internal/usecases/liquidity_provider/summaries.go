@@ -30,6 +30,22 @@ type SummaryData struct {
 	LpEarnings                *entities.Wei `json:"lpEarnings"`
 }
 
+type summaryTotals struct {
+	AcceptedTotalAmount *entities.Wei
+	TotalFees           *entities.Wei
+	CallFees            *entities.Wei
+	TotalPenalty        *entities.Wei
+}
+
+func newSummaryTotals() *summaryTotals {
+	return &summaryTotals{
+		AcceptedTotalAmount: entities.NewWei(0),
+		TotalFees:           entities.NewWei(0),
+		CallFees:            entities.NewWei(0),
+		TotalPenalty:        entities.NewWei(0),
+	}
+}
+
 type SummariesUseCase struct {
 	peginRepo  quote.PeginQuoteRepository
 	pegoutRepo quote.PegoutQuoteRepository
@@ -76,24 +92,21 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	}
 	data := NewSummaryData()
 	acceptedQuotesCount := 0
-	acceptedTotalAmount := entities.NewWei(0)
-	totalFees := entities.NewWei(0)
-	callFees := entities.NewWei(0)
-	totalPenalty := entities.NewWei(0)
+	totals := newSummaryTotals()
 	for _, pair := range quotePairs {
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
-			processPeginPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
+			processPeginPair(pair, &data, totals)
 		}
 	}
 	data.TotalQuotesCount = int64(len(quotePairs))
 	data.AcceptedQuotesCount = int64(acceptedQuotesCount)
-	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
-	data.TotalFeesCollected = totalFees
-	data.TotalPenaltyAmount = totalPenalty
+	data.TotalAcceptedQuotedAmount = totals.AcceptedTotalAmount
+	data.TotalFeesCollected = totals.TotalFees
+	data.TotalPenaltyAmount = totals.TotalPenalty
 	lpEarnings := new(entities.Wei)
-	lpEarnings.Add(lpEarnings, callFees)
-	lpEarnings.Sub(lpEarnings, totalPenalty)
+	lpEarnings.Add(lpEarnings, totals.CallFees)
+	lpEarnings.Sub(lpEarnings, totals.TotalPenalty)
 	data.LpEarnings = lpEarnings
 	return data, nil
 }
@@ -109,24 +122,21 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	}
 	data := NewSummaryData()
 	acceptedQuotesCount := 0
-	acceptedTotalAmount := entities.NewWei(0)
-	totalFees := entities.NewWei(0)
-	callFees := entities.NewWei(0)
-	totalPenalty := entities.NewWei(0)
+	totals := newSummaryTotals()
 	for _, pair := range quotePairs {
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
-			processPegoutPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
+			processPegoutPair(pair, &data, totals)
 		}
 	}
 	data.TotalQuotesCount = int64(len(quotePairs))
 	data.AcceptedQuotesCount = int64(acceptedQuotesCount)
-	data.TotalAcceptedQuotedAmount = acceptedTotalAmount
-	data.TotalFeesCollected = totalFees
-	data.TotalPenaltyAmount = totalPenalty
+	data.TotalAcceptedQuotedAmount = totals.AcceptedTotalAmount
+	data.TotalFeesCollected = totals.TotalFees
+	data.TotalPenaltyAmount = totals.TotalPenalty
 	lpEarnings := new(entities.Wei)
-	lpEarnings.Add(lpEarnings, callFees)
-	lpEarnings.Sub(lpEarnings, totalPenalty)
+	lpEarnings.Add(lpEarnings, totals.CallFees)
+	lpEarnings.Sub(lpEarnings, totals.TotalPenalty)
 	data.LpEarnings = lpEarnings
 	return data, nil
 }
@@ -134,50 +144,50 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 func processPeginPair(
 	pair quote.PeginQuoteWithRetained,
 	data *SummaryData,
-	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
+	totals *summaryTotals,
 ) {
 	q := pair.Quote
 	retained := pair.RetainedQuote
-	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
+	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)
 	penaltyFee := q.PenaltyFee
 	if isPeginPaidQuote(retained) {
 		data.PaidQuotesCount++
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, q.Total())
-		callFees.Add(callFees, callFee)
-		totalFees.Add(totalFees, callFee)
-		totalFees.Add(totalFees, gasFee)
-		totalFees.Add(totalFees, productFee)
+		totals.CallFees.Add(totals.CallFees, callFee)
+		totals.TotalFees.Add(totals.TotalFees, callFee)
+		totals.TotalFees.Add(totals.TotalFees, gasFee)
+		totals.TotalFees.Add(totals.TotalFees, productFee)
 	}
 	if isPeginRefundedQuote(retained) {
 		data.RefundedQuotesCount++
-		totalPenalty.Add(totalPenalty, penaltyFee)
+		totals.TotalPenalty.Add(totals.TotalPenalty, penaltyFee)
 	}
 }
 
 func processPegoutPair(
 	pair quote.PegoutQuoteWithRetained,
 	data *SummaryData,
-	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
+	totals *summaryTotals,
 ) {
 	q := pair.Quote
 	retained := pair.RetainedQuote
-	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
+	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)
 	penaltyFee := entities.NewUWei(q.PenaltyFee)
 	if isPegoutPaidQuote(retained) {
 		data.PaidQuotesCount++
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, q.Total())
-		callFees.Add(callFees, callFee)
-		totalFees.Add(totalFees, callFee)
-		totalFees.Add(totalFees, gasFee)
-		totalFees.Add(totalFees, productFee)
+		totals.CallFees.Add(totals.CallFees, callFee)
+		totals.TotalFees.Add(totals.TotalFees, callFee)
+		totals.TotalFees.Add(totals.TotalFees, gasFee)
+		totals.TotalFees.Add(totals.TotalFees, productFee)
 	}
 	if isPegoutRefundedQuote(retained) {
 		data.RefundedQuotesCount++
-		totalPenalty.Add(totalPenalty, penaltyFee)
+		totals.TotalPenalty.Add(totals.TotalPenalty, penaltyFee)
 	}
 }
 
