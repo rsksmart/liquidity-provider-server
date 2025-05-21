@@ -269,8 +269,8 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	}
 	defer func() {
 		if quoteCursor != nil {
-			if err := quoteCursor.Close(dbCtx); err != nil {
-				log.Error("Error closing quote cursor: ", err)
+			if closeErr := quoteCursor.Close(dbCtx); closeErr != nil {
+				log.Error("Error closing quote cursor: ", closeErr)
 			}
 		}
 	}()
@@ -302,8 +302,8 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	}
 	defer func() {
 		if retainedCursor != nil {
-			if err := retainedCursor.Close(dbCtx); err != nil {
-				log.Error("Error closing retained cursor: ", err)
+			if closeErr := retainedCursor.Close(dbCtx); closeErr != nil {
+				log.Error("Error closing retained cursor: ", closeErr)
 			}
 		}
 	}()
