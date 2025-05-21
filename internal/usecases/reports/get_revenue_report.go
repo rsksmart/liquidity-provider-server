@@ -3,27 +3,27 @@ package reports
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"time"
 )
 
 type GetRevenueReportUseCase struct {
-	peginQuoteRepository        quote.PeginQuoteRepository
-	pegoutQuoteRepository       quote.PegoutQuoteRepository
-	liquidityProviderRepository liquidity_provider.LiquidityProviderRepository
+	peginQuoteRepository     quote.PeginQuoteRepository
+	pegoutQuoteRepository    quote.PegoutQuoteRepository
+	penalizedEventRepository penalization.PenalizedEventRepository
 }
 
 func NewGetRevenueReportUseCase(
 	peginQuoteRepository quote.PeginQuoteRepository,
 	pegoutQuoteRepository quote.PegoutQuoteRepository,
-	liquidityProviderRepository liquidity_provider.LiquidityProviderRepository,
+	penalizedEventRepository penalization.PenalizedEventRepository,
 ) *GetRevenueReportUseCase {
 	return &GetRevenueReportUseCase{
-		peginQuoteRepository:        peginQuoteRepository,
-		pegoutQuoteRepository:       pegoutQuoteRepository,
-		liquidityProviderRepository: liquidityProviderRepository,
+		peginQuoteRepository:     peginQuoteRepository,
+		pegoutQuoteRepository:    pegoutQuoteRepository,
+		penalizedEventRepository: penalizedEventRepository,
 	}
 }
 
@@ -48,7 +48,7 @@ func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.
 	}
 
 	allQuoteHashes := append(peginQuoteHashes, pegoutQuoteHashes...)
-	penalizations, err := useCase.liquidityProviderRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
+	penalizations, err := useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}

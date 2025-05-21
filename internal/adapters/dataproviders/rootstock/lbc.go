@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
 	"time"
@@ -536,9 +537,9 @@ func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fr
 	return result, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) GetPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
+func (lbc *liquidityBridgeContractImpl) GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error) {
 	var lbcEvent *bindings.LiquidityBridgeContractPenalized
-	result := make([]liquidity_provider.PunishmentEvent, 0)
+	result := make([]penalization.PenalizedEvent, 0)
 
 	rawIterator, err := lbc.contract.FilterPenalized(&bind.FilterOpts{
 		Start:   fromBlock,
@@ -559,7 +560,7 @@ func (lbc *liquidityBridgeContractImpl) GetPunishmentEvents(ctx context.Context,
 
 	for iterator.Next() {
 		lbcEvent = iterator.Event()
-		result = append(result, liquidity_provider.PunishmentEvent{
+		result = append(result, penalization.PenalizedEvent{
 			LiquidityProvider: lbcEvent.LiquidityProvider.String(),
 			Penalty:           entities.NewBigWei(lbcEvent.Penalty),
 			QuoteHash:         hex.EncodeToString(lbcEvent.QuoteHash[:]),

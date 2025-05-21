@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -30,12 +30,12 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
 		lbc := &mocks.LbcMock{}
-		lbc.On("GetPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
 			blockchain.RskContracts{Lbc: lbc},
 			&mocks.AlertSenderMock{},
 			test.AnyString,
-			mocks.NewLiquidityProviderRepositoryMock(t),
+			mocks.NewPenalizedEventRepositoryMock(t),
 		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
@@ -54,12 +54,12 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
 		lbc := &mocks.LbcMock{}
-		lbc.On("GetPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return([]lp.PunishmentEvent{}, nil)
+		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return([]penalization.PenalizedEvent{}, nil)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
 			blockchain.RskContracts{Lbc: lbc},
 			&mocks.AlertSenderMock{},
 			test.AnyString,
-			mocks.NewLiquidityProviderRepositoryMock(t),
+			mocks.NewPenalizedEventRepositoryMock(t),
 		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
