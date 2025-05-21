@@ -182,5 +182,5 @@ type PegoutBtcSentToUserEvent struct {
 
 type PegoutQuoteWithRetained struct {
 	Quote         PegoutQuote
-	RetainedQuote *RetainedPegoutQuote
+	RetainedQuote RetainedPegoutQuote
 }

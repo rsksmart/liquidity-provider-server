@@ -81,7 +81,7 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	callFees := entities.NewWei(0)
 	totalPenalty := entities.NewWei(0)
 	for _, pair := range quotePairs {
-		if pair.RetainedQuote != nil {
+		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPeginPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
 		}
@@ -114,7 +114,7 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	callFees := entities.NewWei(0)
 	totalPenalty := entities.NewWei(0)
 	for _, pair := range quotePairs {
-		if pair.RetainedQuote != nil {
+		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPegoutPair(pair, &data, acceptedTotalAmount, totalFees, callFees, totalPenalty)
 		}
@@ -136,11 +136,8 @@ func processPeginPair(
 	data *SummaryData,
 	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
 ) {
-	if pair.RetainedQuote == nil {
-		return
-	}
 	q := pair.Quote
-	retained := *pair.RetainedQuote
+	retained := pair.RetainedQuote
 	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)
@@ -164,11 +161,8 @@ func processPegoutPair(
 	data *SummaryData,
 	acceptedTotalAmount, totalFees, callFees, totalPenalty *entities.Wei,
 ) {
-	if pair.RetainedQuote == nil {
-		return
-	}
 	q := pair.Quote
-	retained := *pair.RetainedQuote
+	retained := pair.RetainedQuote
 	acceptedTotalAmount.Add(acceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
 	productFee := entities.NewUWei(q.ProductFeeAmount)

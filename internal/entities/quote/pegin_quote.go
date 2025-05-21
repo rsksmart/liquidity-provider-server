@@ -2,9 +2,10 @@ package quote
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"time"
 )
 
 const (
@@ -41,7 +42,7 @@ type PeginQuoteRepository interface {
 
 type PeginQuoteWithRetained struct {
 	Quote         PeginQuote
-	RetainedQuote *RetainedPeginQuote
+	RetainedQuote RetainedPeginQuote
 }
 
 type CreatedPeginQuote struct {

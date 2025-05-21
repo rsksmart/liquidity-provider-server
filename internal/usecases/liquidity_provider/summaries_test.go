@@ -86,21 +86,21 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 			{
 				Quote:         peginQuotes[0],
-				RetainedQuote: &retainedPeginQuotes[0],
+				RetainedQuote: retainedPeginQuotes[0],
 			},
 			{
 				Quote:         peginQuotes[1],
-				RetainedQuote: &retainedPeginQuotes[1],
+				RetainedQuote: retainedPeginQuotes[1],
 			},
 		}
 		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
 			{
 				Quote:         pegoutQuotes[0],
-				RetainedQuote: &retainedPegoutQuotes[0],
+				RetainedQuote: retainedPegoutQuotes[0],
 			},
 			{
 				Quote:         pegoutQuotes[1],
-				RetainedQuote: &retainedPegoutQuotes[1],
+				RetainedQuote: retainedPegoutQuotes[1],
 			},
 		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
@@ -158,17 +158,17 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 			{
 				Quote:         peginQuotes[0],
-				RetainedQuote: nil,
+				RetainedQuote: quote.RetainedPeginQuote{},
 			},
 			{
 				Quote:         peginQuotes[1],
-				RetainedQuote: nil,
+				RetainedQuote: quote.RetainedPeginQuote{},
 			},
 		}
 		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
 			{
 				Quote:         pegoutQuotes[0],
-				RetainedQuote: nil,
+				RetainedQuote: quote.RetainedPegoutQuote{},
 			},
 		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
@@ -228,13 +228,13 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 			{
 				Quote:         peginQuote,
-				RetainedQuote: &retainedPeginQuote,
+				RetainedQuote: retainedPeginQuote,
 			},
 		}
 		pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
 			{
 				Quote:         pegoutQuote,
-				RetainedQuote: &retainedPegoutQuote,
+				RetainedQuote: retainedPegoutQuote,
 			},
 		}
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).

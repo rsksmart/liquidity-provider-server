@@ -398,7 +398,7 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		hashToIndex[stored.Hash] = i
 		result[i] = quote.PegoutQuoteWithRetained{
 			Quote:         stored.PegoutQuote,
-			RetainedQuote: nil,
+			RetainedQuote: quote.RetainedPegoutQuote{},
 		}
 	}
 	retainedCursor, err := repo.conn.Collection(RetainedPegoutQuoteCollection).Find(
@@ -421,8 +421,7 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 			return result, err
 		}
 		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
-			quoteCopy := retainedQuote
-			result[idx].RetainedQuote = &quoteCopy
+			result[idx].RetainedQuote = retainedQuote
 		}
 	}
 	if err := retainedCursor.Err(); err != nil {
