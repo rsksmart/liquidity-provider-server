@@ -61,7 +61,7 @@ jobs:
           #  Get Started (README)            #
           #####################################
           TEMP_FILE="temp_get-started.md"
-          tail -n +1 ${BASE_SRC}/README.md > ${TEMP_FILE}
+          tail -n +1 ${BASE_SRC}/README.md | grep -Ev "OpenSSF Scorecard|CodeQL|Unit Tests" > ${TEMP_FILE}
           TRANSFORMED_FILE="transformed/get-started.md"
           echo "---" > ${TRANSFORMED_FILE}
           echo "sidebar_label: Getting Started" >> ${TRANSFORMED_FILE}
