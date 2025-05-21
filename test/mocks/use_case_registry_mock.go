@@ -10,6 +10,8 @@ import (
 
 	pegout "github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 
+	reports "github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
+
 	usecases "github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
@@ -544,19 +546,19 @@ func (_c *UseCaseRegistryMock_GetPeginQuoteUseCase_Call) RunAndReturn(run func()
 }
 
 // GetPeginReportUseCase provides a mock function with no fields
-func (_m *UseCaseRegistryMock) GetPeginReportUseCase() *pegin.GetPeginReportUseCase {
+func (_m *UseCaseRegistryMock) GetPeginReportUseCase() *reports.GetPeginReportUseCase {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPeginReportUseCase")
 	}
 
-	var r0 *pegin.GetPeginReportUseCase
-	if rf, ok := ret.Get(0).(func() *pegin.GetPeginReportUseCase); ok {
+	var r0 *reports.GetPeginReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetPeginReportUseCase); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pegin.GetPeginReportUseCase)
+			r0 = ret.Get(0).(*reports.GetPeginReportUseCase)
 		}
 	}
 
@@ -580,12 +582,12 @@ func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) Run(run func()) *UseCa
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) Return(_a0 *pegin.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) Return(_a0 *reports.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) RunAndReturn(run func() *pegin.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) RunAndReturn(run func() *reports.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -732,19 +734,19 @@ func (_c *UseCaseRegistryMock_GetPegoutQuoteUseCase_Call) RunAndReturn(run func(
 }
 
 // GetPegoutReportUseCase provides a mock function with no fields
-func (_m *UseCaseRegistryMock) GetPegoutReportUseCase() *pegout.GetPegoutReportUseCase {
+func (_m *UseCaseRegistryMock) GetPegoutReportUseCase() *reports.GetPegoutReportUseCase {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPegoutReportUseCase")
 	}
 
-	var r0 *pegout.GetPegoutReportUseCase
-	if rf, ok := ret.Get(0).(func() *pegout.GetPegoutReportUseCase); ok {
+	var r0 *reports.GetPegoutReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetPegoutReportUseCase); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pegout.GetPegoutReportUseCase)
+			r0 = ret.Get(0).(*reports.GetPegoutReportUseCase)
 		}
 	}
 
@@ -768,12 +770,12 @@ func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Run(run func()) *UseC
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Return(_a0 *pegout.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Return(_a0 *reports.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) RunAndReturn(run func() *pegout.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) RunAndReturn(run func() *reports.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -915,6 +917,53 @@ func (_c *UseCaseRegistryMock_GetProvidersUseCase_Call) Return(_a0 *liquidity_pr
 }
 
 func (_c *UseCaseRegistryMock_GetProvidersUseCase_Call) RunAndReturn(run func() *liquidity_provider.GetProvidersUseCase) *UseCaseRegistryMock_GetProvidersUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRevenueReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetRevenueReportUseCase() *reports.GetRevenueReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRevenueReportUseCase")
+	}
+
+	var r0 *reports.GetRevenueReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetRevenueReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetRevenueReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetRevenueReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRevenueReportUseCase'
+type UseCaseRegistryMock_GetRevenueReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetRevenueReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetRevenueReportUseCase() *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	return &UseCaseRegistryMock_GetRevenueReportUseCase_Call{Call: _e.mock.On("GetRevenueReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) Return(_a0 *reports.GetRevenueReportUseCase) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) RunAndReturn(run func() *reports.GetRevenueReportUseCase) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }

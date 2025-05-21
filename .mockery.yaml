@@ -38,6 +38,9 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/penalization:
+    interfaces:
+      PenalizedEventRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/quote:
       interfaces:
         PeginQuoteRepository:

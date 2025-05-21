@@ -86,12 +86,12 @@ type CredentialsUpdateRequest struct {
 	NewPassword string `json:"newPassword" validate:"required"`
 }
 
-type GetReportsPeginPegoutRequest struct {
+type GetReportsByPeriodRequest struct {
 	StartDate string `json:"startDate" validate:"required,datetime=2006-01-02"`
 	EndDate   string `json:"endDate" validate:"required,datetime=2006-01-02"`
 }
 
-func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() error {
+func (r *GetReportsByPeriodRequest) ValidateGetReportsByPeriodRequest() error {
 	if r.StartDate == "" {
 		return errors.New("startDate is required")
 	}
@@ -116,7 +116,7 @@ func (r *GetReportsPeginPegoutRequest) ValidateGetReportsPeginPegoutRequest() er
 	return nil
 }
 
-func (r *GetReportsPeginPegoutRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
+func (r *GetReportsByPeriodRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
 	startTime, err = time.Parse(time.DateOnly, r.StartDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
@@ -144,6 +144,12 @@ func (r *GetReportsPeginPegoutRequest) GetTimestamps() (startTime, endTime time.
 	)
 
 	return startTime, endTime, nil
+}
+
+type GetRevenueReportResponse struct {
+	TotalQuoteCallFees *big.Int `json:"total_quote_call_fees" validate:"required"`
+	TotalPenalizations *big.Int `json:"total_penalizations" validate:"required"`
+	TotalProfit        *big.Int `json:"total_profit" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {

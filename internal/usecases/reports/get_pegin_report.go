@@ -1,4 +1,4 @@
-package pegin
+package reports
 
 import (
 	"context"

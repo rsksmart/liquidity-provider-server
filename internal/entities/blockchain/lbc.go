@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -98,7 +99,7 @@ type LiquidityBridgeContract interface {
 	IsOperationalPegout(address string) (bool, error)
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
+	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	UpdateProvider(name, url string) (string, error)
 	RefundUserPegOut(quoteHash string) (string, error)

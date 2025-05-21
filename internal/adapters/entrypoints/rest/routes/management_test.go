@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -31,8 +32,9 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().SetCredentialsUseCase().Return(&liquidity_provider.SetCredentialsUseCase{})
 	registryMock.EXPECT().LoginUseCase().Return(&liquidity_provider.LoginUseCase{})
 	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
-	registryMock.EXPECT().GetPeginReportUseCase().Return(&pegin.GetPeginReportUseCase{})
-	registryMock.EXPECT().GetPegoutReportUseCase().Return(&pegout.GetPegoutReportUseCase{})
+	registryMock.EXPECT().GetPeginReportUseCase().Return(&reports.GetPeginReportUseCase{})
+	registryMock.EXPECT().GetPegoutReportUseCase().Return(&reports.GetPegoutReportUseCase{})
+	registryMock.EXPECT().GetRevenueReportUseCase().Return(&reports.GetRevenueReportUseCase{})
 
 	endpoints := routes.GetManagementEndpoints(environment.Environment{}, registryMock, &mocks.StoreMock{})
 	specBytes := test.ReadFile(t, "OpenApi.yml")
@@ -41,7 +43,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 19)
+	assert.Len(t, endpoints, 20)
 	for _, endpoint := range endpoints {
 		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath {
 			lowerCaseMethod := strings.ToLower(endpoint.Method)

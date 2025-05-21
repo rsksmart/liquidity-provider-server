@@ -1,4 +1,4 @@
-package pegout
+package reports
 
 import (
 	"context"
