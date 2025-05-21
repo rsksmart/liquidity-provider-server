@@ -4,7 +4,7 @@ We are committed to conduct our security process in a professional and civil man
 
 ## Responsible Disclosure
 
-For all security related issues, Liquidity Provider Server has two main points of contact. Reach us at <security@rootstocklabs.com> or refer to our [Bug Bounty Program](https://www.rootstocklabs.com/bug-bounty-program). **Do not open up a GitHub issue if the bug is a security vulnerability**
+For all security related issues, Liquidity Provider Server has two main points of contact. Reach us at `security@rootstocklabs.com` or refer to our [Bug Bounty Program](https://www.rootstocklabs.com/bug-bounty-program). **Do not open up a GitHub issue if the bug is a security vulnerability**
 
 **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/rsksmart/liquidity-provider-server/issues).
 
@@ -18,7 +18,7 @@ RootstockLabs will make a best effort to meet the following response times for r
 * Time to triage (from report submit) - 7 business days
 * Time to bounty (from triage) - 15 business days
 
-We’ll try to keep you informed about our progress throughout the process.
+We'll try to keep you informed about our progress throughout the process.
 
 ### Disclouse Policy
 
@@ -31,7 +31,7 @@ For more information check RootstockLabs bounty program policy at [HackerOne](ht
 
 ### Security
 
-```gpg
+```
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v2
 
