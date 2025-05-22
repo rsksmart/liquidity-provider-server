@@ -161,6 +161,8 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			messaging.EventBus,
 			mutexes.PegoutLiquidityMutex(),
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
 			btcRegistry.PaymentWallet,

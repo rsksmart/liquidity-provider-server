@@ -534,7 +534,6 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           type: integer
         feePercentage:
           type: number
@@ -708,6 +707,20 @@ components:
           type: string
         rbtcLockingCap:
           $ref: '#/components/schemas/'
+      type: object
+    pkg.AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
       type: object
     pkg.AcceptPeginRespose:
       properties:
@@ -1001,6 +1014,23 @@ paths:
                 $ref: '#/components/schemas/PeginQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPeginStatus
+  /pegout/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/'
+          description: ""
+      summary: Accept authenticated quote
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'

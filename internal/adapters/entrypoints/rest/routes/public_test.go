@@ -41,7 +41,7 @@ func TestGetPublicEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 13)
+	assert.Len(t, endpoints, 14)
 	for _, endpoint := range endpoints {
 		lowerCaseMethod := strings.ToLower(endpoint.Method)
 		assert.NotNilf(t, spec.Paths[endpoint.Path][lowerCaseMethod], "Handler not found for path %s and verb %s", endpoint.Path, endpoint.Method)
