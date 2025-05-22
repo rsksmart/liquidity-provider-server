@@ -112,6 +112,8 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			messaging.EventBus,
 			mutexes.PeginLiquidityMutex(),
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 		getWatchedPeginQuoteUseCase: watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		expiredPeginQuoteUseCase:    pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),

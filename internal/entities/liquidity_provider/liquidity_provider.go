@@ -3,8 +3,10 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 type ProviderType string
@@ -55,6 +57,7 @@ type LiquidityProvider interface {
 	BtcAddress() string
 	SignQuote(quoteHash string) (string, error)
 	GeneralConfiguration(ctx context.Context) GeneralConfiguration
+	GetSigner() entities.Signer
 }
 
 type PeginLiquidityProvider interface {
@@ -116,4 +119,30 @@ type Credentials struct {
 type DefaultCredentialsSetEvent struct {
 	entities.Event
 	Credentials *HashedCredentials
+}
+
+func ValidateConfiguration[T ConfigurationType](
+	displayName string,
+	signer entities.Signer,
+	readFunction func() (*entities.Signed[T], error),
+	hashFunction entities.HashFunction,
+) (*entities.Signed[T], error) {
+	configuration, err := readFunction()
+	if err != nil {
+		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
+		return nil, err
+	}
+	if configuration == nil {
+		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
+		return nil, errors.New("configuration not found")
+	}
+	if err = configuration.CheckIntegrity(hashFunction); err != nil {
+		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
+		return nil, err
+	}
+	if !signer.Validate(configuration.Signature, configuration.Hash) {
+		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
+		return nil, errors.New("invalid signature")
+	}
+	return configuration, nil
 }
