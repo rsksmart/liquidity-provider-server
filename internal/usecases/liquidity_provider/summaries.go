@@ -150,19 +150,20 @@ func processPeginPair(
 	retained := pair.RetainedQuote
 	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
-	productFee := entities.NewUWei(q.ProductFeeAmount)
-	penaltyFee := q.PenaltyFee
 	if isPeginPaidQuote(retained) {
 		data.PaidQuotesCount++
-		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, q.Total())
+		quoteValue := q.Value
+		if quoteValue == nil {
+			quoteValue = entities.NewWei(0)
+		}
+		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)
 		totals.CallFees.Add(totals.CallFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, gasFee)
-		totals.TotalFees.Add(totals.TotalFees, productFee)
 	}
 	if isPeginRefundedQuote(retained) {
 		data.RefundedQuotesCount++
-		totals.TotalPenalty.Add(totals.TotalPenalty, penaltyFee)
+		totals.TotalPenalty.Add(totals.TotalPenalty, q.PenaltyFee)
 	}
 }
 
@@ -175,18 +176,20 @@ func processPegoutPair(
 	retained := pair.RetainedQuote
 	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
 	callFee, gasFee := q.CallFee, q.GasFee
-	productFee := entities.NewUWei(q.ProductFeeAmount)
-	penaltyFee := entities.NewUWei(q.PenaltyFee)
 	if isPegoutPaidQuote(retained) {
 		data.PaidQuotesCount++
-		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, q.Total())
+		quoteValue := q.Value
+		if quoteValue == nil {
+			quoteValue = entities.NewWei(0)
+		}
+		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)
 		totals.CallFees.Add(totals.CallFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, gasFee)
-		totals.TotalFees.Add(totals.TotalFees, productFee)
 	}
 	if isPegoutRefundedQuote(retained) {
 		data.RefundedQuotesCount++
+		penaltyFee := entities.NewUWei(q.PenaltyFee)
 		totals.TotalPenalty.Add(totals.TotalPenalty, penaltyFee)
 	}
 }
@@ -200,7 +203,7 @@ func isPegoutPaidQuote(retained quote.RetainedPegoutQuote) bool {
 }
 
 func isPeginRefundedQuote(retained quote.RetainedPeginQuote) bool {
-	return retained.State == quote.PeginStateRegisterPegInSucceeded
+	return retained.State == quote.PeginStateCallForUserFailed || retained.State == quote.PeginStateRegisterPegInFailed
 }
 
 func isPegoutRefundedQuote(retained quote.RetainedPegoutQuote) bool {
