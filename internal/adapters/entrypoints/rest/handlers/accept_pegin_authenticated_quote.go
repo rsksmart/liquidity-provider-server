@@ -17,7 +17,7 @@ import (
 // @Param Request body pkg.AcceptAuthenticatedQuoteRequest true "Quote Hash and Signature"
 // @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptAuthenticatedQuote [post]
-func NewAcceptPeginAuthenticatedQuoteHandler(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+func NewAcceptPeginAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		acceptRequest := pkg.AcceptAuthenticatedQuoteRequest{}
@@ -35,7 +35,7 @@ func NewAcceptPeginAuthenticatedQuoteHandler(useCase AcceptQuoteUseCaseInterface
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
 		if err != nil {
-			handleAcceptQuoteError(w, err)
+			HandleAcceptQuoteError(w, err)
 			return
 		}
 

@@ -132,7 +132,7 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 
 	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
-	}, useCase.hashFunction)
+	})
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
 	}

@@ -117,8 +117,8 @@ func TestValidateConfiguration(t *testing.T) {
 
 		result, err := liquidity_provider.ValidateConfiguration(
 			mockSigner,
-			readFunction,
 			ethcrypto.Keccak256,
+			readFunction,
 		)
 
 		require.NoError(t, err)
@@ -142,8 +142,8 @@ func TestValidateConfiguration(t *testing.T) {
 
 		result, err := liquidity_provider.ValidateConfiguration(
 			mockSigner,
-			readFunction,
 			ethcrypto.Keccak256,
+			readFunction,
 		)
 
 		require.Error(t, err)
@@ -161,11 +161,65 @@ func TestValidateConfiguration(t *testing.T) {
 
 		result, err := liquidity_provider.ValidateConfiguration(
 			mockSigner,
-			readFunction,
 			ethcrypto.Keccak256,
+			readFunction,
 		)
 
 		require.ErrorIs(t, err, liquidity_provider.ConfigurationNotFoundError)
+		require.Nil(t, result)
+		mockSigner.AssertExpectations(t)
+	})
+
+	t.Run("tampered configuration", func(t *testing.T) {
+		mockSigner := new(mocks.SignerMock)
+
+		mockConfig := liquidity_provider.GeneralConfiguration{
+			RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
+				10: 100,
+				20: 200,
+			},
+			BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
+				10: 5,
+				20: 10,
+			},
+			PublicLiquidityCheck: true,
+		}
+
+		// Calculate hash from the original config
+		correctConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true}`)
+		correctHash := ethcrypto.Keccak256(correctConfigBytes)
+
+		// Use a different hash (tampered)
+		tamperedHashHex := hex.EncodeToString([]byte("tampered-hash"))
+
+		mockSignature := []byte("mock-signature")
+		mockSigner.On("SignBytes", correctHash).Return(mockSignature, nil)
+
+		signature, err := mockSigner.SignBytes(correctHash)
+		require.NoError(t, err)
+		signatureHex := hex.EncodeToString(signature)
+
+		signedConfig := &entities.Signed[liquidity_provider.GeneralConfiguration]{
+			Value:     mockConfig,
+			Hash:      tamperedHashHex, // Use tampered hash
+			Signature: signatureHex,
+		}
+
+		readFunction := func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+			return signedConfig, nil
+		}
+
+		defer test.AssertLogContains(t, "Tampered test-config configuration. Using default configuration. Error: error during value integrity check, stored hash doesn't match actual hash")()
+
+		result, err := liquidity_provider.ValidateConfiguration(
+			displayName,
+			mockSigner,
+			ethcrypto.Keccak256,
+			readFunction,
+		)
+
+		require.Error(t, err)
+		require.Equal(t, entities.IntegrityError, err)
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})
@@ -210,8 +264,8 @@ func TestValidateConfiguration(t *testing.T) {
 
 		result, err := liquidity_provider.ValidateConfiguration(
 			mockSigner,
-			readFunction,
 			ethcrypto.Keccak256,
+			readFunction,
 		)
 		require.ErrorIs(t, err, liquidity_provider.InvalidSignatureError)
 		require.Nil(t, result)

@@ -58,8 +58,7 @@ func TestAcceptPeginAuthenticatedQuoteHandler(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-// nolint:funlen,maintidx
-func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
+func TestAcceptPeginAuthenticatedQuoteHandlerValidationErrors(t *testing.T) {
 	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
 		// Create a request with malformed JSON (missing closing brace)
 		malformedJSON := []byte(`{"quoteHash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "signature": "validSignature123"`)
@@ -116,7 +115,10 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		assert.Contains(t, errorResponse, "message")
 		assert.Contains(t, errorResponse["message"], "validation error")
 	})
+}
 
+// nolint:funlen
+func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 	t.Run("should return 400 on invalid quote hash format", func(t *testing.T) {
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: "123456789XABCDEF", // Invalid - contains non-hex character 'X'

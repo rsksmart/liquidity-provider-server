@@ -11,7 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-type AcceptQuoteUseCaseInterface interface {
+type AcceptQuoteUseCase interface {
 	Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error)
 }
 
@@ -21,7 +21,7 @@ type AcceptQuoteUseCaseInterface interface {
 // @Param QuoteHash body pkg.AcceptQuoteRequest true "Quote Hash"
 // @Success 200  object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
 // @Route /pegin/acceptQuote [post]
-func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCaseInterface) http.HandlerFunc {
+func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		acceptRequest := pkg.AcceptQuoteRequest{}
