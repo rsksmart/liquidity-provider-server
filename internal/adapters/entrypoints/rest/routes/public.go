@@ -68,6 +68,14 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 		},
 		{
 			Endpoint: Endpoint{
+				Path:    "/pegout/acceptAuthenticatedQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPegoutAuthenticatedQuoteHandler(useCaseRegistry.GetAcceptPegoutQuoteUseCase()),
+			},
+			RequiresCaptcha: false,
+		},
+		{
+			Endpoint: Endpoint{
 				Path:    "/userQuotes",
 				Method:  http.MethodGet,
 				Handler: handlers.NewGetUserQuotesHandler(useCaseRegistry.GetUserDepositsUseCase()),
