@@ -174,8 +174,7 @@ func TestValidateConfiguration(t *testing.T) {
 			ethcrypto.Keccak256,
 		)
 
-		require.Error(t, err)
-		require.Equal(t, "configuration not found", err.Error())
+		require.ErrorIs(t, err, liquidity_provider.ErrConfigurationNotFound)
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})
@@ -226,9 +225,7 @@ func TestValidateConfiguration(t *testing.T) {
 			readFunction,
 			ethcrypto.Keccak256,
 		)
-
-		require.Error(t, err)
-		require.Equal(t, "invalid signature", err.Error())
+		require.ErrorIs(t, err, liquidity_provider.ErrInvalidSignature)
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})

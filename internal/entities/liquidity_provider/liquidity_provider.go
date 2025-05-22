@@ -24,6 +24,8 @@ const (
 var (
 	InvalidProviderTypeError = errors.New("invalid liquidity provider type")
 	ProviderNotFoundError    = errors.New("liquidity provider not found")
+	ErrConfigurationNotFound = errors.New("configuration not found")
+	ErrInvalidSignature      = errors.New("invalid signature")
 )
 
 func (p ProviderType) IsValid() bool {
@@ -134,7 +136,7 @@ func ValidateConfiguration[T ConfigurationType](
 	}
 	if configuration == nil {
 		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
-		return nil, errors.New("configuration not found")
+		return nil, ErrConfigurationNotFound
 	}
 	if err = configuration.CheckIntegrity(hashFunction); err != nil {
 		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
@@ -142,7 +144,7 @@ func ValidateConfiguration[T ConfigurationType](
 	}
 	if !signer.Validate(configuration.Signature, configuration.Hash) {
 		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
-		return nil, errors.New("invalid signature")
+		return nil, ErrInvalidSignature
 	}
 	return configuration, nil
 }

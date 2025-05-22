@@ -10,15 +10,18 @@ import (
 type GetTrustedAccountsUseCase struct {
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository
 	hashFunction             entities.HashFunction
+	signer                   entities.Signer
 }
 
 func NewGetTrustedAccountsUseCase(
 	trustedAccountRepository liquidity_provider.TrustedAccountRepository,
 	hashFunction entities.HashFunction,
+	signer entities.Signer,
 ) *GetTrustedAccountsUseCase {
 	return &GetTrustedAccountsUseCase{
 		trustedAccountRepository: trustedAccountRepository,
 		hashFunction:             hashFunction,
+		signer:                   signer,
 	}
 }
 
@@ -27,10 +30,21 @@ func (useCase *GetTrustedAccountsUseCase) Run(ctx context.Context) ([]entities.S
 	if err != nil {
 		return nil, err
 	}
-	for _, account := range signedAccounts {
-		if err := account.CheckIntegrity(useCase.hashFunction); err != nil {
+	validatedAccounts := make([]entities.Signed[liquidity_provider.TrustedAccountDetails], 0, len(signedAccounts))
+	for i := range signedAccounts {
+		readFunction := func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+			return &signedAccounts[i], nil
+		}
+		validatedAccount, err := liquidity_provider.ValidateConfiguration(
+			"trusted account",
+			useCase.signer,
+			readFunction,
+			useCase.hashFunction,
+		)
+		if err != nil {
 			return nil, liquidity_provider.ErrTamperedTrustedAccount
 		}
+		validatedAccounts = append(validatedAccounts, *validatedAccount)
 	}
-	return signedAccounts, nil
+	return validatedAccounts, nil
 }

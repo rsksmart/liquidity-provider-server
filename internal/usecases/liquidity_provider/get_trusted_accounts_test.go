@@ -45,25 +45,30 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		repo.On("GetAllTrustedAccounts", mock.Anything).Return(signedAccounts, nil)
 		hashMock := &mocks.HashMock{}
 		hashMock.On("Hash", mock.Anything).Return(mockHashBytes)
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
+		signerMock := &mocks.SignerMock{}
+		signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, signedAccounts, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
 	})
 	t.Run("should return error when repository returns error", func(t *testing.T) {
 		repoErr := assert.AnError
 		repo := mocks.NewTrustedAccountRepositoryMock(t)
 		repo.On("GetAllTrustedAccounts", mock.Anything).Return(nil, repoErr)
 		hashMock := &mocks.HashMock{}
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
+		signerMock := &mocks.SignerMock{}
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background())
 		require.Error(t, err)
 		assert.Equal(t, repoErr, err)
 		assert.Nil(t, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertNotCalled(t, "Hash")
+		signerMock.AssertNotCalled(t, "Validate")
 	})
 	t.Run("should return error when integrity check fails for any account", func(t *testing.T) {
 		validHashBytes := []byte("valid-hash-bytes")
@@ -96,12 +101,15 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		hashMock := &mocks.HashMock{}
 		hashMock.On("Hash", mock.Anything).Return(validHashBytes).Once()
 		hashMock.On("Hash", mock.Anything).Return([]byte("different-hash-bytes")).Once()
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
+		signerMock := &mocks.SignerMock{}
+		signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background())
 		require.Error(t, err)
 		assert.Equal(t, liquidity_provider.ErrTamperedTrustedAccount, err)
 		assert.Nil(t, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
 	})
 }
