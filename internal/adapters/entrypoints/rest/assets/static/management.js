@@ -572,6 +572,62 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
     }
 };
 
+const displaySummaryData = (container, data) => {
+    container.innerHTML = '';
+    const table = document.createElement('table');
+    table.classList.add('table', 'table-striped'); 
+    const rows = [
+        { label: 'Total Quotes', value: data.totalQuotesCount },
+        { label: 'Accepted Quotes', value: data.acceptedQuotesCount },
+        { label: 'Paid Quotes', value: data.paidQuotesCount },
+        { label: 'Paid Quotes Amount', value: data.paidQuotesAmount },
+        { label: 'Total Accepted Amount', value: data.totalAcceptedQuotedAmount },
+        { label: 'Total Fees Collected', value: data.totalFeesCollected },
+        { label: 'Refunded Quotes', value: data.refundedQuotesCount },
+        { label: 'Total Penalty Amount', value: data.totalPenaltyAmount },
+        { label: 'LP Earnings', value: data.lpEarnings }
+    ];
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.textContent = row.label;
+        const td = document.createElement('td');
+        td.textContent = row.value;
+        tr.appendChild(th);
+        tr.appendChild(td);
+        table.appendChild(tr);
+    });
+    container.appendChild(table);
+};
+
+const fetchSummariesReport = async (csrfToken) => {
+    const startDate = document.getElementById('summaryStartDate').value;
+    const endDate = document.getElementById('summaryEndDate').value;
+    if (!startDate || !endDate) {
+        showErrorToast('Please select both start and end dates');
+        return;
+    }
+    try {
+        const response = await fetch(`/report/summaries?startDate=${startDate}&endDate=${endDate}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        }); 
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to fetch summaries');
+        }
+        const data = await response.json();
+        document.getElementById('summariesResult').style.display = 'block';
+        displaySummaryData(document.getElementById('peginSummary'), data.peginSummary);
+        displaySummaryData(document.getElementById('pegoutSummary'), data.pegoutSummary);
+    } catch (error) {
+        showErrorToast(`Error fetching summaries: ${error.message}`);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const csrfToken = data.CsrfToken;
     const configurations = data.Configuration;
@@ -582,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton', csrfToken));
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
+    document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
 
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
@@ -591,4 +648,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
     checkFeeWarnings();
+    
+    const today = new Date();
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(today.getMonth() - 1);
+    
+    document.getElementById('summaryStartDate').value = lastMonth.toISOString().split('T')[0];
+    document.getElementById('summaryEndDate').value = today.toISOString().split('T')[0];
 });
