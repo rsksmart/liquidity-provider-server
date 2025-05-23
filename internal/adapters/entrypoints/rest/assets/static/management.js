@@ -358,16 +358,26 @@ const showWarningToast = (warningMessage) => {
 };
 
 function checkFeeWarnings() {
-    const fixedFeeCheckbox = document.querySelector('input[data-key="fixedFee_enabled"]');
-    const feePercentageCheckbox = document.querySelector('input[data-key="feePercentage_enabled"]');
+    const sections = ['generalConfig', 'peginConfig', 'pegoutConfig'];
     const existingToast = document.getElementById('warningToast');
-    
-    if (fixedFeeCheckbox && feePercentageCheckbox) {
-        if (!fixedFeeCheckbox.checked && !feePercentageCheckbox.checked) {
-            if (!existingToast) showWarningToast('It is recommended to enable at least one of "feePercentage" or "fixedFee".');
-        } else {
-            if (existingToast) existingToast.parentNode.removeChild(existingToast);
+    const shouldWarn = sections.some(sectionId => {
+        const sectionElement = document.getElementById(sectionId);
+        if (!sectionElement) return false;
+        const fixedFeeCheckbox = sectionElement.querySelector('input[data-key="fixedFee_enabled"]');
+        const feePercentageCheckbox = sectionElement.querySelector('input[data-key="feePercentage_enabled"]');
+        return (
+            fixedFeeCheckbox &&
+            feePercentageCheckbox &&
+            !fixedFeeCheckbox.checked &&
+            !feePercentageCheckbox.checked
+        );
+    });
+    if (shouldWarn) {
+        if (!existingToast) {
+            showWarningToast('It is recommended to enable at least one of "feePercentage" or "fixedFee".');
         }
+    } else if (existingToast) {
+        existingToast.parentNode.removeChild(existingToast);
     }
 }
 
