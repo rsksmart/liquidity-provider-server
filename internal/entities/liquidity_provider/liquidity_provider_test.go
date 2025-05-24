@@ -77,8 +77,6 @@ func TestToProviderType(t *testing.T) {
 
 //nolint:funlen
 func TestValidateConfiguration(t *testing.T) {
-	displayName := "test-config"
-
 	t.Run("successful validation", func(t *testing.T) {
 		mockSigner := new(mocks.SignerMock)
 
@@ -118,7 +116,6 @@ func TestValidateConfiguration(t *testing.T) {
 		}
 
 		result, err := liquidity_provider.ValidateConfiguration(
-			displayName,
 			mockSigner,
 			readFunction,
 			ethcrypto.Keccak256,
@@ -143,10 +140,7 @@ func TestValidateConfiguration(t *testing.T) {
 			return nil, expectedErr
 		}
 
-		defer test.AssertLogContains(t, "Error getting test-config configuration, using default configuration. Error: database error")()
-
 		result, err := liquidity_provider.ValidateConfiguration(
-			displayName,
 			mockSigner,
 			readFunction,
 			ethcrypto.Keccak256,
@@ -165,16 +159,13 @@ func TestValidateConfiguration(t *testing.T) {
 			return nil, nil
 		}
 
-		defer test.AssertLogContains(t, "Custom test-config configuration not found. Using default configuration.")()
-
 		result, err := liquidity_provider.ValidateConfiguration(
-			displayName,
 			mockSigner,
 			readFunction,
 			ethcrypto.Keccak256,
 		)
 
-		require.ErrorIs(t, err, liquidity_provider.ErrConfigurationNotFound)
+		require.ErrorIs(t, err, liquidity_provider.ConfigurationNotFoundError)
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})
@@ -217,15 +208,12 @@ func TestValidateConfiguration(t *testing.T) {
 			return signedConfig, nil
 		}
 
-		defer test.AssertLogContains(t, "Invalid test-config configuration signature. Using default configuration.")()
-
 		result, err := liquidity_provider.ValidateConfiguration(
-			displayName,
 			mockSigner,
 			readFunction,
 			ethcrypto.Keccak256,
 		)
-		require.ErrorIs(t, err, liquidity_provider.ErrInvalidSignature)
+		require.ErrorIs(t, err, liquidity_provider.InvalidSignatureError)
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})

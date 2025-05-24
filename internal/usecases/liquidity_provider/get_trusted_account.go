@@ -33,21 +33,23 @@ func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string
 			return nil, err
 		}
 		if signedAccount == nil {
-			return nil, liquidity_provider.ErrTrustedAccountNotFound
+			return nil, liquidity_provider.TrustedAccountNotFoundError
 		}
 		return signedAccount, nil
 	}
 	signedAccount, err := liquidity_provider.ValidateConfiguration(
-		"trusted account",
 		useCase.signer,
 		readFunction,
 		useCase.hashFunction,
 	)
 	if err != nil {
-		if errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) || errors.Is(err, liquidity_provider.ErrConfigurationNotFound) {
-			return nil, liquidity_provider.ErrTrustedAccountNotFound
+		if errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+			return nil, err
 		}
-		return nil, liquidity_provider.ErrTamperedTrustedAccount
+		if errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
+			return nil, liquidity_provider.TrustedAccountNotFoundError
+		}
+		return nil, liquidity_provider.TamperedTrustedAccountError
 	}
 	return signedAccount, nil
 }

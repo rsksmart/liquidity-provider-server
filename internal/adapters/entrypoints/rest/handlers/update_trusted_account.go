@@ -33,8 +33,8 @@ func NewUpdateTrustedAccountHandler(useCase *lpuc.UpdateTrustedAccountUseCase) h
 			RbtcLockingCap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
-		if errors.Is(err, lp.ErrTrustedAccountNotFound) {
-			jsonErr := rest.NewErrorResponse(lp.ErrTrustedAccountNotFound.Error(), true)
+		if errors.Is(err, lp.TrustedAccountNotFoundError) {
+			jsonErr := rest.NewErrorResponse(lp.TrustedAccountNotFoundError.Error(), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
 			return
 		} else if err != nil {

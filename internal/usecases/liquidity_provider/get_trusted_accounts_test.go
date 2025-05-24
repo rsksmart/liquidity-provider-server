@@ -106,7 +106,7 @@ func TestGetTrustedAccountsUseCase_Run(t *testing.T) {
 		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background())
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTamperedTrustedAccount, err)
+		assert.Equal(t, liquidity_provider.TamperedTrustedAccountError, err)
 		assert.Nil(t, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)

@@ -61,7 +61,7 @@ func handleAcceptQuoteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, usecases.LockingCapExceededError):
 		jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-	case errors.Is(err, liquidity_provider.ErrTamperedTrustedAccount):
+	case errors.Is(err, liquidity_provider.TamperedTrustedAccountError):
 		jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 	default:

@@ -36,13 +36,12 @@ func (useCase *GetTrustedAccountsUseCase) Run(ctx context.Context) ([]entities.S
 			return &signedAccounts[i], nil
 		}
 		validatedAccount, err := liquidity_provider.ValidateConfiguration(
-			"trusted account",
 			useCase.signer,
 			readFunction,
 			useCase.hashFunction,
 		)
 		if err != nil {
-			return nil, liquidity_provider.ErrTamperedTrustedAccount
+			return nil, liquidity_provider.TamperedTrustedAccountError
 		}
 		validatedAccounts = append(validatedAccounts, *validatedAccount)
 	}

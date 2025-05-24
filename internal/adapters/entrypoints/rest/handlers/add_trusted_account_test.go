@@ -94,7 +94,7 @@ func TestNewAddTrustedAccountHandler(t *testing.T) {
 		hashMock := &mocks.HashMock{}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
-		repo.On("AddTrustedAccount", mock.Anything, mock.Anything).Return(lp.ErrDuplicateTrustedAccount)
+		repo.On("AddTrustedAccount", mock.Anything, mock.Anything).Return(lp.DuplicateTrustedAccountError)
 		useCase := lpuc.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		handler := http.HandlerFunc(handlers.NewAddTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)

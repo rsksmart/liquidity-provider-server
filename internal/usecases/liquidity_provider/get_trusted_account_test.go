@@ -45,13 +45,13 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 	})
 	t.Run("should return error when account is not found", func(t *testing.T) {
 		repo := mocks.NewTrustedAccountRepositoryMock(t)
-		repo.On("GetTrustedAccount", mock.Anything, "0x123").Return(nil, liquidity_provider.ErrTrustedAccountNotFound)
+		repo.On("GetTrustedAccount", mock.Anything, "0x123").Return(nil, liquidity_provider.TrustedAccountNotFoundError)
 		hashMock := &mocks.HashMock{}
 		signerMock := &mocks.SignerMock{}
 		useCase := lpuc.NewGetTrustedAccountUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background(), "0x123")
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTrustedAccountNotFound, err)
+		assert.Equal(t, liquidity_provider.TrustedAccountNotFoundError, err)
 		assert.Nil(t, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertNotCalled(t, "Hash")
@@ -78,7 +78,7 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 		useCase := lpuc.NewGetTrustedAccountUseCase(repo, hashMock.Hash, signerMock)
 		result, err := useCase.Run(context.Background(), "0x123")
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTamperedTrustedAccount, err)
+		assert.Equal(t, liquidity_provider.TamperedTrustedAccountError, err)
 		assert.Nil(t, result)
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
