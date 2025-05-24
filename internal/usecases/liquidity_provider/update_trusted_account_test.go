@@ -102,11 +102,11 @@ func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
 		repo.On("UpdateTrustedAccount", mock.Anything, mock.MatchedBy(func(a entities.Signed[liquidity_provider.TrustedAccountDetails]) bool {
 			return a.Value.Address == account.Address && a.Value.Name == account.Name
-		})).Return(liquidity_provider.ErrTrustedAccountNotFound)
+		})).Return(liquidity_provider.TrustedAccountNotFoundError)
 		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), liquidity_provider.ErrTrustedAccountNotFound.Error())
+		require.Contains(t, err.Error(), liquidity_provider.TrustedAccountNotFoundError.Error())
 		repo.AssertExpectations(t)
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)

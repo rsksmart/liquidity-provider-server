@@ -92,7 +92,7 @@ func TestNewUpdateTrustedAccountHandler(t *testing.T) { //nolint:funlen
 		hashMock := &mocks.HashMock{}
 		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
-		repo.On("UpdateTrustedAccount", mock.Anything, mock.Anything).Return(liquidity_provider.ErrTrustedAccountNotFound)
+		repo.On("UpdateTrustedAccount", mock.Anything, mock.Anything).Return(liquidity_provider.TrustedAccountNotFoundError)
 		useCase := lpuc.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		handler := http.HandlerFunc(handlers.NewUpdateTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)

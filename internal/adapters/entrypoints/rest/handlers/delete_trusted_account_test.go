@@ -39,7 +39,7 @@ func TestNewDeleteTrustedAccountHandler(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=0x123", nil)
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		repo.On("DeleteTrustedAccount", mock.Anything, "0x123").Return(lp.ErrTrustedAccountNotFound)
+		repo.On("DeleteTrustedAccount", mock.Anything, "0x123").Return(lp.TrustedAccountNotFoundError)
 		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
 		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)

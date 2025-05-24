@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"io"
+	"errors"
 	"math/big"
 	"strings"
 	"testing"
@@ -22,7 +22,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -353,52 +352,46 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing
 	})
 }
 
+//nolint:funlen
 func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
-	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "general-configuration")
 	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
 	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
-	buff := new(bytes.Buffer)
-	log.SetOutput(buff)
 	t.Run("Return signed general configuration from db", func(t *testing.T) {
 		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(getGeneralConfigurationMock(), nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 		result := lp.GeneralConfiguration(context.Background())
 		assert.Equal(t, getGeneralConfigurationMock().Value, result)
-		_, err := buff.Read(message)
-		require.ErrorIs(t, err, io.EOF)
 		assert.NotEqual(t, liquidity_provider.DefaultGeneralConfiguration(), result)
-	})
-	t.Run("Return default general configuration on db read error", func(t *testing.T) {
-		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(nil, assert.AnError).Once()
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
-		config := lp.GeneralConfiguration(context.Background())
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Error getting general configuration")
-		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), config)
 	})
 	t.Run("Return default general configuration when db doesn't have configuration", func(t *testing.T) {
 		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(nil, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Custom general configuration not found. Using default configuration.")()
+
 		config := lp.GeneralConfiguration(context.Background())
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Custom general configuration not found")
+
 		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), config)
 	})
+	t.Run("Return default general configuration on db read error", func(t *testing.T) {
+		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting general configuration, using default configuration. Error: database error")()
+		config := lp.GeneralConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), config)
+	})
+
 	t.Run("Return default general configuration when db configuration is tampered", func(t *testing.T) {
 		tamperedConfig := getGeneralConfigurationMock()
 		tamperedConfig.Value.RskConfirmations[2000000000000000000] = 40
 		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+		defer test.AssertLogContains(t, "Tampered general configuration. Using default configuration.")()
 		result := lp.GeneralConfiguration(context.Background())
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Tampered general configuration")
+
 		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), result)
 	})
 	t.Run("Return default general configuration when db configuration doesn't have valid signature", func(t *testing.T) {
@@ -406,136 +399,196 @@ func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
 		invalidSignatureConfig.Signature = "94530cf2d078ce7e44b4ce1d63a0cf7a225f07d4414f4dcf132f097fd027c08c7252b012ffff6855400fbc96939662904b22ce0b7a010bcb0b7a2c7db9dc26b702"
 		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(invalidSignatureConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Invalid general configuration signature. Using default configuration.")()
+
 		result := lp.GeneralConfiguration(context.Background())
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Invalid general configuration signature")
+
+		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), result)
+	})
+	t.Run("Return default general configuration when integrity check fails", func(t *testing.T) {
+		integrityFailConfig := getGeneralConfigurationMock()
+		integrityFailConfig.Hash = "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a9" // A fake one
+		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Tampered general configuration. Using default configuration.")()
+
+		result := lp.GeneralConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), result)
+	})
+	t.Run("Return default general configuration when there is an unexpected error", func(t *testing.T) {
+		integrityFailConfig := getGeneralConfigurationMock()
+		integrityFailConfig.Hash = "an-invalid-hash" // Will fail hash validation
+		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting general configuration, using default configuration. Error: encoding/hex: invalid byte: U+006E")()
+
+		result := lp.GeneralConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultGeneralConfiguration(), result)
 	})
 }
 
+//nolint:funlen
 func TestLocalLiquidityProvider_PeginConfiguration(t *testing.T) {
-	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "pegin-configuration")
 	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
 	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
-	buff := new(bytes.Buffer)
-	log.SetOutput(buff)
 	t.Run("Return signed pegin configuration from db", func(t *testing.T) {
 		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(getPeginConfigurationMock(), nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 		result := lp.PeginConfiguration(context.Background())
 		assert.Equal(t, getPeginConfigurationMock().Value, result)
-		_, err := buff.Read(message)
-		require.ErrorIs(t, err, io.EOF)
 		assert.NotEqual(t, liquidity_provider.DefaultPeginConfiguration(), result)
-	})
-	t.Run("Return default pegin configuration on db read error", func(t *testing.T) {
-		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(nil, assert.AnError).Once()
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
-		config := lp.PeginConfiguration(context.Background())
-		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), config)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Error getting pegin configuration")
 	})
 	t.Run("Return default pegin configuration when db doesn't have configuration", func(t *testing.T) {
 		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(nil, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Custom pegin configuration not found. Using default configuration.")()
+
 		config := lp.PeginConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), config)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Custom pegin configuration not found")
 	})
+	t.Run("Return default pegin configuration on db read error", func(t *testing.T) {
+		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting pegin configuration, using default configuration. Error: database error")()
+		config := lp.PeginConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), config)
+	})
+
 	t.Run("Return default pegin configuration when db configuration is tampered", func(t *testing.T) {
 		tamperedConfig := getPeginConfigurationMock()
 		tamperedConfig.Value.MinValue = entities.NewWei(1)
 		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+		defer test.AssertLogContains(t, "Tampered pegin configuration. Using default configuration.")()
 		result := lp.PeginConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), result)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Tampered pegin configuration")
 	})
 	t.Run("Return default pegin configuration when db configuration doesn't have valid signature", func(t *testing.T) {
 		invalidSignatureConfig := getPeginConfigurationMock()
 		invalidSignatureConfig.Signature = "93530cf2d078ce7e44c4ce1d63a0cf7a225f07d4414f4dcf132f097fd027c08c7252b012f1ff6855400fbc96939662904b22ce0b7a010bcb0b7a2c7db9dc26b702"
 		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(invalidSignatureConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Invalid pegin configuration signature. Using default configuration.")()
+
 		result := lp.PeginConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), result)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Invalid pegin configuration signature")
+	})
+	t.Run("Return default pegin configuration when integrity check fails", func(t *testing.T) {
+		integrityFailConfig := getPeginConfigurationMock()
+		integrityFailConfig.Hash = "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a9" // A fake one
+		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Tampered pegin configuration. Using default configuration.")()
+
+		result := lp.PeginConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), result)
+	})
+	t.Run("Return default pegin configuration when there is an unexpected error", func(t *testing.T) {
+		integrityFailConfig := getPeginConfigurationMock()
+		integrityFailConfig.Hash = "an-invalid-hash" // Will fail hash validation
+		lpRepository.On("GetPeginConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting pegin configuration, using default configuration. Error: encoding/hex: invalid byte: U+006E")()
+
+		result := lp.PeginConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPeginConfiguration(), result)
 	})
 }
 
+//nolint:funlen
 func TestLocalLiquidityProvider_PegoutConfiguration(t *testing.T) {
-	message := make([]byte, 1024)
 	account := test.OpenWalletForTest(t, "pegout-configuration")
-	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
 	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
-	buff := new(bytes.Buffer)
-	log.SetOutput(buff)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
 	t.Run("Return signed pegout configuration from db", func(t *testing.T) {
 		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(getPegoutConfigurationMock(), nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 		result := lp.PegoutConfiguration(context.Background())
 		assert.Equal(t, getPegoutConfigurationMock().Value, result)
-		_, err := buff.Read(message)
-		require.ErrorIs(t, err, io.EOF)
 		assert.NotEqual(t, liquidity_provider.DefaultPegoutConfiguration(), result)
-	})
-	t.Run("Return default pegout configuration on db read error", func(t *testing.T) {
-		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(nil, assert.AnError).Once()
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
-		config := lp.PegoutConfiguration(context.Background())
-		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), config)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Error getting pegout configuration")
 	})
 	t.Run("Return default pegout configuration when db doesn't have configuration", func(t *testing.T) {
 		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(nil, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Custom pegout configuration not found. Using default configuration.")()
+
 		config := lp.PegoutConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), config)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Custom pegout configuration not found")
 	})
+	t.Run("Return default pegout configuration on db read error", func(t *testing.T) {
+		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting pegout configuration, using default configuration. Error: database error")()
+		config := lp.PegoutConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), config)
+	})
+
 	t.Run("Return default pegout configuration when db configuration is tampered", func(t *testing.T) {
 		tamperedConfig := getPegoutConfigurationMock()
 		tamperedConfig.Value.MaxValue = entities.NewWei(1)
 		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+		defer test.AssertLogContains(t, "Tampered pegout configuration. Using default configuration.")()
 		result := lp.PegoutConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), result)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Tampered pegout configuration")
 	})
 	t.Run("Return default pegout configuration when db configuration doesn't have valid signature", func(t *testing.T) {
 		invalidSignatureConfig := getPegoutConfigurationMock()
 		invalidSignatureConfig.Signature = "93530cf2d078ce7e44c4ce1d63a0cf7a225f07d4414f4dcf133f097fd027d08c7252b012f1ff6855400fbc96939662904b22ce0b7a010bcb0b7a2c7db9dc26b702"
 		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(invalidSignatureConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Invalid pegout configuration signature. Using default configuration.")()
+
 		result := lp.PegoutConfiguration(context.Background())
+
 		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), result)
-		_, err := buff.Read(message)
-		buff.Reset()
-		require.NoError(t, err)
-		assert.Contains(t, string(message), "Invalid pegout configuration signature")
+	})
+	t.Run("Return default pegout configuration when integrity check fails", func(t *testing.T) {
+		integrityFailConfig := getPegoutConfigurationMock()
+		integrityFailConfig.Hash = "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a9" // A fake one
+		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Tampered pegout configuration. Using default configuration.")()
+
+		result := lp.PegoutConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), result)
+	})
+	t.Run("Return default pegout configuration when there is an unexpected error", func(t *testing.T) {
+		integrityFailConfig := getPegoutConfigurationMock()
+		integrityFailConfig.Hash = "an-invalid-hash" // Will fail hash validation
+		lpRepository.On("GetPegoutConfiguration", test.AnyCtx).Return(integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting pegout configuration, using default configuration. Error: encoding/hex: invalid byte: U+006E")()
+
+		result := lp.PegoutConfiguration(context.Background())
+
+		assert.Equal(t, liquidity_provider.DefaultPegoutConfiguration(), result)
 	})
 }
 

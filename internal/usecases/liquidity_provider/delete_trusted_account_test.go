@@ -25,11 +25,11 @@ func TestDeleteTrustedAccountUseCase_Run(t *testing.T) {
 	t.Run("Not found error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		address := "0x123456"
-		repo.On("DeleteTrustedAccount", mock.Anything, address).Return(liquidity_provider.ErrTrustedAccountNotFound)
+		repo.On("DeleteTrustedAccount", mock.Anything, address).Return(liquidity_provider.TrustedAccountNotFoundError)
 		useCase := lp.NewDeleteTrustedAccountUseCase(repo)
 		err := useCase.Run(context.Background(), address)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), liquidity_provider.ErrTrustedAccountNotFound.Error())
+		require.Contains(t, err.Error(), liquidity_provider.TrustedAccountNotFoundError.Error())
 		repo.AssertExpectations(t)
 	})
 }

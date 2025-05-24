@@ -299,7 +299,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
-		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, liquidity_provider.ErrTamperedTrustedAccount)
+		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(quote.AcceptedQuote{}, liquidity_provider.TamperedTrustedAccountError)
 
 		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)

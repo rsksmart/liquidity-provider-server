@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	ErrTrustedAccountNotFound  = errors.New("trusted account not found")
-	ErrDuplicateTrustedAccount = errors.New("trusted account already exists")
-	ErrTamperedTrustedAccount  = errors.New("trusted account signature verification failed")
+	TrustedAccountNotFoundError  = errors.New("trusted account not found")
+	DuplicateTrustedAccountError = errors.New("trusted account already exists")
+	TamperedTrustedAccountError  = errors.New("trusted account signature verification failed")
 )
 
 type TrustedAccountDetails struct {

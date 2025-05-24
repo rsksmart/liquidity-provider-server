@@ -54,7 +54,9 @@ func TestNewGetTrustedAccountsHandler(t *testing.T) {
 		repo.On("GetAllTrustedAccounts", mock.Anything).Return(mockSignedAccounts, nil)
 		hashMock := &mocks.HashMock{}
 		hashMock.On("Hash", mock.Anything).Return(mockHashBytes)
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
+		signerMock := &mocks.SignerMock{}
+		signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		handler := http.HandlerFunc(handlers.NewGetTrustedAccountsHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusOK, recorder.Code)
@@ -68,6 +70,7 @@ func TestNewGetTrustedAccountsHandler(t *testing.T) {
 		assert.Equal(t, "Test Account 2", response.Accounts[1].Name)
 		repo.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
 	})
 	t.Run("should return 500 on error", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
@@ -75,11 +78,13 @@ func TestNewGetTrustedAccountsHandler(t *testing.T) {
 		repo := mocks.NewTrustedAccountRepositoryMock(t)
 		repo.On("GetAllTrustedAccounts", mock.Anything).Return(nil, errors.New("database error"))
 		hashMock := &mocks.HashMock{}
-		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash)
+		signerMock := &mocks.SignerMock{}
+		useCase := lpuc.NewGetTrustedAccountsUseCase(repo, hashMock.Hash, signerMock)
 		handler := http.HandlerFunc(handlers.NewGetTrustedAccountsHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 		repo.AssertExpectations(t)
 		hashMock.AssertNotCalled(t, "Hash")
+		signerMock.AssertNotCalled(t, "Validate")
 	})
 }

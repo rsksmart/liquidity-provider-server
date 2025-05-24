@@ -256,10 +256,12 @@ func NewUseCaseRegistry(
 		getTrustedAccountsUseCase: liquidity_provider.NewGetTrustedAccountsUseCase(
 			databaseRegistry.TrustedAccountRepository,
 			signingHashFunction,
+			rskRegistry.Wallet,
 		),
 		getTrustedAccountUseCase: liquidity_provider.NewGetTrustedAccountUseCase(
 			databaseRegistry.TrustedAccountRepository,
 			signingHashFunction,
+			rskRegistry.Wallet,
 		),
 	}
 }

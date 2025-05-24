@@ -52,7 +52,7 @@ func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(liquidity_provider.TrustedAccountDetails{}, mongoDb.ErrNoDocuments, nil)).Once()
 		result, err := repo.GetTrustedAccount(context.Background(), testAccount.Address)
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTrustedAccountNotFound, err)
+		assert.Equal(t, liquidity_provider.TrustedAccountNotFoundError, err)
 		assert.Nil(t, result)
 	})
 	t.Run("Db error reading trusted account", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(liquidity_provider.TrustedAccountDetails{}, mongoDb.ErrNoDocuments, nil)).Once()
 		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTrustedAccountNotFound, err)
+		assert.Equal(t, liquidity_provider.TrustedAccountNotFoundError, err)
 	})
 	t.Run("Db error checking existing account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
@@ -170,7 +170,7 @@ func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
 		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrDuplicateTrustedAccount, err)
+		assert.Equal(t, liquidity_provider.DuplicateTrustedAccountError, err)
 	})
 	t.Run("Db error checking existing account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
@@ -213,7 +213,7 @@ func TestLpMongoRepository_DeleteTrustedAccount(t *testing.T) {
 		collection.On("DeleteOne", mock.Anything, filter).Return(result, nil).Once()
 		err := repo.DeleteTrustedAccount(context.Background(), testAccount.Address)
 		require.Error(t, err)
-		assert.Equal(t, liquidity_provider.ErrTrustedAccountNotFound, err)
+		assert.Equal(t, liquidity_provider.TrustedAccountNotFoundError, err)
 	})
 	t.Run("Db error deleting account", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
