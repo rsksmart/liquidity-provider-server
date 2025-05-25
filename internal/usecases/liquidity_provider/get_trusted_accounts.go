@@ -37,8 +37,8 @@ func (useCase *GetTrustedAccountsUseCase) Run(ctx context.Context) ([]entities.S
 		}
 		validatedAccount, err := liquidity_provider.ValidateConfiguration(
 			useCase.signer,
-			readFunction,
 			useCase.hashFunction,
+			readFunction,
 		)
 		if err != nil {
 			return nil, liquidity_provider.TamperedTrustedAccountError
