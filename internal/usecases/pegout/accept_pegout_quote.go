@@ -127,11 +127,11 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
 
-	trustedAccount, err := liquidity_provider.ValidateConfiguration("accept pegin quote", signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	})
 	if err != nil {
-		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.ErrTamperedTrustedAccount
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
 	}
 	return trustedAccount.Value, nil
 }
