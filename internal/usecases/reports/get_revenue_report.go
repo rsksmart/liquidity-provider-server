@@ -15,12 +15,12 @@ type GetRevenueReportUseCase struct {
 	penalizedEventRepository penalization.PenalizedEventRepository
 }
 
-type PeginQuotesReturn struct {
+type peginQuotesReturn struct {
 	Quotes      []quote.PeginQuote
 	QuoteHashes []string
 }
 
-type PegoutQuotesReturn struct {
+type pegoutQuotesReturn struct {
 	Quotes      []quote.PegoutQuote
 	QuoteHashes []string
 }
@@ -87,11 +87,11 @@ func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (PeginQuotesReturn, error) {
+) (peginQuotesReturn, error) {
 	peginStates := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
 	peginRetainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, peginStates...)
 
-	peginQuotesToReturn := PeginQuotesReturn{
+	peginQuotesToReturn := peginQuotesReturn{
 		Quotes:      make([]quote.PeginQuote, 0),
 		QuoteHashes: make([]string, 0),
 	}
@@ -118,11 +118,11 @@ func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (PegoutQuotesReturn, error) {
+) (pegoutQuotesReturn, error) {
 	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
 	pegoutRetainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, pegoutStates...)
 
-	pegoutQuotesToReturn := PegoutQuotesReturn{
+	pegoutQuotesToReturn := pegoutQuotesReturn{
 		Quotes:      make([]quote.PegoutQuote, 0),
 		QuoteHashes: make([]string, 0),
 	}
