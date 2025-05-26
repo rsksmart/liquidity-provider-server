@@ -736,6 +736,20 @@ components:
       - signature
       - bitcoinDepositAddressHash
       type: object
+    pkg.AcceptPegoutResponse:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -1028,7 +1042,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/'
+                $ref: '#/components/schemas/AcceptPegoutResponse'
           description: ""
       summary: Accept authenticated quote
   /pegout/acceptQuote:

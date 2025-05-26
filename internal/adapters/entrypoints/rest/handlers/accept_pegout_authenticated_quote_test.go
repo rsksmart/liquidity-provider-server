@@ -48,12 +48,12 @@ func TestAcceptPegoutAuthenticatedQuoteHandler_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	var responseBody pkg.AcceptPeginRespose
+	var responseBody pkg.AcceptPegoutResponse
 	err = json.NewDecoder(recorder.Body).Decode(&responseBody)
 	require.NoError(t, err)
 
 	assert.Equal(t, acceptedQuote.Signature, responseBody.Signature)
-	assert.Equal(t, acceptedQuote.DepositAddress, responseBody.BitcoinDepositAddressHash)
+	assert.Equal(t, acceptedQuote.DepositAddress, responseBody.LbcAddress)
 
 	mockUseCase.AssertExpectations(t)
 }
@@ -328,12 +328,12 @@ func TestAcceptPegoutAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T)
 
 		assert.Equal(t, http.StatusOK, recorder.Code)
 
-		var responseBody pkg.AcceptPeginRespose
+		var responseBody pkg.AcceptPegoutResponse
 		err = json.NewDecoder(recorder.Body).Decode(&responseBody)
 		require.NoError(t, err)
 
 		assert.Equal(t, acceptedQuote.Signature, responseBody.Signature)
-		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.BitcoinDepositAddressHash)
+		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.LbcAddress)
 
 		mockUseCase.AssertExpectations(t)
 	})
@@ -368,12 +368,12 @@ func TestAcceptPegoutAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T)
 
 		assert.Equal(t, http.StatusOK, recorder.Code)
 
-		var responseBody pkg.AcceptPeginRespose
+		var responseBody pkg.AcceptPegoutResponse
 		err = json.NewDecoder(recorder.Body).Decode(&responseBody)
 		require.NoError(t, err)
 
 		assert.Equal(t, acceptedQuote.Signature, responseBody.Signature)
-		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.BitcoinDepositAddressHash)
+		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.LbcAddress)
 
 		mockUseCase.AssertExpectations(t)
 	})

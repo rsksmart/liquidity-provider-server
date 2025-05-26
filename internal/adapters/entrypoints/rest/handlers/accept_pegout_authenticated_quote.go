@@ -13,7 +13,7 @@ import (
 // @Title Accept authenticated quote
 // @Description Accepts Quote with trusted account signature
 // @Param Request body pkg.AcceptAuthenticatedQuoteRequest true "Quote Hash and Signature"
-// @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
+// @Success 200 object pkg.AcceptPegoutResponse Interface that represents that the quote has been successfully accepted
 // @Route /pegout/acceptAuthenticatedQuote [post]
 func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -39,9 +39,9 @@ func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.H
 			return
 		}
 
-		response := pkg.AcceptPeginRespose{
-			Signature:                 acceptedQuote.Signature,
-			BitcoinDepositAddressHash: acceptedQuote.DepositAddress,
+		response := pkg.AcceptPegoutResponse{
+			Signature:  acceptedQuote.Signature,
+			LbcAddress: acceptedQuote.DepositAddress,
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
 	}
