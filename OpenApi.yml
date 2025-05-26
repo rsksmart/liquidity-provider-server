@@ -145,13 +145,6 @@ components:
       - quote
       - quoteHash
       type: object
-    GetReportsPeginPegoutRequest:
-      properties:
-        endDate:
-          type: string
-        startDate:
-          type: string
-      type: object
     HealthResponse:
       properties:
         services:
@@ -527,8 +520,8 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           type: integer
+          deprecated: true
         feePercentage:
           type: number
         fixedFee:
@@ -722,13 +715,6 @@ components:
           type: integer
       required:
       - collateral
-      type: object
-    pkg.GetReportsPeginPegoutRequest:
-      properties:
-        endDate:
-          type: string
-        startDate:
-          type: string
       type: object
 info:
   title: Liquidity Provider Server
@@ -1051,12 +1037,23 @@ paths:
   /reports/pegin:
     get:
       description: ' Get the last pegins on the API. Included in the management API.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
+      parameters:
+      - description: Start date for the report
+        in: query
+        name: startDate
         required: true
+        schema:
+          description: Start date for the report
+          format: string
+          type: string
+      - description: End date for the report
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report
+          format: string
+          type: string
       responses:
         "200":
           description: ""
@@ -1064,16 +1061,51 @@ paths:
   /reports/pegout:
     get:
       description: ' Get the last pegouts on the API. Included in the management API.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GetReportsPeginPegoutRequest'
+      parameters:
+      - description: Start date for the report
+        in: query
+        name: startDate
         required: true
+        schema:
+          description: Start date for the report
+          format: string
+          type: string
+      - description: End date for the report
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report
+          format: string
+          type: string
       responses:
         "200":
           description: ""
       summary: Get Pegout Reports
+  /reports/revenue:
+    get:
+      description: ' Get the revenue for the specified period.'
+      parameters:
+      - description: Start date for the report
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date for the report
+          format: string
+          type: string
+      - description: End date for the report
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report
+          format: string
+          type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get revenue Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

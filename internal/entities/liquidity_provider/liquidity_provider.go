@@ -102,12 +102,6 @@ type AvailableLiquidity struct {
 	PegoutLiquidity *entities.Wei
 }
 
-type PunishmentEvent struct {
-	LiquidityProvider string
-	Penalty           *entities.Wei
-	QuoteHash         string
-}
-
 type Credentials struct {
 	Username string
 	Password string
