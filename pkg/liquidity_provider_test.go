@@ -153,81 +153,81 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 }
 
 // nolint:funlen
-func TestGetReportsPeginPegoutRequest_ValidateGetReportsPeginPegoutRequest(t *testing.T) {
+func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.T) {
 	t.Run("valid dates", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "2023-01-02",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		assert.NoError(t, err)
 	})
 
 	t.Run("empty startDate", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "",
 			EndDate:   "2023-01-02",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "startDate is required", err.Error())
 	})
 
 	t.Run("empty endDate", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "endDate is required", err.Error())
 	})
 
 	t.Run("invalid startDate format", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "01/01/2023",
 			EndDate:   "2023-01-02",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "startDate must be in format YYYY-MM-DD", err.Error())
 	})
 
 	t.Run("invalid endDate format", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "01/02/2023",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "endDate must be in format YYYY-MM-DD", err.Error())
 	})
 
 	t.Run("endDate equal to startDate", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "2023-01-01",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "endDate must be after startDate", err.Error())
 	})
 
 	t.Run("endDate before startDate", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-02",
 			EndDate:   "2023-01-01",
 		}
-		err := request.ValidateGetReportsPeginPegoutRequest()
+		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
 		assert.Equal(t, "endDate must be after startDate", err.Error())
 	})
 }
 
 // nolint:funlen
-func TestGetReportsPeginPegoutRequest_GetTimestamps(t *testing.T) {
+func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 	t.Run("valid dates", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "2023-01-02",
 		}
@@ -242,7 +242,7 @@ func TestGetReportsPeginPegoutRequest_GetTimestamps(t *testing.T) {
 	})
 
 	t.Run("invalid startDate format", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "01/01/2023",
 			EndDate:   "2023-01-02",
 		}
@@ -253,7 +253,7 @@ func TestGetReportsPeginPegoutRequest_GetTimestamps(t *testing.T) {
 	})
 
 	t.Run("invalid endDate format", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-01-01",
 			EndDate:   "01/02/2023",
 		}
@@ -264,7 +264,7 @@ func TestGetReportsPeginPegoutRequest_GetTimestamps(t *testing.T) {
 	})
 
 	t.Run("sets time component correctly", func(t *testing.T) {
-		request := pkg.GetReportsPeginPegoutRequest{
+		request := pkg.GetReportsByPeriodRequest{
 			StartDate: "2023-05-15",
 			EndDate:   "2023-06-20",
 		}

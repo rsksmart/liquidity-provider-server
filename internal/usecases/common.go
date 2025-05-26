@@ -62,6 +62,7 @@ const (
 	SummariesUseCaseId         UseCaseId = "Summaries"
 	GetPeginReportId           UseCaseId = "GetPeginReport"
 	GetPegoutReportId          UseCaseId = "GetPegoutReport"
+	GetRevenueReportId         UseCaseId = "GetRevenueReport"
 )
 
 var (

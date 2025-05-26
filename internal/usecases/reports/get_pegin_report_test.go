@@ -1,10 +1,10 @@
-package pegout_test
+package reports_test
 
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,10 +13,10 @@ import (
 )
 
 // nolint:funlen
-func TestGetPegoutReportUseCase_Run(t *testing.T) {
+func TestGetPeginReportUseCase_Run(t *testing.T) {
 	ctx := context.Background()
 
-	retainedQuotes := []quote.RetainedPegoutQuote{
+	retainedQuotes := []quote.RetainedPeginQuote{
 		{QuoteHash: "hash1"},
 		{QuoteHash: "hash2"},
 		{QuoteHash: "hash3"},
@@ -31,7 +31,7 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 
 	quoteHashes := []string{"hash1", "hash2", "hash3", "hash4", "hash5", "hash6", "hash7", "hash8", "hash9", "hash10"}
 
-	pegoutQuotes := []quote.PegoutQuote{
+	peginQuotes := []quote.PeginQuote{
 		{Value: entities.NewWei(1000), CallFee: entities.NewWei(10)},
 		{Value: entities.NewWei(2000), CallFee: entities.NewWei(20)},
 		{Value: entities.NewWei(3000), CallFee: entities.NewWei(30)},
@@ -54,18 +54,18 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 	startDate := time.Now()
 	endDate := time.Now().Add(time.Hour * 24 * 365 * 10)
 
-	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
+	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
 
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(retainedQuotes, nil).Once()
 
-	pegoutQuoteRepository.On("GetQuotesByHashesAndDate", ctx, quoteHashes, startDate, endDate).Return(pegoutQuotes, nil).Once()
+	peginQuoteRepository.On("GetQuotesByHashesAndDate", ctx, quoteHashes, startDate, endDate).Return(peginQuotes, nil).Once()
 
-	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
+	useCase := reports.NewGetPeginReportUseCase(peginQuoteRepository)
 
 	result, err := useCase.Run(ctx, startDate, endDate)
 
-	pegoutQuoteRepository.AssertExpectations(t)
+	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, 10, result.NumberOfQuotes)
 	assert.Equal(t, expectedMinimumValue, result.MinimumQuoteValue)
@@ -75,20 +75,20 @@ func TestGetPegoutReportUseCase_Run(t *testing.T) {
 	assert.Equal(t, expectedAverageFee, result.AverageFeePerQuote)
 }
 
-func TestGetPegoutReportUseCase_Run_EmptyQuotes(t *testing.T) {
+func TestGetPeginReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	retainedQuotes := []quote.RetainedPegoutQuote{}
+	retainedQuotes := []quote.RetainedPeginQuote{}
 
-	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(retainedQuotes, nil).Once()
 
-	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
+	useCase := reports.NewGetPeginReportUseCase(peginQuoteRepository)
 
 	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
-	pegoutQuoteRepository.AssertExpectations(t)
+	peginQuoteRepository.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, 0, result.NumberOfQuotes)
 	assert.Equal(t, entities.NewWei(0), result.MinimumQuoteValue)
@@ -98,18 +98,18 @@ func TestGetPegoutReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	assert.Equal(t, entities.NewWei(0), result.AverageFeePerQuote)
 }
 
-func TestGetPegoutReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
+func TestGetPeginReportUseCase_Run_ErrorFetchingQuotes(t *testing.T) {
 	ctx := context.Background()
 
-	pegoutQuoteRepository := &mocks.PegoutQuoteRepositoryMock{}
-	pegoutQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+	peginQuoteRepository := &mocks.PeginQuoteRepositoryMock{}
+	peginQuoteRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateRegisterPegInSucceeded).
 		Return(nil, assert.AnError).Once()
 
-	useCase := pegout.NewGetPegoutReportUseCase(pegoutQuoteRepository)
+	useCase := reports.NewGetPeginReportUseCase(peginQuoteRepository)
 
 	result, err := useCase.Run(ctx, time.Now(), time.Now().Add(time.Hour*24*365*10))
 
-	pegoutQuoteRepository.AssertExpectations(t)
+	peginQuoteRepository.AssertExpectations(t)
 	require.Error(t, err)
 	assert.Zero(t, result.NumberOfQuotes)
 }
