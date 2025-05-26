@@ -267,13 +267,7 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if quoteCursor != nil {
-			if closeErr := quoteCursor.Close(dbCtx); closeErr != nil {
-				log.Error("Error closing quote cursor: ", closeErr)
-			}
-		}
-	}()
+	defer func() { _ = quoteCursor.Close(dbCtx) }()
 	var storedQuotes []StoredPeginQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
 		return nil, err
@@ -300,24 +294,15 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	if err != nil {
 		return result, err
 	}
-	defer func() {
-		if retainedCursor != nil {
-			if closeErr := retainedCursor.Close(dbCtx); closeErr != nil {
-				log.Error("Error closing retained cursor: ", closeErr)
-			}
-		}
-	}()
-	var retainedQuote quote.RetainedPeginQuote
-	for retainedCursor.Next(dbCtx) {
-		if err := retainedCursor.Decode(&retainedQuote); err != nil {
-			return result, err
-		}
+	defer func() { _ = retainedCursor.Close(dbCtx) }()
+	var retainedQuotes []quote.RetainedPeginQuote
+	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
+		return result, err
+	}
+	for _, retainedQuote := range retainedQuotes {
 		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
 			result[idx].RetainedQuote = retainedQuote
 		}
-	}
-	if err := retainedCursor.Err(); err != nil {
-		return result, err
 	}
 	logDbInteraction(Read, len(result))
 	return result, nil
