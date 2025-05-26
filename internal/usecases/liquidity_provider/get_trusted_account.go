@@ -42,13 +42,13 @@ func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string
 		readFunction,
 		useCase.hashFunction,
 	)
+	if errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+		return nil, err
+	}
+	if errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
+		return nil, liquidity_provider.TrustedAccountNotFoundError
+	}
 	if err != nil {
-		if errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
-			return nil, err
-		}
-		if errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
-			return nil, liquidity_provider.TrustedAccountNotFoundError
-		}
 		return nil, liquidity_provider.TamperedTrustedAccountError
 	}
 	return signedAccount, nil
