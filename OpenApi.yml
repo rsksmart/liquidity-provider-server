@@ -709,6 +709,20 @@ components:
         rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
+    pkg.AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
     pkg.AcceptPeginRespose:
       properties:
         bitcoinDepositAddressHash:
@@ -722,6 +736,20 @@ components:
       required:
       - signature
       - bitcoinDepositAddressHash
+      type: object
+    pkg.AcceptPegoutResponse:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
       type: object
     pkg.AcceptQuoteRequest:
       properties:
@@ -1001,6 +1029,23 @@ paths:
                 $ref: '#/components/schemas/PeginQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPeginStatus
+  /pegout/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPegoutResponse'
+          description: ""
+      summary: Accept authenticated quote
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'

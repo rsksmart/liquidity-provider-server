@@ -124,8 +124,8 @@ type DefaultCredentialsSetEvent struct {
 
 func ValidateConfiguration[T ConfigurationType](
 	signer entities.Signer,
-	readFunction func() (*entities.Signed[T], error),
 	hashFunction entities.HashFunction,
+	readFunction func() (*entities.Signed[T], error),
 ) (*entities.Signed[T], error) {
 	configuration, err := readFunction()
 	if err != nil {

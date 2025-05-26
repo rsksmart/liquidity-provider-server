@@ -39,8 +39,8 @@ func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string
 	}
 	signedAccount, err := liquidity_provider.ValidateConfiguration(
 		useCase.signer,
-		readFunction,
 		useCase.hashFunction,
+		readFunction,
 	)
 	if errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
 		return nil, err

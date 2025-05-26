@@ -161,9 +161,9 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 }
 
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)
-	}, crypto.Keccak256)
+	})
 	if err != nil {
 		lp.logConfigError("general", err)
 		return liquidity_provider.DefaultGeneralConfiguration()
@@ -172,9 +172,9 @@ func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liqu
 }
 
 func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
 		return lp.lpRepository.GetPegoutConfiguration(ctx)
-	}, crypto.Keccak256)
+	})
 	if err != nil {
 		lp.logConfigError("pegout", err)
 		return liquidity_provider.DefaultPegoutConfiguration()
@@ -183,9 +183,9 @@ func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liqui
 }
 
 func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
 		return lp.lpRepository.GetPeginConfiguration(ctx)
-	}, crypto.Keccak256)
+	})
 	if err != nil {
 		lp.logConfigError("pegin", err)
 		return liquidity_provider.DefaultPeginConfiguration()
