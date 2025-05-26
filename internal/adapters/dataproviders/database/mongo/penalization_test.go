@@ -3,6 +3,7 @@ package mongo_test
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -15,6 +16,12 @@ import (
 	"testing"
 	"time"
 )
+
+var testPenalization = penalization.PenalizedEvent{
+	LiquidityProvider: "0x0000000000000000000000000000000000000000",
+	QuoteHash:         "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819",
+	Penalty:           entities.NewWei(100),
+}
 
 func TestPenalizedEventMongoRepository_InsertPenalization(t *testing.T) {
 	t.Run("Insert penalization successfully", func(t *testing.T) {

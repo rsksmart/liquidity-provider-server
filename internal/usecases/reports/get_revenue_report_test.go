@@ -100,12 +100,15 @@ func TestGetRevenueReportUseCase_Run(t *testing.T) {
 
 		useCase := reports.NewGetRevenueReportUseCase(peginQuoteRepository, pegoutQuoteRepository, penalizedRepository)
 
-		_, err := useCase.Run(ctx, startDate, endDate)
+		result, err := useCase.Run(ctx, startDate, endDate)
 
 		peginQuoteRepository.AssertExpectations(t)
 		pegoutQuoteRepository.AssertExpectations(t)
 		penalizedRepository.AssertExpectations(t)
 		require.Error(t, err)
+		require.Nil(t, result.TotalQuoteCallFees)
+		require.Nil(t, result.TotalPenalizations)
+		require.Nil(t, result.TotalProfit)
 	})
 	t.Run("Should return an error when fetching pegin quotes fails", func(t *testing.T) {
 		ctx := context.Background()
@@ -123,11 +126,14 @@ func TestGetRevenueReportUseCase_Run(t *testing.T) {
 
 		useCase := reports.NewGetRevenueReportUseCase(peginQuoteRepository, pegoutQuoteRepository, penalizedRepository)
 
-		_, err := useCase.Run(ctx, startDate, endDate)
+		result, err := useCase.Run(ctx, startDate, endDate)
 
 		peginQuoteRepository.AssertExpectations(t)
 		pegoutQuoteRepository.AssertExpectations(t)
 		penalizedRepository.AssertExpectations(t)
 		require.Error(t, err)
+		require.Nil(t, result.TotalQuoteCallFees)
+		require.Nil(t, result.TotalPenalizations)
+		require.Nil(t, result.TotalProfit)
 	})
 }
