@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -12,7 +13,7 @@ import (
 // @Title Accept authenticated quote
 // @Description Accepts Quote with trusted account signature
 // @Param Request body pkg.AcceptAuthenticatedQuoteRequest true "Quote Hash and Signature"
-// @Success 200 object pkg.AcceptPegoutRespose Interface that represents that the quote has been successfully accepted
+// @Success 200 object pkg.AcceptPeginRespose Interface that represents that the quote has been successfully accepted
 // @Route /pegout/acceptAuthenticatedQuote [post]
 func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -29,6 +30,8 @@ func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.H
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
+
+		acceptRequest.Signature = strings.TrimPrefix(acceptRequest.Signature, "0x")
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
 		if err != nil {

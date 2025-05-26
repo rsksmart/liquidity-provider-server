@@ -2,6 +2,8 @@ package pegout_test
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -22,6 +25,10 @@ import (
 
 var trustedAccountRepository = new(mocks.TrustedAccountRepositoryMock)
 var signingHashFunction = crypto.Keccak256
+
+var acceptPegoutQuoteHash = "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf"
+var acceptPegoutQuoteHashSignature = "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c"
+var ownerAccountAddress = "0x233845a26a4dA08E16218e7B401501D048670674"
 
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	quoteHash := "0x654321"
@@ -84,6 +91,185 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	assert.NotEmpty(t, result)
 	assert.Equal(t, quoteMock.LbcAddress, result.DepositAddress)
 	assert.Equal(t, signature, result.Signature)
+}
+
+// nolint:funlen
+func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
+	signerMock := &mocks.SignerMock{}
+	signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
+
+	lockingCap := entities.NewWei(100000)
+	trustedAccountDetails := liquidity_provider.TrustedAccountDetails{
+		Address:       ownerAccountAddress,
+		BtcLockingCap: lockingCap,
+	}
+	trustedAccountBytes, err := json.Marshal(trustedAccountDetails)
+	require.NoError(t, err)
+	trustedAccountHash := hex.EncodeToString(crypto.Keccak256(trustedAccountBytes))
+
+	accountSignature := "d1a9fe0de659875bc75252e6f5a73529ed6a5d88c9d97853ebf2ccc6e3080ecc423eee543470a80d373f1abb3a4f746264b47dda53252ddfc5d65989c1af34401c"
+	trustedAccountRepository.On("GetTrustedAccount", mock.Anything, ownerAccountAddress).Return(&entities.Signed[liquidity_provider.TrustedAccountDetails]{
+		Value:     trustedAccountDetails,
+		Signature: accountSignature,
+		Hash:      trustedAccountHash,
+	}, nil)
+
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
+	lbc := new(mocks.LbcMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
+	lp := new(mocks.ProviderMock)
+	lp.On("GetSigner").Return(signerMock)
+	contracts := blockchain.RskContracts{Lbc: lbc}
+
+	now := time.Now()
+	quoteMock := quote.PegoutQuote{
+		LbcAddress:            "0xabcd01",
+		LpRskAddress:          "0xabcd02",
+		BtcRefundAddress:      "hijk",
+		RskRefundAddress:      "0xabcd04",
+		LpBtcAddress:          "edfg",
+		CallFee:               entities.NewWei(5),
+		PenaltyFee:            1,
+		Nonce:                 1,
+		DepositAddress:        "address",
+		Value:                 entities.NewWei(12),
+		AgreementTimestamp:    uint32(now.Unix()),
+		DepositDateLimit:      uint32(now.Unix() + 600),
+		DepositConfirmations:  1,
+		TransferConfirmations: 1,
+		TransferTime:          600,
+		ExpireDate:            uint32(now.Unix() + 600),
+		ExpireBlock:           1,
+		GasFee:                entities.NewWei(6),
+		ProductFeeAmount:      2,
+	}
+
+	t.Run("happy path", func(t *testing.T) {
+		quoteHash := acceptPegoutQuoteHash
+		signature := "0x010203"
+
+		requiredLiquidity := entities.NewWei(18)
+		retainedQuote := quote.RetainedPegoutQuote{
+			QuoteHash:           quoteHash,
+			DepositAddress:      quoteMock.LbcAddress,
+			Signature:           signature,
+			RequiredLiquidity:   requiredLiquidity,
+			State:               quote.PegoutStateWaitingForDeposit,
+			OwnerAccountAddress: ownerAccountAddress,
+		}
+
+		creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(1), FixedFee: entities.NewWei(100)}
+
+		quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil)
+		quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil)
+		quoteRepositoryMock.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
+		quoteRepositoryMock.On("GetRetainedQuotesForAddress", test.AnyCtx, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{}, nil)
+		quoteRepositoryMock.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(creationData).Once()
+
+		lbc.On("GetAddress").Return("0xabcd01").Once()
+		lp.On("HasPegoutLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
+		lp.On("SignQuote", quoteHash).Return(signature, nil)
+
+		eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPegoutQuoteEvent) bool {
+			return assert.Equal(t, quoteMock, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id()) && assert.Equal(t, creationData, event.CreationData)
+		})).Once()
+		mutex.On("Lock").Return().On("Unlock").Return()
+
+		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+		result, err := useCase.Run(context.Background(), quoteHash, acceptPegoutQuoteHashSignature)
+
+		quoteRepositoryMock.AssertExpectations(t)
+		trustedAccountRepository.AssertExpectations(t)
+		lbc.AssertExpectations(t)
+		lp.AssertExpectations(t)
+		eventBus.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+		require.NoError(t, err)
+		assert.NotEmpty(t, result)
+		assert.Equal(t, quoteMock.LbcAddress, result.DepositAddress)
+		assert.Equal(t, signature, result.Signature)
+	})
+
+	t.Run("invalid signature", func(t *testing.T) {
+		quoteHash := acceptPegoutQuoteHash
+
+		// Set up a well-formed but invalid signature
+		invalidSignature := "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1d"
+
+		quoteRepositoryMock.On("GetQuote", mock.Anything, mock.Anything).Return(&quoteMock, nil)
+
+		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+
+		result, err := useCase.Run(context.Background(), quoteHash, invalidSignature)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "recovery failed")
+		assert.Empty(t, result)
+
+		quoteRepositoryMock.AssertNotCalled(t, "InsertRetainedQuote")
+		quoteRepositoryMock.AssertNotCalled(t, "GetRetainedQuotesForAddress")
+		lp.AssertNotCalled(t, "HasPegoutLiquidity")
+		lp.AssertNotCalled(t, "SignQuote")
+		eventBus.AssertNotCalled(t, "Publish")
+	})
+
+	t.Run("locking cap exceeded", func(t *testing.T) {
+		// Create two existing quotes that together with the new quote will exceed the locking cap
+		existingQuote1 := quote.RetainedPegoutQuote{
+			QuoteHash:           "existing-hash-1",
+			DepositAddress:      "existing-address-1",
+			Signature:           "existing-signature-1",
+			RequiredLiquidity:   entities.NewWei(40000),
+			State:               quote.PegoutStateWaitingForDeposit,
+			OwnerAccountAddress: ownerAccountAddress,
+		}
+
+		existingQuote2 := quote.RetainedPegoutQuote{
+			QuoteHash:           "existing-hash-2",
+			DepositAddress:      "existing-address-2",
+			Signature:           "existing-signature-2",
+			RequiredLiquidity:   entities.NewWei(50000),
+			State:               quote.PegoutStateWaitingForDeposit,
+			OwnerAccountAddress: ownerAccountAddress,
+		}
+
+		// Set up the new pegout quote which would push the total over the locking cap
+		lockingCapQuote := quote.PegoutQuote{
+			LbcAddress:            "0xabcd01",
+			LpRskAddress:          "0xabcd02",
+			BtcRefundAddress:      "hijk",
+			RskRefundAddress:      "0xabcd04",
+			LpBtcAddress:          "edfg",
+			CallFee:               entities.NewWei(5000),
+			PenaltyFee:            1,
+			Nonce:                 1,
+			DepositAddress:        "address",
+			Value:                 entities.NewWei(30000),
+			AgreementTimestamp:    uint32(now.Unix()),
+			DepositDateLimit:      uint32(now.Unix() + 600),
+			DepositConfirmations:  1,
+			TransferConfirmations: 1,
+			TransferTime:          600,
+			ExpireDate:            uint32(now.Unix() + 600),
+			ExpireBlock:           1,
+			GasFee:                entities.NewWei(20000),
+			ProductFeeAmount:      2,
+		}
+		// Total required: 40000 + 50000 + 30000 + 20000 + 5000 = 145000 > locking cap of 100000
+
+		quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
+		quoteRepositoryMock.On("GetQuote", mock.Anything, acceptPegoutQuoteHash).Return(&lockingCapQuote, nil)
+		quoteRepositoryMock.On("GetRetainedQuote", mock.Anything, acceptPegoutQuoteHash).Return(nil, nil)
+		quoteRepositoryMock.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{existingQuote1, existingQuote2}, nil)
+
+		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+		result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, acceptPegoutQuoteHashSignature)
+
+		require.Error(t, err)
+		require.ErrorIs(t, err, usecases.LockingCapExceededError)
+		assert.Empty(t, result)
+	})
 }
 
 func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {

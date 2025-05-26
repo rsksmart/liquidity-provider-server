@@ -354,3 +354,87 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		assert.Equal(t, "unknown error", errorResponse["message"])
 	})
 }
+
+// nolint:funlen
+func TestAcceptPeginAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T) {
+	t.Run("should strip 0x prefix from signature", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		signatureWithPrefix := "0xvalidSignature123"
+		signatureWithoutPrefix := "validSignature123"
+		acceptedQuote := quote.AcceptedQuote{
+			Signature:      "signedHash123",
+			DepositAddress: "depositAddress456",
+		}
+
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
+			QuoteHash: quoteHash,
+			Signature: signatureWithPrefix,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		// Verify that the use case receives the signature WITHOUT the "0x" prefix
+		mockUseCase.On("Run", mock.Anything, quoteHash, signatureWithoutPrefix).Return(acceptedQuote, nil)
+
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusOK, recorder.Code)
+
+		var responseBody pkg.AcceptPeginRespose
+		err = json.NewDecoder(recorder.Body).Decode(&responseBody)
+		require.NoError(t, err)
+
+		assert.Equal(t, acceptedQuote.Signature, responseBody.Signature)
+		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.BitcoinDepositAddressHash)
+
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("should leave signature unchanged when no 0x prefix", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		signature := "validSignature123"
+		acceptedQuote := quote.AcceptedQuote{
+			Signature:      "signedHash123",
+			DepositAddress: "depositAddress456",
+		}
+
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
+			QuoteHash: quoteHash,
+			Signature: signature,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		// Verify that the use case receives the signature unchanged
+		mockUseCase.On("Run", mock.Anything, quoteHash, signature).Return(acceptedQuote, nil)
+
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusOK, recorder.Code)
+
+		var responseBody pkg.AcceptPeginRespose
+		err = json.NewDecoder(recorder.Body).Decode(&responseBody)
+		require.NoError(t, err)
+
+		assert.Equal(t, acceptedQuote.Signature, responseBody.Signature)
+		assert.Equal(t, acceptedQuote.DepositAddress, responseBody.BitcoinDepositAddressHash)
+
+		mockUseCase.AssertExpectations(t)
+	})
+}
