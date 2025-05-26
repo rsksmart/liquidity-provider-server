@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -160,30 +161,33 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 }
 
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration("general", lp.signer, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)
 	}, crypto.Keccak256)
 	if err != nil {
+		lp.logConfigError("general", err)
 		return liquidity_provider.DefaultGeneralConfiguration()
 	}
 	return configuration.Value
 }
 
 func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration("pegout", lp.signer, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
 		return lp.lpRepository.GetPegoutConfiguration(ctx)
 	}, crypto.Keccak256)
 	if err != nil {
+		lp.logConfigError("pegout", err)
 		return liquidity_provider.DefaultPegoutConfiguration()
 	}
 	return configuration.Value
 }
 
 func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
-	configuration, err := liquidity_provider.ValidateConfiguration("pegin", lp.signer, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
 		return lp.lpRepository.GetPeginConfiguration(ctx)
 	}, crypto.Keccak256)
 	if err != nil {
+		lp.logConfigError("pegin", err)
 		return liquidity_provider.DefaultPeginConfiguration()
 	}
 	return configuration.Value
@@ -191,4 +195,16 @@ func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquid
 
 func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {
 	return lp.signer
+}
+
+func (lp *LocalLiquidityProvider) logConfigError(displayName string, err error) {
+	if errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
+		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
+	} else if errors.Is(err, liquidity_provider.InvalidSignatureError) {
+		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
+	} else if errors.Is(err, entities.IntegrityError) {
+		log.Errorf("Tampered %s configuration. Using default configuration.", displayName)
+	} else {
+		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
+	}
 }

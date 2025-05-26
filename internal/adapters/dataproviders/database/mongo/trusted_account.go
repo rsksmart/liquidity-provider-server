@@ -29,7 +29,7 @@ func (repo *trustedAccountMongoRepository) GetTrustedAccount(ctx context.Context
 	filter := bson.M{"address": address}
 	err := collection.FindOne(dbCtx, filter).Decode(signedAccount)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, liquidity_provider.ErrTrustedAccountNotFound
+		return nil, liquidity_provider.TrustedAccountNotFoundError
 	} else if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,8 @@ func (repo *trustedAccountMongoRepository) AddTrustedAccount(ctx context.Context
 	collection := repo.conn.Collection(TrustedAccountCollection)
 	existingAccount, err := repo.GetTrustedAccount(ctx, account.Value.Address)
 	if err == nil && existingAccount != nil {
-		return liquidity_provider.ErrDuplicateTrustedAccount
-	} else if err != nil && !errors.Is(err, liquidity_provider.ErrTrustedAccountNotFound) {
+		return liquidity_provider.DuplicateTrustedAccountError
+	} else if err != nil && !errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
 		return err
 	}
 	_, err = collection.InsertOne(dbCtx, account)
@@ -101,7 +101,7 @@ func (repo *trustedAccountMongoRepository) DeleteTrustedAccount(ctx context.Cont
 		return err
 	}
 	if result.DeletedCount == 0 {
-		return liquidity_provider.ErrTrustedAccountNotFound
+		return liquidity_provider.TrustedAccountNotFoundError
 	}
 	logDbInteraction(Delete, filter)
 	return nil

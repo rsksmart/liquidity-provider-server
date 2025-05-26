@@ -24,7 +24,7 @@ func NewDeleteTrustedAccountHandler(useCase *lpuc.DeleteTrustedAccountUseCase) h
 			return
 		}
 		err = useCase.Run(req.Context(), address)
-		if errors.Is(err, lp.ErrTrustedAccountNotFound) {
+		if errors.Is(err, lp.TrustedAccountNotFoundError) {
 			jsonErr := rest.NewErrorResponse(err.Error(), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
 			return

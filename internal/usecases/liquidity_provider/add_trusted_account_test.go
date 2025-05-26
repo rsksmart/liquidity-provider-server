@@ -105,11 +105,11 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
 		repo.On("AddTrustedAccount", mock.Anything, mock.MatchedBy(func(a entities.Signed[liquidity_provider.TrustedAccountDetails]) bool {
 			return a.Value.Address == account.Address && a.Value.Name == account.Name
-		})).Return(liquidity_provider.ErrDuplicateTrustedAccount)
+		})).Return(liquidity_provider.DuplicateTrustedAccountError)
 		useCase := lp.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), liquidity_provider.ErrDuplicateTrustedAccount.Error())
+		require.Contains(t, err.Error(), liquidity_provider.DuplicateTrustedAccountError.Error())
 		require.Contains(t, err.Error(), usecases.AddTrustedAccountId)
 		repo.AssertExpectations(t)
 		signer.AssertExpectations(t)
