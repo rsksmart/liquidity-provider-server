@@ -521,6 +521,7 @@ components:
       properties:
         fee:
           type: integer
+          deprecated: true
         feePercentage:
           type: number
         fixedFee:

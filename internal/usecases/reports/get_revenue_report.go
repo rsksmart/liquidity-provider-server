@@ -15,6 +15,16 @@ type GetRevenueReportUseCase struct {
 	penalizedEventRepository penalization.PenalizedEventRepository
 }
 
+type PeginQuotesReturn struct {
+	Quotes      []quote.PeginQuote
+	QuoteHashes []string
+}
+
+type PegoutQuotesReturn struct {
+	Quotes      []quote.PegoutQuote
+	QuoteHashes []string
+}
+
 func NewGetRevenueReportUseCase(
 	peginQuoteRepository quote.PeginQuoteRepository,
 	pegoutQuoteRepository quote.PegoutQuoteRepository,
@@ -34,20 +44,17 @@ type GetRevenueReportResult struct {
 }
 
 func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetRevenueReportResult, error) {
-	var peginQuotes []quote.PeginQuote
-	var pegoutQuotes []quote.PegoutQuote
-
-	peginQuotes, peginQuoteHashes, err := useCase.getPeginQuotes(ctx, startDate, endDate)
+	peginResult, err := useCase.getPeginQuotes(ctx, startDate, endDate)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
-	pegoutQuotes, pegoutQuoteHashes, err := useCase.getPegoutQuotes(ctx, startDate, endDate)
+	pegoutResult, err := useCase.getPegoutQuotes(ctx, startDate, endDate)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
-	allQuoteHashes := append(peginQuoteHashes, pegoutQuoteHashes...)
+	allQuoteHashes := append(peginResult.QuoteHashes, pegoutResult.QuoteHashes...)
 	penalizations, err := useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
@@ -57,10 +64,10 @@ func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.
 	totalPenalizations := entities.NewWei(0)
 	totalProfit := entities.NewWei(0)
 
-	for _, q := range peginQuotes {
+	for _, q := range peginResult.Quotes {
 		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
 	}
-	for _, q := range pegoutQuotes {
+	for _, q := range pegoutResult.Quotes {
 		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
 	}
 	for _, p := range penalizations {
@@ -80,12 +87,17 @@ func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) ([]quote.PeginQuote, []string, error) {
+) (PeginQuotesReturn, error) {
 	peginStates := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
 	peginRetainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, peginStates...)
 
+	peginQuotesToReturn := PeginQuotesReturn{
+		Quotes:      make([]quote.PeginQuote, 0),
+		QuoteHashes: make([]string, 0),
+	}
+
 	if err != nil {
-		return make([]quote.PeginQuote, 0), make([]string, 0), err
+		return peginQuotesToReturn, err
 	}
 
 	peginQuoteHashes := make([]string, 0, len(peginRetainedQuotes))
@@ -94,22 +106,29 @@ func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	}
 
 	peginQuotes, err := useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, peginQuoteHashes, startDate, endDate)
+	peginQuotesToReturn.Quotes = peginQuotes
+	peginQuotesToReturn.QuoteHashes = peginQuoteHashes
 	if err != nil {
-		return make([]quote.PeginQuote, 0), make([]string, 0), err
+		return peginQuotesToReturn, err
 	}
-	return peginQuotes, peginQuoteHashes, nil
+	return peginQuotesToReturn, nil
 }
 
 func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) ([]quote.PegoutQuote, []string, error) {
+) (PegoutQuotesReturn, error) {
 	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
 	pegoutRetainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, pegoutStates...)
 
+	pegoutQuotesToReturn := PegoutQuotesReturn{
+		Quotes:      make([]quote.PegoutQuote, 0),
+		QuoteHashes: make([]string, 0),
+	}
+
 	if err != nil {
-		return make([]quote.PegoutQuote, 0), make([]string, 0), err
+		return pegoutQuotesToReturn, err
 	}
 
 	pegoutQuoteHashes := make([]string, 0, len(pegoutRetainedQuotes))
@@ -118,10 +137,12 @@ func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	}
 
 	pegoutQuotes, err := useCase.pegoutQuoteRepository.GetQuotesByHashesAndDate(ctx, pegoutQuoteHashes, startDate, endDate)
+	pegoutQuotesToReturn.Quotes = pegoutQuotes
+	pegoutQuotesToReturn.QuoteHashes = pegoutQuoteHashes
 
 	if err != nil {
-		return make([]quote.PegoutQuote, 0), make([]string, 0), err
+		return pegoutQuotesToReturn, err
 	}
 
-	return pegoutQuotes, pegoutQuoteHashes, nil
+	return pegoutQuotesToReturn, nil
 }

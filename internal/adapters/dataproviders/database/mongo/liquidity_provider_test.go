@@ -5,7 +5,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	log "github.com/sirupsen/logrus"
@@ -19,12 +18,6 @@ import (
 	"testing"
 	"time"
 )
-
-var testPenalization = penalization.PenalizedEvent{
-	LiquidityProvider: "0x0000000000000000000000000000000000000000",
-	QuoteHash:         "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819",
-	Penalty:           entities.NewWei(100),
-}
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
 	Value: liquidity_provider.PeginConfiguration{
