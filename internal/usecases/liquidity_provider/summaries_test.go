@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
+func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen
 	startDate := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2023, 1, 31, 23, 59, 59, 0, time.UTC)
 	t.Run("Success with full set of data", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 			Return(pegoutQuotesWithRetained, nil)
-		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
+		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -115,8 +115,8 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		assert.Equal(t, int64(1), result.PeginSummary.PaidQuotesCount)
 		assert.Equal(t, 0, result.PeginSummary.PaidQuotesAmount.Cmp(entities.NewWei(100)))
 		assert.Equal(t, 0, result.PeginSummary.TotalFeesCollected.Cmp(entities.NewWei(7)))
-		assert.Equal(t, 0, result.PeginSummary.TotalPenaltyAmount.Cmp(entities.NewWei(2)))
-		assert.Equal(t, 0, result.PeginSummary.LpEarnings.Cmp(entities.NewWei(3)))
+		assert.Equal(t, 0, result.PeginSummary.TotalPenaltyAmount.Cmp(entities.NewWei(0)))
+		assert.Equal(t, 0, result.PeginSummary.LpEarnings.Cmp(entities.NewWei(5)))
 		assert.Equal(t, int64(len(pegoutQuotesWithRetained)), result.PegoutSummary.TotalQuotesCount)
 		assert.Equal(t, int64(len(retainedPegoutQuotes)), result.PegoutSummary.AcceptedQuotesCount)
 		assert.Equal(t, int64(1), result.PegoutSummary.PaidQuotesCount)
@@ -175,7 +175,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 			Return(pegoutQuotesWithRetained, nil)
-		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
+		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -241,7 +241,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			Return(peginQuotesWithRetained, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 			Return(pegoutQuotesWithRetained, nil)
-		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
+		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 		result, err := useCase.Run(context.Background(), startDate, endDate)
 		require.NoError(t, err)
 		assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -266,7 +266,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 		pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 		peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 			Return([]quote.PeginQuoteWithRetained{}, errors.New("db error"))
-		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
+		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "db error")
@@ -280,7 +280,7 @@ func TestSummariesUseCase_Run(t *testing.T) { //nolint:funlen,maintidx
 			Return([]quote.PeginQuoteWithRetained{}, nil)
 		pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 			Return([]quote.PegoutQuoteWithRetained{}, errors.New("db error"))
-		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo)
+		useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 		_, err := useCase.Run(context.Background(), startDate, endDate)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "db error")

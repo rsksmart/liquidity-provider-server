@@ -60,8 +60,6 @@ type UseCaseRegistry struct {
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
 	summariesUseCase              *liquidity_provider.SummariesUseCase
-	getPeginReportUseCase         *pegin.GetPeginReportUseCase
-	getPegoutReportUseCase        *pegout.GetPegoutReportUseCase
 	getPeginReportUseCase         *reports.GetPeginReportUseCase
 	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
 	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
@@ -82,6 +80,7 @@ func NewUseCaseRegistry(
 		summariesUseCase: liquidity_provider.NewSummariesUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
+			databaseRegistry.PenalizedEventRepository,
 		),
 		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
 			messaging.Rpc,

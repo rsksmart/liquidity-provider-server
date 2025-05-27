@@ -129,7 +129,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			peginRepoMock := mocks.NewPeginQuoteRepositoryMock(t)
 			pegoutRepoMock := mocks.NewPegoutQuoteRepositoryMock(t)
 			tt.setupMocks(t, peginRepoMock, pegoutRepoMock)
-			useCase := liquidity_provider.NewSummariesUseCase(peginRepoMock, pegoutRepoMock)
+			useCase := liquidity_provider.NewSummariesUseCase(peginRepoMock, pegoutRepoMock, nil)
 			handler := handlers.NewGetReportSummariesHandler(useCase)
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.url, nil)
 			require.NoError(t, err)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
@@ -47,8 +48,9 @@ func newSummaryTotals() *summaryTotals {
 }
 
 type SummariesUseCase struct {
-	peginRepo  quote.PeginQuoteRepository
-	pegoutRepo quote.PegoutQuoteRepository
+	peginRepo     quote.PeginQuoteRepository
+	pegoutRepo    quote.PegoutQuoteRepository
+	penalizedRepo penalization.PenalizedEventRepository
 }
 
 func NewSummaryData() SummaryData {
@@ -65,8 +67,12 @@ func NewSummaryData() SummaryData {
 	}
 }
 
-func NewSummariesUseCase(peginRepo quote.PeginQuoteRepository, pegoutRepo quote.PegoutQuoteRepository) *SummariesUseCase {
-	return &SummariesUseCase{peginRepo: peginRepo, pegoutRepo: pegoutRepo}
+func NewSummariesUseCase(
+	peginRepo quote.PeginQuoteRepository,
+	pegoutRepo quote.PegoutQuoteRepository,
+	penalizedRepo penalization.PenalizedEventRepository,
+) *SummariesUseCase {
+	return &SummariesUseCase{peginRepo: peginRepo, pegoutRepo: pegoutRepo, penalizedRepo: penalizedRepo}
 }
 
 func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time) (SummaryResult, error) {
@@ -81,6 +87,41 @@ func (u *SummariesUseCase) Run(ctx context.Context, startDate, endDate time.Time
 	return SummaryResult{PeginSummary: peginData, PegoutSummary: pegoutData}, nil
 }
 
+func (u *SummariesUseCase) buildPenalizedMap(ctx context.Context, quoteHashes []string) (map[string]*entities.Wei, error) {
+	penalizedMap := make(map[string]*entities.Wei)
+	if u.penalizedRepo == nil || len(quoteHashes) == 0 {
+		return penalizedMap, nil
+	}
+	events, err := u.penalizedRepo.GetPenalizationsByQuoteHashes(ctx, quoteHashes)
+	if err != nil {
+		return nil, err
+	}
+	for _, ev := range events {
+		penalizedMap[ev.QuoteHash] = ev.Penalty
+	}
+	return penalizedMap, nil
+}
+
+func extractAcceptedPeginHashes(pairs []quote.PeginQuoteWithRetained) []string {
+	hashes := make([]string, 0, len(pairs))
+	for _, pair := range pairs {
+		if pair.RetainedQuote.QuoteHash != "" {
+			hashes = append(hashes, pair.RetainedQuote.QuoteHash)
+		}
+	}
+	return hashes
+}
+
+func extractAcceptedPegoutHashes(pairs []quote.PegoutQuoteWithRetained) []string {
+	hashes := make([]string, 0, len(pairs))
+	for _, pair := range pairs {
+		if pair.RetainedQuote.QuoteHash != "" {
+			hashes = append(hashes, pair.RetainedQuote.QuoteHash)
+		}
+	}
+	return hashes
+}
+
 func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, endDate time.Time) (SummaryData, error) {
 	var (
 		quotePairs []quote.PeginQuoteWithRetained
@@ -93,10 +134,19 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	data := NewSummaryData()
 	acceptedQuotesCount := 0
 	totals := newSummaryTotals()
+	penalizedMap, errPen := u.buildPenalizedMap(ctx, extractAcceptedPeginHashes(quotePairs))
+	if errPen != nil {
+		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, errPen)
+	}
 	for _, pair := range quotePairs {
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPeginPair(pair, &data, totals)
+			if !isPeginPaidQuote(pair.RetainedQuote) {
+				if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
+					totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
+				}
+			}
 		}
 	}
 	data.TotalQuotesCount = int64(len(quotePairs))
@@ -106,7 +156,6 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 	data.TotalPenaltyAmount = totals.TotalPenalty
 	lpEarnings := new(entities.Wei)
 	lpEarnings.Add(lpEarnings, totals.CallFees)
-	lpEarnings.Sub(lpEarnings, totals.TotalPenalty)
 	data.LpEarnings = lpEarnings
 	return data, nil
 }
@@ -123,10 +172,19 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	data := NewSummaryData()
 	acceptedQuotesCount := 0
 	totals := newSummaryTotals()
+	penalizedMap, errPen := u.buildPenalizedMap(ctx, extractAcceptedPegoutHashes(quotePairs))
+	if errPen != nil {
+		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, errPen)
+	}
 	for _, pair := range quotePairs {
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPegoutPair(pair, &data, totals)
+			if !isPegoutPaidQuote(pair.RetainedQuote) {
+				if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
+					totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
+				}
+			}
 		}
 	}
 	data.TotalQuotesCount = int64(len(quotePairs))
@@ -136,7 +194,6 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 	data.TotalPenaltyAmount = totals.TotalPenalty
 	lpEarnings := new(entities.Wei)
 	lpEarnings.Add(lpEarnings, totals.CallFees)
-	lpEarnings.Sub(lpEarnings, totals.TotalPenalty)
 	data.LpEarnings = lpEarnings
 	return data, nil
 }
@@ -153,9 +210,6 @@ func processPeginPair(
 	if isPeginPaidQuote(retained) {
 		data.PaidQuotesCount++
 		quoteValue := q.Value
-		if quoteValue == nil {
-			quoteValue = entities.NewWei(0)
-		}
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)
 		totals.CallFees.Add(totals.CallFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, callFee)
@@ -163,7 +217,6 @@ func processPeginPair(
 	}
 	if isPeginRefundedQuote(retained) {
 		data.RefundedQuotesCount++
-		totals.TotalPenalty.Add(totals.TotalPenalty, q.PenaltyFee)
 	}
 }
 
@@ -179,9 +232,6 @@ func processPegoutPair(
 	if isPegoutPaidQuote(retained) {
 		data.PaidQuotesCount++
 		quoteValue := q.Value
-		if quoteValue == nil {
-			quoteValue = entities.NewWei(0)
-		}
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)
 		totals.CallFees.Add(totals.CallFees, callFee)
 		totals.TotalFees.Add(totals.TotalFees, callFee)
@@ -189,8 +239,6 @@ func processPegoutPair(
 	}
 	if isPegoutRefundedQuote(retained) {
 		data.RefundedQuotesCount++
-		penaltyFee := entities.NewUWei(q.PenaltyFee)
-		totals.TotalPenalty.Add(totals.TotalPenalty, penaltyFee)
 	}
 }
 
@@ -203,7 +251,7 @@ func isPegoutPaidQuote(retained quote.RetainedPegoutQuote) bool {
 }
 
 func isPeginRefundedQuote(retained quote.RetainedPeginQuote) bool {
-	return retained.State == quote.PeginStateCallForUserFailed || retained.State == quote.PeginStateRegisterPegInFailed
+	return retained.State == quote.PeginStateRegisterPegInSucceeded
 }
 
 func isPegoutRefundedQuote(retained quote.RetainedPegoutQuote) bool {
