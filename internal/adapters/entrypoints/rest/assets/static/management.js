@@ -358,23 +358,40 @@ const showWarningToast = (warningMessage) => {
 };
 
 function checkFeeWarnings() {
-    const sections = ['generalConfig', 'peginConfig', 'pegoutConfig'];
+    const activeTabPane = document.querySelector('#configTabContent .tab-pane.active');
+    let activeSectionId;
+    if (activeTabPane) {
+        switch (activeTabPane.id) {
+            case 'general':
+                activeSectionId = 'generalConfig';
+                break;
+            case 'peginConfig':
+                activeSectionId = 'peginConfig';
+                break;
+            case 'pegoutConfig':
+                activeSectionId = 'pegoutConfig';
+                break;
+            default:
+                activeSectionId = undefined;
+        }
+    }
+    if (!activeSectionId) return;
+    const sectionElement = document.getElementById(activeSectionId);
+    if (!sectionElement) return;
+    const fixedFeeCheckbox = sectionElement.querySelector('input[data-key="fixedFee_enabled"]');
+    const feePercentageCheckbox = sectionElement.querySelector('input[data-key="feePercentage_enabled"]');
+    const shouldWarn = (
+        fixedFeeCheckbox &&
+        feePercentageCheckbox &&
+        !fixedFeeCheckbox.checked &&
+        !feePercentageCheckbox.checked
+    );
     const existingToast = document.getElementById('warningToast');
-    const shouldWarn = sections.some(sectionId => {
-        const sectionElement = document.getElementById(sectionId);
-        if (!sectionElement) return false;
-        const fixedFeeCheckbox = sectionElement.querySelector('input[data-key="fixedFee_enabled"]');
-        const feePercentageCheckbox = sectionElement.querySelector('input[data-key="feePercentage_enabled"]');
-        return (
-            fixedFeeCheckbox &&
-            feePercentageCheckbox &&
-            !fixedFeeCheckbox.checked &&
-            !feePercentageCheckbox.checked
-        );
-    });
     if (shouldWarn) {
         if (!existingToast) {
             showWarningToast('It is recommended to enable at least one of "feePercentage" or "fixedFee".');
+        } else {
+            bootstrap.Toast.getOrCreateInstance(existingToast).show();
         }
     } else if (existingToast) {
         existingToast.parentNode.removeChild(existingToast);
@@ -592,6 +609,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
 
+    document.querySelectorAll('#configTabs a[data-bs-toggle="tab"]').forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', () => checkFeeWarnings());
+    });
+    
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
     populateConfigSection('pegoutConfig', configurations.pegout);
