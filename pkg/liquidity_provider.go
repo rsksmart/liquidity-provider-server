@@ -152,6 +152,15 @@ type GetRevenueReportResponse struct {
 	TotalProfit        *big.Int `json:"total_profit" validate:"required"`
 }
 
+type GetAssetsReportResponse struct {
+	BtcBalance    *big.Int `json:"btc_balance" validate:"required"`
+	RbtcBalance   *big.Int `json:"rbtc_balance" validate:"required"`
+	BtcLocked     *big.Int `json:"btc_locked" validate:"required"`
+	RbtcLocked    *big.Int `json:"rbtc_locked" validate:"required"`
+	BtcLiquidity  *big.Int `json:"btc_liquidity" validate:"required"`
+	RbtcLiquidity *big.Int `json:"rbtc_liquidity" validate:"required"`
+}
+
 type AvailableLiquidityDTO struct {
 	PeginLiquidityAmount  *big.Int `json:"peginLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegIn operations in wei"  required:""`
 	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegOut operations in wei" required:""`

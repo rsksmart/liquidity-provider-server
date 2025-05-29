@@ -521,7 +521,6 @@ components:
       properties:
         fee:
           type: integer
-          deprecated: true
         feePercentage:
           type: number
         fixedFee:
@@ -1034,6 +1033,13 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/assets:
+    get:
+      description: ' Get the asset information for the LPS.'
+      responses:
+        "200":
+          description: ""
+      summary: Get asset Reports
   /reports/pegin:
     get:
       description: ' Get the last pegins on the API. Included in the management API.'
