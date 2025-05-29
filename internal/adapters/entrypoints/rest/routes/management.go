@@ -92,6 +92,11 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewGetReportsRevenueHandler(useCaseRegistry.GetRevenueReportUseCase()),
 		},
 		{
+			Path:    "/reports/assets",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
+		},
+		{
 			Path:    LoginPath,
 			Method:  http.MethodPost,
 			Handler: handlers.NewManagementLoginHandler(env.Management, useCaseRegistry.LoginUseCase()),
