@@ -361,7 +361,7 @@ CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:80
       \"address\": \"$TRUSTED_ACCOUNT_ADDRESS\",
       \"name\": \"Boletaz\",
       \"btcLockingCap\": 3000000000000000000,
-      \"rbtcLockingCap\": 30000000000000000000
+      \"rbtcLockingCap\": 3000000000000000000
   }")
 
 HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
