@@ -142,10 +142,8 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPeginPair(pair, &data, totals)
-			if !isPeginPaidQuote(pair.RetainedQuote) {
-				if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
-					totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
-				}
+			if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
+				totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
 			}
 		}
 	}
@@ -180,10 +178,8 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 		if pair.RetainedQuote.QuoteHash != "" {
 			acceptedQuotesCount++
 			processPegoutPair(pair, &data, totals)
-			if !isPegoutPaidQuote(pair.RetainedQuote) {
-				if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
-					totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
-				}
+			if penalty, ok := penalizedMap[pair.RetainedQuote.QuoteHash]; ok {
+				totals.TotalPenalty.Add(totals.TotalPenalty, penalty)
 			}
 		}
 	}
@@ -205,9 +201,9 @@ func processPeginPair(
 ) {
 	q := pair.Quote
 	retained := pair.RetainedQuote
-	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
+	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Value)
 	callFee, gasFee := q.CallFee, q.GasFee
-	if isPeginPaidQuote(retained) {
+	if isPeginPaidQuote(retained) || isPeginRefundedQuote(retained) {
 		data.PaidQuotesCount++
 		quoteValue := q.Value
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)
@@ -227,9 +223,9 @@ func processPegoutPair(
 ) {
 	q := pair.Quote
 	retained := pair.RetainedQuote
-	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Total())
+	totals.AcceptedTotalAmount.Add(totals.AcceptedTotalAmount, q.Value)
 	callFee, gasFee := q.CallFee, q.GasFee
-	if isPegoutPaidQuote(retained) {
+	if isPegoutPaidQuote(retained) || isPegoutRefundedQuote(retained) {
 		data.PaidQuotesCount++
 		quoteValue := q.Value
 		data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteValue)

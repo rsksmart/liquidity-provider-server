@@ -375,7 +375,6 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = quoteCursor.Close(dbCtx) }()
 	var storedQuotes []StoredPegoutQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
 		return nil, err
@@ -402,7 +401,6 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	if err != nil {
 		return result, err
 	}
-	defer func() { _ = retainedCursor.Close(dbCtx) }()
 	var retainedQuotes []quote.RetainedPegoutQuote
 	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
 		return result, err
