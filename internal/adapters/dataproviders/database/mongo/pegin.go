@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -250,4 +252,56 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 		return 0, errors.New("pegin quote collections didn't match")
 	}
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
+}
+
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
+	result := make([]quote.PeginQuoteWithRetained, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
+		{Key: "$gte", Value: startDate.Unix()},
+		{Key: "$lte", Value: endDate.Unix()},
+	}}}
+	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+	quoteCursor, err := repo.conn.Collection(PeginQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
+	if err != nil {
+		return nil, err
+	}
+	var storedQuotes []StoredPeginQuote
+	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
+		return nil, err
+	}
+	if len(storedQuotes) == 0 {
+		logDbInteraction(Read, result)
+		return result, nil
+	}
+	hashToIndex := make(map[string]int, len(storedQuotes))
+	quoteHashes := make([]string, len(storedQuotes))
+	result = make([]quote.PeginQuoteWithRetained, len(storedQuotes))
+	for i, stored := range storedQuotes {
+		quoteHashes[i] = stored.Hash
+		hashToIndex[stored.Hash] = i
+		result[i] = quote.PeginQuoteWithRetained{
+			Quote:         stored.PeginQuote,
+			RetainedQuote: quote.RetainedPeginQuote{},
+		}
+	}
+	retainedCursor, err := repo.conn.Collection(RetainedPeginQuoteCollection).Find(
+		dbCtx,
+		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
+	)
+	if err != nil {
+		return result, err
+	}
+	var retainedQuotes []quote.RetainedPeginQuote
+	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
+		return result, err
+	}
+	for _, retainedQuote := range retainedQuotes {
+		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
+			result[idx].RetainedQuote = retainedQuote
+		}
+	}
+	logDbInteraction(Read, len(result))
+	return result, nil
 }

@@ -1,12 +1,13 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"net/http"
 )
 
 const (
@@ -55,6 +56,11 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    "/providers/withdrawCollateral",
 			Method:  http.MethodPost,
 			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
+		},
+		{
+			Path:    "/report/summaries",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
 		},
 		{
 			Path:    "/configuration",
