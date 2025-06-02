@@ -8,7 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	lp "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	reports "github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 )
 
 type ProviderDetail struct {
@@ -180,7 +180,7 @@ type SummaryResultDTO struct {
 	PegoutSummary SummaryDataDTO `json:"pegoutSummary"`
 }
 
-func ToSummaryDataDTO(data lp.SummaryData) SummaryDataDTO {
+func ToSummaryDataDTO(data reports.SummaryData) SummaryDataDTO {
 	return SummaryDataDTO{
 		TotalQuotesCount:          data.TotalQuotesCount,
 		AcceptedQuotesCount:       data.AcceptedQuotesCount,
@@ -194,7 +194,7 @@ func ToSummaryDataDTO(data lp.SummaryData) SummaryDataDTO {
 	}
 }
 
-func ToSummaryResultDTO(result lp.SummaryResult) SummaryResultDTO {
+func ToSummaryResultDTO(result reports.SummaryResult) SummaryResultDTO {
 	return SummaryResultDTO{
 		PeginSummary:  ToSummaryDataDTO(result.PeginSummary),
 		PegoutSummary: ToSummaryDataDTO(result.PegoutSummary),

@@ -1392,19 +1392,19 @@ func (_c *UseCaseRegistryMock_SetPegoutConfigUseCase_Call) RunAndReturn(run func
 }
 
 // SummariesUseCase provides a mock function with no fields
-func (_m *UseCaseRegistryMock) SummariesUseCase() *liquidity_provider.SummariesUseCase {
+func (_m *UseCaseRegistryMock) SummariesUseCase() *reports.SummariesUseCase {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for SummariesUseCase")
 	}
 
-	var r0 *liquidity_provider.SummariesUseCase
-	if rf, ok := ret.Get(0).(func() *liquidity_provider.SummariesUseCase); ok {
+	var r0 *reports.SummariesUseCase
+	if rf, ok := ret.Get(0).(func() *reports.SummariesUseCase); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*liquidity_provider.SummariesUseCase)
+			r0 = ret.Get(0).(*reports.SummariesUseCase)
 		}
 	}
 
@@ -1428,12 +1428,12 @@ func (_c *UseCaseRegistryMock_SummariesUseCase_Call) Run(run func()) *UseCaseReg
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_SummariesUseCase_Call) Return(_a0 *liquidity_provider.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
+func (_c *UseCaseRegistryMock_SummariesUseCase_Call) Return(_a0 *reports.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_SummariesUseCase_Call) RunAndReturn(run func() *liquidity_provider.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
+func (_c *UseCaseRegistryMock_SummariesUseCase_Call) RunAndReturn(run func() *reports.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,4 +1,4 @@
-package liquidity_provider
+package reports
 
 import (
 	"context"

@@ -26,7 +26,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().ChangeStatusUseCase().Return(&liquidity_provider.ChangeStatusUseCase{})
 	registryMock.EXPECT().ResignationUseCase().Return(&liquidity_provider.ResignUseCase{})
 	registryMock.EXPECT().WithdrawCollateralUseCase().Return(&liquidity_provider.WithdrawCollateralUseCase{})
-	registryMock.EXPECT().SummariesUseCase().Return(&liquidity_provider.SummariesUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&reports.SummariesUseCase{})
 	registryMock.EXPECT().GetConfigurationUseCase().Return(&liquidity_provider.GetConfigUseCase{})
 	registryMock.EXPECT().SetGeneralConfigUseCase().Return(&liquidity_provider.SetGeneralConfigUseCase{})
 	registryMock.EXPECT().SetPeginConfigUseCase().Return(&liquidity_provider.SetPeginConfigUseCase{})

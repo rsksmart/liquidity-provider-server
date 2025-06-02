@@ -224,7 +224,7 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().GetPeginStatusUseCase().Return(&pegin.StatusUseCase{})
 	registryMock.EXPECT().GetPegoutStatusUseCase().Return(&pegout.StatusUseCase{})
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
-	registryMock.EXPECT().SummariesUseCase().Return(&liquidity_provider.SummariesUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&reports.SummariesUseCase{})
 
 	registryMock.EXPECT().GetPeginCollateralUseCase().Return(&pegin.GetCollateralUseCase{})
 	registryMock.EXPECT().AddPeginCollateralUseCase().Return(&pegin.AddCollateralUseCase{})

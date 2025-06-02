@@ -12,7 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -24,7 +24,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		name           string
 		url            string
 		expectedStatus int
-		mockResponse   liquidity_provider.SummaryResult
+		mockResponse   reports.SummaryResult
 		mockErr        error
 		setupMocks     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock)
 	}{
@@ -32,8 +32,8 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Success with valid date range",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusOK,
-			mockResponse: liquidity_provider.SummaryResult{
-				PeginSummary: liquidity_provider.SummaryData{
+			mockResponse: reports.SummaryResult{
+				PeginSummary: reports.SummaryData{
 					TotalQuotesCount:    10,
 					AcceptedQuotesCount: 8,
 					PaidQuotesCount:     6,
@@ -43,7 +43,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 					TotalPenaltyAmount:  entities.NewWei(20),
 					LpEarnings:          entities.NewWei(30),
 				},
-				PegoutSummary: liquidity_provider.SummaryData{
+				PegoutSummary: reports.SummaryData{
 					TotalQuotesCount:    5,
 					AcceptedQuotesCount: 4,
 					PaidQuotesCount:     3,
@@ -56,9 +56,9 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			},
 			mockErr: nil,
 			setupMocks: func(t *testing.T, peginRepo *mocks.PeginQuoteRepositoryMock, pegoutRepo *mocks.PegoutQuoteRepositoryMock) {
-				startDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-01")
+				startDate, err := time.Parse(reports.DateFormat, "2023-01-01")
 				require.NoError(t, err)
-				endDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-31")
+				endDate, err := time.Parse(reports.DateFormat, "2023-01-31")
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
 				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
@@ -71,7 +71,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Missing startDate parameter",
 			url:            "/report/summaries?endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
 			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
@@ -79,7 +79,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Missing endDate parameter",
 			url:            "/report/summaries?startDate=2023-01-01",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
 			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
@@ -87,7 +87,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Invalid startDate format",
 			url:            "/report/summaries?startDate=01/01/2023&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
 			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
@@ -95,7 +95,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Invalid endDate format",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=31/01/2023",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
 			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
@@ -103,7 +103,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "EndDate before StartDate",
 			url:            "/report/summaries?startDate=2023-02-01&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
 			setupMocks:     func(*testing.T, *mocks.PeginQuoteRepositoryMock, *mocks.PegoutQuoteRepositoryMock) {},
 		},
@@ -111,12 +111,12 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			name:           "Error in use case",
 			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusInternalServerError,
-			mockResponse:   liquidity_provider.SummaryResult{},
+			mockResponse:   reports.SummaryResult{},
 			mockErr:        errors.New("test error"),
 			setupMocks: func(t *testing.T, peginRepo *mocks.PeginQuoteRepositoryMock, pegoutRepo *mocks.PegoutQuoteRepositoryMock) {
-				startDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-01")
+				startDate, err := time.Parse(reports.DateFormat, "2023-01-01")
 				require.NoError(t, err)
-				endDate, err := time.Parse(liquidity_provider.DateFormat, "2023-01-31")
+				endDate, err := time.Parse(reports.DateFormat, "2023-01-31")
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
 				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
@@ -129,7 +129,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			peginRepoMock := mocks.NewPeginQuoteRepositoryMock(t)
 			pegoutRepoMock := mocks.NewPegoutQuoteRepositoryMock(t)
 			tt.setupMocks(t, peginRepoMock, pegoutRepoMock)
-			useCase := liquidity_provider.NewSummariesUseCase(peginRepoMock, pegoutRepoMock, nil)
+			useCase := reports.NewSummariesUseCase(peginRepoMock, pegoutRepoMock, nil)
 			handler := handlers.NewGetReportSummariesHandler(useCase)
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tt.url, nil)
 			require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 			handler.ServeHTTP(rr, req)
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			if tt.expectedStatus == http.StatusOK {
-				var response liquidity_provider.SummaryResult
+				var response reports.SummaryResult
 				err = json.Unmarshal(rr.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.NotNil(t, response)

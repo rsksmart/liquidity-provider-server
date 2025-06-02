@@ -1,4 +1,4 @@
-package liquidity_provider_test
+package reports_test
 
 import (
 	"context"
@@ -8,12 +8,13 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
 func TestSummariesUseCase_FullSetOfData(t *testing.T) { //nolint:funlen
 	startDate := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2023, 1, 31, 23, 59, 59, 0, time.UTC)
@@ -105,7 +106,7 @@ func TestSummariesUseCase_FullSetOfData(t *testing.T) { //nolint:funlen
 		Return(peginQuotesWithRetained, nil)
 	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil)
-	useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
+	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -175,7 +176,7 @@ func TestSummariesUseCase_OnlyRegularQuotes(t *testing.T) { //nolint:funlen
 		Return(peginQuotesWithRetained, nil)
 	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil)
-	useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
+	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -243,7 +244,7 @@ func TestSummariesUseCase_OnlyRetainedQuotes(t *testing.T) { //nolint:funlen
 		Return(peginQuotesWithRetained, nil)
 	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil)
-	useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
+	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(len(peginQuotesWithRetained)), result.PeginSummary.TotalQuotesCount)
@@ -270,7 +271,7 @@ func TestSummariesUseCase_ErrorGettingPeginQuotes(t *testing.T) {
 	pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
 	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 		Return([]quote.PeginQuoteWithRetained{}, errors.New("db error"))
-	useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
+	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	_, err := useCase.Run(context.Background(), startDate, endDate)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "db error")
@@ -286,7 +287,7 @@ func TestSummariesUseCase_ErrorGettingPegoutQuotes(t *testing.T) {
 		Return([]quote.PeginQuoteWithRetained{}, nil)
 	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, errors.New("db error"))
-	useCase := liquidity_provider.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
+	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	_, err := useCase.Run(context.Background(), startDate, endDate)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "db error")

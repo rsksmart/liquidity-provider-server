@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
@@ -17,16 +17,16 @@ import (
 // @Param endDate query string true "End date in YYYY-MM-DD format" Format(date)
 // @Success 200 {object} pkg.SummaryResultDTO "Financial data for the given period"
 // @Router /report/summaries [get]
-func NewGetReportSummariesHandler(useCase *liquidity_provider.SummariesUseCase) http.HandlerFunc {
+func NewGetReportSummariesHandler(useCase *reports.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		startDate, endDate, err := rest.ParseDateRange(req, liquidity_provider.DateFormat)
+		startDate, endDate, err := rest.ParseDateRange(req, reports.DateFormat)
 		if err != nil {
 			log.Errorf("Error parsing date range: %v", err)
 			rest.JsonErrorResponse(w, http.StatusBadRequest,
 				rest.NewErrorResponseWithDetails("Invalid date range", rest.DetailsFromError(err), true))
 			return
 		}
-		validateErr := rest.ValidateDateRange(startDate, endDate, liquidity_provider.DateFormat)
+		validateErr := rest.ValidateDateRange(startDate, endDate, reports.DateFormat)
 		if validateErr != nil {
 			log.Errorf("Error validating date range: %v", validateErr)
 			rest.JsonErrorResponse(w, http.StatusBadRequest,
