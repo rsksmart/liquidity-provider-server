@@ -10,7 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	lpuse "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -295,7 +295,7 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 }
 
 func TestToSummaryDataDTO(t *testing.T) {
-	data := lpuse.SummaryData{
+	data := reports.SummaryData{
 		TotalQuotesCount:          10,
 		AcceptedQuotesCount:       8,
 		PaidQuotesCount:           5,
@@ -320,7 +320,7 @@ func TestToSummaryDataDTO(t *testing.T) {
 }
 
 func TestToSummaryResultDTO(t *testing.T) {
-	pegin := lpuse.SummaryData{
+	pegin := reports.SummaryData{
 		TotalQuotesCount:          3,
 		AcceptedQuotesCount:       2,
 		PaidQuotesCount:           1,
@@ -331,7 +331,7 @@ func TestToSummaryResultDTO(t *testing.T) {
 		TotalPenaltyAmount:        entities.NewWei(0),
 		LpEarnings:                entities.NewWei(100),
 	}
-	pegout := lpuse.SummaryData{
+	pegout := reports.SummaryData{
 		TotalQuotesCount:          4,
 		AcceptedQuotesCount:       3,
 		PaidQuotesCount:           2,
@@ -342,7 +342,7 @@ func TestToSummaryResultDTO(t *testing.T) {
 		TotalPenaltyAmount:        entities.NewWei(20),
 		LpEarnings:                entities.NewWei(130),
 	}
-	result := lpuse.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
+	result := reports.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
 	dto := pkg.ToSummaryResultDTO(result)
 	expected := pkg.SummaryResultDTO{
 		PeginSummary:  pkg.ToSummaryDataDTO(pegin),
