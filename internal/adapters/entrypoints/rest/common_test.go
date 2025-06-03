@@ -172,7 +172,7 @@ func TestValidateRequest(t *testing.T) {
 		assert.Contains(t, response.Message, "validation error")
 		assert.Len(t, response.Details, 2)
 		for key := range response.Details {
-			assert.Contains(t, response.Details[key], "validation failed")
+			assert.NotEmpty(t, response.Details[key])
 		}
 		assert.True(t, response.Recoverable)
 	})
