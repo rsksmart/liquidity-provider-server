@@ -100,7 +100,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		CallFee:          quote.CalculateCallFee(request.valueToTransfer, configuration),
 		GasFee:           new(entities.Wei).Add(btcFeeEstimation.Value, gasFeeDao),
 		PenaltyFee:       configuration.PenaltyFee,
-		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
+		ProductFeeAmount: daoTxAmounts.DaoFeeAmount,
 	}
 	if pegoutQuote, err = useCase.buildPegoutQuote(ctx, configuration, request, fees); err != nil {
 		return GetPegoutQuoteResult{}, err
@@ -159,8 +159,8 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		RskRefundAddress:      request.rskRefundAddress,
 		LpBtcAddress:          useCase.lp.BtcAddress(),
 		CallFee:               fees.CallFee,
-		PenaltyFee:            fees.PenaltyFee.Uint64(),
-		Nonce:                 nonce,
+		PenaltyFee:            fees.PenaltyFee,
+		Nonce:                 quote.NewNonce(nonce),
 		DepositAddress:        request.to,
 		Value:                 request.valueToTransfer,
 		AgreementTimestamp:    now,

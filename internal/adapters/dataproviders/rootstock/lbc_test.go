@@ -44,7 +44,7 @@ var peginQuote = quote.PeginQuote{
 	ContractAddress:    "0x0D8Fb5d32704DB2931e05DB91F64BcA6f76Ce573",
 	Data:               "0x12a1",
 	GasLimit:           8000,
-	Nonce:              11223344,
+	Nonce:              quote.NewNonce(11223344),
 	Value:              entities.NewWei(1234),
 	AgreementTimestamp: 20,
 	TimeForDeposit:     30,
@@ -52,7 +52,7 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
-	ProductFeeAmount:   500,
+	ProductFeeAmount:   entities.NewWei(500),
 }
 
 var parsedPeginQuote = bindings.QuotesPeginQuote{
@@ -85,8 +85,8 @@ var pegoutQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x0d8A0F1ef26B4b9650d98E1c22c560327cF387FE",
 	LpBtcAddress:          "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6",
 	CallFee:               entities.NewWei(1),
-	PenaltyFee:            2,
-	Nonce:                 3,
+	PenaltyFee:            entities.NewWei(2),
+	Nonce:                 quote.NewNonce(3),
 	DepositAddress:        "mzpvGLbwqFK7zvtFanb3r83WpwDxNQUYcz",
 	Value:                 entities.NewWei(11),
 	AgreementTimestamp:    10,
@@ -97,7 +97,7 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                entities.NewWei(888),
-	ProductFeeAmount:      789,
+	ProductFeeAmount:      entities.NewWei(789),
 }
 
 var parsedPegoutQuote = bindings.QuotesPegOutQuote{

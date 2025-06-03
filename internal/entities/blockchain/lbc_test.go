@@ -50,7 +50,7 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			ContractAddress:    test.AnyAddress,
 			Data:               "any data",
 			GasLimit:           5,
-			Nonce:              6,
+			Nonce:              quote.NewNonce(6),
 			Value:              entities.NewWei(2),
 			AgreementTimestamp: 7,
 			TimeForDeposit:     8,
@@ -58,7 +58,7 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			Confirmations:      10,
 			CallOnRegister:     true,
 			GasFee:             entities.NewWei(1),
-			ProductFeeAmount:   11,
+			ProductFeeAmount:   entities.NewWei(11),
 		},
 	}
 	assert.Equal(t,

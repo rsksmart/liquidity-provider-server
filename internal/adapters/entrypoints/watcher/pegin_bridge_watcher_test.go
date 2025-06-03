@@ -89,7 +89,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 
 	go peginWatcher.Start()
 
-	testPeginQuote := quote.PeginQuote{Nonce: 1}
+	testPeginQuote := quote.PeginQuote{Nonce: quote.NewNonce(1)}
 	testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyString, State: quote.PeginStateCallForUserSucceeded}
 
 	t.Run("handle call for user performed", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	quoteHash := hex.EncodeToString([]byte{0x20})
 	userTx := hex.EncodeToString([]byte{0x12})
-	testPeginQuote := quote.PeginQuote{Nonce: 1}
+	testPeginQuote := quote.PeginQuote{Nonce: quote.NewNonce(1)}
 	testRetainedQuote := quote.RetainedPeginQuote{
 		QuoteHash:     quoteHash,
 		State:         quote.PeginStateCallForUserSucceeded,

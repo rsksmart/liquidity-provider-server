@@ -72,7 +72,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDeposit).Return([]quote.RetainedPegoutQuote{testRetainedQuotes[0], testRetainedQuotes[2]}, nil).Once()
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{testRetainedQuotes[1]}, nil).Once()
 		for i, q := range testRetainedQuotes {
-			pegoutRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PegoutQuote{Nonce: int64(i + 1), ExpireBlock: uint32((i + 1) * 1000)}, nil).Once()
+			pegoutRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PegoutQuote{Nonce: quote.NewNonce(int64(i + 1)), ExpireBlock: uint32((i + 1) * 1000)}, nil).Once()
 			pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, q.QuoteHash).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 		}
 
@@ -141,9 +141,9 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 			{QuoteHash: quoteHash3, State: quote.PegoutStateWaitingForDeposit},
 		}
 		testQuotes := []quote.PegoutQuote{
-			{Nonce: 1, ExpireBlock: 3123},
-			{Nonce: 2, ExpireBlock: 1234},
-			{Nonce: 3, ExpireBlock: 6241},
+			{Nonce: quote.NewNonce(1), ExpireBlock: 3123},
+			{Nonce: quote.NewNonce(2), ExpireBlock: 1234},
+			{Nonce: quote.NewNonce(3), ExpireBlock: 6241},
 		}
 		quotesCreationData := []quote.PegoutCreationData{
 			{GasPrice: entities.NewWei(1)},
@@ -231,7 +231,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 	acceptPegoutChannel := make(chan entities.Event)
 	eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptPegoutChannel))
 
-	testPegoutQuote := quote.PegoutQuote{Nonce: 1}
+	testPegoutQuote := quote.PegoutQuote{Nonce: quote.NewNonce(1)}
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203"}
 
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, nil, nil, nil, nil)
@@ -295,7 +295,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 	acceptPegoutChannel := make(chan entities.Event)
 	eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptPegoutChannel))
 
-	testPegoutQuote := quote.PegoutQuote{Nonce: 1, Value: entities.NewWei(3), ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600)}
+	testPegoutQuote := quote.PegoutQuote{Nonce: quote.NewNonce(1), Value: entities.NewWei(3), ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600)}
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203", State: quote.PegoutStateWaitingForDeposit}
 
 	updatePegoutDeposit := w.NewUpdatePegoutQuoteDepositUseCase(pegoutRepository)
@@ -417,7 +417,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 	eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptPegoutChannel))
 	eventBus.On("Publish", mock.Anything).Return(make(<-chan entities.Event))
 
-	testPegoutQuote := quote.PegoutQuote{Nonce: 1, Value: entities.NewWei(3), ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600), DepositConfirmations: 5}
+	testPegoutQuote := quote.PegoutQuote{Nonce: quote.NewNonce(1), Value: entities.NewWei(3), ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600), DepositConfirmations: 5}
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203", State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash}
 
 	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutRepository)

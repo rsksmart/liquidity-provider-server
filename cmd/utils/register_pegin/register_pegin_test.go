@@ -40,7 +40,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 			ContractAddress:    test.AnyAddress,
 			Data:               "",
 			GasLimit:           1,
-			Nonce:              2,
+			Nonce:              quote.NewNonce(2),
 			Value:              entities.NewWei(1),
 			AgreementTimestamp: 3,
 			TimeForDeposit:     4,
@@ -48,7 +48,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 			Confirmations:      6,
 			CallOnRegister:     false,
 			GasFee:             entities.NewWei(1),
-			ProductFeeAmount:   0,
+			ProductFeeAmount:   entities.NewWei(0),
 		},
 		Signature: []byte{0x01, 0x02, 0x03},
 		BtcTxHash: "bitcoinTxHash",
@@ -231,8 +231,8 @@ func TestParseRegisterPegInScriptInput(t *testing.T) {
 			CallFee: entities.NewWei(10000000000000000), PenaltyFee: entities.NewWei(1000000000000000),
 			ContractAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
 			Data:            "", GasLimit: 46000, Value: entities.NewWei(600000000000000000),
-			Nonce: 8941842587185974000, AgreementTimestamp: 1732101992, TimeForDeposit: 3600, LpCallTime: 7200,
-			Confirmations: 10, CallOnRegister: false, GasFee: entities.NewWei(0), ProductFeeAmount: 0,
+			Nonce: quote.NewNonce(8941842587185974000), AgreementTimestamp: 1732101992, TimeForDeposit: 3600, LpCallTime: 7200,
+			Confirmations: 10, CallOnRegister: false, GasFee: entities.NewWei(0), ProductFeeAmount: entities.NewWei(0),
 		}, result.Quote)
 	})
 }

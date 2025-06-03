@@ -195,7 +195,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 		ContractAddress:    "contract address",
 		Data:               "0x1a1b",
 		GasLimit:           500,
-		Nonce:              123456,
+		Nonce:              quote.NewNonce(123456),
 		Value:              entities.NewWei(1000),
 		AgreementTimestamp: now,
 		TimeForDeposit:     600,
@@ -203,7 +203,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 		Confirmations:      10,
 		CallOnRegister:     false,
 		GasFee:             entities.NewWei(500),
-		ProductFeeAmount:   100,
+		ProductFeeAmount:   entities.NewWei(100),
 	}
 	return []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock){
 		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, lbc *mocks.LbcMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock) {

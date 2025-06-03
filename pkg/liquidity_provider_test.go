@@ -147,3 +147,49 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		test.AssertNonZeroValues(t, dto)
 	})
 }
+
+func TestFromGeneralConfigurationDTO(t *testing.T) {
+	t.Run("converts valid configuration", func(t *testing.T) {
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"2000000000000000000": 10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"4000000000000000000": 20,
+			},
+			PublicLiquidityCheck: true,
+		}
+
+		config := pkg.FromGeneralConfigurationDTO(dto)
+
+		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
+		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
+		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
+		test.AssertNonZeroValues(t, dto)
+	})
+
+	t.Run("removes invalid numeric keys", func(t *testing.T) {
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"invalid":             10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"notanumber":          20,
+			},
+			PublicLiquidityCheck: false,
+		}
+
+		config := pkg.FromGeneralConfigurationDTO(dto)
+
+		expectedRsk := map[string]uint16{"1000000000000000000": 5}
+		expectedBtc := map[string]uint16{"3000000000000000000": 15}
+
+		assert.Equal(t, expectedRsk, map[string]uint16(config.RskConfirmations))
+		assert.Equal(t, expectedBtc, map[string]uint16(config.BtcConfirmations))
+		assert.False(t, config.PublicLiquidityCheck)
+	})
+}

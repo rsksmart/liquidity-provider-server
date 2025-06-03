@@ -23,7 +23,7 @@ func NewSetGeneralConfigHandler(useCase *liquidity_provider.SetGeneralConfigUseC
 			return
 		}
 
-		err = useCase.Run(req.Context(), *request.Configuration)
+		err = useCase.Run(req.Context(), pkg.FromGeneralConfigurationDTO(request.Configuration))
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

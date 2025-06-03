@@ -29,8 +29,8 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(5),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(12),
 		AgreementTimestamp:    uint32(now.Unix()),
@@ -41,7 +41,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
-		ProductFeeAmount:      2,
+		ProductFeeAmount:      entities.NewWei(2),
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash: quoteHash, DepositAddress: quoteMock.LbcAddress,
@@ -91,8 +91,8 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(1),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(1),
 		AgreementTimestamp:    uint32(now.Unix()),
@@ -103,7 +103,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(1),
-		ProductFeeAmount:      1,
+		ProductFeeAmount:      entities.NewWei(1),
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
@@ -146,8 +146,8 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(1),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(1),
 		AgreementTimestamp:    uint32(now.Unix() - 600),
@@ -158,7 +158,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 		ExpireDate:            uint32(now.Unix()),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(1),
-		ProductFeeAmount:      1,
+		ProductFeeAmount:      entities.NewWei(1),
 	}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
@@ -214,8 +214,8 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(10),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(50),
 		AgreementTimestamp:    uint32(now.Unix()),
@@ -226,7 +226,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(15),
-		ProductFeeAmount:      8,
+		ProductFeeAmount:      entities.NewWei(8),
 	}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
@@ -263,8 +263,8 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(5),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(12),
 		AgreementTimestamp:    uint32(now.Unix()),
@@ -275,7 +275,7 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
-		ProductFeeAmount:      2,
+		ProductFeeAmount:      entities.NewWei(2),
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
@@ -367,8 +367,8 @@ func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 		RskRefundAddress:      "0xabcd04",
 		LpBtcAddress:          "edfg",
 		CallFee:               entities.NewWei(5),
-		PenaltyFee:            1,
-		Nonce:                 1,
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 quote.NewNonce(1),
 		DepositAddress:        "address",
 		Value:                 entities.NewWei(12),
 		AgreementTimestamp:    uint32(now.Unix()),
@@ -379,7 +379,7 @@ func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
-		ProductFeeAmount:      2,
+		ProductFeeAmount:      entities.NewWei(2),
 	}
 
 	lbc := new(mocks.LbcMock)

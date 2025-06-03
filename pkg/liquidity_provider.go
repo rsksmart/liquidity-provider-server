@@ -10,12 +10,12 @@ import (
 
 type ProviderDetail struct {
 	// Deprecated: Fee is deprecated, use FixedFee and FeePercentage instead
-	Fee                   uint64  `json:"fee" required:""`
-	FixedFee              uint64  `json:"fixedFee"  required:""`
-	FeePercentage         float64 `json:"feePercentage"  required:""`
-	MinTransactionValue   uint64  `json:"minTransactionValue"  required:""`
-	MaxTransactionValue   uint64  `json:"maxTransactionValue"  required:""`
-	RequiredConfirmations uint16  `json:"requiredConfirmations"  required:""`
+	Fee                   *big.Int `json:"fee" required:""`
+	FixedFee              *big.Int `json:"fixedFee"  required:""`
+	FeePercentage         float64  `json:"feePercentage"  required:""`
+	MinTransactionValue   *big.Int `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   *big.Int `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16   `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -69,7 +69,13 @@ type PegoutConfigurationDTO struct {
 }
 
 type GeneralConfigurationRequest struct {
-	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
+	Configuration GeneralConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type GeneralConfigurationDTO struct {
+	RskConfirmations     map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations     map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck bool              `json:"publicLiquidityCheck" validate:""`
 }
 
 type LoginRequest struct {
@@ -182,5 +188,26 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 	return ServerInfoDTO{
 		Version:  entity.Version,
 		Revision: entity.Revision,
+	}
+}
+
+func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) liquidity_provider.GeneralConfiguration {
+	bigInt := new(big.Int)
+	for key := range dto.RskConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			delete(dto.RskConfirmations, key)
+		}
+	}
+	for key := range dto.BtcConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			delete(dto.BtcConfirmations, key)
+		}
+	}
+	return liquidity_provider.GeneralConfiguration{
+		RskConfirmations:     dto.RskConfirmations,
+		BtcConfirmations:     dto.BtcConfirmations,
+		PublicLiquidityCheck: dto.PublicLiquidityCheck,
 	}
 }

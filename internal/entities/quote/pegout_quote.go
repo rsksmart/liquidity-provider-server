@@ -74,8 +74,8 @@ type PegoutQuote struct {
 	RskRefundAddress      string        `json:"rskRefundAddress" bson:"rsk_refund_address" validate:"required"`
 	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"required"`
 	CallFee               *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
-	PenaltyFee            uint64        `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
-	Nonce                 int64         `json:"nonce" bson:"nonce" validate:"required"`
+	PenaltyFee            *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
+	Nonce                 *Nonce        `json:"nonce" bson:"nonce" validate:"required"`
 	DepositAddress        string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
 	Value                 *entities.Wei `json:"value" bson:"value" validate:"required"`
 	AgreementTimestamp    uint32        `json:"agreementTimestamp" bson:"agreement_timestamp" validate:"required"`
@@ -86,7 +86,7 @@ type PegoutQuote struct {
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`
 	ExpireBlock           uint32        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
 	GasFee                *entities.Wei `json:"gasFee" bson:"gas_fee" validate:"required"`
-	ProductFeeAmount      uint64        `json:"productFeeAmount" bson:"product_fee_amount" validate:""`
+	ProductFeeAmount      *entities.Wei `json:"productFeeAmount" bson:"product_fee_amount" validate:""`
 }
 
 func (quote *PegoutQuote) ExpireTime() time.Time {
@@ -111,10 +111,13 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 	if quote.GasFee == nil {
 		quote.GasFee = entities.NewWei(0)
 	}
+	if quote.ProductFeeAmount == nil {
+		quote.ProductFeeAmount = entities.NewWei(0)
+	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)
-	total.Add(total, entities.NewUWei(quote.ProductFeeAmount))
+	total.Add(total, quote.ProductFeeAmount)
 	total.Add(total, quote.GasFee)
 	return total
 }

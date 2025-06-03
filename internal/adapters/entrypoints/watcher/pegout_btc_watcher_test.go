@@ -23,7 +23,7 @@ import (
 
 func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203", DepositAddress: test.AnyAddress, LpBtcTxHash: "040506", State: quote.PegoutStateSendPegoutSucceeded}
-	testPegoutQuote := quote.PegoutQuote{Nonce: 5}
+	testPegoutQuote := quote.PegoutQuote{Nonce: quote.NewNonce(5)}
 	rpc := blockchain.Rpc{}
 	eventBus := &mocks.EventBusMock{}
 	pegoutSentChannel := make(chan entities.Event)
@@ -87,7 +87,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 // nolint:funlen,cyclop
 func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded}
-	testPegoutQuote := quote.PegoutQuote{Nonce: 5, TransferConfirmations: 5}
+	testPegoutQuote := quote.PegoutQuote{Nonce: quote.NewNonce(5), TransferConfirmations: 5}
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}

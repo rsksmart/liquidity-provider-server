@@ -42,8 +42,8 @@ var pegoutQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x1234",
 	LpBtcAddress:          "0x1234",
 	CallFee:               entities.NewWei(3000),
-	PenaltyFee:            2,
-	Nonce:                 3,
+	PenaltyFee:            entities.NewWei(2),
+	Nonce:                 quote.NewNonce(3),
 	DepositAddress:        test.AnyAddress,
 	Value:                 entities.NewWei(4000),
 	AgreementTimestamp:    now,
@@ -54,7 +54,7 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            now + 60,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(1000),
-	ProductFeeAmount:      500,
+	ProductFeeAmount:      entities.NewWei(500),
 }
 
 var btcBlockInfoMock = blockchain.BitcoinBlockInformation{

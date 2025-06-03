@@ -43,8 +43,8 @@ var sendPegoutTestQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x1234",
 	LpBtcAddress:          "0x1234",
 	CallFee:               entities.NewWei(3000),
-	PenaltyFee:            2,
-	Nonce:                 3,
+	PenaltyFee:            entities.NewWei(2),
+	Nonce:                 quote.NewNonce(3),
 	DepositAddress:        sendPegoutRetainedQuote.DepositAddress,
 	Value:                 entities.NewWei(4000),
 	AgreementTimestamp:    now,
@@ -55,7 +55,7 @@ var sendPegoutTestQuote = quote.PegoutQuote{
 	ExpireDate:            now + 60,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(1000),
-	ProductFeeAmount:      500,
+	ProductFeeAmount:      entities.NewWei(500),
 }
 
 func TestSendPegoutUseCase_Run(t *testing.T) {

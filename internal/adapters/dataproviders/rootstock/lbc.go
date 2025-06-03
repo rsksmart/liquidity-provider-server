@@ -688,14 +688,13 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	parsedQuote.CallFee = peginQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = peginQuote.PenaltyFee.AsBigInt()
 	parsedQuote.GasLimit = peginQuote.GasLimit
-	parsedQuote.Nonce = peginQuote.Nonce
+	parsedQuote.Nonce = peginQuote.Nonce.Int64()
 	parsedQuote.Value = peginQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = peginQuote.AgreementTimestamp
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(peginQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
 	return parsedQuote, nil
@@ -731,9 +730,8 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	}
 
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
-	parsedQuote.PenaltyFee = new(big.Int)
-	parsedQuote.PenaltyFee.SetUint64(pegoutQuote.PenaltyFee)
-	parsedQuote.Nonce = pegoutQuote.Nonce
+	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
+	parsedQuote.Nonce = pegoutQuote.Nonce.Int64()
 	parsedQuote.Value = pegoutQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = pegoutQuote.AgreementTimestamp
 	parsedQuote.DepositDateLimit = pegoutQuote.DepositDateLimit
@@ -742,8 +740,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(pegoutQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
 	return parsedQuote, nil
 }
