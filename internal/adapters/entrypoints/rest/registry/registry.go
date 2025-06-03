@@ -39,5 +39,5 @@ type UseCaseRegistry interface {
 	GetPeginReportUseCase() *reports.GetPeginReportUseCase
 	GetPegoutReportUseCase() *reports.GetPegoutReportUseCase
 	GetRevenueReportUseCase() *reports.GetRevenueReportUseCase
-	GetAssetsReportUseCase() *reports.GetAssetsReportUseCase
+	GetAssetsReportUseCase() reports.AssetsReportUseCase
 }
