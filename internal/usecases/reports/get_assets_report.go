@@ -6,8 +6,27 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
+	"math/big"
 )
+
+type AssetsReportUseCase interface {
+	Run(ctx context.Context) (GetAssetsReportResponse, error)
+	GetRBTCLiquidity(ctx context.Context) (*entities.Wei, error)
+	GetBTCLiquidity(ctx context.Context) (*entities.Wei, error)
+	GetBTCLocked(ctx context.Context) (*entities.Wei, error)
+	GetRBTCLocked(ctx context.Context) (*entities.Wei, error)
+	GetRBTCBalance(ctx context.Context) (*entities.Wei, error)
+	GetBtcBalance() (*entities.Wei, error)
+}
+
+type GetAssetsReportResponse struct {
+	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
+	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
+	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
+	RbtcLocked    *big.Int `json:"rbtcLocked" validate:"required"`
+	BtcLiquidity  *big.Int `json:"btcLiquidity" validate:"required"`
+	RbtcLiquidity *big.Int `json:"rbtcLiquidity" validate:"required"`
+}
 
 type GetAssetsReportUseCase struct {
 	btcWallet        blockchain.BitcoinWallet
@@ -27,7 +46,7 @@ func NewGetAssetsReportUseCase(
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
-) *GetAssetsReportUseCase {
+) AssetsReportUseCase {
 	return &GetAssetsReportUseCase{
 		btcWallet:        wallet,
 		rsk:              rsk,
@@ -39,8 +58,8 @@ func NewGetAssetsReportUseCase(
 	}
 }
 
-func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (pkg.GetAssetsReportResponse, error) {
-	response := pkg.GetAssetsReportResponse{
+func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResponse, error) {
+	response := GetAssetsReportResponse{
 		BtcBalance:    entities.NewWei(0).AsBigInt(),
 		RbtcBalance:   entities.NewWei(0).AsBigInt(),
 		BtcLocked:     entities.NewWei(0).AsBigInt(),
@@ -52,36 +71,39 @@ func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (pkg.GetAssetsRe
 	if err != nil {
 		return response, err
 	}
-	response.BtcBalance = btcBalance.AsBigInt()
+
 	rbtcBalance, err := useCase.GetRBTCBalance(ctx)
 	if err != nil {
 		return response, err
 	}
-	response.RbtcBalance = rbtcBalance.AsBigInt()
 
 	rbtcLocked, err := useCase.GetRBTCLocked(ctx)
 	if err != nil {
 		return response, err
 	}
-	response.RbtcLocked = rbtcLocked.AsBigInt()
 
 	lockedBtc, err := useCase.GetBTCLocked(ctx)
 	if err != nil {
 		return response, err
 	}
-	response.BtcLocked = lockedBtc.AsBigInt()
 
 	btcLiquidity, err := useCase.GetBTCLiquidity(ctx)
 	if err != nil {
 		return response, err
 	}
-	response.BtcLiquidity = btcLiquidity.AsBigInt()
 
 	rbtcLiquidity, err := useCase.GetRBTCLiquidity(ctx)
 	if err != nil {
 		return response, err
 	}
+
+	response.BtcBalance = btcBalance.AsBigInt()
 	response.RbtcLiquidity = rbtcLiquidity.AsBigInt()
+	response.BtcLiquidity = btcLiquidity.AsBigInt()
+	response.BtcLocked = lockedBtc.AsBigInt()
+	response.RbtcLocked = rbtcLocked.AsBigInt()
+	response.RbtcBalance = rbtcBalance.AsBigInt()
+
 	return response, nil
 }
 
@@ -118,18 +140,11 @@ func (useCase *GetAssetsReportUseCase) GetBTCLocked(ctx context.Context) (*entit
 
 func (useCase *GetAssetsReportUseCase) GetRBTCLocked(ctx context.Context) (*entities.Wei, error) {
 	lockedPegin := entities.NewWei(0)
-	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit)
+	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
 	if err != nil {
 		return nil, err
 	}
 	for _, retainedQuote := range peginQuotes {
-		lockedPegin.Add(lockedPegin, retainedQuote.RequiredLiquidity)
-	}
-	pegoutQuotes, err := useCase.pegoutRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
-	if err != nil {
-		return nil, err
-	}
-	for _, retainedQuote := range pegoutQuotes {
 		lockedPegin.Add(lockedPegin, retainedQuote.RequiredLiquidity)
 	}
 

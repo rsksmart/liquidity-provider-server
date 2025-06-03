@@ -147,18 +147,18 @@ func (r *GetReportsByPeriodRequest) GetTimestamps() (startTime, endTime time.Tim
 }
 
 type GetRevenueReportResponse struct {
-	TotalQuoteCallFees *big.Int `json:"total_quote_call_fees" validate:"required"`
-	TotalPenalizations *big.Int `json:"total_penalizations" validate:"required"`
-	TotalProfit        *big.Int `json:"total_profit" validate:"required"`
+	TotalQuoteCallFees *big.Int `json:"totalQuoteCallFees" validate:"required"`
+	TotalPenalizations *big.Int `json:"totalPenalizations" validate:"required"`
+	TotalProfit        *big.Int `json:"totalProfit" validate:"required"`
 }
 
-type GetAssetsReportResponse struct {
-	BtcBalance    *big.Int `json:"btc_balance" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtc_balance" validate:"required"`
-	BtcLocked     *big.Int `json:"btc_locked" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtc_locked" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btc_liquidity" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtc_liquidity" validate:"required"`
+type GetAssetsReportDTO struct {
+	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
+	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
+	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
+	RbtcLocked    *big.Int `json:"rbtcLocked" validate:"required"`
+	BtcLiquidity  *big.Int `json:"btcLiquidity" validate:"required"`
+	RbtcLiquidity *big.Int `json:"rbtcLiquidity" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {
