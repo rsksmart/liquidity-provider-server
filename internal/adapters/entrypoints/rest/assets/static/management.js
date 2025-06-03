@@ -389,7 +389,7 @@ function checkFeeWarnings() {
     const existingToast = document.getElementById('warningToast');
     if (shouldWarn) {
         if (!existingToast) {
-            showWarningToast('It is recommended to enable at least one of "feePercentage" or "fixedFee".');
+            showWarningToast('You have configured a zero-fee setting. This means you won’t earn fees from bridging transactions.');
         } else {
             bootstrap.Toast.getOrCreateInstance(existingToast).show();
         }
