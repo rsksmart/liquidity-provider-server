@@ -145,7 +145,24 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	}
 	details := make(ErrorDetails)
 	for _, field := range validationErrors {
-		details[field.Field()] = "validation failed: " + field.Tag()
+		var msg string
+		switch field.Tag() {
+		case "required":
+			msg = "is required"
+		case "numeric":
+			msg = "must be numeric"
+		case "positive_string":
+			msg = "must be a positive number"
+		case "gte":
+			msg = fmt.Sprintf("must be greater than or equal to %s", field.Param())
+		case "lte":
+			msg = fmt.Sprintf("must be less than or equal to %s", field.Param())
+		case "max_decimal_places":
+			msg = fmt.Sprintf("must have at most %s decimal places", field.Param())
+		default:
+			msg = "validation failed: " + field.Tag()
+		}
+		details[field.Field()] = msg
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
