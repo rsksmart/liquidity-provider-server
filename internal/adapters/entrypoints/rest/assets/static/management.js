@@ -470,7 +470,7 @@ function getRegularConfig(sectionId) {
             } else if (isfeePercentageKey(key)) {
                 value = parseFloat(input.value.trim());
                 if (isNaN(value)) {
-                    showErrorToast(`Invalid input "${input.value}" for feePercentage. Please enter a valid number.`);
+                    showErrorToast(`Invalid percentage entered "${input.value}". Please provide a valid value between 0% and 100%.`);
                     throw new Error('Invalid feePercentage');
                 }
             } else {

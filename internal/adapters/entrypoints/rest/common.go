@@ -135,6 +135,19 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 }
 
 func getValidationMessage(field validator.FieldError) string {
+	if field.Field() == "FeePercentage" {
+		switch field.Tag() {
+		case "gte":
+			if field.Param() == "0" {
+				return "Fee percentage cannot be negative. Please enter a value between 0% and 100%."
+			}
+		case "lte":
+			if field.Param() == "100" {
+				return "Fee percentage cannot exceed 100%. Please enter a value between 0% and 100%."
+			}
+		}
+	}
+	
 	switch field.Tag() {
 	case "required":
 		return "is required"
