@@ -63,7 +63,14 @@ func (w *Wei) ToRbtc() *big.Float {
 }
 
 func (w *Wei) ToSatoshi() *big.Float {
-	return new(big.Float).Quo(new(big.Float).SetInt(w.AsBigInt()), new(big.Float).SetInt(bTenPowTen))
+	remainder := new(big.Int)
+	quotient := new(big.Int)
+	quotient.QuoRem(w.AsBigInt(), bTenPowTen, remainder)
+	if remainder.Cmp(big.NewInt(0)) == 0 {
+		return new(big.Float).SetInt(quotient)
+	}
+	quotient.Add(quotient, big.NewInt(1))
+	return new(big.Float).SetInt(quotient)
 }
 
 func (w *Wei) String() string {

@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -15,20 +19,18 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"strings"
-	"time"
 )
 
 // registerPeginGasLimit Fixed gas limit for registerPegin function, should change only if the function does
 const registerPeginGasLimit = 2500000
 
 type liquidityBridgeContractImpl struct {
-	client      RpcClientBinding
-	address     string
-	contract    LbcAdapter
-	signer      TransactionSigner
-	retryParams RetryParams
+	client        RpcClientBinding
+	address       string
+	contract      LbcAdapter
+	signer        TransactionSigner
+	retryParams   RetryParams
+	miningTimeout time.Duration
 }
 
 func NewLiquidityBridgeContractImpl(
@@ -37,13 +39,15 @@ func NewLiquidityBridgeContractImpl(
 	contract LbcAdapter,
 	signer TransactionSigner,
 	retryParams RetryParams,
+	miningTimeout time.Duration,
 ) blockchain.LiquidityBridgeContract {
 	return &liquidityBridgeContractImpl{
-		client:      client.client,
-		address:     address,
-		contract:    contract,
-		signer:      signer,
-		retryParams: retryParams,
+		client:        client.client,
+		address:       address,
+		contract:      contract,
+		signer:        signer,
+		retryParams:   retryParams,
+		miningTimeout: miningTimeout,
 	}
 }
 
@@ -156,7 +160,7 @@ func (lbc *liquidityBridgeContractImpl) ProviderResign() error {
 	}
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "Resign", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "Resign", func() (*geth.Transaction, error) {
 				return lbc.contract.Resign(opts)
 			})
 		})
@@ -179,7 +183,7 @@ func (lbc *liquidityBridgeContractImpl) SetProviderStatus(id uint64, newStatus b
 
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "SetProviderStatus", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "SetProviderStatus", func() (*geth.Transaction, error) {
 				return lbc.contract.SetProviderStatus(opts, parsedId, newStatus)
 			})
 		})
@@ -268,7 +272,7 @@ func (lbc *liquidityBridgeContractImpl) AddCollateral(amount *entities.Wei) erro
 
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "AddCollateral", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "AddCollateral", func() (*geth.Transaction, error) {
 				return lbc.contract.AddCollateral(opts)
 			})
 		})
@@ -290,7 +294,7 @@ func (lbc *liquidityBridgeContractImpl) AddPegoutCollateral(amount *entities.Wei
 
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "AddPegoutCollateral", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "AddPegoutCollateral", func() (*geth.Transaction, error) {
 				return lbc.contract.AddPegoutCollateral(opts)
 			})
 		})
@@ -311,7 +315,7 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "WithdrawCollateral", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "WithdrawCollateral", func() (*geth.Transaction, error) {
 				return lbc.contract.WithdrawCollateral(opts)
 			})
 		})
@@ -356,7 +360,7 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "CallForUser", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "CallForUser", func() (*geth.Transaction, error) {
 				return lbc.contract.CallForUser(opts, parsedQuote)
 			})
 		})
@@ -403,7 +407,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 		GasLimit: registerPeginGasLimit,
 	}
 
-	receipt, err := awaitTx(lbc.client, "RegisterPegIn", func() (*geth.Transaction, error) {
+	receipt, err := awaitTx(lbc.client, lbc.miningTimeout, "RegisterPegIn", func() (*geth.Transaction, error) {
 		return lbc.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
 			params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
 	})
@@ -446,7 +450,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 		GasLimit: *txConfig.GasLimit,
 	}
 
-	receipt, err := awaitTx(lbc.client, "RefundPegOut", func() (*geth.Transaction, error) {
+	receipt, err := awaitTx(lbc.client, lbc.miningTimeout, "RefundPegOut", func() (*geth.Transaction, error) {
 		return lbc.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
 			params.BtcBlockHeaderHash, params.MerkleBranchPath, params.MerkleBranchHashes)
 	})
@@ -577,7 +581,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 	}
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
-			return awaitTx(lbc.client, "Register", func() (*geth.Transaction, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "Register", func() (*geth.Transaction, error) {
 				return lbc.contract.Register(opts, params.Name, params.ApiBaseUrl, params.Status, string(params.Type))
 			})
 		})
@@ -593,6 +597,52 @@ func (lbc *liquidityBridgeContractImpl) RegisterProvider(txConfig blockchain.Tra
 		return 0, fmt.Errorf("error parsing register event: %w", err)
 	}
 	return registerEvent.Id.Int64(), nil
+}
+
+func (lbc *liquidityBridgeContractImpl) UpdateProvider(name, url string) (string, error) {
+	opts := &bind.TransactOpts{From: lbc.signer.Address(), Signer: lbc.signer.Sign}
+	receipt, err := awaitTx(lbc.client, lbc.miningTimeout, "UpdateProvider", func() (*geth.Transaction, error) {
+		return lbc.contract.UpdateProvider(opts, name, url)
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("update provider error: %w", err)
+	} else if receipt == nil {
+		return "", errors.New("update provider error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("update provider error: transaction reverted (%s)", txHash)
+	}
+	return receipt.TxHash.String(), nil
+}
+
+func (lbc *liquidityBridgeContractImpl) RefundUserPegOut(quoteHash string) (string, error) {
+	// Validate the hash format
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return "", fmt.Errorf("invalid quote hash format: %w", err)
+	}
+	if len(hashBytesSlice) != 32 {
+		return "", errors.New("quote hash must be 32 bytes long")
+	}
+
+	opts := &bind.TransactOpts{
+		From:   lbc.signer.Address(),
+		Signer: lbc.signer.Sign,
+	}
+	receipt, err := awaitTx(lbc.client, lbc.miningTimeout, "RefundUserPegOut", func() (*geth.Transaction, error) {
+		return lbc.contract.RefundUserPegOut(opts, common.HexToHash(quoteHash))
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("refund user peg out error: %w", err)
+	} else if receipt == nil {
+		return "", errors.New("refund user peg out error: incomplete receipt")
+	} else if receipt.Status == 0 {
+		txHash := receipt.TxHash.String()
+		return txHash, fmt.Errorf("refund user peg out error: transaction reverted (%s)", txHash)
+	}
+	return receipt.TxHash.String(), nil
 }
 
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPeginQuote. All BTC address fields support all address types

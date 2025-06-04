@@ -1,0 +1,20 @@
+{
+  "name": "bitcoin",
+  "version": "1.0.0",
+  "description": "Bitcoin balance monitor sample",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mempool/mempool.js": "^2.3.0",
+    "@types/node": "^20.11.19",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "@rsksmart/rsk-monitor": "^0.1.0"
+  }
+}

@@ -2,9 +2,8 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "Stable-Test", "QA-Test"]
+    branches: [ "master", "Stable-Test", "QA-Test", "flyover-*" ]
   pull_request:
-    branches: [ "master", "Stable-Test", "QA-Test"]
   schedule:
     - cron: "0 0 * * 1"
 

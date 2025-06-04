@@ -93,3 +93,8 @@ func (confirmations ConfirmationsPerAmount) ForValue(value *entities.Wei) uint16
 		return confirmations[values[index]]
 	}
 }
+
+type ServerInfo struct {
+	Version  string
+	Revision string
+}

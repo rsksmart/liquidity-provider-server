@@ -33,6 +33,7 @@ type PegoutRskDepositWatcher struct {
 	currentBlock                 uint64
 	cacheStartBlock              uint64
 	currentBlockMutex            sync.RWMutex
+	depositCheckTimeout          time.Duration
 }
 
 type PegoutRskDepositWatcherUseCases struct {
@@ -67,6 +68,7 @@ func NewPegoutRskDepositWatcher(
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
 	ticker Ticker,
+	depositCheckTimeout time.Duration,
 ) *PegoutRskDepositWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
@@ -88,17 +90,26 @@ func NewPegoutRskDepositWatcher(
 		ticker:                       ticker,
 		currentBlockMutex:            sync.RWMutex{},
 		quotesMutex:                  sync.RWMutex{},
+		depositCheckTimeout:          depositCheckTimeout,
 	}
 }
 
 func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
-	var quoteCreationBlock uint64
+	var quoteCreationBlock, height uint64
 	var err error
 
 	if watcher.cacheStartBlock != 0 {
 		if err = watcher.initDepositCacheUseCase.Run(ctx, watcher.cacheStartBlock); err != nil {
 			return err
 		}
+	} else {
+		if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
+			return err
+		}
+		watcher.currentBlockMutex.Lock()
+		watcher.currentBlock = height
+		watcher.cacheStartBlock = height
+		watcher.currentBlockMutex.Unlock()
 	}
 
 	watchedQuotes, err := watcher.getWatchedPegoutQuoteUseCase.Run(ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
@@ -123,8 +134,6 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 }
 
 func (watcher *PegoutRskDepositWatcher) Start() {
-	var checkContext context.Context
-	var checkCancel context.CancelFunc
 	eventChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
 
 watcherLoop:
@@ -133,7 +142,7 @@ watcherLoop:
 		case <-watcher.ticker.C():
 			watcher.currentBlockMutex.Lock()
 			watcher.quotesMutex.Lock()
-			checkContext, checkCancel = context.WithTimeout(context.Background(), 1*time.Minute)
+			checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.depositCheckTimeout)
 			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
 				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
 				watcher.checkQuotes(checkContext, height)

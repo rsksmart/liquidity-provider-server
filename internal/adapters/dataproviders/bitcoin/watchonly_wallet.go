@@ -70,10 +70,16 @@ func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 	if err != nil {
 		return err
 	}
+	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return err
+	}
 	return wallet.conn.client.ImportAddressRescan(address, "", false)
 }
 
 func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
 }
 

@@ -29,10 +29,13 @@ func TestNewLocalEventBus(t *testing.T) {
 		assert.Same(t, bus1, bus2)
 	})
 	t.Run("Should initialize topics", func(t *testing.T) {
-		assert.NotNil(t, bus1.(*dataproviders.LocalEventBus).Topics)
+		parsedBus, ok := bus1.(*dataproviders.LocalEventBus)
+		require.True(t, ok)
+		assert.NotNil(t, parsedBus.Topics)
 	})
 }
 
+// nolint:funlen
 func TestLocalEventBus_Shutdown(t *testing.T) {
 	t.Run("Should send signal to close channel after closing", func(t *testing.T) {
 		bus1 := dataproviders.NewLocalEventBus()
@@ -45,21 +48,21 @@ func TestLocalEventBus_Shutdown(t *testing.T) {
 			assert.Fail(t, channelNotClosedMsg)
 		}
 	})
-
 	t.Run("Should clear topic map", func(t *testing.T) {
 		bus := dataproviders.NewLocalEventBus()
 		_ = bus.Subscribe(testEventId)
-		assert.Len(t, bus.(*dataproviders.LocalEventBus).Topics, 1)
+		parsedBus, ok := bus.(*dataproviders.LocalEventBus)
+		require.True(t, ok)
+		assert.Len(t, parsedBus.Topics, 1)
 		closeChannel := make(chan bool, 1)
 		bus.Shutdown(closeChannel)
 		select {
 		case <-closeChannel:
-			assert.Empty(t, bus.(*dataproviders.LocalEventBus).Topics)
+			assert.Empty(t, parsedBus.Topics)
 		default:
 			assert.Fail(t, channelNotClosedMsg)
 		}
 	})
-
 	t.Run("Should not allow to interact after closed", func(t *testing.T) {
 		const expectedBuff = "Trying to interact with closed bus"
 		message := make([]byte, 100)
@@ -70,7 +73,9 @@ func TestLocalEventBus_Shutdown(t *testing.T) {
 		bus.Shutdown(closeChannel)
 		select {
 		case <-closeChannel:
-			assert.Empty(t, bus.(*dataproviders.LocalEventBus).Topics)
+			parsedBus, ok := bus.(*dataproviders.LocalEventBus)
+			require.True(t, ok)
+			assert.Empty(t, parsedBus.Topics)
 		default:
 			assert.Fail(t, channelNotClosedMsg)
 		}
@@ -102,7 +107,9 @@ func TestLocalEventBus_Subscribe(t *testing.T) {
 	secondSub := bus.Subscribe(testEventId)
 	t.Run("Should create one channel per subscription", func(t *testing.T) {
 		assert.NotEqual(t, firstSub, secondSub)
-		assert.Len(t, bus.(*dataproviders.LocalEventBus).Topics[testEventId], 2)
+		parsedBus, ok := bus.(*dataproviders.LocalEventBus)
+		require.True(t, ok)
+		assert.Len(t, parsedBus.Topics[testEventId], 2)
 	})
 }
 
