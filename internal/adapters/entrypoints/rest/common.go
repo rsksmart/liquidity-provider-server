@@ -136,18 +136,13 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 
 func getValidationMessage(field validator.FieldError) string {
 	if field.Field() == "FeePercentage" {
-		switch field.Tag() {
-		case "gte":
-			if field.Param() == "0" {
-				return "Fee percentage cannot be negative. Please enter a value between 0% and 100%."
-			}
-		case "lte":
-			if field.Param() == "100" {
-				return "Fee percentage cannot exceed 100%. Please enter a value between 0% and 100%."
-			}
+		switch field.Tag() + ":" + field.Param() {
+		case "gte:0":
+			return "Fee percentage cannot be negative. Please enter a value between 0% and 100%."
+		case "lte:100":
+			return "Fee percentage cannot exceed 100%. Please enter a value between 0% and 100%."
 		}
 	}
-	
 	switch field.Tag() {
 	case "required":
 		return "is required"
@@ -155,10 +150,12 @@ func getValidationMessage(field validator.FieldError) string {
 		return "must be numeric"
 	case "positive_string":
 		return "must be a positive number"
-	case "gte":
-		return "must be greater than or equal to " + field.Param()
-	case "lte":
-		return "must be less than or equal to " + field.Param()
+	case "gte", "lte":
+		op := map[string]string{
+			"gte": "greater than or equal to ",
+			"lte": "less than or equal to ",
+		}
+		return "must be " + op[field.Tag()] + field.Param()
 	case "max_decimal_places":
 		return fmt.Sprintf("must have at most %s decimal places", field.Param())
 	default:
