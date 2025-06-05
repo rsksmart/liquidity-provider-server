@@ -146,7 +146,7 @@ func TestToPeginCreationDataDTO(t *testing.T) {
 	dto := pkg.ToPeginCreationDataDTO(peginCreationData)
 
 	feePercentage, _ := peginCreationData.FeePercentage.Native().Float64()
-	assert.Equal(t, peginCreationData.GasPrice.Uint64(), dto.GasPrice)
+	assert.Equal(t, peginCreationData.GasPrice.String(), dto.GasPrice.String())
 	assert.InDelta(t, feePercentage, dto.FeePercentage, 0.000000001)
 	assert.Equal(t, peginCreationData.FixedFee.String(), dto.FixedFee.String())
 

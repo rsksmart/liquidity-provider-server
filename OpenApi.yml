@@ -225,8 +225,8 @@ components:
           $ref: '#/components/schemas/'
           description: The fixed fee used to compute the call fee
         gasPrice:
+          $ref: '#/components/schemas/'
           description: The gas price used to compute the gas fee
-          type: integer
       required:
       - gasPrice
       - feePercentage
@@ -403,8 +403,8 @@ components:
           $ref: '#/components/schemas/'
           description: The fixed fee used to compute the call fee
         gasPrice:
+          $ref: '#/components/schemas/'
           description: The gas price used to compute the gas fee
-          type: integer
       required:
       - gasPrice
       - feePercentage

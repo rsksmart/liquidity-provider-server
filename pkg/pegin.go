@@ -48,7 +48,7 @@ type RetainedPeginQuoteDTO struct {
 }
 
 type PeginCreationDataDTO struct {
-	GasPrice      uint64   `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	GasPrice      *big.Int `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
 	FeePercentage float64  `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
 	FixedFee      *big.Int `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
 }
@@ -135,7 +135,7 @@ func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuote
 func ToPeginCreationDataDTO(entity quote.PeginCreationData) PeginCreationDataDTO {
 	feePercentage, _ := entity.FeePercentage.Native().Float64()
 	return PeginCreationDataDTO{
-		GasPrice:      entity.GasPrice.Uint64(),
+		GasPrice:      entity.GasPrice.AsBigInt(),
 		FeePercentage: feePercentage,
 		FixedFee:      entity.FixedFee.AsBigInt(),
 	}

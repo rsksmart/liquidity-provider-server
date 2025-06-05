@@ -47,7 +47,7 @@ type RetainedPegoutQuoteDTO struct {
 }
 
 type PegoutCreationDataDTO struct {
-	GasPrice      uint64   `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	GasPrice      *big.Int `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
 	FeePercentage float64  `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
 	FixedFee      *big.Int `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
 	FeeRate       float64  `json:"feeRate" required:"" description:"The fee rate used to compute the gas fee"`
@@ -101,7 +101,7 @@ func ToPegoutCreationDataDTO(entity quote.PegoutCreationData) PegoutCreationData
 	feePercentage, _ := entity.FeePercentage.Native().Float64()
 	feeRate, _ := entity.FeeRate.Native().Float64()
 	return PegoutCreationDataDTO{
-		GasPrice:      entity.GasPrice.Uint64(),
+		GasPrice:      entity.GasPrice.AsBigInt(),
 		FeePercentage: feePercentage,
 		FixedFee:      entity.FixedFee.AsBigInt(),
 		FeeRate:       feeRate,

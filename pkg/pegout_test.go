@@ -102,6 +102,6 @@ func TestToPegoutCreationDataDTO(t *testing.T) {
 	feePercentage, _ := pegoutCreationData.FeePercentage.Native().Float64()
 	assert.InDelta(t, feeRate, dto.FeeRate, 0.000000001)
 	assert.InDelta(t, feePercentage, dto.FeePercentage, 0.000000001)
-	assert.Equal(t, pegoutCreationData.GasPrice.Uint64(), dto.GasPrice)
+	assert.Equal(t, pegoutCreationData.GasPrice.String(), dto.GasPrice.String())
 	assert.Equal(t, pegoutCreationData.FixedFee.String(), dto.FixedFee.String())
 }
