@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -191,23 +192,23 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 	}
 }
 
-func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) liquidity_provider.GeneralConfiguration {
+func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provider.GeneralConfiguration, error) {
 	bigInt := new(big.Int)
 	for key := range dto.RskConfirmations {
 		_, ok := bigInt.SetString(key, 10)
 		if !ok {
-			delete(dto.RskConfirmations, key)
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize RSK confirmations key %s", key)
 		}
 	}
 	for key := range dto.BtcConfirmations {
 		_, ok := bigInt.SetString(key, 10)
 		if !ok {
-			delete(dto.BtcConfirmations, key)
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize BTC confirmations key %s", key)
 		}
 	}
 	return liquidity_provider.GeneralConfiguration{
 		RskConfirmations:     dto.RskConfirmations,
 		BtcConfirmations:     dto.BtcConfirmations,
 		PublicLiquidityCheck: dto.PublicLiquidityCheck,
-	}
+	}, nil
 }
