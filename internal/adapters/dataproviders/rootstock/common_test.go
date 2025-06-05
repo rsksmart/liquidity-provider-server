@@ -116,7 +116,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 	t.Run("should return receipt if tx is successful", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, true)
+		tx, _ := prepareTxMocks(clientMock, signerMock, true)
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction success tx (%s) executed successfully", tx.Hash()))()
 		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "success tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
@@ -128,7 +128,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 	t.Run("should return receipt if tx reverts", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, false)
+		tx, _ := prepareTxMocks(clientMock, signerMock, false)
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction fail tx (%s) reverted", tx.Hash()))()
 		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "fail tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
@@ -140,7 +140,7 @@ func TestAwaitTxWithCtx(t *testing.T) {
 	t.Run("should return error if tx to be mined", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, true)
+		tx, _ := prepareTxMocks(clientMock, signerMock, true)
 		clientMock.ExpectedCalls = []*mock.Call{}
 		clientMock.On("TransactionReceipt", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

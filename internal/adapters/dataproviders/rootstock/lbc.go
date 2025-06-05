@@ -346,10 +346,14 @@ func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.We
 	return entities.NewBigWei(balance), nil
 }
 
-func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (string, error) {
+func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.CallForUserReturn, error) {
 	parsedQuote, err := parsePeginQuote(peginQuote)
+	callForUserReturn := blockchain.CallForUserReturn{
+		TxHash:  "",
+		GasUsed: uint64(0),
+	}
 	if err != nil {
-		return "", err
+		return callForUserReturn, err
 	}
 
 	opts := &bind.TransactOpts{
@@ -367,14 +371,17 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		})
 
 	if err != nil {
-		return "", fmt.Errorf("call for user error: %w", err)
+		return callForUserReturn, fmt.Errorf("call for user error: %w", err)
 	} else if receipt == nil {
-		return "", errors.New("call for user error: incomplete receipt")
+		return callForUserReturn, errors.New("call for user error: incomplete receipt")
 	} else if receipt.Status == 0 {
-		txHash := receipt.TxHash.String()
-		return txHash, fmt.Errorf("call for user error: transaction reverted (%s)", txHash)
+		callForUserReturn.TxHash = receipt.TxHash.String()
+		callForUserReturn.GasUsed = receipt.GasUsed
+		return callForUserReturn, fmt.Errorf("call for user error: transaction reverted (%s)", callForUserReturn.TxHash)
 	}
-	return receipt.TxHash.String(), nil
+	callForUserReturn.TxHash = receipt.TxHash.String()
+	callForUserReturn.GasUsed = receipt.GasUsed
+	return callForUserReturn, nil
 }
 
 func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (string, error) {
