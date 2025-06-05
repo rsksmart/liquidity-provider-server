@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
+	"math/big"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,10 +29,10 @@ func (s *IntegrationTestSuite) TestSuccessfulPegInFlow() {
 	})
 
 	s.Run("Should process bitcoin deposit and callForUser", func() {
-		value := entities.NewUWei(quote.Quote.Value)
-		callFee := entities.NewUWei(quote.Quote.CallFee)
-		gasFee := entities.NewUWei(quote.Quote.GasFee)
-		productFee := entities.NewUWei(quote.Quote.ProductFeeAmount)
+		value := entities.NewBigWei(quote.Quote.Value)
+		callFee := entities.NewBigWei(quote.Quote.CallFee)
+		gasFee := entities.NewBigWei(quote.Quote.GasFee)
+		productFee := entities.NewBigWei(quote.Quote.ProductFeeAmount)
 		totalFees := new(entities.Wei).Add(new(entities.Wei).Add(callFee, gasFee), productFee)
 		totalAmount := new(entities.Wei).Add(totalFees, value)
 		callForUserTest(s, quote, acceptedQuote, totalAmount)
@@ -73,7 +74,7 @@ func getPeginQuoteTest(s *IntegrationTestSuite, url string, quoteResponse *pkg.G
 	body := pkg.PeginQuoteRequest{
 		CallEoaOrContractAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
 		CallContractArguments:    "",
-		ValueToTransfer:          600000000000000000,
+		ValueToTransfer:          big.NewInt(600000000000000000),
 		RskRefundAddress:         "0x79568c2989232dCa1840087D73d403602364c0D4",
 	}
 

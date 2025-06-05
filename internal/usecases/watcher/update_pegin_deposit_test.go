@@ -22,7 +22,7 @@ func TestUpdatePeginDepositUseCase_Run(t *testing.T) {
 	peginQuote := quote.PeginQuote{
 		Value:              entities.NewWei(5000),
 		CallFee:            entities.NewWei(100),
-		ProductFeeAmount:   1,
+		ProductFeeAmount:   entities.NewWei(1),
 		GasFee:             entities.NewWei(150),
 		AgreementTimestamp: 900,
 		TimeForDeposit:     200,
@@ -69,7 +69,7 @@ func TestUpdatePeginDepositUseCase_Run_ErrorHandling(t *testing.T) {
 	peginQuote := quote.PeginQuote{
 		Value:              entities.NewWei(1),
 		CallFee:            entities.NewWei(2),
-		ProductFeeAmount:   3,
+		ProductFeeAmount:   entities.NewWei(3),
 		GasFee:             entities.NewWei(4),
 		AgreementTimestamp: 500,
 		TimeForDeposit:     50,

@@ -3,6 +3,7 @@ package entities
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"math/big"
@@ -112,14 +113,28 @@ func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
 }
 
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if w == nil || bsonType != bson.TypeString || len(bytes) == 0 {
+	supportedType := bsonType == bson.TypeInt64 || bsonType == bson.TypeString
+	if w == nil || !supportedType || len(bytes) == 0 {
 		return DeserializationError
 	}
+
+	if bsonType == bson.TypeInt64 {
+		var value int64
+		if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+			return errors.Join(DeserializationError, err)
+		}
+		w.AsBigInt().SetInt64(value)
+		return nil
+	}
+
 	var value string
 	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
 		return errors.Join(DeserializationError, err)
 	}
-	w.AsBigInt().SetString(value, 10)
+	_, ok := w.AsBigInt().SetString(value, 10)
+	if !ok {
+		return fmt.Errorf("%w: cannot unmarshal value %s to Wei", DeserializationError, value)
+	}
 	return nil
 }
 

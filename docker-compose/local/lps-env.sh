@@ -148,7 +148,7 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
   && curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "importpubkey", "params": ["0232858a5faa413101831afe7a880da9a8ac4de6bd5e25b4358d762ba450b03c22", "", false], "id":"importpubkey"}' \
   && curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "importaddress", "params": ["n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6", "", false], "id":"importaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "walletpassphrase", "params": ["test-password", 30000], "id":"walletpassphrase"}' \
-  && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 5, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
+  && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 500, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
 
@@ -157,7 +157,7 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ "$PROVIDER_TX_COUNT" = "0x0" ]; then
     echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
 
-    TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
+    TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x3635C9ADC5DEA00000\"}],\"id\":1}" | jq -r ".result")
     echo "Result: $TX_HASH"
     sleep 10
   else
