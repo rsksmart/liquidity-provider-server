@@ -136,7 +136,10 @@ const createFeeInput = (inputContainer, label, section, key, value) => {
 
 const createFeePercentageInput = (inputContainer, section, key, value) => {
     const input = document.createElement('input');
-    input.type = 'text';
+    input.type = 'number';
+    input.min = '0';
+    input.max = '100';
+    input.step = 'any';
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
@@ -389,7 +392,7 @@ function checkFeeWarnings() {
     const existingToast = document.getElementById('warningToast');
     if (shouldWarn) {
         if (!existingToast) {
-            showWarningToast('You have configured a zero-fee setting. This means you won’t earn fees from bridging transactions.');
+            showWarningToast('You have configured a zero-fee setting. This means you won\'t earn fees from bridging transactions.');
         } else {
             bootstrap.Toast.getOrCreateInstance(existingToast).show();
         }
@@ -464,13 +467,21 @@ function getRegularConfig(sectionId) {
                 try {
                     value = etherToWei(input.value).toString();
                 } catch (error) {
-                    showErrorToast(`Invalid input "${input.value}" for field "${key}". Please enter a valid number.`);
+                    showErrorToast(`"${sectionId}": Invalid input "${input.value}" for field "${key}". Please enter a valid number.`);
                     throw error;
                 }
             } else if (isfeePercentageKey(key)) {
                 value = parseFloat(input.value.trim());
                 if (isNaN(value)) {
-                    showErrorToast(`Invalid percentage entered "${input.value}". Please provide a valid value between 0% and 100%.`);
+                    showErrorToast(`"${sectionId}": Invalid percentage entered "${input.value}". Please provide a valid value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                if (value < 0) {
+                    showErrorToast(`"${sectionId}": Fee percentage cannot be negative. Please enter a value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                if (value > 100) {
+                    showErrorToast(`"${sectionId}": Fee percentage cannot exceed 100%. Please enter a value between 0% and 100%.`);
                     throw new Error('Invalid feePercentage');
                 }
             } else {
