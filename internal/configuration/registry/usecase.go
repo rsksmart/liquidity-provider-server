@@ -59,6 +59,7 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	summariesUseCase              *reports.SummariesUseCase
 	getPeginReportUseCase         *reports.GetPeginReportUseCase
 	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
 	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
@@ -76,6 +77,11 @@ func NewUseCaseRegistry(
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
 	return &UseCaseRegistry{
+		summariesUseCase: reports.NewSummariesUseCase(
+			databaseRegistry.PeginRepository,
+			databaseRegistry.PegoutRepository,
+			databaseRegistry.PenalizedEventRepository,
+		),
 		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
 			messaging.Rpc,
 			rskRegistry.Contracts,
@@ -358,6 +364,10 @@ func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provi
 
 func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	return registry.getServerInfoUseCase
+}
+
+func (registry *UseCaseRegistry) SummariesUseCase() *reports.SummariesUseCase {
+	return registry.summariesUseCase
 }
 
 func (registry *UseCaseRegistry) GetPeginReportUseCase() *reports.GetPeginReportUseCase {
