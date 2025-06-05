@@ -195,7 +195,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 		ContractAddress:    "contract address",
 		Data:               "0x1a1b",
 		GasLimit:           500,
-		Nonce:              quote.NewNonce(123456),
+		Nonce:              123456,
 		Value:              entities.NewWei(1000),
 		AgreementTimestamp: now,
 		TimeForDeposit:     600,

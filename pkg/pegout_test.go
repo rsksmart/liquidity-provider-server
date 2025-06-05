@@ -19,7 +19,7 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 		LpBtcAddress:          "btc2",
 		CallFee:               entities.NewWei(5),
 		PenaltyFee:            entities.NewWei(10),
-		Nonce:                 quote.NewNonce(15),
+		Nonce:                 15,
 		DepositAddress:        "btc3",
 		Value:                 entities.NewWei(20),
 		AgreementTimestamp:    25,
@@ -42,7 +42,7 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, pegoutQuote.LpBtcAddress, dto.LpBTCAddr)
 	assert.Equal(t, pegoutQuote.CallFee.String(), dto.CallFee.String())
 	assert.Equal(t, pegoutQuote.PenaltyFee.String(), dto.PenaltyFee.String())
-	assert.Equal(t, pegoutQuote.Nonce.AsBigInt(), dto.Nonce)
+	assert.Equal(t, pegoutQuote.Nonce, dto.Nonce)
 	assert.Equal(t, pegoutQuote.DepositAddress, dto.DepositAddr)
 	assert.Equal(t, pegoutQuote.Value.String(), dto.Value.String())
 	assert.Equal(t, pegoutQuote.AgreementTimestamp, dto.AgreementTimestamp)

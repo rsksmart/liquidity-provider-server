@@ -174,7 +174,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 		ContractAddress:    request.callEoaOrContractAddress,
 		Data:               hex.EncodeToString(request.callContractArguments),
 		GasLimit:           uint32(totalGas.Uint64()),
-		Nonce:              quote.NewNonce(nonce),
+		Nonce:              nonce,
 		Value:              request.valueToTransfer,
 		AgreementTimestamp: uint32(time.Now().Unix()),
 		TimeForDeposit:     peginConfig.TimeForDeposit,

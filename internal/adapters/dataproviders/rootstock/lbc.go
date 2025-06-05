@@ -688,7 +688,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	parsedQuote.CallFee = peginQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = peginQuote.PenaltyFee.AsBigInt()
 	parsedQuote.GasLimit = peginQuote.GasLimit
-	parsedQuote.Nonce = peginQuote.Nonce.Int64()
+	parsedQuote.Nonce = peginQuote.Nonce
 	parsedQuote.Value = peginQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = peginQuote.AgreementTimestamp
 	parsedQuote.CallTime = peginQuote.LpCallTime
@@ -731,7 +731,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
-	parsedQuote.Nonce = pegoutQuote.Nonce.Int64()
+	parsedQuote.Nonce = pegoutQuote.Nonce
 	parsedQuote.Value = pegoutQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = pegoutQuote.AgreementTimestamp
 	parsedQuote.DepositDateLimit = pegoutQuote.DepositDateLimit

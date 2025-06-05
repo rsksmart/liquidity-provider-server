@@ -25,7 +25,7 @@ type PeginQuoteDTO struct {
 	ContractAddr       string   `json:"contractAddr" required:"" description:"The destination address of the peg-in"`
 	Data               string   `json:"data" required:"" description:"The arguments to send in the call"`
 	GasLimit           uint32   `json:"gasLimit,omitempty" required:"" description:"The gas limit"`
-	Nonce              *big.Int `json:"nonce" required:"" description:"A nonce that uniquely identifies this quote"`
+	Nonce              int64    `json:"nonce" required:"" description:"A nonce that uniquely identifies this quote"`
 	Value              *big.Int `json:"value" required:"" description:"The value to transfer in the call"`
 	AgreementTimestamp uint32   `json:"agreementTimestamp" required:"" description:"The timestamp of the agreement"`
 	TimeForDeposit     uint32   `json:"timeForDeposit" required:"" description:"The time (in seconds) that the user has to achieve one confirmation on the BTC deposit"`
@@ -82,7 +82,7 @@ func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 		ContractAddress:    dto.ContractAddr,
 		Data:               dto.Data,
 		GasLimit:           dto.GasLimit,
-		Nonce:              quote.NewNonce(dto.Nonce.Int64()),
+		Nonce:              dto.Nonce,
 		Value:              entities.NewBigWei(dto.Value),
 		AgreementTimestamp: dto.AgreementTimestamp,
 		TimeForDeposit:     dto.TimeForDeposit,
@@ -107,7 +107,7 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 		ContractAddr:       entity.ContractAddress,
 		Data:               entity.Data,
 		GasLimit:           entity.GasLimit,
-		Nonce:              entity.Nonce.AsBigInt(),
+		Nonce:              entity.Nonce,
 		Value:              entity.Value.AsBigInt(),
 		AgreementTimestamp: entity.AgreementTimestamp,
 		TimeForDeposit:     entity.TimeForDeposit,

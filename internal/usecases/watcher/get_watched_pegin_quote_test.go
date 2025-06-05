@@ -24,13 +24,13 @@ var retainedQuotes = []quote.RetainedPeginQuote{
 }
 
 var peginQuotes = []quote.PeginQuote{
-	{Nonce: quote.NewNonce(1)},
-	{Nonce: quote.NewNonce(2)},
-	{Nonce: quote.NewNonce(3)},
-	{Nonce: quote.NewNonce(4)},
-	{Nonce: quote.NewNonce(5)},
-	{Nonce: quote.NewNonce(7)},
-	{Nonce: quote.NewNonce(8)},
+	{Nonce: 1},
+	{Nonce: 2},
+	{Nonce: 3},
+	{Nonce: 4},
+	{Nonce: 5},
+	{Nonce: 7},
+	{Nonce: 8},
 }
 
 var peginsCreationData = []quote.PeginCreationData{
@@ -61,7 +61,7 @@ func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PeginQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PeginQuote.Nonce)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDepositConfirmations(t *testi
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PeginQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PeginQuote.Nonce)
 	}
 }
 
@@ -109,7 +109,7 @@ func TestGetWatchedPeginQuoteUseCase_Run_MoreThanOneState(t *testing.T) {
 	var parsedHash big.Int
 	for _, watchedQuote := range watchedQuotes {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PeginQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PeginQuote.Nonce)
 	}
 }
 
@@ -129,7 +129,7 @@ func TestGetWatchedPeginQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PeginQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PeginQuote.Nonce)
 	}
 }
 

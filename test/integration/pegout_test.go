@@ -212,7 +212,7 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 		LpBtcAddress:          lpBtcAddress,
 		CallFee:               originalQuote.CallFee,
 		PenaltyFee:            originalQuote.PenaltyFee,
-		Nonce:                 originalQuote.Nonce.Int64(),
+		Nonce:                 originalQuote.Nonce,
 		DeposityAddress:       depositAddress,
 		Value:                 originalQuote.Value,
 		AgreementTimestamp:    originalQuote.AgreementTimestamp,

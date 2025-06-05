@@ -160,7 +160,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		LpBtcAddress:          useCase.lp.BtcAddress(),
 		CallFee:               fees.CallFee,
 		PenaltyFee:            fees.PenaltyFee,
-		Nonce:                 quote.NewNonce(nonce),
+		Nonce:                 nonce,
 		DepositAddress:        request.to,
 		Value:                 request.valueToTransfer,
 		AgreementTimestamp:    now,

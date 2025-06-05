@@ -33,7 +33,7 @@ var testPeginQuote = quote.PeginQuote{
 	ContractAddress:    "0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82",
 	Data:               "010203",
 	GasLimit:           21000,
-	Nonce:              quote.NewNonce(8373381263192041574),
+	Nonce:              8373381263192041574,
 	Value:              entities.NewWei(8000000000000000),
 	AgreementTimestamp: 1727298699,
 	TimeForDeposit:     3600,

@@ -70,7 +70,7 @@ type PeginQuote struct {
 	ContractAddress    string        `json:"contractAddress" bson:"contract_address"  validate:"required"`
 	Data               string        `json:"data" bson:"data"  validate:""`
 	GasLimit           uint32        `json:"gasLimit,omitempty" bson:"gas_limit"  validate:"required"`
-	Nonce              *Nonce        `json:"nonce" bson:"nonce"  validate:"required"`
+	Nonce              int64         `json:"nonce" bson:"nonce"  validate:"required"`
 	Value              *entities.Wei `json:"value" bson:"value"  validate:"required"`
 	AgreementTimestamp uint32        `json:"agreementTimestamp" bson:"agreement_timestamp"  validate:"required"`
 	TimeForDeposit     uint32        `json:"timeForDeposit" bson:"time_for_deposit"  validate:"required"`

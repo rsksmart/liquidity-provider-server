@@ -24,7 +24,7 @@ func TestToPeginQuoteDTO(t *testing.T) {
 		ContractAddress:    "0xab",
 		Data:               "cd",
 		GasLimit:           15,
-		Nonce:              quote.NewNonce(20),
+		Nonce:              20,
 		Value:              entities.NewWei(25),
 		AgreementTimestamp: 25,
 		TimeForDeposit:     30,
@@ -47,7 +47,7 @@ func TestToPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, peginQuote.ContractAddress, dto.ContractAddr)
 	assert.Equal(t, peginQuote.Data, dto.Data)
 	assert.Equal(t, peginQuote.GasLimit, dto.GasLimit)
-	assert.Equal(t, peginQuote.Nonce.AsBigInt(), dto.Nonce)
+	assert.Equal(t, peginQuote.Nonce, dto.Nonce)
 	assert.Equal(t, peginQuote.Value.AsBigInt(), dto.Value)
 	assert.Equal(t, peginQuote.AgreementTimestamp, dto.AgreementTimestamp)
 	assert.Equal(t, peginQuote.TimeForDeposit, dto.TimeForDeposit)
@@ -74,7 +74,7 @@ func TestFromPeginQuoteDTO(t *testing.T) {
 		ContractAddr:       "0xab",
 		Data:               "cd",
 		GasLimit:           15,
-		Nonce:              big.NewInt(20),
+		Nonce:              20,
 		Value:              big.NewInt(25),
 		AgreementTimestamp: 25,
 		TimeForDeposit:     30,
@@ -97,7 +97,7 @@ func TestFromPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, dto.ContractAddr, peginQuote.ContractAddress)
 	assert.Equal(t, dto.Data, peginQuote.Data)
 	assert.Equal(t, dto.GasLimit, peginQuote.GasLimit)
-	assert.Equal(t, dto.Nonce, peginQuote.Nonce.AsBigInt())
+	assert.Equal(t, dto.Nonce, peginQuote.Nonce)
 	assert.Equal(t, dto.Value.String(), peginQuote.Value.String())
 	assert.Equal(t, dto.AgreementTimestamp, peginQuote.AgreementTimestamp)
 	assert.Equal(t, dto.TimeForDeposit, peginQuote.TimeForDeposit)

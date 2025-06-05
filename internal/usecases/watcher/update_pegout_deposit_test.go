@@ -37,7 +37,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 	LpBtcAddress:          "0x1234",
 	CallFee:               entities.NewWei(1000),
 	PenaltyFee:            entities.NewWei(100),
-	Nonce:                 quote.NewNonce(123456),
+	Nonce:                 123456,
 	DepositAddress:        test.AnyAddress,
 	Value:                 entities.NewWei(5000),
 	AgreementTimestamp:    now - 60,

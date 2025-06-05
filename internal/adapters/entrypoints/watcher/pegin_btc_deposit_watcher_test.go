@@ -42,7 +42,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return(retainedQuotes[1:], nil).Once()
 		btcWallet := &mocks.BitcoinWalletMock{}
 		for i, q := range retainedQuotes {
-			peginRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PeginQuote{Nonce: quote.NewNonce(int64(i))}, nil).Once()
+			peginRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PeginQuote{Nonce: int64(i)}, nil).Once()
 			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 			btcWallet.EXPECT().ImportAddress(q.DepositAddress).Return(nil).Once()
 		}
@@ -74,7 +74,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 // nolint:funlen
 func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: "010203", DepositAddress: test.AnyAddress}
-	testPeginQuote := quote.PeginQuote{Nonce: quote.NewNonce(5)}
+	testPeginQuote := quote.PeginQuote{Nonce: 5}
 	btcWallet := &mocks.BtcWalletMock{}
 	rpc := blockchain.Rpc{}
 	eventBus := &mocks.EventBusMock{}
@@ -225,7 +225,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	})
 	t.Run("should call expire use case on expired quotes", func(t *testing.T) {
 		expiredRetained := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		expiredQuote := quote.PeginQuote{Nonce: quote.NewNonce(6), AgreementTimestamp: 1}
+		expiredQuote := quote.PeginQuote{Nonce: 6, AgreementTimestamp: 1}
 		t.Run("should handle error when expiring quotes", func(t *testing.T) {
 			resetMocks()
 			checkFunction := test.AssertLogContains(t, "Error updating expired quote (d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb)")
@@ -280,7 +280,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	t.Run("should update state to WaitingForDepositConfirmations after first confirmation", func(t *testing.T) {
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: quote.NewNonce(8), AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
+		testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testQuote,
@@ -385,7 +385,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		t.Run("should stop tracking quote on successful call for user", func(t *testing.T) {
 			resetMocks()
 			testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDepositConfirmations}
-			testQuote := quote.PeginQuote{Nonce: quote.NewNonce(8), AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
+			testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
 
 			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 			btcRpc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
@@ -419,7 +419,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		now := time.Now().Unix()
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: quote.NewNonce(123), AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
+		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testQuote,
@@ -448,7 +448,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		now := time.Now().Unix()
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
 		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: quote.NewNonce(123), AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
+		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testQuote,

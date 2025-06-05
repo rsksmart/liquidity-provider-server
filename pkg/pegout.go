@@ -20,7 +20,7 @@ type PegoutQuoteDTO struct {
 	LpBTCAddr             string   `json:"lpBtcAddr" required:"" validate:"required"`
 	CallFee               *big.Int `json:"callFee" required:"" validate:"required"`
 	PenaltyFee            *big.Int `json:"penaltyFee" required:"" validate:"required"`
-	Nonce                 *big.Int `json:"nonce" required:"" validate:"required"`
+	Nonce                 int64    `json:"nonce" required:"" validate:"required"`
 	DepositAddr           string   `json:"depositAddr" required:"" validate:"required"`
 	Value                 *big.Int `json:"value" required:"" validate:"required"`
 	AgreementTimestamp    uint32   `json:"agreementTimestamp" required:"" validate:"required"`
@@ -68,7 +68,7 @@ func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 		LpBTCAddr:             entity.LpBtcAddress,
 		CallFee:               entity.CallFee.AsBigInt(),
 		PenaltyFee:            entity.PenaltyFee.AsBigInt(),
-		Nonce:                 entity.Nonce.AsBigInt(),
+		Nonce:                 entity.Nonce,
 		DepositAddr:           entity.DepositAddress,
 		Value:                 entity.Value.AsBigInt(),
 		AgreementTimestamp:    entity.AgreementTimestamp,

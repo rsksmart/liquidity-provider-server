@@ -75,7 +75,7 @@ type PegoutQuote struct {
 	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"required"`
 	CallFee               *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
 	PenaltyFee            *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
-	Nonce                 *Nonce        `json:"nonce" bson:"nonce" validate:"required"`
+	Nonce                 int64         `json:"nonce" bson:"nonce" validate:"required"`
 	DepositAddress        string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
 	Value                 *entities.Wei `json:"value" bson:"value" validate:"required"`
 	AgreementTimestamp    uint32        `json:"agreementTimestamp" bson:"agreement_timestamp" validate:"required"`

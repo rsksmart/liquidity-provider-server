@@ -24,13 +24,13 @@ var retainedPegoutQuotes = []quote.RetainedPegoutQuote{
 }
 
 var pegoutQuotes = []quote.PegoutQuote{
-	{Nonce: quote.NewNonce(1)},
-	{Nonce: quote.NewNonce(2)},
-	{Nonce: quote.NewNonce(3)},
-	{Nonce: quote.NewNonce(4)},
-	{Nonce: quote.NewNonce(5)},
-	{Nonce: quote.NewNonce(6)},
-	{Nonce: quote.NewNonce(7)},
+	{Nonce: 1},
+	{Nonce: 2},
+	{Nonce: 3},
+	{Nonce: 4},
+	{Nonce: 5},
+	{Nonce: 6},
+	{Nonce: 7},
 }
 
 var pegoutsCreationData = []quote.PegoutCreationData{
@@ -71,7 +71,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PegoutQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PegoutQuote.Nonce)
 	}
 }
 
@@ -91,7 +91,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_SendPegoutSucceed(t *testing.T) {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PegoutQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PegoutQuote.Nonce)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_RefundPegoutSucceeded(t *testing.T) {
 		parsedHash.SetString(watchedQuote.RetainedQuote.QuoteHash, 16)
 		// this is just to validate that the watched quotes are built with the correct pairs,
 		// the nonce is not related to the hash in the business logic
-		assert.Equal(t, quote.NewNonce(parsedHash.Int64()), watchedQuote.PegoutQuote.Nonce)
+		assert.Equal(t, parsedHash.Int64(), watchedQuote.PegoutQuote.Nonce)
 	}
 }
 
