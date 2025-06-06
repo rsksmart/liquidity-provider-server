@@ -1,14 +1,16 @@
 package pkg_test
 
 import (
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -290,4 +292,63 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 		assert.Equal(t, time.Month(6), endTime.Month())
 		assert.Equal(t, 20, endTime.Day())
 	})
+}
+
+func TestToSummaryDataDTO(t *testing.T) {
+	data := reports.SummaryData{
+		TotalQuotesCount:          10,
+		AcceptedQuotesCount:       8,
+		PaidQuotesCount:           5,
+		PaidQuotesAmount:          entities.NewWei(1500),
+		TotalAcceptedQuotedAmount: entities.NewWei(2500),
+		TotalFeesCollected:        entities.NewWei(300),
+		RefundedQuotesCount:       2,
+		TotalPenaltyAmount:        entities.NewWei(50),
+		LpEarnings:                entities.NewWei(250),
+	}
+	dto := pkg.ToSummaryDataDTO(data)
+	assert.Equal(t, data.TotalQuotesCount, dto.TotalQuotesCount)
+	assert.Equal(t, data.AcceptedQuotesCount, dto.AcceptedQuotesCount)
+	assert.Equal(t, data.PaidQuotesCount, dto.PaidQuotesCount)
+	assert.Equal(t, 0, data.PaidQuotesAmount.AsBigInt().Cmp(dto.PaidQuotesAmount))
+	assert.Equal(t, 0, data.TotalAcceptedQuotedAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotedAmount))
+	assert.Equal(t, 0, data.TotalFeesCollected.AsBigInt().Cmp(dto.TotalFeesCollected))
+	assert.Equal(t, data.RefundedQuotesCount, dto.RefundedQuotesCount)
+	assert.Equal(t, 0, data.TotalPenaltyAmount.AsBigInt().Cmp(dto.TotalPenaltyAmount))
+	assert.Equal(t, 0, data.LpEarnings.AsBigInt().Cmp(dto.LpEarnings))
+	test.AssertNonZeroValues(t, dto)
+}
+
+func TestToSummaryResultDTO(t *testing.T) {
+	pegin := reports.SummaryData{
+		TotalQuotesCount:          3,
+		AcceptedQuotesCount:       2,
+		PaidQuotesCount:           1,
+		PaidQuotesAmount:          entities.NewWei(500),
+		TotalAcceptedQuotedAmount: entities.NewWei(800),
+		TotalFeesCollected:        entities.NewWei(100),
+		RefundedQuotesCount:       0,
+		TotalPenaltyAmount:        entities.NewWei(0),
+		LpEarnings:                entities.NewWei(100),
+	}
+	pegout := reports.SummaryData{
+		TotalQuotesCount:          4,
+		AcceptedQuotesCount:       3,
+		PaidQuotesCount:           2,
+		PaidQuotesAmount:          entities.NewWei(900),
+		TotalAcceptedQuotedAmount: entities.NewWei(1200),
+		TotalFeesCollected:        entities.NewWei(150),
+		RefundedQuotesCount:       1,
+		TotalPenaltyAmount:        entities.NewWei(20),
+		LpEarnings:                entities.NewWei(130),
+	}
+	result := reports.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
+	dto := pkg.ToSummaryResultDTO(result)
+	expected := pkg.SummaryResultDTO{
+		PeginSummary:  pkg.ToSummaryDataDTO(pegin),
+		PegoutSummary: pkg.ToSummaryDataDTO(pegout),
+	}
+	assert.Equal(t, expected, dto)
+	test.AssertMaxZeroValues(t, dto.PeginSummary, 1)
+	test.AssertNonZeroValues(t, dto.PegoutSummary)
 }

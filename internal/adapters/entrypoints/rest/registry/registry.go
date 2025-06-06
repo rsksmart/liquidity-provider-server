@@ -36,6 +36,7 @@ type UseCaseRegistry interface {
 	GetPegoutStatusUseCase() *pegout.StatusUseCase
 	GetAvailableLiquidityUseCase() *liquidity_provider.GetAvailableLiquidityUseCase
 	GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase
+	SummariesUseCase() *reports.SummariesUseCase
 	GetPeginReportUseCase() *reports.GetPeginReportUseCase
 	GetPegoutReportUseCase() *reports.GetPegoutReportUseCase
 	GetRevenueReportUseCase() *reports.GetRevenueReportUseCase
