@@ -1066,6 +1066,13 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/assets:
+    get:
+      description: ' Get the asset information for the LPS.'
+      responses:
+        "200":
+          description: ""
+      summary: Get asset Reports
   /report/summaries:
     get:
       description: ' Returns financial data for a given period'

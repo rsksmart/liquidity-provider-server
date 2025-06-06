@@ -37,6 +37,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetPeginReportUseCase().Return(&reports.GetPeginReportUseCase{})
 	registryMock.EXPECT().GetPegoutReportUseCase().Return(&reports.GetPegoutReportUseCase{})
 	registryMock.EXPECT().GetRevenueReportUseCase().Return(&reports.GetRevenueReportUseCase{})
+	registryMock.EXPECT().GetAssetsReportUseCase().Return(&reports.GetAssetsReportUseCase{})
 
 	endpoints := routes.GetManagementEndpoints(environment.Environment{}, registryMock, &mocks.StoreMock{})
 	specBytes := test.ReadFile(t, "OpenApi.yml")
@@ -45,7 +46,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 21)
+	assert.Len(t, endpoints, 22)
 	for _, endpoint := range endpoints {
 		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath {
 			lowerCaseMethod := strings.ToLower(endpoint.Method)
