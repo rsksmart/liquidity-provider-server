@@ -108,7 +108,7 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
         }
         return true;
     } catch (error) {
-        throw new Error(`Error during ${sectionId} configuration save: ${error.message}`);
+        throw new Error(`${sectionId}: ${error.message}`);
     }
 }
 
