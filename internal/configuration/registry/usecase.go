@@ -62,7 +62,7 @@ type UseCaseRegistry struct {
 	getPeginReportUseCase         *reports.GetPeginReportUseCase
 	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
 	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
-	getAssetsReportUseCase        reports.AssetsReportUseCase
+	getAssetsReportUseCase        *reports.GetAssetsReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -382,6 +382,6 @@ func (registry *UseCaseRegistry) GetRevenueReportUseCase() *reports.GetRevenueRe
 	return registry.getRevenueReportUseCase
 }
 
-func (registry *UseCaseRegistry) GetAssetsReportUseCase() reports.AssetsReportUseCase {
+func (registry *UseCaseRegistry) GetAssetsReportUseCase() *reports.GetAssetsReportUseCase {
 	return registry.getAssetsReportUseCase
 }

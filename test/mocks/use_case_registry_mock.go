@@ -311,19 +311,19 @@ func (_c *UseCaseRegistryMock_GetAcceptPegoutQuoteUseCase_Call) RunAndReturn(run
 }
 
 // GetAssetsReportUseCase provides a mock function with no fields
-func (_m *UseCaseRegistryMock) GetAssetsReportUseCase() reports.AssetsReportUseCase {
+func (_m *UseCaseRegistryMock) GetAssetsReportUseCase() *reports.GetAssetsReportUseCase {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAssetsReportUseCase")
 	}
 
-	var r0 reports.AssetsReportUseCase
-	if rf, ok := ret.Get(0).(func() reports.AssetsReportUseCase); ok {
+	var r0 *reports.GetAssetsReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetAssetsReportUseCase); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(reports.AssetsReportUseCase)
+			r0 = ret.Get(0).(*reports.GetAssetsReportUseCase)
 		}
 	}
 
@@ -347,12 +347,12 @@ func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) Run(run func()) *UseC
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) Return(_a0 reports.AssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) Return(_a0 *reports.GetAssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) RunAndReturn(run func() reports.AssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
+func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) RunAndReturn(run func() *reports.GetAssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
