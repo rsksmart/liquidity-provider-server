@@ -136,10 +136,7 @@ const createFeeInput = (inputContainer, label, section, key, value) => {
 
 const createFeePercentageInput = (inputContainer, section, key, value) => {
     const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.max = '100';
-    input.step = 'any';
+    input.type = 'text';
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
@@ -471,9 +468,16 @@ function getRegularConfig(sectionId) {
                     throw error;
                 }
             } else if (isfeePercentageKey(key)) {
-                value = parseFloat(input.value.trim());
+                const rawInput = input.value.trim();
+                const percentagePattern = /^\d+(\.\d+)?%?$/;
+                if (!percentagePattern.test(rawInput)) {
+                    showErrorToast(`"${sectionId}": Invalid percentage entered "${rawInput}". Please provide a numeric value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                const numericPart = rawInput.endsWith('%') ? rawInput.slice(0, -1) : rawInput;
+                value = parseFloat(numericPart);
                 if (isNaN(value)) {
-                    showErrorToast(`"${sectionId}": Invalid percentage entered "${input.value}". Please provide a valid value between 0% and 100%.`);
+                    showErrorToast(`"${sectionId}": Invalid percentage entered "${rawInput}". Please provide a valid value between 0% and 100%.`);
                     throw new Error('Invalid feePercentage');
                 }
                 if (value < 0) {
