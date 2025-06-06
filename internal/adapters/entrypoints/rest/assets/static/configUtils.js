@@ -23,7 +23,11 @@ function etherToWei(ether) {
 }
 
 function isFeeKey(key) {
-    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin'].includes(key);
+    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee'].includes(key);
+}
+
+function isfeePercentageKey(key) {
+    return key === 'feePercentage';
 }
 
 function inferType(value) {
@@ -34,29 +38,34 @@ function inferType(value) {
 
 function validateConfig(config, originalConfig) {
     const errors = [];
-    Object.entries(config).forEach(([key, value]) => {
+    const confirmationKeys = ['rskConfirmations', 'btcConfirmations'];
+
+    for (const [key, value] of Object.entries(config)) {
         const expectedValue = originalConfig[key];
         const expectedType = inferType(expectedValue);
         let actualType = inferType(value);
-        if (isFeeKey(key)) {
-            if ((expectedType === 'number' && actualType === 'string') || (expectedType === 'string' && actualType === 'number')) {
-                actualType = expectedType;
-            }
+        if (
+            (isFeeKey(key) || isfeePercentageKey(key)) &&
+            ((expectedType === 'number' && actualType === 'string') ||
+             (expectedType === 'string' && actualType === 'number'))
+        ) {
+            actualType = expectedType;
         }
-        if (expectedType !== 'undefined' && actualType !== expectedType && key !== 'rskConfirmations' && key !== 'btcConfirmations') {
+        if (expectedType === 'undefined') continue;
+        if (confirmationKeys.includes(key)) {
+            if (actualType !== 'object') {
+                errors.push(`Invalid type for ${key}: expected object, got ${actualType}`);
+                continue;
+            }
+            for (const [subKey, subValue] of Object.entries(value)) {
+                if (inferType(subValue) !== 'number') {
+                    errors.push(`Invalid type for ${key} confirmation value of amount ${subKey}: expected number, got ${inferType(subValue)}`);
+                }
+            }
+        } else if (actualType !== expectedType) {
             errors.push(`Invalid type for ${key}: expected ${expectedType}, got ${actualType}`);
         }
-        if ((key === 'rskConfirmations' || key === 'btcConfirmations') && actualType !== 'object') {
-            errors.push(`Invalid type for ${key}: expected object, got ${actualType}`);
-        } else if ((key === 'rskConfirmations' || key === 'btcConfirmations') && actualType === 'object') {
-            Object.entries(value).forEach(([subKey, subValue]) => {
-                const subActualType = inferType(subValue);
-                if (subActualType !== 'number') {
-                    errors.push(`Invalid type for ${key} confirmation value of amount ${subKey}: expected number, got ${subActualType}`);
-                }
-            });
-        }
-    });
+    }
     return { isValid: errors.length === 0, errors };
 }
 
@@ -88,12 +97,18 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
             body: JSON.stringify({ configuration: config })
         });
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json();            
+            if (errorData.details && typeof errorData.details === 'object') {
+                const detailMessages = Object.entries(errorData.details)
+                    .map(([field, message]) => `${field}: ${message}`)
+                    .join(', ');
+                throw new Error(detailMessages);
+            }
             throw new Error(`Error saving ${sectionId} configuration: ${errorData.message || 'Unknown error'}`);
         }
         return true;
     } catch (error) {
-        throw new Error(`Error during ${sectionId} configuration save: ${error.message}`);
+        throw new Error(`${sectionId}: ${error.message}`);
     }
 }
 
@@ -106,6 +121,10 @@ function hasDuplicateConfirmationAmounts(confirmationArray) {
     return uniqueAmounts.size < amounts.length;
 }
 
+function isToggableFeeKey(key) {
+    return key === 'fixedFee' || key === 'feePercentage';
+}
+
 export {
     weiToEther,
     etherToWei,
@@ -114,5 +133,7 @@ export {
     validateConfig,
     formatGeneralConfig,
     postConfig,
-    hasDuplicateConfirmationAmounts
+    hasDuplicateConfirmationAmounts,
+    isfeePercentageKey,
+    isToggableFeeKey
 };

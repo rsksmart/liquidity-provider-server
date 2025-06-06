@@ -33,8 +33,9 @@ func NewGetPeginQuoteStatusHandler(useCase *pegin.StatusUseCase) http.HandlerFun
 			return
 		}
 		dto := pkg.PeginQuoteStatusDTO{
-			Detail: pkg.ToPeginQuoteDTO(result.PeginQuote),
-			Status: pkg.ToRetainedPeginQuoteDTO(result.RetainedQuote),
+			Detail:       pkg.ToPeginQuoteDTO(result.PeginQuote),
+			Status:       pkg.ToRetainedPeginQuoteDTO(result.RetainedQuote),
+			CreationData: pkg.ToPeginCreationDataDTO(result.CreationData),
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &dto)
 	}

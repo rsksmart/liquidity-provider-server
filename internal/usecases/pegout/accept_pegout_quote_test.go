@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -43,16 +44,16 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		ProductFeeAmount:      2,
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
-		QuoteHash:         quoteHash,
-		DepositAddress:    quoteMock.LbcAddress,
-		Signature:         signature,
-		RequiredLiquidity: entities.NewWei(18),
-		State:             quote.PegoutStateWaitingForDeposit,
+		QuoteHash: quoteHash, DepositAddress: quoteMock.LbcAddress,
+		Signature: signature, RequiredLiquidity: entities.NewWei(18),
+		State: quote.PegoutStateWaitingForDeposit,
 	}
+	creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(1), FixedFee: entities.NewWei(100)}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil).Once()
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
+	quoteRepositoryMock.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(creationData).Once()
 	lbc := new(mocks.LbcMock)
 	lbc.On("GetAddress").Return("0xabcd01").Once()
 	lp := new(mocks.ProviderMock)
@@ -60,9 +61,9 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	lp.On("SignQuote", mock.Anything).Return(signature, nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPegoutQuoteEvent) bool {
-		return assert.Equal(t, quoteMock, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id())
+		return assert.Equal(t, quoteMock, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) &&
+			assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id()) && assert.Equal(t, creationData, event.CreationData)
 	})).Once()
-
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
@@ -348,13 +349,14 @@ func acceptQuoteUseCaseUnexpectedErrorSetups(quoteMock *quote.PegoutQuote, quote
 				quoteRepository.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
 				lp.On("HasPegoutLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
 				lp.On("SignQuote", mock.Anything).Return(signature, nil).Once()
+				quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(quote.PegoutCreationDataZeroValue()).Once()
 				quoteRepository.On("InsertRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
 			},
 		},
 	}
 }
 
-func TestInitPegoutDepositCacheUseCase_Run_RetainedQuoteValidation(t *testing.T) {
+func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 	quoteHash := "0x654321"
 	now := time.Now()
 	signature := "0x010203"
@@ -393,6 +395,7 @@ func TestInitPegoutDepositCacheUseCase_Run_RetainedQuoteValidation(t *testing.T)
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
+	quoteRepositoryMock.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(quote.PegoutCreationDataZeroValue()).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex)
 	result, err := useCase.Run(context.Background(), quoteHash)

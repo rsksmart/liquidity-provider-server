@@ -69,10 +69,11 @@ type GetPeginQuoteResult struct {
 func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (GetPeginQuoteResult, error) {
 	var daoTxAmounts usecases.DaoAmounts
 	var peginQuote quote.PeginQuote
+	var creationData quote.PeginCreationData
 	var fedAddress, hash string
 	var errorArgs usecases.ErrorArgs
 	var err error
-	var gasPrice, estimatedCallGas *entities.Wei
+	var estimatedCallGas *entities.Wei
 
 	peginConfiguration := useCase.peginLp.PeginConfiguration(ctx)
 	if errorArgs, err = useCase.validateRequest(peginConfiguration, request); err != nil {
@@ -84,10 +85,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
-	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
-		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-
 	if daoTxAmounts, err = useCase.buildDaoAmounts(ctx, request); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
@@ -96,11 +93,15 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
+	if creationData, err = useCase.buildCreationData(ctx, peginConfiguration); err != nil {
+		return GetPeginQuoteResult{}, err
+	}
+
 	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
 	totalGas := new(entities.Wei).Add(estimatedCallGas, daoTxAmounts.DaoGasAmount)
 	fees := quote.Fees{
-		CallFee:          peginConfiguration.CallFee,
-		GasFee:           new(entities.Wei).Mul(totalGas, gasPrice),
+		CallFee:          quote.CalculateCallFee(request.valueToTransfer, peginConfiguration),
+		GasFee:           new(entities.Wei).Mul(totalGas, creationData.GasPrice),
 		PenaltyFee:       peginConfiguration.PenaltyFee,
 		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
 	}
@@ -115,7 +116,8 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	if hash, err = useCase.contracts.Lbc.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
-	if err = useCase.peginQuoteRepository.InsertQuote(ctx, hash, peginQuote); err != nil {
+	createdQuote := quote.CreatedPeginQuote{Quote: peginQuote, CreationData: creationData, Hash: hash}
+	if err = useCase.peginQuoteRepository.InsertQuote(ctx, createdQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	return GetPeginQuoteResult{PeginQuote: peginQuote, Hash: hash}, nil
@@ -212,4 +214,22 @@ func (useCase *GetQuoteUseCase) getFederationAddress() (string, error) {
 		return "", errors.New("only P2SH addresses are supported for federation address")
 	}
 	return fedAddress, nil
+}
+
+func (useCase *GetQuoteUseCase) buildCreationData(
+	ctx context.Context,
+	configuration liquidity_provider.PeginConfiguration,
+) (quote.PeginCreationData, error) {
+	var gasPrice *entities.Wei
+	var err error
+
+	if gasPrice, err = useCase.rpc.Rsk.GasPrice(ctx); err != nil {
+		return quote.PeginCreationData{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
+	creationData := quote.PeginCreationData{
+		GasPrice:      gasPrice,
+		FeePercentage: configuration.FeePercentage,
+		FixedFee:      configuration.FixedFee,
+	}
+	return creationData, nil
 }

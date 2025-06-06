@@ -277,7 +277,7 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
   }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 
 echo "Setting up pegin regtest configuration"
-curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
@@ -292,14 +292,26 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
           "timeForDeposit": 3600,
           "callTime": 7200,
           "penaltyFee": "1000000000000000",
-          "callFee": "10000000000000000",
           "maxValue": "10000000000000000000",
-          "minValue": "600000000000000000"
+          "minValue": "600000000000000000",
+          "feePercentage": 0.33,
+          "fixedFee": "200000000000000"
       }
-  }' || { echo "Error in configuring pegin regtest configuration"; exit 1; }
+  }')
+
+HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
+RESPONSE_BODY=$(echo "$CURL_OUTPUT" | sed '$d')
+
+if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+  echo "Error in configuring pegin regtest configuration"
+  echo "HTTP Status: $HTTP_STATUS"
+  echo "Response Body:"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
 
 echo "Setting up pegout regtest configuration"
-curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
@@ -314,10 +326,22 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
           "timeForDeposit": 3600,
           "expireTime": 10800,
           "penaltyFee": "1000000000000000",
-          "callFee": "10000000000000000",
           "maxValue": "10000000000000000000",
           "minValue": "600000000000000000",
           "expireBlocks": 500,
-          "bridgeTransactionMin": "1500000000000000000"
+          "bridgeTransactionMin": "1500000000000000000",
+          "feePercentage": 0.33,
+          "fixedFee": "200000000000000"
       }
-  }' || { echo "Error in configuring pegout regtest configuration"; exit 1; }
+  }')
+
+HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
+RESPONSE_BODY=$(echo "$CURL_OUTPUT" | sed '$d')
+
+if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+  echo "Error in configuring pegout regtest configuration"
+  echo "HTTP Status: $HTTP_STATUS"
+  echo "Response Body:"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
