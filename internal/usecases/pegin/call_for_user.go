@@ -151,6 +151,7 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	}
 
 	retainedQuote.CallForUserTxHash = callForUserReturn.TxHash
+	retainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callForUserReturn.GasUsed))
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),

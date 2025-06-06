@@ -37,6 +37,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 	expectedRetainedQuote.CallForUserTxHash = callForUserReturn.TxHash
+	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callForUserReturn.GasUsed))
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 
@@ -104,6 +105,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TxHash
+	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callforUserReturn.GasUsed))
 
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
@@ -577,6 +579,7 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserFailed
 	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TxHash
+	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callforUserReturn.GasUsed))
 
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return(lpRskAddress).Twice()
