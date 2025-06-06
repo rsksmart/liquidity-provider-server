@@ -35,9 +35,9 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
       DefaultCredentialsProvider:
-  github.com/rsksmart/liquidity-provider-server/internal/usecases/reports:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
     interfaces:
-      AssetsReportUseCase:
+      GetAssetsReportUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:

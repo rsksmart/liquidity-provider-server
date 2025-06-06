@@ -9,16 +9,6 @@ import (
 	"math/big"
 )
 
-type AssetsReportUseCase interface {
-	Run(ctx context.Context) (GetAssetsReportResponse, error)
-	GetRBTCLiquidity(ctx context.Context) (*entities.Wei, error)
-	GetBTCLiquidity(ctx context.Context) (*entities.Wei, error)
-	GetBTCLocked(ctx context.Context) (*entities.Wei, error)
-	GetRBTCLocked(ctx context.Context) (*entities.Wei, error)
-	GetRBTCBalance(ctx context.Context) (*entities.Wei, error)
-	GetBtcBalance() (*entities.Wei, error)
-}
-
 type GetAssetsReportResponse struct {
 	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
 	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
@@ -46,7 +36,7 @@ func NewGetAssetsReportUseCase(
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
-) AssetsReportUseCase {
+) *GetAssetsReportUseCase {
 	return &GetAssetsReportUseCase{
 		btcWallet:        wallet,
 		rsk:              rsk,
