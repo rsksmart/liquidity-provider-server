@@ -853,14 +853,15 @@ func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(nil).Once()
-		tx, _ := prepareTxMocks(mockClient, signerMock, true)
+		tx, receipt := prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("RegisterPegIn", mock.MatchedBy(matchOptsFunc), parsedPeginQuote,
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(tx, nil).Once()
-		result, err := lbc.RegisterPegin(registerParams)
+		registerPeginReturn, err := lbc.RegisterPegin(registerParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), registerPeginReturn.TxHash)
+		assert.Equal(t, receipt.GasUsed, registerPeginReturn.GasUsed)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -927,14 +928,15 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(nil).Once()
-		tx, _ := prepareTxMocks(mockClient, signerMock, false)
+		tx, receipt := prepareTxMocks(mockClient, signerMock, false)
 		lbcMock.On("RegisterPegIn", mock.MatchedBy(matchOptsFunc), parsedPeginQuote,
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(tx, nil).Once()
-		result, err := lbc.RegisterPegin(registerParams)
+		registerPeginReturn, err := lbc.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), registerPeginReturn.TxHash)
+		assert.Equal(t, receipt.GasUsed, registerPeginReturn.GasUsed)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})

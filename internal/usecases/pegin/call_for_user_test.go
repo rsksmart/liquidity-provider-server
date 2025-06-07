@@ -20,7 +20,7 @@ import (
 
 // nolint:funlen
 func TestCallForUserUseCase_Run(t *testing.T) {
-	callForUserReturn := blockchain.CallForUserReturn{
+	callForUserReturn := blockchain.ReceiptDataReturn{
 		TxHash:  "0x1a1b1c",
 		GasUsed: uint64(1000),
 	}
@@ -88,7 +88,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 
 // nolint:funlen
 func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
-	callforUserReturn := blockchain.CallForUserReturn{
+	callforUserReturn := blockchain.ReceiptDataReturn{
 		TxHash:  "0x1a1b1c",
 		GasUsed: uint64(1000),
 	}
@@ -563,7 +563,7 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 
 // nolint:funlen
 func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
-	callforUserReturn := blockchain.CallForUserReturn{
+	callforUserReturn := blockchain.ReceiptDataReturn{
 		TxHash:  "0x1a1b1c",
 		GasUsed: uint64(1000),
 	}

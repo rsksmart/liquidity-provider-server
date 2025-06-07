@@ -150,7 +150,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 
 // nolint:funlen,cyclop,maintidx,gocyclo
 func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
-	callForUserReturn := blockchain.CallForUserReturn{
+	callForUserReturn := blockchain.ReceiptDataReturn{
 		TxHash:  test.AnyHash,
 		GasUsed: uint64(1000),
 	}

@@ -24,7 +24,7 @@ type RegisterPeginParams struct {
 	Quote                 quote.PeginQuote
 }
 
-type CallForUserReturn struct {
+type ReceiptDataReturn struct {
 	TxHash  string
 	GasUsed uint64
 }
@@ -97,8 +97,8 @@ type LiquidityBridgeContract interface {
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (CallForUserReturn, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (ReceiptDataReturn, error)
+	RegisterPegin(params RegisterPeginParams) (ReceiptDataReturn, error)
 	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
 	IsOperationalPegin(address string) (bool, error)
 	IsOperationalPegout(address string) (bool, error)

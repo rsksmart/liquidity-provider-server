@@ -21,7 +21,11 @@ import (
 
 // nolint:funlen
 func TestExecuteRegisterPegIn(t *testing.T) {
-	const resultHash = "0x111213"
+	result := blockchain.ReceiptDataReturn{
+		TxHash:  "0x111213",
+		GasUsed: uint64(32),
+	}
+
 	var (
 		rawTx       = []byte{0x07, 0x08, 0x09}
 		pmt         = []byte{0x04, 0x05, 0x06}
@@ -67,11 +71,12 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
 			QuoteSignature: parsedInput.Signature, BitcoinRawTransaction: rawTx,
 			PartialMerkleTree: pmt, BlockHeight: blockHeight, Quote: parsedInput.Quote,
-		}).Return(resultHash, nil).Once()
+		}).Return(result, nil).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		resultRegister, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.NoError(t, err)
-		assert.Equal(t, resultHash, result)
+		assert.Equal(t, result.TxHash, resultRegister.TxHash)
+		assert.Equal(t, result.GasUsed, resultRegister.GasUsed)
 		rpc.AssertExpectations(t)
 		lbc.AssertExpectations(t)
 	})
@@ -117,16 +122,21 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 	})
 
 	t.Run("should return error if RegisterPegin fails", func(t *testing.T) {
+		emptyResult := blockchain.ReceiptDataReturn{
+			TxHash:  "",
+			GasUsed: 0,
+		}
 		rpc := new(mocks.BtcRpcMock)
 		lbc := new(mocks.LbcMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()
-		lbc.On("RegisterPegin", mock.Anything).Return("", assert.AnError).Once()
+		lbc.On("RegisterPegin", mock.Anything).Return(emptyResult, assert.AnError).Once()
 
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, result.TxHash, emptyResult.TxHash)
+		assert.Equal(t, result.GasUsed, emptyResult.GasUsed)
 		rpc.AssertExpectations(t)
 		lbc.AssertExpectations(t)
 	})

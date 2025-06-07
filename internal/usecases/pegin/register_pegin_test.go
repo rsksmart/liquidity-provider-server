@@ -25,10 +25,14 @@ var btcBlockInfoMock = blockchain.BitcoinBlockInformation{
 }
 
 var (
-	registerPeginTx = "register tx hash"
-	userBtcTx       = "btc tx hash"
-	cfuTx           = "cfu tx hash"
+	userBtcTx = "btc tx hash"
+	cfuTx     = "cfu tx hash"
 )
+
+var registerPeginData = blockchain.ReceiptDataReturn{
+	TxHash:  "register tx hash",
+	GasUsed: 0,
+}
 
 func TestRegisterPeginUseCase_Run(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
@@ -42,7 +46,8 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInSucceeded
-	expectedRetainedQuote.RegisterPeginTxHash = registerPeginTx
+	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TxHash
+	expectedRetainedQuote.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
 
 	lbc := new(mocks.LbcMock)
 	lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
@@ -51,7 +56,7 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, nil).Once()
+	}).Return(registerPeginData, nil).Once()
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
@@ -259,7 +264,8 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInFailed
-	expectedRetainedQuote.RegisterPeginTxHash = registerPeginTx
+	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TxHash
+	expectedRetainedQuote.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
 
 	lbc := new(mocks.LbcMock)
 	lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
@@ -268,7 +274,7 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, assert.AnError).Once()
+	}).Return(registerPeginData, assert.AnError).Once()
 
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
@@ -391,7 +397,7 @@ func registerPeginNotEnoughConfirmationsSetups(retainedPeginQuote quote.Retained
 					PartialMerkleTree:     pmtMock,
 					BlockHeight:           btcBlockInfoMock.Height,
 					Quote:                 testPeginQuote,
-				}).Return(registerPeginTx, fmt.Errorf("some wrapper: %w", blockchain.WaitingForBridgeError)).Once()
+				}).Return(registerPeginData, fmt.Errorf("some wrapper: %w", blockchain.WaitingForBridgeError)).Once()
 			},
 			err: blockchain.WaitingForBridgeError,
 		},
@@ -409,7 +415,7 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 		CallForUserTxHash: cfuTx,
 	}
 
-	setups := registerPeginUpdateErrorSetups(t, registerPeginTx, retainedPeginQuote)
+	setups := registerPeginUpdateErrorSetups(t, registerPeginData, retainedPeginQuote)
 
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetRequiredTxConfirmations").Return(uint64(10))
@@ -435,7 +441,7 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, nil)
+	}).Return(registerPeginData, nil)
 
 	for _, setup := range setups {
 		quoteRepository := new(mocks.PeginQuoteRepositoryMock)
@@ -453,7 +459,7 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 	}
 }
 
-func registerPeginUpdateErrorSetups(t *testing.T, registerPeginTx string, retainedPeginQuote quote.RetainedPeginQuote) []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
+func registerPeginUpdateErrorSetups(t *testing.T, registerPeginData blockchain.ReceiptDataReturn, retainedPeginQuote quote.RetainedPeginQuote) []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
 	return []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock){
 		func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).
@@ -477,13 +483,15 @@ func registerPeginUpdateErrorSetups(t *testing.T, registerPeginTx string, retain
 			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
-				expected.RegisterPeginTxHash = registerPeginTx
+				expected.RegisterPeginTxHash = registerPeginData.TxHash
+				expected.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
 				return assert.Equal(t, expected, q)
 			})).Return(assert.AnError).Once()
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.RegisterPeginCompletedEvent) bool {
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
-				expected.RegisterPeginTxHash = registerPeginTx
+				expected.RegisterPeginTxHash = registerPeginData.TxHash
+				expected.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
 				require.NoError(t, event.Error)
 				return assert.Equal(t, expected, event.RetainedQuote) &&
 					assert.Equal(t, quote.RegisterPeginCompletedEventId, event.Event.Id())

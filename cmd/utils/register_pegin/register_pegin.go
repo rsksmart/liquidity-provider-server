@@ -143,19 +143,23 @@ func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
 	lbc blockchain.LiquidityBridgeContract,
 	parsedInput ParsedRegisterPegInInput,
-) (string, error) {
+) (blockchain.ReceiptDataReturn, error) {
 	var pmt, rawTx []byte
 	var err error
+	receiptToReturn := blockchain.ReceiptDataReturn{
+		TxHash:  "",
+		GasUsed: 0,
+	}
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 	if rawTx, err = btcRpc.GetRawTransaction(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 	blockInfo, err := btcRpc.GetTransactionBlockInfo(parsedInput.BtcTxHash)
 	if err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 
 	return lbc.RegisterPegin(blockchain.RegisterPeginParams{
