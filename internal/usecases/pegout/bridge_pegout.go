@@ -73,12 +73,12 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 	}
 
 	config := blockchain.NewTransactionConfig(totalValue, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
-	txHash, txErr := useCase.rskWallet.SendRbtc(ctx, config, useCase.contracts.Bridge.GetAddress())
+	receiptData, txErr := useCase.rskWallet.SendRbtc(ctx, config, useCase.contracts.Bridge.GetAddress())
 	if txErr == nil {
-		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, txHash)
+		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, receiptData.TxHash)
 	}
 
-	err = useCase.updateQuotes(ctx, txHash, txErr, watchedQuotes)
+	err = useCase.updateQuotes(ctx, receiptData, txErr, watchedQuotes)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
 	}
@@ -87,7 +87,7 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 
 func (useCase *BridgePegoutUseCase) updateQuotes(
 	ctx context.Context,
-	txHash string,
+	receiptData blockchain.ReceiptDataReturn,
 	txErr error,
 	watchedQuotes []quote.WatchedPegoutQuote,
 ) error {
@@ -95,7 +95,8 @@ func (useCase *BridgePegoutUseCase) updateQuotes(
 	retainedQuotes := make([]quote.RetainedPegoutQuote, 0)
 	err = errors.Join(err, txErr)
 	for _, watchedQuote := range watchedQuotes {
-		watchedQuote.RetainedQuote.BridgeRefundTxHash = txHash
+		watchedQuote.RetainedQuote.BridgeRefundTxHash = receiptData.TxHash
+		watchedQuote.RetainedQuote.PegoutBridgePegoutGasCost = entities.NewWei(int64(receiptData.GasUsed))
 		if txErr == nil {
 			watchedQuote.RetainedQuote.State = quote.PegoutStateBridgeTxSucceeded
 		} else {

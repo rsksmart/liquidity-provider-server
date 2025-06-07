@@ -75,13 +75,13 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).
 				Return(&geth.Receipt{Status: 1}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
+			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(89607151182921727),
 				GasLimit: &gasLimit,
 				GasPrice: entities.NewWei(65164000),
 			}, toAddress)
 			require.NoError(t, err)
-			require.Equal(t, txHash, tx)
+			require.Equal(t, txHash, receiptData.TxHash)
 		})
 	}
 }
@@ -93,9 +93,9 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 		t.Run("Handle error on invalid address", func(t *testing.T) {
 			clientMock := &mocks.RpcClientBindingMock{}
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{}, test.AnyString)
+			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{}, test.AnyString)
 			require.ErrorIs(t, err, blockchain.InvalidAddressError)
-			require.Empty(t, tx)
+			require.Empty(t, receiptData.TxHash)
 		})
 		t.Run("Handle error on incomplete config", func(t *testing.T) {
 			const incompleteConfig = "incomplete transaction arguments"
@@ -126,13 +126,14 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			require.Empty(t, tx)
 		})
 		t.Run("Handle error on failure when broadcasting tx", func(t *testing.T) {
+			const txHash = "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63"
 			clientMock := &mocks.RpcClientBindingMock{}
 			clientMock.On("SendTransaction", mock.Anything, mock.Anything).Return(assert.AnError)
 			clientMock.On("PendingNonceAt", mock.Anything, walletAddress).Return(uint64(54), nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
+			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.Error(t, err)
-			require.Empty(t, tx)
+			require.Equal(t, txHash, receiptData.TxHash)
 		})
 		t.Run("Handle error on failure when tx failed", func(t *testing.T) {
 			const txHash = "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63"
@@ -141,9 +142,9 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			clientMock.On("PendingNonceAt", mock.Anything, walletAddress).Return(uint64(54), nil)
 			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).Return(&geth.Receipt{Status: 0}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
-			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
+			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63 transaction failed")
-			require.Equal(t, txHash, tx)
+			require.Equal(t, txHash, receiptData.TxHash)
 		})
 	}
 }

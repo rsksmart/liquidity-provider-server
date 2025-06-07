@@ -134,22 +134,22 @@ func (_c *RskSignerWalletMock_GetBalance_Call) RunAndReturn(run func(context.Con
 }
 
 // SendRbtc provides a mock function with given fields: ctx, config, toAddress
-func (_m *RskSignerWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (string, error) {
+func (_m *RskSignerWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.ReceiptDataReturn, error) {
 	ret := _m.Called(ctx, config, toAddress)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SendRbtc")
 	}
 
-	var r0 string
+	var r0 blockchain.ReceiptDataReturn
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, blockchain.TransactionConfig, string) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, blockchain.TransactionConfig, string) (blockchain.ReceiptDataReturn, error)); ok {
 		return rf(ctx, config, toAddress)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, blockchain.TransactionConfig, string) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, blockchain.TransactionConfig, string) blockchain.ReceiptDataReturn); ok {
 		r0 = rf(ctx, config, toAddress)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(blockchain.ReceiptDataReturn)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, blockchain.TransactionConfig, string) error); ok {
@@ -181,12 +181,12 @@ func (_c *RskSignerWalletMock_SendRbtc_Call) Run(run func(ctx context.Context, c
 	return _c
 }
 
-func (_c *RskSignerWalletMock_SendRbtc_Call) Return(_a0 string, _a1 error) *RskSignerWalletMock_SendRbtc_Call {
+func (_c *RskSignerWalletMock_SendRbtc_Call) Return(_a0 blockchain.ReceiptDataReturn, _a1 error) *RskSignerWalletMock_SendRbtc_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *RskSignerWalletMock_SendRbtc_Call) RunAndReturn(run func(context.Context, blockchain.TransactionConfig, string) (string, error)) *RskSignerWalletMock_SendRbtc_Call {
+func (_c *RskSignerWalletMock_SendRbtc_Call) RunAndReturn(run func(context.Context, blockchain.TransactionConfig, string) (blockchain.ReceiptDataReturn, error)) *RskSignerWalletMock_SendRbtc_Call {
 	_c.Call.Return(run)
 	return _c
 }

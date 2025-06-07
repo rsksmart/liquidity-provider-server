@@ -125,9 +125,6 @@ type RetainedPeginQuote struct {
 	RegisterPeginTxHash       string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
 	PeginCallForUserGasCost   *entities.Wei `json:"peginCallForUserGasCost" bson:"pegin_call_for_user_gas_cost"`
 	PeginRegisterPeginGasCost *entities.Wei `json:"peginRegisterPeginGasCost" bson:"pegin_register_pegin_gas_cost"`
-	PegoutBridgePegoutGasCost *entities.Wei `json:"pegoutBridgePegoutGasCost" bson:"pegout_bridge_pegout_gas_cost"`
-	PegoutRefundPegoutGasCost *entities.Wei `json:"pegoutRefundPegoutGasCost" bson:"pegout_refund_pegout_gas_cost"`
-	PegoutSendPegoutGasCost   *entities.Wei `json:"pegoutSendPegoutGasCost" bson:"pegout_send_pegout_gas_cost"`
 }
 
 type WatchedPeginQuote struct {

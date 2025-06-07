@@ -69,6 +69,10 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		resetMocks()
+		receiptData := blockchain.ReceiptDataReturn{
+			TxHash:  test.AnyHash,
+			GasUsed: 100,
+		}
 		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "transaction sent to the bridge successfully")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
@@ -77,7 +81,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(&quote.PegoutQuote{Value: entities.NewBigWei(math.BigPow(10, 19))}, nil).Once()
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return(entities.NewBigWei(math.BigPow(10, 20)), nil).Once()
-		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(receiptData, nil).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuotes(mock.Anything, mock.Anything).Return(nil).Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()

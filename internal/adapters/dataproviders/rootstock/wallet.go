@@ -65,22 +65,27 @@ func (wallet *RskWalletImpl) Validate(signature, hash string) bool {
 	return bytes.Equal(wallet.account.Account.Address.Bytes(), pubKeyHash[12:]) // the last 20 bytes of the hash
 }
 
-func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (string, error) {
+func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.ReceiptDataReturn, error) {
 	var to common.Address
 	var signedTx *geth.Transaction
 	var nonce uint64
 	var err error
 
+	receiptData := blockchain.ReceiptDataReturn{
+		TxHash:  "",
+		GasUsed: uint64(0),
+	}
+
 	if err = ParseAddress(&to, toAddress); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	if config.GasPrice == nil || config.Value == nil || config.GasLimit == nil {
-		return "", errors.New("incomplete transaction arguments")
+		return receiptData, errors.New("incomplete transaction arguments")
 	}
 
 	if nonce, err = wallet.client.PendingNonceAt(ctx, wallet.Address()); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	tx := geth.NewTx(&geth.LegacyTx{
@@ -92,7 +97,7 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	})
 	log.Infof("Sending %v RBTC to %s\n", config.Value.ToRbtc(), toAddress)
 	if signedTx, err = wallet.Sign(wallet.Address(), tx); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	sendError := wallet.client.SendTransaction(ctx, signedTx)
@@ -100,13 +105,15 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return signedTx, sendError
 	})
 
-	txHash := signedTx.Hash().String()
+	receiptData.TxHash = signedTx.Hash().String()
+
 	if err != nil {
-		return "", err
+		return receiptData, err
 	} else if receipt == nil || receipt.Status == 0 {
-		return txHash, fmt.Errorf("%s transaction failed", txHash)
+		return receiptData, fmt.Errorf("%s transaction failed", receiptData.TxHash)
 	}
-	return signedTx.Hash().String(), nil
+	receiptData.GasUsed = receipt.GasUsed
+	return receiptData, nil
 }
 
 func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, error) {

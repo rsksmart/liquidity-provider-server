@@ -122,15 +122,18 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 }
 
 type RetainedPegoutQuote struct {
-	QuoteHash          string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress     string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature          string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity  *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State              PegoutState   `json:"state" bson:"state" validate:"required"`
-	UserRskTxHash      string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
-	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
-	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	QuoteHash                 string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress            string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature                 string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity         *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State                     PegoutState   `json:"state" bson:"state" validate:"required"`
+	UserRskTxHash             string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
+	LpBtcTxHash               string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
+	RefundPegoutTxHash        string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	BridgeRefundTxHash        string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	PegoutBridgePegoutGasCost *entities.Wei `json:"pegoutBridgePegoutGasCost" bson:"pegout_bridge_pegout_gas_cost"`
+	PegoutRefundPegoutGasCost *entities.Wei `json:"pegoutRefundPegoutGasCost" bson:"pegout_refund_pegout_gas_cost"`
+	PegoutSendPegoutGasCost   *entities.Wei `json:"pegoutSendPegoutGasCost" bson:"pegout_send_pegout_gas_cost"`
 }
 
 type WatchedPegoutQuote struct {
