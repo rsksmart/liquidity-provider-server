@@ -438,10 +438,14 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	return dataToReturn, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
+func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.ReceiptDataReturn, error) {
 	var res []any
 	var err error
 	lbcCaller := lbc.contract.Caller()
+	receiptDataReturn := blockchain.ReceiptDataReturn{
+		TxHash:  "",
+		GasUsed: 0,
+	}
 	log.Infof("Executing RefundPegOut with params: %s", params.String())
 	err = lbcCaller.Call(
 		&bind.CallOpts{From: lbc.signer.Address()},
@@ -454,9 +458,9 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	)
 	if err != nil && strings.Contains(err.Error(), "LBC049") {
 		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
-		return "", blockchain.WaitingForBridgeError
+		return receiptDataReturn, blockchain.WaitingForBridgeError
 	} else if err != nil {
-		return "", err
+		return receiptDataReturn, err
 	}
 
 	opts := &bind.TransactOpts{
@@ -471,14 +475,16 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("refund pegout error: %w", err)
+		return receiptDataReturn, fmt.Errorf("refund pegout error: %w", err)
 	} else if receipt == nil {
-		return "", errors.New("refund pegout error: incomplete receipt")
+		return receiptDataReturn, errors.New("refund pegout error: incomplete receipt")
 	} else if receipt.Status == 0 {
-		txHash := receipt.TxHash.String()
-		return txHash, fmt.Errorf("refund pegout error: transaction reverted (%s)", txHash)
+		receiptDataReturn.TxHash = receipt.TxHash.String()
+		return receiptDataReturn, fmt.Errorf("refund pegout error: transaction reverted (%s)", receiptDataReturn.TxHash)
 	}
-	return receipt.TxHash.String(), nil
+	receiptDataReturn.TxHash = receipt.TxHash.String()
+	receiptDataReturn.GasUsed = receipt.GasUsed
+	return receiptDataReturn, nil
 }
 
 func (lbc *liquidityBridgeContractImpl) IsOperationalPegin(address string) (bool, error) {

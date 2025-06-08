@@ -89,6 +89,10 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded}
 	testPegoutQuote := quote.PegoutQuote{Nonce: 5, TransferConfirmations: 5}
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+	receiptData := blockchain.ReceiptDataReturn{
+		TxHash:  test.AnyHash,
+		GasUsed: 100,
+	}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
@@ -103,7 +107,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	mutex.On("Lock").Return(nil)
 	mutex.On("Unlock").Return()
 	lbc := &mocks.LbcMock{}
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(receiptData, nil).Once()
 	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{Lbc: lbc}, eventBus, rpc, mutex)
 	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
 	resetMocks := func() {

@@ -1025,14 +1025,15 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
 			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
 		).Return(nil).Once()
-		tx, _ := prepareTxMocks(mockClient, signerMock, true)
+		tx, receipt := prepareTxMocks(mockClient, signerMock, true)
 		lbcMock.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
 			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), result.TxHash)
+		assert.Equal(t, receipt.GasUsed, result.GasUsed)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1045,6 +1046,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
 			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
 		).Return(errors.New("LBC049")).Once()
+		signerMock.On("Address").Return(common.HexToAddress("0x1234567890123456789012345678901234567890")).Maybe()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
@@ -1104,7 +1106,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), result.TxHash)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})

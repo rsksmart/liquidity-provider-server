@@ -130,10 +130,11 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	params blockchain.RefundPegoutParams,
 ) (quote.RetainedPegoutQuote, error) {
 	var newState quote.PegoutState
-	var refundPegoutTxHash string
 	var err, updateError error
 
-	if refundPegoutTxHash, err = useCase.contracts.Lbc.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	receiptData, err := useCase.contracts.Lbc.RefundPegout(txConfig, params)
+
+	if errors.Is(err, blockchain.WaitingForBridgeError) {
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PegoutStateRefundPegOutFailed
@@ -142,7 +143,8 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RefundPegoutTxHash = refundPegoutTxHash
+	retainedQuote.RefundPegoutTxHash = receiptData.TxHash
+	retainedQuote.PegoutRefundPegoutGasCost = entities.NewWei(int64(receiptData.GasUsed))
 	useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 		RetainedQuote: retainedQuote,

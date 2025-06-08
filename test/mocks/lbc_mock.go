@@ -126,9 +126,9 @@ func (m *LbcMock) GetDepositEvents(ctx context.Context, fromBlock uint64, toBloc
 	return args.Get(0).([]quote.PegoutDeposit), args.Error(1)
 }
 
-func (m *LbcMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
+func (m *LbcMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.ReceiptDataReturn, error) {
 	args := m.Called(txConfig, params)
-	return args.String(0), args.Error(1)
+	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
 }
 
 func (m *LbcMock) GetBalance(address string) (*entities.Wei, error) {

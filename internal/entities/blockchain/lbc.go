@@ -99,7 +99,7 @@ type LiquidityBridgeContract interface {
 	GetBalance(address string) (*entities.Wei, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (ReceiptDataReturn, error)
 	RegisterPegin(params RegisterPeginParams) (ReceiptDataReturn, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (ReceiptDataReturn, error)
 	IsOperationalPegin(address string) (bool, error)
 	IsOperationalPegout(address string) (bool, error)
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
