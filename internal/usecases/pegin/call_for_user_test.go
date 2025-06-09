@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -28,6 +29,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 		State:             quote.PeginStateWaitingForDepositConfirmations,
 		UserBtcTxHash:     "0x121a1b",
 	}
+	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 	expectedRetainedQuote.CallForUserTxHash = callForUser
@@ -40,7 +42,6 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	lbc.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(50000), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(0), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
 	lbc.On("CallForUser", txConfig, testPeginQuote).Return(callForUser, nil).Once()
-
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
 		Hash: retainedPeginQuote.UserBtcTxHash, Confirmations: 10,
@@ -54,7 +55,6 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 		return assert.Equal(t, testPeginQuote, event.PeginQuote) && assert.Equal(t, expectedRetainedQuote, event.RetainedQuote) &&
 			assert.Equal(t, quote.CallForUserCompletedEventId, event.Event.Id())
 	})).Return().Once()
-
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
@@ -64,6 +64,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(creationData).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
@@ -91,6 +92,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 		State:             quote.PeginStateWaitingForDepositConfirmations,
 		UserBtcTxHash:     "0x121a1b",
 	}
+	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
 	expectedRetainedQuote.CallForUserTxHash = callForUser
@@ -124,13 +126,12 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(creationData).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(80000), nil).Once()
-
 	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
-	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, rpc, lp, eventBus, mutex)
+	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, eventBus, mutex)
 	err := useCase.Run(context.Background(), retainedPeginQuote)
 
 	require.NoError(t, err)
@@ -165,6 +166,7 @@ func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 		mutex.On("Lock").Return().Once()
 		mutex.On("Unlock").Return().Once()
 		quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+		quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 		bridge := new(mocks.BridgeMock)
 		caseRetainedQuote := retainedPeginQuote
 		setup(&caseRetainedQuote, rsk, lbc, btc, quoteRepository, bridge)
@@ -301,6 +303,7 @@ func TestCallForUserUseCase_Run_NoConfirmations(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).
 		Return(&testPeginQuote, nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
 
@@ -359,6 +362,7 @@ func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 	updatedQuote.State = quote.PeginStateCallForUserFailed
 
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.CallForUserCompletedEvent) bool {
 		require.ErrorIs(t, event.Error, usecases.ExpiredQuoteError)
 		return assert.Equal(t, expiredQuote, event.PeginQuote) &&
@@ -464,6 +468,7 @@ func TestCallForUserUseCase_Run_InsufficientAmount(t *testing.T) {
 		Return(&testPeginQuote, nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).
 		Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
 	contracts := blockchain.RskContracts{Lbc: lbc}
@@ -526,6 +531,7 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(20000), nil).Once()
@@ -575,7 +581,6 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 		Outputs:       map[string][]*entities.Wei{retainedPeginQuote.DepositAddress: {entities.NewWei(30012)}},
 	}, nil).Once()
 	btc.On("GetTransactionBlockInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{1, 2, 3}, Height: big.NewInt(5), Time: time.Now()}, nil).Once()
-
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.CallForUserCompletedEvent) bool {
 		require.Error(t, event.Error)
@@ -590,6 +595,7 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(80000), nil).Once()
@@ -648,6 +654,7 @@ func TestCallForUserUseCase_Run_InvalidUTXOs(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 		return assert.Equal(t, expectedRetainedQuote, q)
 	})).Return(nil).Once()
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedPeginQuote.QuoteHash).Return(quote.PeginCreationDataZeroValue()).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 
 	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}

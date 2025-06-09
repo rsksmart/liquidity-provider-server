@@ -3,6 +3,7 @@ package pkg_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -133,4 +134,22 @@ func TestToRetainedPeginQuoteDTO(t *testing.T) {
 	const expectedFields = 8
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
+}
+
+func TestToPeginCreationDataDTO(t *testing.T) {
+	peginCreationData := quote.PeginCreationData{
+		GasPrice:      entities.NewWei(5),
+		FeePercentage: utils.NewBigFloat64(10.54),
+		FixedFee:      entities.NewWei(15000000),
+	}
+	dto := pkg.ToPeginCreationDataDTO(peginCreationData)
+
+	feePercentage, _ := peginCreationData.FeePercentage.Native().Float64()
+	assert.Equal(t, peginCreationData.GasPrice.Uint64(), dto.GasPrice)
+	assert.InDelta(t, feePercentage, dto.FeePercentage, 0.000000001)
+	assert.InDelta(t, peginCreationData.FixedFee.Uint64(), dto.FixedFee, 0.000000001)
+
+	const expectedFields = 3
+	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
+	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginCreationData))
 }

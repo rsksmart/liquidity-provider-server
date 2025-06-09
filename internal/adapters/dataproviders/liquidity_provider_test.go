@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"io"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
@@ -12,17 +18,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"io"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (
@@ -569,12 +571,13 @@ func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfig
 			TimeForDeposit: 3600,
 			CallTime:       7212,
 			PenaltyFee:     entities.NewWei(1000000000000000),
-			CallFee:        entities.NewWei(10000000000000000),
+			FixedFee:       entities.NewWei(10000000000000000),
+			FeePercentage:  utils.NewBigFloat64(1.33),
 			MaxValue:       entities.NewBigWei(maxBigInt),
 			MinValue:       entities.NewWei(600000000000000000),
 		},
-		Signature: "671242c9fe5e1183d68e7c45face4ab1be9f304ac661aa778b81fceca000d19360eadf8a9e8ddd1528f485e64cd27d18de989f3d61c55e7ca074df2312623f2f01",
-		Hash:      "609a64fa0aa6a60dd2eee3bf704d4afdc00b69768e271bec72d0c576ff56baf2",
+		Signature: "bd048ce14c4019414d1dd16772b45260ace58f529300ea9b67831513c8fa42ea764a064c220a8ff31c76274fe7e71732906e5f5010e4a8f0a6dc5067caabde9901",
+		Hash:      "a02af11b36a9ce065a40ea64107f7a0ab9ccfdd309a98c6e2cc9616c9633e462",
 	}
 }
 func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConfiguration] {
@@ -585,13 +588,14 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 			TimeForDeposit:       3655,
 			ExpireTime:           7201,
 			PenaltyFee:           entities.NewWei(1000000000000000),
-			CallFee:              entities.NewWei(10000000000000000),
+			FixedFee:             entities.NewWei(10000000000000000),
+			FeePercentage:        utils.NewBigFloat64(1.33),
 			MaxValue:             entities.NewBigWei(maxBigInt),
 			MinValue:             entities.NewWei(600000000000000000),
 			ExpireBlocks:         500,
 			BridgeTransactionMin: entities.NewWei(1500000000000000000),
 		},
-		Signature: "e3cd6e7dbf9708158ad03fb51ad493310bb93c4a5d56f6192531bb746f42251301f178ffd2173552181a729c2bb23ab98c9f3786bb7075f416bfe528f3a77d1601",
-		Hash:      "b79d03455e8407660c123700e24af0ea92f6ca83ccb8918e8c155295fc9ac48d",
+		Signature: "34412a3d9d528739ca4fb06632b2b81344d693a1b63aba3540ab72450a5cd4003083efd8fb0bfd72a869ba8b07281f9c878b1d1dd66110d2f9662a2eb3e7cb7401",
+		Hash:      "40e2e3f42928a80814f19d897bb3da4119bff12e15cdb60125d9c2f82c590ea3",
 	}
 }
