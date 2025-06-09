@@ -9,7 +9,7 @@ import (
 	"math/big"
 )
 
-type GetAssetsReportResponse struct {
+type GetAssetsReportResult struct {
 	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
 	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
 	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
@@ -48,8 +48,8 @@ func NewGetAssetsReportUseCase(
 	}
 }
 
-func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResponse, error) {
-	response := GetAssetsReportResponse{
+func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResult, error) {
+	response := GetAssetsReportResult{
 		BtcBalance:    entities.NewWei(0).AsBigInt(),
 		RbtcBalance:   entities.NewWei(0).AsBigInt(),
 		BtcLocked:     entities.NewWei(0).AsBigInt(),
