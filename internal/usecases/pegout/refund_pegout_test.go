@@ -278,7 +278,6 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 			func(q quote.RetainedPegoutQuote) bool {
 				expected := caseQuote
 				expected.State = quote.PegoutStateRefundPegOutFailed
-				// TODO validate with Luis
 				expected.PegoutRefundPegoutGasCost = q.PegoutRefundPegoutGasCost
 				return assert.Equal(t, expected, q)
 			})).Return(nil).Once()
