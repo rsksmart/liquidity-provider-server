@@ -154,12 +154,12 @@ type GetRevenueReportResponse struct {
 }
 
 type GetAssetsReportDTO struct {
-	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
-	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtcLocked" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btcLiquidity" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtcLiquidity" validate:"required"`
+	BtcBalance    *big.Int `json:"btcBalance" example:"1000000000" description:"Current balance on the bitcoin wallet" validate:"required"`
+	RbtcBalance   *big.Int `json:"rbtcBalance" example:"1000000000" description:"Current balance on the RBTC wallet" validate:"required"`
+	BtcLocked     *big.Int `json:"btcLocked" example:"1000000000" description:"Amount of BTC locked by quotes" validate:"required"`
+	RbtcLocked    *big.Int `json:"rbtcLocked" example:"1000000000" description:"Amount of RBTC locked by quotes" validate:"required"`
+	BtcLiquidity  *big.Int `json:"btcLiquidity" example:"1000000000" description:"Amount of BTC liquidity available for new quotes" validate:"required"`
+	RbtcLiquidity *big.Int `json:"rbtcLiquidity" example:"1000000000" description:"Amount of RBTC liquidity available for new quotes" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {

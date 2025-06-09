@@ -3,20 +3,13 @@ package handlers
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"net/http"
 )
 
 type GetAssetsReportUseCase interface {
-	Run(ctx context.Context) (reports.GetAssetsReportResponse, error)
-	GetRBTCLiquidity(ctx context.Context) (*entities.Wei, error)
-	GetBTCLiquidity(ctx context.Context) (*entities.Wei, error)
-	GetBTCLocked(ctx context.Context) (*entities.Wei, error)
-	GetRBTCLocked(ctx context.Context) (*entities.Wei, error)
-	GetRBTCBalance(ctx context.Context) (*entities.Wei, error)
-	GetBtcBalance() (*entities.Wei, error)
+	Run(ctx context.Context) (reports.GetAssetsReportResult, error)
 }
 
 // NewGetReportsAssetsHandler

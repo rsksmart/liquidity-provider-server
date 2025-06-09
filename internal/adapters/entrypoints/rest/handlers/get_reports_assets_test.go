@@ -20,7 +20,7 @@ func TestNewGetReportsAssetsHandler(t *testing.T) {
 		verb = "GET"
 	)
 
-	successReturn := reports.GetAssetsReportResponse{
+	successReturn := reports.GetAssetsReportResult{
 		BtcBalance:    big.NewInt(100000),
 		RbtcBalance:   big.NewInt(100000),
 		BtcLocked:     big.NewInt(15000),
@@ -29,7 +29,7 @@ func TestNewGetReportsAssetsHandler(t *testing.T) {
 		RbtcLiquidity: big.NewInt(67500),
 	}
 
-	failReturn := reports.GetAssetsReportResponse{
+	failReturn := reports.GetAssetsReportResult{
 		BtcBalance:    big.NewInt(0),
 		RbtcBalance:   big.NewInt(0),
 		BtcLocked:     big.NewInt(0),
