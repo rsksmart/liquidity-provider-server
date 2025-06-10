@@ -148,9 +148,18 @@ func (r *GetReportsByPeriodRequest) GetTimestamps() (startTime, endTime time.Tim
 }
 
 type GetRevenueReportResponse struct {
-	TotalQuoteCallFees *big.Int `json:"total_quote_call_fees" validate:"required"`
-	TotalPenalizations *big.Int `json:"total_penalizations" validate:"required"`
-	TotalProfit        *big.Int `json:"total_profit" validate:"required"`
+	TotalQuoteCallFees *big.Int `json:"totalQuoteCallFees" validate:"required"`
+	TotalPenalizations *big.Int `json:"totalPenalizations" validate:"required"`
+	TotalProfit        *big.Int `json:"totalProfit" validate:"required"`
+}
+
+type GetAssetsReportDTO struct {
+	BtcBalance    *big.Int `json:"btcBalance" example:"1000000000" description:"Current balance on the bitcoin wallet" validate:"required"`
+	RbtcBalance   *big.Int `json:"rbtcBalance" example:"1000000000" description:"Current balance on the RBTC wallet" validate:"required"`
+	BtcLocked     *big.Int `json:"btcLocked" example:"1000000000" description:"Amount of BTC locked by quotes" validate:"required"`
+	RbtcLocked    *big.Int `json:"rbtcLocked" example:"1000000000" description:"Amount of RBTC locked by quotes" validate:"required"`
+	BtcLiquidity  *big.Int `json:"btcLiquidity" example:"1000000000" description:"Amount of BTC liquidity available for new quotes" validate:"required"`
+	RbtcLiquidity *big.Int `json:"rbtcLiquidity" example:"1000000000" description:"Amount of RBTC liquidity available for new quotes" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {

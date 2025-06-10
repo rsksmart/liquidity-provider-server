@@ -63,6 +63,7 @@ type UseCaseRegistry struct {
 	getPeginReportUseCase         *reports.GetPeginReportUseCase
 	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
 	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
+	getAssetsReportUseCase        *reports.GetAssetsReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -251,6 +252,15 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			databaseRegistry.PenalizedEventRepository,
 		),
+		getAssetsReportUseCase: reports.NewGetAssetsReportUseCase(
+			btcRegistry.PaymentWallet,
+			messaging.Rpc,
+			liquidityProvider,
+			liquidityProvider,
+			liquidityProvider,
+			databaseRegistry.PeginRepository,
+			databaseRegistry.PegoutRepository,
+		),
 	}
 }
 
@@ -380,4 +390,8 @@ func (registry *UseCaseRegistry) GetPegoutReportUseCase() *reports.GetPegoutRepo
 
 func (registry *UseCaseRegistry) GetRevenueReportUseCase() *reports.GetRevenueReportUseCase {
 	return registry.getRevenueReportUseCase
+}
+
+func (registry *UseCaseRegistry) GetAssetsReportUseCase() *reports.GetAssetsReportUseCase {
+	return registry.getAssetsReportUseCase
 }
