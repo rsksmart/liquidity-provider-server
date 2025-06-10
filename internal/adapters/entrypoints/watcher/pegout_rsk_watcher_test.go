@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -213,7 +214,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 func TestPegoutRskDepositWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPegoutRskDepositWatcher(&watcher.PegoutRskDepositWatcherUseCases{}, nil, blockchain.Rpc{}, blockchain.RskContracts{}, eventBus, 0, ticker, time.Duration(1))
 	})
 }
