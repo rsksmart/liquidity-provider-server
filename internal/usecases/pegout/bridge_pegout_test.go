@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 )
 
@@ -98,13 +99,18 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
+	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(558)) == 0 &&
 			*config.GasLimit == pegout.BridgeConversionGasLimit &&
 			config.GasPrice.Cmp(entities.NewWei(pegout.BridgeConversionGasPrice)) == 0
-	}), test.AnyAddress).Return(test.AnyString, nil).Once()
+	}), test.AnyAddress).Return(receiptData, nil).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
@@ -247,9 +253,14 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
+	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(test.AnyString, assert.AnError).Once()
+	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(receiptData, assert.AnError).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
@@ -287,9 +298,14 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
+	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(test.AnyString, nil).Once()
+	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(receiptData, nil).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()

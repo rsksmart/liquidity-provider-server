@@ -260,7 +260,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	t.Run("Should handle error when tx reverts", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		mockClient := &mocks.RpcClientBindingMock{}
-		tx := prepareTxMocks(mockClient, signerMock, false)
+		tx, _ := prepareTxMocks(mockClient, signerMock, false)
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(false, nil).Once()
 		bridgeMock.EXPECT().RegisterBtcCoinbaseTransaction(mock.Anything, coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue).Return(tx, nil).Once()
@@ -273,7 +273,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	t.Run("Should register coinbase transaction successfully", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeBindingMock{}
 		mockClient := &mocks.RpcClientBindingMock{}
-		tx := prepareTxMocks(mockClient, signerMock, true)
+		tx, _ := prepareTxMocks(mockClient, signerMock, true)
 		bridgeMock.EXPECT().GetBtcBlockchainBestChainHeight(mock.Anything).Return(big.NewInt(600), nil).Once()
 		bridgeMock.EXPECT().HasBtcBlockCoinbaseTransactionInformation(mock.Anything, coinbaseInfo.BlockHash).Return(false, nil).Once()
 		matchFunc := mock.MatchedBy(func(opts *bind.TransactOpts) bool {

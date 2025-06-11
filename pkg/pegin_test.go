@@ -112,14 +112,18 @@ func TestFromPeginQuoteDTO(t *testing.T) {
 
 func TestToRetainedPeginQuoteDTO(t *testing.T) {
 	peginQuote := quote.RetainedPeginQuote{
-		QuoteHash:           "0x12",
-		Signature:           "0x34",
-		DepositAddress:      "0x56",
-		RequiredLiquidity:   entities.NewWei(5),
-		State:               quote.PeginStateWaitingForDeposit,
-		UserBtcTxHash:       "0x78",
-		CallForUserTxHash:   "0x90",
-		RegisterPeginTxHash: "0xab",
+		QuoteHash:             "0x12",
+		Signature:             "0x34",
+		DepositAddress:        "0x56",
+		RequiredLiquidity:     entities.NewWei(5),
+		State:                 quote.PeginStateWaitingForDeposit,
+		UserBtcTxHash:         "0x78",
+		CallForUserTxHash:     "0x90",
+		CallForUserGasPrice:   entities.NewWei(10),
+		CallForUserGasUsed:    entities.NewWei(1000),
+		RegisterPeginTxHash:   "0xab",
+		RegisterPeginGasPrice: entities.NewWei(12),
+		RegisterPeginGasUsed:  entities.NewWei(900),
 	}
 	dto := pkg.ToRetainedPeginQuoteDTO(peginQuote)
 
@@ -130,8 +134,12 @@ func TestToRetainedPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, string(peginQuote.State), dto.State)
 	assert.Equal(t, peginQuote.UserBtcTxHash, dto.UserBtcTxHash)
 	assert.Equal(t, peginQuote.CallForUserTxHash, dto.CallForUserTxHash)
+	assert.Equal(t, peginQuote.CallForUserGasUsed.AsBigInt(), dto.CallForUserGasUsed)
+	assert.Equal(t, peginQuote.CallForUserGasPrice.AsBigInt(), dto.CallForUserGasPrice)
 	assert.Equal(t, peginQuote.RegisterPeginTxHash, dto.RegisterPeginTxHash)
-	const expectedFields = 8
+	assert.Equal(t, peginQuote.RegisterPeginGasUsed.AsBigInt(), dto.RegisterPeginGasUsed)
+	assert.Equal(t, peginQuote.RegisterPeginGasPrice.AsBigInt(), dto.RegisterPeginGasPrice)
+	const expectedFields = 12
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
 }

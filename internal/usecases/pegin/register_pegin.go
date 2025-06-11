@@ -126,11 +126,11 @@ func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, re
 }
 
 func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, params blockchain.RegisterPeginParams, retainedQuote quote.RetainedPeginQuote) error {
-	var registerPeginTxHash string
 	var newState quote.PeginState
 	var err error
 
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	registerPeginTxData, err := useCase.contracts.Lbc.RegisterPegin(params)
+	if errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed
@@ -139,7 +139,14 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
+	retainedQuote.RegisterPeginTxHash = registerPeginTxData.TransactionHash
+	if registerPeginTxData.GasUsed != nil {
+		retainedQuote.RegisterPeginGasUsed = entities.NewWei(registerPeginTxData.GasUsed.Int64())
+	}
+	if registerPeginTxData.GasPrice != nil {
+		retainedQuote.RegisterPeginGasPrice = entities.NewWei(registerPeginTxData.GasPrice.Int64())
+	}
+
 	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
 		RetainedQuote: retainedQuote,
