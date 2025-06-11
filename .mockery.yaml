@@ -35,6 +35,10 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
       DefaultCredentialsProvider:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
+    interfaces:
+      PeginStatusUseCase:
+      PegoutStatusUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
