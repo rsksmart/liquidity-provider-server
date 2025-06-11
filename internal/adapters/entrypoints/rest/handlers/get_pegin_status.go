@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
+	log "github.com/sirupsen/logrus"
 )
 
 type PeginStatusUseCase interface {
@@ -41,6 +42,7 @@ func NewGetPeginQuoteStatusHandler(useCase PeginStatusUseCase) http.HandlerFunc 
 			rest.JsonErrorResponse(w, http.StatusConflict, rest.NewErrorResponse(err.Error(), true))
 			return
 		} else if err != nil {
+			log.Error("Unknown error: ", err)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, rest.NewErrorResponse("Internal server error", false))
 			return
 		}

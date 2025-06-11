@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -15,23 +16,12 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
+	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type MockPegoutStatusUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPegoutStatusUseCase) Run(ctx context.Context, quoteHash string) (quote.WatchedPegoutQuote, error) {
-	args := m.Called(ctx, quoteHash)
-	result, ok := args.Get(0).(quote.WatchedPegoutQuote)
-	if !ok {
-		panic("mock expectation failed: expected quote.WatchedPegoutQuote")
-	}
-	return result, args.Error(1)
-}
 
 var testPegoutQuote = quote.PegoutQuote{
 	LbcAddress:            "0x85FaB18a0d06fb14651c8F5EE9C7f4b00D80d70c",
@@ -83,7 +73,7 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 
 	testWatchedQuote := quote.NewWatchedPegoutQuote(testPegoutQuote, retainedQuote, testPegoutCreationData)
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	mockUseCase.On("Run", mock.Anything, testQuoteHash).Return(
 		testWatchedQuote,
 		nil,
@@ -142,11 +132,22 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	expectedFeeRate, _ := testPegoutCreationData.FeeRate.Native().Float64()
 	assert.InDelta(t, expectedFeeRate, response.CreationData.FeeRate, 0.0)
 
-	mockUseCase.AssertExpectations(t)
+	// Count fields in all three main objects and assert expected counts
+	detailFieldCount := reflect.TypeOf(response.Detail).NumField()
+	statusFieldCount := reflect.TypeOf(response.Status).NumField()
+	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
+
+	const expectedDetailFields = 19      // PegoutQuoteDTO has 19 fields
+	const expectedStatusFields = 9       // RetainedPegoutQuoteDTO has 9 fields
+	const expectedCreationDataFields = 4 // PegoutCreationDataDTO has 4 fields
+
+	assert.Equal(t, expectedDetailFields, detailFieldCount, "Detail object should have exactly %d fields", expectedDetailFields)
+	assert.Equal(t, expectedStatusFields, statusFieldCount, "Status object should have exactly %d fields", expectedStatusFields)
+	assert.Equal(t, expectedCreationDataFields, creationDataFieldCount, "CreationData object should have exactly %d fields", expectedCreationDataFields)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_MissingQuoteHashQueryParameter(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -165,14 +166,12 @@ func TestNewGetPegoutQuoteStatusHandler_MissingQuoteHashQueryParameter(t *testin
 	assert.True(t, errorResponse.Recoverable)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
 	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 0")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_QuoteNotFound(t *testing.T) {
 	testQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	mockUseCase.On("Run", mock.Anything, testQuoteHash).Return(
 		quote.WatchedPegoutQuote{},
 		usecases.QuoteNotFoundError,
@@ -194,14 +193,12 @@ func TestNewGetPegoutQuoteStatusHandler_QuoteNotFound(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, errorResponse.Recoverable)
 	assert.Equal(t, "Quote not found", errorResponse.Message)
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_QuoteNotAccepted(t *testing.T) {
 	testQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	mockUseCase.On("Run", mock.Anything, testQuoteHash).Return(
 		quote.WatchedPegoutQuote{},
 		usecases.QuoteNotAcceptedError,
@@ -223,24 +220,26 @@ func TestNewGetPegoutQuoteStatusHandler_QuoteNotAccepted(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, errorResponse.Recoverable)
 	assert.Equal(t, usecases.QuoteNotAcceptedError.Error(), errorResponse.Message)
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_UnhandledError(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	var errorMessage = "database connection failed"
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 
 	// Use a valid quote hash so validation passes
 	validQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 	mockUseCase.On("Run", mock.Anything, validQuoteHash).Return(
 		quote.WatchedPegoutQuote{},
-		errors.New("database connection failed"),
+		errors.New(errorMessage),
 	).Once()
 
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegout/status?quoteHash="+validQuoteHash, nil)
 	require.NoError(t, err)
+
+	// Assert that the error is logged
+	defer test.AssertLogContains(t, errorMessage)()
 
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
@@ -259,14 +258,12 @@ func TestNewGetPegoutQuoteStatusHandler_UnhandledError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Internal server error", errorResponse.Message)
 	assert.False(t, errorResponse.Recoverable)
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_WrappedUseCaseError(t *testing.T) {
 	testQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	wrappedErr := fmt.Errorf("wrapped: %w", usecases.QuoteNotFoundError)
 	mockUseCase.On("Run", mock.Anything, testQuoteHash).Return(
 		quote.WatchedPegoutQuote{},
@@ -289,12 +286,10 @@ func TestNewGetPegoutQuoteStatusHandler_WrappedUseCaseError(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, errorResponse.Recoverable)
 	assert.Equal(t, "Quote not found", errorResponse.Message)
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_EmptyQueryParameterValue(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -312,14 +307,12 @@ func TestNewGetPegoutQuoteStatusHandler_EmptyQueryParameterValue(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
 	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 0")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_QueryParameterWithSpaces(t *testing.T) {
 	quoteHashWithSpaces := " 8d1ba2cb559a6ebe41f  19131602467e1d939682d651b2a91e55b86bc664a6819 "
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -336,12 +329,10 @@ func TestNewGetPegoutQuoteStatusHandler_QueryParameterWithSpaces(t *testing.T) {
 	err = json.Unmarshal(res.Body.Bytes(), &errorResponse)
 	require.NoError(t, err)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_WrongParameterName(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -359,12 +350,10 @@ func TestNewGetPegoutQuoteStatusHandler_WrongParameterName(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
 	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 0")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_CaseSensitiveParameterName(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -382,14 +371,12 @@ func TestNewGetPegoutQuoteStatusHandler_CaseSensitiveParameterName(t *testing.T)
 	require.NoError(t, err)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
 	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 0")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_MultipleQueryParameters(t *testing.T) {
 	testQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	mockUseCase.On("Run", mock.Anything, testQuoteHash).Return(
 		quote.WatchedPegoutQuote{},
 		usecases.QuoteNotFoundError,
@@ -406,12 +393,10 @@ func TestNewGetPegoutQuoteStatusHandler_MultipleQueryParameters(t *testing.T) {
 
 	// Should reach use case since quoteHash is valid
 	assert.NotEqual(t, http.StatusBadRequest, res.Code)
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_InvalidQuoteHashFormat(t *testing.T) {
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
 	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
 
@@ -430,13 +415,11 @@ func TestNewGetPegoutQuoteStatusHandler_InvalidQuoteHashFormat(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
 	assert.Contains(t, errorResponse.Details["error"], "must be a valid hex string")
-
-	mockUseCase.AssertExpectations(t)
 }
 
 func TestNewGetPegoutQuoteStatusHandler_ErrorResponseFormat(t *testing.T) {
 	// Test that all error responses follow the expected format
-	mockUseCase := new(MockPegoutStatusUseCase)
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
 
 	// Use valid quote hash so validation passes
 	validQuoteHash := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
@@ -465,6 +448,50 @@ func TestNewGetPegoutQuoteStatusHandler_ErrorResponseFormat(t *testing.T) {
 	assert.NotEmpty(t, errorResponse.Message)
 	assert.NotZero(t, errorResponse.Timestamp)
 	assert.NotNil(t, errorResponse.Details)
+}
 
-	mockUseCase.AssertExpectations(t)
+func TestNewGetPegoutQuoteStatusHandler_QuoteHashEmptyString(t *testing.T) {
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
+	// No mock setup needed since validation fails before reaching use case
+	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
+
+	// Test with `""` string as quote hash value
+	req, err := http.NewRequestWithContext(context.Background(), "GET", `/pegout/status?quoteHash=""`, nil)
+	require.NoError(t, err)
+
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+
+	var errorResponse rest.ErrorResponse
+	err = json.Unmarshal(res.Body.Bytes(), &errorResponse)
+	require.NoError(t, err)
+	assert.True(t, errorResponse.Recoverable)
+	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
+	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 2")
+}
+
+func TestNewGetPegoutQuoteStatusHandler_QuoteHashNullString(t *testing.T) {
+	mockUseCase := mocks.NewPegoutStatusUseCaseMock(t)
+	// No mock setup needed since validation fails before reaching use case
+	handler := NewGetPegoutQuoteStatusHandler(mockUseCase)
+
+	// Test with literal "null" as quote hash value
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegout/status?quoteHash=null", nil)
+	require.NoError(t, err)
+
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+
+	var errorResponse rest.ErrorResponse
+	err = json.Unmarshal(res.Body.Bytes(), &errorResponse)
+	require.NoError(t, err)
+	assert.True(t, errorResponse.Recoverable)
+	assert.Contains(t, errorResponse.Message, "invalid or missing parameter quoteHash")
+	assert.Contains(t, errorResponse.Details["error"], "expected 64 characters, got 4")
 }
