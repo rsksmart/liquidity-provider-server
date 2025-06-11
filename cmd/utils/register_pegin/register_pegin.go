@@ -15,6 +15,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"golang.org/x/term"
+	"math/big"
 	"os"
 )
 
@@ -143,12 +144,13 @@ func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
 	lbc blockchain.LiquidityBridgeContract,
 	parsedInput ParsedRegisterPegInInput,
-) (blockchain.ReceiptDataReturn, error) {
+) (blockchain.TransactionReceipt, error) {
 	var pmt, rawTx []byte
 	var err error
-	receiptToReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: 0,
+	receiptToReturn := blockchain.TransactionReceipt{
+		TransactionHash: "",
+		GasUsed:         big.NewInt(0),
+		GasPrice:        big.NewInt(0),
 	}
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {

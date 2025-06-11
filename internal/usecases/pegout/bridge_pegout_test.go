@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 )
 
@@ -98,9 +99,10 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
-	receiptData := blockchain.ReceiptDataReturn{
-		TxHash:  test.AnyString,
-		GasUsed: 100,
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
@@ -251,9 +253,10 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
-	receiptData := blockchain.ReceiptDataReturn{
-		TxHash:  test.AnyString,
-		GasUsed: 100,
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
@@ -295,9 +298,10 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
-	receiptData := blockchain.ReceiptDataReturn{
-		TxHash:  test.AnyString,
-		GasUsed: 100,
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyString,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()

@@ -20,9 +20,10 @@ import (
 
 // nolint:funlen
 func TestCallForUserUseCase_Run(t *testing.T) {
-	callForUserReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "0x1a1b1c",
-		GasUsed: uint64(1000),
+	callForUserReturn := blockchain.TransactionReceipt{
+		TransactionHash: "0x1a1b1c",
+		GasUsed:         big.NewInt(1000),
+		GasPrice:        big.NewInt(101),
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
@@ -36,8 +37,9 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
-	expectedRetainedQuote.CallForUserTxHash = callForUserReturn.TxHash
-	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callForUserReturn.GasUsed))
+	expectedRetainedQuote.CallForUserTxHash = callForUserReturn.TransactionHash
+	expectedRetainedQuote.CallForUserGasUsed = entities.NewWei(callForUserReturn.GasUsed.Int64())
+	expectedRetainedQuote.CallForUserGasPrice = entities.NewWei(callForUserReturn.GasPrice.Int64())
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 
@@ -88,9 +90,10 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 
 // nolint:funlen
 func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
-	callforUserReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "0x1a1b1c",
-		GasUsed: uint64(1000),
+	callforUserReturn := blockchain.TransactionReceipt{
+		TransactionHash: "0x1a1b1c",
+		GasUsed:         big.NewInt(1000),
+		GasPrice:        big.NewInt(101),
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
@@ -104,8 +107,9 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
-	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TxHash
-	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callforUserReturn.GasUsed))
+	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TransactionHash
+	expectedRetainedQuote.CallForUserGasUsed = entities.NewWei(callforUserReturn.GasUsed.Int64())
+	expectedRetainedQuote.CallForUserGasPrice = entities.NewWei(callforUserReturn.GasPrice.Int64())
 
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
@@ -563,9 +567,10 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 
 // nolint:funlen
 func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
-	callforUserReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "0x1a1b1c",
-		GasUsed: uint64(1000),
+	callforUserReturn := blockchain.TransactionReceipt{
+		TransactionHash: "0x1a1b1c",
+		GasUsed:         big.NewInt(1000),
+		GasPrice:        big.NewInt(101),
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
@@ -578,8 +583,9 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserFailed
-	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TxHash
-	expectedRetainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callforUserReturn.GasUsed))
+	expectedRetainedQuote.CallForUserTxHash = callforUserReturn.TransactionHash
+	expectedRetainedQuote.CallForUserGasUsed = entities.NewWei(callforUserReturn.GasUsed.Int64())
+	expectedRetainedQuote.CallForUserGasPrice = entities.NewWei(callforUserReturn.GasPrice.Int64())
 
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return(lpRskAddress).Twice()

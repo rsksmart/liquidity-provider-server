@@ -150,9 +150,10 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 
 // nolint:funlen,cyclop,maintidx,gocyclo
 func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
-	callForUserReturn := blockchain.ReceiptDataReturn{
-		TxHash:  test.AnyHash,
-		GasUsed: uint64(1000),
+	callForUserReturn := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyHash,
+		GasUsed:         big.NewInt(1000),
+		GasPrice:        big.NewInt(101),
 	}
 	peginRepository := &mocks.PeginQuoteRepositoryMock{}
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()

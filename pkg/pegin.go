@@ -37,16 +37,18 @@ type PeginQuoteDTO struct {
 }
 
 type RetainedPeginQuoteDTO struct {
-	QuoteHash                 string        `json:"quoteHash" required:"" description:"32-byte long hash of the quote that acts as a unique identifier"`
-	Signature                 string        `json:"signature" required:"" description:"Signature of the liquidity provider expressing commitment on the quote"`
-	DepositAddress            string        `json:"depositAddress" required:"" description:"BTC derivation address where the user should send the BTC"`
-	RequiredLiquidity         *big.Int      `json:"requiredLiquidity" required:"" description:"RBTC liquidity that the LP locks to guarantee the service. It is different from the total amount that the user needs to pay."`
-	State                     string        `json:"state" required:"" description:"Current state of the quote. Possible values are:\n - WaitingForDeposit\n - WaitingForDepositConfirmations\n - TimeForDepositElapsed\n - CallForUserSucceeded\n - CallForUserFailed\n - RegisterPegInSucceeded\n - RegisterPegInFailed"`
-	UserBtcTxHash             string        `json:"userBtcTxHash" required:"" description:"The hash of the user's BTC transaction to the derivation address"`
-	CallForUserTxHash         string        `json:"callForUserTxHash" required:"" description:"The hash of the RSK transaction to the address requested by the user"`
-	RegisterPeginTxHash       string        `json:"registerPeginTxHash" required:"" description:"The hash of the RSK transaction where the LP gets his refund and fee"`
-	PeginCallForUserGasCost   *entities.Wei `json:"peginCallForUserGasCost" required:"" description:"Gas used on the call for user"`
-	PeginRegisterPeginGasCost *entities.Wei `json:"peginRegisterPeginGasCost" required:"" description:"Gas used on the register pegin"`
+	QuoteHash             string   `json:"quoteHash" required:"" description:"32-byte long hash of the quote that acts as a unique identifier"`
+	Signature             string   `json:"signature" required:"" description:"Signature of the liquidity provider expressing commitment on the quote"`
+	DepositAddress        string   `json:"depositAddress" required:"" description:"BTC derivation address where the user should send the BTC"`
+	RequiredLiquidity     *big.Int `json:"requiredLiquidity" required:"" description:"RBTC liquidity that the LP locks to guarantee the service. It is different from the total amount that the user needs to pay."`
+	State                 string   `json:"state" required:"" description:"Current state of the quote. Possible values are:\n - WaitingForDeposit\n - WaitingForDepositConfirmations\n - TimeForDepositElapsed\n - CallForUserSucceeded\n - CallForUserFailed\n - RegisterPegInSucceeded\n - RegisterPegInFailed"`
+	UserBtcTxHash         string   `json:"userBtcTxHash" required:"" description:"The hash of the user's BTC transaction to the derivation address"`
+	CallForUserTxHash     string   `json:"callForUserTxHash" required:"" description:"The hash of the RSK transaction to the address requested by the user"`
+	RegisterPeginTxHash   string   `json:"registerPeginTxHash" required:"" description:"The hash of the RSK transaction where the LP gets his refund and fee"`
+	CallForUserGasUsed    *big.Int `json:"CallForUserGasUsed" required:"" description:"Gas used on the call for user"`
+	CallForUserGasPrice   *big.Int `json:"CallForUserGasPrice" required:"" description:"Gas price for call ofr user"`
+	RegisterPeginGasUsed  *big.Int `json:"RegisterPeginGasUsed" required:"" description:"Gas used on the register pegin"`
+	RegisterPeginGasPrice *big.Int `json:"RegisterPeginGasPrice" required:"" description:"Gas price on the register pegin"`
 }
 
 type PeginCreationDataDTO struct {
@@ -132,16 +134,18 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 
 func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuoteDTO {
 	return RetainedPeginQuoteDTO{
-		QuoteHash:                 entity.QuoteHash,
-		Signature:                 entity.Signature,
-		DepositAddress:            entity.DepositAddress,
-		RequiredLiquidity:         entity.RequiredLiquidity.AsBigInt(),
-		State:                     string(entity.State),
-		UserBtcTxHash:             entity.UserBtcTxHash,
-		CallForUserTxHash:         entity.CallForUserTxHash,
-		RegisterPeginTxHash:       entity.RegisterPeginTxHash,
-		PeginCallForUserGasCost:   entity.PeginCallForUserGasCost,
-		PeginRegisterPeginGasCost: entity.PeginRegisterPeginGasCost,
+		QuoteHash:             entity.QuoteHash,
+		Signature:             entity.Signature,
+		DepositAddress:        entity.DepositAddress,
+		RequiredLiquidity:     entity.RequiredLiquidity.AsBigInt(),
+		State:                 string(entity.State),
+		UserBtcTxHash:         entity.UserBtcTxHash,
+		CallForUserTxHash:     entity.CallForUserTxHash,
+		RegisterPeginTxHash:   entity.RegisterPeginTxHash,
+		CallForUserGasUsed:    entity.CallForUserGasUsed.AsBigInt(),
+		CallForUserGasPrice:   entity.CallForUserGasPrice.AsBigInt(),
+		RegisterPeginGasUsed:  entity.RegisterPeginGasUsed.AsBigInt(),
+		RegisterPeginGasPrice: entity.RegisterPeginGasPrice.AsBigInt(),
 	}
 }
 

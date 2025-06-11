@@ -520,9 +520,9 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		RetainedQuote: testRetainedQuote,
 	}
 	t.Run("should stop tracking after send pegout successfully", func(t *testing.T) {
-		dataReceipt := blockchain.ReceiptDataReturn{
-			TxHash:  test.AnyHash,
-			GasUsed: 0,
+		transactionReceipt := blockchain.BitcoinTransactionResult{
+			Hash: test.AnyHash,
+			Fee:  entities.NewWei(0),
 		}
 		rskRpc.Calls = []mock.Call{}
 		rskRpc.ExpectedCalls = []*mock.Call{}
@@ -546,7 +546,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		lbc.On("IsPegOutQuoteCompleted", testRetainedQuote.QuoteHash).Return(false, nil).Once()
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(dataReceipt, nil).Once()
+		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(transactionReceipt, nil).Once()
 
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)

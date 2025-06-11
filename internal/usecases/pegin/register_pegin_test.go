@@ -29,11 +29,13 @@ var (
 	cfuTx     = "cfu tx hash"
 )
 
-var registerPeginData = blockchain.ReceiptDataReturn{
-	TxHash:  "register tx hash",
-	GasUsed: 0,
+var registerPeginData = blockchain.TransactionReceipt{
+	TransactionHash: "register tx hash",
+	GasUsed:         big.NewInt(0),
+	GasPrice:        big.NewInt(101),
 }
 
+// nolint:funlen
 func TestRegisterPeginUseCase_Run(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -46,8 +48,9 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInSucceeded
-	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TxHash
-	expectedRetainedQuote.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
+	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TransactionHash
+	expectedRetainedQuote.RegisterPeginGasUsed = entities.NewWei(registerPeginData.GasUsed.Int64())
+	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(registerPeginData.GasPrice.Int64())
 
 	lbc := new(mocks.LbcMock)
 	lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
@@ -252,6 +255,7 @@ func TestRegisterPeginUseCase_Run_QuoteNotFound(t *testing.T) {
 	mutex.AssertNotCalled(t, "Unlock")
 }
 
+// nolint:funlen
 func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -264,8 +268,9 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInFailed
-	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TxHash
-	expectedRetainedQuote.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
+	expectedRetainedQuote.RegisterPeginTxHash = registerPeginData.TransactionHash
+	expectedRetainedQuote.RegisterPeginGasUsed = entities.NewWei(registerPeginData.GasUsed.Int64())
+	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(registerPeginData.GasPrice.Int64())
 
 	lbc := new(mocks.LbcMock)
 	lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
@@ -459,7 +464,7 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 	}
 }
 
-func registerPeginUpdateErrorSetups(t *testing.T, registerPeginData blockchain.ReceiptDataReturn, retainedPeginQuote quote.RetainedPeginQuote) []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
+func registerPeginUpdateErrorSetups(t *testing.T, registerPeginData blockchain.TransactionReceipt, retainedPeginQuote quote.RetainedPeginQuote) []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
 	return []func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock){
 		func(quoteRepository *mocks.PeginQuoteRepositoryMock, eventBus *mocks.EventBusMock) {
 			quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).
@@ -483,15 +488,17 @@ func registerPeginUpdateErrorSetups(t *testing.T, registerPeginData blockchain.R
 			quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
-				expected.RegisterPeginTxHash = registerPeginData.TxHash
-				expected.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
+				expected.RegisterPeginTxHash = registerPeginData.TransactionHash
+				expected.RegisterPeginGasUsed = entities.NewWei(registerPeginData.GasUsed.Int64())
+				expected.RegisterPeginGasPrice = entities.NewWei(registerPeginData.GasPrice.Int64())
 				return assert.Equal(t, expected, q)
 			})).Return(assert.AnError).Once()
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.RegisterPeginCompletedEvent) bool {
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
-				expected.RegisterPeginTxHash = registerPeginData.TxHash
-				expected.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginData.GasUsed))
+				expected.RegisterPeginTxHash = registerPeginData.TransactionHash
+				expected.RegisterPeginGasUsed = entities.NewWei(registerPeginData.GasUsed.Int64())
+				expected.RegisterPeginGasPrice = entities.NewWei(registerPeginData.GasPrice.Int64())
 				require.NoError(t, event.Error)
 				return assert.Equal(t, expected, event.RetainedQuote) &&
 					assert.Equal(t, quote.RegisterPeginCompletedEventId, event.Event.Id())

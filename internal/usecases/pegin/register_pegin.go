@@ -139,8 +139,14 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxData.TxHash
-	retainedQuote.PeginRegisterPeginGasCost = entities.NewWei(int64(registerPeginTxData.GasUsed))
+	retainedQuote.RegisterPeginTxHash = registerPeginTxData.TransactionHash
+	if registerPeginTxData.GasUsed != nil {
+		retainedQuote.RegisterPeginGasUsed = entities.NewWei(registerPeginTxData.GasUsed.Int64())
+	}
+	if registerPeginTxData.GasPrice != nil {
+		retainedQuote.RegisterPeginGasPrice = entities.NewWei(registerPeginTxData.GasPrice.Int64())
+	}
+
 	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
 		RetainedQuote: retainedQuote,

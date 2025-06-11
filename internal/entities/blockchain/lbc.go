@@ -24,11 +24,6 @@ type RegisterPeginParams struct {
 	Quote                 quote.PeginQuote
 }
 
-type ReceiptDataReturn struct {
-	TxHash  string
-	GasUsed uint64
-}
-
 func (params RegisterPeginParams) String() string {
 	return fmt.Sprintf(
 		"RegisterPeginParams { QuoteSignature: %s, BitcoinRawTransaction: %s, "+
@@ -97,9 +92,9 @@ type LiquidityBridgeContract interface {
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (ReceiptDataReturn, error)
-	RegisterPegin(params RegisterPeginParams) (ReceiptDataReturn, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (ReceiptDataReturn, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
+	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	IsOperationalPegin(address string) (bool, error)
 	IsOperationalPegout(address string) (bool, error)
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)

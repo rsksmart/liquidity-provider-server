@@ -286,22 +286,22 @@ func (_c *BitcoinWalletMock_ImportAddress_Call) RunAndReturn(run func(string) er
 }
 
 // SendWithOpReturn provides a mock function with given fields: address, value, opReturnContent
-func (_m *BitcoinWalletMock) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.ReceiptDataReturn, error) {
+func (_m *BitcoinWalletMock) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
 	ret := _m.Called(address, value, opReturnContent)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SendWithOpReturn")
 	}
 
-	var r0 blockchain.ReceiptDataReturn
+	var r0 blockchain.BitcoinTransactionResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, *entities.Wei, []byte) (blockchain.ReceiptDataReturn, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, *entities.Wei, []byte) (blockchain.BitcoinTransactionResult, error)); ok {
 		return rf(address, value, opReturnContent)
 	}
-	if rf, ok := ret.Get(0).(func(string, *entities.Wei, []byte) blockchain.ReceiptDataReturn); ok {
+	if rf, ok := ret.Get(0).(func(string, *entities.Wei, []byte) blockchain.BitcoinTransactionResult); ok {
 		r0 = rf(address, value, opReturnContent)
 	} else {
-		r0 = ret.Get(0).(blockchain.ReceiptDataReturn)
+		r0 = ret.Get(0).(blockchain.BitcoinTransactionResult)
 	}
 
 	if rf, ok := ret.Get(1).(func(string, *entities.Wei, []byte) error); ok {
@@ -333,12 +333,12 @@ func (_c *BitcoinWalletMock_SendWithOpReturn_Call) Run(run func(address string, 
 	return _c
 }
 
-func (_c *BitcoinWalletMock_SendWithOpReturn_Call) Return(_a0 blockchain.ReceiptDataReturn, _a1 error) *BitcoinWalletMock_SendWithOpReturn_Call {
+func (_c *BitcoinWalletMock_SendWithOpReturn_Call) Return(_a0 blockchain.BitcoinTransactionResult, _a1 error) *BitcoinWalletMock_SendWithOpReturn_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *BitcoinWalletMock_SendWithOpReturn_Call) RunAndReturn(run func(string, *entities.Wei, []byte) (blockchain.ReceiptDataReturn, error)) *BitcoinWalletMock_SendWithOpReturn_Call {
+func (_c *BitcoinWalletMock_SendWithOpReturn_Call) RunAndReturn(run func(string, *entities.Wei, []byte) (blockchain.BitcoinTransactionResult, error)) *BitcoinWalletMock_SendWithOpReturn_Call {
 	_c.Call.Return(run)
 	return _c
 }

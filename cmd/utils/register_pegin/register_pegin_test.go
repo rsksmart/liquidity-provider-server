@@ -21,9 +21,10 @@ import (
 
 // nolint:funlen
 func TestExecuteRegisterPegIn(t *testing.T) {
-	result := blockchain.ReceiptDataReturn{
-		TxHash:  "0x111213",
-		GasUsed: uint64(32),
+	result := blockchain.TransactionReceipt{
+		TransactionHash: "0x111213",
+		GasUsed:         big.NewInt(32),
+		GasPrice:        big.NewInt(3),
 	}
 
 	var (
@@ -75,8 +76,9 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		resultRegister, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.NoError(t, err)
-		assert.Equal(t, result.TxHash, resultRegister.TxHash)
+		assert.Equal(t, result.TransactionHash, resultRegister.TransactionHash)
 		assert.Equal(t, result.GasUsed, resultRegister.GasUsed)
+		assert.Equal(t, result.GasPrice, resultRegister.GasPrice)
 		rpc.AssertExpectations(t)
 		lbc.AssertExpectations(t)
 	})
@@ -88,7 +90,9 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, "", result.TransactionHash)
+		assert.Equal(t, result.GasUsed, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, big.NewInt(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -101,7 +105,9 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, "", result.TransactionHash)
+		assert.Equal(t, result.GasUsed, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, big.NewInt(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -116,15 +122,18 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, "", result.TransactionHash)
+		assert.Equal(t, result.GasUsed, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, big.NewInt(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
 
 	t.Run("should return error if RegisterPegin fails", func(t *testing.T) {
-		emptyResult := blockchain.ReceiptDataReturn{
-			TxHash:  "",
-			GasUsed: 0,
+		emptyResult := blockchain.TransactionReceipt{
+			TransactionHash: "",
+			GasUsed:         big.NewInt(0),
+			GasPrice:        big.NewInt(0),
 		}
 		rpc := new(mocks.BtcRpcMock)
 		lbc := new(mocks.LbcMock)
@@ -135,8 +144,9 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
 		require.Error(t, err)
-		assert.Equal(t, result.TxHash, emptyResult.TxHash)
+		assert.Equal(t, result.TransactionHash, emptyResult.TransactionHash)
 		assert.Equal(t, result.GasUsed, emptyResult.GasUsed)
+		assert.Equal(t, result.GasPrice, emptyResult.GasPrice)
 		rpc.AssertExpectations(t)
 		lbc.AssertExpectations(t)
 	})

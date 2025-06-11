@@ -189,10 +189,10 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 	return balance, nil
 }
 
-func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (dataReturn blockchain.ReceiptDataReturn, err error) {
-	dataReturn = blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: 0,
+func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (dataReturn blockchain.BitcoinTransactionResult, err error) {
+	dataReturn = blockchain.BitcoinTransactionResult{
+		Hash: "",
+		Fee:  entities.NewWei(0),
 	}
 	decodedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {
@@ -236,8 +236,8 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	}
 	satoshiFee := fundedTx.Fee.ToUnit(btcutil.AmountSatoshi)
 
-	dataReturn.TxHash = txHash.String()
-	dataReturn.GasUsed = uint64(satoshiFee)
+	dataReturn.Hash = txHash.String()
+	dataReturn.Fee = entities.NewWei(int64(satoshiFee))
 	return dataReturn, nil
 }
 

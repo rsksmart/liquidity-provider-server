@@ -150,7 +150,7 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 ) (quote.RetainedPegoutQuote, error) {
 	var err error
 	var newState quote.PegoutState
-	var receiptReturn blockchain.ReceiptDataReturn
+	var receiptReturn blockchain.BitcoinTransactionResult
 
 	quoteHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
 	if err != nil {
@@ -166,8 +166,10 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, retainedQuote.QuoteHash)
 
-	retainedQuote.LpBtcTxHash = receiptReturn.TxHash
-	retainedQuote.PegoutSendPegoutGasCost = entities.NewWei(int64(receiptReturn.GasUsed))
+	retainedQuote.LpBtcTxHash = receiptReturn.Hash
+	if receiptReturn.Fee != nil {
+		retainedQuote.LpBtcTxFee = receiptReturn.Fee
+	}
 	retainedQuote.State = newState
 	useCase.eventBus.Publish(quote.PegoutBtcSentToUserEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),

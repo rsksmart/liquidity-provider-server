@@ -61,15 +61,20 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 
 func TestToRetainedPegoutQuoteDTO(t *testing.T) {
 	pegoutQuote := quote.RetainedPegoutQuote{
-		QuoteHash:          "0x12",
-		Signature:          "0x34",
-		DepositAddress:     "btc1",
-		RequiredLiquidity:  entities.NewWei(5),
-		State:              quote.PegoutStateWaitingForDepositConfirmations,
-		UserRskTxHash:      "0x56",
-		LpBtcTxHash:        "btc2",
-		RefundPegoutTxHash: "0x78",
-		BridgeRefundTxHash: "0x90",
+		QuoteHash:            "0x12",
+		Signature:            "0x34",
+		DepositAddress:       "btc1",
+		RequiredLiquidity:    entities.NewWei(5),
+		State:                quote.PegoutStateWaitingForDepositConfirmations,
+		UserRskTxHash:        "0x56",
+		LpBtcTxHash:          "btc2",
+		RefundPegoutTxHash:   "0x78",
+		RefundPegoutGasUsed:  entities.NewWei(800),
+		RefundPegoutGasPrice: entities.NewWei(8),
+		BridgeRefundTxHash:   "0x90",
+		BridgePegoutGasUsed:  entities.NewWei(900),
+		BridgePegoutGasPrice: entities.NewWei(9),
+		LpBtcTxFee:           entities.NewWei(1000),
 	}
 
 	dto := pkg.ToRetainedPegoutQuoteDTO(pegoutQuote)
@@ -81,9 +86,14 @@ func TestToRetainedPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, string(pegoutQuote.State), dto.State)
 	assert.Equal(t, pegoutQuote.UserRskTxHash, dto.UserRskTxHash)
 	assert.Equal(t, pegoutQuote.LpBtcTxHash, dto.LpBtcTxHash)
+	assert.Equal(t, pegoutQuote.LpBtcTxFee.AsBigInt(), dto.LpBtcTxFee)
 	assert.Equal(t, pegoutQuote.RefundPegoutTxHash, dto.RefundPegoutTxHash)
+	assert.Equal(t, pegoutQuote.RefundPegoutGasUsed.AsBigInt(), dto.RefundPegoutGasUsed)
+	assert.Equal(t, pegoutQuote.RefundPegoutGasPrice.AsBigInt(), dto.RefundPegoutGasPrice)
 	assert.Equal(t, pegoutQuote.BridgeRefundTxHash, dto.BridgeRefundTxHash)
-	const expectedFields = 9
+	assert.Equal(t, pegoutQuote.BridgePegoutGasUsed.AsBigInt(), dto.BridgeRefundGasUsed)
+	assert.Equal(t, pegoutQuote.BridgePegoutGasPrice.AsBigInt(), dto.BridgeRefundGasPrice)
+	const expectedFields = 14
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(pegoutQuote))
 }

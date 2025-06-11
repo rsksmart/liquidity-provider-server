@@ -126,9 +126,9 @@ func (m *LbcMock) GetDepositEvents(ctx context.Context, fromBlock uint64, toBloc
 	return args.Get(0).([]quote.PegoutDeposit), args.Error(1)
 }
 
-func (m *LbcMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.ReceiptDataReturn, error) {
+func (m *LbcMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
 	args := m.Called(txConfig, params)
-	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
+	return args.Get(0).(blockchain.TransactionReceipt), args.Error(1)
 }
 
 func (m *LbcMock) GetBalance(address string) (*entities.Wei, error) {
@@ -139,14 +139,14 @@ func (m *LbcMock) GetBalance(address string) (*entities.Wei, error) {
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 
-func (m *LbcMock) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.ReceiptDataReturn, error) {
+func (m *LbcMock) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
 	args := m.Called(txConfig, peginQuote)
-	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
+	return args.Get(0).(blockchain.TransactionReceipt), args.Error(1)
 }
 
-func (m *LbcMock) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.ReceiptDataReturn, error) {
+func (m *LbcMock) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error) {
 	args := m.Called(params)
-	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
+	return args.Get(0).(blockchain.TransactionReceipt), args.Error(1)
 }
 
 func (m *LbcMock) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {

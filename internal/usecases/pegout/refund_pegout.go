@@ -143,8 +143,13 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RefundPegoutTxHash = receiptData.TxHash
-	retainedQuote.PegoutRefundPegoutGasCost = entities.NewWei(int64(receiptData.GasUsed))
+	retainedQuote.RefundPegoutTxHash = receiptData.TransactionHash
+	if receiptData.GasUsed != nil {
+		retainedQuote.RefundPegoutGasUsed = entities.NewWei(receiptData.GasUsed.Int64())
+	}
+	if receiptData.GasPrice != nil {
+		retainedQuote.RefundPegoutGasPrice = entities.NewWei(receiptData.GasPrice.Int64())
+	}
 	useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 		RetainedQuote: retainedQuote,

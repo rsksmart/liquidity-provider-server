@@ -150,8 +150,14 @@ func (useCase *CallForUserUseCase) performCallForUser(
 		quoteState = quote.PeginStateCallForUserSucceeded
 	}
 
-	retainedQuote.CallForUserTxHash = callForUserReturn.TxHash
-	retainedQuote.PeginCallForUserGasCost = entities.NewWei(int64(callForUserReturn.GasUsed))
+	retainedQuote.CallForUserTxHash = callForUserReturn.TransactionHash
+	if callForUserReturn.GasUsed != nil {
+		retainedQuote.CallForUserGasUsed = entities.NewWei(callForUserReturn.GasUsed.Int64())
+	}
+	if callForUserReturn.GasPrice != nil {
+		retainedQuote.CallForUserGasPrice = entities.NewWei(callForUserReturn.GasPrice.Int64())
+	}
+
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),

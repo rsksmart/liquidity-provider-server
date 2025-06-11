@@ -89,9 +89,10 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded}
 	testPegoutQuote := quote.PegoutQuote{Nonce: 5, TransferConfirmations: 5}
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-	receiptData := blockchain.ReceiptDataReturn{
-		TxHash:  test.AnyHash,
-		GasUsed: 100,
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyHash,
+		GasUsed:         big.NewInt(100),
+		GasPrice:        big.NewInt(10),
 	}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}

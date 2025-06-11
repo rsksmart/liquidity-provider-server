@@ -346,11 +346,18 @@ func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.We
 	return entities.NewBigWei(balance), nil
 }
 
-func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.ReceiptDataReturn, error) {
+func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
 	parsedQuote, err := parsePeginQuote(peginQuote)
-	callForUserReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: uint64(0),
+	callForUserReturn := blockchain.TransactionReceipt{
+		TransactionHash:   "",
+		BlockHash:         "",
+		BlockNumber:       0,
+		From:              "",
+		To:                "",
+		Value:             entities.NewWei(0),
+		GasUsed:           big.NewInt(0),
+		GasPrice:          big.NewInt(0),
+		CumulativeGasUsed: big.NewInt(0),
 	}
 	if err != nil {
 		return callForUserReturn, err
@@ -375,22 +382,27 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 	} else if receipt == nil {
 		return callForUserReturn, errors.New("call for user error: incomplete receipt")
 	} else if receipt.Status == 0 {
-		callForUserReturn.TxHash = receipt.TxHash.String()
-		callForUserReturn.GasUsed = receipt.GasUsed
-		return callForUserReturn, fmt.Errorf("call for user error: transaction reverted (%s)", callForUserReturn.TxHash)
+		callForUserReturn.TransactionHash = receipt.TxHash.String()
+		callForUserReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
+		callForUserReturn.CumulativeGasUsed = big.NewInt(int64(receipt.CumulativeGasUsed))
+		callForUserReturn.GasPrice = receipt.EffectiveGasPrice
+		return callForUserReturn, fmt.Errorf("call for user error: transaction reverted (%s)", callForUserReturn.TransactionHash)
 	}
-	callForUserReturn.TxHash = receipt.TxHash.String()
-	callForUserReturn.GasUsed = receipt.GasUsed
+	callForUserReturn.TransactionHash = receipt.TxHash.String()
+	callForUserReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
+	callForUserReturn.CumulativeGasUsed = big.NewInt(int64(receipt.CumulativeGasUsed))
+	callForUserReturn.GasPrice = receipt.EffectiveGasPrice
 	return callForUserReturn, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.ReceiptDataReturn, error) {
+func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error) {
 	var res []any
 	var err error
 	var parsedQuote bindings.QuotesPeginQuote
-	dataToReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: 0,
+	dataToReturn := blockchain.TransactionReceipt{
+		TransactionHash: "",
+		GasUsed:         big.NewInt(0),
+		GasPrice:        big.NewInt(0),
 	}
 	if parsedQuote, err = parsePeginQuote(params.Quote); err != nil {
 		return dataToReturn, err
@@ -429,22 +441,25 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	} else if receipt == nil {
 		return dataToReturn, errors.New("register pegin error: incomplete receipt")
 	} else if receipt.Status == 0 {
-		dataToReturn.TxHash = receipt.TxHash.String()
-		dataToReturn.GasUsed = receipt.GasUsed
-		return dataToReturn, fmt.Errorf("register pegin error: transaction reverted (%s)", dataToReturn.TxHash)
+		dataToReturn.TransactionHash = receipt.TxHash.String()
+		dataToReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
+		dataToReturn.GasPrice = receipt.EffectiveGasPrice
+		return dataToReturn, fmt.Errorf("register pegin error: transaction reverted (%s)", dataToReturn.TransactionHash)
 	}
-	dataToReturn.TxHash = receipt.TxHash.String()
-	dataToReturn.GasUsed = receipt.GasUsed
+	dataToReturn.TransactionHash = receipt.TxHash.String()
+	dataToReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
+	dataToReturn.GasPrice = receipt.EffectiveGasPrice
 	return dataToReturn, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.ReceiptDataReturn, error) {
+func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
 	var res []any
 	var err error
 	lbcCaller := lbc.contract.Caller()
-	receiptDataReturn := blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: 0,
+	transactionReceipt := blockchain.TransactionReceipt{
+		TransactionHash: "",
+		GasUsed:         big.NewInt(0),
+		GasPrice:        big.NewInt(0),
 	}
 	log.Infof("Executing RefundPegOut with params: %s", params.String())
 	err = lbcCaller.Call(
@@ -458,9 +473,9 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	)
 	if err != nil && strings.Contains(err.Error(), "LBC049") {
 		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
-		return receiptDataReturn, blockchain.WaitingForBridgeError
+		return transactionReceipt, blockchain.WaitingForBridgeError
 	} else if err != nil {
-		return receiptDataReturn, err
+		return transactionReceipt, err
 	}
 
 	opts := &bind.TransactOpts{
@@ -475,16 +490,17 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	})
 
 	if err != nil {
-		return receiptDataReturn, fmt.Errorf("refund pegout error: %w", err)
+		return transactionReceipt, fmt.Errorf("refund pegout error: %w", err)
 	} else if receipt == nil {
-		return receiptDataReturn, errors.New("refund pegout error: incomplete receipt")
+		return transactionReceipt, errors.New("refund pegout error: incomplete receipt")
 	} else if receipt.Status == 0 {
-		receiptDataReturn.TxHash = receipt.TxHash.String()
-		return receiptDataReturn, fmt.Errorf("refund pegout error: transaction reverted (%s)", receiptDataReturn.TxHash)
+		transactionReceipt.TransactionHash = receipt.TxHash.String()
+		return transactionReceipt, fmt.Errorf("refund pegout error: transaction reverted (%s)", transactionReceipt.TransactionHash)
 	}
-	receiptDataReturn.TxHash = receipt.TxHash.String()
-	receiptDataReturn.GasUsed = receipt.GasUsed
-	return receiptDataReturn, nil
+	transactionReceipt.TransactionHash = receipt.TxHash.String()
+	transactionReceipt.GasUsed = big.NewInt(int64(receipt.GasUsed))
+	transactionReceipt.GasPrice = receipt.EffectiveGasPrice
+	return transactionReceipt, nil
 }
 
 func (lbc *liquidityBridgeContractImpl) IsOperationalPegin(address string) (bool, error) {

@@ -49,6 +49,7 @@ type TransactionReceipt struct {
 	To                string
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
+	GasPrice          *big.Int
 	Value             *entities.Wei
 }
 
@@ -77,7 +78,7 @@ type RootstockRpcServer interface {
 }
 
 type RootstockWallet interface {
-	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (ReceiptDataReturn, error)
+	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context) (*entities.Wei, error)
 }
 

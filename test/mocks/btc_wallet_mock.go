@@ -21,9 +21,9 @@ func (m *BtcWalletMock) GetBalance() (*entities.Wei, error) {
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 
-func (m *BtcWalletMock) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.ReceiptDataReturn, error) {
+func (m *BtcWalletMock) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
 	args := m.Called(address, value, opReturnContent)
-	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
+	return args.Get(0).(blockchain.BitcoinTransactionResult), args.Error(1)
 }
 
 func (m *BtcWalletMock) ImportAddress(address string) error {

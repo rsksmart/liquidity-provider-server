@@ -65,15 +65,16 @@ func (wallet *RskWalletImpl) Validate(signature, hash string) bool {
 	return bytes.Equal(wallet.account.Account.Address.Bytes(), pubKeyHash[12:]) // the last 20 bytes of the hash
 }
 
-func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.ReceiptDataReturn, error) {
+func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.TransactionReceipt, error) {
 	var to common.Address
 	var signedTx *geth.Transaction
 	var nonce uint64
 	var err error
 
-	receiptData := blockchain.ReceiptDataReturn{
-		TxHash:  "",
-		GasUsed: uint64(0),
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash: "",
+		GasUsed:         big.NewInt(0),
+		GasPrice:        big.NewInt(0),
 	}
 
 	if err = ParseAddress(&to, toAddress); err != nil {
@@ -105,14 +106,14 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return signedTx, sendError
 	})
 
-	receiptData.TxHash = signedTx.Hash().String()
+	receiptData.TransactionHash = signedTx.Hash().String()
 
 	if err != nil {
 		return receiptData, err
 	} else if receipt == nil || receipt.Status == 0 {
-		return receiptData, fmt.Errorf("%s transaction failed", receiptData.TxHash)
+		return receiptData, fmt.Errorf("%s transaction failed", receiptData.TransactionHash)
 	}
-	receiptData.GasUsed = receipt.GasUsed
+	receiptData.GasUsed = big.NewInt(int64(receipt.GasUsed))
 	return receiptData, nil
 }
 

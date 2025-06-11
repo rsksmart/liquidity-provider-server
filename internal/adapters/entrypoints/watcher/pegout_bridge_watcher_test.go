@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -69,9 +70,10 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		resetMocks()
-		receiptData := blockchain.ReceiptDataReturn{
-			TxHash:  test.AnyHash,
-			GasUsed: 100,
+		receiptData := blockchain.TransactionReceipt{
+			TransactionHash: test.AnyHash,
+			GasUsed:         big.NewInt(100),
+			GasPrice:        big.NewInt(10),
 		}
 		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "transaction sent to the bridge successfully")

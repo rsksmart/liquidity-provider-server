@@ -22,9 +22,9 @@ type RskWalletMock struct {
 	mock.Mock
 }
 
-func (m *RskWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.ReceiptDataReturn, error) {
+func (m *RskWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.TransactionReceipt, error) {
 	args := m.Called(ctx, config, toAddress)
-	return args.Get(0).(blockchain.ReceiptDataReturn), args.Error(1)
+	return args.Get(0).(blockchain.TransactionReceipt), args.Error(1)
 }
 
 func (m *RskWalletMock) SignBytes(msg []byte) ([]byte, error) {
