@@ -63,3 +63,6 @@ packages:
   github.com/gorilla/sessions:
     interfaces:
       Store:
+  net/http:
+    interfaces:
+      Handler:
