@@ -15,6 +15,14 @@ The reason behind this change.
 - [ ] Security fix
 - [ ] Deployment/Infrastructure changes
 
+## Affected part of the project
+- [ ] Management UI / API
+- [ ] PegIn flow
+- [ ] PegOut flow
+- [ ] Utility scripts
+- [ ] Configuration files
+- [ ] Metrics and alerting
+
 ## Related Issues
 [Jira ticket](<insert URL>)
 
