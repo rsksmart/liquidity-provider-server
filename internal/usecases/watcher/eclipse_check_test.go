@@ -118,7 +118,11 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 			"Your rootstock node is under eclipse attack. Please, check your node's connectivity and synchronization.",
 			[]string{recipient},
 		).Return(nil)
-		eventBus.On("Publish", mock.AnythingOfType("blockchain.NodeEclipseEvent")).Return()
+		eventBus.On("Publish", mock.MatchedBy(func(e blockchain.NodeEclipseEvent) bool {
+			return assert.Equal(t, entities.NodeTypeRootstock, e.NodeType) &&
+				assert.Equal(t, uint64(blocks), e.EclipsedBlockNumber) &&
+				assert.Equal(t, test.AnyHash, e.EclipsedBlockHash)
+		})).Return()
 		useCase := w.NewEclipseCheckUseCase(
 			config,
 			blockchain.Rpc{
@@ -305,7 +309,11 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 			"Your bitcoin node is under eclipse attack. Please, check your node's connectivity and synchronization.",
 			[]string{recipient},
 		).Return(nil)
-		eventBus.On("Publish", mock.AnythingOfType("blockchain.NodeEclipseEvent")).Return()
+		eventBus.On("Publish", mock.MatchedBy(func(e blockchain.NodeEclipseEvent) bool {
+			return assert.Equal(t, entities.NodeTypeBitcoin, e.NodeType) &&
+				assert.Equal(t, uint64(500), e.EclipsedBlockNumber) &&
+				assert.Equal(t, test.AnyHash, e.EclipsedBlockHash)
+		})).Return()
 		useCase := w.NewEclipseCheckUseCase(
 			config,
 			blockchain.Rpc{

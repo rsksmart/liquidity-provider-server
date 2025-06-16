@@ -126,7 +126,7 @@ func (useCase *EclipseCheckUseCase) checkBtcNode(ctx context.Context) error {
 	}
 
 	log.Debugf("BTC node is under the tolerance threshold: %d%% (threshold: %d%%). Starting propagation deadline...", successRate, useCase.config.BtcToleranceThreshold)
-	if err = useCase.waitForBtcBlock(ctx, checkResult); err != nil {
+	if err = useCase.waitForBtcSync(ctx); err != nil {
 		return err
 	}
 	log.Debug("BTC node is synced with external sources again")
@@ -147,7 +147,7 @@ func (useCase *EclipseCheckUseCase) checkRskNode(ctx context.Context) error {
 	}
 
 	log.Debugf("RSK node is under the tolerance threshold: %d%% (threshold: %d%%). Starting propagation deadline...", successRate, useCase.config.RskToleranceThreshold)
-	if err = useCase.waitForRskBlock(ctx, checkResult); err != nil {
+	if err = useCase.waitForRskSync(ctx); err != nil {
 		return err
 	}
 	log.Debug("RSK node is synced with external sources again")
@@ -194,7 +194,7 @@ func (useCase *EclipseCheckUseCase) pullRskBlocks(ctx context.Context) (nodeEcli
 	return result, nil
 }
 
-func (useCase *EclipseCheckUseCase) waitForBtcBlock(ctx context.Context, checkResult nodeEclipseCheckResult) error {
+func (useCase *EclipseCheckUseCase) waitForBtcSync(ctx context.Context) error {
 	var ourLatestBlock blockIds
 	ticker := utils.NewTickerWrapper(time.Duration(useCase.config.BtcWaitPollingMsInterval) * time.Millisecond)
 	defer ticker.Stop()
@@ -210,11 +210,10 @@ btcBlockWaitLoop:
 			useCase.eclipsedBlock = ourLatestBlock
 			return NodeEclipseDetectedError
 		case <-ticker.C():
-			ourChain, err := useCase.mainRpc.Btc.GetBlockchainInfo()
+			checkResult, err := useCase.pullBtcBlocks()
 			if err != nil {
-				return fmt.Errorf("error getting BTC block: %w", err)
+				return err
 			}
-			checkResult.OurBlock = useCase.getBtcBlockIds(ourChain)
 			ourLatestBlock = checkResult.OurBlock
 			successRate := getEclipseCheckSuccessRate(useCase.externalBtcSources, checkResult)
 			if successRate >= useCase.config.BtcToleranceThreshold {
@@ -225,7 +224,7 @@ btcBlockWaitLoop:
 	return nil
 }
 
-func (useCase *EclipseCheckUseCase) waitForRskBlock(ctx context.Context, checkResult nodeEclipseCheckResult) error {
+func (useCase *EclipseCheckUseCase) waitForRskSync(ctx context.Context) error {
 	var ourLatestBlock blockIds
 	ticker := utils.NewTickerWrapper(time.Duration(useCase.config.RskWaitPollingMsInterval) * time.Millisecond)
 	defer ticker.Stop()
@@ -241,11 +240,10 @@ rskBlockWaitLoop:
 			useCase.eclipsedBlock = ourLatestBlock
 			return NodeEclipseDetectedError
 		case <-ticker.C():
-			ourBlock, err := useCase.mainRpc.Rsk.GetBlockByNumber(ctx, nil)
+			checkResult, err := useCase.pullRskBlocks(ctx)
 			if err != nil {
-				return fmt.Errorf("error getting RSK block: %w", err)
+				return err
 			}
-			checkResult.OurBlock = useCase.getRskBlockIds(ourBlock)
 			ourLatestBlock = checkResult.OurBlock
 			successRate := getEclipseCheckSuccessRate(useCase.externalRskSources, checkResult)
 			if successRate >= useCase.config.RskToleranceThreshold {
