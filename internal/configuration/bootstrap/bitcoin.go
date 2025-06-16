@@ -27,7 +27,11 @@ func BitcoinWallet(env environment.BtcEnv, walletId string) (*bitcoin.Connection
 		return nil, errors.New("walletId cannot be empty")
 	}
 	endpoint := fmt.Sprintf("%s/wallet/%s", env.Endpoint, walletId)
-	createdClient, err := createBitcoinClient(env, endpoint)
+	params, err := env.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	createdClient, err := createBitcoinClient(params, env.Username, env.Password, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +39,11 @@ func BitcoinWallet(env environment.BtcEnv, walletId string) (*bitcoin.Connection
 }
 
 func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
-	createdClient, err := createBitcoinClient(env, env.Endpoint)
+	params, err := env.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	createdClient, err := createBitcoinClient(params, env.Username, env.Password, env.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -43,20 +51,32 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 	return conn, nil
 }
 
-func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, error) {
+func ExternalBitcoinClients(env environment.Environment) ([]*bitcoin.Connection, error) {
+	var createdClient CreatedClient
+	clients := make([]*bitcoin.Connection, len(env.Btc.BtcExtraSources))
+	params, err := env.Btc.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	for i, source := range env.Btc.BtcExtraSources {
+		createdClient, err = createBitcoinClient(params, "", "", source)
+		if err != nil {
+			return nil, fmt.Errorf("error creating external bitcoin client for %s: %w", source, err)
+		}
+		clients[i] = bitcoin.NewConnection(createdClient.Params, createdClient.Client)
+	}
+	return clients, nil
+}
+
+func createBitcoinClient(networkParams *chaincfg.Params, user, password, host string) (CreatedClient, error) {
 	var params *chaincfg.Params
 	log.Info("Connecting to BTC node at ", host, "...")
 
-	params, err := env.GetNetworkParams()
-	if err != nil {
-		return CreatedClient{}, err
-	}
-
 	config := rpcclient.ConnConfig{
 		Host:   host,
-		User:   env.Username,
-		Pass:   env.Password,
-		Params: params.Name,
+		User:   user,
+		Pass:   password,
+		Params: networkParams.Name,
 		// Rationale why this is disabled: https://en.bitcoin.it/wiki/Enabling_SSL_on_original_client_daemon
 		DisableTLS:   true,
 		HTTPPostMode: true,

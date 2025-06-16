@@ -239,6 +239,19 @@ func (rpc *bitcoindRpc) NetworkName() string {
 	return strings.ToLower(rpc.conn.NetworkParams.Name)
 }
 
+func (rpc *bitcoindRpc) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, error) {
+	blockchainInfo, err := rpc.conn.client.GetBlockChainInfo()
+	if err != nil {
+		return blockchain.BitcoinBlockchainInfo{}, err
+	}
+	return blockchain.BitcoinBlockchainInfo{
+		NetworkName:      blockchainInfo.Chain,
+		ValidatedBlocks:  big.NewInt(int64(blockchainInfo.Blocks)),
+		ValidatedHeaders: big.NewInt(int64(blockchainInfo.Headers)),
+		BestBlockHash:    blockchainInfo.BestBlockHash,
+	}, nil
+}
+
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {
 	parsedTxHash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {

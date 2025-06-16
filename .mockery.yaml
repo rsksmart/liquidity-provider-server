@@ -60,3 +60,6 @@ packages:
     interfaces:
       Ticker:
       Timer:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
+    interfaces:
+      EclipseCheckUseCase:

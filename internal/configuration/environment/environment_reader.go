@@ -109,6 +109,10 @@ func parseFloat(envVar string, field reflect.Value) error {
 }
 
 func parseBool(envVar string, field reflect.Value) error {
+	if envVar == "" {
+		field.SetBool(false)
+		return nil
+	}
 	if boolValue, err := strconv.ParseBool(envVar); err != nil {
 		return err
 	} else {
@@ -120,6 +124,9 @@ func parseBool(envVar string, field reflect.Value) error {
 func parseSlice(envVar string, field reflect.Value) error {
 	if field.Type().Elem().Kind() != reflect.String {
 		return errors.New("unsupported env array")
+	}
+	if envVar == "" {
+		return nil
 	}
 	for _, value := range strings.Split(envVar, ",") {
 		element := reflect.New(field.Type().Elem()).Elem()
