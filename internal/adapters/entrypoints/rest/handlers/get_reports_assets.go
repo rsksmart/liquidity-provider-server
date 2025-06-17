@@ -26,12 +26,15 @@ func NewGetReportsAssetsHandler(useCase GetAssetsReportUseCase) http.HandlerFunc
 			return
 		}
 		responseDto := pkg.GetAssetsReportDTO{
-			RbtcLocked:    response.RbtcLocked,
-			RbtcBalance:   response.RbtcBalance,
-			RbtcLiquidity: response.RbtcLiquidity,
-			BtcLocked:     response.BtcLocked,
-			BtcBalance:    response.BtcBalance,
-			BtcLiquidity:  response.BtcLiquidity,
+			RbtcLockedLbc:      response.RbtcLockedLbc,
+			RbtcLockedForUsers: response.RbtcLockedForUsers,
+			RbtcWaitingRefund:  response.RbtcWaitingRefund,
+			RbtcLiquidity:      response.RbtcLiquidity,
+			RbtcWalletBalance:  response.RbtcWalletBalance,
+			BtcLockedForUsers:  response.BtcLockedForUsers,
+			BtcLiquidity:       response.BtcLiquidity,
+			BtcWalletBalance:   response.BtcWalletBalance,
+			BtcRebalancing:     response.BtcRebalancing,
 		}
 
 		rest.JsonResponseWithBody(w, http.StatusOK, &responseDto)

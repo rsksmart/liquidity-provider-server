@@ -140,17 +140,24 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	creationData quote.PeginCreationData,
 ) (quote.RetainedPeginQuote, error) {
 	var quoteState quote.PeginState
-	var callForUserTx string
 	var err error
 
 	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.contracts.Lbc.CallForUser(config, *peginQuote); err != nil {
+	callForUserReturn, err := useCase.contracts.Lbc.CallForUser(config, *peginQuote)
+	if err != nil {
 		quoteState = quote.PeginStateCallForUserFailed
 	} else {
 		quoteState = quote.PeginStateCallForUserSucceeded
 	}
 
-	retainedQuote.CallForUserTxHash = callForUserTx
+	retainedQuote.CallForUserTxHash = callForUserReturn.TransactionHash
+	if callForUserReturn.GasUsed != nil {
+		retainedQuote.CallForUserGasUsed = entities.NewWei(callForUserReturn.GasUsed.Int64())
+	}
+	if callForUserReturn.GasPrice != nil {
+		retainedQuote.CallForUserGasPrice = entities.NewWei(callForUserReturn.GasPrice.Int64())
+	}
+
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
