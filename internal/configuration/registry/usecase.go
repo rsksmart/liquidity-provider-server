@@ -260,6 +260,7 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
+			rskRegistry.Contracts,
 		),
 	}
 }

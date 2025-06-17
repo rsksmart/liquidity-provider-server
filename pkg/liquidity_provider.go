@@ -154,12 +154,15 @@ type GetRevenueReportResponse struct {
 }
 
 type GetAssetsReportDTO struct {
-	BtcBalance    *big.Int `json:"btcBalance" example:"1000000000" description:"Current balance on the bitcoin wallet" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtcBalance" example:"1000000000" description:"Current balance on the RBTC wallet" validate:"required"`
-	BtcLocked     *big.Int `json:"btcLocked" example:"1000000000" description:"Amount of BTC locked by quotes" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtcLocked" example:"1000000000" description:"Amount of RBTC locked by quotes" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btcLiquidity" example:"1000000000" description:"Amount of BTC liquidity available for new quotes" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtcLiquidity" example:"1000000000" description:"Amount of RBTC liquidity available for new quotes" validate:"required"`
+	RbtcLockedLbc      *big.Int `json:"rbtcLockedLbc" example:"1000000000" description:"Amount of RBTC locked in the LBC contract" validate:"required"`
+	RbtcLockedForUsers *big.Int `json:"rbtcLockedForUsers" example:"1000000000" description:"Amount of RBTC locked by accepted quotes" validate:"required"`
+	RbtcWaitingRefund  *big.Int `json:"rbtcWaitingRefund" example:"1000000000" description:"Amount of RBTC that was paid to users by the LPS and is awaiting to be refunded" validate:"required"`
+	RbtcLiquidity      *big.Int `json:"rbtcLiquidity" example:"1000000000" description:"Amount of RBTC liquidity available in the LPS" validate:"required"`
+	RbtcWalletBalance  *big.Int `json:"rbtcWalletBalance" example:"1000000000" description:"Balance of RSK wallet for the LPS" validate:"required"`
+	BtcLockedForUsers  *big.Int `json:"btcLockedForUsers" example:"1000000000" description:"Amount of BTC locked for accepted quotes" validate:"required"`
+	BtcLiquidity       *big.Int `json:"btcLiquidity" example:"1000000000" description:"Amount of BTC liquidity available for the LPS" validate:"required"`
+	BtcWalletBalance   *big.Int `json:"btcWalletBalance" example:"1000000000" description:"Balance of bitcoin LPS wallet" validate:"required"`
+	BtcRebalancing     *big.Int `json:"btcRebalancing" example:"1000000000" description:"Amount of bitcoin awaiting to be rebalanced" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {

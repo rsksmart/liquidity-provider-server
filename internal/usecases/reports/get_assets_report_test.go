@@ -92,35 +92,47 @@ func TestGetAssetsReportUseCase_Run(t *testing.T) {
 
 	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
 	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
 	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
 	pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return(retainedPegoutQuotes, nil)
 
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
 
 	result, err := useCase.Run(ctx)
 
 	require.NoError(t, err)
 	require.Equal(t, result.RbtcLiquidity, big.NewInt(67500))
 	require.Equal(t, result.BtcLiquidity, big.NewInt(85000))
-	require.Equal(t, result.BtcBalance, big.NewInt(100000))
-	require.Equal(t, result.RbtcBalance, big.NewInt(100000))
-	require.Equal(t, result.RbtcLocked, big.NewInt(17500))
-	require.Equal(t, result.BtcLocked, big.NewInt(15000))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(100000))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(17500))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(17500))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(67500))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(100000))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(15000))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(85000))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(100000))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
 	lp.AssertExpectations(t)
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	lpMock.AssertExpectations(t)
 	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
 }
 
-func TestGetAssetsReportUseCase_Run_btcBalanceError(t *testing.T) {
+func TestGetAssetsReportUseCase_Run_GetRbtcLockedLbcError(t *testing.T) {
 	ctx := context.Background()
 
+	rskAddress := "rskAddress"
+
 	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(nil, assert.AnError)
 
 	lpMock := &mocks.ProviderMock{}
+	lpMock.On("RskAddress").Return(rskAddress)
 
 	rsk := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{Rsk: rsk}
@@ -130,33 +142,184 @@ func TestGetAssetsReportUseCase_Run_btcBalanceError(t *testing.T) {
 	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
 	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
 
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(nil, assert.AnError)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
 
 	result, err := useCase.Run(ctx)
 
 	require.Error(t, err)
 	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
 	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
-	lp.AssertNotCalled(t, "AvailablePeginLiquidity")
-	lp.AssertNotCalled(t, "AvailablePegoutLiquidity")
-	peginRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
-	pegoutRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
-	rsk.AssertNotCalled(t, "GetBalance")
-	lpMock.AssertNotCalled(t, "RskAddress")
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	lpMock.AssertExpectations(t)
 	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
 }
 
-func TestGetAssetsReportUseCase_Run_rbtcBalanceError(t *testing.T) {
+func TestGetAssetsReportUseCase_Run_GetRBTCLockedError(t *testing.T) {
 	ctx := context.Background()
 
 	rskAddress := "rskAddress"
 
 	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(entities.NewWei(100000), nil)
+
+	lpMock := &mocks.ProviderMock{}
+	lpMock.On("RskAddress").Return(rskAddress)
+
+	rsk := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rsk}
+
+	lp := new(mocks.ProviderMock)
+
+	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(nil, assert.AnError)
+	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
+
+	result, err := useCase.Run(ctx)
+
+	require.Error(t, err)
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	lpMock.AssertExpectations(t)
+	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
+}
+
+func TestGetAssetsReportUseCase_Run_GetRBTCWaitingForRefundError(t *testing.T) {
+	ctx := context.Background()
+
+	rskAddress := "rskAddress"
+
+	wallet := mocks.NewBitcoinWalletMock(t)
+
+	lpMock := &mocks.ProviderMock{}
+	lpMock.On("RskAddress").Return(rskAddress)
+
+	rsk := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rsk}
+
+	lp := new(mocks.ProviderMock)
+
+	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(nil, assert.AnError)
+	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
+
+	result, err := useCase.Run(ctx)
+
+	require.Error(t, err)
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	lpMock.AssertExpectations(t)
+	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
+}
+
+func TestGetAssetsReportUseCase_Run_GetRBTCLiquidityError(t *testing.T) {
+	ctx := context.Background()
+
+	rskAddress := "rskAddress"
+
+	wallet := mocks.NewBitcoinWalletMock(t)
+
+	lpMock := &mocks.ProviderMock{}
+	lpMock.On("RskAddress").Return(rskAddress)
+
+	rsk := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rsk}
+
+	lp := new(mocks.ProviderMock)
+	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(0), assert.AnError)
+
+	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
+	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
+
+	result, err := useCase.Run(ctx)
+
+	require.Error(t, err)
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	lpMock.AssertExpectations(t)
+	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
+}
+
+func TestGetAssetsReportUseCase_Run_GetRBTCBalanceError(t *testing.T) {
+	ctx := context.Background()
+
+	rskAddress := "rskAddress"
+
+	wallet := mocks.NewBitcoinWalletMock(t)
 
 	lpMock := &mocks.ProviderMock{}
 	lpMock.On("RskAddress").Return(rskAddress)
@@ -167,121 +330,47 @@ func TestGetAssetsReportUseCase_Run_rbtcBalanceError(t *testing.T) {
 	rsk.On("GetBalance", ctx, rskAddress).Return(nil, assert.AnError)
 
 	lp := new(mocks.ProviderMock)
-
-	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
-	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
-
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
-
-	result, err := useCase.Run(ctx)
-
-	require.Error(t, err)
-	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
-	lp.AssertNotCalled(t, "AvailablePeginLiquidity")
-	lp.AssertNotCalled(t, "AvailablePegoutLiquidity")
-	peginRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
-	pegoutRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
-	rsk.AssertExpectations(t)
-	lpMock.AssertExpectations(t)
-	wallet.AssertExpectations(t)
-}
-
-func TestGetAssetsReportUseCase_Run_rbtcLockedError(t *testing.T) {
-	ctx := context.Background()
-
-	rskAddress := "rskAddress"
-
-	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(entities.NewWei(100000), nil)
-
-	lpMock := &mocks.ProviderMock{}
-	lpMock.On("RskAddress").Return(rskAddress)
-
-	rsk := new(mocks.RootstockRpcServerMock)
-	rpc := blockchain.Rpc{Rsk: rsk}
-
-	rsk.On("GetBalance", ctx, rskAddress).Return(entities.NewWei(100000), nil)
-
-	lp := new(mocks.ProviderMock)
-
-	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
-	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(nil, assert.AnError)
-	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
-
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
-
-	result, err := useCase.Run(ctx)
-
-	require.Error(t, err)
-	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
-	lp.AssertNotCalled(t, "AvailablePeginLiquidity")
-	lp.AssertNotCalled(t, "AvailablePegoutLiquidity")
-	peginRepository.AssertExpectations(t)
-	pegoutRepository.AssertNotCalled(t, "GetRetainedQuoteByState")
-	rsk.AssertExpectations(t)
-	lpMock.AssertExpectations(t)
-	wallet.AssertExpectations(t)
-}
-
-func TestGetAssetsReportUseCase_Run_BtcLockedError(t *testing.T) {
-	ctx := context.Background()
-
-	rskAddress := "rskAddress"
-
-	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(entities.NewWei(100000), nil)
-
-	lpMock := &mocks.ProviderMock{}
-	lpMock.On("RskAddress").Return(rskAddress)
-
-	rsk := new(mocks.RootstockRpcServerMock)
-	rpc := blockchain.Rpc{Rsk: rsk}
-
-	rsk.On("GetBalance", ctx, rskAddress).Return(entities.NewWei(100000), nil)
-
-	lp := new(mocks.ProviderMock)
+	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(67500), nil)
 
 	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
 	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
 	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
-	pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return(nil, assert.AnError)
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
 
 	result, err := useCase.Run(ctx)
 
 	require.Error(t, err)
 	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
 	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
-	lp.AssertNotCalled(t, "AvailablePeginLiquidity")
-	lp.AssertNotCalled(t, "AvailablePegoutLiquidity")
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	lpMock.AssertExpectations(t)
 	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
 }
 
-func TestGetAssetsReportUseCase_Run_BtcLiquidityError(t *testing.T) {
+func TestGetAssetsReportUseCase_Run_GetBTCLockedError(t *testing.T) {
 	ctx := context.Background()
 
 	rskAddress := "rskAddress"
 
 	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(entities.NewWei(100000), nil)
 
 	lpMock := &mocks.ProviderMock{}
 	lpMock.On("RskAddress").Return(rskAddress)
@@ -292,39 +381,102 @@ func TestGetAssetsReportUseCase_Run_BtcLiquidityError(t *testing.T) {
 	rsk.On("GetBalance", ctx, rskAddress).Return(entities.NewWei(100000), nil)
 
 	lp := new(mocks.ProviderMock)
+	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(67500), nil)
+
+	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
+	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
+	pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return(nil, assert.AnError)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
+
+	result, err := useCase.Run(ctx)
+
+	require.Error(t, err)
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
+	lp.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	rsk.AssertExpectations(t)
+	lpMock.AssertExpectations(t)
+	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
+}
+
+func TestGetAssetsReportUseCase_Run_GetBTCLiquidityError(t *testing.T) {
+	ctx := context.Background()
+
+	rskAddress := "rskAddress"
+
+	wallet := mocks.NewBitcoinWalletMock(t)
+
+	lpMock := &mocks.ProviderMock{}
+	lpMock.On("RskAddress").Return(rskAddress)
+
+	rsk := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rsk}
+
+	rsk.On("GetBalance", ctx, rskAddress).Return(entities.NewWei(100000), nil)
+
+	lp := new(mocks.ProviderMock)
+	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(67500), nil)
 	lp.On("AvailablePegoutLiquidity", ctx).Return(entities.NewWei(0), assert.AnError)
 
 	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
 	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
 	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
 	pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return(retainedPegoutQuotes, nil)
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
 
 	result, err := useCase.Run(ctx)
 
 	require.Error(t, err)
 	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
 	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
 	lp.AssertExpectations(t)
-	lp.AssertNotCalled(t, "AvailablePegoutLiquidity")
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	lpMock.AssertExpectations(t)
 	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
 }
 
-func TestGetAssetsReportUseCase_Run_RbtcLiquidityError(t *testing.T) {
+func TestGetAssetsReportUseCase_Run_GetBtcBalanceError(t *testing.T) {
 	ctx := context.Background()
 
 	rskAddress := "rskAddress"
 
 	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.On("GetBalance").Return(entities.NewWei(100000), nil)
+	wallet.On("GetBalance").Return(nil, assert.AnError)
 
 	lpMock := &mocks.ProviderMock{}
 	lpMock.On("RskAddress").Return(rskAddress)
@@ -335,28 +487,39 @@ func TestGetAssetsReportUseCase_Run_RbtcLiquidityError(t *testing.T) {
 	rsk.On("GetBalance", ctx, rskAddress).Return(entities.NewWei(100000), nil)
 
 	lp := new(mocks.ProviderMock)
-	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(0), assert.AnError)
-	lp.On("AvailablePegoutLiquidity", ctx).Return(entities.NewWei(100000), nil)
+	lp.On("AvailablePeginLiquidity", ctx).Return(entities.NewWei(67500), nil)
+	lp.On("AvailablePegoutLiquidity", ctx).Return(entities.NewWei(85000), nil)
 
 	peginRepository := mocks.NewPeginQuoteRepositoryMock(t)
 	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(retainedPeginQuotes, nil)
+	peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).Return(retainedPeginQuotes, nil)
 	pegoutRepository := mocks.NewPegoutQuoteRepositoryMock(t)
 	pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return(retainedPegoutQuotes, nil)
-	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository)
+
+	lbc := &mocks.LbcMock{}
+	lbc.On("GetBalance", rskAddress).Return(entities.NewWei(100000), nil)
+
+	useCase := reports.NewGetAssetsReportUseCase(wallet, rpc, lpMock, lp, lp, peginRepository, pegoutRepository, blockchain.RskContracts{Lbc: lbc})
 
 	result, err := useCase.Run(ctx)
 
 	require.Error(t, err)
 	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
 	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
-	require.Equal(t, result.BtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcBalance, big.NewInt(0))
-	require.Equal(t, result.RbtcLocked, big.NewInt(0))
-	require.Equal(t, result.BtcLocked, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedLbc, big.NewInt(0))
+	require.Equal(t, result.RbtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.RbtcWaitingRefund, big.NewInt(0))
+	require.Equal(t, result.RbtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.RbtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcLockedForUsers, big.NewInt(0))
+	require.Equal(t, result.BtcLiquidity, big.NewInt(0))
+	require.Equal(t, result.BtcWalletBalance, big.NewInt(0))
+	require.Equal(t, result.BtcRebalancing, big.NewInt(0))
 	lp.AssertExpectations(t)
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	rsk.AssertExpectations(t)
 	lpMock.AssertExpectations(t)
 	wallet.AssertExpectations(t)
+	lbc.AssertExpectations(t)
 }
