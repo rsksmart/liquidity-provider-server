@@ -345,3 +345,5 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
   echo "$RESPONSE_BODY"
   exit 1
 fi
+
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.metrics.yml up -d prometheus grafana
