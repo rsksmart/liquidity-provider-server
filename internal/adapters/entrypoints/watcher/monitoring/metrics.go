@@ -114,7 +114,7 @@ metricLoop:
 }
 
 func (watcher *MetricWatcher) Shutdown(closeChannel chan<- bool) {
-	<-watcher.closeChannel
+	watcher.closeChannel <- struct{}{}
 	closeChannel <- true
 	log.Debug("Metrics watcher shutdown completed")
 }
