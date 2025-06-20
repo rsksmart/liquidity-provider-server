@@ -792,6 +792,14 @@ paths:
         "204":
           description: ""
       summary: Management Logout
+  /metrics:
+    get:
+      description: ' Returns a predefined set of metrics to be consumed by a monitoring
+        system.'
+      responses:
+        "200":
+          description: ""
+      summary: Metrics
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'

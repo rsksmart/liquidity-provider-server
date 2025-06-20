@@ -1,8 +1,10 @@
 package registry
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 )
 
@@ -15,6 +17,7 @@ type WatcherRegistry struct {
 	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
 	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
+	MetricsWatcher             *monitoring.MetricWatcher
 }
 
 // nolint:funlen
@@ -91,6 +94,11 @@ func NewWatcherRegistry(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.bridgePegoutUseCase,
 			tickers.PegoutBridgeWatcherTicker,
+		),
+		MetricsWatcher: monitoring.NewMetricWatcher(
+			monitoring.NewMetrics(prometheus.DefaultRegisterer),
+			messaging.EventBus,
+			useCaseRegistry.GetServerInfoUseCase(),
 		),
 	}
 }
