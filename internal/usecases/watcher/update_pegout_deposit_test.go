@@ -36,7 +36,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x1234",
 	LpBtcAddress:          "0x1234",
 	CallFee:               entities.NewWei(1000),
-	PenaltyFee:            100,
+	PenaltyFee:            entities.NewWei(100),
 	Nonce:                 123456,
 	DepositAddress:        test.AnyAddress,
 	Value:                 entities.NewWei(5000),
@@ -48,7 +48,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 	ExpireDate:            now + 600,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(500),
-	ProductFeeAmount:      300,
+	ProductFeeAmount:      entities.NewWei(300),
 }
 
 var depositedPegoutCreationData = quote.PegoutCreationData{

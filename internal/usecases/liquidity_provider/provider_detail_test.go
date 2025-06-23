@@ -109,7 +109,7 @@ func prepareDetailMock(provider *mocks.ProviderMock) {
 	provider.On("GeneralConfiguration", test.AnyCtx).
 		Return(lp.GeneralConfiguration{
 			PublicLiquidityCheck: true,
-			RskConfirmations:     map[int]uint16{1: 20},
-			BtcConfirmations:     map[int]uint16{1: 10},
+			RskConfirmations:     map[string]uint16{"1": 20},
+			BtcConfirmations:     map[string]uint16{"1": 10},
 		}).Once()
 }

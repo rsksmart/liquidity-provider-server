@@ -11,22 +11,22 @@ import (
 func TestDefaultBtcConfirmationsPerAmount(t *testing.T) {
 	confirmations := liquidity_provider.DefaultBtcConfirmationsPerAmount()
 	assert.Equal(t, liquidity_provider.ConfirmationsPerAmount{
-		100000000000000000:  2,
-		400000000000000000:  6,
-		2000000000000000000: 10,
-		4000000000000000000: 20,
-		8000000000000000000: 40,
+		"100000000000000000":  2,
+		"400000000000000000":  6,
+		"2000000000000000000": 10,
+		"4000000000000000000": 20,
+		"8000000000000000000": 40,
 	}, confirmations)
 }
 
 func TestDefaultRskConfirmationsPerAmount(t *testing.T) {
 	confirmations := liquidity_provider.DefaultRskConfirmationsPerAmount()
 	assert.Equal(t, liquidity_provider.ConfirmationsPerAmount{
-		100000000000000000:  40,
-		400000000000000000:  120,
-		2000000000000000000: 200,
-		4000000000000000000: 400,
-		8000000000000000000: 800,
+		"100000000000000000":  40,
+		"400000000000000000":  120,
+		"2000000000000000000": 200,
+		"4000000000000000000": 400,
+		"8000000000000000000": 800,
 	}, confirmations)
 }
 

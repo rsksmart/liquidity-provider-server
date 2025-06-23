@@ -36,7 +36,7 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 	s.Run("Should be able to get pegout quote", func() {
 		body := pkg.PegoutQuoteRequest{
 			To:               "n1zjV3WxJgA4dBfS5aMiEHtZsjTUvAL7p7",
-			ValueToTransfer:  600000000000000000,
+			ValueToTransfer:  big.NewInt(600000000000000000),
 			RskRefundAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
 		}
 
@@ -122,10 +122,10 @@ func (s *IntegrationTestSuite) TestSuccessfulPegOutFlow() {
 			s.FailNow(err.Error())
 		}
 
-		value := entities.NewUWei(quote.Quote.Value)
-		callFee := entities.NewUWei(quote.Quote.CallFee)
-		gasFee := entities.NewUWei(quote.Quote.GasFee)
-		productFee := entities.NewUWei(quote.Quote.ProductFeeAmount)
+		value := entities.NewBigWei(quote.Quote.Value)
+		callFee := entities.NewBigWei(quote.Quote.CallFee)
+		gasFee := entities.NewBigWei(quote.Quote.GasFee)
+		productFee := entities.NewBigWei(quote.Quote.ProductFeeAmount)
 		totalFees := new(entities.Wei).Add(new(entities.Wei).Add(callFee, gasFee), productFee)
 		totalAmount := new(entities.Wei).Add(totalFees, value)
 		opts.Value = totalAmount.AsBigInt()
@@ -210,11 +210,11 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 		BtcRefundAddress:      btcRefundAddress,
 		RskRefundAddress:      common.HexToAddress(originalQuote.RSKRefundAddr),
 		LpBtcAddress:          lpBtcAddress,
-		CallFee:               big.NewInt(int64(originalQuote.CallFee)),
-		PenaltyFee:            big.NewInt(int64(originalQuote.PenaltyFee)),
+		CallFee:               originalQuote.CallFee,
+		PenaltyFee:            originalQuote.PenaltyFee,
 		Nonce:                 originalQuote.Nonce,
 		DeposityAddress:       depositAddress,
-		Value:                 big.NewInt(int64(originalQuote.Value)),
+		Value:                 originalQuote.Value,
 		AgreementTimestamp:    originalQuote.AgreementTimestamp,
 		DepositDateLimit:      originalQuote.DepositDateLimit,
 		DepositConfirmations:  originalQuote.DepositConfirmations,
@@ -222,8 +222,8 @@ func parseLbcPegoutQuote(s *IntegrationTestSuite, originalQuote pkg.PegoutQuoteD
 		TransferTime:          originalQuote.TransferTime,
 		ExpireDate:            originalQuote.ExpireDate,
 		ExpireBlock:           originalQuote.ExpireBlock,
-		ProductFeeAmount:      big.NewInt(int64(originalQuote.ProductFeeAmount)),
-		GasFee:                big.NewInt(int64(originalQuote.GasFee)),
+		ProductFeeAmount:      originalQuote.ProductFeeAmount,
+		GasFee:                originalQuote.GasFee,
 	}
 }
 

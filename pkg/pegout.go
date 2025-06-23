@@ -7,31 +7,31 @@ import (
 )
 
 type PegoutQuoteRequest struct {
-	To               string `json:"to" required:"" validate:"required" description:"Bitcoin address that will receive the BTC amount"`
-	ValueToTransfer  uint64 `json:"valueToTransfer" required:"" validate:"required" example:"10000000000000" description:"ValueToTransfer"`
-	RskRefundAddress string `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"RskRefundAddress"`
+	To               string   `json:"to" required:"" validate:"required" description:"Bitcoin address that will receive the BTC amount"`
+	ValueToTransfer  *big.Int `json:"valueToTransfer" required:"" validate:"required" example:"10000000000000" description:"ValueToTransfer"`
+	RskRefundAddress string   `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"RskRefundAddress"`
 }
 
 type PegoutQuoteDTO struct {
-	LBCAddr               string `json:"lbcAddress" required:"" validate:"required"`
-	LPRSKAddr             string `json:"liquidityProviderRskAddress" required:"" validate:"required"`
-	BtcRefundAddr         string `json:"btcRefundAddress" required:"" validate:"required"`
-	RSKRefundAddr         string `json:"rskRefundAddress" required:"" validate:"required"`
-	LpBTCAddr             string `json:"lpBtcAddr" required:"" validate:"required"`
-	CallFee               uint64 `json:"callFee" required:"" validate:"required"`
-	PenaltyFee            uint64 `json:"penaltyFee" required:"" validate:"required"`
-	Nonce                 int64  `json:"nonce" required:"" validate:"required"`
-	DepositAddr           string `json:"depositAddr" required:"" validate:"required"`
-	Value                 uint64 `json:"value" required:"" validate:"required"`
-	AgreementTimestamp    uint32 `json:"agreementTimestamp" required:"" validate:"required"`
-	DepositDateLimit      uint32 `json:"depositDateLimit" required:"" validate:"required"`
-	DepositConfirmations  uint16 `json:"depositConfirmations" required:"" validate:"required"`
-	TransferConfirmations uint16 `json:"transferConfirmations" required:"" validate:"required"`
-	TransferTime          uint32 `json:"transferTime" required:"" validate:"required"`
-	ExpireDate            uint32 `json:"expireDate" required:"" validate:"required"`
-	ExpireBlock           uint32 `json:"expireBlocks" required:"" validate:"required"`
-	GasFee                uint64 `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegout (call on behalf of the user in Bitcoin network and call to the dao fee collector in Rootstock)"`
-	ProductFeeAmount      uint64 `json:"productFeeAmount" required:"" description:"The DAO fee amount"`
+	LBCAddr               string   `json:"lbcAddress" required:"" validate:"required"`
+	LPRSKAddr             string   `json:"liquidityProviderRskAddress" required:"" validate:"required"`
+	BtcRefundAddr         string   `json:"btcRefundAddress" required:"" validate:"required"`
+	RSKRefundAddr         string   `json:"rskRefundAddress" required:"" validate:"required"`
+	LpBTCAddr             string   `json:"lpBtcAddr" required:"" validate:"required"`
+	CallFee               *big.Int `json:"callFee" required:"" validate:"required"`
+	PenaltyFee            *big.Int `json:"penaltyFee" required:"" validate:"required"`
+	Nonce                 int64    `json:"nonce" required:"" validate:"required"`
+	DepositAddr           string   `json:"depositAddr" required:"" validate:"required"`
+	Value                 *big.Int `json:"value" required:"" validate:"required"`
+	AgreementTimestamp    uint32   `json:"agreementTimestamp" required:"" validate:"required"`
+	DepositDateLimit      uint32   `json:"depositDateLimit" required:"" validate:"required"`
+	DepositConfirmations  uint16   `json:"depositConfirmations" required:"" validate:"required"`
+	TransferConfirmations uint16   `json:"transferConfirmations" required:"" validate:"required"`
+	TransferTime          uint32   `json:"transferTime" required:"" validate:"required"`
+	ExpireDate            uint32   `json:"expireDate" required:"" validate:"required"`
+	ExpireBlock           uint32   `json:"expireBlocks" required:"" validate:"required"`
+	GasFee                *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegout (call on behalf of the user in Bitcoin network and call to the dao fee collector in Rootstock)"`
+	ProductFeeAmount      *big.Int `json:"productFeeAmount" required:"" description:"The DAO fee amount"`
 }
 
 type RetainedPegoutQuoteDTO struct {
@@ -47,10 +47,10 @@ type RetainedPegoutQuoteDTO struct {
 }
 
 type PegoutCreationDataDTO struct {
-	GasPrice      uint64  `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
-	FeePercentage float64 `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
-	FixedFee      uint64  `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
-	FeeRate       float64 `json:"feeRate" required:"" description:"The fee rate used to compute the gas fee"`
+	GasPrice      *big.Int `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	FeePercentage float64  `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
+	FixedFee      *big.Int `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
+	FeeRate       float64  `json:"feeRate" required:"" description:"The fee rate used to compute the gas fee"`
 }
 
 type PegoutQuoteStatusDTO struct {
@@ -66,11 +66,11 @@ func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 		BtcRefundAddr:         entity.BtcRefundAddress,
 		RSKRefundAddr:         entity.RskRefundAddress,
 		LpBTCAddr:             entity.LpBtcAddress,
-		CallFee:               entity.CallFee.Uint64(),
-		PenaltyFee:            entity.PenaltyFee,
+		CallFee:               entity.CallFee.AsBigInt(),
+		PenaltyFee:            entity.PenaltyFee.AsBigInt(),
 		Nonce:                 entity.Nonce,
 		DepositAddr:           entity.DepositAddress,
-		Value:                 entity.Value.Uint64(),
+		Value:                 entity.Value.AsBigInt(),
 		AgreementTimestamp:    entity.AgreementTimestamp,
 		DepositDateLimit:      entity.DepositDateLimit,
 		DepositConfirmations:  entity.DepositConfirmations,
@@ -78,8 +78,8 @@ func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 		TransferTime:          entity.TransferTime,
 		ExpireDate:            entity.ExpireDate,
 		ExpireBlock:           entity.ExpireBlock,
-		GasFee:                entity.GasFee.Uint64(),
-		ProductFeeAmount:      entity.ProductFeeAmount,
+		GasFee:                entity.GasFee.AsBigInt(),
+		ProductFeeAmount:      entity.ProductFeeAmount.AsBigInt(),
 	}
 }
 
@@ -101,9 +101,9 @@ func ToPegoutCreationDataDTO(entity quote.PegoutCreationData) PegoutCreationData
 	feePercentage, _ := entity.FeePercentage.Native().Float64()
 	feeRate, _ := entity.FeeRate.Native().Float64()
 	return PegoutCreationDataDTO{
-		GasPrice:      entity.GasPrice.Uint64(),
+		GasPrice:      entity.GasPrice.AsBigInt(),
 		FeePercentage: feePercentage,
-		FixedFee:      entity.FixedFee.Uint64(),
+		FixedFee:      entity.FixedFee.AsBigInt(),
 		FeeRate:       feeRate,
 	}
 }

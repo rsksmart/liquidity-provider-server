@@ -39,7 +39,7 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 		peginRequest := pegin.NewQuoteRequest(
 			quoteRequest.CallEoaOrContractAddress,
 			callArgument,
-			entities.NewUWei(quoteRequest.ValueToTransfer),
+			entities.NewBigWei(quoteRequest.ValueToTransfer),
 			quoteRequest.RskRefundAddress,
 		)
 
