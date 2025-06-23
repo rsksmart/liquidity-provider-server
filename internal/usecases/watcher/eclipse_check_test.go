@@ -162,7 +162,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 		}, nil).Once()
 		rskRpc.EXPECT().GetBlockByNumber(mock.Anything, nilBigInt).Return(blockchain.BlockInfo{
 			Hash:      test.AnyHash,
-			Number:    500,
+			Number:    blocks,
 			Timestamp: timestamp,
 			Nonce:     nonce,
 		}, nil).Once()
@@ -287,8 +287,8 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 		btcExtras := []*mocks.BtcRpcMock{btcExtra1, btcExtra2}
 		btcRpc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      networkName,
-			ValidatedBlocks:  big.NewInt(500),
-			ValidatedHeaders: big.NewInt(501),
+			ValidatedBlocks:  big.NewInt(blocks),
+			ValidatedHeaders: big.NewInt(headers),
 			BestBlockHash:    test.AnyHash,
 		}, nil)
 		for _, btcExtra := range btcExtras {
@@ -311,7 +311,7 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 		).Return(nil)
 		eventBus.On("Publish", mock.MatchedBy(func(e blockchain.NodeEclipseEvent) bool {
 			return assert.Equal(t, entities.NodeTypeBitcoin, e.NodeType) &&
-				assert.Equal(t, uint64(500), e.EclipsedBlockNumber) &&
+				assert.Equal(t, uint64(blocks), e.EclipsedBlockNumber) &&
 				assert.Equal(t, test.AnyHash, e.EclipsedBlockHash)
 		})).Return()
 		useCase := w.NewEclipseCheckUseCase(

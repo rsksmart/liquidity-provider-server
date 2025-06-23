@@ -311,6 +311,7 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 			Nonce:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 			Time:   1,
 		}, nil, nil, nil)
+
 	t.Run("should return a block if receives a block number", func(t *testing.T) {
 		client := &mocks.RpcClientBindingMock{}
 		number := big.NewInt(123)
@@ -319,7 +320,7 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		result, err := rpc.GetBlockByNumber(context.Background(), number)
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.BlockInfo{
-			Hash:      "0x8d7deea8e70a4ecfc26aa751ac40c647da26803d7530b47a56f3122c6b0de05a",
+			Hash:      testBlock.Hash().Hex(),
 			Number:    123,
 			Timestamp: time.Unix(1, 0),
 			Nonce:     72623859790382856,
@@ -336,7 +337,7 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		assert.Equal(t, testBlock.Nonce(), result.Nonce)
 		assert.Equal(t, testBlock.NumberU64(), result.Number)
 		assert.Equal(t, blockchain.BlockInfo{
-			Hash:      "0x8d7deea8e70a4ecfc26aa751ac40c647da26803d7530b47a56f3122c6b0de05a",
+			Hash:      testBlock.Hash().Hex(),
 			Number:    123,
 			Timestamp: time.Unix(1, 0),
 			Nonce:     72623859790382856,
