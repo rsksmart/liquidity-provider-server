@@ -706,3 +706,34 @@ func TestBitcoindRpc_NetworkName(t *testing.T) {
 		return rpc.NetworkName()
 	})
 }
+
+func TestBitcoindRpc_GetBlockchainInfo(t *testing.T) {
+	t.Run("Should return blockchain info", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetBlockChainInfo().Return(&btcjson.GetBlockChainInfoResult{
+			Chain:         "mainnet",
+			Blocks:        300,
+			Headers:       350,
+			BestBlockHash: test.AnyHash,
+		}, nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		info, err := rpc.GetBlockchainInfo()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BitcoinBlockchainInfo{
+			NetworkName:      "mainnet",
+			ValidatedBlocks:  big.NewInt(300),
+			ValidatedHeaders: big.NewInt(350),
+			BestBlockHash:    test.AnyHash,
+		}, info)
+		client.AssertExpectations(t)
+	})
+	t.Run("Should return error when client fails", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetBlockChainInfo().Return(nil, assert.AnError).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		info, err := rpc.GetBlockchainInfo()
+		require.Error(t, err)
+		assert.Empty(t, info)
+		client.AssertExpectations(t)
+	})
+}

@@ -47,9 +47,12 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
-# Force Management API to be enabled
 if [ -f "$ENV_FILE" ]; then
+  # Force Management API to be enabled
   "${SED_INPLACE[@]}" 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+  # Don't use extra sources on local env
+  "${SED_INPLACE[@]}" 's/^RSK_EXTRA_SOURCES=.*/RSK_EXTRA_SOURCES=/' "$ENV_FILE"
+  "${SED_INPLACE[@]}" 's/^BTC_EXTRA_SOURCES=.*/BTC_EXTRA_SOURCES=/' "$ENV_FILE"
 fi
 
 SCRIPT_CMD=$1

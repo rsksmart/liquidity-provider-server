@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestLiquidityCheckWatcher_Shutdown(t *testing.T) {
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewLiquidityCheckWatcher(nil, ticker, time.Duration(1))
 	})
 }

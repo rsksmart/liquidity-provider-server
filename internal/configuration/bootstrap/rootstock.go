@@ -15,14 +15,18 @@ import (
 	"net/url"
 )
 
-func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClient, error) {
+func Rootstock(ctx context.Context, env environment.Environment) (*rootstock.RskClient, error) {
+	return createClient(ctx, env.Rsk.Endpoint, env.Rsk.ChainId)
+}
+
+func createClient(ctx context.Context, endpoint string, chainId uint64) (*rootstock.RskClient, error) {
 	var err error
 	var parsedUrl *url.URL
 	var client *ethclient.Client
 	var rpcClient *rpc.Client
 
-	log.Info("Connecting to RSK node on ", env.Endpoint)
-	if parsedUrl, err = url.Parse(env.Endpoint); err != nil {
+	log.Info("Connecting to RSK node on ", endpoint)
+	if parsedUrl, err = url.Parse(endpoint); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +42,7 @@ func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClien
 		httpClient := new(http.Client)
 		httpClient.Transport = transport
 
-		if rpcClient, err = rpc.DialOptions(ctx, env.Endpoint, rpc.WithHTTPClient(httpClient)); err != nil {
+		if rpcClient, err = rpc.DialOptions(ctx, endpoint, rpc.WithHTTPClient(httpClient)); err != nil {
 			return nil, err
 		}
 
@@ -53,8 +57,8 @@ func Rootstock(ctx context.Context, env environment.RskEnv) (*rootstock.RskClien
 		return nil, err
 	}
 	log.Debug("Connection verified")
-	if env.ChainId != id.Uint64() {
-		return nil, fmt.Errorf("chain id mismatch; expected chain id: %v, rsk node chain id: %v", env.ChainId, id)
+	if chainId != id.Uint64() {
+		return nil, fmt.Errorf("chain id mismatch; expected chain id: %v, rsk node chain id: %v", chainId, id)
 	}
 	return rootstock.NewRskClient(client), nil
 }
@@ -76,4 +80,17 @@ func RootstockAccount(
 		},
 		BtcParams: networkParams,
 	})
+}
+
+func ExternalRskClients(ctx context.Context, env environment.Environment) ([]*rootstock.RskClient, error) {
+	clients := make([]*rootstock.RskClient, len(env.Rsk.RskExtraSources))
+	for i, endpoint := range env.Rsk.RskExtraSources {
+		client, err := createClient(ctx, endpoint, env.Rsk.ChainId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create RSK client for endpoint %s: %w", endpoint, err)
+		}
+		log.Info("Connected to external RSK node at ", endpoint)
+		clients[i] = client
+	}
+	return clients, nil
 }

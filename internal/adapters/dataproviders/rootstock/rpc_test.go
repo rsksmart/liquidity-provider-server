@@ -303,3 +303,54 @@ func TestRskjRpcServer_GetBlockByHash_ErrorHandling(t *testing.T) {
 		assert.Empty(t, block)
 	})
 }
+
+func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
+	testBlock := types.NewBlock(
+		&types.Header{
+			Number: big.NewInt(123),
+			Nonce:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+			Time:   1,
+		}, nil, nil, nil)
+
+	t.Run("should return a block if receives a block number", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		number := big.NewInt(123)
+		client.EXPECT().BlockByNumber(mock.Anything, number).Return(testBlock, nil)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		result, err := rpc.GetBlockByNumber(context.Background(), number)
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BlockInfo{
+			Hash:      testBlock.Hash().Hex(),
+			Number:    123,
+			Timestamp: time.Unix(1, 0),
+			Nonce:     72623859790382856,
+		}, result)
+		client.AssertExpectations(t)
+	})
+	t.Run("should return return the latest block if receives nil", func(t *testing.T) {
+		var nilBigint *big.Int
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().BlockByNumber(mock.Anything, nilBigint).Return(testBlock, nil)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		result, err := rpc.GetBlockByNumber(context.Background(), nil)
+		require.NoError(t, err)
+		assert.Equal(t, testBlock.Nonce(), result.Nonce)
+		assert.Equal(t, testBlock.NumberU64(), result.Number)
+		assert.Equal(t, blockchain.BlockInfo{
+			Hash:      testBlock.Hash().Hex(),
+			Number:    123,
+			Timestamp: time.Unix(1, 0),
+			Nonce:     72623859790382856,
+		}, result)
+		client.AssertExpectations(t)
+	})
+	t.Run("should handle errors when getting the block", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().BlockByNumber(mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		result, err := rpc.GetBlockByNumber(context.Background(), big.NewInt(1234))
+		require.Error(t, err)
+		assert.Empty(t, result)
+		client.AssertExpectations(t)
+	})
+}

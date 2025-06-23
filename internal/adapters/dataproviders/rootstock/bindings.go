@@ -28,6 +28,7 @@ type RpcClientBinding interface {
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 }
 
 type RskBridgeBinding interface {

@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 	"time"
@@ -10,13 +11,13 @@ import (
 type LiquidityCheckWatcher struct {
 	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase
 	watcherStopChannel    chan bool
-	ticker                Ticker
+	ticker                utils.Ticker
 	validationTimeout     time.Duration
 }
 
 func NewLiquidityCheckWatcher(
 	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase,
-	ticker Ticker,
+	ticker utils.Ticker,
 	validationTimeout time.Duration,
 ) *LiquidityCheckWatcher {
 	watcherStopChannel := make(chan bool, 1)

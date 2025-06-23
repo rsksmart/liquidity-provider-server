@@ -3,6 +3,7 @@ package lps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
@@ -39,30 +40,31 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal("Error getting secret loader:", err)
 	}
 
-	rskClient, err := bootstrap.Rootstock(initCtx, env.Rsk)
+	rskClient, err := bootstrap.Rootstock(initCtx, env)
 	if err != nil {
 		log.Fatal("Error connecting to RSK node: ", err)
 	}
 	log.Debug("Connected to RSK node")
-
 	walletFactory, err := wallet.NewFactory(env, wallet.FactoryCreationArgs{
 		Ctx: initCtx, Env: env, SecretLoader: secretLoader, RskClient: rskClient, Timeouts: timeouts,
 	})
 	if err != nil {
 		log.Fatal("Error creating wallet factory: ", err)
 	}
-
 	btcConnection, err := bootstrap.Bitcoin(env.Btc)
 	if err != nil {
 		log.Fatal("Error connecting to the bitcoin node: ", err)
 	}
 	log.Debug("Connected to BTC node RPC server")
-
 	dbConnection, err := bootstrap.Mongo(initCtx, env.Mongo, timeouts)
 	if err != nil {
 		log.Fatal("Error connecting to MongoDB:", err)
 	}
 	log.Debug("Connected to MongoDB")
+	externalClients, err := createExternalClients(initCtx, env)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	btcRegistry, err := registry.NewBitcoinRegistry(walletFactory, btcConnection)
 	if err != nil {
@@ -75,13 +77,12 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
 
-	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection)
+	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection, externalClients)
 	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
 	mutexes := environment.NewApplicationMutexes()
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
-
 	return &Application{
 		env:               env,
 		timeouts:          timeouts,
@@ -94,6 +95,26 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		watcherRegistry:   watcherRegistry,
 		runningServices:   make([]entities.Closeable, 0),
 	}
+}
+
+func createExternalClients(ctx context.Context, env environment.Environment) (registry.ExternalClients, error) {
+	externalRskClients, err := bootstrap.ExternalRskClients(ctx, env)
+	if err != nil {
+		return registry.ExternalClients{}, fmt.Errorf("error connecting to external RSK clients: %w", err)
+	} else if len(externalRskClients) == 0 {
+		log.Warn("No external RSK clients configured")
+	}
+
+	externalBtcClients, err := bootstrap.ExternalBitcoinClients(env)
+	if err != nil {
+		return registry.ExternalClients{}, fmt.Errorf("error connecting to external BTC clients: %w", err)
+	} else if len(externalBtcClients) == 0 {
+		log.Warn("No external BTC clients configured")
+	}
+	return registry.ExternalClients{
+		RskExternalClients: externalRskClients,
+		BtcExternalClients: externalBtcClients,
+	}, nil
 }
 
 func (app *Application) Run(env environment.Environment, logLevel log.Level) {
@@ -148,6 +169,11 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.LiquidityCheckWatcher,
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
+	}
+
+	if app.env.Eclipse.Enabled {
+		watchers = append(watchers, app.watcherRegistry.RskEclipseWatcher)
+		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), app.timeouts.WatcherPreparation.Seconds())

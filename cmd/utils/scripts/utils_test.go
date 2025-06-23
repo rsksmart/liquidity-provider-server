@@ -61,7 +61,7 @@ func TestCreateLiquidityBridgeContract(t *testing.T) {
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
 		}
-		factoryMock := func(ctx context.Context, env environment.RskEnv) (*rootstock.RskClient, error) {
+		factoryMock := func(ctx context.Context, env environment.Environment) (*rootstock.RskClient, error) {
 			return &rootstock.RskClient{}, nil
 		}
 		contract, err := scripts.CreateLiquidityBridgeContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())

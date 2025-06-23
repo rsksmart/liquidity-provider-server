@@ -5,6 +5,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,6 +26,7 @@ type Environment struct {
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
+	Eclipse          EclipseEnv
 }
 
 type MongoEnv struct {
@@ -47,15 +50,17 @@ type RskEnv struct {
 	EncryptedJsonSecret         string `env:"KEY_SECRET"`
 	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string `env:"KEYSTORE_FILE"`
-	KeystorePassword string `env:"KEYSTORE_PWD"`
+	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	KeystorePassword string   `env:"KEYSTORE_PWD"`
+	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 }
 
 type BtcEnv struct {
-	Network  string `env:"BTC_NETWORK" validate:"required"`
-	Username string `env:"BTC_USERNAME" validate:"required"`
-	Password string `env:"BTC_PASSWORD" validate:"required"`
-	Endpoint string `env:"BTC_ENDPOINT" validate:"required"`
+	Network         string   `env:"BTC_NETWORK" validate:"required"`
+	Username        string   `env:"BTC_USERNAME" validate:"required"`
+	Password        string   `env:"BTC_PASSWORD" validate:"required"`
+	Endpoint        string   `env:"BTC_ENDPOINT" validate:"required"`
+	BtcExtraSources []string `env:"BTC_EXTRA_SOURCES"`
 }
 
 type TimeoutEnv struct {
@@ -69,6 +74,48 @@ type TimeoutEnv struct {
 	ServerWrite         uint64 `env:"SERVER_WRITE_TIMEOUT"`
 	ServerIdle          uint64 `env:"SERVER_IDLE_TIMEOUT"`
 	PegoutDepositCheck  uint64 `env:"PEGOUT_DEPOSIT_CHECK_TIMEOUT"`
+}
+
+type EclipseEnv struct {
+	Enabled                  bool   `env:"ECLIPSE_CHECK_ENABLED"`
+	RskToleranceThreshold    uint8  `env:"ECLIPSE_RSK_TOLERANCE_THRESHOLD"`
+	RskMaxMsWaitForBlock     uint64 `env:"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK"`
+	RskWaitPollingMsInterval uint64 `env:"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL"`
+	BtcToleranceThreshold    uint8  `env:"ECLIPSE_BTC_TOLERANCE_THRESHOLD"`
+	BtcMaxMsWaitForBlock     uint64 `env:"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK"`
+	BtcWaitPollingMsInterval uint64 `env:"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL"`
+	AlertCooldownSeconds     uint64 `env:"ECLIPSE_ALERT_COOLDOWN_SECONDS"`
+}
+
+func (env *EclipseEnv) FillWithDefaults() *EclipseEnv {
+	defaults := EclipseEnv{
+		RskToleranceThreshold:    50,
+		RskMaxMsWaitForBlock:     10_000,
+		RskWaitPollingMsInterval: 1000,
+		BtcToleranceThreshold:    50,
+		BtcMaxMsWaitForBlock:     60_000,
+		BtcWaitPollingMsInterval: 10_000,
+		AlertCooldownSeconds:     30 * 60, // 30 min
+	}
+	env.RskToleranceThreshold = utils.FirstNonZero(env.RskToleranceThreshold, defaults.RskToleranceThreshold)
+	env.RskMaxMsWaitForBlock = utils.FirstNonZero(env.RskMaxMsWaitForBlock, defaults.RskMaxMsWaitForBlock)
+	env.RskWaitPollingMsInterval = utils.FirstNonZero(env.RskWaitPollingMsInterval, defaults.RskWaitPollingMsInterval)
+	env.BtcToleranceThreshold = utils.FirstNonZero(env.BtcToleranceThreshold, defaults.BtcToleranceThreshold)
+	env.BtcMaxMsWaitForBlock = utils.FirstNonZero(env.BtcMaxMsWaitForBlock, defaults.BtcMaxMsWaitForBlock)
+	env.BtcWaitPollingMsInterval = utils.FirstNonZero(env.BtcWaitPollingMsInterval, defaults.BtcWaitPollingMsInterval)
+	env.AlertCooldownSeconds = utils.FirstNonZero(env.AlertCooldownSeconds, defaults.AlertCooldownSeconds)
+	return env
+}
+
+func (env *EclipseEnv) ToConfig() watcher.EclipseCheckConfig {
+	return watcher.EclipseCheckConfig{
+		RskToleranceThreshold:    env.RskToleranceThreshold,
+		RskMaxMsWaitForBlock:     env.RskMaxMsWaitForBlock,
+		RskWaitPollingMsInterval: env.RskWaitPollingMsInterval,
+		BtcToleranceThreshold:    env.BtcToleranceThreshold,
+		BtcMaxMsWaitForBlock:     env.BtcMaxMsWaitForBlock,
+		BtcWaitPollingMsInterval: env.BtcWaitPollingMsInterval,
+	}
 }
 
 func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {

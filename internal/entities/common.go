@@ -16,6 +16,13 @@ var (
 	validate             = validator.New(validator.WithRequiredStructEnabled())
 )
 
+type NodeType = string
+
+const (
+	NodeTypeRootstock NodeType = "rootstock"
+	NodeTypeBitcoin   NodeType = "bitcoin"
+)
+
 func ValidateStruct(s any) error {
 	return validate.Struct(s)
 }

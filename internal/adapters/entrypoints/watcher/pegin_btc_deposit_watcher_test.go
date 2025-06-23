@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -24,7 +25,7 @@ import (
 func TestPeginDepositAddressWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil, nil, nil)
 		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, eventBus, ticker)
 	})

@@ -197,3 +197,19 @@ func (rpc *rskjRpcServer) GetBlockByHash(ctx context.Context, hash string) (bloc
 		Nonce:     result.Nonce(),
 	}, nil
 }
+
+func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (blockchain.BlockInfo, error) {
+	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (*types.Block, error) {
+			return rpc.client.BlockByNumber(ctx, blockNumber)
+		})
+	if err != nil {
+		return blockchain.BlockInfo{}, err
+	}
+	return blockchain.BlockInfo{
+		Hash:      result.Hash().String(),
+		Number:    result.NumberU64(),
+		Timestamp: time.Unix(int64(result.Time()), 0),
+		Nonce:     result.Nonce(),
+	}, nil
+}
