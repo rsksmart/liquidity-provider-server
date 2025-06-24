@@ -186,7 +186,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 
 		// Verify counter starts at 0
 		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		// This pattern of Goroutine keeps the infinite loop of Start() method running but
 		// without blocking the test execution
@@ -204,7 +204,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 
 		// Verify counter was incremented
 		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		assert.InEpsilon(t, float64(3), finalValue, 0.0)
+		assert.Equal(t, 3, int(finalValue))
 
 		// Verify the label is correct
 		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "accepted")
@@ -226,7 +226,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
 
 		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		go func() {
 			watcher.Start()
@@ -239,7 +239,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		assert.InEpsilon(t, float64(4), finalValue, 0.0)
+		assert.Equal(t, 4, int(finalValue))
 
 		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "paid")
 		assert.Equal(t, "paid", labels["state"], "State label should be 'paid'")
@@ -260,7 +260,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
 
 		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		go func() {
 			watcher.Start()
@@ -271,7 +271,7 @@ func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		assert.InEpsilon(t, float64(2), finalValue, 0.0)
+		assert.Equal(t, 2, int(finalValue))
 
 		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "lp_refunded")
 		assert.Equal(t, "lp_refunded", labels["state"], "State label should be 'lp_refunded'")
@@ -295,7 +295,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
 
 		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		go func() {
 			watcher.Start()
@@ -306,7 +306,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		assert.InEpsilon(t, float64(2), finalValue, 0.0)
+		assert.Equal(t, 2, int(finalValue))
 
 		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "accepted")
 		assert.Equal(t, "accepted", labels["state"], "State label should be 'accepted'")
@@ -327,7 +327,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
 
 		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		go func() {
 			watcher.Start()
@@ -340,7 +340,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		assert.InEpsilon(t, float64(3), finalValue, 0.0)
+		assert.Equal(t, 3, int(finalValue))
 
 		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "paid")
 		assert.Equal(t, "paid", labels["state"], "State label should be 'paid'")
@@ -361,7 +361,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
 
 		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-		assert.InEpsilon(t, float64(0), initialValue, 0.0)
+		assert.Equal(t, 0, int(initialValue))
 
 		go func() {
 			watcher.Start()
@@ -371,7 +371,7 @@ func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-		assert.InEpsilon(t, float64(1), finalValue, 0.0)
+		assert.Equal(t, 1, int(finalValue))
 
 		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "lp_refunded")
 		assert.Equal(t, "lp_refunded", labels["state"], "State label should be 'lp_refunded'")
@@ -414,12 +414,12 @@ func TestMetricWatcher_Start_MultipleEvents(t *testing.T) {
 		initialPeginPaid := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
 		initialPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
 
-		assert.InEpsilon(t, float64(0), initialPegoutAccepted, 0.0)
-		assert.InEpsilon(t, float64(0), initialPegoutPaid, 0.0)
-		assert.InEpsilon(t, float64(0), initialPegoutRefunded, 0.0)
-		assert.InEpsilon(t, float64(0), initialPeginAccepted, 0.0)
-		assert.InEpsilon(t, float64(0), initialPeginPaid, 0.0)
-		assert.InEpsilon(t, float64(0), initialPeginRefunded, 0.0)
+		assert.Equal(t, 0, int(initialPegoutAccepted))
+		assert.Equal(t, 0, int(initialPegoutPaid))
+		assert.Equal(t, 0, int(initialPegoutRefunded))
+		assert.Equal(t, 0, int(initialPeginAccepted))
+		assert.Equal(t, 0, int(initialPeginPaid))
+		assert.Equal(t, 0, int(initialPeginRefunded))
 
 		go func() {
 			watcher.Start()
@@ -452,14 +452,14 @@ func TestMetricWatcher_Start_MultipleEvents(t *testing.T) {
 		finalPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
 
 		// Verify counters that received events
-		assert.InEpsilon(t, float64(3), finalPegoutAccepted, 0.0)
-		assert.InEpsilon(t, float64(1), finalPegoutPaid, 0.0)
-		assert.InEpsilon(t, float64(2), finalPeginAccepted, 0.0)
-		assert.InEpsilon(t, float64(4), finalPeginPaid, 0.0)
+		assert.Equal(t, 3, int(finalPegoutAccepted))
+		assert.Equal(t, 1, int(finalPegoutPaid))
+		assert.Equal(t, 2, int(finalPeginAccepted))
+		assert.Equal(t, 4, int(finalPeginPaid))
 
 		// Verify counters that received NO events (should remain at 0)
-		assert.InEpsilon(t, float64(0), finalPegoutRefunded, 0.0)
-		assert.InEpsilon(t, float64(0), finalPeginRefunded, 0.0)
+		assert.Equal(t, 0, int(finalPegoutRefunded))
+		assert.Equal(t, 0, int(finalPeginRefunded))
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
