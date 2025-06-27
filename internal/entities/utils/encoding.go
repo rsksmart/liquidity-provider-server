@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -86,4 +87,9 @@ func To32Bytes(value []byte) [32]byte {
 	var bytes [32]byte
 	copy(bytes[:], value)
 	return bytes
+}
+
+func CompareIgnore0x(a, b string) bool {
+	const prefix = "0x"
+	return strings.EqualFold(strings.TrimPrefix(a, prefix), strings.TrimPrefix(b, prefix))
 }

@@ -98,8 +98,6 @@ func (rpc *rskjRpcServer) GetHeight(ctx context.Context) (uint64, error) {
 }
 
 func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string) (blockchain.TransactionReceipt, error) {
-	var from common.Address
-
 	_, err := hex.DecodeString(strings.TrimPrefix(hash, "0x"))
 	if err != nil {
 		return blockchain.TransactionReceipt{}, errors.New("invalid transaction hash")
@@ -121,27 +119,7 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 	if err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
-
-	gasUsed := new(big.Int)
-	gasUsed.SetUint64(receipt.GasUsed)
-	cumulativeGasUsed := new(big.Int)
-	cumulativeGasUsed.SetUint64(receipt.CumulativeGasUsed)
-	from, err = types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
-	if err != nil {
-		if from, err = types.Sender(types.HomesteadSigner{}, tx); err != nil {
-			return blockchain.TransactionReceipt{}, err
-		}
-	}
-	return blockchain.TransactionReceipt{
-		TransactionHash:   receipt.TxHash.String(),
-		BlockHash:         receipt.BlockHash.String(),
-		BlockNumber:       receipt.BlockNumber.Uint64(),
-		From:              from.String(),
-		To:                tx.To().String(),
-		CumulativeGasUsed: cumulativeGasUsed,
-		GasUsed:           gasUsed,
-		Value:             entities.NewBigWei(tx.Value()),
-	}, nil
+	return ParseReceipt(tx, receipt)
 }
 
 func (rpc *rskjRpcServer) isNewAccount(ctx context.Context, address common.Address) (bool, error) {
