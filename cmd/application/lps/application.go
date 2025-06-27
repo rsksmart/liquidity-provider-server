@@ -3,6 +3,9 @@ package lps
 import (
 	"context"
 	"errors"
+	"os"
+	"syscall"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
@@ -15,8 +18,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"syscall"
 )
 
 type Application struct {
@@ -148,7 +149,8 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.LiquidityCheckWatcher,
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
-		app.watcherRegistry.MetricsWatcher,
+		app.watcherRegistry.QuoteMetricsWatcher,
+		app.watcherRegistry.AssetReportWatcher,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), app.timeouts.WatcherPreparation.Seconds())

@@ -35,6 +35,7 @@ type ApplicationTickers struct {
 	PegoutDepositWatcherTicker     Ticker
 	PegoutBtcTransferWatcherTicker Ticker
 	PegoutBridgeWatcherTicker      Ticker
+	AssetReportTicker              Ticker
 }
 
 func NewApplicationTickers() *ApplicationTickers {
@@ -47,5 +48,6 @@ func NewApplicationTickers() *ApplicationTickers {
 		PegoutDepositWatcherTicker:     NewTickerWrapper(pegoutDepositWatcherInterval),
 		PegoutBtcTransferWatcherTicker: NewTickerWrapper(pegoutBtcTransferWatcherInterval),
 		PegoutBridgeWatcherTicker:      NewTickerWrapper(pegoutBridgeWatcherInterval),
+		AssetReportTicker:              NewTickerWrapper(assetMetricsUpdateInterval),
 	}
 }

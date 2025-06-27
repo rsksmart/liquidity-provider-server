@@ -53,6 +53,9 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
     interfaces:
       Ticker:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
+    interfaces:
+      GetAssetReportUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry:
     interfaces:
       UseCaseRegistry:
