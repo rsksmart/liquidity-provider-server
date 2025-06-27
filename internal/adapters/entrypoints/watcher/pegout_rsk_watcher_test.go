@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -418,10 +419,10 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 	eventBus.On("Publish", mock.Anything).Return(make(<-chan entities.Event))
 
 	testPegoutQuote := quote.PegoutQuote{Nonce: 1, Value: entities.NewWei(3), ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600), DepositConfirmations: 5}
-	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "010203", State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash}
+	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "0102030000000000000000000000000000000000000000000000000000000000", State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash}
 
 	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutRepository)
-	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex())
+	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEvent)
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, expireUseCase, sendPegoutUseCase, nil, nil)
 	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
 
@@ -463,11 +464,13 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
 
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
+		receipt := &blockchain.TransactionReceipt{
+			BlockNumber: 10,
+			Value:       entities.NewWei(3),
+		}
+		receipt = test.AddDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
-			Return(blockchain.TransactionReceipt{
-				BlockNumber: 10,
-				Value:       entities.NewWei(3),
-			}, nil).Once()
+			Return(*receipt, nil).Once()
 		lbc.On("GetDepositEvents", mock.Anything, uint64(10), mock.MatchedBy(matchUinPtr(20))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 
@@ -530,11 +533,13 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		btcWallet.ExpectedCalls = []*mock.Call{}
 
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(22), nil).Twice()
+		receipt := &blockchain.TransactionReceipt{
+			BlockNumber: 10,
+			Value:       entities.NewWei(3),
+		}
+		receipt = test.AddDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
-			Return(blockchain.TransactionReceipt{
-				BlockNumber: 10,
-				Value:       entities.NewWei(3),
-			}, nil).Twice()
+			Return(*receipt, nil).Twice()
 		lbc.On("GetDepositEvents", mock.Anything, uint64(21), mock.MatchedBy(matchUinPtr(22))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testPegoutQuote, nil).Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, testRetainedQuote.QuoteHash).Return(quote.PegoutCreationDataZeroValue()).Once()
