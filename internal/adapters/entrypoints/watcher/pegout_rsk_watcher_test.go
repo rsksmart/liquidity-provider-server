@@ -495,12 +495,16 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.Calls = []mock.Call{}
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
 
+		receipt := &blockchain.TransactionReceipt{
+			BlockNumber: 10,
+			Value:       entities.NewWei(3),
+		}
+
+		receipt = test.AddDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
+
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(21), nil).Once()
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
-			Return(blockchain.TransactionReceipt{
-				BlockNumber: 10,
-				Value:       entities.NewWei(3),
-			}, nil).Once()
+			Return(*receipt, nil).Once()
 		lbc.On("GetDepositEvents", mock.Anything, uint64(20), mock.MatchedBy(matchUinPtr(21))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 
@@ -538,6 +542,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 			Value:       entities.NewWei(3),
 		}
 		receipt = test.AddDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
+		receipt.Value = entities.NewWei(0)
+		receipt.To = "0xaabb"
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
 			Return(*receipt, nil).Twice()
 		lbc.On("GetDepositEvents", mock.Anything, uint64(21), mock.MatchedBy(matchUinPtr(22))).Return([]quote.PegoutDeposit{}, nil).Once()
