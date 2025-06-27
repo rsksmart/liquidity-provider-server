@@ -17,7 +17,8 @@ type WatcherRegistry struct {
 	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
 	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
-	MetricsWatcher             *monitoring.MetricWatcher
+	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
+	AssetReportWatcher         *monitoring.AssetReportWatcher
 }
 
 // nolint:funlen
@@ -31,6 +32,8 @@ func NewWatcherRegistry(
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
+	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
+
 	return &WatcherRegistry{
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
@@ -95,10 +98,15 @@ func NewWatcherRegistry(
 			useCaseRegistry.bridgePegoutUseCase,
 			tickers.PegoutBridgeWatcherTicker,
 		),
-		MetricsWatcher: monitoring.NewMetricWatcher(
-			monitoring.NewMetrics(prometheus.DefaultRegisterer),
+		QuoteMetricsWatcher: monitoring.NewQuoteMetricsWatcher(
+			appMetrics,
 			messaging.EventBus,
 			useCaseRegistry.GetServerInfoUseCase(),
+		),
+		AssetReportWatcher: monitoring.NewAssetReportWatcher(
+			appMetrics,
+			useCaseRegistry.GetAssetReportUseCase(),
+			tickers.AssetReportTicker,
 		),
 	}
 }
