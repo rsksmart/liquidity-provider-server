@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 )
 
@@ -58,6 +59,7 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	getAssetReportUseCase         *reports.GetAssetReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -233,6 +235,16 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		getAssetReportUseCase: reports.NewGetAssetReportUseCase(
+			btcRegistry.MonitoringWallet,
+			messaging.Rpc,
+			liquidityProvider,
+			liquidityProvider,
+			liquidityProvider,
+			databaseRegistry.PeginRepository,
+			databaseRegistry.PegoutRepository,
+			rskRegistry.Contracts,
+		),
 	}
 }
 
@@ -346,4 +358,8 @@ func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provi
 
 func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	return registry.getServerInfoUseCase
+}
+
+func (registry *UseCaseRegistry) GetAssetReportUseCase() *reports.GetAssetReportUseCase {
+	return registry.getAssetReportUseCase
 }

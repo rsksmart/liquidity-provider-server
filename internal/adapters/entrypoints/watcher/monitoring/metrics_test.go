@@ -1,17 +1,13 @@
 package monitoring_test
 
 import (
-	"context"
-	"reflect"
+	"math/big"
 	"testing"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,547 +15,152 @@ import (
 )
 
 func TestNewMetrics(t *testing.T) {
-	t.Run("should create metrics with proper configuration", func(t *testing.T) {
-		registerer := mocks.NewRegistererMock(t)
+	t.Run("should create metrics with proper configuration and register them", func(t *testing.T) {
+		metrics, registerer := createMetricsWithMock(t)
 
-		// Capture the metrics passed to MustRegister for detailed assertions
-		var capturedMetrics []prometheus.Collector
-		registerer.On("MustRegister",
-			mock.AnythingOfType("*prometheus.CounterVec"),
-			mock.AnythingOfType("*prometheus.CounterVec"),
-			mock.AnythingOfType("*prometheus.GaugeVec"),
-		).Run(func(args mock.Arguments) {
-			// Capture all arguments passed to MustRegister
-			for i := 0; i < len(args); i++ {
-				// nolint:errcheck
-				capturedMetrics = append(capturedMetrics, args[i].(prometheus.Collector))
-			}
-		}).Return()
-
-		metrics := monitoring.NewMetrics(registerer)
-
+		require.NotNil(t, metrics)
 		assert.NotNil(t, metrics.PeginQuotesMetric)
 		assert.NotNil(t, metrics.PegoutQuotesMetric)
 		assert.NotNil(t, metrics.ServerInfoMetric)
+		assert.NotNil(t, metrics.AssetsMetrics)
 
-		// To get the descriptor of the metrics, we need to execute the Describe() method
-		// To execute the Describe() method, we need to create a channel to receive the descriptors
-		peginDescChannel := make(chan *prometheus.Desc, 1)
-		pegoutDescChannel := make(chan *prometheus.Desc, 1)
-		serverInfoDescChannel := make(chan *prometheus.Desc, 1)
+		// Verify metric names and help text by checking descriptors
+		peginDesc := getMetricDesc(metrics.PeginQuotesMetric)
+		pegoutDesc := getMetricDesc(metrics.PegoutQuotesMetric)
+		serverInfoDesc := getMetricDesc(metrics.ServerInfoMetric)
+		assetsDesc := getMetricDesc(metrics.AssetsMetrics)
 
-		metrics.PeginQuotesMetric.Describe(peginDescChannel)
-		metrics.PegoutQuotesMetric.Describe(pegoutDescChannel)
-		metrics.ServerInfoMetric.Describe(serverInfoDescChannel)
+		assert.Contains(t, peginDesc, "lps_pegin_quotes")
+		assert.Contains(t, peginDesc, "Pegin quotes processed")
+		assert.Contains(t, peginDesc, "state")
 
-		peginDesc := <-peginDescChannel
-		pegoutDesc := <-pegoutDescChannel
-		serverInfoDesc := <-serverInfoDescChannel
+		assert.Contains(t, pegoutDesc, "lps_pegout_quotes")
+		assert.Contains(t, pegoutDesc, "Pegout quotes processed")
+		assert.Contains(t, pegoutDesc, "state")
 
-		expectedPeginDesc := `Desc{fqName: "lps_pegin_quotes", help: "Pegin quotes processed", constLabels: {}, variableLabels: {state}}`
-		assert.Equal(t, expectedPeginDesc, peginDesc.String())
+		assert.Contains(t, serverInfoDesc, "lps_server_info")
+		assert.Contains(t, serverInfoDesc, "Server information")
+		assert.Contains(t, serverInfoDesc, "version")
+		assert.Contains(t, serverInfoDesc, "commit")
 
-		expectedPegoutDesc := `Desc{fqName: "lps_pegout_quotes", help: "Pegout quotes processed", constLabels: {}, variableLabels: {state}}`
-		assert.Equal(t, expectedPegoutDesc, pegoutDesc.String())
-
-		expectedServerInfoDesc := `Desc{fqName: "lps_server_info", help: "Server information", constLabels: {}, variableLabels: {version,commit}}`
-		assert.Equal(t, expectedServerInfoDesc, serverInfoDesc.String())
-
-		// Verify the exact metrics were registered in the correct order
-		require.Len(t, capturedMetrics, 3)
-		assert.Equal(t, metrics.PegoutQuotesMetric, capturedMetrics[0])
-		assert.Equal(t, metrics.PeginQuotesMetric, capturedMetrics[1])
-		assert.Equal(t, metrics.ServerInfoMetric, capturedMetrics[2])
+		assert.Contains(t, assetsDesc, "lps_assets_balances")
+		assert.Contains(t, assetsDesc, "Liquidity provider asset balances and metrics")
+		assert.Contains(t, assetsDesc, "currency")
+		assert.Contains(t, assetsDesc, "type")
 
 		registerer.AssertExpectations(t)
 	})
 }
 
-func TestNewMetricWatcher(t *testing.T) {
-	t.Run("should create metric watcher with all dependencies properly configured", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
+func TestMetrics_UpdateAssetsFromReport(t *testing.T) {
+	t.Run("should update all asset metrics with correct values and labels", func(t *testing.T) {
+		metrics, _ := createMetricsWithMock(t)
+		report := createTestAssetReport()
 
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
+		metrics.UpdateAssetsFromReport(report)
 
-		require.NotNil(t, watcher)
+		// Verify RBTC metrics are set with correct values
+		assert.InDelta(t, 1.5, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "locked_lbc"), 0.0001)
+		assert.InDelta(t, 2.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "locked_for_users"), 0.0001)
+		assert.InDelta(t, 0.5, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "waiting_refund"), 0.0001)
+		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "liquidity"), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "wallet_balance"), 0.0001)
 
-		// Use reflection to verify internal structure (type checking only)
-		watcherValue := reflect.ValueOf(watcher).Elem()
-		watcherType := watcherValue.Type()
+		// Verify BTC metrics are set with correct values
+		assert.InDelta(t, 1.8, getGaugeVecValue(metrics.AssetsMetrics, "btc", "locked_for_users"), 0.0001)
+		assert.InDelta(t, 4.5, getGaugeVecValue(metrics.AssetsMetrics, "btc", "liquidity"), 0.0001)
+		assert.InDelta(t, 2.8, getGaugeVecValue(metrics.AssetsMetrics, "btc", "wallet_balance"), 0.0001)
+		assert.InDelta(t, 0.1, getGaugeVecValue(metrics.AssetsMetrics, "btc", "rebalancing"), 0.0001)
 
-		// Verify all expected fields exist with correct types
-		appMetricsField, found := watcherType.FieldByName("appMetrics")
-		require.True(t, found, "appMetrics field should exist")
-		assert.Equal(t, "monitoring.Metrics", appMetricsField.Type.String())
+		// Verify labels are correct for RBTC metrics
+		rbtcLabels := getGaugeVecLabels(metrics.AssetsMetrics, "rbtc", "locked_lbc")
+		assert.Equal(t, "rbtc", rbtcLabels["currency"])
+		assert.Equal(t, "locked_lbc", rbtcLabels["type"])
 
-		eventBusField, found := watcherType.FieldByName("eventBus")
-		require.True(t, found, "eventBus field should exist")
-		assert.Equal(t, "entities.EventBus", eventBusField.Type.String())
-
-		serverInfoField, found := watcherType.FieldByName("serverInfo")
-		require.True(t, found, "serverInfo field should exist")
-		assert.Equal(t, "*liquidity_provider.ServerInfoUseCase", serverInfoField.Type.String())
-
-		closeChannelField, found := watcherType.FieldByName("closeChannel")
-		require.True(t, found, "closeChannel field should exist")
-		assert.Equal(t, "chan struct {}", closeChannelField.Type.String())
-
-		// Verify closeChannel is properly initialized by checking it's not zero value
-		closeChannelValue := watcherValue.FieldByName("closeChannel")
-		assert.False(t, closeChannelValue.IsZero(), "closeChannel should be initialized")
-		assert.Equal(t, reflect.Chan, closeChannelValue.Kind())
-		assert.Equal(t, 1, closeChannelValue.Cap(), "closeChannel should have capacity of 1")
-
-		// Test behavioral verification: the watcher should be ready to call Prepare
-		// This indirectly tests that serverInfo was properly assigned
-		setServerInfoBuildVars("test", "test")
-		err := watcher.Prepare(context.Background())
-		assert.NoError(t, err, "Prepare should work if serverInfo is properly set")
-	})
-}
-
-func TestMetricWatcher_Prepare(t *testing.T) {
-	t.Run("should set server info metrics successfully", func(t *testing.T) {
-		setServerInfoBuildVars("1.0.0", "abc123")
-
-		appMetrics := monitoring.Metrics{
-			ServerInfoMetric: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "test_server"}, []string{"version", "commit"}),
-		}
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-		err := watcher.Prepare(context.Background())
-
-		require.NoError(t, err)
-
-		// Verify the metric was set with the correct values (success path)
-		metricValue := getGaugeVecValue(appMetrics.ServerInfoMetric, "1.0.0", "abc123")
-		assert.InEpsilon(t, float64(1), metricValue, 0.0)
-
-		// Verify the labels are set correctly
-		labels := getGaugeVecLabels(appMetrics.ServerInfoMetric, "1.0.0", "abc123")
-		assert.Equal(t, "1.0.0", labels["version"], "Version label should be set correctly")
-		assert.Equal(t, "abc123", labels["commit"], "Commit label should be set correctly")
+		// Verify labels are correct for BTC metrics
+		btcLabels := getGaugeVecLabels(metrics.AssetsMetrics, "btc", "rebalancing")
+		assert.Equal(t, "btc", btcLabels["currency"])
+		assert.Equal(t, "rebalancing", btcLabels["type"])
 	})
 
-	t.Run("should handle server info error and set default values", func(t *testing.T) {
-		setServerInfoBuildVars("", "")
-
-		appMetrics := monitoring.Metrics{
-			ServerInfoMetric: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "test_server"}, []string{"version", "commit"}),
-		}
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-		err := watcher.Prepare(context.Background())
-
-		require.NoError(t, err)
-
-		// Verify the metric was set with default values (error path)
-		// This confirms that the "if err != nil" block was executed
-		metricValue := getGaugeVecValue(appMetrics.ServerInfoMetric, "Not provided", "Not provided")
-		assert.InEpsilon(t, float64(1), metricValue, 0.0)
-
-		// Verify the labels are set to default values
-		labels := getGaugeVecLabels(appMetrics.ServerInfoMetric, "Not provided", "Not provided")
-		assert.Equal(t, "Not provided", labels["version"], "Version label should be set to default value")
-		assert.Equal(t, "Not provided", labels["commit"], "Commit label should be set to default value")
-	})
-}
-
-// nolint:funlen
-func TestMetricWatcher_Start_PegoutMetrics(t *testing.T) {
-	t.Run("should increment accepted pegout quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		acceptedPegoutChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptedPegoutChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		// Verify counter starts at 0
-		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		assert.Equal(t, 0, int(initialValue))
-
-		// This pattern of Goroutine keeps the infinite loop of Start() method running but
-		// without blocking the test execution
-		go func() {
-			watcher.Start()
-		}()
-
-		// Send events to trigger metric increment
-		acceptedPegoutChannel <- entities.BaseEvent{}
-		acceptedPegoutChannel <- entities.BaseEvent{}
-		acceptedPegoutChannel <- entities.BaseEvent{}
-
-		// Give some time for the event to be processed
-		time.Sleep(10 * time.Millisecond)
-
-		// Verify counter was incremented
-		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		assert.Equal(t, 3, int(finalValue))
-
-		// Verify the label is correct
-		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "accepted")
-		assert.Equal(t, "accepted", labels["state"], "State label should be 'accepted'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-
-	t.Run("should increment sent pegout quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		sendPegoutChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return((<-chan entities.Event)(sendPegoutChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		assert.Equal(t, 0, int(initialValue))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		sendPegoutChannel <- entities.BaseEvent{}
-		sendPegoutChannel <- entities.BaseEvent{}
-		sendPegoutChannel <- entities.BaseEvent{}
-		sendPegoutChannel <- entities.BaseEvent{}
-		time.Sleep(10 * time.Millisecond)
-
-		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		assert.Equal(t, 4, int(finalValue))
-
-		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "paid")
-		assert.Equal(t, "paid", labels["state"], "State label should be 'paid'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-
-	t.Run("should increment refunded pegout quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		pegoutRefundChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.PegoutQuoteCompletedEventId).Return((<-chan entities.Event)(pegoutRefundChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		initialValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		assert.Equal(t, 0, int(initialValue))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		pegoutRefundChannel <- entities.BaseEvent{}
-		pegoutRefundChannel <- entities.BaseEvent{}
-		time.Sleep(10 * time.Millisecond)
-
-		finalValue := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		assert.Equal(t, 2, int(finalValue))
-
-		labels := getCounterVecLabels(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		assert.Equal(t, "lp_refunded", labels["state"], "State label should be 'lp_refunded'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-}
-
-// nolint:funlen
-func TestMetricWatcher_Start_PeginMetrics(t *testing.T) {
-	t.Run("should increment accepted pegin quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		acceptedPeginChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptedPeginChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		assert.Equal(t, 0, int(initialValue))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		acceptedPeginChannel <- entities.BaseEvent{}
-		acceptedPeginChannel <- entities.BaseEvent{}
-		time.Sleep(10 * time.Millisecond)
-
-		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		assert.Equal(t, 2, int(finalValue))
-
-		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "accepted")
-		assert.Equal(t, "accepted", labels["state"], "State label should be 'accepted'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-
-	t.Run("should increment call for user completed pegin quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		callForUserChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(callForUserChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		assert.Equal(t, 0, int(initialValue))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		callForUserChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-
-		time.Sleep(10 * time.Millisecond)
-
-		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		assert.Equal(t, 3, int(finalValue))
-
-		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "paid")
-		assert.Equal(t, "paid", labels["state"], "State label should be 'paid'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-
-	t.Run("should increment register pegin completed quotes metric", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		registerPeginChannel := make(chan entities.Event, 1)
-		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return((<-chan entities.Event)(registerPeginChannel))
-		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-		assert.Equal(t, 0, int(initialValue))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		registerPeginChannel <- entities.BaseEvent{}
-		time.Sleep(10 * time.Millisecond)
-
-		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-		assert.Equal(t, 1, int(finalValue))
-
-		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "lp_refunded")
-		assert.Equal(t, "lp_refunded", labels["state"], "State label should be 'lp_refunded'")
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-}
-
-// nolint:funlen
-func TestMetricWatcher_Start_MultipleEvents(t *testing.T) {
-	t.Run("should handle multiple events simultaneously", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		// Create channels for ALL event types
-		acceptedPegoutChannel := make(chan entities.Event, 5)
-		sendPegoutChannel := make(chan entities.Event, 5)
-		pegoutRefundChannel := make(chan entities.Event, 5)
-		acceptedPeginChannel := make(chan entities.Event, 5)
-		callForUserChannel := make(chan entities.Event, 5)
-		registerPeginChannel := make(chan entities.Event, 5)
-
-		// Mock all Subscribe calls
-		eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptedPegoutChannel))
-		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return((<-chan entities.Event)(sendPegoutChannel))
-		eventBus.On("Subscribe", quote.PegoutQuoteCompletedEventId).Return((<-chan entities.Event)(pegoutRefundChannel))
-		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptedPeginChannel))
-		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(callForUserChannel))
-		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return((<-chan entities.Event)(registerPeginChannel))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		// Verify all counters start at 0
-		initialPegoutAccepted := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		initialPegoutPaid := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		initialPegoutRefunded := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		initialPeginAccepted := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		initialPeginPaid := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		initialPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-
-		assert.Equal(t, 0, int(initialPegoutAccepted))
-		assert.Equal(t, 0, int(initialPegoutPaid))
-		assert.Equal(t, 0, int(initialPegoutRefunded))
-		assert.Equal(t, 0, int(initialPeginAccepted))
-		assert.Equal(t, 0, int(initialPeginPaid))
-		assert.Equal(t, 0, int(initialPeginRefunded))
-
-		go func() {
-			watcher.Start()
-		}()
-
-		// Send mixed events in different order - some channels get multiple events, others get none
-		// This will test that counters accumulate properly and some remain at 0
-		acceptedPegoutChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-		acceptedPegoutChannel <- entities.BaseEvent{}
-		acceptedPeginChannel <- entities.BaseEvent{}
-		acceptedPegoutChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-		acceptedPeginChannel <- entities.BaseEvent{}
-		sendPegoutChannel <- entities.BaseEvent{}
-		callForUserChannel <- entities.BaseEvent{}
-
-		// Intentionally DO NOT send events to:
-		// - pegoutRefundChannel (should remain at 0)
-		// - registerPeginChannel (should remain at 0)
-
-		time.Sleep(10 * time.Millisecond)
-
-		finalPegoutAccepted := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
-		finalPegoutPaid := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
-		finalPegoutRefunded := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
-		finalPeginAccepted := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
-		finalPeginPaid := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
-		finalPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
-
-		// Verify counters that received events
-		assert.Equal(t, 3, int(finalPegoutAccepted))
-		assert.Equal(t, 1, int(finalPegoutPaid))
-		assert.Equal(t, 2, int(finalPeginAccepted))
-		assert.Equal(t, 4, int(finalPeginPaid))
-
-		// Verify counters that received NO events (should remain at 0)
-		assert.Equal(t, 0, int(finalPegoutRefunded))
-		assert.Equal(t, 0, int(finalPeginRefunded))
-
-		watcher.Shutdown(make(chan bool, 1))
-		eventBus.AssertExpectations(t)
-	})
-}
-
-func TestMetricWatcher_Shutdown(t *testing.T) {
-	t.Run("should shutdown gracefully", func(t *testing.T) {
-		appMetrics := createTestMetrics()
-		eventBus := &mocks.EventBusMock{}
-		serverInfo := liquidity_provider.NewServerInfoUseCase()
-
-		eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return(make(<-chan entities.Event))
-		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return(make(<-chan entities.Event))
-		eventBus.On("Subscribe", quote.PegoutQuoteCompletedEventId).Return(make(<-chan entities.Event))
-		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return(make(<-chan entities.Event))
-		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return(make(<-chan entities.Event))
-		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return(make(<-chan entities.Event))
-
-		watcher := monitoring.NewMetricWatcher(appMetrics, eventBus, serverInfo)
-
-		go func() {
-			watcher.Start()
-		}()
-
-		// Give the Start method time to subscribe to events
-		time.Sleep(10 * time.Millisecond)
-
-		closeChannel := make(chan bool, 1)
-		watcher.Shutdown(closeChannel)
-
-		// Wait for shutdown signal
-		select {
-		case <-closeChannel:
-			// Shutdown completed successfully
-		case <-time.After(time.Second):
-			t.Fatal("Shutdown timed out")
+	t.Run("should handle edge case values correctly (zero, large, complex decimals)", func(t *testing.T) {
+		metrics, _ := createMetricsWithMock(t)
+
+		// Create report with mixed edge case values:
+		// - Zero values for some metrics
+		// - Large values for others
+		// - Complex decimal values
+		report := reports.GetAssetReportResult{
+			RbtcLockedLbc:      entities.NewWei(0),                                                                                              // 0 RBTC
+			RbtcLockedForUsers: createWeiFromString("34598535894857007656"),                                                                     // 34.598535894857007656 RBTC
+			RbtcWaitingRefund:  entities.NewWei(123456789000000),                                                                                // 0.000123456789 RBTC
+			RbtcLiquidity:      entities.NewBigWei(big.NewInt(0).Mul(big.NewInt(1000), big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil))), // 1000 RBTC
+			RbtcWalletBalance:  createWeiFromString("7890123456789000000"),                                                                      // 7.890123456789 RBTC
+			BtcLockedForUsers:  createWeiFromString("56789012345678900000"),                                                                     // 56.7890123456789 BTC
+			BtcLiquidity:       entities.NewWei(0),                                                                                              // 0 BTC
+			BtcWalletBalance:   entities.NewBigWei(big.NewInt(0).Mul(big.NewInt(2500), big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil))), // 2500 BTC
+			BtcRebalancing:     entities.NewWei(987654321000000000),                                                                             // 0.987654321 BTC
 		}
 
-		eventBus.AssertExpectations(t)
+		metrics.UpdateAssetsFromReport(report)
+
+		// Verify zero values
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "locked_lbc"), 0.0001)
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, "btc", "liquidity"), 0.0001)
+
+		// Verify complex decimal values
+		assert.InDelta(t, 34.598535894857007656, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "locked_for_users"), 1e-15)
+		assert.InDelta(t, 0.000123456789, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "waiting_refund"), 1e-15)
+		assert.InDelta(t, 7.890123456789, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "wallet_balance"), 1e-12)
+		assert.InDelta(t, 56.7890123456789, getGaugeVecValue(metrics.AssetsMetrics, "btc", "locked_for_users"), 1e-12)
+		assert.InDelta(t, 0.987654321, getGaugeVecValue(metrics.AssetsMetrics, "btc", "rebalancing"), 1e-9)
+
+		// Verify large values
+		assert.InDelta(t, 1000.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "liquidity"), 0.0001)
+		assert.InDelta(t, 2500.0, getGaugeVecValue(metrics.AssetsMetrics, "btc", "wallet_balance"), 0.0001)
 	})
 }
 
-// Helper function to create test metrics
-func createTestMetrics() monitoring.Metrics {
-	return monitoring.Metrics{
-		PeginQuotesMetric:  prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_pegin_quotes"}, []string{"state"}),
-		PegoutQuotesMetric: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_pegout_quotes"}, []string{"state"}),
-		ServerInfoMetric:   prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "test_server_info"}, []string{"version", "commit"}),
+// Helper function to create test asset report with known values
+func createTestAssetReport() reports.GetAssetReportResult {
+	return reports.GetAssetReportResult{
+		RbtcLockedLbc:      entities.NewBigWei(big.NewInt(1500000000000000000)), // 1.5 RBTC
+		RbtcLockedForUsers: entities.NewBigWei(big.NewInt(2000000000000000000)), // 2.0 RBTC
+		RbtcWaitingRefund:  entities.NewWei(500000000000000000),                 // 0.5 RBTC
+		RbtcLiquidity:      entities.NewBigWei(big.NewInt(5000000000000000000)), // 5.0 RBTC
+		RbtcWalletBalance:  entities.NewBigWei(big.NewInt(3000000000000000000)), // 3.0 RBTC
+		BtcLockedForUsers:  entities.NewBigWei(big.NewInt(1800000000000000000)), // 1.8 BTC equivalent
+		BtcLiquidity:       entities.NewBigWei(big.NewInt(4500000000000000000)), // 4.5 BTC equivalent
+		BtcWalletBalance:   entities.NewBigWei(big.NewInt(2800000000000000000)), // 2.8 BTC equivalent
+		BtcRebalancing:     entities.NewWei(100000000000000000),                 // 0.1 BTC equivalent
 	}
 }
 
-// Helper function to set ServerInfo build variables for tests that need them
-func setServerInfoBuildVars(version, revision string) {
-	liquidity_provider.BuildVersion = version
-	liquidity_provider.BuildRevision = revision
+// Helper function to create metrics with fresh mock registerer for each test
+func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.RegistererMock) {
+	registerer := mocks.NewRegistererMock(t)
+	registerer.On("MustRegister",
+		mock.AnythingOfType("*prometheus.CounterVec"), // PegoutQuotesMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+	).Return()
+
+	metrics := monitoring.NewMetrics(registerer)
+	return metrics, registerer
 }
 
-// Helper function to get metric value from a GaugeVec
-func getGaugeVecValue(gaugeVec *prometheus.GaugeVec, labelValues ...string) float64 {
-	gauge := gaugeVec.WithLabelValues(labelValues...)
-	metric := &dto.Metric{}
-	// nolint:errcheck
-	gauge.Write(metric)
-	return metric.GetGauge().GetValue()
+// Helper function to get metric descriptor as string
+func getMetricDesc(metric prometheus.Collector) string {
+	descChannel := make(chan *prometheus.Desc, 1)
+	metric.Describe(descChannel)
+	desc := <-descChannel
+	return desc.String()
 }
 
-// Helper function to get metric labels from a GaugeVec
-func getGaugeVecLabels(gaugeVec *prometheus.GaugeVec, labelValues ...string) map[string]string {
-	gauge := gaugeVec.WithLabelValues(labelValues...)
-	metric := &dto.Metric{}
-	// nolint:errcheck
-	gauge.Write(metric)
-
-	labels := make(map[string]string)
-	for _, label := range metric.GetLabel() {
-		labels[label.GetName()] = label.GetValue()
-	}
-	return labels
-}
-
-// Helper function to get counter value from a CounterVec
-func getCounterVecValue(counterVec *prometheus.CounterVec, labelValues ...string) float64 {
-	counter := counterVec.WithLabelValues(labelValues...)
-	metric := &dto.Metric{}
-	// nolint:errcheck
-	counter.Write(metric)
-	return metric.GetCounter().GetValue()
-}
-
-// Helper function to get counter labels from a CounterVec
-func getCounterVecLabels(counterVec *prometheus.CounterVec, labelValues ...string) map[string]string {
-	counter := counterVec.WithLabelValues(labelValues...)
-	metric := &dto.Metric{}
-	// nolint:errcheck
-	counter.Write(metric)
-
-	labels := make(map[string]string)
-	for _, label := range metric.GetLabel() {
-		labels[label.GetName()] = label.GetValue()
-	}
-	return labels
+// Helper function to create Wei values from string (for large numbers)
+func createWeiFromString(weiStr string) *entities.Wei {
+	val := new(big.Int)
+	val.SetString(weiStr, 10)
+	return entities.NewBigWei(val)
 }

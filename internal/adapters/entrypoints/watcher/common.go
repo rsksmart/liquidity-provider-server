@@ -2,8 +2,9 @@ package watcher
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 // Watchers intervals
@@ -16,6 +17,7 @@ const (
 	pegoutBridgeWatcherInterval      = 5 * time.Minute
 	liquidityCheckInterval           = 10 * time.Minute
 	penalizationCheckInterval        = 10 * time.Minute
+	assetMetricsUpdateInterval       = 1 * time.Minute
 )
 
 type Watcher interface {
