@@ -102,7 +102,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	receiptData := blockchain.TransactionReceipt{
 		TransactionHash: test.AnyString,
 		GasUsed:         big.NewInt(100),
-		GasPrice:        big.NewInt(10),
+		GasPrice:        entities.NewWei(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
@@ -256,7 +256,7 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	receiptData := blockchain.TransactionReceipt{
 		TransactionHash: test.AnyString,
 		GasUsed:         big.NewInt(100),
-		GasPrice:        big.NewInt(10),
+		GasPrice:        entities.NewWei(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
@@ -301,7 +301,7 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	receiptData := blockchain.TransactionReceipt{
 		TransactionHash: test.AnyString,
 		GasUsed:         big.NewInt(100),
-		GasPrice:        big.NewInt(10),
+		GasPrice:        entities.NewWei(10),
 	}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()

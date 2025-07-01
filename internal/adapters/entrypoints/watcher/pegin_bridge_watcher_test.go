@@ -147,7 +147,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	receiptReturn := blockchain.TransactionReceipt{
 		TransactionHash: test.AnyHash,
 		GasUsed:         big.NewInt(0),
-		GasPrice:        big.NewInt(0),
+		GasPrice:        entities.NewWei(0),
 	}
 
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}

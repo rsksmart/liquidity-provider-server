@@ -73,7 +73,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		receiptData := blockchain.TransactionReceipt{
 			TransactionHash: test.AnyHash,
 			GasUsed:         big.NewInt(100),
-			GasPrice:        big.NewInt(10),
+			GasPrice:        entities.NewWei(10),
 		}
 		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "transaction sent to the bridge successfully")

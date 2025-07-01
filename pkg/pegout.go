@@ -99,10 +99,10 @@ func ToRetainedPegoutQuoteDTO(entity quote.RetainedPegoutQuote) RetainedPegoutQu
 		LpBtcTxHash:          entity.LpBtcTxHash,
 		LpBtcTxFee:           entity.LpBtcTxFee.AsBigInt(),
 		RefundPegoutTxHash:   entity.RefundPegoutTxHash,
-		RefundPegoutGasUsed:  entity.RefundPegoutGasUsed.AsBigInt(),
+		RefundPegoutGasUsed:  entity.RefundPegoutGasUsed,
 		RefundPegoutGasPrice: entity.RefundPegoutGasPrice.AsBigInt(),
 		BridgeRefundTxHash:   entity.BridgeRefundTxHash,
-		BridgeRefundGasUsed:  entity.BridgePegoutGasUsed.AsBigInt(),
+		BridgeRefundGasUsed:  entity.BridgePegoutGasUsed,
 		BridgeRefundGasPrice: entity.BridgePegoutGasPrice.AsBigInt(),
 	}
 }

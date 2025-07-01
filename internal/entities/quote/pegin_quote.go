@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -123,9 +124,9 @@ type RetainedPeginQuote struct {
 	UserBtcTxHash         string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
 	CallForUserTxHash     string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
 	RegisterPeginTxHash   string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
-	CallForUserGasUsed    *entities.Wei `json:"CallForUserGasUsed" bson:"call_for_user_gas_used"`
+	CallForUserGasUsed    *big.Int      `json:"CallForUserGasUsed" bson:"call_for_user_gas_used"`
 	CallForUserGasPrice   *entities.Wei `json:"CallForUserGasPrice" bson:"call_for_user_gas_price"`
-	RegisterPeginGasUsed  *entities.Wei `json:"RegisterPeginGasUsed" bson:"register_pegin_gas_used"`
+	RegisterPeginGasUsed  *big.Int      `json:"RegisterPeginGasUsed" bson:"register_pegin_gas_used"`
 	RegisterPeginGasPrice *entities.Wei `json:"RegisterPeginGasPrice" bson:"register_pegin_gas_price"`
 }
 

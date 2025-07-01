@@ -33,9 +33,9 @@ var retainedQuote = quote.RetainedPegoutQuote{
 	LpBtcTxHash:          "0x3c2b1b",
 	RefundPegoutTxHash:   "",
 	BridgeRefundTxHash:   "",
-	BridgePegoutGasUsed:  entities.NewWei(10),
+	BridgePegoutGasUsed:  big.NewInt(10),
 	BridgePegoutGasPrice: entities.NewWei(1),
-	RefundPegoutGasUsed:  entities.NewWei(14),
+	RefundPegoutGasUsed:  big.NewInt(14),
 	RefundPegoutGasPrice: entities.NewWei(2),
 	LpBtcTxFee:           entities.NewWei(0),
 }
@@ -94,16 +94,16 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 		UserRskTxHash:        retainedQuote.UserRskTxHash,
 		LpBtcTxHash:          retainedQuote.LpBtcTxHash,
 		RefundPegoutTxHash:   refundPegoutTxHash,
-		BridgePegoutGasUsed:  entities.NewWei(10),
+		BridgePegoutGasUsed:  big.NewInt(10),
 		BridgePegoutGasPrice: entities.NewWei(1),
-		RefundPegoutGasUsed:  entities.NewWei(14),
+		RefundPegoutGasUsed:  big.NewInt(14),
 		RefundPegoutGasPrice: entities.NewWei(2),
 		LpBtcTxFee:           entities.NewWei(0),
 	}
 	transactionData := blockchain.TransactionReceipt{
 		TransactionHash: refundPegoutTxHash,
 		GasUsed:         big.NewInt(14),
-		GasPrice:        big.NewInt(2),
+		GasPrice:        entities.NewWei(2),
 	}
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, expectedRetained).Return(nil).Once()
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
@@ -113,8 +113,8 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
 		expected := retainedQuote
 		expected.RefundPegoutTxHash = transactionData.TransactionHash
-		expected.RefundPegoutGasUsed = entities.NewWei(transactionData.GasUsed.Int64())
-		expected.RefundPegoutGasPrice = entities.NewWei(transactionData.GasPrice.Int64())
+		expected.RefundPegoutGasUsed = big.NewInt(transactionData.GasUsed.Int64())
+		expected.RefundPegoutGasPrice = transactionData.GasPrice
 		expected.State = quote.PegoutStateRefundPegOutSucceeded
 		require.NoError(t, event.Error)
 		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
@@ -145,7 +145,7 @@ func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	transactionData := blockchain.TransactionReceipt{
 		TransactionHash: refundPegoutTxHash,
 		GasUsed:         big.NewInt(14),
-		GasPrice:        big.NewInt(1),
+		GasPrice:        entities.NewWei(1),
 	}
 	updateError := errors.New("an update error")
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
@@ -157,8 +157,8 @@ func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
 		expected := retainedQuote
 		expected.RefundPegoutTxHash = transactionData.TransactionHash
-		expected.RefundPegoutGasUsed = entities.NewWei(transactionData.GasUsed.Int64())
-		expected.RefundPegoutGasPrice = entities.NewWei(transactionData.GasPrice.Int64())
+		expected.RefundPegoutGasUsed = big.NewInt(transactionData.GasUsed.Int64())
+		expected.RefundPegoutGasPrice = transactionData.GasPrice
 		expected.State = quote.PegoutStateRefundPegOutSucceeded
 		require.NoError(t, event.Error)
 		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())

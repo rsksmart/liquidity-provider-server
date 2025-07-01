@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
@@ -219,6 +218,8 @@ var parsedDeposits = []quote.PegoutDeposit{
 }
 
 var parsedAddress = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+var receiptBlockHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+var receiptBlockNumber = int64(1234567890)
 
 func TestNewLiquidityBridgeContractImpl(t *testing.T) {
 	lbc := rootstock.NewLiquidityBridgeContractImpl(
@@ -717,6 +718,7 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	lbc := rootstock.NewLiquidityBridgeContractImpl(dummyClient, test.AnyAddress, lbcMock, nil, rootstock.RetryParams{}, time.Duration(1))
@@ -740,6 +742,7 @@ func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	signerMock := &mocks.TransactionSignerMock{}
@@ -763,11 +766,15 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(tx, nil).Once()
 		callForUserReturn, err := lbc.CallForUser(txConfig, peginQuote)
-		fmt.Printf("callForUserReturn: %+v\n", callForUserReturn)
 		require.NoError(t, err)
 		assert.Equal(t, tx.Hash().String(), callForUserReturn.TransactionHash)
 		assert.Equal(t, big.NewInt(int64(receipt.GasUsed)), callForUserReturn.GasUsed)
-		assert.Equal(t, receipt.EffectiveGasPrice, callForUserReturn.GasPrice)
+		assert.Equal(t, entities.NewWei(receipt.EffectiveGasPrice.Int64()), callForUserReturn.GasPrice)
+		assert.Equal(t, tx.To().String(), callForUserReturn.To)
+		assert.Equal(t, signerMock.Address().String(), callForUserReturn.From)
+		assert.Equal(t, receipt.CumulativeGasUsed, callForUserReturn.CumulativeGasUsed.Uint64())
+		assert.Equal(t, receipt.BlockHash.String(), callForUserReturn.BlockHash)
+		assert.Equal(t, receipt.BlockNumber.Uint64(), callForUserReturn.BlockNumber)
 		lbcMock.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
@@ -784,8 +791,12 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		require.ErrorContains(t, err, "call for user error: transaction reverted")
 		assert.Equal(t, tx.Hash().String(), callForUserReturn.TransactionHash)
 		assert.Equal(t, big.NewInt(int64(receipt.GasUsed)), callForUserReturn.GasUsed)
-		assert.Equal(t, receipt.EffectiveGasPrice, callForUserReturn.GasPrice)
-		assert.Equal(t, receipt.EffectiveGasPrice, callForUserReturn.GasPrice)
+		assert.Equal(t, entities.NewWei(receipt.EffectiveGasPrice.Int64()), callForUserReturn.GasPrice)
+		assert.Equal(t, tx.To().String(), callForUserReturn.To)
+		assert.Equal(t, signerMock.Address().String(), callForUserReturn.From)
+		assert.Equal(t, receipt.CumulativeGasUsed, callForUserReturn.CumulativeGasUsed.Uint64())
+		assert.Equal(t, receipt.BlockHash.String(), callForUserReturn.BlockHash)
+		assert.Equal(t, receipt.BlockNumber.Uint64(), callForUserReturn.BlockNumber)
 	})
 	t.Run("Error handling (invalid quote)", func(t *testing.T) {
 		invalid := peginQuote
@@ -865,8 +876,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tx.Hash().String(), registerPeginReturn.TransactionHash)
 		assert.Equal(t, big.NewInt(int64(receipt.GasUsed)), registerPeginReturn.GasUsed)
-		assert.Equal(t, receipt.EffectiveGasPrice, registerPeginReturn.GasPrice)
-		assert.Equal(t, receipt.EffectiveGasPrice, registerPeginReturn.GasPrice)
+		assert.Equal(t, entities.NewWei(receipt.EffectiveGasPrice.Int64()), registerPeginReturn.GasPrice)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -893,7 +903,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		lbcMock.AssertExpectations(t)
 		lbcMock.AssertNotCalled(t, "RegisterPegIn")
 		callerMock.AssertExpectations(t)
@@ -909,7 +919,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		require.NotErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		lbcMock.AssertExpectations(t)
 		lbcMock.AssertNotCalled(t, "RegisterPegIn")
 		callerMock.AssertExpectations(t)
@@ -928,7 +938,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		result, err := lbc.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error")
 		assert.Equal(t, "", result.TransactionHash)
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
@@ -948,7 +958,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
 		assert.Equal(t, tx.Hash().String(), registerPeginReturn.TransactionHash)
 		assert.Equal(t, big.NewInt(int64(receipt.GasUsed)), registerPeginReturn.GasUsed)
-		assert.Equal(t, receipt.EffectiveGasPrice, registerPeginReturn.GasPrice)
+		assert.Equal(t, entities.NewWei(receipt.EffectiveGasPrice.Int64()), registerPeginReturn.GasPrice)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -959,7 +969,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 	})
 }
 
@@ -1048,7 +1058,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tx.Hash().String(), result.TransactionHash)
 		assert.Equal(t, big.NewInt(int64(receipt.GasUsed)), result.GasUsed)
-		assert.Equal(t, receipt.EffectiveGasPrice, result.GasPrice)
+		assert.Equal(t, entities.NewWei(receipt.EffectiveGasPrice.Int64()), result.GasPrice)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1065,7 +1075,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Equal(t, "", result.TransactionHash)
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
 		lbcMock.AssertExpectations(t)
 		lbcMock.AssertNotCalled(t, "RefundPegOut")
@@ -1083,7 +1093,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.Error(t, err)
 		assert.Equal(t, "", result.TransactionHash)
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
 		lbcMock.AssertExpectations(t)
 		lbcMock.AssertNotCalled(t, "RefundPegOut")
@@ -1106,7 +1116,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error")
 		assert.Equal(t, "", result.TransactionHash)
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
@@ -1514,7 +1524,10 @@ func prepareTxMocks(
 	receipt := &geth.Receipt{}
 	receipt.TxHash = tx.Hash()
 	receipt.GasUsed = uint64(1000)
+	receipt.CumulativeGasUsed = uint64(1000)
 	receipt.EffectiveGasPrice = big.NewInt(101)
+	receipt.BlockNumber = big.NewInt(receiptBlockNumber)
+	receipt.BlockHash = receiptBlockHash
 	if success == true {
 		receipt.Status = 1
 	}

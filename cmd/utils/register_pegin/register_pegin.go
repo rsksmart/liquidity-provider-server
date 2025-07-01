@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -150,7 +151,7 @@ func ExecuteRegisterPegIn(
 	receiptToReturn := blockchain.TransactionReceipt{
 		TransactionHash: "",
 		GasUsed:         big.NewInt(0),
-		GasPrice:        big.NewInt(0),
+		GasPrice:        entities.NewWei(0),
 	}
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {

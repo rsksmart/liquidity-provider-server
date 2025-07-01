@@ -92,7 +92,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	receiptData := blockchain.TransactionReceipt{
 		TransactionHash: test.AnyHash,
 		GasUsed:         big.NewInt(100),
-		GasPrice:        big.NewInt(10),
+		GasPrice:        entities.NewWei(10),
 	}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}

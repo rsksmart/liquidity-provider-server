@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -131,9 +132,9 @@ type RetainedPegoutQuote struct {
 	LpBtcTxHash          string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash   string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
 	BridgeRefundTxHash   string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
-	BridgePegoutGasUsed  *entities.Wei `json:"BridgePegoutGasUsed" bson:"bridge_pegout_gas_used"`
+	BridgePegoutGasUsed  *big.Int      `json:"BridgePegoutGasUsed" bson:"bridge_pegout_gas_used"`
 	BridgePegoutGasPrice *entities.Wei `json:"BridgePegoutGasPrice" bson:"bridge_pegout_gas_price"`
-	RefundPegoutGasUsed  *entities.Wei `json:"RefundPegoutGasUsed" bson:"refund_pegout_gas_used"`
+	RefundPegoutGasUsed  *big.Int      `json:"RefundPegoutGasUsed" bson:"refund_pegout_gas_used"`
 	RefundPegoutGasPrice *entities.Wei `json:"RefundPegoutGasPrice" bson:"refund_pegout_gas_price"`
 	LpBtcTxFee           *entities.Wei `json:"lpBtcTxFee" bson:"lp_btc_tx_fee"`
 }

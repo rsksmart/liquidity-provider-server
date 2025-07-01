@@ -24,7 +24,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 	result := blockchain.TransactionReceipt{
 		TransactionHash: "0x111213",
 		GasUsed:         big.NewInt(32),
-		GasPrice:        big.NewInt(3),
+		GasPrice:        entities.NewWei(3),
 	}
 
 	var (
@@ -92,7 +92,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -107,7 +107,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -124,7 +124,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, "", result.TransactionHash)
 		assert.Equal(t, result.GasUsed, big.NewInt(0))
-		assert.Equal(t, result.GasPrice, big.NewInt(0))
+		assert.Equal(t, result.GasPrice, entities.NewWei(0))
 		rpc.AssertExpectations(t)
 		lbc.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -133,7 +133,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		emptyResult := blockchain.TransactionReceipt{
 			TransactionHash: "",
 			GasUsed:         big.NewInt(0),
-			GasPrice:        big.NewInt(0),
+			GasPrice:        entities.NewWei(0),
 		}
 		rpc := new(mocks.BtcRpcMock)
 		lbc := new(mocks.LbcMock)

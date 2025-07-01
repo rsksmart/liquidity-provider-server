@@ -61,8 +61,9 @@ func TestNewRskWalletImpl(t *testing.T) {
 func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		const (
-			toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
+			toAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
 			txHash    = "0xa685c956bd47a5c6c9d66997a469f483447fb1366709f7374764ee597aeac266"
+			blockHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 		)
 		var gasLimit uint64 = 21000
 		t.Run("Success", func(t *testing.T) {
@@ -73,7 +74,16 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 			})).Return(nil)
 			clientMock.On("PendingNonceAt", mock.Anything, walletAddress).Return(uint64(54), nil)
 			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).
-				Return(&geth.Receipt{Status: 1}, nil)
+				Return(&geth.Receipt{
+					Status:            1,
+					TxHash:            common.HexToHash(txHash),
+					GasUsed:           1000,
+					CumulativeGasUsed: 1000,
+					BlockNumber:       new(big.Int).SetUint64(10),
+					BlockHash:         common.HexToHash(blockHash),
+					EffectiveGasPrice: big.NewInt(1000),
+				},
+					nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
 			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(89607151182921727),
@@ -82,6 +92,14 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 			}, toAddress)
 			require.NoError(t, err)
 			require.Equal(t, txHash, receiptData.TransactionHash)
+			require.Equal(t, blockHash, receiptData.BlockHash)
+			require.Equal(t, uint64(10), receiptData.BlockNumber)
+			require.Equal(t, entities.NewWei(1000), receiptData.GasPrice)
+			require.Equal(t, big.NewInt(1000), receiptData.GasUsed)
+			require.Equal(t, big.NewInt(1000), receiptData.CumulativeGasUsed)
+			require.Equal(t, walletAddress.String(), receiptData.From)
+			require.Equal(t, toAddress, receiptData.To)
+			require.Equal(t, entities.NewWei(89607151182921727), receiptData.Value)
 		})
 	}
 }
@@ -97,6 +115,8 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{}, test.AnyString)
 			require.ErrorIs(t, err, blockchain.InvalidAddressError)
 			require.Empty(t, receiptData.TransactionHash)
+			require.Equal(t, entities.NewWei(0), receiptData.GasPrice)
+			require.Equal(t, big.NewInt(0), receiptData.GasUsed)
 		})
 		t.Run("Handle error on incomplete config", func(t *testing.T) {
 			const incompleteConfig = "incomplete transaction arguments"
@@ -106,22 +126,22 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 				txReceipt, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Equal(t, "", txReceipt.TransactionHash)
-				require.Equal(t, txReceipt.GasPrice, big.NewInt(0))
-				require.Equal(t, txReceipt.GasUsed, big.NewInt(0))
+				require.Equal(t, entities.NewWei(0), txReceipt.GasPrice)
+				require.Equal(t, big.NewInt(0), txReceipt.GasUsed)
 			})
 			t.Run("Missing value", func(t *testing.T) {
 				txReceipt, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{GasPrice: entities.NewWei(1), GasLimit: &gasLimit}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Equal(t, "", txReceipt.TransactionHash)
-				require.Equal(t, txReceipt.GasPrice, big.NewInt(0))
-				require.Equal(t, txReceipt.GasUsed, big.NewInt(0))
+				require.Equal(t, entities.NewWei(0), txReceipt.GasPrice)
+				require.Equal(t, big.NewInt(0), txReceipt.GasUsed)
 			})
 			t.Run("Missing gasLimit", func(t *testing.T) {
 				txReceipt, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasPrice: entities.NewWei(1)}, toAddress)
 				require.ErrorContains(t, err, incompleteConfig)
 				require.Equal(t, "", txReceipt.TransactionHash)
-				require.Equal(t, txReceipt.GasPrice, big.NewInt(0))
-				require.Equal(t, txReceipt.GasUsed, big.NewInt(0))
+				require.Equal(t, entities.NewWei(0), txReceipt.GasPrice)
+				require.Equal(t, big.NewInt(0), txReceipt.GasUsed)
 			})
 		})
 		t.Run("Handle error on failure when getting nonce", func(t *testing.T) {
@@ -131,8 +151,8 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			txReceipt, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.Error(t, err)
 			require.Equal(t, "", txReceipt.TransactionHash)
-			require.Equal(t, txReceipt.GasPrice, big.NewInt(0))
-			require.Equal(t, txReceipt.GasUsed, big.NewInt(0))
+			require.Equal(t, entities.NewWei(0), txReceipt.GasPrice)
+			require.Equal(t, big.NewInt(0), txReceipt.GasUsed)
 		})
 		t.Run("Handle error on failure when broadcasting tx", func(t *testing.T) {
 			const txHash = "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63"
@@ -143,6 +163,8 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.Error(t, err)
 			require.Equal(t, txHash, receiptData.TransactionHash)
+			require.Equal(t, entities.NewWei(0), receiptData.GasPrice)
+			require.Equal(t, big.NewInt(0), receiptData.GasUsed)
 		})
 		t.Run("Handle error on failure when tx failed", func(t *testing.T) {
 			const txHash = "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63"
@@ -154,6 +176,8 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			receiptData, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
 			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63 transaction failed")
 			require.Equal(t, txHash, receiptData.TransactionHash)
+			require.Equal(t, entities.NewWei(0), receiptData.GasPrice)
+			require.Equal(t, big.NewInt(0), receiptData.GasUsed)
 		})
 	}
 }
