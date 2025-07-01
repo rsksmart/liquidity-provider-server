@@ -47,7 +47,7 @@ func TestNewAssetReportWatcher(t *testing.T) {
 
 		watcherStopChannelField, found := watcherType.FieldByName("watcherStopChannel")
 		require.True(t, found, "watcherStopChannel field should exist")
-		assert.Equal(t, "chan bool", watcherStopChannelField.Type.String())
+		assert.Equal(t, "chan struct {}", watcherStopChannelField.Type.String())
 
 		// Verify watcherStopChannel is properly initialized by checking it's not zero value
 		watcherStopChannelValue := watcherValue.FieldByName("watcherStopChannel")

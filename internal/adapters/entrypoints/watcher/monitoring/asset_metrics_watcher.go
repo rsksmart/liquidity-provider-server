@@ -17,7 +17,7 @@ type AssetReportWatcher struct {
 	appMetrics            *Metrics
 	getAssetReportUseCase GetAssetReportUseCase
 	ticker                watcher.Ticker
-	watcherStopChannel    chan bool
+	watcherStopChannel    chan struct{}
 }
 
 func NewAssetReportWatcher(
@@ -25,7 +25,7 @@ func NewAssetReportWatcher(
 	getAssetReportUseCase GetAssetReportUseCase,
 	ticker watcher.Ticker,
 ) *AssetReportWatcher {
-	watcherStopChannel := make(chan bool, 1)
+	watcherStopChannel := make(chan struct{}, 1)
 	return &AssetReportWatcher{
 		appMetrics:            appMetrics,
 		getAssetReportUseCase: getAssetReportUseCase,
@@ -53,7 +53,7 @@ watcherLoop:
 }
 
 func (watcher *AssetReportWatcher) Shutdown(closeChannel chan<- bool) {
-	watcher.watcherStopChannel <- true
+	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
 	log.Debug("AssetReportWatcher shut down")
 }
