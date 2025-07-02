@@ -1,8 +1,8 @@
 package mempool_space_test
 
 import (
+	"bytes"
 	"encoding/hex"
-	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/mempool_space"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -11,8 +11,11 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/datasets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
+	"iter"
 	"math/big"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 )
@@ -31,11 +34,47 @@ const (
 	testnetTestTxHash          = "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29"
 	flyoverTestnetPegoutTxHash = "9b0c48b79fe40c67f7a2837e6e59a138a16671caf7685dcd831bd3c51b9f6d21"
 	testnetWitnessTestTxHash   = "5cadcbc1ccd91b222346f22c9a9a6fdbf20c9338ec8df0b36097e92d029509ec"
+	txNotPresentInTestnet      = "5badcbc1ccd91b222346f22c9a9a6fdbf20c9338ec8df0b36097e92d029509ec"
 )
 
 const (
 	mainnetBlockFile = "block-696394-mainnet.txt"
 )
+
+type MockRoundTripper struct {
+	responsesIterator func() (int, string, bool)
+	returnError       bool
+}
+
+func (m MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	_, body, ok := m.responsesIterator()
+	if !ok {
+		panic("No more responses available. Update mock.")
+	}
+	var statusCode int
+	if m.returnError {
+		statusCode = http.StatusBadRequest
+	} else {
+		statusCode = http.StatusOK
+	}
+	return &http.Response{
+		StatusCode: statusCode,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+		Request:    req,
+	}, nil
+
+}
+
+func NewMockClient(returnError bool, responses ...string) *http.Client {
+	responsesIterator, _ := iter.Pull2(slices.All(responses))
+	return &http.Client{
+		Transport: MockRoundTripper{
+			responsesIterator: responsesIterator,
+			returnError:       returnError,
+		},
+	}
+}
 
 // nolint:funlen
 func TestMempoolSpaceApi_ValidateAddress(t *testing.T) {
@@ -109,6 +148,10 @@ func TestMempoolSpaceApi_ValidateAddress(t *testing.T) {
 	require.ErrorContains(t, invalid.ValidateAddress(p2shTestnet), unsupportedNetwork)
 	require.ErrorContains(t, invalid.ValidateAddress(p2wpkhMainnet), unsupportedNetwork)
 	require.ErrorContains(t, invalid.ValidateAddress(p2wpkhTestnet), unsupportedNetwork)
+
+	const notSupported = "not-an-address"
+	require.Error(t, testnet.ValidateAddress(notSupported))
+	require.Error(t, mainnet.ValidateAddress(notSupported))
 }
 
 func TestMempoolSpaceApi_DecodeAddress(t *testing.T) {
@@ -158,6 +201,34 @@ func TestMempoolSpaceApi_GetTransactionInfo(t *testing.T) {
 	}, result.Outputs)
 }
 
+func TestMempoolSpaceApi_GetTransactionInfo_NotFound(t *testing.T) {
+	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
+	tx, err := api.GetTransactionInfo(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
+	assert.Empty(t, tx)
+}
+
+func TestMempoolSpaceApi_GetTransactionInfo_NotConfirmed(t *testing.T) {
+	const hash = "a640e0bfcefd78bffddbb1655091b0680fe0a7d3efbb027b431c739ddb3fa40f"
+	client := NewMockClient(
+		false,
+		`{"txid":"a640e0bfcefd78bffddbb1655091b0680fe0a7d3efbb027b431c739ddb3fa40f","version":2,"locktime":0,"vin":[{"txid":"8a69601a42a800f89538f006c306008020c7bb85c827ed0a2a934c7ae7fe411c","vout":1,"prevout":{"scriptpubkey":"5120bd4b90bd9ddaa27b4d3ee6918ce740643ac65b466f9d4ef6b30d62eb82f04c76","scriptpubkey_asm":"OP_PUSHNUM_1 OP_PUSHBYTES_32 bd4b90bd9ddaa27b4d3ee6918ce740643ac65b466f9d4ef6b30d62eb82f04c76","scriptpubkey_type":"v1_p2tr","scriptpubkey_address":"tb1ph49ep0vam238knf7u6gcee6qvsavvk6xd7w5aa4np43whqhsf3mq72q5v7","value":968564},"scriptsig":"","scriptsig_asm":"","witness":["7a35e7c138e5d3e261e8c090272f0e1a38eb1d4645fe5bcf955ddf4a794d042e3e633ebf19f5b23ba94e5a1646756ef21a2401b8d2aa1a821898e6c46ab55246"],"is_coinbase":false,"sequence":4294967293}],"vout":[{"scriptpubkey":"51209619d72fa3f10c39081d4ec23f7e1d88d48f29e1b8e81106725ca624f4de14c9","scriptpubkey_asm":"OP_PUSHNUM_1 OP_PUSHBYTES_32 9619d72fa3f10c39081d4ec23f7e1d88d48f29e1b8e81106725ca624f4de14c9","scriptpubkey_type":"v1_p2tr","scriptpubkey_address":"tb1pjcvawtar7yxrjzqafmpr7lsa3r2g720phr5pzpnjtjnzfax7znysntrdzj","value":8911},{"scriptpubkey":"5120bd4b90bd9ddaa27b4d3ee6918ce740643ac65b466f9d4ef6b30d62eb82f04c76","scriptpubkey_asm":"OP_PUSHNUM_1 OP_PUSHBYTES_32 bd4b90bd9ddaa27b4d3ee6918ce740643ac65b466f9d4ef6b30d62eb82f04c76","scriptpubkey_type":"v1_p2tr","scriptpubkey_address":"tb1ph49ep0vam238knf7u6gcee6qvsavvk6xd7w5aa4np43whqhsf3mq72q5v7","value":959430}],"size":205,"weight":616,"sigops":0,"fee":223,"status":{"confirmed":false}}`,
+		"020000000001011c41fee77a4c932a0aed27c885bbc720800006c306f03895f800a8421a60698a0100000000fdffffff02cf220000000000002251209619d72fa3f10c39081d4ec23f7e1d88d48f29e1b8e81106725ca624f4de14c9c6a30e0000000000225120bd4b90bd9ddaa27b4d3ee6918ce740643ac65b466f9d4ef6b30d62eb82f04c7601407a35e7c138e5d3e261e8c090272f0e1a38eb1d4645fe5bcf955ddf4a794d042e3e633ebf19f5b23ba94e5a1646756ef21a2401b8d2aa1a821898e6c46ab5524600000000",
+	)
+	api := mempool_space.NewMempoolSpaceApi(client, &chaincfg.TestNet3Params, testnetUrl)
+	tx, err := api.GetTransactionInfo(hash)
+	require.NoError(t, err)
+	assert.Equal(t, blockchain.BitcoinTransactionInformation{
+		Hash:          hash,
+		Confirmations: 0,
+		Outputs: map[string][]*entities.Wei{
+			"tb1pjcvawtar7yxrjzqafmpr7lsa3r2g720phr5pzpnjtjnzfax7znysntrdzj": {entities.NewWei(89110000000000)},
+			"tb1ph49ep0vam238knf7u6gcee6qvsavvk6xd7w5aa4np43whqhsf3mq72q5v7": {entities.NewWei(9594300000000000)},
+		},
+		HasWitness: true,
+	}, tx)
+}
+
 func TestMempoolSpaceApi_GetRawTransaction(t *testing.T) {
 	txBytes, err := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
 	require.NoError(t, err)
@@ -185,6 +256,13 @@ func TestMempoolSpaceApi_GetRawTransaction_FromBlock(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedBytes, result)
 	}
+}
+
+func TestMempoolSpaceApi_GetRawTransaction_NotFound(t *testing.T) {
+	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetRawTransaction(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
+	assert.Empty(t, result)
 }
 
 func TestMempoolSpaceApi_GetPartialMerkleTree(t *testing.T) {
@@ -244,6 +322,24 @@ func TestMempoolSpaceApi_GetPartialMerkleTree_MainnetBlock(t *testing.T) {
 	}
 }
 
+func TestMempoolSpaceApi_GetPartialMerkleTree_NotFound(t *testing.T) {
+	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetPartialMerkleTree(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
+	assert.Empty(t, result)
+}
+
+func TestMempoolSpaceApi_GetPartialMerkleTree_NotConfirmed(t *testing.T) {
+	client := NewMockClient(
+		false,
+		`{"txid":"9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29","version":2,"locktime":2582723,"vin":[{"txid":"2e4428f122341d770a9074b3f62040f2d48b78a253ad0c46eabaf3732ac2f7eb","vout":0,"prevout":{"scriptpubkey":"76a91420d0cd81928e083da7e9ee690987df9f64bea9b088ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 20d0cd81928e083da7e9ee690987df9f64bea9b0 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"miWU44anwP9mr3X4w6WTEAGuw6vkQwZQr1","value":489200},"scriptsig":"473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","scriptsig_asm":"OP_PUSHBYTES_71 3044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d01 OP_PUSHBYTES_33 038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","is_coinbase":false,"sequence":4294967293},{"txid":"f548a9fff50f98aae908594b5f0cd1a8ef57abf7a744a64b0f855b21389ff0b5","vout":0,"prevout":{"scriptpubkey":"76a91410c5469550e5b73b4c144e0b4bcd2e65fdeece3488ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 10c5469550e5b73b4c144e0b4bcd2e65fdeece34 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mh3dS5cYBfLGLvkGGc1LrFj7Qj7DAsccdT","value":500000},"scriptsig":"47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","scriptsig_asm":"OP_PUSHBYTES_71 304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd801 OP_PUSHBYTES_33 02498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","is_coinbase":false,"sequence":4294967293}],"vout":[{"scriptpubkey":"76a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 73cce22e78ec61cd54a6438ca1210b88561ebcdd OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mr5FSft4PQvoWbf9Sf5iQXbw1u445iNksp","value":488600},{"scriptpubkey":"76a9142c81478132b5dda64ffc484a0d225096c4b22ad588ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 2c81478132b5dda64ffc484a0d225096c4b22ad5 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5","value":500000}],"size":372,"weight":1488,"sigops":8,"fee":600,"status":{"confirmed":false}}`,
+	)
+	api := mempool_space.NewMempoolSpaceApi(client, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetPartialMerkleTree(testnetTestTxHash)
+	require.ErrorContains(t, err, "transaction not confirmed")
+	assert.Empty(t, result)
+}
+
 func TestMempoolSpaceApi_GetHeight(t *testing.T) {
 	httpClient := http.DefaultClient
 	mainnet := mempool_space.NewMempoolSpaceApi(httpClient, &chaincfg.MainNetParams, mainnetUrl)
@@ -282,11 +378,19 @@ func TestMempoolSpaceApi_BuildMerkleBranch(t *testing.T) {
 }
 
 func TestMempoolSpaceApi_BuildMerkleBranch_TxNotFound(t *testing.T) {
-	const tx = "ad8911176857dff8244f75f7c95782b3495048ad75632f0a58c8e942cefb223"
 	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
-	branch, err := api.BuildMerkleBranch(tx)
-	require.ErrorContains(t, err, fmt.Sprintf("transaction %s not found", tx))
+	branch, err := api.BuildMerkleBranch(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
 	assert.Equal(t, blockchain.MerkleBranch{}, branch)
+}
+
+func TestMempoolSpaceApi_BuildMerkleBranch_NotConfirmed(t *testing.T) {
+	const unconfirmedMsg = "Transaction not found or is unconfirmed\""
+	client := NewMockClient(true, unconfirmedMsg)
+	api := mempool_space.NewMempoolSpaceApi(client, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.BuildMerkleBranch(testnetTestTxHash)
+	require.ErrorContains(t, err, unconfirmedMsg)
+	assert.Empty(t, result)
 }
 
 func TestMempoolSpaceApi_GetTransactionBlockInfo(t *testing.T) {
@@ -296,6 +400,24 @@ func TestMempoolSpaceApi_GetTransactionBlockInfo(t *testing.T) {
 	assert.Equal(t, [32]byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x1e, 0x94, 0xd8, 0x5c, 0x3e, 0x73, 0x6a, 0xa4, 0x7, 0x1d, 0x36, 0xd2, 0x65, 0x47, 0x71, 0x38, 0x20, 0xa2, 0x7a, 0xf9, 0xed, 0xbe, 0x97, 0x48, 0x9c, 0x69, 0x6f}, result.Hash)
 	assert.Equal(t, big.NewInt(2582756), result.Height)
 	assert.Equal(t, time.Unix(1710931198, 0), result.Time)
+}
+
+func TestMempoolSpaceApi_GetTransactionBlockInfo_NotFound(t *testing.T) {
+	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetTransactionBlockInfo(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
+	assert.Empty(t, result)
+}
+
+func TestMempoolSpaceApi_GetTransactionBlockInfo_NotConfirmed(t *testing.T) {
+	client := NewMockClient(
+		false,
+		`{"txid":"9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29","version":2,"locktime":2582723,"vin":[{"txid":"2e4428f122341d770a9074b3f62040f2d48b78a253ad0c46eabaf3732ac2f7eb","vout":0,"prevout":{"scriptpubkey":"76a91420d0cd81928e083da7e9ee690987df9f64bea9b088ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 20d0cd81928e083da7e9ee690987df9f64bea9b0 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"miWU44anwP9mr3X4w6WTEAGuw6vkQwZQr1","value":489200},"scriptsig":"473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","scriptsig_asm":"OP_PUSHBYTES_71 3044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d01 OP_PUSHBYTES_33 038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","is_coinbase":false,"sequence":4294967293},{"txid":"f548a9fff50f98aae908594b5f0cd1a8ef57abf7a744a64b0f855b21389ff0b5","vout":0,"prevout":{"scriptpubkey":"76a91410c5469550e5b73b4c144e0b4bcd2e65fdeece3488ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 10c5469550e5b73b4c144e0b4bcd2e65fdeece34 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mh3dS5cYBfLGLvkGGc1LrFj7Qj7DAsccdT","value":500000},"scriptsig":"47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","scriptsig_asm":"OP_PUSHBYTES_71 304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd801 OP_PUSHBYTES_33 02498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","is_coinbase":false,"sequence":4294967293}],"vout":[{"scriptpubkey":"76a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 73cce22e78ec61cd54a6438ca1210b88561ebcdd OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mr5FSft4PQvoWbf9Sf5iQXbw1u445iNksp","value":488600},{"scriptpubkey":"76a9142c81478132b5dda64ffc484a0d225096c4b22ad588ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 2c81478132b5dda64ffc484a0d225096c4b22ad5 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5","value":500000}],"size":372,"weight":1488,"sigops":8,"fee":600,"status":{"confirmed":false}}`,
+	)
+	api := mempool_space.NewMempoolSpaceApi(client, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetTransactionBlockInfo(testnetTestTxHash)
+	require.ErrorContains(t, err, "transaction not confirmed")
+	assert.Empty(t, result)
 }
 
 func TestMempoolSpaceApi_GetCoinbaseInformation(t *testing.T) {
@@ -321,6 +443,24 @@ func TestMempoolSpaceApi_GetCoinbaseInformation(t *testing.T) {
 		WitnessMerkleRoot:    witnessMerkleRoot,
 		WitnessReservedValue: [32]byte{},
 	}, coinbaseInfo)
+}
+
+func TestMempoolSpaceApi_GetCoinbaseInformation_NotFound(t *testing.T) {
+	api := mempool_space.NewMempoolSpaceApi(http.DefaultClient, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetCoinbaseInformation(txNotPresentInTestnet)
+	require.ErrorContains(t, err, "Transaction not found")
+	assert.Empty(t, result)
+}
+
+func TestMempoolSpaceApi_GetCoinbaseInformation_NotConfirmed(t *testing.T) {
+	client := NewMockClient(
+		false,
+		`{"txid":"9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29","version":2,"locktime":2582723,"vin":[{"txid":"2e4428f122341d770a9074b3f62040f2d48b78a253ad0c46eabaf3732ac2f7eb","vout":0,"prevout":{"scriptpubkey":"76a91420d0cd81928e083da7e9ee690987df9f64bea9b088ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 20d0cd81928e083da7e9ee690987df9f64bea9b0 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"miWU44anwP9mr3X4w6WTEAGuw6vkQwZQr1","value":489200},"scriptsig":"473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","scriptsig_asm":"OP_PUSHBYTES_71 3044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d01 OP_PUSHBYTES_33 038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91e","is_coinbase":false,"sequence":4294967293},{"txid":"f548a9fff50f98aae908594b5f0cd1a8ef57abf7a744a64b0f855b21389ff0b5","vout":0,"prevout":{"scriptpubkey":"76a91410c5469550e5b73b4c144e0b4bcd2e65fdeece3488ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 10c5469550e5b73b4c144e0b4bcd2e65fdeece34 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mh3dS5cYBfLGLvkGGc1LrFj7Qj7DAsccdT","value":500000},"scriptsig":"47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","scriptsig_asm":"OP_PUSHBYTES_71 304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd801 OP_PUSHBYTES_33 02498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9","is_coinbase":false,"sequence":4294967293}],"vout":[{"scriptpubkey":"76a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 73cce22e78ec61cd54a6438ca1210b88561ebcdd OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mr5FSft4PQvoWbf9Sf5iQXbw1u445iNksp","value":488600},{"scriptpubkey":"76a9142c81478132b5dda64ffc484a0d225096c4b22ad588ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 2c81478132b5dda64ffc484a0d225096c4b22ad5 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"mjaGtyj74LYn7gApr17prZxDPDnfuUnRa5","value":500000}],"size":372,"weight":1488,"sigops":8,"fee":600,"status":{"confirmed":false}}`,
+	)
+	api := mempool_space.NewMempoolSpaceApi(client, &chaincfg.TestNet3Params, testnetUrl)
+	result, err := api.GetCoinbaseInformation(testnetTestTxHash)
+	require.ErrorContains(t, err, "transaction not confirmed")
+	assert.Empty(t, result)
 }
 
 func TestMempoolSpaceApi_NetworkName(t *testing.T) {

@@ -20,9 +20,17 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 )
+
+var BtcTxNotConfirmedError = errors.New("transaction not confirmed")
+var unsupportedOutputs = []txscript.ScriptClass{
+	txscript.NonStandardTy,
+	txscript.MultiSigTy,
+	txscript.WitnessUnknownTy,
+}
 
 type MempoolSpaceApi struct {
 	url    string
@@ -63,6 +71,8 @@ func (api *MempoolSpaceApi) ValidateAddress(address string) error {
 	defer closeBody(res)
 	if err != nil {
 		return fmt.Errorf(errorTemplate, err)
+	} else if err = handleErrorResponse(res); err != nil {
+		return fmt.Errorf(errorTemplate, err)
 	}
 
 	var result struct {
@@ -96,22 +106,10 @@ func (api *MempoolSpaceApi) GetTransactionInfo(hash string) (blockchain.BitcoinT
 	}
 	const transactionInfoError = "error getting transaction info: %w"
 
-	ctx := context.Background()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, api.url+"/tx/"+hash, nil)
+	transactionInfoResult, err := api.getTransactionInfo(hash)
 	if err != nil {
 		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(transactionInfoError, err)
 	}
-	res, err := api.client.Do(req)
-	defer closeBody(res)
-	if err != nil {
-		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(transactionInfoError, err)
-	}
-	var transactionInfoResult transactionInfoApiResponse
-	err = json.NewDecoder(res.Body).Decode(&transactionInfoResult)
-	if err != nil {
-		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(transactionInfoError, err)
-	}
-
 	txBytes, err := api.getRawTransaction(hash, true)
 	if err != nil {
 		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(transactionInfoError, err)
@@ -124,6 +122,15 @@ func (api *MempoolSpaceApi) GetTransactionInfo(hash string) (blockchain.BitcoinT
 	outputs, err := api.buildTransactionOutputs(tx)
 	if err != nil {
 		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(transactionInfoError, err)
+	}
+
+	if !transactionInfoResult.Status.Confirmed {
+		return blockchain.BitcoinTransactionInformation{
+			Hash:          hash,
+			Confirmations: 0,
+			Outputs:       outputs,
+			HasWitness:    tx.HasWitness(),
+		}, nil
 	}
 
 	height, err := api.GetHeight()
@@ -139,6 +146,27 @@ func (api *MempoolSpaceApi) GetTransactionInfo(hash string) (blockchain.BitcoinT
 	}, nil
 }
 
+func (api *MempoolSpaceApi) getTransactionInfo(hash string) (transactionInfoApiResponse, error) {
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, api.url+"/tx/"+hash, nil)
+	if err != nil {
+		return transactionInfoApiResponse{}, err
+	}
+	res, err := api.client.Do(req)
+	defer closeBody(res)
+	if err != nil {
+		return transactionInfoApiResponse{}, err
+	} else if err = handleErrorResponse(res); err != nil {
+		return transactionInfoApiResponse{}, err
+	}
+	var transactionInfoResult transactionInfoApiResponse
+	err = json.NewDecoder(res.Body).Decode(&transactionInfoResult)
+	if err != nil {
+		return transactionInfoApiResponse{}, err
+	}
+	return transactionInfoResult, nil
+}
+
 func (api *MempoolSpaceApi) buildTransactionOutputs(tx *btcutil.Tx) (map[string][]*entities.Wei, error) {
 	var addresses []btcutil.Address
 	var scriptType txscript.ScriptClass
@@ -146,16 +174,16 @@ func (api *MempoolSpaceApi) buildTransactionOutputs(tx *btcutil.Tx) (map[string]
 	var address string
 	var ok bool
 	var err error
-	outputs := make(map[string][]*entities.Wei, len(tx.MsgTx().TxOut))
+	outputs := make(map[string][]*entities.Wei)
 	for _, out := range tx.MsgTx().TxOut {
 		scriptType, addresses, _, err = txscript.ExtractPkScriptAddrs(out.PkScript, api.config)
 		if err != nil {
-			return make(map[string][]*entities.Wei, 0), fmt.Errorf("error building transaction outputs: %w", err)
-		} else if len(addresses) == 0 && scriptType != txscript.NullDataTy {
-			return make(map[string][]*entities.Wei, 0), errors.New("error getting transaction info: no addresses found in output script")
+			return make(map[string][]*entities.Wei), fmt.Errorf("error building transaction outputs: %w", err)
 		} else if scriptType == txscript.NullDataTy {
 			outputs[""] = []*entities.Wei{entities.NewWei(0)}
-		} else if scriptType != txscript.MultiSigTy && scriptType != txscript.NonStandardTy {
+		} else if len(addresses) == 0 || slices.Contains(unsupportedOutputs, scriptType) {
+			return make(map[string][]*entities.Wei), errors.New("error getting transaction info: output script not supported")
+		} else {
 			address = addresses[0].EncodeAddress()
 			amounts, ok = outputs[address]
 			if !ok {
@@ -184,6 +212,8 @@ func (api *MempoolSpaceApi) getRawTransaction(hash string, includeWitness bool) 
 	res, err := api.client.Do(req)
 	defer closeBody(res)
 	if err != nil {
+		return []byte{}, fmt.Errorf(rawTransactionError, err)
+	} else if err = handleErrorResponse(res); err != nil {
 		return []byte{}, fmt.Errorf(rawTransactionError, err)
 	}
 	data, err := io.ReadAll(res.Body)
@@ -248,6 +278,8 @@ func (api *MempoolSpaceApi) GetHeight() (*big.Int, error) {
 	defer closeBody(res)
 	if err != nil {
 		return nil, fmt.Errorf(getHeightError, err)
+	} else if err = handleErrorResponse(res); err != nil {
+		return nil, fmt.Errorf(getHeightError, err)
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -274,8 +306,8 @@ func (api *MempoolSpaceApi) BuildMerkleBranch(txHash string) (blockchain.MerkleB
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.MerkleBranch{}, fmt.Errorf(merkleBranchError, err)
-	} else if res.StatusCode == http.StatusBadRequest {
-		return blockchain.MerkleBranch{}, fmt.Errorf("error building merkle branch: transaction %s not found", txHash)
+	} else if err = handleErrorResponse(res); err != nil {
+		return blockchain.MerkleBranch{}, fmt.Errorf(merkleBranchError, err)
 	}
 	var hashBytes []byte
 	var merkleProof struct {
@@ -307,7 +339,14 @@ func (api *MempoolSpaceApi) GetTransactionBlockInfo(txHash string) (blockchain.B
 	}
 	const getTransactionBlockError = "error getting block of the transaction %s: %w"
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, api.url+"/tx/"+txHash, nil)
+	transactionInfoResult, err := api.getTransactionInfo(txHash)
+	if err != nil {
+		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
+	} else if !transactionInfoResult.Status.Confirmed {
+		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, BtcTxNotConfirmedError)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, api.url+"/block/"+transactionInfoResult.Status.BlockHash, nil)
 	if err != nil {
 		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
 	}
@@ -315,22 +354,7 @@ func (api *MempoolSpaceApi) GetTransactionBlockInfo(txHash string) (blockchain.B
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
-	}
-	var transactionInfoResult transactionInfoApiResponse
-	err = json.NewDecoder(res.Body).Decode(&transactionInfoResult)
-	if err != nil {
-		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
-	} else if !transactionInfoResult.Status.Confirmed {
-		return blockchain.BitcoinBlockInformation{}, fmt.Errorf("error getting block of the transaction %s: transaction not confirmet", txHash)
-	}
-
-	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, api.url+"/block/"+transactionInfoResult.Status.BlockHash, nil)
-	if err != nil {
-		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
-	}
-	res, err = api.client.Do(req)
-	defer closeBody(res)
-	if err != nil {
+	} else if err = handleErrorResponse(res); err != nil {
 		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
 	}
 	var blockInfo struct {
@@ -420,6 +444,8 @@ func (api *MempoolSpaceApi) GetBlockchainInfo() (blockchain.BitcoinBlockchainInf
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
+	} else if err = handleErrorResponse(res); err != nil {
+		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -442,6 +468,8 @@ func (api *MempoolSpaceApi) getBlock(blockHash string) (*btcutil.Block, error) {
 	res, err := api.client.Do(req)
 	defer closeBody(res)
 	if err != nil {
+		return nil, err
+	} else if err = handleErrorResponse(res); err != nil {
 		return nil, err
 	}
 	data, err := io.ReadAll(res.Body)
@@ -468,5 +496,21 @@ func closeBody(res *http.Response) {
 	}
 	if err := res.Body.Close(); err != nil {
 		log.Error("Error closing body in MempoolSpace API:", err)
+	}
+}
+
+func handleErrorResponse(res *http.Response) error {
+	if !(res.StatusCode >= 400 && res.StatusCode <= 599) {
+		return nil
+	}
+
+	message, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode < 500 {
+		return fmt.Errorf("server error response (%d) from MempoolSpace API: %s", res.StatusCode, message)
+	} else {
+		return fmt.Errorf("client error response (%d) from MempoolSpace API: %s", res.StatusCode, message)
 	}
 }
