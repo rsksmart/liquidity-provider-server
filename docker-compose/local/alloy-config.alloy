@@ -1,0 +1,63 @@
+// File discovery component to find LPS log files
+local.file_match "lps_logs" {
+  path_targets = [
+    {
+      __path__ = "/home/lps/logs/*.log",
+    },
+  ]
+}
+
+// Source component to read log files
+loki.source.file "lps" {
+  targets    = local.file_match.lps_logs.targets
+  forward_to = [loki.process.lps.receiver]
+}
+
+// Processing component for log transformation and labeling
+loki.process "lps" {
+  // Add static labels for identification
+  stage.static_labels {
+    values = {
+      job         = "liquidity-provider-server",
+      service     = "lps",
+      environment = "local",
+    }
+  }
+
+  // Extract log level from logrus format
+  stage.regex {
+    expression = "level=(?P<level>\\w+)"
+  }
+
+  // Extract timestamp from logrus format
+  stage.regex {
+    expression = "time=\"(?P<timestamp>[^\"]+)\""
+  }
+
+  // Set timestamp if extracted
+  stage.timestamp {
+    source = "timestamp"
+    format = "2006-01-02T15:04:05Z07:00"
+  }
+
+  // Add extracted level as a label
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  forward_to = [loki.write.lps.receiver]
+}
+
+// Write component to send logs to Loki
+loki.write "lps" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// Enable live debugging for real-time log viewing in Alloy UI
+livedebugging {
+  enabled = true
+} 
