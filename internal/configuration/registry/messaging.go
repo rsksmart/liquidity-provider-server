@@ -17,9 +17,9 @@ type Messaging struct {
 	BtcExtraRpc []blockchain.BitcoinNetwork
 }
 
-type ExternalClients struct {
-	RskExternalClients []*rootstock.RskClient
-	BtcExternalClients []*bitcoin.Connection
+type ExternalRpc struct {
+	RskExternalRpc []blockchain.RootstockRpcServer
+	BtcExternalRpc []blockchain.BitcoinNetwork
 }
 
 func NewMessagingRegistry(
@@ -27,16 +27,8 @@ func NewMessagingRegistry(
 	env environment.Environment,
 	rskClient *rootstock.RskClient,
 	btcConn *bitcoin.Connection,
-	externalClients ExternalClients,
+	externalRpc ExternalRpc,
 ) *Messaging {
-	rskExtraRpcs := make([]blockchain.RootstockRpcServer, len(externalClients.RskExternalClients))
-	for i, client := range externalClients.RskExternalClients {
-		rskExtraRpcs[i] = rootstock.NewRskjRpcServer(client, rootstock.DefaultRetryParams)
-	}
-	btcExtraRpcs := make([]blockchain.BitcoinNetwork, len(externalClients.BtcExternalClients))
-	for i, client := range externalClients.BtcExternalClients {
-		btcExtraRpcs[i] = bitcoin.NewBitcoindRpc(client)
-	}
 	return &Messaging{
 		Rpc: blockchain.Rpc{
 			Btc: bitcoin.NewBitcoindRpc(btcConn),
@@ -44,7 +36,7 @@ func NewMessagingRegistry(
 		},
 		EventBus:    NewEventBus(),
 		AlertSender: NewAlertSender(ctx, env),
-		RskExtraRpc: rskExtraRpcs,
-		BtcExtraRpc: btcExtraRpcs,
+		RskExtraRpc: externalRpc.RskExternalRpc,
+		BtcExtraRpc: externalRpc.BtcExternalRpc,
 	}
 }

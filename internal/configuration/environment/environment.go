@@ -55,12 +55,17 @@ type RskEnv struct {
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 }
 
+type BtcExtraSource struct {
+	Format string `json:"format" validate:"required,oneof=rpc,mempool"`
+	Url    string `json:"url" validate:"required,url"`
+}
+
 type BtcEnv struct {
-	Network         string   `env:"BTC_NETWORK" validate:"required"`
-	Username        string   `env:"BTC_USERNAME" validate:"required"`
-	Password        string   `env:"BTC_PASSWORD" validate:"required"`
-	Endpoint        string   `env:"BTC_ENDPOINT" validate:"required"`
-	BtcExtraSources []string `env:"BTC_EXTRA_SOURCES"`
+	Network         string           `env:"BTC_NETWORK" validate:"required"`
+	Username        string           `env:"BTC_USERNAME" validate:"required"`
+	Password        string           `env:"BTC_PASSWORD" validate:"required"`
+	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
+	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
 }
 
 type TimeoutEnv struct {

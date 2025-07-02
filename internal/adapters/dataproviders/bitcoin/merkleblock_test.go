@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"slices"
@@ -16,7 +17,7 @@ func TestNewMerkleBlock_Witness(t *testing.T) {
 	t.Run("Should build the merkle block for testnet", func(t *testing.T) {
 		txHash, err := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
 		require.NoError(t, err)
-		block := getTestBlock(t, testnetBlockFile)
+		block := test.GetBitcoinTestBlock(t, testFilePath+testnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
 		testnetMsg, testnetIndices := bitcoin.NewMerkleBlock(block, filter, true)
@@ -35,7 +36,7 @@ func TestNewMerkleBlock_Witness(t *testing.T) {
 	t.Run("Should build the merkle block for mainnet", func(t *testing.T) {
 		txHash, err := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
 		require.NoError(t, err)
-		block := getTestBlock(t, mainnetBlockFile)
+		block := test.GetBitcoinTestBlock(t, testFilePath+mainnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
 		mainnetMsg, mainnetIndices := bitcoin.NewMerkleBlock(block, filter, true)
@@ -58,7 +59,7 @@ func TestNewMerkleBlock_NoWitness(t *testing.T) {
 	t.Run("Should build the merkle block for testnet", func(t *testing.T) {
 		txHash, err := chainhash.NewHashFromStr("06ad9b57a21d72c11d9aaf45fdbe61a2f8e0dae50712fe46ae8ebd93b5b7c91c")
 		require.NoError(t, err)
-		block := getTestBlock(t, testnetBlockFile)
+		block := test.GetBitcoinTestBlock(t, testFilePath+testnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
 		testnetMsg, testnetIndices := bitcoin.NewMerkleBlock(block, filter, false)
@@ -77,7 +78,7 @@ func TestNewMerkleBlock_NoWitness(t *testing.T) {
 	t.Run("Should build the merkle block for mainnet", func(t *testing.T) {
 		txHash, err := chainhash.NewHashFromStr("7c39408eeda72542b182ddb4bc737f2f4a7cff9924a14d0426796e64df850b81")
 		require.NoError(t, err)
-		block := getTestBlock(t, mainnetBlockFile)
+		block := test.GetBitcoinTestBlock(t, testFilePath+mainnetBlockFile)
 		filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 		filter.AddHash(txHash)
 		mainnetMsg, mainnetIndices := bitcoin.NewMerkleBlock(block, filter, false)

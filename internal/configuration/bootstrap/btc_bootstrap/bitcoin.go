@@ -1,4 +1,4 @@
-package bootstrap
+package btc_bootstrap
 
 import (
 	"errors"
@@ -8,8 +8,11 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/mempool_space"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 const (
@@ -51,21 +54,25 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 	return conn, nil
 }
 
-func ExternalBitcoinClients(env environment.Environment) ([]*bitcoin.Connection, error) {
+func ExternalBitcoinSources(env environment.Environment) ([]blockchain.BitcoinNetwork, error) {
 	var createdClient CreatedClient
-	clients := make([]*bitcoin.Connection, len(env.Btc.BtcExtraSources))
+	sources := make([]blockchain.BitcoinNetwork, 0)
 	params, err := env.Btc.GetNetworkParams()
 	if err != nil {
 		return nil, err
 	}
-	for i, source := range env.Btc.BtcExtraSources {
-		createdClient, err = createBitcoinClient(params, "", "", source)
-		if err != nil {
-			return nil, fmt.Errorf("error creating external bitcoin client for %s: %w", source, err)
+	for _, source := range env.Btc.BtcExtraSources {
+		if source.Format == "rpc" {
+			if createdClient, err = createBitcoinClient(params, "", "", source.Url); err != nil {
+				return nil, fmt.Errorf("error creating external btc_bootstrap client for %s: %w", source, err)
+			}
+			connection := bitcoin.NewConnection(createdClient.Params, createdClient.Client)
+			sources = append(sources, bitcoin.NewBitcoindRpc(connection))
+		} else if source.Format == "mempool" {
+			sources = append(sources, mempool_space.NewMempoolSpaceApi(http.DefaultClient, params, source.Url))
 		}
-		clients[i] = bitcoin.NewConnection(createdClient.Params, createdClient.Client)
 	}
-	return clients, nil
+	return sources, nil
 }
 
 func createBitcoinClient(networkParams *chaincfg.Params, user, password, host string) (CreatedClient, error) {

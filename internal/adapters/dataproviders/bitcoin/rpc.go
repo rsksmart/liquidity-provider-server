@@ -122,7 +122,7 @@ func (rpc *bitcoindRpc) GetPartialMerkleTree(hash string) ([]byte, error) {
 	}
 
 	block := btcutil.NewBlock(rawBlock)
-	return serializePartialMerkleTree(parsedTxHash, block)
+	return SerializePartialMerkleTree(parsedTxHash, block)
 }
 
 func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
@@ -214,7 +214,7 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 		}
 		txs = append(txs, btcutil.NewTx(tx))
 	}
-	pmt, err := serializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
+	pmt, err := SerializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
 	if err != nil {
 		return blockchain.BtcCoinbaseTransactionInformation{}, err
 	}

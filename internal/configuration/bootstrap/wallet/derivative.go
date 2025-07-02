@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/btc_bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -37,7 +38,7 @@ func NewDerivativeFactory(args FactoryCreationArgs) (AbstractFactory, error) {
 }
 
 func (factory *DerivativeWalletFactory) BitcoinMonitoringWallet(walletId string) (blockchain.BitcoinWallet, error) {
-	walletConnection, err := bootstrap.BitcoinWallet(factory.env.Btc, walletId)
+	walletConnection, err := btc_bootstrap.BitcoinWallet(factory.env.Btc, walletId)
 	if err != nil {
 		return nil, fmt.Errorf("error creating BTC monitoring connection: %w", err)
 	}
@@ -50,7 +51,7 @@ func (factory *DerivativeWalletFactory) BitcoinMonitoringWallet(walletId string)
 }
 
 func (factory *DerivativeWalletFactory) BitcoinPaymentWallet(walletId string) (blockchain.BitcoinWallet, error) {
-	walletConnection, err := bootstrap.BitcoinWallet(factory.env.Btc, walletId)
+	walletConnection, err := btc_bootstrap.BitcoinWallet(factory.env.Btc, walletId)
 	if err != nil {
 		return nil, fmt.Errorf("error creating BTC payment connection: %w", err)
 	}

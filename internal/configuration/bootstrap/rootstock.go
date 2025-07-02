@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -82,15 +83,15 @@ func RootstockAccount(
 	})
 }
 
-func ExternalRskClients(ctx context.Context, env environment.Environment) ([]*rootstock.RskClient, error) {
-	clients := make([]*rootstock.RskClient, len(env.Rsk.RskExtraSources))
-	for i, endpoint := range env.Rsk.RskExtraSources {
+func ExternalRskSources(ctx context.Context, env environment.Environment) ([]blockchain.RootstockRpcServer, error) {
+	sources := make([]blockchain.RootstockRpcServer, 0)
+	for _, endpoint := range env.Rsk.RskExtraSources {
 		client, err := createClient(ctx, endpoint, env.Rsk.ChainId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create RSK client for endpoint %s: %w", endpoint, err)
 		}
 		log.Info("Connected to external RSK node at ", endpoint)
-		clients[i] = client
+		sources = append(sources, rootstock.NewRskjRpcServer(client, rootstock.DefaultRetryParams))
 	}
-	return clients, nil
+	return sources, nil
 }
