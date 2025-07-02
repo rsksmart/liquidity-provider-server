@@ -22,7 +22,7 @@ func setUpEnv(t *testing.T) {
 		"CAPTCHA_SITE_KEY":                     "site",
 		"PEGOUT_DEPOSIT_CACHE_START_BLOCK":     "1",
 		"RSK_EXTRA_SOURCES":                    "test1,test2",
-		"BTC_EXTRA_SOURCES":                    "test3,test4",
+		"BTC_EXTRA_SOURCES":                    `[{"format": "rpc", "url": "test3.com"}, {"format": "mempool", "url": "test4.com"}]`,
 		"ECLIPSE_RSK_TOLERANCE_THRESHOLD":      "5",
 		"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK":    "1000",
 		"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL": "500",

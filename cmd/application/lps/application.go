@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/btc_bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
@@ -51,7 +52,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	if err != nil {
 		log.Fatal("Error creating wallet factory: ", err)
 	}
-	btcConnection, err := bootstrap.Bitcoin(env.Btc)
+	btcConnection, err := btc_bootstrap.Bitcoin(env.Btc)
 	if err != nil {
 		log.Fatal("Error connecting to the bitcoin node: ", err)
 	}
@@ -61,7 +62,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal("Error connecting to MongoDB:", err)
 	}
 	log.Debug("Connected to MongoDB")
-	externalClients, err := createExternalClients(initCtx, env)
+	externalClients, err := createExternalRpc(initCtx, env)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,23 +98,23 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 }
 
-func createExternalClients(ctx context.Context, env environment.Environment) (registry.ExternalClients, error) {
-	externalRskClients, err := bootstrap.ExternalRskClients(ctx, env)
+func createExternalRpc(ctx context.Context, env environment.Environment) (registry.ExternalRpc, error) {
+	externalRskSources, err := bootstrap.ExternalRskSources(ctx, env)
 	if err != nil {
-		return registry.ExternalClients{}, fmt.Errorf("error connecting to external RSK clients: %w", err)
-	} else if len(externalRskClients) == 0 {
+		return registry.ExternalRpc{}, fmt.Errorf("error connecting to external RSK clients: %w", err)
+	} else if len(externalRskSources) == 0 {
 		log.Warn("No external RSK clients configured")
 	}
 
-	externalBtcClients, err := bootstrap.ExternalBitcoinClients(env)
+	externalBtcSources, err := btc_bootstrap.ExternalBitcoinSources(env)
 	if err != nil {
-		return registry.ExternalClients{}, fmt.Errorf("error connecting to external BTC clients: %w", err)
-	} else if len(externalBtcClients) == 0 {
-		log.Warn("No external BTC clients configured")
+		return registry.ExternalRpc{}, fmt.Errorf("error connecting to external BTC clients: %w", err)
+	} else if len(externalBtcSources) == 0 {
+		log.Warn("No external BTC sources configured")
 	}
-	return registry.ExternalClients{
-		RskExternalClients: externalRskClients,
-		BtcExternalClients: externalBtcClients,
+	return registry.ExternalRpc{
+		RskExternalRpc: externalRskSources,
+		BtcExternalRpc: externalBtcSources,
 	}, nil
 }
 
