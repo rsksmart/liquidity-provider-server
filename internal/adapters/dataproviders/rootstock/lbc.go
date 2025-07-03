@@ -355,7 +355,7 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		From:              "",
 		To:                "",
 		Value:             entities.NewWei(0),
-		GasUsed:           big.NewInt(0),
+		GasUsed:           new(big.Int).SetInt64(0),
 		GasPrice:          entities.NewWei(0),
 		CumulativeGasUsed: big.NewInt(0),
 	}
@@ -393,6 +393,7 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		callForUserReturn.BlockHash = receipt.BlockHash.String()
 		callForUserReturn.BlockNumber = receipt.BlockNumber.Uint64()
 		callForUserReturn.From = lbc.signer.Address().String()
+		callForUserReturn.Value = txConfig.Value
 		callForUserReturn.To = tx.To().String()
 		return callForUserReturn, fmt.Errorf("call for user error: transaction reverted (%s)", callForUserReturn.TransactionHash)
 	}
@@ -404,6 +405,7 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 	callForUserReturn.BlockNumber = receipt.BlockNumber.Uint64()
 	callForUserReturn.From = lbc.signer.Address().String()
 	callForUserReturn.To = tx.To().String()
+	callForUserReturn.Value = txConfig.Value
 	return callForUserReturn, nil
 }
 

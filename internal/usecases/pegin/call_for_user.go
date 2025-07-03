@@ -151,7 +151,9 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	}
 
 	retainedQuote.CallForUserTxHash = callForUserReturn.TransactionHash
-	retainedQuote.CallForUserGasUsed = callForUserReturn.GasUsed
+	if retainedQuote.CallForUserGasUsed != nil {
+		retainedQuote.CallForUserGasUsed = callForUserReturn.GasUsed
+	}
 	if callForUserReturn.GasPrice != nil {
 		retainedQuote.CallForUserGasPrice = callForUserReturn.GasPrice
 	}

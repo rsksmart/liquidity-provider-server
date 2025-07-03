@@ -72,9 +72,15 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	var err error
 
 	receiptData := blockchain.TransactionReceipt{
-		TransactionHash: "",
-		GasUsed:         new(big.Int),
-		GasPrice:        entities.NewWei(0),
+		TransactionHash:   "",
+		GasUsed:           new(big.Int),
+		GasPrice:          entities.NewWei(0),
+		Value:             entities.NewBigWei(new(big.Int)),
+		BlockNumber:       0,
+		BlockHash:         "",
+		From:              wallet.Address().String(),
+		To:                "",
+		CumulativeGasUsed: new(big.Int),
 	}
 
 	if err = ParseAddress(&to, toAddress); err != nil {

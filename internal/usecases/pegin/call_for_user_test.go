@@ -27,12 +27,13 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
-		QuoteHash:         "101b1c",
-		DepositAddress:    test.AnyAddress,
-		Signature:         "signature",
-		RequiredLiquidity: entities.NewWei(1500),
-		State:             quote.PeginStateWaitingForDepositConfirmations,
-		UserBtcTxHash:     "0x121a1b",
+		QuoteHash:          "101b1c",
+		DepositAddress:     test.AnyAddress,
+		Signature:          "signature",
+		RequiredLiquidity:  entities.NewWei(1500),
+		State:              quote.PeginStateWaitingForDepositConfirmations,
+		UserBtcTxHash:      "0x121a1b",
+		CallForUserGasUsed: new(big.Int).SetInt64(1000),
 	}
 	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
@@ -97,12 +98,13 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
-		QuoteHash:         "101b1c",
-		DepositAddress:    test.AnyAddress,
-		Signature:         "signature",
-		RequiredLiquidity: entities.NewWei(1500),
-		State:             quote.PeginStateWaitingForDepositConfirmations,
-		UserBtcTxHash:     "0x121a1b",
+		QuoteHash:          "101b1c",
+		DepositAddress:     test.AnyAddress,
+		Signature:          "signature",
+		RequiredLiquidity:  entities.NewWei(1500),
+		State:              quote.PeginStateWaitingForDepositConfirmations,
+		UserBtcTxHash:      "0x121a1b",
+		CallForUserGasUsed: new(big.Int).SetInt64(1000),
 	}
 	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
@@ -574,12 +576,13 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	}
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
-		QuoteHash:         "101b1c",
-		DepositAddress:    test.AnyAddress,
-		Signature:         "signature",
-		RequiredLiquidity: entities.NewWei(1500),
-		State:             quote.PeginStateWaitingForDepositConfirmations,
-		UserBtcTxHash:     "0x121a1b",
+		QuoteHash:          "101b1c",
+		DepositAddress:     test.AnyAddress,
+		Signature:          "signature",
+		RequiredLiquidity:  entities.NewWei(1500),
+		State:              quote.PeginStateWaitingForDepositConfirmations,
+		UserBtcTxHash:      "0x121a1b",
+		CallForUserGasUsed: new(big.Int).SetInt64(1000),
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserFailed

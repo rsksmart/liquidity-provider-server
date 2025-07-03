@@ -131,11 +131,11 @@ type RetainedPegoutQuote struct {
 	UserRskTxHash        string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
 	LpBtcTxHash          string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash   string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash   string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
-	BridgePegoutGasUsed  *big.Int      `json:"BridgePegoutGasUsed" bson:"bridge_pegout_gas_used"`
-	BridgePegoutGasPrice *entities.Wei `json:"BridgePegoutGasPrice" bson:"bridge_pegout_gas_price"`
-	RefundPegoutGasUsed  *big.Int      `json:"RefundPegoutGasUsed" bson:"refund_pegout_gas_used"`
-	RefundPegoutGasPrice *entities.Wei `json:"RefundPegoutGasPrice" bson:"refund_pegout_gas_price"`
+	BridgeRefundTxHash   string        `json:"bridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	BridgePegoutGasUsed  *big.Int      `json:"bridgePegoutGasUsed" bson:"bridge_pegout_gas_used"`
+	BridgePegoutGasPrice *entities.Wei `json:"bridgePegoutGasPrice" bson:"bridge_pegout_gas_price"`
+	RefundPegoutGasUsed  *big.Int      `json:"refundPegoutGasUsed" bson:"refund_pegout_gas_used"`
+	RefundPegoutGasPrice *entities.Wei `json:"refundPegoutGasPrice" bson:"refund_pegout_gas_price"`
 	LpBtcTxFee           *entities.Wei `json:"lpBtcTxFee" bson:"lp_btc_tx_fee"`
 }
 

@@ -144,7 +144,9 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 
 	retainedQuote.State = newState
 	retainedQuote.RefundPegoutTxHash = receiptData.TransactionHash
-	retainedQuote.RefundPegoutGasUsed = receiptData.GasUsed
+	if receiptData.GasPrice != nil {
+		retainedQuote.RefundPegoutGasUsed = receiptData.GasUsed
+	}
 	if receiptData.GasPrice != nil {
 		retainedQuote.RefundPegoutGasPrice = receiptData.GasPrice
 	}
