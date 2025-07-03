@@ -58,19 +58,26 @@ var sendPegoutTestQuote = quote.PegoutQuote{
 	ProductFeeAmount:      500,
 }
 
+// nolint:funlen
 func TestSendPegoutUseCase_Run(t *testing.T) {
-	btcTxHash := "0x5b5c5d"
+	receiptData := blockchain.BitcoinTransactionResult{
+		Hash: "0x5b5c5d",
+		Fee:  entities.NewWei(100),
+	}
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
 	creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(0.5), GasPrice: entities.NewWei(100), FixedFee: entities.NewWei(100)}
 	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
 	require.NoError(t, err)
-	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil).Once()
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(receiptData, nil).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := sendPegoutRetainedQuote
-		expected.LpBtcTxHash = btcTxHash
+		expected.LpBtcTxHash = receiptData.Hash
+		if receiptData.Fee != nil {
+			expected.LpBtcTxFee = receiptData.Fee
+		}
 		expected.State = quote.PegoutStateSendPegoutSucceeded
 		require.NoError(t, event.Error)
 		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) &&
@@ -102,7 +109,10 @@ func TestSendPegoutUseCase_Run(t *testing.T) {
 	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(creationData).Once()
 	updatedQuote := sendPegoutRetainedQuote
-	updatedQuote.LpBtcTxHash = btcTxHash
+	updatedQuote.LpBtcTxHash = receiptData.Hash
+	if receiptData.Fee != nil {
+		updatedQuote.LpBtcTxFee = receiptData.Fee
+	}
 	updatedQuote.State = quote.PegoutStateSendPegoutSucceeded
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	rpc := blockchain.Rpc{Rsk: rsk}
@@ -427,7 +437,12 @@ func TestSendPegoutUseCase_Run_QuoteNotFound(t *testing.T) {
 	lbc.AssertNotCalled(t, "IsPegOutQuoteCompleted")
 }
 
+// nolint:funlen
 func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
+	dataReceipt := blockchain.BitcoinTransactionResult{
+		Hash: "",
+		Fee:  entities.NewWei(0),
+	}
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
 	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
@@ -438,11 +453,14 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 		FixedFee:      entities.NewWei(100),
 	}
 	require.NoError(t, err)
-	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return("", assert.AnError).Once()
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(dataReceipt, assert.AnError).Once()
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 		expected := sendPegoutRetainedQuote
+		if dataReceipt.Fee != nil {
+			expected.LpBtcTxFee = dataReceipt.Fee
+		}
 		expected.State = quote.PegoutStateSendPegoutFailed
 		require.Error(t, event.Error)
 		return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) &&
@@ -471,6 +489,9 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(&sendPegoutTestQuote, nil).Once()
 	updatedQuote := sendPegoutRetainedQuote
+	if dataReceipt.Fee != nil {
+		updatedQuote.LpBtcTxFee = dataReceipt.Fee
+	}
 	updatedQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(creationData).Once()
@@ -479,6 +500,9 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 
 	rpc := blockchain.Rpc{Rsk: rsk}
 	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{Lbc: lbc}, mutex)
+	if dataReceipt.Fee != nil {
+		sendPegoutRetainedQuote.LpBtcTxFee = dataReceipt.Fee
+	}
 	err = useCase.Run(context.Background(), sendPegoutRetainedQuote)
 
 	require.Error(t, err)
@@ -492,12 +516,15 @@ func TestSendPegoutUseCase_Run_BtcTxFail(t *testing.T) {
 
 // nolint: funlen
 func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
-	btcTxHash := "0x5b5c5d"
+	dataReceipt := blockchain.BitcoinTransactionResult{
+		Hash: "0x5b5c5d",
+		Fee:  entities.NewWei(100),
+	}
 	btcWallet := new(mocks.BtcWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil)
 	quoteHash, err := hex.DecodeString(sendPegoutRetainedQuote.QuoteHash)
 	require.NoError(t, err)
-	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(btcTxHash, nil)
+	btcWallet.On("SendWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return(dataReceipt, nil)
 	rsk := new(mocks.RootstockRpcServerMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return()
@@ -520,7 +547,10 @@ func TestSendPegoutUseCase_Run_UpdateError(t *testing.T) {
 			quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, sendPegoutRetainedQuote.QuoteHash).Return(quote.PegoutCreationDataZeroValue())
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
 				expected := *sendPegoutRetainedQuote
-				expected.LpBtcTxHash = btcTxHash
+				expected.LpBtcTxHash = dataReceipt.Hash
+				if dataReceipt.Fee != nil {
+					expected.LpBtcTxFee = dataReceipt.Fee
+				}
 				expected.State = quote.PegoutStateSendPegoutSucceeded
 				require.NoError(t, event.Error)
 				return assert.Equal(t, sendPegoutTestQuote, event.PegoutQuote) && assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutBtcSentEventId, event.Event.Id())
