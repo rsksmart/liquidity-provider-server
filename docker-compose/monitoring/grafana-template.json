@@ -7,6 +7,14 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_LOKI",
+      "label": "Loki",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
     }
   ],
   "__elements": {},
@@ -30,6 +38,12 @@
       "version": "1.0.0"
     },
     {
+      "type": "datasource",
+      "id": "loki",
+      "name": "Loki",
+      "version": "1.0.0"
+    },
+    {
       "type": "panel",
       "id": "stat",
       "name": "Stat",
@@ -39,6 +53,12 @@
       "type": "panel",
       "id": "timeseries",
       "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
       "version": ""
     }
   ],
@@ -337,12 +357,211 @@
       "type": "piechart"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 9
+      },
+      "id": 35,
+      "panels": [],
+      "title": "Logs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "Recent LPS application logs from all log levels",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 36,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "{service=\"lps\"}",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "LPS Application Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "Distribution of log levels in LPS application",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warn"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "info"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "debug"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 37,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent",
+            "value"
+          ]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (level) (count_over_time({service=\"lps\"} [$__range]))",
+          "queryType": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Log Level Distribution",
+      "type": "piechart"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
       },
       "id": 30,
       "panels": [
@@ -553,7 +772,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 28
       },
       "id": 28,
       "panels": [],
@@ -624,7 +843,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 11
+        "y": 20
       },
       "id": 16,
       "options": {
@@ -721,7 +940,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 11
+        "y": 20
       },
       "id": 24,
       "options": {
@@ -818,7 +1037,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 28
       },
       "id": 26,
       "options": {
@@ -1085,7 +1304,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 36
       },
       "id": 14,
       "options": {
@@ -1182,7 +1401,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 36
       },
       "id": 20,
       "options": {
@@ -1279,7 +1498,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 35
+        "y": 44
       },
       "id": 22,
       "options": {
@@ -1377,7 +1596,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 35
+        "y": 44
       },
       "id": 8,
       "options": {
@@ -1473,7 +1692,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 52
       },
       "id": 4,
       "options": {
@@ -1583,7 +1802,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 52
       },
       "id": 27,
       "options": {
