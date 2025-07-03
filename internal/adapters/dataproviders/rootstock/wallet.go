@@ -65,22 +65,34 @@ func (wallet *RskWalletImpl) Validate(signature, hash string) bool {
 	return bytes.Equal(wallet.account.Account.Address.Bytes(), pubKeyHash[12:]) // the last 20 bytes of the hash
 }
 
-func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (string, error) {
+func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.TransactionReceipt, error) {
 	var to common.Address
 	var signedTx *geth.Transaction
 	var nonce uint64
 	var err error
 
+	receiptData := blockchain.TransactionReceipt{
+		TransactionHash:   "",
+		GasUsed:           new(big.Int),
+		GasPrice:          entities.NewWei(0),
+		Value:             entities.NewBigWei(new(big.Int)),
+		BlockNumber:       0,
+		BlockHash:         "",
+		From:              wallet.Address().String(),
+		To:                "",
+		CumulativeGasUsed: new(big.Int),
+	}
+
 	if err = ParseAddress(&to, toAddress); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	if config.GasPrice == nil || config.Value == nil || config.GasLimit == nil {
-		return "", errors.New("incomplete transaction arguments")
+		return receiptData, errors.New("incomplete transaction arguments")
 	}
 
 	if nonce, err = wallet.client.PendingNonceAt(ctx, wallet.Address()); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	tx := geth.NewTx(&geth.LegacyTx{
@@ -92,7 +104,7 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 	})
 	log.Infof("Sending %v RBTC to %s\n", config.Value.ToRbtc(), toAddress)
 	if signedTx, err = wallet.Sign(wallet.Address(), tx); err != nil {
-		return "", err
+		return receiptData, err
 	}
 
 	sendError := wallet.client.SendTransaction(ctx, signedTx)
@@ -100,13 +112,15 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return signedTx, sendError
 	})
 
-	txHash := signedTx.Hash().String()
+	receiptData.TransactionHash = signedTx.Hash().String()
+
 	if err != nil {
-		return "", err
+		return receiptData, err
 	} else if receipt == nil || receipt.Status == 0 {
-		return txHash, fmt.Errorf("%s transaction failed", txHash)
+		return receiptData, fmt.Errorf("%s transaction failed", receiptData.TransactionHash)
 	}
-	return signedTx.Hash().String(), nil
+	receiptData = wallet.buildTransactionReceipt(signedTx, receipt)
+	return receiptData, nil
 }
 
 func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, error) {
@@ -115,4 +129,27 @@ func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, err
 		return nil, err
 	}
 	return entities.NewBigWei(balance), nil
+}
+
+func (wallet *RskWalletImpl) buildTransactionReceipt(tx *geth.Transaction, receipt *geth.Receipt) blockchain.TransactionReceipt {
+	txReturn := blockchain.TransactionReceipt{
+		BlockHash:         receipt.BlockHash.String(),
+		TransactionHash:   receipt.TxHash.String(),
+		From:              wallet.Address().String(),
+		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
+		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
+		Value:             entities.NewBigWei(tx.Value()),
+	}
+
+	if tx.To() != nil {
+		txReturn.To = tx.To().String()
+	}
+	if receipt.BlockNumber != nil {
+		txReturn.BlockNumber = receipt.BlockNumber.Uint64()
+	}
+	if receipt.EffectiveGasPrice != nil {
+		txReturn.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
+	}
+
+	return txReturn
 }

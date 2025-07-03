@@ -10,12 +10,15 @@ import (
 )
 
 type GetAssetsReportResult struct {
-	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
-	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtcLocked" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btcLiquidity" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtcLiquidity" validate:"required"`
+	RbtcLockedLbc      *big.Int `json:"RbtcLockedLbc" validate:"required"`
+	RbtcLockedForUsers *big.Int `json:"RbtcLockedForUsers" validate:"required"`
+	RbtcWaitingRefund  *big.Int `json:"rbtcWaitingRefund" validate:"required"`
+	RbtcLiquidity      *big.Int `json:"rbtcLiquidity" validate:"required"`
+	RbtcWalletBalance  *big.Int `json:"rbtcWalletBalance" validate:"required"`
+	BtcLockedForUsers  *big.Int `json:"btcLockedForUsers" validate:"required"`
+	BtcLiquidity       *big.Int `json:"btcLiquidity" validate:"required"`
+	BtcWalletBalance   *big.Int `json:"btcWalletBalance" validate:"required"`
+	BtcRebalancing     *big.Int `json:"btcRebalancing" validate:"required"`
 }
 
 type GetAssetsReportUseCase struct {
@@ -26,6 +29,7 @@ type GetAssetsReportUseCase struct {
 	pegoutProvider   liquidity_provider.PegoutLiquidityProvider
 	peginRepository  quote.PeginQuoteRepository
 	pegoutRepository quote.PegoutQuoteRepository
+	contracts        blockchain.RskContracts
 }
 
 func NewGetAssetsReportUseCase(
@@ -36,6 +40,7 @@ func NewGetAssetsReportUseCase(
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
+	contracts blockchain.RskContracts,
 ) *GetAssetsReportUseCase {
 	return &GetAssetsReportUseCase{
 		btcWallet:        wallet,
@@ -45,56 +50,70 @@ func NewGetAssetsReportUseCase(
 		pegoutProvider:   pegoutProvider,
 		peginRepository:  peginRepository,
 		pegoutRepository: pegoutRepository,
+		contracts:        contracts,
 	}
 }
 
 func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResult, error) {
 	response := GetAssetsReportResult{
-		BtcBalance:    entities.NewWei(0).AsBigInt(),
-		RbtcBalance:   entities.NewWei(0).AsBigInt(),
-		BtcLocked:     entities.NewWei(0).AsBigInt(),
-		RbtcLocked:    entities.NewWei(0).AsBigInt(),
-		BtcLiquidity:  entities.NewWei(0).AsBigInt(),
-		RbtcLiquidity: entities.NewWei(0).AsBigInt(),
+		RbtcLockedLbc:      entities.NewWei(0).AsBigInt(),
+		RbtcLockedForUsers: entities.NewWei(0).AsBigInt(),
+		RbtcWaitingRefund:  entities.NewWei(0).AsBigInt(),
+		RbtcLiquidity:      entities.NewWei(0).AsBigInt(),
+		RbtcWalletBalance:  entities.NewWei(0).AsBigInt(),
+		BtcLockedForUsers:  entities.NewWei(0).AsBigInt(),
+		BtcLiquidity:       entities.NewWei(0).AsBigInt(),
+		BtcWalletBalance:   entities.NewWei(0).AsBigInt(),
+		BtcRebalancing:     entities.NewWei(0).AsBigInt(),
+	}
+
+	rbtcLockedLbc, err := useCase.GetRbtcLockedLbc()
+	if err != nil {
+		return response, err
+	}
+	rbtcLocked, err := useCase.GetRBTCLocked(ctx)
+	if err != nil {
+		return response, err
+	}
+	rbtcWaitingRefund, err := useCase.GetRBTCWaitingForRefund(ctx)
+	if err != nil {
+		return response, err
+	}
+	rbtcLiquidity, err := useCase.GetRBTCLiquidity(ctx)
+	if err != nil {
+		return response, err
+	}
+	rbtcBalance, err := useCase.GetRBTCBalance(ctx)
+	if err != nil {
+		return response, err
+	}
+	lockedBtc, err := useCase.GetBTCLocked(ctx)
+	if err != nil {
+		return response, err
+	}
+	btcLiquidity, err := useCase.GetBTCLiquidity(ctx)
+	if err != nil {
+		return response, err
 	}
 	btcBalance, err := useCase.GetBtcBalance()
 	if err != nil {
 		return response, err
 	}
 
-	rbtcBalance, err := useCase.GetRBTCBalance(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	rbtcLocked, err := useCase.GetRBTCLocked(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	lockedBtc, err := useCase.GetBTCLocked(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	btcLiquidity, err := useCase.GetBTCLiquidity(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	rbtcLiquidity, err := useCase.GetRBTCLiquidity(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	response.BtcBalance = btcBalance.AsBigInt()
+	response.RbtcLockedLbc = rbtcLockedLbc.AsBigInt()
+	response.RbtcLockedForUsers = rbtcLocked.AsBigInt()
+	response.RbtcWaitingRefund = rbtcWaitingRefund.AsBigInt()
 	response.RbtcLiquidity = rbtcLiquidity.AsBigInt()
+	response.RbtcWalletBalance = rbtcBalance.AsBigInt()
+	response.BtcLockedForUsers = lockedBtc.AsBigInt()
 	response.BtcLiquidity = btcLiquidity.AsBigInt()
-	response.BtcLocked = lockedBtc.AsBigInt()
-	response.RbtcLocked = rbtcLocked.AsBigInt()
-	response.RbtcBalance = rbtcBalance.AsBigInt()
+	response.BtcWalletBalance = btcBalance.AsBigInt()
 
 	return response, nil
+}
+
+func (useCase *GetAssetsReportUseCase) GetRbtcLockedLbc() (*entities.Wei, error) {
+	return useCase.contracts.Lbc.GetBalance(useCase.lp.RskAddress())
 }
 
 func (useCase *GetAssetsReportUseCase) GetRBTCLiquidity(ctx context.Context) (*entities.Wei, error) {
@@ -131,6 +150,19 @@ func (useCase *GetAssetsReportUseCase) GetBTCLocked(ctx context.Context) (*entit
 func (useCase *GetAssetsReportUseCase) GetRBTCLocked(ctx context.Context) (*entities.Wei, error) {
 	lockedPegin := entities.NewWei(0)
 	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
+	if err != nil {
+		return nil, err
+	}
+	for _, retainedQuote := range peginQuotes {
+		lockedPegin.Add(lockedPegin, retainedQuote.RequiredLiquidity)
+	}
+
+	return lockedPegin, nil
+}
+
+func (useCase *GetAssetsReportUseCase) GetRBTCWaitingForRefund(ctx context.Context) (*entities.Wei, error) {
+	lockedPegin := entities.NewWei(0)
+	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateCallForUserSucceeded)
 	if err != nil {
 		return nil, err
 	}

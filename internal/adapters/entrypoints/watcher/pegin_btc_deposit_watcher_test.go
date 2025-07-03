@@ -150,6 +150,11 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 
 // nolint:funlen,cyclop,maintidx,gocyclo
 func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
+	callForUserReturn := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyHash,
+		GasUsed:         big.NewInt(1000),
+		GasPrice:        entities.NewWei(101),
+	}
 	peginRepository := &mocks.PeginQuoteRepositoryMock{}
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
@@ -166,7 +171,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	ticker.EXPECT().Stop().Return()
 	lbc := &mocks.LbcMock{}
 	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
-	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(test.AnyHash, nil)
+	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(callForUserReturn, nil)
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
 	peginProvider := &mocks.ProviderMock{}

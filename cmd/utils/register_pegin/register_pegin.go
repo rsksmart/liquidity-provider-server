@@ -11,10 +11,12 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"golang.org/x/term"
+	"math/big"
 	"os"
 )
 
@@ -143,19 +145,24 @@ func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
 	lbc blockchain.LiquidityBridgeContract,
 	parsedInput ParsedRegisterPegInInput,
-) (string, error) {
+) (blockchain.TransactionReceipt, error) {
 	var pmt, rawTx []byte
 	var err error
+	receiptToReturn := blockchain.TransactionReceipt{
+		TransactionHash: "",
+		GasUsed:         big.NewInt(0),
+		GasPrice:        entities.NewWei(0),
+	}
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 	if rawTx, err = btcRpc.GetRawTransaction(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 	blockInfo, err := btcRpc.GetTransactionBlockInfo(parsedInput.BtcTxHash)
 	if err != nil {
-		return "", err
+		return receiptToReturn, err
 	}
 
 	return lbc.RegisterPegin(blockchain.RegisterPeginParams{
