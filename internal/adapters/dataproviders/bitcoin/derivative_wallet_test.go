@@ -523,7 +523,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(test.AnyString, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -536,7 +536,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -550,7 +550,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -566,7 +566,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -581,7 +581,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -596,7 +596,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -612,7 +612,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -629,7 +629,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -645,7 +645,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
 				assert.Equal(t, "", result.Hash)
-				assert.Equal(t, result.Fee, entities.NewWei(0))
+				assert.Equal(t, entities.NewWei(0), result.Fee)
 				client.AssertExpectations(t)
 			},
 		},

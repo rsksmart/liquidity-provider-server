@@ -237,7 +237,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	satoshiFee := fundedTx.Fee.ToUnit(btcutil.AmountSatoshi)
 
 	dataReturn.Hash = txHash.String()
-	dataReturn.Fee = entities.NewWei(int64(satoshiFee))
+	dataReturn.Fee = entities.SatoshiToWei(uint64(satoshiFee))
 	return dataReturn, nil
 }
 

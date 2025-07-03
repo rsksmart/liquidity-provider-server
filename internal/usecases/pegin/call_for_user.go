@@ -151,11 +151,11 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	}
 
 	retainedQuote.CallForUserTxHash = callForUserReturn.TransactionHash
-	if callForUserReturn.GasUsed != nil {
-		retainedQuote.CallForUserGasUsed = entities.NewWei(callForUserReturn.GasUsed.Int64())
+	if retainedQuote.CallForUserGasUsed != nil {
+		retainedQuote.CallForUserGasUsed = callForUserReturn.GasUsed
 	}
 	if callForUserReturn.GasPrice != nil {
-		retainedQuote.CallForUserGasPrice = entities.NewWei(callForUserReturn.GasPrice.Int64())
+		retainedQuote.CallForUserGasPrice = callForUserReturn.GasPrice
 	}
 
 	retainedQuote.State = quoteState

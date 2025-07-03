@@ -49,7 +49,7 @@ type TransactionReceipt struct {
 	To                string
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
-	GasPrice          *big.Int
+	GasPrice          *entities.Wei
 	Value             *entities.Wei
 }
 

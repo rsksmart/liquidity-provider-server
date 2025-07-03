@@ -47,7 +47,7 @@ type RetainedPegoutQuoteDTO struct {
 	RefundPegoutGasPrice *big.Int `json:"refundPegoutGasPrice" required:"" description:"The gas price for the refund transaction"`
 	BridgeRefundTxHash   string   `json:"bridgeRefundTxHash" required:"" description:"The hash of the transaction from the LP to the bridge to convert the refunded RBTC into BTC"`
 	BridgeRefundGasUsed  *big.Int `json:"bridgeRefundGasUsed" required:"" description:"The amount of gas used for the bridge refund transaction"`
-	BridgeRefundGasPrice *big.Int `json:"BridgeRefundGasPrice" required:"" description:"The gas price for the bridge refund transaction"`
+	BridgeRefundGasPrice *big.Int `json:"bridgeRefundGasPrice" required:"" description:"The gas price for the bridge refund transaction"`
 	LpBtcTxFee           *big.Int `json:"lpBtcTxFee" required:"" description:"The amount of gas used for the send pegout transaction"`
 }
 
@@ -99,10 +99,10 @@ func ToRetainedPegoutQuoteDTO(entity quote.RetainedPegoutQuote) RetainedPegoutQu
 		LpBtcTxHash:          entity.LpBtcTxHash,
 		LpBtcTxFee:           entity.LpBtcTxFee.AsBigInt(),
 		RefundPegoutTxHash:   entity.RefundPegoutTxHash,
-		RefundPegoutGasUsed:  entity.RefundPegoutGasUsed.AsBigInt(),
+		RefundPegoutGasUsed:  entity.RefundPegoutGasUsed,
 		RefundPegoutGasPrice: entity.RefundPegoutGasPrice.AsBigInt(),
 		BridgeRefundTxHash:   entity.BridgeRefundTxHash,
-		BridgeRefundGasUsed:  entity.BridgePegoutGasUsed.AsBigInt(),
+		BridgeRefundGasUsed:  entity.BridgePegoutGasUsed,
 		BridgeRefundGasPrice: entity.BridgePegoutGasPrice.AsBigInt(),
 	}
 }

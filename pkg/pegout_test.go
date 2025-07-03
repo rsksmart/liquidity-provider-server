@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 )
 
@@ -69,10 +70,10 @@ func TestToRetainedPegoutQuoteDTO(t *testing.T) {
 		UserRskTxHash:        "0x56",
 		LpBtcTxHash:          "btc2",
 		RefundPegoutTxHash:   "0x78",
-		RefundPegoutGasUsed:  entities.NewWei(800),
+		RefundPegoutGasUsed:  big.NewInt(800),
 		RefundPegoutGasPrice: entities.NewWei(8),
 		BridgeRefundTxHash:   "0x90",
-		BridgePegoutGasUsed:  entities.NewWei(900),
+		BridgePegoutGasUsed:  big.NewInt(900),
 		BridgePegoutGasPrice: entities.NewWei(9),
 		LpBtcTxFee:           entities.NewWei(1000),
 	}
@@ -88,10 +89,10 @@ func TestToRetainedPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, pegoutQuote.LpBtcTxHash, dto.LpBtcTxHash)
 	assert.Equal(t, pegoutQuote.LpBtcTxFee.AsBigInt(), dto.LpBtcTxFee)
 	assert.Equal(t, pegoutQuote.RefundPegoutTxHash, dto.RefundPegoutTxHash)
-	assert.Equal(t, pegoutQuote.RefundPegoutGasUsed.AsBigInt(), dto.RefundPegoutGasUsed)
+	assert.Equal(t, pegoutQuote.RefundPegoutGasUsed, dto.RefundPegoutGasUsed)
 	assert.Equal(t, pegoutQuote.RefundPegoutGasPrice.AsBigInt(), dto.RefundPegoutGasPrice)
 	assert.Equal(t, pegoutQuote.BridgeRefundTxHash, dto.BridgeRefundTxHash)
-	assert.Equal(t, pegoutQuote.BridgePegoutGasUsed.AsBigInt(), dto.BridgeRefundGasUsed)
+	assert.Equal(t, pegoutQuote.BridgePegoutGasUsed, dto.BridgeRefundGasUsed)
 	assert.Equal(t, pegoutQuote.BridgePegoutGasPrice.AsBigInt(), dto.BridgeRefundGasPrice)
 	const expectedFields = 14
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))

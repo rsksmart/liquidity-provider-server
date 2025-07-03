@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"testing"
 )
 
@@ -120,10 +121,10 @@ func TestToRetainedPeginQuoteDTO(t *testing.T) {
 		UserBtcTxHash:         "0x78",
 		CallForUserTxHash:     "0x90",
 		CallForUserGasPrice:   entities.NewWei(10),
-		CallForUserGasUsed:    entities.NewWei(1000),
+		CallForUserGasUsed:    big.NewInt(1000),
 		RegisterPeginTxHash:   "0xab",
 		RegisterPeginGasPrice: entities.NewWei(12),
-		RegisterPeginGasUsed:  entities.NewWei(900),
+		RegisterPeginGasUsed:  big.NewInt(900),
 	}
 	dto := pkg.ToRetainedPeginQuoteDTO(peginQuote)
 
@@ -134,10 +135,10 @@ func TestToRetainedPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, string(peginQuote.State), dto.State)
 	assert.Equal(t, peginQuote.UserBtcTxHash, dto.UserBtcTxHash)
 	assert.Equal(t, peginQuote.CallForUserTxHash, dto.CallForUserTxHash)
-	assert.Equal(t, peginQuote.CallForUserGasUsed.AsBigInt(), dto.CallForUserGasUsed)
+	assert.Equal(t, peginQuote.CallForUserGasUsed, dto.CallForUserGasUsed)
 	assert.Equal(t, peginQuote.CallForUserGasPrice.AsBigInt(), dto.CallForUserGasPrice)
 	assert.Equal(t, peginQuote.RegisterPeginTxHash, dto.RegisterPeginTxHash)
-	assert.Equal(t, peginQuote.RegisterPeginGasUsed.AsBigInt(), dto.RegisterPeginGasUsed)
+	assert.Equal(t, peginQuote.RegisterPeginGasUsed, dto.RegisterPeginGasUsed)
 	assert.Equal(t, peginQuote.RegisterPeginGasPrice.AsBigInt(), dto.RegisterPeginGasPrice)
 	const expectedFields = 12
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))

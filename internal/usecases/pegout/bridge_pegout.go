@@ -97,10 +97,10 @@ func (useCase *BridgePegoutUseCase) updateQuotes(
 	for _, watchedQuote := range watchedQuotes {
 		watchedQuote.RetainedQuote.BridgeRefundTxHash = receiptData.TransactionHash
 		if receiptData.GasUsed != nil {
-			watchedQuote.RetainedQuote.BridgePegoutGasUsed = entities.NewWei(receiptData.GasUsed.Int64())
+			watchedQuote.RetainedQuote.BridgePegoutGasUsed = receiptData.GasUsed
 		}
 		if receiptData.GasPrice != nil {
-			watchedQuote.RetainedQuote.BridgePegoutGasPrice = entities.NewWei(receiptData.GasPrice.Int64())
+			watchedQuote.RetainedQuote.BridgePegoutGasPrice = receiptData.GasPrice
 		}
 
 		if txErr == nil {

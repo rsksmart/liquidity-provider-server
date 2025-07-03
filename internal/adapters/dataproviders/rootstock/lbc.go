@@ -355,8 +355,8 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		From:              "",
 		To:                "",
 		Value:             entities.NewWei(0),
-		GasUsed:           big.NewInt(0),
-		GasPrice:          big.NewInt(0),
+		GasUsed:           new(big.Int).SetInt64(0),
+		GasPrice:          entities.NewWei(0),
 		CumulativeGasUsed: big.NewInt(0),
 	}
 	if err != nil {
@@ -370,10 +370,14 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		Signer:   lbc.signer.Sign,
 	}
 
+	var tx *geth.Transaction
+
 	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(lbc.client, lbc.miningTimeout, "CallForUser", func() (*geth.Transaction, error) {
-				return lbc.contract.CallForUser(opts, parsedQuote)
+				transaction, txErr := lbc.contract.CallForUser(opts, parsedQuote)
+				tx = transaction
+				return transaction, txErr
 			})
 		})
 
@@ -385,13 +389,23 @@ func (lbc *liquidityBridgeContractImpl) CallForUser(txConfig blockchain.Transact
 		callForUserReturn.TransactionHash = receipt.TxHash.String()
 		callForUserReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
 		callForUserReturn.CumulativeGasUsed = big.NewInt(int64(receipt.CumulativeGasUsed))
-		callForUserReturn.GasPrice = receipt.EffectiveGasPrice
+		callForUserReturn.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
+		callForUserReturn.BlockHash = receipt.BlockHash.String()
+		callForUserReturn.BlockNumber = receipt.BlockNumber.Uint64()
+		callForUserReturn.From = lbc.signer.Address().String()
+		callForUserReturn.Value = txConfig.Value
+		callForUserReturn.To = tx.To().String()
 		return callForUserReturn, fmt.Errorf("call for user error: transaction reverted (%s)", callForUserReturn.TransactionHash)
 	}
 	callForUserReturn.TransactionHash = receipt.TxHash.String()
 	callForUserReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
 	callForUserReturn.CumulativeGasUsed = big.NewInt(int64(receipt.CumulativeGasUsed))
-	callForUserReturn.GasPrice = receipt.EffectiveGasPrice
+	callForUserReturn.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
+	callForUserReturn.BlockHash = receipt.BlockHash.String()
+	callForUserReturn.BlockNumber = receipt.BlockNumber.Uint64()
+	callForUserReturn.From = lbc.signer.Address().String()
+	callForUserReturn.To = tx.To().String()
+	callForUserReturn.Value = txConfig.Value
 	return callForUserReturn, nil
 }
 
@@ -402,7 +416,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	dataToReturn := blockchain.TransactionReceipt{
 		TransactionHash: "",
 		GasUsed:         big.NewInt(0),
-		GasPrice:        big.NewInt(0),
+		GasPrice:        entities.NewWei(0),
 	}
 	if parsedQuote, err = parsePeginQuote(params.Quote); err != nil {
 		return dataToReturn, err
@@ -443,12 +457,12 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	} else if receipt.Status == 0 {
 		dataToReturn.TransactionHash = receipt.TxHash.String()
 		dataToReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
-		dataToReturn.GasPrice = receipt.EffectiveGasPrice
+		dataToReturn.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
 		return dataToReturn, fmt.Errorf("register pegin error: transaction reverted (%s)", dataToReturn.TransactionHash)
 	}
 	dataToReturn.TransactionHash = receipt.TxHash.String()
 	dataToReturn.GasUsed = big.NewInt(int64(receipt.GasUsed))
-	dataToReturn.GasPrice = receipt.EffectiveGasPrice
+	dataToReturn.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
 	return dataToReturn, nil
 }
 
@@ -459,7 +473,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	transactionReceipt := blockchain.TransactionReceipt{
 		TransactionHash: "",
 		GasUsed:         big.NewInt(0),
-		GasPrice:        big.NewInt(0),
+		GasPrice:        entities.NewWei(0),
 	}
 	log.Infof("Executing RefundPegOut with params: %s", params.String())
 	err = lbcCaller.Call(
@@ -499,7 +513,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	}
 	transactionReceipt.TransactionHash = receipt.TxHash.String()
 	transactionReceipt.GasUsed = big.NewInt(int64(receipt.GasUsed))
-	transactionReceipt.GasPrice = receipt.EffectiveGasPrice
+	transactionReceipt.GasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
 	return transactionReceipt, nil
 }
 

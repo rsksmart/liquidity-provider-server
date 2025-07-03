@@ -45,10 +45,10 @@ type RetainedPeginQuoteDTO struct {
 	UserBtcTxHash         string   `json:"userBtcTxHash" required:"" description:"The hash of the user's BTC transaction to the derivation address"`
 	CallForUserTxHash     string   `json:"callForUserTxHash" required:"" description:"The hash of the RSK transaction to the address requested by the user"`
 	RegisterPeginTxHash   string   `json:"registerPeginTxHash" required:"" description:"The hash of the RSK transaction where the LP gets his refund and fee"`
-	CallForUserGasUsed    *big.Int `json:"CallForUserGasUsed" required:"" description:"Gas used on the call for user"`
-	CallForUserGasPrice   *big.Int `json:"CallForUserGasPrice" required:"" description:"Gas price for call ofr user"`
-	RegisterPeginGasUsed  *big.Int `json:"RegisterPeginGasUsed" required:"" description:"Gas used on the register pegin"`
-	RegisterPeginGasPrice *big.Int `json:"RegisterPeginGasPrice" required:"" description:"Gas price on the register pegin"`
+	CallForUserGasUsed    *big.Int `json:"callForUserGasUsed" required:"" description:"Gas used on the call for user"`
+	CallForUserGasPrice   *big.Int `json:"callForUserGasPrice" required:"" description:"Gas price for call for user"`
+	RegisterPeginGasUsed  *big.Int `json:"registerPeginGasUsed" required:"" description:"Gas used on the register pegin"`
+	RegisterPeginGasPrice *big.Int `json:"registerPeginGasPrice" required:"" description:"Gas price on the register pegin"`
 }
 
 type PeginCreationDataDTO struct {
@@ -133,6 +133,15 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 }
 
 func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuoteDTO {
+	callForUserGasPrice := big.NewInt(0)
+	if entity.CallForUserGasPrice != nil {
+		callForUserGasPrice = entity.CallForUserGasPrice.AsBigInt()
+	}
+	registerPeginGasPrice := big.NewInt(0)
+	if entity.RegisterPeginGasPrice != nil {
+		registerPeginGasPrice = entity.RegisterPeginGasPrice.AsBigInt()
+	}
+
 	return RetainedPeginQuoteDTO{
 		QuoteHash:             entity.QuoteHash,
 		Signature:             entity.Signature,
@@ -142,10 +151,10 @@ func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuote
 		UserBtcTxHash:         entity.UserBtcTxHash,
 		CallForUserTxHash:     entity.CallForUserTxHash,
 		RegisterPeginTxHash:   entity.RegisterPeginTxHash,
-		CallForUserGasUsed:    entity.CallForUserGasUsed.AsBigInt(),
-		CallForUserGasPrice:   entity.CallForUserGasPrice.AsBigInt(),
-		RegisterPeginGasUsed:  entity.RegisterPeginGasUsed.AsBigInt(),
-		RegisterPeginGasPrice: entity.RegisterPeginGasPrice.AsBigInt(),
+		CallForUserGasUsed:    entity.CallForUserGasUsed,
+		CallForUserGasPrice:   callForUserGasPrice,
+		RegisterPeginGasUsed:  entity.RegisterPeginGasUsed,
+		RegisterPeginGasPrice: registerPeginGasPrice,
 	}
 }
 
