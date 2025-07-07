@@ -2,12 +2,17 @@ package datasets
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"math/big"
 )
 
 type PartialMerkleTreeTest struct {
-	Tx  string
-	Pmt string
+	Tx        string
+	BlockHash string
+	TxInfo    string
+	Pmt       string
+	BlockHex  string
+	BlockInfo string
 }
 
 type MerkleBranchTest struct {
@@ -15,10 +20,15 @@ type MerkleBranchTest struct {
 	Branch blockchain.MerkleBranch
 }
 
+const blockPath = "datasets/block-0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3-mainnet.txt"
+
 var PartialMerkleTrees = [3]PartialMerkleTreeTest{
 	// first two are witness txs, last one is legacy
 	{
-		Tx: "07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041",
+		Tx:        "07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041","version":1,"locktime":0,"vin":[{"txid":"0000000000000000000000000000000000000000000000000000000000000000","vout":4294967295,"prevout":null,"scriptsig":"034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b100000000000000010c56e6700d262d24bd851bb829f9f0000","scriptsig_asm":"OP_PUSHBYTES_3 4aa00a OP_PUSHBYTES_28 2f5669614254432f4d696e656420627920797a33313936303538372f OP_PUSHBYTES_44 fabe6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b1000000000000000 OP_PUSHBYTES_16 c56e6700d262d24bd851bb829f9f0000","witness":["0000000000000000000000000000000000000000000000000000000000000000"],"is_coinbase":true,"sequence":4294967295}],"vout":[{"scriptpubkey":"76a914536ffa992491508dca0354e52f32a3a7a679a53a88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 536ffa992491508dca0354e52f32a3a7a679a53a OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX","value":634172161},{"scriptpubkey":"6a2952534b424c4f434b3a040c866ad2fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce9","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_41 52534b424c4f434b3a040c866ad2fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce9","scriptpubkey_type":"op_return","value":0},{"scriptpubkey":"6a24b9e11b6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_36 b9e11b6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b","scriptpubkey_type":"op_return","value":0},{"scriptpubkey":"6a24aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b8","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_36 aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b8","scriptpubkey_type":"op_return","value":0}],"size":362,"weight":1340,"sigops":4,"fee":0,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
 		Pmt: "f30800000d" +
 			"41b07e2cafae87a8b6bc9e51494763fb05de2707b99bb5202eb3a3a92fb2f80773" +
 			"1c671fafb5d234834c726657f29c9af030ccf7068f1ef732af4efd8e146da0a9d6" +
@@ -33,9 +43,13 @@ var PartialMerkleTrees = [3]PartialMerkleTreeTest{
 			"b5b8c677167602ee63c5a6dad213777b6fbbd3dd977871f30b975d1a8f6cd62535" +
 			"985ea4d11f5c7f80549eab1b18a5cc011872b5403dee666302831a3c64d1604c5c" +
 			"0bec9c796d8dcace974ae97e5837ff0d446d060c04ff1f0000",
+		BlockHex: test.MustReadFileString(blockPath),
 	},
 	{
-		Tx: "ddf5061f9707f0c959bf24278d557b264716672c1b601ec50112d6dfe160d9d3",
+		Tx:        "ddf5061f9707f0c959bf24278d557b264716672c1b601ec50112d6dfe160d9d3",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"ddf5061f9707f0c959bf24278d557b264716672c1b601ec50112d6dfe160d9d3","version":1,"locktime":0,"vin":[{"txid":"ee8eb45f923001f0114d595347a04afba76bfcdd0a68cb4128ff83d82826f1f2","vout":30,"prevout":{"scriptpubkey":"0014e3744e835073aa2fcfeb4c6e042fdd6ad73d3e5a","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 e3744e835073aa2fcfeb4c6e042fdd6ad73d3e5a","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qud6yaq6sww4zlnltf3hqgt7adttn60j6w7sh0s","value":75095},"scriptsig":"","scriptsig_asm":"","witness":["304402200297a66460635d5d62f210db118322e63cdfafa7f981086c755cec7826e8785202206f7d01e9e8601fda8c26030290d3012e3a7f73cb816106919b17b8e04ab07bd301","0288dd7800e497cbfed7e4cb797a90c144c78fe14531ad855b8d2e439bba1e1ee8"],"is_coinbase":false,"sequence":4294967295}],"vout":[{"scriptpubkey":"001488ac44701b2705dfe6bde06abaf78b5062a6ac51","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 88ac44701b2705dfe6bde06abaf78b5062a6ac51","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1q3zkyguqmyuzale4aup4t4aut2p32dtz33a2mcu","value":9101},{"scriptpubkey":"a914b65e1e8a6be4832954022ccba4a01b1d1dfebe6287","scriptpubkey_asm":"OP_HASH160 OP_PUSHBYTES_20 b65e1e8a6be4832954022ccba4a01b1d1dfebe62 OP_EQUAL","scriptpubkey_type":"p2sh","scriptpubkey_address":"3JKHeypa6KcMuPvjobe9bCX3D2e9GbG7Tj","value":65000}],"size":223,"weight":565,"sigops":1,"fee":994,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
 		Pmt: "f30800000d" +
 			"c0746a357444e9948a18a612e02df5a99240e77f1ff75dd949d5b4038dcf36673a" +
 			"03c716cf722cff7d264c763088ceeb1665f26c6fdd5835d841eeee2f3ece4a203a" +
@@ -50,9 +64,13 @@ var PartialMerkleTrees = [3]PartialMerkleTreeTest{
 			"30f4ac0fa7b71fe9c601c78480b9a97fea305d3abca235a6668846093803e07c48" +
 			"dc9a75be90ed6edd4debb0b7b49bc057e093ad395eee666302831a3c64d1604c5c" +
 			"0bec9c796d8dcace974ae97e5837ff0d446d060c04dbd50300",
+		BlockHex: test.MustReadFileString(blockPath),
 	},
 	{
-		Tx: "db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9",
+		Tx:        "db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9","version":2,"locktime":0,"vin":[{"txid":"eed61c90d5f5c6174aac7cd1fef57b0a2eae7c79619d0aa438b7491ad11b2344","vout":4,"prevout":{"scriptpubkey":"76a91458929b257c993625908fdf3ebb3b4d755e43be6888ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 58929b257c993625908fdf3ebb3b4d755e43be68 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"195L6FM9LmrQkuhHRj5i9oM4jv99eTRDbU","value":48599480},"scriptsig":"47304402207355b1200170b1ad5686a8e69f1c90dd0a79a20995d32636205ac5c5d5f10cab02206f7d52f9506763e88efaff1912e6c8e7b2143b4f7e973f3c0891dac75f6bfe03012103ef1c91b0b16de91c9e329ec6e3978306f6f1be0fe17c268142c464e9d5c5e086","scriptsig_asm":"OP_PUSHBYTES_71 304402207355b1200170b1ad5686a8e69f1c90dd0a79a20995d32636205ac5c5d5f10cab02206f7d52f9506763e88efaff1912e6c8e7b2143b4f7e973f3c0891dac75f6bfe0301 OP_PUSHBYTES_33 03ef1c91b0b16de91c9e329ec6e3978306f6f1be0fe17c268142c464e9d5c5e086","is_coinbase":false,"sequence":4294967295}],"vout":[{"scriptpubkey":"a9146429d4937585cd797e3487c2ec1e1b1a4b5643c387","scriptpubkey_asm":"OP_HASH160 OP_PUSHBYTES_20 6429d4937585cd797e3487c2ec1e1b1a4b5643c3 OP_EQUAL","scriptpubkey_type":"p2sh","scriptpubkey_address":"3Apdc9nH62hgjPByPSuLU2CApskUsf5cM9","value":139444},{"scriptpubkey":"76a914a2d02198fb8a8864e46b288978bc0bd06281a8a588ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 a2d02198fb8a8864e46b288978bc0bd06281a8a5 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"1FqsoHk1CUwHcofWewrourJLb7F9gsTdTw","value":2590000},{"scriptpubkey":"0014039030cb16169370df8ff6efb61510f31117f110","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 039030cb16169370df8ff6efb61510f31117f110","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qqwgrpjckz6fhphu07mhmv9gs7vg30ugsvm6x6r","value":325292},{"scriptpubkey":"001417ded7f0cc4b8d7c78a02077a95c0f5e359006e5","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 17ded7f0cc4b8d7c78a02077a95c0f5e359006e5","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qzl0d0uxvfwxhc79qypm6jhq0tc6eqph9y5nnj2","value":220481},{"scriptpubkey":"76a9143fce6c0d0a796108473972a6aafed1f862d59cdf88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 3fce6c0d0a796108473972a6aafed1f862d59cdf OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"16pNrYTpwAZ7v9UJNjTAr5wiY24qnj5smy","value":45323039}],"size":319,"weight":1276,"sigops":8,"fee":1224,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
 		Pmt: "f30800000d" +
 			"32f19bb610f0d51f754364ea4fda76ae2488b61fb4b2e0d966403c7c3544d20a" +
 			"e981f2c57041ca97a5910eb5b2bae1662937504b7fe6b2ce41574b38e61f0ddb" +
@@ -68,6 +86,7 @@ var PartialMerkleTrees = [3]PartialMerkleTreeTest{
 			"71f30b975d1a8f6cd62535985ea4d11f5c7f80549eab1b18a5cc011872b5403d" +
 			"ee666302831a3c64d1604c5c0bec9c796d8dcace974ae97e5837ff0d446d060c" +
 			"04ff370000",
+		BlockHex: test.MustReadFileString(blockPath),
 	},
 }
 

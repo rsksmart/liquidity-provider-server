@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
+	dataproviders_utils "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -34,7 +35,7 @@ var unsupportedOutputs = []txscript.ScriptClass{
 
 type MempoolSpaceApi struct {
 	url    string
-	client *http.Client
+	client dataproviders_utils.HttpClient
 	config *chaincfg.Params
 }
 
@@ -47,7 +48,7 @@ type transactionInfoApiResponse struct {
 }
 
 func NewMempoolSpaceApi(
-	client *http.Client,
+	client dataproviders_utils.HttpClient,
 	config *chaincfg.Params,
 	url string,
 ) blockchain.BitcoinNetwork {
@@ -89,7 +90,7 @@ func (api *MempoolSpaceApi) ValidateAddress(address string) error {
 	} else if !blockchain.IsSupportedBtcAddress(address) {
 		return blockchain.BtcAddressNotSupportedError
 	} else {
-		return errors.Join(blockchain.BtcAddressInvalidNetworkError, errors.New(result.Error))
+		return errors.New(result.Error)
 	}
 }
 
@@ -140,7 +141,7 @@ func (api *MempoolSpaceApi) GetTransactionInfo(hash string) (blockchain.BitcoinT
 
 	return blockchain.BitcoinTransactionInformation{
 		Hash:          hash,
-		Confirmations: height.Uint64() - transactionInfoResult.Status.BlockHeight,
+		Confirmations: height.Uint64() - transactionInfoResult.Status.BlockHeight + 1,
 		Outputs:       outputs,
 		HasWitness:    tx.HasWitness(),
 	}, nil
@@ -450,6 +451,8 @@ func (api *MempoolSpaceApi) GetBlockchainInfo() (blockchain.BitcoinBlockchainInf
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
+	} else if _, err = hex.DecodeString(string(data)); err != nil {
+		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
 	}
 
 	return blockchain.BitcoinBlockchainInfo{
@@ -509,8 +512,8 @@ func handleErrorResponse(res *http.Response) error {
 		return err
 	}
 	if res.StatusCode < 500 {
-		return fmt.Errorf("server error response (%d) from MempoolSpace API: %s", res.StatusCode, message)
-	} else {
 		return fmt.Errorf("client error response (%d) from MempoolSpace API: %s", res.StatusCode, message)
+	} else {
+		return fmt.Errorf("server error response (%d) from MempoolSpace API: %s", res.StatusCode, message)
 	}
 }

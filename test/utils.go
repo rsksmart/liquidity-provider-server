@@ -220,3 +220,17 @@ func GetBitcoinTestBlock(t *testing.T, path string) *btcutil.Block {
 	require.NoError(t, err)
 	return block
 }
+
+func MustReadFileString(path string) string {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("MustRead: could not determine caller info")
+	}
+	baseDir := filepath.Dir(thisFile)
+	fullPath := filepath.Join(baseDir, path)
+	b, err := os.ReadFile(fullPath)
+	if err != nil {
+		panic(fmt.Errorf("MustRead: failed to read %q: %w", path, err))
+	}
+	return string(b)
+}
