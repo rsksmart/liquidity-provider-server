@@ -89,6 +89,8 @@ func (api *MempoolSpaceApi) ValidateAddress(address string) error {
 		return nil
 	} else if !blockchain.IsSupportedBtcAddress(address) {
 		return blockchain.BtcAddressNotSupportedError
+	} else if strings.Contains(result.Error, "Invalid or unsupported") {
+		return errors.Join(errors.New(result.Error), blockchain.BtcAddressInvalidNetworkError)
 	} else {
 		return errors.New(result.Error)
 	}
