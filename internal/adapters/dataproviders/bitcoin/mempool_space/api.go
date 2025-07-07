@@ -72,7 +72,7 @@ func (api *MempoolSpaceApi) ValidateAddress(address string) error {
 	defer closeBody(res)
 	if err != nil {
 		return fmt.Errorf(errorTemplate, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return fmt.Errorf(errorTemplate, err)
 	}
 
@@ -157,7 +157,7 @@ func (api *MempoolSpaceApi) getTransactionInfo(hash string) (transactionInfoApiR
 	defer closeBody(res)
 	if err != nil {
 		return transactionInfoApiResponse{}, err
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return transactionInfoApiResponse{}, err
 	}
 	var transactionInfoResult transactionInfoApiResponse
@@ -214,7 +214,7 @@ func (api *MempoolSpaceApi) getRawTransaction(hash string, includeWitness bool) 
 	defer closeBody(res)
 	if err != nil {
 		return []byte{}, fmt.Errorf(rawTransactionError, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return []byte{}, fmt.Errorf(rawTransactionError, err)
 	}
 	data, err := io.ReadAll(res.Body)
@@ -279,7 +279,7 @@ func (api *MempoolSpaceApi) GetHeight() (*big.Int, error) {
 	defer closeBody(res)
 	if err != nil {
 		return nil, fmt.Errorf(getHeightError, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return nil, fmt.Errorf(getHeightError, err)
 	}
 	data, err := io.ReadAll(res.Body)
@@ -307,7 +307,7 @@ func (api *MempoolSpaceApi) BuildMerkleBranch(txHash string) (blockchain.MerkleB
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.MerkleBranch{}, fmt.Errorf(merkleBranchError, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return blockchain.MerkleBranch{}, fmt.Errorf(merkleBranchError, err)
 	}
 	var hashBytes []byte
@@ -355,7 +355,7 @@ func (api *MempoolSpaceApi) GetTransactionBlockInfo(txHash string) (blockchain.B
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return blockchain.BitcoinBlockInformation{}, fmt.Errorf(getTransactionBlockError, txHash, err)
 	}
 	var blockInfo struct {
@@ -445,7 +445,7 @@ func (api *MempoolSpaceApi) GetBlockchainInfo() (blockchain.BitcoinBlockchainInf
 	defer closeBody(res)
 	if err != nil {
 		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return blockchain.BitcoinBlockchainInfo{}, fmt.Errorf(getBlockchainInfoError, err)
 	}
 	data, err := io.ReadAll(res.Body)
@@ -472,7 +472,7 @@ func (api *MempoolSpaceApi) getBlock(blockHash string) (*btcutil.Block, error) {
 	defer closeBody(res)
 	if err != nil {
 		return nil, err
-	} else if err = handleErrorResponse(res); err != nil {
+	} else if err = parseErrorIfPresent(res); err != nil {
 		return nil, err
 	}
 	data, err := io.ReadAll(res.Body)
@@ -502,7 +502,7 @@ func closeBody(res *http.Response) {
 	}
 }
 
-func handleErrorResponse(res *http.Response) error {
+func parseErrorIfPresent(res *http.Response) error {
 	if !(res.StatusCode >= 400 && res.StatusCode <= 599) {
 		return nil
 	}
