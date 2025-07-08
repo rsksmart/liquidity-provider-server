@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -47,6 +48,24 @@ func decimalPlacesValidator(fl validator.FieldLevel) bool {
 	return diff < 1e-9
 }
 
+func ConfirmationsMapValidator(fl validator.FieldLevel) bool {
+	kind := fl.Field().Kind()
+	if kind != reflect.Map {
+		return false
+	}
+	confirmations, ok := fl.Field().Interface().(map[string]uint16)
+	if !ok {
+		return false
+	}
+	for key := range confirmations {
+		bigInt, valid := new(big.Int).SetString(key, 10)
+		if !valid || bigInt.Sign() <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func init() {
 	if err := registerValidations(); err != nil {
 		log.Fatal("Error registering validations: ", err)
@@ -62,6 +81,10 @@ func registerValidations() error {
 
 	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
 		return fmt.Errorf("registering max_decimal_places validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("confirmations_map", ConfirmationsMapValidator); err != nil {
+		return fmt.Errorf("registering confirmations_map validation: %w", err)
 	}
 	return nil
 }
@@ -134,6 +157,25 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 	return nil
 }
 
+func getValidationMessage(field validator.FieldError) string {
+	switch field.Tag() {
+	case "required":
+		return "is required"
+	case "numeric":
+		return "must be numeric"
+	case "positive_string":
+		return "must be a positive number"
+	case "gte":
+		return "must be greater than or equal to " + field.Param()
+	case "lte":
+		return "must be less than or equal to " + field.Param()
+	case "max_decimal_places":
+		return fmt.Sprintf("must have at most %s decimal places", field.Param())
+	default:
+		return "validation failed: " + field.Tag()
+	}
+}
+
 func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	var validationErrors validator.ValidationErrors
 	err := RequestValidator.Struct(body)
@@ -145,7 +187,7 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 	}
 	details := make(ErrorDetails)
 	for _, field := range validationErrors {
-		details[field.Field()] = "validation failed: " + field.Tag()
+		details[field.Field()] = getValidationMessage(field)
 	}
 	jsonErr := NewErrorResponseWithDetails("validation error", details, true)
 	JsonErrorResponse(w, http.StatusBadRequest, jsonErr)

@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -10,12 +11,12 @@ import (
 
 type ProviderDetail struct {
 	// Deprecated: Fee is deprecated, use FixedFee and FeePercentage instead
-	Fee                   uint64  `json:"fee" required:""`
-	FixedFee              uint64  `json:"fixedFee"  required:""`
-	FeePercentage         float64 `json:"feePercentage"  required:""`
-	MinTransactionValue   uint64  `json:"minTransactionValue"  required:""`
-	MaxTransactionValue   uint64  `json:"maxTransactionValue"  required:""`
-	RequiredConfirmations uint16  `json:"requiredConfirmations"  required:""`
+	Fee                   *big.Int `json:"fee" required:""`
+	FixedFee              *big.Int `json:"fixedFee"  required:""`
+	FeePercentage         float64  `json:"feePercentage"  required:""`
+	MinTransactionValue   *big.Int `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   *big.Int `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16   `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -47,7 +48,7 @@ type PeginConfigurationDTO struct {
 	CallTime       uint32  `json:"callTime" validate:"required"`
 	PenaltyFee     string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
 	FixedFee       string  `json:"fixedFee" validate:"required,numeric,min=0"`
-	FeePercentage  float64 `json:"feePercentage" validate:"numeric,gte=0,lt=100,max_decimal_places=2"`
+	FeePercentage  float64 `json:"feePercentage" validate:"numeric,gte=0,lte=100,max_decimal_places=2"`
 	MaxValue       string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue       string  `json:"minValue" validate:"required,numeric,positive_string"`
 }
@@ -61,7 +62,7 @@ type PegoutConfigurationDTO struct {
 	ExpireTime           uint32  `json:"expireTime" validate:"required"`
 	PenaltyFee           string  `json:"penaltyFee" validate:"required,numeric,positive_string"`
 	FixedFee             string  `json:"fixedFee" validate:"required,numeric,min=0"`
-	FeePercentage        float64 `json:"feePercentage" validate:"required,gte=0,lt=100,max_decimal_places=2"`
+	FeePercentage        float64 `json:"feePercentage" validate:"numeric,gte=0,lte=100,max_decimal_places=2"`
 	MaxValue             string  `json:"maxValue" validate:"required,numeric,positive_string"`
 	MinValue             string  `json:"minValue" validate:"required,numeric,positive_string"`
 	ExpireBlocks         uint64  `json:"expireBlocks" validate:"required"`
@@ -69,7 +70,13 @@ type PegoutConfigurationDTO struct {
 }
 
 type GeneralConfigurationRequest struct {
-	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
+	Configuration GeneralConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type GeneralConfigurationDTO struct {
+	RskConfirmations     map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations     map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck bool              `json:"publicLiquidityCheck" validate:""`
 }
 
 type LoginRequest struct {
@@ -222,4 +229,25 @@ func ToTrustedAccountsDTO(signedEntities []entities.Signed[liquidity_provider.Tr
 		result[i] = ToTrustedAccountDTO(signedEntity.Value)
 	}
 	return result
+}
+
+func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provider.GeneralConfiguration, error) {
+	bigInt := new(big.Int)
+	for key := range dto.RskConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize RSK confirmations key %s", key)
+		}
+	}
+	for key := range dto.BtcConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize BTC confirmations key %s", key)
+		}
+	}
+	return liquidity_provider.GeneralConfiguration{
+		RskConfirmations:     dto.RskConfirmations,
+		BtcConfirmations:     dto.BtcConfirmations,
+		PublicLiquidityCheck: dto.PublicLiquidityCheck,
+	}, nil
 }

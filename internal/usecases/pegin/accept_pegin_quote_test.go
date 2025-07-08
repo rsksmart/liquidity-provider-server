@@ -49,7 +49,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      10,
 	CallOnRegister:     false,
 	GasFee:             entities.NewWei(1),
-	ProductFeeAmount:   10,
+	ProductFeeAmount:   entities.NewWei(10),
 }
 
 var federationInfo = blockchain.FederationInfo{

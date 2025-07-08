@@ -359,16 +359,43 @@ const showWarningToast = (warningMessage) => {
 };
 
 function checkFeeWarnings() {
-    const fixedFeeCheckbox = document.querySelector('input[data-key="fixedFee_enabled"]');
-    const feePercentageCheckbox = document.querySelector('input[data-key="feePercentage_enabled"]');
-    const existingToast = document.getElementById('warningToast');
-    
-    if (fixedFeeCheckbox && feePercentageCheckbox) {
-        if (!fixedFeeCheckbox.checked && !feePercentageCheckbox.checked) {
-            if (!existingToast) showWarningToast('It is recommended to enable at least one of "feePercentage" or "fixedFee".');
-        } else {
-            if (existingToast) existingToast.parentNode.removeChild(existingToast);
+    const activeTabPane = document.querySelector('#configTabContent .tab-pane.active');
+    let activeSectionId;
+    if (activeTabPane) {
+        switch (activeTabPane.id) {
+            case 'general':
+                activeSectionId = 'generalConfig';
+                break;
+            case 'peginConfig':
+                activeSectionId = 'peginConfig';
+                break;
+            case 'pegoutConfig':
+                activeSectionId = 'pegoutConfig';
+                break;
+            default:
+                activeSectionId = undefined;
         }
+    }
+    if (!activeSectionId) return;
+    const sectionElement = document.getElementById(activeSectionId);
+    if (!sectionElement) return;
+    const fixedFeeCheckbox = sectionElement.querySelector('input[data-key="fixedFee_enabled"]');
+    const feePercentageCheckbox = sectionElement.querySelector('input[data-key="feePercentage_enabled"]');
+    const shouldWarn = (
+        fixedFeeCheckbox &&
+        feePercentageCheckbox &&
+        !fixedFeeCheckbox.checked &&
+        !feePercentageCheckbox.checked
+    );
+    const existingToast = document.getElementById('warningToast');
+    if (shouldWarn) {
+        if (!existingToast) {
+            showWarningToast('You have configured a zero-fee setting. This means you won\'t earn fees from bridging transactions.');
+        } else {
+            bootstrap.Toast.getOrCreateInstance(existingToast).show();
+        }
+    } else if (existingToast) {
+        existingToast.parentNode.removeChild(existingToast);
     }
 }
 
@@ -438,13 +465,28 @@ function getRegularConfig(sectionId) {
                 try {
                     value = etherToWei(input.value).toString();
                 } catch (error) {
-                    showErrorToast(`Invalid input "${input.value}" for field "${key}". Please enter a valid number.`);
+                    showErrorToast(`"${sectionId}": Invalid input "${input.value}" for field "${key}". Please enter a valid number.`);
                     throw error;
                 }
             } else if (isfeePercentageKey(key)) {
-                value = parseFloat(input.value.trim());
+                const rawInput = input.value.trim();
+                const percentagePattern = /^\d+(\.\d+)?%?$/;
+                if (!percentagePattern.test(rawInput)) {
+                    showErrorToast(`"${sectionId}": Invalid percentage entered "${rawInput}". Please provide a numeric value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                const numericPart = rawInput.endsWith('%') ? rawInput.slice(0, -1) : rawInput;
+                value = parseFloat(numericPart);
                 if (isNaN(value)) {
-                    showErrorToast(`Invalid input "${input.value}" for feePercentage. Please enter a valid number.`);
+                    showErrorToast(`"${sectionId}": Invalid percentage entered "${rawInput}". Please provide a valid value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                if (value < 0) {
+                    showErrorToast(`"${sectionId}": Fee percentage cannot be negative. Please enter a value between 0% and 100%.`);
+                    throw new Error('Invalid feePercentage');
+                }
+                if (value > 100) {
+                    showErrorToast(`"${sectionId}": Fee percentage cannot exceed 100%. Please enter a value between 0% and 100%.`);
                     throw new Error('Invalid feePercentage');
                 }
             } else {
@@ -741,6 +783,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
     document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
 
+    document.querySelectorAll('#configTabs a[data-bs-toggle="tab"]').forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', () => checkFeeWarnings());
+    });
+    
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
     populateConfigSection('pegoutConfig', configurations.pegout);

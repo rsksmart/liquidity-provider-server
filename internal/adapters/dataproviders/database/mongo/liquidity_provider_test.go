@@ -53,12 +53,12 @@ var pegoutTestConfig = &entities.Signed[liquidity_provider.PegoutConfiguration]{
 var generalTestConfig = &entities.Signed[liquidity_provider.GeneralConfiguration]{
 	Value: liquidity_provider.GeneralConfiguration{
 		RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
-			1: 2,
-			3: 4,
+			"1": 2,
+			"3": 4,
 		},
 		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
-			5: 6,
-			7: 8,
+			"5": 6,
+			"7": 8,
 		},
 	},
 	Signature: "general signature",

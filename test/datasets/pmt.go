@@ -1,0 +1,173 @@
+package datasets
+
+import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/test"
+	"math/big"
+)
+
+type PartialMerkleTreeTest struct {
+	Tx        string
+	BlockHash string
+	TxInfo    string
+	Pmt       string
+	BlockHex  string
+	BlockInfo string
+}
+
+type MerkleBranchTest struct {
+	Tx     string
+	Branch blockchain.MerkleBranch
+}
+
+const blockPath = "datasets/block-0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3-mainnet.txt"
+
+var PartialMerkleTrees = [3]PartialMerkleTreeTest{
+	// first two are witness txs, last one is legacy
+	{
+		Tx:        "07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"07f8b22fa9a3b32e20b59bb90727de05fb634749519ebcb6a887aeaf2c7eb041","version":1,"locktime":0,"vin":[{"txid":"0000000000000000000000000000000000000000000000000000000000000000","vout":4294967295,"prevout":null,"scriptsig":"034aa00a1c2f5669614254432f4d696e656420627920797a33313936303538372f2cfabe6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b100000000000000010c56e6700d262d24bd851bb829f9f0000","scriptsig_asm":"OP_PUSHBYTES_3 4aa00a OP_PUSHBYTES_28 2f5669614254432f4d696e656420627920797a33313936303538372f OP_PUSHBYTES_44 fabe6d6dc0a3751203a336deb817199448996ebcb2a0e537b1ce9254fa3e9c3295ca196b1000000000000000 OP_PUSHBYTES_16 c56e6700d262d24bd851bb829f9f0000","witness":["0000000000000000000000000000000000000000000000000000000000000000"],"is_coinbase":true,"sequence":4294967295}],"vout":[{"scriptpubkey":"76a914536ffa992491508dca0354e52f32a3a7a679a53a88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 536ffa992491508dca0354e52f32a3a7a679a53a OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX","value":634172161},{"scriptpubkey":"6a2952534b424c4f434b3a040c866ad2fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce9","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_41 52534b424c4f434b3a040c866ad2fdb8b59b32dd17059edaeef11d295e279a74ab97125d2500371ce9","scriptpubkey_type":"op_return","value":0},{"scriptpubkey":"6a24b9e11b6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_36 b9e11b6dab3e2ca50c1a6b01cf80eccb9d291aab8b095d653e348aa9d94a73964ff5cf1b","scriptpubkey_type":"op_return","value":0},{"scriptpubkey":"6a24aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b8","scriptpubkey_asm":"OP_RETURN OP_PUSHBYTES_36 aa21a9ed04f0bac0104f4fa47bec8058f2ebddd292dd85027ab0d6d95288d31f12c5a4b8","scriptpubkey_type":"op_return","value":0}],"size":362,"weight":1340,"sigops":4,"fee":0,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
+		Pmt: "f30800000d" +
+			"41b07e2cafae87a8b6bc9e51494763fb05de2707b99bb5202eb3a3a92fb2f80773" +
+			"1c671fafb5d234834c726657f29c9af030ccf7068f1ef732af4efd8e146da0a9d6" +
+			"075f4758821ceeef2c230cfd2497df2d1d1d02dd19e653d22b3dc271b39394c2d2" +
+			"e51eae99af800c39575a11f3b4eb0fdf5d5deff0b9f5ff592566f4f1732b3f6d41" +
+			"bded4344899a348d3053ccd68e922626e589da71d9a583ccfe9e3be6393a24e14d" +
+			"18006b54a967963c56da58b18ce770cdb3b32e56d88c138c473a1a37acc29a7788" +
+			"a88404fb9a05c416c2ad8f340a61c1ea331528a91ae6210db4f0e22d21c55b3f68" +
+			"06387ca34aba54522a7fe15e593ab0d0ff89c6d826cf4e745599bdfed66a4ef1a3" +
+			"66f056363158b2907388a5bd4013643d83a016469d392aab2319910a0ac801d2c9" +
+			"793c661f1bb02863f672288ce3b4c5e365cff81932fbe43d1eba4b027f80b1240a" +
+			"b5b8c677167602ee63c5a6dad213777b6fbbd3dd977871f30b975d1a8f6cd62535" +
+			"985ea4d11f5c7f80549eab1b18a5cc011872b5403dee666302831a3c64d1604c5c" +
+			"0bec9c796d8dcace974ae97e5837ff0d446d060c04ff1f0000",
+		BlockHex: test.MustReadFileString(blockPath),
+	},
+	{
+		Tx:        "ddf5061f9707f0c959bf24278d557b264716672c1b601ec50112d6dfe160d9d3",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"ddf5061f9707f0c959bf24278d557b264716672c1b601ec50112d6dfe160d9d3","version":1,"locktime":0,"vin":[{"txid":"ee8eb45f923001f0114d595347a04afba76bfcdd0a68cb4128ff83d82826f1f2","vout":30,"prevout":{"scriptpubkey":"0014e3744e835073aa2fcfeb4c6e042fdd6ad73d3e5a","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 e3744e835073aa2fcfeb4c6e042fdd6ad73d3e5a","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qud6yaq6sww4zlnltf3hqgt7adttn60j6w7sh0s","value":75095},"scriptsig":"","scriptsig_asm":"","witness":["304402200297a66460635d5d62f210db118322e63cdfafa7f981086c755cec7826e8785202206f7d01e9e8601fda8c26030290d3012e3a7f73cb816106919b17b8e04ab07bd301","0288dd7800e497cbfed7e4cb797a90c144c78fe14531ad855b8d2e439bba1e1ee8"],"is_coinbase":false,"sequence":4294967295}],"vout":[{"scriptpubkey":"001488ac44701b2705dfe6bde06abaf78b5062a6ac51","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 88ac44701b2705dfe6bde06abaf78b5062a6ac51","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1q3zkyguqmyuzale4aup4t4aut2p32dtz33a2mcu","value":9101},{"scriptpubkey":"a914b65e1e8a6be4832954022ccba4a01b1d1dfebe6287","scriptpubkey_asm":"OP_HASH160 OP_PUSHBYTES_20 b65e1e8a6be4832954022ccba4a01b1d1dfebe62 OP_EQUAL","scriptpubkey_type":"p2sh","scriptpubkey_address":"3JKHeypa6KcMuPvjobe9bCX3D2e9GbG7Tj","value":65000}],"size":223,"weight":565,"sigops":1,"fee":994,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
+		Pmt: "f30800000d" +
+			"c0746a357444e9948a18a612e02df5a99240e77f1ff75dd949d5b4038dcf36673a" +
+			"03c716cf722cff7d264c763088ceeb1665f26c6fdd5835d841eeee2f3ece4a203a" +
+			"24db8b7a51e4ab0e35a6b4151f6d7f1eef96f32e4fceaac61275219116186efb7f" +
+			"db763e821f99bd6af8d044cc6feadd7b4716e6938335a3e08548f5a0775dd36497" +
+			"1faab5cd089cd1fa713e8be658a67a704d39952218f6518e5045d269d3d960e1df" +
+			"d61201c51e601b2c671647267b558d2724bf59c9f007971f06f5dd0eab2677f52c" +
+			"996a3f941bef3ec57ebdf22429c37dee5ae68892df30f8acfc225c6fed56bdff34" +
+			"686135e68fda4b716713e60258b6971c03091f25115c008eec48a828c75ad7340f" +
+			"adbc368636b4014f6e8386c3990a35620cbddca933a72b02d990fb8a602fcda9e1" +
+			"e41120c25f4981362a9dfc7f7ed1f5188482b8ee3f532f0ee6234e44af99351ee4" +
+			"30f4ac0fa7b71fe9c601c78480b9a97fea305d3abca235a6668846093803e07c48" +
+			"dc9a75be90ed6edd4debb0b7b49bc057e093ad395eee666302831a3c64d1604c5c" +
+			"0bec9c796d8dcace974ae97e5837ff0d446d060c04dbd50300",
+		BlockHex: test.MustReadFileString(blockPath),
+	},
+	{
+		Tx:        "db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9",
+		BlockInfo: `{"id":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","height":696394,"version":536870916,"timestamp":1629300076,"tx_count":2291,"size":1420306,"weight":3993256,"merkle_root":"90865c682c43de98a02117b2d763491bd0ac7be4fb5fbd2daef6a548410581c2","previousblockhash":"0000000000000000000c011c470203e0c48da416a1db6c490d887a161a037743","mediantime":1629296198,"nonce":565449281,"bits":387061771,"difficulty":15556093717702.553}`,
+		BlockHash: "0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3",
+		TxInfo:    `{"txid":"db0d1fe6384b5741ceb2e67f4b50372966e1bab2b50e91a597ca4170c5f281e9","version":2,"locktime":0,"vin":[{"txid":"eed61c90d5f5c6174aac7cd1fef57b0a2eae7c79619d0aa438b7491ad11b2344","vout":4,"prevout":{"scriptpubkey":"76a91458929b257c993625908fdf3ebb3b4d755e43be6888ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 58929b257c993625908fdf3ebb3b4d755e43be68 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"195L6FM9LmrQkuhHRj5i9oM4jv99eTRDbU","value":48599480},"scriptsig":"47304402207355b1200170b1ad5686a8e69f1c90dd0a79a20995d32636205ac5c5d5f10cab02206f7d52f9506763e88efaff1912e6c8e7b2143b4f7e973f3c0891dac75f6bfe03012103ef1c91b0b16de91c9e329ec6e3978306f6f1be0fe17c268142c464e9d5c5e086","scriptsig_asm":"OP_PUSHBYTES_71 304402207355b1200170b1ad5686a8e69f1c90dd0a79a20995d32636205ac5c5d5f10cab02206f7d52f9506763e88efaff1912e6c8e7b2143b4f7e973f3c0891dac75f6bfe0301 OP_PUSHBYTES_33 03ef1c91b0b16de91c9e329ec6e3978306f6f1be0fe17c268142c464e9d5c5e086","is_coinbase":false,"sequence":4294967295}],"vout":[{"scriptpubkey":"a9146429d4937585cd797e3487c2ec1e1b1a4b5643c387","scriptpubkey_asm":"OP_HASH160 OP_PUSHBYTES_20 6429d4937585cd797e3487c2ec1e1b1a4b5643c3 OP_EQUAL","scriptpubkey_type":"p2sh","scriptpubkey_address":"3Apdc9nH62hgjPByPSuLU2CApskUsf5cM9","value":139444},{"scriptpubkey":"76a914a2d02198fb8a8864e46b288978bc0bd06281a8a588ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 a2d02198fb8a8864e46b288978bc0bd06281a8a5 OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"1FqsoHk1CUwHcofWewrourJLb7F9gsTdTw","value":2590000},{"scriptpubkey":"0014039030cb16169370df8ff6efb61510f31117f110","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 039030cb16169370df8ff6efb61510f31117f110","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qqwgrpjckz6fhphu07mhmv9gs7vg30ugsvm6x6r","value":325292},{"scriptpubkey":"001417ded7f0cc4b8d7c78a02077a95c0f5e359006e5","scriptpubkey_asm":"OP_0 OP_PUSHBYTES_20 17ded7f0cc4b8d7c78a02077a95c0f5e359006e5","scriptpubkey_type":"v0_p2wpkh","scriptpubkey_address":"bc1qzl0d0uxvfwxhc79qypm6jhq0tc6eqph9y5nnj2","value":220481},{"scriptpubkey":"76a9143fce6c0d0a796108473972a6aafed1f862d59cdf88ac","scriptpubkey_asm":"OP_DUP OP_HASH160 OP_PUSHBYTES_20 3fce6c0d0a796108473972a6aafed1f862d59cdf OP_EQUALVERIFY OP_CHECKSIG","scriptpubkey_type":"p2pkh","scriptpubkey_address":"16pNrYTpwAZ7v9UJNjTAr5wiY24qnj5smy","value":45323039}],"size":319,"weight":1276,"sigops":8,"fee":1224,"status":{"confirmed":true,"block_height":696394,"block_hash":"0000000000000000000aca0460feaf0661f173b75d4cc824b57233aa7c6b7bc3","block_time":1629300076}}`,
+		Pmt: "f30800000d" +
+			"32f19bb610f0d51f754364ea4fda76ae2488b61fb4b2e0d966403c7c3544d20a" +
+			"e981f2c57041ca97a5910eb5b2bae1662937504b7fe6b2ce41574b38e61f0ddb" +
+			"48055668e4e3d31af8efdb4179740c9de740d57594efeee0535d572d9dbd5f95" +
+			"94c2d2e51eae99af800c39575a11f3b4eb0fdf5d5deff0b9f5ff592566f4f173" +
+			"2b3f6d41bded4344899a348d3053ccd68e922626e589da71d9a583ccfe9e3be6" +
+			"393a24e14d18006b54a967963c56da58b18ce770cdb3b32e56d88c138c473a1a" +
+			"37acc29a7788a88404fb9a05c416c2ad8f340a61c1ea331528a91ae6210db4f0" +
+			"e22d21c55b3f6806387ca34aba54522a7fe15e593ab0d0ff89c6d826cf4e7455" +
+			"99bdfed66a4ef1a366f056363158b2907388a5bd4013643d83a016469d392aab" +
+			"2319910a0ac801d2c9793c661f1bb02863f672288ce3b4c5e365cff81932fbe4" +
+			"3d1eba4b027f80b1240ab5b8c677167602ee63c5a6dad213777b6fbbd3dd9778" +
+			"71f30b975d1a8f6cd62535985ea4d11f5c7f80549eab1b18a5cc011872b5403d" +
+			"ee666302831a3c64d1604c5c0bec9c796d8dcace974ae97e5837ff0d446d060c" +
+			"04ff370000",
+		BlockHex: test.MustReadFileString(blockPath),
+	},
+}
+
+var TestnetLegacyMerkleBranch = MerkleBranchTest{
+	Tx: "9f0706c2717fc77bf0f225a4223933a7decb8d36902ddbb0accab8ea894f8b29",
+	Branch: blockchain.MerkleBranch{
+		Hashes: [][32]byte{
+			{155, 80, 207, 191, 224, 254, 254, 207, 78, 62, 249, 222, 89, 87, 171, 35, 220, 207, 189, 31, 70, 82, 141, 48, 198, 32, 160, 219, 132, 222, 4, 8},
+			{71, 170, 231, 32, 77, 30, 186, 115, 142, 85, 108, 168, 0, 13, 46, 49, 84, 233, 136, 89, 60, 43, 243, 202, 144, 62, 255, 213, 141, 194, 189, 179},
+			{59, 162, 140, 60, 248, 2, 245, 106, 154, 191, 234, 177, 48, 236, 162, 182, 251, 183, 83, 235, 29, 21, 107, 125, 34, 114, 26, 64, 162, 84, 126, 120},
+			{93, 7, 146, 22, 74, 120, 71, 158, 154, 141, 202, 163, 154, 161, 141, 251, 221, 203, 104, 72, 74, 252, 21, 254, 64, 150, 96, 172, 63, 160, 41, 97},
+			{234, 116, 222, 241, 199, 162, 201, 219, 87, 174, 86, 69, 151, 193, 247, 143, 142, 205, 242, 138, 20, 53, 19, 208, 210, 50, 150, 113, 181, 67, 117, 177},
+			{141, 182, 8, 250, 221, 182, 182, 192, 127, 135, 114, 87, 57, 169, 102, 200, 136, 177, 0, 83, 135, 209, 203, 85, 237, 80, 109, 235, 151, 92, 88, 192},
+			{23, 44, 34, 196, 81, 13, 32, 151, 5, 75, 11, 104, 32, 13, 151, 201, 99, 35, 250, 136, 32, 246, 156, 232, 196, 199, 28, 210, 227, 241, 116, 67},
+			{56, 133, 146, 188, 185, 209, 23, 73, 20, 41, 218, 247, 211, 165, 219, 89, 80, 135, 219, 133, 198, 55, 47, 72, 23, 8, 219, 209, 63, 211, 217, 117},
+			{95, 15, 80, 149, 169, 116, 91, 201, 28, 85, 231, 232, 222, 112, 145, 6, 33, 235, 81, 88, 148, 191, 165, 186, 206, 116, 16, 165, 252, 48, 10, 29},
+			{13, 139, 52, 219, 135, 232, 179, 145, 111, 223, 227, 136, 201, 12, 147, 249, 30, 34, 41, 128, 144, 62, 214, 57, 252, 196, 229, 128, 136, 98, 83, 183},
+			{22, 85, 158, 56, 49, 196, 24, 106, 225, 109, 143, 164, 106, 193, 100, 188, 171, 81, 231, 70, 160, 3, 7, 147, 226, 80, 59, 114, 2, 254, 137, 138},
+		},
+		Path: big.NewInt(406),
+	},
+}
+
+var TestnetWitnessMerkleBranch = MerkleBranchTest{
+	Tx: "5cadcbc1ccd91b222346f22c9a9a6fdbf20c9338ec8df0b36097e92d029509ec",
+	Branch: blockchain.MerkleBranch{
+		Hashes: [][32]byte{
+			{80, 13, 208, 226, 229, 205, 193, 227, 225, 239, 119, 77, 193, 76, 43, 168, 230, 26, 1, 48, 54, 253, 218, 78, 113, 65, 122, 41, 29, 38, 119, 248},
+			{35, 117, 153, 121, 181, 74, 52, 157, 198, 126, 119, 134, 72, 50, 50, 30, 131, 227, 178, 54, 25, 170, 112, 250, 55, 217, 244, 34, 139, 13, 191, 251},
+			{100, 222, 145, 234, 129, 135, 15, 66, 246, 18, 188, 107, 95, 180, 105, 49, 12, 32, 93, 144, 193, 5, 115, 213, 148, 115, 23, 90, 83, 159, 174, 11},
+			{78, 9, 161, 73, 176, 134, 182, 94, 12, 64, 254, 209, 220, 203, 97, 254, 205, 139, 44, 224, 65, 109, 64, 227, 98, 119, 14, 2, 242, 211, 157, 57},
+			{83, 244, 193, 13, 23, 19, 237, 210, 69, 201, 114, 243, 245, 149, 179, 54, 40, 116, 207, 65, 185, 68, 219, 122, 55, 109, 34, 160, 110, 94, 131, 60},
+			{130, 82, 5, 217, 245, 246, 144, 252, 194, 224, 4, 202, 5, 194, 169, 254, 142, 125, 235, 140, 150, 199, 163, 137, 162, 182, 239, 221, 250, 112, 43, 112},
+			{65, 232, 143, 221, 200, 199, 173, 242, 246, 127, 151, 181, 54, 171, 127, 167, 131, 29, 10, 255, 52, 37, 123, 65, 246, 190, 208, 189, 225, 251, 249, 202},
+			{182, 25, 68, 77, 235, 60, 181, 139, 169, 54, 138, 235, 188, 38, 87, 59, 216, 4, 50, 71, 161, 71, 246, 58, 124, 14, 180, 168, 46, 209, 65, 65},
+			{69, 111, 13, 194, 93, 216, 68, 1, 101, 240, 131, 152, 34, 9, 74, 121, 251, 101, 1, 205, 115, 127, 76, 33, 67, 219, 83, 183, 34, 95, 125, 2},
+			{13, 139, 52, 219, 135, 232, 179, 145, 111, 223, 227, 136, 201, 12, 147, 249, 30, 34, 41, 128, 144, 62, 214, 57, 252, 196, 229, 128, 136, 98, 83, 183},
+			{22, 85, 158, 56, 49, 196, 24, 106, 225, 109, 143, 164, 106, 193, 100, 188, 171, 81, 231, 70, 160, 3, 7, 147, 226, 80, 59, 114, 2, 254, 137, 138},
+		},
+		Path: big.NewInt(10),
+	},
+}
+
+var MainnetLegacyMerkleBranch = MerkleBranchTest{
+	Tx: "e28bec3d29efce36405197d1255cfebde06ba9c193d8192d3825d6e9213b03ed",
+	Branch: blockchain.MerkleBranch{
+		Hashes: [][32]byte{
+			{135, 238, 6, 224, 124, 24, 74, 200, 74, 27, 37, 35, 43, 44, 127, 246, 228, 20, 127, 238, 125, 111, 49, 84, 183, 128, 247, 107, 202, 214, 211, 166},
+			{103, 85, 48, 129, 146, 247, 167, 199, 24, 36, 61, 6, 170, 57, 230, 208, 100, 110, 183, 28, 106, 197, 160, 174, 181, 168, 187, 117, 252, 186, 13, 230},
+			{188, 246, 123, 201, 232, 76, 99, 248, 74, 146, 140, 22, 16, 11, 182, 123, 213, 43, 193, 230, 3, 206, 65, 7, 16, 71, 12, 112, 234, 161, 22, 241},
+			{230, 59, 158, 254, 204, 131, 165, 217, 113, 218, 137, 229, 38, 38, 146, 142, 214, 204, 83, 48, 141, 52, 154, 137, 68, 67, 237, 189, 65, 109, 63, 43},
+			{26, 58, 71, 140, 19, 140, 216, 86, 46, 179, 179, 205, 112, 231, 140, 177, 88, 218, 86, 60, 150, 103, 169, 84, 107, 0, 24, 77, 225, 36, 58, 57},
+			{240, 180, 13, 33, 230, 26, 169, 40, 21, 51, 234, 193, 97, 10, 52, 143, 173, 194, 22, 196, 5, 154, 251, 4, 132, 168, 136, 119, 154, 194, 172, 55},
+			{85, 116, 78, 207, 38, 216, 198, 137, 255, 208, 176, 58, 89, 94, 225, 127, 42, 82, 84, 186, 74, 163, 124, 56, 6, 104, 63, 91, 197, 33, 45, 226},
+			{171, 42, 57, 157, 70, 22, 160, 131, 61, 100, 19, 64, 189, 165, 136, 115, 144, 178, 88, 49, 54, 86, 240, 102, 163, 241, 78, 106, 214, 254, 189, 153},
+			{228, 251, 50, 25, 248, 207, 101, 227, 197, 180, 227, 140, 40, 114, 246, 99, 40, 176, 27, 31, 102, 60, 121, 201, 210, 1, 200, 10, 10, 145, 25, 35},
+			{120, 151, 221, 211, 187, 111, 123, 119, 19, 210, 218, 166, 197, 99, 238, 2, 118, 22, 119, 198, 184, 181, 10, 36, 177, 128, 127, 2, 75, 186, 30, 61},
+			{61, 64, 181, 114, 24, 1, 204, 165, 24, 27, 171, 158, 84, 128, 127, 92, 31, 209, 164, 94, 152, 53, 37, 214, 108, 143, 26, 93, 151, 11, 243, 113},
+			{12, 6, 109, 68, 13, 255, 55, 88, 126, 233, 74, 151, 206, 202, 141, 109, 121, 156, 236, 11, 92, 76, 96, 209, 100, 60, 26, 131, 2, 99, 102, 238},
+		},
+		Path: big.NewInt(6),
+	},
+}
+
+var MainnetWitnessMerkleBranch = MerkleBranchTest{
+	Tx: "85c2fc50c70ceda8cb9f62aacc65a67b76411e442096d86649c95d7e9a28af8c",
+	Branch: blockchain.MerkleBranch{
+		Hashes: [][32]byte{
+			{108, 236, 234, 77, 106, 108, 163, 204, 4, 94, 67, 31, 86, 6, 2, 134, 199, 122, 75, 236, 253, 93, 176, 134, 32, 218, 177, 126, 181, 208, 122, 210},
+			{53, 178, 35, 230, 188, 212, 205, 49, 167, 120, 157, 193, 246, 140, 101, 226, 49, 126, 83, 49, 230, 132, 93, 117, 13, 173, 26, 95, 52, 4, 151, 210},
+			{245, 186, 211, 170, 68, 100, 250, 196, 134, 156, 81, 121, 144, 127, 48, 92, 106, 247, 59, 129, 94, 86, 251, 164, 120, 160, 140, 168, 236, 39, 99, 107},
+			{17, 22, 165, 123, 175, 96, 197, 101, 168, 85, 191, 119, 46, 47, 54, 17, 45, 211, 190, 106, 152, 87, 58, 203, 160, 45, 208, 34, 217, 114, 106, 122},
+			{153, 234, 33, 223, 242, 169, 208, 67, 204, 186, 216, 67, 225, 75, 71, 243, 102, 21, 174, 17, 166, 246, 253, 148, 43, 125, 233, 75, 148, 216, 27, 79},
+			{240, 180, 13, 33, 230, 26, 169, 40, 21, 51, 234, 193, 97, 10, 52, 143, 173, 194, 22, 196, 5, 154, 251, 4, 132, 168, 136, 119, 154, 194, 172, 55},
+			{85, 116, 78, 207, 38, 216, 198, 137, 255, 208, 176, 58, 89, 94, 225, 127, 42, 82, 84, 186, 74, 163, 124, 56, 6, 104, 63, 91, 197, 33, 45, 226},
+			{171, 42, 57, 157, 70, 22, 160, 131, 61, 100, 19, 64, 189, 165, 136, 115, 144, 178, 88, 49, 54, 86, 240, 102, 163, 241, 78, 106, 214, 254, 189, 153},
+			{228, 251, 50, 25, 248, 207, 101, 227, 197, 180, 227, 140, 40, 114, 246, 99, 40, 176, 27, 31, 102, 60, 121, 201, 210, 1, 200, 10, 10, 145, 25, 35},
+			{120, 151, 221, 211, 187, 111, 123, 119, 19, 210, 218, 166, 197, 99, 238, 2, 118, 22, 119, 198, 184, 181, 10, 36, 177, 128, 127, 2, 75, 186, 30, 61},
+			{61, 64, 181, 114, 24, 1, 204, 165, 24, 27, 171, 158, 84, 128, 127, 92, 31, 209, 164, 94, 152, 53, 37, 214, 108, 143, 26, 93, 151, 11, 243, 113},
+			{12, 6, 109, 68, 13, 255, 55, 88, 126, 233, 74, 151, 206, 202, 141, 109, 121, 156, 236, 11, 92, 76, 96, 209, 100, 60, 26, 131, 2, 99, 102, 238},
+		},
+		Path: big.NewInt(16),
+	},
+}

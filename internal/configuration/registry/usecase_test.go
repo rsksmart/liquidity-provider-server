@@ -41,7 +41,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		btcRegistry, err := registry.NewBitcoinRegistry(walletFactoryMock, connection)
 		require.NoError(t, err)
 
-		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection)
+		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
 		lp := registry.NewLiquidityProvider(dbRegistry, rskRegistry, btcRegistry, messagingRegistry)
 		mutexes := environment.NewApplicationMutexes()
 

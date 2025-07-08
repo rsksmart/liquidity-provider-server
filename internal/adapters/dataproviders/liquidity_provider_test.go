@@ -386,7 +386,7 @@ func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
 
 	t.Run("Return default general configuration when db configuration is tampered", func(t *testing.T) {
 		tamperedConfig := getGeneralConfigurationMock()
-		tamperedConfig.Value.RskConfirmations[2000000000000000000] = 40
+		tamperedConfig.Value.RskConfirmations["2000000000000000000"] = 40
 		lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 		defer test.AssertLogContains(t, "Tampered general configuration. Using default configuration.")()
@@ -596,20 +596,20 @@ func getGeneralConfigurationMock() *entities.Signed[liquidity_provider.GeneralCo
 	return &entities.Signed[liquidity_provider.GeneralConfiguration]{
 		Value: liquidity_provider.GeneralConfiguration{
 			RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				2000000000000000000: 15,
-				400000000000000000:  10,
-				4000000000000000000: 20,
-				8000000000000000000: 25,
-				9000000000000000000: 30,
-				100000000000000000:  5,
+				"2000000000000000000": 15,
+				"400000000000000000":  10,
+				"4000000000000000000": 20,
+				"8000000000000000000": 25,
+				"9000000000000000000": 30,
+				"100000000000000000":  5,
 			},
 			BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				100000000000000000:  2,
-				2000000000000000000: 10,
-				400000000000000000:  6,
-				4000000000000000000: 20,
-				8000000000000000000: 40,
-				9000000000000000001: 45,
+				"100000000000000000":  2,
+				"2000000000000000000": 10,
+				"400000000000000000":  6,
+				"4000000000000000000": 20,
+				"8000000000000000000": 40,
+				"9000000000000000001": 45,
 			},
 			PublicLiquidityCheck: false,
 		},

@@ -98,12 +98,18 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
             body: JSON.stringify({ configuration: config })
         });
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json();            
+            if (errorData.details && typeof errorData.details === 'object') {
+                const detailMessages = Object.entries(errorData.details)
+                    .map(([field, message]) => `${field}: ${message}`)
+                    .join(', ');
+                throw new Error(detailMessages);
+            }
             throw new Error(`Error saving ${sectionId} configuration: ${errorData.message || 'Unknown error'}`);
         }
         return true;
     } catch (error) {
-        throw new Error(`Error during ${sectionId} configuration save: ${error.message}`);
+        throw new Error(`${sectionId}: ${error.message}`);
     }
 }
 

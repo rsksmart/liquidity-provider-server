@@ -82,12 +82,12 @@ func TestValidateConfiguration(t *testing.T) {
 
 		mockConfig := liquidity_provider.GeneralConfiguration{
 			RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				10: 100,
-				20: 200,
+				"10": 100,
+				"20": 200,
 			},
 			BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				10: 5,
-				20: 10,
+				"10": 5,
+				"20": 10,
 			},
 			PublicLiquidityCheck: true,
 		}
@@ -175,12 +175,12 @@ func TestValidateConfiguration(t *testing.T) {
 
 		mockConfig := liquidity_provider.GeneralConfiguration{
 			RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				10: 100,
-				20: 200,
+				"10": 100,
+				"20": 200,
 			},
 			BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
-				10: 5,
-				20: 10,
+				"10": 5,
+				"20": 10,
 			},
 			PublicLiquidityCheck: true,
 		}

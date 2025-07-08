@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -159,7 +160,7 @@ func TestValidateRequest(t *testing.T) {
 	t.Run("handle validation error", func(t *testing.T) {
 		req := pkg.PeginQuoteRequest{
 			CallEoaOrContractAddress: test.AnyHash,
-			ValueToTransfer:          1,
+			ValueToTransfer:          big.NewInt(1),
 		}
 		var response rest.ErrorResponse
 		w := httptest.NewRecorder()
@@ -171,7 +172,7 @@ func TestValidateRequest(t *testing.T) {
 		assert.Contains(t, response.Message, "validation error")
 		assert.Len(t, response.Details, 2)
 		for key := range response.Details {
-			assert.Contains(t, response.Details[key], "validation failed")
+			assert.NotEmpty(t, response.Details[key])
 		}
 		assert.True(t, response.Recoverable)
 	})
@@ -203,6 +204,61 @@ func TestMaxDecimalPlacesValidation(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestConfirmationsMapValidator(t *testing.T) {
+	type testStruct struct {
+		Confirmations map[string]uint16 `validate:"confirmations_map"`
+	}
+
+	tests := []struct {
+		name        string
+		input       map[string]uint16
+		wantIsValid bool
+	}{
+		{
+			name:        "valid map with positive amounts",
+			input:       map[string]uint16{"1000": 3, "2000": 5},
+			wantIsValid: true,
+		},
+		{
+			name:        "valid map with large amounts",
+			input:       map[string]uint16{"1000000000000000000": 10},
+			wantIsValid: true,
+		},
+		{
+			name:        "invalid map with negative amount key",
+			input:       map[string]uint16{"-1000": 3},
+			wantIsValid: false,
+		},
+		{
+			name:        "invalid map with zero amount key",
+			input:       map[string]uint16{"0": 3},
+			wantIsValid: false,
+		},
+		{
+			name:        "invalid map with non-numeric key",
+			input:       map[string]uint16{"abc": 3},
+			wantIsValid: false,
+		},
+		{
+			name:        "empty map",
+			input:       map[string]uint16{},
+			wantIsValid: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := testStruct{Confirmations: tt.input}
+			err := rest.RequestValidator.Struct(ts)
+			if tt.wantIsValid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
 			}
 		})
 	}

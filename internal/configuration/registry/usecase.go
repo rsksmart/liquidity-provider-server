@@ -3,6 +3,7 @@ package registry
 import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -10,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"sync"
 )
 
 var signingHashFunction = crypto.Keccak256
@@ -63,6 +65,8 @@ type UseCaseRegistry struct {
 	deleteTrustedAccountUseCase   *liquidity_provider.DeleteTrustedAccountUseCase
 	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
 	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
+	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 }
 
 // NewUseCaseRegistry
@@ -171,6 +175,7 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
+			rootstock.ParseDepositEvent,
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(
@@ -264,6 +269,27 @@ func NewUseCaseRegistry(
 			databaseRegistry.TrustedAccountRepository,
 			signingHashFunction,
 			rskRegistry.Wallet,
+		),
+		// we want two separate instances of the same use case
+		btcEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
+		),
+		rskEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
 		),
 	}
 }
