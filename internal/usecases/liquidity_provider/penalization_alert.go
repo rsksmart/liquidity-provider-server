@@ -28,7 +28,7 @@ func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toB
 	}
 	for _, event := range events {
 		body = fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", event.Penalty.ToRbtc(), event.QuoteHash)
-		if err = useCase.sender.SendAlert(ctx, entities.AlertSubjectPeginPunishment, body, []string{useCase.recipient}); err != nil {
+		if err = useCase.sender.SendAlert(ctx, entities.AlertSubjectPenalization, body, []string{useCase.recipient}); err != nil {
 			log.Error("Error sending punishment alert: ", err)
 		}
 	}

@@ -50,7 +50,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		sender.On(
 			"SendAlert",
 			test.AnyCtx,
-			entities.AlertSubjectPeginPunishment,
+			entities.AlertSubjectPenalization,
 			fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", events[i].Penalty.ToRbtc(), events[i].QuoteHash),
 			[]string{recipient},
 		).Return(nil).Once()
