@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -14,7 +15,7 @@ type PenalizationAlertWatcher struct {
 	penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase
 	currentBlock             uint64
 	currentBlockMutex        sync.RWMutex
-	ticker                   Ticker
+	ticker                   utils.Ticker
 	watcherStopChannel       chan bool
 	validationTimeout        time.Duration
 }
@@ -22,7 +23,7 @@ type PenalizationAlertWatcher struct {
 func NewPenalizationAlertWatcher(
 	rpc blockchain.Rpc,
 	penalizationAlertUseCase *liquidity_provider.PenalizationAlertUseCase,
-	ticker Ticker,
+	ticker utils.Ticker,
 	validationTimeout time.Duration,
 ) *PenalizationAlertWatcher {
 	watcherStopChannel := make(chan bool, 1)

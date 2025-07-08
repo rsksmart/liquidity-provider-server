@@ -69,3 +69,11 @@ func (m *BtcRpcMock) NetworkName() string {
 	args := m.Called()
 	return args.String(0)
 }
+
+func (m *BtcRpcMock) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return blockchain.BitcoinBlockchainInfo{}, args.Error(1)
+	}
+	return (args.Get(0)).(blockchain.BitcoinBlockchainInfo), args.Error(1)
+}

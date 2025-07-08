@@ -2,8 +2,10 @@ package test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	log "github.com/sirupsen/logrus"
@@ -205,4 +207,30 @@ func WriteTestFile(t *testing.T, name string, content []byte) string {
 
 func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+}
+
+func GetBitcoinTestBlock(t *testing.T, path string) *btcutil.Block {
+	absolutePath, err := filepath.Abs(path)
+	require.NoError(t, err)
+	blockFile, err := os.ReadFile(absolutePath)
+	require.NoError(t, err)
+	blockBytes, err := hex.DecodeString(string(blockFile))
+	require.NoError(t, err)
+	block, err := btcutil.NewBlockFromBytes(blockBytes)
+	require.NoError(t, err)
+	return block
+}
+
+func MustReadFileString(path string) string {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("MustRead: could not determine caller info")
+	}
+	baseDir := filepath.Dir(thisFile)
+	fullPath := filepath.Join(baseDir, path)
+	b, err := os.ReadFile(fullPath)
+	if err != nil {
+		panic(fmt.Errorf("MustRead: failed to read %q: %w", path, err))
+	}
+	return string(b)
 }

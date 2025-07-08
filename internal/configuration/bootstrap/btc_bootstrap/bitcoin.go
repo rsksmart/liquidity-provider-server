@@ -1,4 +1,4 @@
-package bootstrap
+package btc_bootstrap
 
 import (
 	"errors"
@@ -8,8 +8,11 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/mempool_space"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 const (
@@ -27,7 +30,11 @@ func BitcoinWallet(env environment.BtcEnv, walletId string) (*bitcoin.Connection
 		return nil, errors.New("walletId cannot be empty")
 	}
 	endpoint := fmt.Sprintf("%s/wallet/%s", env.Endpoint, walletId)
-	createdClient, err := createBitcoinClient(env, endpoint)
+	params, err := env.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	createdClient, err := createBitcoinClient(params, env.Username, env.Password, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +42,11 @@ func BitcoinWallet(env environment.BtcEnv, walletId string) (*bitcoin.Connection
 }
 
 func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
-	createdClient, err := createBitcoinClient(env, env.Endpoint)
+	params, err := env.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	createdClient, err := createBitcoinClient(params, env.Username, env.Password, env.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -43,20 +54,36 @@ func Bitcoin(env environment.BtcEnv) (*bitcoin.Connection, error) {
 	return conn, nil
 }
 
-func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, error) {
+func ExternalBitcoinSources(env environment.Environment) ([]blockchain.BitcoinNetwork, error) {
+	var createdClient CreatedClient
+	sources := make([]blockchain.BitcoinNetwork, 0)
+	params, err := env.Btc.GetNetworkParams()
+	if err != nil {
+		return nil, err
+	}
+	for _, source := range env.Btc.BtcExtraSources {
+		if source.Format == "rpc" {
+			if createdClient, err = createBitcoinClient(params, "", "", source.Url); err != nil {
+				return nil, fmt.Errorf("error creating external btc_bootstrap client for %s: %w", source, err)
+			}
+			connection := bitcoin.NewConnection(createdClient.Params, createdClient.Client)
+			sources = append(sources, bitcoin.NewBitcoindRpc(connection))
+		} else if source.Format == "mempool" {
+			sources = append(sources, mempool_space.NewMempoolSpaceApi(http.DefaultClient, params, source.Url))
+		}
+	}
+	return sources, nil
+}
+
+func createBitcoinClient(networkParams *chaincfg.Params, user, password, host string) (CreatedClient, error) {
 	var params *chaincfg.Params
 	log.Info("Connecting to BTC node at ", host, "...")
 
-	params, err := env.GetNetworkParams()
-	if err != nil {
-		return CreatedClient{}, err
-	}
-
 	config := rpcclient.ConnConfig{
 		Host:   host,
-		User:   env.Username,
-		Pass:   env.Password,
-		Params: params.Name,
+		User:   user,
+		Pass:   password,
+		Params: networkParams.Name,
 		// Rationale why this is disabled: https://en.bitcoin.it/wiki/Enabling_SSL_on_original_client_daemon
 		DisableTLS:   true,
 		HTTPPostMode: true,

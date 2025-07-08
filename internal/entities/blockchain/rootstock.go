@@ -74,6 +74,7 @@ type RootstockRpcServer interface {
 	GetTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
+	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 }
 
 type RootstockWallet interface {
