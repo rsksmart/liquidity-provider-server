@@ -20,6 +20,6 @@ func NewGetPeginCollateralHandler(useCase *pegin.GetCollateralUseCase) http.Hand
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
-		rest.JsonResponseWithBody(w, http.StatusOK, &pkg.GetCollateralResponse{Collateral: collateral.Uint64()})
+		rest.JsonResponseWithBody(w, http.StatusOK, &pkg.GetCollateralResponse{Collateral: collateral.AsBigInt()})
 	}
 }

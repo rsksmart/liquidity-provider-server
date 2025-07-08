@@ -63,3 +63,6 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
     interfaces:
       EclipseCheckUseCase:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
+    interfaces:
+      SetGeneralConfigUseCase:

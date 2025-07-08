@@ -16,8 +16,8 @@ import (
 func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations: map[int]uint16{5: 10},
-			BtcConfirmations: map[int]uint16{10: 20},
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{"10": 20},
 		},
 		Signature: "010203",
 		Hash:      "040506",
@@ -42,8 +42,8 @@ func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations: map[int]uint16{5: 10},
-			BtcConfirmations: map[int]uint16{10: 20},
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{"10": 20},
 		},
 		Signature: "010203",
 		Hash:      "040506",
