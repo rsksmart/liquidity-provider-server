@@ -1,6 +1,7 @@
 package pkg_test
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 
@@ -145,5 +146,60 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		}
 		assert.Equal(t, expectedDTO, dto)
 		test.AssertNonZeroValues(t, dto)
+	})
+}
+
+func TestFromGeneralConfigurationDTO(t *testing.T) {
+	t.Run("converts valid configuration", func(t *testing.T) {
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"2000000000000000000": 10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"4000000000000000000": 20,
+			},
+			PublicLiquidityCheck: true,
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
+
+		require.NoError(t, err)
+		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
+		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
+		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
+		test.AssertNonZeroValues(t, dto)
+	})
+
+	t.Run("returns error on invalid numeric keys", func(t *testing.T) {
+		invalidBtc := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"notanumber":          20,
+			},
+			PublicLiquidityCheck: true,
+		}
+		invalidRsk := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"invalid":             10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+			},
+			PublicLiquidityCheck: false,
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(invalidBtc)
+		assert.Empty(t, config)
+		require.ErrorContains(t, err, "cannot deserialize BTC confirmations key notanumber")
+
+		config, err = pkg.FromGeneralConfigurationDTO(invalidRsk)
+		assert.Empty(t, config)
+		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
 	})
 }
