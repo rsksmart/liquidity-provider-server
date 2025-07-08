@@ -3,6 +3,8 @@ package liquidity_provider_test
 import (
 	"bytes"
 	"context"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestCheckLiquidityUseCase_Run(t *testing.T) {
@@ -39,7 +40,7 @@ func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
 		test.AnyCtx,
-		"PegIn: Out of liquidity",
+		entities.AlertSubjectPeginOutOfLiquidity,
 		"You are out of liquidity to perform a PegIn. Please, do a deposit",
 		[]string{recipient},
 	).Return(nil).Once()
@@ -62,7 +63,7 @@ func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
 		test.AnyCtx,
-		"PegOut: Out of liquidity",
+		entities.AlertSubjectPegoutOutOfLiquidity,
 		"You are out of liquidity to perform a PegOut. Please, do a deposit",
 		[]string{recipient},
 	).Return(nil).Once()

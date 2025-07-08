@@ -41,11 +41,28 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=test
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=mailhog:1025
+      - GF_SMTP_FROM_ADDRESS=alerts@lps-local.com
+      - GF_SMTP_FROM_NAME=LPS-Alerts-Local
+      - GF_SMTP_SKIP_VERIFY=true
     volumes:
-      - ../monitoring/grafana:/etc/grafana/provisioning/datasources
+      - ../monitoring/grafana:/etc/grafana/provisioning
     depends_on:
       - prometheus
       - loki
       - alloy
     networks:
       - net_lps
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - net_lps
+
+networks:
+  net_lps:
+    driver: "bridge"

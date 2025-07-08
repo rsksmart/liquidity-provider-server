@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -16,7 +17,6 @@ type OperationType string
 const (
 	PeginOperation  OperationType = "PegIn"
 	PegoutOperation OperationType = "PegOut"
-	MessageSubject  string        = "%s: Out of liquidity"
 	MessageBody     string        = "You are out of liquidity to perform a %s. Please, do a deposit"
 )
 
@@ -54,7 +54,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			fmt.Sprintf(MessageSubject, PeginOperation),
+			entities.AlertSubjectPeginOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PeginOperation),
 			[]string{useCase.recipient},
 		); err != nil {
@@ -68,7 +68,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			fmt.Sprintf(MessageSubject, PegoutOperation),
+			entities.AlertSubjectPegoutOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PegoutOperation),
 			[]string{useCase.recipient},
 		); err != nil {
