@@ -13,6 +13,13 @@ type Messaging struct {
 	Rpc         blockchain.Rpc
 	EventBus    entities.EventBus
 	AlertSender entities.AlertSender
+	RskExtraRpc []blockchain.RootstockRpcServer
+	BtcExtraRpc []blockchain.BitcoinNetwork
+}
+
+type ExternalRpc struct {
+	RskExternalRpc []blockchain.RootstockRpcServer
+	BtcExternalRpc []blockchain.BitcoinNetwork
 }
 
 func NewMessagingRegistry(
@@ -20,6 +27,7 @@ func NewMessagingRegistry(
 	env environment.Environment,
 	rskClient *rootstock.RskClient,
 	btcConn *bitcoin.Connection,
+	externalRpc ExternalRpc,
 ) *Messaging {
 	return &Messaging{
 		Rpc: blockchain.Rpc{
@@ -28,5 +36,7 @@ func NewMessagingRegistry(
 		},
 		EventBus:    NewEventBus(),
 		AlertSender: NewAlertSender(ctx, env),
+		RskExtraRpc: externalRpc.RskExternalRpc,
+		BtcExtraRpc: externalRpc.BtcExternalRpc,
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -28,7 +29,7 @@ type PegoutRskDepositWatcher struct {
 	pegoutLp                     liquidity_provider.PegoutLiquidityProvider
 	rpc                          blockchain.Rpc
 	contracts                    blockchain.RskContracts
-	ticker                       Ticker
+	ticker                       utils.Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
 	currentBlock                 uint64
@@ -68,7 +69,7 @@ func NewPegoutRskDepositWatcher(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
-	ticker Ticker,
+	ticker utils.Ticker,
 	depositCheckTimeout time.Duration,
 ) *PegoutRskDepositWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)

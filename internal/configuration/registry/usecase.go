@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"sync"
 )
 
 var signingHashFunction = crypto.Keccak256
@@ -59,6 +60,8 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 }
 
 // NewUseCaseRegistry
@@ -235,6 +238,27 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		// we want two separate instances of the same use case
+		btcEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
+		),
+		rskEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
+		),
 	}
 }
 

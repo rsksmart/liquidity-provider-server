@@ -109,6 +109,10 @@ func parseFloat(envVar string, field reflect.Value) error {
 }
 
 func parseBool(envVar string, field reflect.Value) error {
+	if envVar == "" {
+		field.SetBool(false)
+		return nil
+	}
 	if boolValue, err := strconv.ParseBool(envVar); err != nil {
 		return err
 	} else {
@@ -118,13 +122,29 @@ func parseBool(envVar string, field reflect.Value) error {
 }
 
 func parseSlice(envVar string, field reflect.Value) error {
-	if field.Type().Elem().Kind() != reflect.String {
+	elemType := field.Type().Elem()
+	if elemType.Kind() != reflect.String && elemType.Kind() != reflect.Struct {
 		return errors.New("unsupported env array")
 	}
-	for _, value := range strings.Split(envVar, ",") {
-		element := reflect.New(field.Type().Elem()).Elem()
-		element.SetString(value)
-		field.Set(reflect.Append(field, element))
+	if envVar == "" {
+		return nil
+	}
+
+	if elemType.Kind() == reflect.Struct {
+		slicePtr := reflect.New(field.Type())
+		if err := json.Unmarshal([]byte(envVar), slicePtr.Interface()); err != nil {
+			return fmt.Errorf("json-unmarshal %q into %s: %w", envVar, field.Type(), err)
+		}
+		field.Set(slicePtr.Elem())
+		return nil
+	}
+
+	if elemType.Kind() == reflect.String {
+		for _, value := range strings.Split(envVar, ",") {
+			element := reflect.New(field.Type().Elem()).Elem()
+			element.SetString(value)
+			field.Set(reflect.Append(field, element))
+		}
 	}
 	return nil
 }

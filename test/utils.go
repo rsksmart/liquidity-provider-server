@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -249,4 +250,30 @@ func AddDepositLogFromQuote(
 	}
 	receipt.Logs = slices.Insert(receipt.Logs, 0, log)
 	return receipt
+}
+
+func GetBitcoinTestBlock(t *testing.T, path string) *btcutil.Block {
+	absolutePath, err := filepath.Abs(path)
+	require.NoError(t, err)
+	blockFile, err := os.ReadFile(absolutePath)
+	require.NoError(t, err)
+	blockBytes, err := hex.DecodeString(string(blockFile))
+	require.NoError(t, err)
+	block, err := btcutil.NewBlockFromBytes(blockBytes)
+	require.NoError(t, err)
+	return block
+}
+
+func MustReadFileString(path string) string {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("MustRead: could not determine caller info")
+	}
+	baseDir := filepath.Dir(thisFile)
+	fullPath := filepath.Join(baseDir, path)
+	b, err := os.ReadFile(fullPath)
+	if err != nil {
+		panic(fmt.Errorf("MustRead: failed to read %q: %w", path, err))
+	}
+	return string(b)
 }
