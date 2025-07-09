@@ -17,7 +17,7 @@ tools: download
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
-	brew install mockery && brew upgrade mockery 	# installation with brew is because mockery team doesnt recommend to install with go install, if you don't have brew feel free to comment this line and install mockery with other method
+	go install github.com/vektra/mockery/v2@v2.51.1  	# ensures mockery version 2.51.1 is installed
 
 download:
 	go mod download
