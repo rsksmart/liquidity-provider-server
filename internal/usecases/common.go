@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -184,7 +185,7 @@ func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) er
 	for idx, val := range weiValues {
 		if val == nil || val.Cmp(zero) < 0 {
 			args := NewErrorArgs()
-			args["index"] = fmt.Sprintf("%d", idx)
+			args["index"] = strconv.Itoa(idx)
 			if val != nil {
 				args["value"] = val.String()
 			}
@@ -200,7 +201,7 @@ func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.C
 	}
 	for key := range confirmations {
 		if key <= 0 {
-			args := ErrorArg("key", fmt.Sprintf("%d", key))
+			args := ErrorArg("key", strconv.Itoa(key))
 			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
 		}
 	}
