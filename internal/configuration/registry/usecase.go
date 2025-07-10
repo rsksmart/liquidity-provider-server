@@ -194,6 +194,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
 			signingHashFunction,
+			rskRegistry.Contracts,
 		),
 		setPegoutConfigUseCase: liquidity_provider.NewSetPegoutConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,

@@ -2,6 +2,7 @@ package liquidity_provider
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -22,6 +23,13 @@ func NewSetGeneralConfigUseCase(
 }
 
 func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidity_provider.GeneralConfiguration) error {
+	if err := usecases.ValidateConfirmations(usecases.SetGeneralConfigId, config.RskConfirmations); err != nil {
+		return err
+	}
+	if err := usecases.ValidateConfirmations(usecases.SetGeneralConfigId, config.BtcConfirmations); err != nil {
+		return err
+	}
+
 	signedConfig, err := usecases.SignConfiguration(usecases.SetGeneralConfigId, useCase.signer, useCase.hashFunc, config)
 	if err != nil {
 		return err
