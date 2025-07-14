@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -12,11 +12,11 @@ import (
 
 type PenalizationAlertUseCase struct {
 	contracts blockchain.RskContracts
-	sender    entities.AlertSender
+	sender    alerts.AlertSender
 	recipient string
 }
 
-func NewPenalizationAlertUseCase(contracts blockchain.RskContracts, sender entities.AlertSender, recipient string) *PenalizationAlertUseCase {
+func NewPenalizationAlertUseCase(contracts blockchain.RskContracts, sender alerts.AlertSender, recipient string) *PenalizationAlertUseCase {
 	return &PenalizationAlertUseCase{contracts: contracts, sender: sender, recipient: recipient}
 }
 
@@ -28,7 +28,7 @@ func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toB
 	}
 	for _, event := range events {
 		body = fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", event.Penalty.ToRbtc(), event.QuoteHash)
-		if err = useCase.sender.SendAlert(ctx, entities.AlertSubjectPenalization, body, []string{useCase.recipient}); err != nil {
+		if err = useCase.sender.SendAlert(ctx, alerts.AlertSubjectPenalization, body, []string{useCase.recipient}); err != nil {
 			log.Error("Error sending punishment alert: ", err)
 		}
 	}

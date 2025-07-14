@@ -2,12 +2,13 @@ package mocks
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/stretchr/testify/mock"
 )
 
 type AlertSenderMock struct {
-	entities.AlertSender
+	alerts.AlertSender
 	mock.Mock
 }
 

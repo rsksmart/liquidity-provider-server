@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -24,7 +24,7 @@ type CheckLiquidityUseCase struct {
 	peginProvider  liquidity_provider.PeginLiquidityProvider
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider
 	contracts      blockchain.RskContracts
-	alertSender    entities.AlertSender
+	alertSender    alerts.AlertSender
 	recipient      string
 }
 
@@ -32,7 +32,7 @@ func NewCheckLiquidityUseCase(
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	contracts blockchain.RskContracts,
-	alertSender entities.AlertSender,
+	alertSender alerts.AlertSender,
 	recipient string,
 ) *CheckLiquidityUseCase {
 	return &CheckLiquidityUseCase{
@@ -54,7 +54,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			entities.AlertSubjectPeginOutOfLiquidity,
+			alerts.AlertSubjectPeginOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PeginOperation),
 			[]string{useCase.recipient},
 		); err != nil {
@@ -68,7 +68,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			entities.AlertSubjectPegoutOutOfLiquidity,
+			alerts.AlertSubjectPegoutOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PegoutOperation),
 			[]string{useCase.recipient},
 		); err != nil {
