@@ -132,6 +132,5 @@ type FederationInfo struct {
 	PubKeys              []string
 	FedAddress           string
 	ActiveFedBlockHeight int64
-	IrisActivationHeight int64
 	ErpKeys              []string
 }
