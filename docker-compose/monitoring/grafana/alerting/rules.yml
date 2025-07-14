@@ -103,4 +103,54 @@ groups:
           description: "PegOut operations cannot be processed due to insufficient rBTC liquidity"
         labels:
           severity: critical
-          operation_type: pegout 
+          operation_type: pegout
+
+      - uid: lps-penalization-alert
+        title: "LPS Penalization Alert"
+        condition: B
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: loki-uid
+            model:
+              expr: 'count_over_time({service="lps"} |~ "Alert! - Subject: LPS has been penalized" [1m])'
+          - refId: B
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+        noDataState: NoData
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "LPS Penalization Detected"
+          description: "The Liquidity Provider has been penalized for failing to fulfill a quote commitment"
+        labels:
+          severity: critical
+          operation_type: penalization 

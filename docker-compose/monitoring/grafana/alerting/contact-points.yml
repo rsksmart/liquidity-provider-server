@@ -6,13 +6,26 @@ contactPoints:
         type: email
         settings:
           addresses: "lps-alerts@localhost.com"
-          subject: "URGENT: LPS Liquidity Shortage"
+          subject: "URGENT: LPS Alert - {{ .GroupLabels.operation_type | title }}"
           body: |
-            Alert: {{ .GroupLabels.operation_type }} Liquidity Shortage
+            {{ if eq .GroupLabels.operation_type "penalization" }}
+            PENALIZATION ALERT
+            
+            The Liquidity Provider has been penalized!
+            
+            {{ range .Alerts }}
+            - {{ .Annotations.description }}
+            {{ end }}
+            
+            {{ else }}
+            LIQUIDITY SHORTAGE ALERT
+            
+            Alert: {{ .GroupLabels.operation_type | title }} Liquidity Shortage
             Environment: Local
             
             {{ range .Alerts }}
             - {{ .Annotations.description }}
             {{ end }}
             
+            {{ end }}
             Time: {{ .CommonAnnotations.time }} 
