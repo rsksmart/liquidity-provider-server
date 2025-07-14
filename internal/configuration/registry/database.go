@@ -10,6 +10,7 @@ type Database struct {
 	PeginRepository             quote.PeginQuoteRepository
 	PegoutRepository            quote.PegoutQuoteRepository
 	LiquidityProviderRepository liquidity_provider.LiquidityProviderRepository
+	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	Connection                  *mongo.Connection
 }
 
@@ -18,6 +19,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		PeginRepository:             mongo.NewPeginMongoRepository(connection),
 		PegoutRepository:            mongo.NewPegoutMongoRepository(connection),
 		LiquidityProviderRepository: mongo.NewLiquidityProviderRepository(connection),
+		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
 		Connection:                  connection,
 	}
 }

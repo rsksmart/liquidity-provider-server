@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/stretchr/testify/mock"
@@ -62,4 +63,9 @@ func (m *ProviderMock) AvailablePeginLiquidity(ctx context.Context) (*entities.W
 func (m *ProviderMock) AvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+
+func (m *ProviderMock) GetSigner() entities.Signer {
+	args := m.Called()
+	return args.Get(0).(entities.Signer)
 }

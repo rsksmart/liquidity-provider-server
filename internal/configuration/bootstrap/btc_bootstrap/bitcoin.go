@@ -3,6 +3,8 @@ package btc_bootstrap
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -12,7 +14,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 const (
@@ -76,7 +77,6 @@ func ExternalBitcoinSources(env environment.Environment) ([]blockchain.BitcoinNe
 }
 
 func createBitcoinClient(networkParams *chaincfg.Params, user, password, host string) (CreatedClient, error) {
-	var params *chaincfg.Params
 	log.Info("Connecting to BTC node at ", host, "...")
 
 	config := rpcclient.ConnConfig{
@@ -106,7 +106,7 @@ func createBitcoinClient(networkParams *chaincfg.Params, user, password, host st
 	}
 	return CreatedClient{
 		Client: btcclient.NewBtcSuiteClientAdapter(config, client),
-		Params: params,
+		Params: networkParams,
 		Config: config,
 	}, nil
 }

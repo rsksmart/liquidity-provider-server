@@ -6,6 +6,11 @@ type AcceptQuoteRequest struct {
 	QuoteHash string `json:"quoteHash" required:"" validate:"required" example:"0x0" description:"QuoteHash"`
 }
 
+type AcceptAuthenticatedQuoteRequest struct {
+	QuoteHash string `json:"quoteHash" required:"" validate:"required" example:"0x0" description:"QuoteHash"`
+	Signature string `json:"signature" required:"" validate:"required" example:"0x0" description:"Signature from a trusted account"`
+}
+
 type GetCollateralResponse struct {
 	Collateral *big.Int `json:"collateral" required:""`
 }

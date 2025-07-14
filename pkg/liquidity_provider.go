@@ -101,6 +101,28 @@ type ServerInfoDTO struct {
 	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
 }
 
+type TrustedAccountDTO struct {
+	Address        string   `json:"address" example:"0x1234567890abcdef" description:"Trusted account address" required:""`
+	Name           string   `json:"name" example:"Example Trusted Account" description:"Trusted account name" required:""`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
+}
+
+type TrustedAccountRequest struct {
+	Address        string   `json:"address" validate:"required"`
+	Name           string   `json:"name" validate:"required"`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" validate:"required"`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" validate:"required"`
+}
+
+type TrustedAccountAddressRequest struct {
+	Address string `json:"address" validate:"required"`
+}
+
+type TrustedAccountsResponse struct {
+	Accounts []TrustedAccountDTO `json:"accounts"`
+}
+
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
 	return AvailableLiquidityDTO{
 		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),
@@ -190,6 +212,23 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 		Version:  entity.Version,
 		Revision: entity.Revision,
 	}
+}
+
+func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) TrustedAccountDTO {
+	return TrustedAccountDTO{
+		Address:        entity.Address,
+		Name:           entity.Name,
+		BtcLockingCap:  entity.BtcLockingCap.AsBigInt(),
+		RbtcLockingCap: entity.RbtcLockingCap.AsBigInt(),
+	}
+}
+
+func ToTrustedAccountsDTO(signedEntities []entities.Signed[liquidity_provider.TrustedAccountDetails]) []TrustedAccountDTO {
+	result := make([]TrustedAccountDTO, len(signedEntities))
+	for i, signedEntity := range signedEntities {
+		result[i] = ToTrustedAccountDTO(signedEntity.Value)
+	}
+	return result
 }
 
 func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provider.GeneralConfiguration, error) {

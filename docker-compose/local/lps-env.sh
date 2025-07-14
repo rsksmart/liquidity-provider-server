@@ -348,3 +348,35 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
   echo "$RESPONSE_BODY"
   exit 1
 fi
+
+echo "Creating trusted account for regtest"
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/management/trusted-accounts' \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data "{
+      \"address\": \"$TRUSTED_ACCOUNT_ADDRESS\",
+      \"name\": \"Boletaz\",
+      \"btcLockingCap\": 3000000000000000000,
+      \"rbtcLockingCap\": 3000000000000000000
+  }")
+
+HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
+RESPONSE_BODY=$(echo "$CURL_OUTPUT" | sed '$d')
+
+if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+  echo "Error creating trusted account"
+  echo "HTTP Status: $HTTP_STATUS"
+  echo "Response Body:"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+echo "Trusted account created successfully!"
+echo "Address: $TRUSTED_ACCOUNT_ADDRESS"

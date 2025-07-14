@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
@@ -11,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"regexp"
 )
 
 const (
@@ -318,4 +319,28 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 		logDbInteraction(Upsert, deposits)
 	}
 	return err
+}
+
+func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
+	result := make([]quote.RetainedPegoutQuote, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+	filter := bson.D{
+		primitive.E{Key: "owner_account_address", Value: address},
+		primitive.E{Key: "state", Value: bson.D{
+			primitive.E{Key: "$in", Value: states},
+		}},
+	}
+
+	rows, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if err = rows.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
 }

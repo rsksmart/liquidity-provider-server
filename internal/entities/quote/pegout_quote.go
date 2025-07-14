@@ -43,6 +43,7 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
 }
 
 type CreatedPegoutQuote struct {
@@ -123,15 +124,16 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 }
 
 type RetainedPegoutQuote struct {
-	QuoteHash          string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress     string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature          string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity  *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State              PegoutState   `json:"state" bson:"state" validate:"required"`
-	UserRskTxHash      string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
-	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
-	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	QuoteHash           string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress      string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature           string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity   *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State               PegoutState   `json:"state" bson:"state" validate:"required"`
+	UserRskTxHash       string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
+	LpBtcTxHash         string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
+	RefundPegoutTxHash  string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	BridgeRefundTxHash  string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 type WatchedPegoutQuote struct {

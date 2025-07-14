@@ -1,6 +1,20 @@
 components:
   schemas:
     "": {}
+    AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
     AcceptPeginRespose:
       properties:
         bitcoinDepositAddressHash:
@@ -679,6 +693,59 @@ components:
         rsk:
           type: string
       type: object
+    TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
+      type: object
+    pkg.AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
+    pkg.AcceptPeginRespose:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
+    pkg.AcceptPegoutResponse:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -708,6 +775,17 @@ components:
           $ref: '#/components/schemas/'
       required:
       - collateral
+      type: object
+    pkg.TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
       type: object
 info:
   title: Liquidity Provider Server
@@ -785,6 +863,69 @@ paths:
         "204":
           description: ""
       summary: Management Logout
+  /management/trusted-accounts:
+    delete:
+      description: ' Deletes a trusted account'
+      parameters:
+      - description: Address of the trusted account to delete
+        in: query
+        name: address
+        required: true
+        schema:
+          description: Address of the trusted account to delete
+          format: string
+          type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete Trusted Account
+    get:
+      description: ' Returns all trusted accounts'
+      responses:
+        "200":
+          description: ""
+      summary: Get Trusted Accounts
+    post:
+      description: ' Adds a new trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Add Trusted Account
+    put:
+      description: ' Updates an existing trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Update Trusted Account
+  /pegin/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPeginRespose'
+          description: ""
+      summary: Accept authenticated quote
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'
@@ -881,6 +1022,23 @@ paths:
                 $ref: '#/components/schemas/PeginQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPeginStatus
+  /pegout/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPegoutResponse'
+          description: ""
+      summary: Accept authenticated quote
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'

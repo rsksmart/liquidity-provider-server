@@ -3,10 +3,11 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
+	"slices"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
-	"slices"
 )
 
 var (
@@ -76,7 +77,7 @@ type HashedCredentials struct {
 }
 
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
 }
 
 func validateRange(min, max, amount *entities.Wei) error {
