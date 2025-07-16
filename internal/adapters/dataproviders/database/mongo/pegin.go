@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,6 +15,7 @@ import (
 const (
 	PeginQuoteCollection         = "peginQuote"
 	RetainedPeginQuoteCollection = "retainedPeginQuote"
+	PeginCreationDataCollection  = "peginQuoteCreationData"
 )
 
 type peginMongoRepository struct {
@@ -29,21 +31,58 @@ type StoredPeginQuote struct {
 	Hash             string `json:"hash" bson:"hash"`
 }
 
-func (repo *peginMongoRepository) InsertQuote(ctx context.Context, hash string, peginQuote quote.PeginQuote) error {
+type StoredPeginCreationData struct {
+	quote.PeginCreationData `bson:",inline"`
+	Hash                    string `json:"hash" bson:"hash"`
+}
+
+func (repo *peginMongoRepository) InsertQuote(ctx context.Context, createdQuote quote.CreatedPeginQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(PeginQuoteCollection)
 	storedQuote := StoredPeginQuote{
-		PeginQuote: peginQuote,
-		Hash:       hash,
+		PeginQuote: createdQuote.Quote,
+		Hash:       createdQuote.Hash,
 	}
 	_, err := collection.InsertOne(dbCtx, storedQuote)
 	if err != nil {
 		return err
-	} else {
-		logDbInteraction(Insert, storedQuote)
-		return nil
 	}
+	logDbInteraction(Insert, storedQuote)
+
+	collection = repo.conn.Collection(PeginCreationDataCollection)
+	storedCreationData := StoredPeginCreationData{
+		PeginCreationData: createdQuote.CreationData,
+		Hash:              createdQuote.Hash,
+	}
+	_, err = collection.InsertOne(dbCtx, storedCreationData)
+	if err != nil {
+		return err
+	}
+	logDbInteraction(Insert, storedCreationData)
+	return nil
+}
+
+func (repo *peginMongoRepository) GetPeginCreationData(ctx context.Context, hash string) quote.PeginCreationData {
+	var result StoredPeginCreationData
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		log.Error("Invalid hash. Returning default pegin creation data")
+		return quote.PeginCreationDataZeroValue()
+	}
+
+	collection := repo.conn.Collection(PeginCreationDataCollection)
+	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+
+	err := collection.FindOne(dbCtx, filter).Decode(&result)
+	if err != nil {
+		log.Error("Hash not found. Returning default pegin creation data")
+		return quote.PeginCreationDataZeroValue()
+	}
+	logDbInteraction(Read, result.PeginCreationData)
+	return result.PeginCreationData
 }
 
 func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PeginQuote, error) {
@@ -155,10 +194,17 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	if err != nil {
 		return 0, err
 	}
-	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", peginResult.DeletedCount, PeginQuoteCollection))
-	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPeginQuoteCollection))
+	creationDataResult, err := repo.conn.Collection(PeginCreationDataCollection).DeleteMany(dbCtx, quoteFilter)
+	if err != nil {
+		return 0, err
+	}
+	const msgTemplate = "removed %d records from %s collection"
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, peginResult.DeletedCount, PeginQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, retainedResult.DeletedCount, RetainedPeginQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, creationDataResult.DeletedCount, PegoutCreationDataCollection))
+	// creation data doesn't count for mismatch because not all the quotes have it
 	if peginResult.DeletedCount != retainedResult.DeletedCount {
 		return 0, errors.New("pegin quote collections didn't match")
 	}
-	return uint(peginResult.DeletedCount + retainedResult.DeletedCount), nil
+	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }

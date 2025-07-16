@@ -20,17 +20,23 @@ func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) htt
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
+		peginFeePercentage, _ := result.Pegin.FeePercentage.Native().Float64()
+		pegoutFeePercentage, _ := result.Pegout.FeePercentage.Native().Float64()
 		response := pkg.ProviderDetailResponse{
 			SiteKey:               result.SiteKey,
 			LiquidityCheckEnabled: result.LiquidityCheckEnabled,
 			Pegin: pkg.ProviderDetail{
-				Fee:                   result.Pegin.Fee.Uint64(),
+				Fee:                   result.Pegin.FixedFee.Uint64(),
+				FixedFee:              result.Pegin.FixedFee.Uint64(),
+				FeePercentage:         peginFeePercentage,
 				MinTransactionValue:   result.Pegin.MinTransactionValue.Uint64(),
 				MaxTransactionValue:   result.Pegin.MaxTransactionValue.Uint64(),
 				RequiredConfirmations: result.Pegin.RequiredConfirmations,
 			},
 			Pegout: pkg.ProviderDetail{
-				Fee:                   result.Pegout.Fee.Uint64(),
+				Fee:                   result.Pegout.FixedFee.Uint64(),
+				FixedFee:              result.Pegout.FixedFee.Uint64(),
+				FeePercentage:         pegoutFeePercentage,
 				MinTransactionValue:   result.Pegout.MinTransactionValue.Uint64(),
 				MaxTransactionValue:   result.Pegout.MaxTransactionValue.Uint64(),
 				RequiredConfirmations: result.Pegout.RequiredConfirmations,

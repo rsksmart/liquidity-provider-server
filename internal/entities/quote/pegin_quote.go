@@ -2,8 +2,10 @@ package quote
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
 const (
@@ -25,14 +27,35 @@ const (
 )
 
 type PeginQuoteRepository interface {
-	InsertQuote(ctx context.Context, hash string, quote PeginQuote) error
+	InsertQuote(ctx context.Context, quote CreatedPeginQuote) error
 	GetQuote(ctx context.Context, hash string) (*PeginQuote, error)
+	GetPeginCreationData(ctx context.Context, hash string) PeginCreationData
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
+}
+
+type CreatedPeginQuote struct {
+	Hash         string
+	Quote        PeginQuote
+	CreationData PeginCreationData
+}
+
+type PeginCreationData struct {
+	GasPrice      *entities.Wei   `json:"gasPrice" bson:"gas_price" validate:"required"`
+	FeePercentage *utils.BigFloat `json:"feePercentage" bson:"fee_percentage" validate:"required"`
+	FixedFee      *entities.Wei   `json:"fixedFee" bson:"fixed_fee" validate:"required"`
+}
+
+func PeginCreationDataZeroValue() PeginCreationData {
+	return PeginCreationData{
+		GasPrice:      entities.NewWei(0),
+		FeePercentage: utils.NewBigFloat64(0),
+		FixedFee:      entities.NewWei(0),
+	}
 }
 
 type PeginQuote struct {
@@ -98,22 +121,25 @@ type RetainedPeginQuote struct {
 type WatchedPeginQuote struct {
 	PeginQuote    PeginQuote
 	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
 }
 
-func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote) WatchedPeginQuote {
-	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote}
+func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote, creationData PeginCreationData) WatchedPeginQuote {
+	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote, CreationData: creationData}
 }
 
 type AcceptedPeginQuoteEvent struct {
 	entities.Event
 	Quote         PeginQuote
 	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
 }
 
 type CallForUserCompletedEvent struct {
 	entities.Event
 	PeginQuote    PeginQuote
 	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
 	Error         error
 }
 

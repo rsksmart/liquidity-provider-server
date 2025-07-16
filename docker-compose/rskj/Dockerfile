@@ -7,7 +7,7 @@ RUN apt-get update -y && \
 WORKDIR /code/rskj
 
 ARG RSKJ_RELEASE="LOVELL"
-ARG RSKJ_VERSION="7.0.0"
+ARG RSKJ_VERSION="7.1.0"
 
 RUN gitrev="${RSKJ_RELEASE}-${RSKJ_VERSION}" && \
     git init && \

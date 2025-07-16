@@ -48,13 +48,15 @@ func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider
 		SiteKey:               useCase.captchaSiteKey,
 		LiquidityCheckEnabled: generalConfiguration.PublicLiquidityCheck,
 		Pegin: liquidity_provider.LiquidityProviderDetail{
-			Fee:                   peginConfig.CallFee,
+			FixedFee:              peginConfig.FixedFee,
+			FeePercentage:         peginConfig.FeePercentage,
 			MinTransactionValue:   peginConfig.MinValue,
 			MaxTransactionValue:   peginConfig.MaxValue,
 			RequiredConfirmations: generalConfiguration.BtcConfirmations.Max(),
 		},
 		Pegout: liquidity_provider.LiquidityProviderDetail{
-			Fee:                   pegoutConfig.CallFee,
+			FixedFee:              pegoutConfig.FixedFee,
+			FeePercentage:         pegoutConfig.FeePercentage,
 			MinTransactionValue:   pegoutConfig.MinValue,
 			MaxTransactionValue:   pegoutConfig.MaxValue,
 			RequiredConfirmations: generalConfiguration.RskConfirmations.Max(),
