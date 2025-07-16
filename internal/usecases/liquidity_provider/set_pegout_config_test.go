@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -20,7 +21,8 @@ var pegoutConfigMock = entities.Signed[lp.PegoutConfiguration]{
 		TimeForDeposit:       1,
 		ExpireTime:           2,
 		PenaltyFee:           entities.NewWei(3),
-		CallFee:              entities.NewWei(4),
+		FixedFee:             entities.NewWei(4),
+		FeePercentage:        utils.NewBigFloat64(4.5),
 		MaxValue:             entities.NewWei(5),
 		MinValue:             entities.NewWei(1),
 		ExpireBlocks:         10,

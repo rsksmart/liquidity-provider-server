@@ -3,6 +3,7 @@ package liquidity_provider_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -35,7 +36,8 @@ func TestDefaultPegoutConfiguration(t *testing.T) {
 		TimeForDeposit:       3600,
 		ExpireTime:           10800,
 		PenaltyFee:           entities.NewWei(10000000000000),
-		CallFee:              entities.NewWei(100000000000000),
+		FixedFee:             entities.NewWei(100000000000000),
+		FeePercentage:        utils.NewBigFloat64(0.33),
 		MaxValue:             entities.NewWei(100000000000000000),
 		MinValue:             entities.NewWei(5000000000000000),
 		ExpireBlocks:         500,
@@ -49,7 +51,8 @@ func TestDefaultPeginConfiguration(t *testing.T) {
 		TimeForDeposit: 3600,
 		CallTime:       7200,
 		PenaltyFee:     entities.NewWei(10000000000000),
-		CallFee:        entities.NewWei(100000000000000),
+		FixedFee:       entities.NewWei(100000000000000),
+		FeePercentage:  utils.NewBigFloat64(0.33),
 		MaxValue:       entities.NewWei(100000000000000000),
 		MinValue:       entities.NewWei(5000000000000000),
 	}, config)

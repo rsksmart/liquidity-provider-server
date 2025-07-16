@@ -27,9 +27,8 @@ func (useCase *StatusUseCase) Run(ctx context.Context, quoteHash string) (quote.
 	} else if retainedQuote == nil {
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.PegoutQuoteStatusId, usecases.QuoteNotAcceptedError)
 	}
+	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
 
-	return quote.WatchedPegoutQuote{
-		PegoutQuote:   *pegoutQuote,
-		RetainedQuote: *retainedQuote,
-	}, nil
+	watchedQuote := quote.NewWatchedPegoutQuote(*pegoutQuote, *retainedQuote, creationData)
+	return watchedQuote, nil
 }
