@@ -11,9 +11,9 @@ type BtcWalletMock struct {
 	blockchain.BitcoinWallet
 }
 
-func (m *BtcWalletMock) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
+func (m *BtcWalletMock) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
 	args := m.Called(toAddress, value)
-	return args.Get(0).(*entities.Wei), args.Error(1)
+	return args.Get(0).(blockchain.BtcFeeEstimation), args.Error(1)
 }
 
 func (m *BtcWalletMock) GetBalance() (*entities.Wei, error) {

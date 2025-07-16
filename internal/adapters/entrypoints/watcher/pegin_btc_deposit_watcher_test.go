@@ -43,6 +43,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 		btcWallet := &mocks.BitcoinWalletMock{}
 		for i, q := range retainedQuotes {
 			peginRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PeginQuote{Nonce: int64(i)}, nil).Once()
+			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 			btcWallet.EXPECT().ImportAddress(q.DepositAddress).Return(nil).Once()
 		}
 		getWatchedUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
@@ -394,6 +395,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
 			peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
+			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
 
 			acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 				Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -463,6 +465,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionInfo", mock.Anything).Return(unconfirmedTx, nil).Once() // the quote from the old test still in the watcher
 		peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Twice()
+		peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
 			watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)

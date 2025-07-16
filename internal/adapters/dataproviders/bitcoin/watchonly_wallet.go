@@ -53,8 +53,8 @@ func (wallet *WatchOnlyWallet) createWallet() (*btcjson.GetWalletInfoResult, err
 	return wallet.conn.client.GetWalletInfo()
 }
 
-func (wallet *WatchOnlyWallet) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
-	return nil, errors.New("cannot estimate from a watch-only wallet")
+func (wallet *WatchOnlyWallet) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
+	return blockchain.BtcFeeEstimation{}, errors.New("cannot estimate from a watch-only wallet")
 }
 
 func (wallet *WatchOnlyWallet) GetBalance() (*entities.Wei, error) {

@@ -85,7 +85,9 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
 
-	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote); err != nil {
+	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
+
+	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote, creationData); err != nil {
 		return quote.AcceptedQuote{}, err
 	}
 
@@ -112,6 +114,7 @@ func (useCase *AcceptQuoteUseCase) publishQuote(
 	ctx context.Context,
 	pegoutQuote *quote.PegoutQuote,
 	retainedQuote *quote.RetainedPegoutQuote,
+	creationData quote.PegoutCreationData,
 ) error {
 	var err error
 	if err = entities.ValidateStruct(retainedQuote); err != nil {
@@ -125,6 +128,7 @@ func (useCase *AcceptQuoteUseCase) publishQuote(
 		Event:         entities.NewBaseEvent(quote.AcceptedPegoutQuoteEventId),
 		Quote:         *pegoutQuote,
 		RetainedQuote: *retainedQuote,
+		CreationData:  creationData,
 	})
 	return nil
 }

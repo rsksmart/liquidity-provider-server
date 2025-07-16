@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,11 +18,17 @@ const (
 	PegoutQuoteCollection         = "pegoutQuote"
 	RetainedPegoutQuoteCollection = "retainedPegoutQuote"
 	DepositEventsCollection       = "depositEvents"
+	PegoutCreationDataCollection  = "pegoutQuoteCreationData"
 )
 
 type StoredPegoutQuote struct {
 	quote.PegoutQuote `bson:",inline"`
 	Hash              string `json:"hash" bson:"hash"`
+}
+
+type StoredPegoutCreationData struct {
+	quote.PegoutCreationData `bson:",inline"`
+	Hash                     string `json:"hash" bson:"hash"`
 }
 
 type pegoutMongoRepository struct {
@@ -32,21 +39,53 @@ func NewPegoutMongoRepository(conn *Connection) quote.PegoutQuoteRepository {
 	return &pegoutMongoRepository{conn: conn}
 }
 
-func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, hash string, pegoutQuote quote.PegoutQuote) error {
+func (repo *pegoutMongoRepository) InsertQuote(ctx context.Context, createdQuote quote.CreatedPegoutQuote) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(PegoutQuoteCollection)
 	storedQuote := StoredPegoutQuote{
-		PegoutQuote: pegoutQuote,
-		Hash:        hash,
+		PegoutQuote: createdQuote.Quote,
+		Hash:        createdQuote.Hash,
 	}
 	_, err := collection.InsertOne(dbCtx, storedQuote)
 	if err != nil {
 		return err
-	} else {
-		logDbInteraction(Insert, storedQuote)
-		return nil
 	}
+	logDbInteraction(Insert, storedQuote)
+
+	collection = repo.conn.Collection(PegoutCreationDataCollection)
+	storedCreationData := StoredPegoutCreationData{
+		PegoutCreationData: createdQuote.CreationData,
+		Hash:               createdQuote.Hash,
+	}
+	_, err = collection.InsertOne(dbCtx, storedCreationData)
+	if err != nil {
+		return err
+	}
+	logDbInteraction(Insert, storedQuote)
+	return nil
+}
+
+func (repo *pegoutMongoRepository) GetPegoutCreationData(ctx context.Context, hash string) quote.PegoutCreationData {
+	var result StoredPegoutCreationData
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	if err := quote.ValidateQuoteHash(hash); err != nil {
+		log.Error("Invalid hash. Returning default pegout creation data")
+		return quote.PegoutCreationDataZeroValue()
+	}
+
+	collection := repo.conn.Collection(PegoutCreationDataCollection)
+	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+
+	err := collection.FindOne(dbCtx, filter).Decode(&result)
+	if err != nil {
+		log.Error("Hash not found. Returning default pegout creation data")
+		return quote.PegoutCreationDataZeroValue()
+	}
+	logDbInteraction(Read, result.PegoutCreationData)
+	return result.PegoutCreationData
 }
 
 func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*quote.PegoutQuote, error) {
@@ -218,12 +257,19 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 	if err != nil {
 		return 0, err
 	}
-	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", pegoutResult.DeletedCount, PegoutQuoteCollection))
-	logDbInteraction(Delete, fmt.Sprintf("removed %d records from %s collection", retainedResult.DeletedCount, RetainedPegoutQuoteCollection))
+	creationDataResult, err := repo.conn.Collection(PegoutCreationDataCollection).DeleteMany(dbCtx, quoteFilter)
+	if err != nil {
+		return 0, err
+	}
+	const msgTemplate = "removed %d records from %s collection"
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, pegoutResult.DeletedCount, PegoutQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, retainedResult.DeletedCount, RetainedPegoutQuoteCollection))
+	logDbInteraction(Delete, fmt.Sprintf(msgTemplate, creationDataResult.DeletedCount, PegoutCreationDataCollection))
+	// creation data doesn't count for mismatch because not all the quotes have it
 	if pegoutResult.DeletedCount != retainedResult.DeletedCount {
 		return 0, errors.New("pegout quote collections didn't match")
 	}
-	return uint(pegoutResult.DeletedCount + retainedResult.DeletedCount), nil
+	return uint(pegoutResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }
 
 func (repo *pegoutMongoRepository) UpsertPegoutDeposit(ctx context.Context, deposit quote.PegoutDeposit) error {

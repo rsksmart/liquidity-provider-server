@@ -47,9 +47,16 @@ type RetainedPeginQuoteDTO struct {
 	RegisterPeginTxHash string   `json:"registerPeginTxHash" required:"" description:"The hash of the RSK transaction where the LP gets his refund and fee"`
 }
 
+type PeginCreationDataDTO struct {
+	GasPrice      uint64  `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	FeePercentage float64 `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
+	FixedFee      uint64  `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
+}
+
 type PeginQuoteStatusDTO struct {
-	Detail PeginQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
-	Status RetainedPeginQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	Detail       PeginQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
+	Status       RetainedPeginQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	CreationData PeginCreationDataDTO  `json:"creationData" required:"" description:"Values used to compute some fields of the quote"`
 }
 
 type GetPeginQuoteResponse struct {
@@ -122,5 +129,14 @@ func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuote
 		UserBtcTxHash:       entity.UserBtcTxHash,
 		CallForUserTxHash:   entity.CallForUserTxHash,
 		RegisterPeginTxHash: entity.RegisterPeginTxHash,
+	}
+}
+
+func ToPeginCreationDataDTO(entity quote.PeginCreationData) PeginCreationDataDTO {
+	feePercentage, _ := entity.FeePercentage.Native().Float64()
+	return PeginCreationDataDTO{
+		GasPrice:      entity.GasPrice.Uint64(),
+		FeePercentage: feePercentage,
+		FixedFee:      entity.FixedFee.Uint64(),
 	}
 }

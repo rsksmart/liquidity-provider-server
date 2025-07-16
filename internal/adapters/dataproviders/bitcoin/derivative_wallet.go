@@ -110,14 +110,14 @@ func (wallet *DerivativeWallet) importPublicKey() error {
 	return errors.New("public key imported, rescan started, please wait for the rescan process to finish before initializing the server again")
 }
 
-func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
+func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
 	const quoteHashLength = 32
 
 	if _, err := btcutil.DecodeAddress(toAddress, wallet.conn.NetworkParams); err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
 	amountInSatoshi, _ := value.ToSatoshi().Int64()
@@ -128,11 +128,11 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 
 	feeRate, err := wallet.estimateFeeRate()
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	changeAddress, err := wallet.rskAccount.BtcAddress()
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
 	opts := btcjson.WalletCreateFundedPsbtOpts{
@@ -144,14 +144,17 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 
 	simulatedTx, err := wallet.conn.client.WalletCreateFundedPsbt(nil, output, nil, &opts, nil)
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	btcFee, err := btcutil.NewAmount(simulatedTx.Fee)
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	satoshiFee := btcFee.ToUnit(btcutil.AmountSatoshi)
-	return entities.SatoshiToWei(uint64(satoshiFee)), nil
+	return blockchain.BtcFeeEstimation{
+		Value:   entities.SatoshiToWei(uint64(satoshiFee)),
+		FeeRate: utils.NewBigFloat64(*feeRate),
+	}, nil
 }
 
 func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {

@@ -75,6 +75,14 @@ func AssertNonZeroValues(t *testing.T, aStruct any) {
 	require.Equal(t, structType.NumField(), CountNonZeroValues(aStruct))
 }
 
+func AssertMaxZeroValues(t *testing.T, aStruct any, max int) {
+	structType := reflect.TypeOf(aStruct)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	require.LessOrEqual(t, structType.NumField()-CountNonZeroValues(aStruct), max)
+}
+
 type ThreadSafeBuffer struct {
 	bytes.Buffer
 	mutex sync.RWMutex
@@ -112,6 +120,7 @@ func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
+			t.Errorf("No log message found")
 			return false
 		}
 		_, err := buff.Read(message)

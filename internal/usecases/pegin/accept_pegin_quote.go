@@ -46,6 +46,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 	errorArgs := usecases.NewErrorArgs()
 	var peginQuote *quote.PeginQuote
 	var retainedQuote *quote.RetainedPeginQuote
+	var creationData quote.PeginCreationData
 
 	if peginQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -81,11 +82,13 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash string) (q
 	if err = useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
+	creationData = useCase.quoteRepository.GetPeginCreationData(ctx, quoteHash)
 
 	useCase.eventBus.Publish(quote.AcceptedPeginQuoteEvent{
 		Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 		Quote:         *peginQuote,
 		RetainedQuote: *retainedQuote,
+		CreationData:  creationData,
 	})
 
 	return quote.AcceptedQuote{
