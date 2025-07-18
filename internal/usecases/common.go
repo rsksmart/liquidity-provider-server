@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"strconv"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
 )
 
 // used for error logging
@@ -75,6 +77,10 @@ var (
 	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
 	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
 	IllegalQuoteStateError      = errors.New("illegal quote state")
+
+	NonPositiveWeiError             = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
 type ErrorArgs map[string]string
@@ -172,6 +178,34 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 		Signature: hex.EncodeToString(signature),
 	}
 	return signedConfig, nil
+}
+
+func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
+	zero := entities.NewWei(0)
+	for idx, val := range weiValues {
+		if val == nil || val.Cmp(zero) < 0 {
+			args := NewErrorArgs()
+			args["index"] = strconv.Itoa(idx)
+			if val != nil {
+				args["value"] = val.String()
+			}
+			return WrapUseCaseErrorArgs(useCase, NonPositiveWeiError, args)
+		}
+	}
+	return nil
+}
+
+func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.ConfirmationsPerAmount) error {
+	if len(confirmations) == 0 {
+		return WrapUseCaseError(useCase, EmptyConfirmationsMapError)
+	}
+	for key := range confirmations {
+		if key <= 0 {
+			args := ErrorArg("key", strconv.Itoa(key))
+			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
+		}
+	}
+	return nil
 }
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
