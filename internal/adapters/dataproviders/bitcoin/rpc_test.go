@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/datasets"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -598,7 +599,7 @@ func TestBitcoindRpc_GetCoinbaseInformation(t *testing.T) {
 		require.NoError(t, err)
 		tx, err := hex.DecodeString("04000000010000000000000000000000000000000000000000000000000000000000000000ffffffff1203e4682704eebcfa650843f719b701000000000000000377781d00000000001600143758d475313d557dbe8b1d90406c5b3b4dbbc00df79900000000000017a914a775ee7e3118ac67f181faca330f1d5c7658d205870000000000000000266a24aa21a9ed3dccc6b158d03b681f5cd8c71653097d0e6a51ac3e19de0add0a2a43419622a500000000")
 		require.NoError(t, err)
-		assert.Equal(t, blockchain.BtcCoinbaseTransactionInformation{
+		assert.Equal(t, rootstock.BtcCoinbaseTransactionInformation{
 			BtcTxSerialized:      tx,
 			BlockHash:            blockHash,
 			BlockHeight:          big.NewInt(2582756),

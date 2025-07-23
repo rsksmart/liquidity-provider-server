@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -67,6 +68,7 @@ const (
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 )
 
 var (
@@ -145,7 +147,7 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	}, nil
 }
 
-func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
 	var err error
 	var minLockTxValue *entities.Wei
 
@@ -186,7 +188,7 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
 // IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
-func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract rootstock.Bridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
 	}
@@ -200,7 +202,7 @@ func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContrac
 }
 
 // ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
-func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
 	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return err

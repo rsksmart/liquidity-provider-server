@@ -16,6 +16,7 @@ import (
 	dataproviders_utils "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -381,9 +382,9 @@ func (api *MempoolSpaceApi) GetTransactionBlockInfo(txHash string) (blockchain.B
 	}, nil
 }
 
-func (api *MempoolSpaceApi) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+func (api *MempoolSpaceApi) GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error) {
 	if err := api.validateNetwork(); err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 	const getCoinbaseInformationError = "error getting coinbase information of the transaction %s: %w"
 	var coinbaseTxHash *chainhash.Hash
@@ -391,18 +392,18 @@ func (api *MempoolSpaceApi) GetCoinbaseInformation(txHash string) (blockchain.Bt
 
 	blockInfo, err := api.GetTransactionBlockInfo(txHash)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, fmt.Errorf(getCoinbaseInformationError, txHash, err)
+		return rootstock.BtcCoinbaseTransactionInformation{}, fmt.Errorf(getCoinbaseInformationError, txHash, err)
 	}
 	block, err := api.getBlock(hex.EncodeToString(blockInfo.Hash[:]))
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, fmt.Errorf(getCoinbaseInformationError, txHash, err)
+		return rootstock.BtcCoinbaseTransactionInformation{}, fmt.Errorf(getCoinbaseInformationError, txHash, err)
 	}
 
 	serializedCoinbase := new(bytes.Buffer)
 	for _, tx := range block.Transactions() {
 		if merkle.IsCoinBaseTx(tx.MsgTx()) {
 			if err = tx.MsgTx().SerializeNoWitness(serializedCoinbase); err != nil {
-				return blockchain.BtcCoinbaseTransactionInformation{}, err
+				return rootstock.BtcCoinbaseTransactionInformation{}, err
 			}
 			coinbaseTxHash = tx.Hash()
 			copy(witnessReservedValue[:], [][]byte(tx.MsgTx().TxIn[0].Witness)[0])
@@ -411,10 +412,10 @@ func (api *MempoolSpaceApi) GetCoinbaseInformation(txHash string) (blockchain.Bt
 
 	pmt, err := bitcoin.SerializePartialMerkleTree(coinbaseTxHash, block)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 
-	return blockchain.BtcCoinbaseTransactionInformation{
+	return rootstock.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      serializedCoinbase.Bytes(),
 		BlockHash:            bitcoin.ToSwappedBytes32(block.Hash()),
 		BlockHeight:          blockInfo.Height,

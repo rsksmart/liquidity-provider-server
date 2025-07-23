@@ -1,8 +1,10 @@
 package mocks
 
-import "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+import (
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+)
 
-func GetFakeFedInfo() blockchain.FederationInfo {
+func GetFakeFedInfo() rootstock.FederationInfo {
 	var keys []string
 	keys = append(keys, "02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1")
 	keys = append(keys, "0362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a124")
@@ -14,7 +16,7 @@ func GetFakeFedInfo() blockchain.FederationInfo {
 	erpPubKeys = append(erpPubKeys, "03cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b3")
 	erpPubKeys = append(erpPubKeys, "02370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec80")
 
-	return blockchain.FederationInfo{
+	return rootstock.FederationInfo{
 		ActiveFedBlockHeight: 0,
 		ErpKeys:              erpPubKeys,
 		FedSize:              int64(len(keys)),

@@ -31,6 +31,7 @@ func setUpEnv(t *testing.T) {
 		"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL": "500",
 		"ECLIPSE_ALERT_COOLDOWN_SECONDS":       "60",
 		"ECLIPSE_CHECK_ENABLED":                "true",
+		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
 	}
 	const envFilePath = "../../../sample-config.env"
 	envFile, err := os.ReadFile(envFilePath)

@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func (m *rpcMock) EstimateGas(ctx context.Context, addr string, value *entities.
 
 type bridgeMock struct {
 	mock.Mock
-	blockchain.RootstockBridge
+	rootstock.Bridge
 }
 
 func (m *bridgeMock) GetMinimumLockTxValue() (*entities.Wei, error) {
@@ -155,7 +156,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 		HasWitness:    true,
 		Hash:          test.AnyHash,
 	}
-	coinbaseInfo := blockchain.BtcCoinbaseTransactionInformation{
+	coinbaseInfo := rootstock.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      utils.MustGetRandomBytes(32),
 		BlockHash:            utils.To32Bytes(utils.MustGetRandomBytes(32)),
 		BlockHeight:          big.NewInt(500),
@@ -176,7 +177,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	t.Run("Should handle error fetching the coinbase information", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
 		rpc := &mocks.BtcRpcMock{}
-		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(blockchain.BtcCoinbaseTransactionInformation{}, assert.AnError)
+		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(rootstock.BtcCoinbaseTransactionInformation{}, assert.AnError)
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
 		require.Error(t, err)
 		bridge.AssertNotCalled(t, "RegisterCoinbaseTransaction")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"regexp"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -339,6 +340,30 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Conte
 		return nil, err
 	}
 	if err = rows.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
+}
+
+func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]quote.RetainedPegoutQuote, error) {
+	var result []quote.RetainedPegoutQuote
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+	query := bson.D{
+		primitive.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
+		primitive.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+			primitive.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+		}},
+	}
+
+	docs, err := collection.Find(dbCtx, query)
+	if err != nil {
+		return nil, err
+	}
+	if err = docs.All(ctx, &result); err != nil {
 		return nil, err
 	}
 	logDbInteraction(Read, result)

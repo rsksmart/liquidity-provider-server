@@ -4,6 +4,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 type Database struct {
@@ -11,6 +12,7 @@ type Database struct {
 	PegoutRepository            quote.PegoutQuoteRepository
 	LiquidityProviderRepository liquidity_provider.LiquidityProviderRepository
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
+	BatchPegOutRepository       rootstock.BatchPegOutRepository
 	Connection                  *mongo.Connection
 }
 
@@ -20,6 +22,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		PegoutRepository:            mongo.NewPegoutMongoRepository(connection),
 		LiquidityProviderRepository: mongo.NewLiquidityProviderRepository(connection),
 		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
+		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
 		Connection:                  connection,
 	}
 }

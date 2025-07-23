@@ -5,6 +5,7 @@ import (
 	"fmt"
 	merkle "github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"strings"
 	"time"
 
@@ -192,14 +193,14 @@ func (rpc *bitcoindRpc) GetTransactionBlockInfo(transactionHash string) (blockch
 	}, nil
 }
 
-func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error) {
 	var coinbaseTxHash chainhash.Hash
 	var witnessReservedValue [32]byte
 	var err error
 
 	block, _, err := rpc.getTxBlock(txHash)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 	txs := make([]*btcutil.Tx, 0)
 	serializedCoinbase := bytes.NewBuffer([]byte{})
@@ -207,7 +208,7 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 	for _, tx := range block.Transactions {
 		if merkle.IsCoinBaseTx(tx) {
 			if err = tx.SerializeNoWitness(serializedCoinbase); err != nil {
-				return blockchain.BtcCoinbaseTransactionInformation{}, err
+				return rootstock.BtcCoinbaseTransactionInformation{}, err
 			}
 			coinbaseTxHash = tx.TxHash()
 			copy(witnessReservedValue[:], [][]byte(tx.TxIn[0].Witness)[0])
@@ -216,16 +217,16 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 	}
 	pmt, err := SerializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 
 	blockHash := block.BlockHash()
 	blockVerboseInfo, err := rpc.conn.client.GetBlockVerbose(&blockHash)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 
-	return blockchain.BtcCoinbaseTransactionInformation{
+	return rootstock.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      serializedCoinbase.Bytes(),
 		BlockHash:            ToSwappedBytes32(&blockHash),
 		BlockHeight:          big.NewInt(blockVerboseInfo.Height),

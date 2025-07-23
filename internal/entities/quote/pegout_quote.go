@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -27,6 +28,7 @@ const (
 	PegoutStateWaitingForDepositConfirmations PegoutState = "WaitingForDepositConfirmations"
 	PegoutStateBridgeTxSucceeded              PegoutState = "BridgeTxSucceeded"
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
+	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 )
 
 type PegoutQuoteRepository interface {
@@ -44,6 +46,7 @@ type PegoutQuoteRepository interface {
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
+	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
 }
 
 type CreatedPegoutQuote struct {
@@ -133,6 +136,7 @@ type RetainedPegoutQuote struct {
 	LpBtcTxHash         string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash  string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
 	BridgeRefundTxHash  string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	BtcReleaseTxHash    string        `json:"btcReleaseTxHash" bson:"btc_release_tx_hash"`
 	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
