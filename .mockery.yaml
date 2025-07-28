@@ -35,6 +35,11 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
       DefaultCredentialsProvider:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
+    interfaces:
+      PeginStatusUseCase:
+      PegoutStatusUseCase:
+      SetGeneralConfigUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
@@ -57,6 +62,9 @@ packages:
   github.com/gorilla/sessions:
     interfaces:
       Store:
+  net/http:
+    interfaces:
+      Handler:
   github.com/rsksmart/liquidity-provider-server/internal/entities/utils:
     interfaces:
       Ticker:
@@ -64,6 +72,3 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
     interfaces:
       EclipseCheckUseCase:
-  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
-    interfaces:
-      SetGeneralConfigUseCase:
