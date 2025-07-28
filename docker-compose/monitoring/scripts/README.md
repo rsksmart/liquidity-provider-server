@@ -27,6 +27,9 @@ This directory contains the alert rules for the Liquidity Provider Server (LPS) 
 # Different folder
 ./pkg/scripts/monitoring/import-alerts.sh http://localhost:3000 admin test ALERTS
 
+# Custom datasource UID
+./pkg/scripts/monitoring/import-alerts.sh http://localhost:3000 admin test LPS my-loki-uid
+
 # Or run from the monitoring directory
 cd pkg/scripts/monitoring
 ./import-alerts.sh
@@ -37,6 +40,7 @@ cd pkg/scripts/monitoring
 2. `username` - Grafana username (default: admin)
 3. `password` - Grafana password (default: test)
 4. `folder_uid` - Folder UID for alerts (default: LPS)
+5. `datasource_uid` - Loki datasource UID (default: loki-uid)
 
 ## Directory Structure
 
@@ -69,10 +73,27 @@ pkg/scripts/monitoring/
 - **Trigger**: When log contains "Alert! - Subject: LPS has been penalized"
 - **Purpose**: Alerts when the Liquidity Provider has been penalized for failing to fulfill quote commitments
 
+## Configuration Details
+
+### Alert Rule Settings
+All alert rules are configured with:
+- `noDataState: OK` - Prevents "DatasourceNoData" alerts when no logs match
+- `execErrState: OK` - Prevents error alerts on query execution issues
+- `for: "0s"` - Fires immediately when condition is met (no pending period)
+
+### Datasource UID Configuration
+The alert JSON files use `"datasourceUid": "loki-uid"` by default.
+
+**Key Differences:**
+- **Alert Rules (API Import)**: Use concrete UIDs like `"loki-uid"`
+- **Dashboard Templates**: Use template variables like `"${DS_LOKI}"`
+
+The import script automatically replaces the datasource UID if you specify a different one via the `datasource_uid` parameter, making it portable across different Grafana instances.
+
 ## Requirements
 
 - Grafana with unified alerting enabled
-- Loki datasource configured (UID: loki-uid)
+- Loki datasource configured (default UID: `loki-uid`, customizable via script parameter)
 - curl command available
 - jq for JSON processing (optional, for verification)
 

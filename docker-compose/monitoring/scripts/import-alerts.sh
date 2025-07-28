@@ -1,14 +1,30 @@
 #!/bin/bash
 
 # Script to import LPS alert rules to Grafana using Provisioning API
-# Usage: ./import-alerts.sh [grafana_url] [username] [password] [folder_uid]
+# Usage: ./import-alerts.sh [grafana_url] [username] [password] [folder_uid] [datasource_uid]
 
 # Configuration
 GRAFANA_URL=${1:-"http://localhost:3000"}
 USERNAME=${2:-"admin"}
 PASSWORD=${3:-"test"}
 FOLDER_UID=${4:-"LPS"}  # Default to LPS folder
+DATASOURCE_UID=${5:-"loki-uid"}  # Default Loki datasource UID
 SCRIPT_DIR="$(dirname "$0")"
+
+# Alert rules configuration
+RULE_FILES=(
+    "node-eclipse-detection.json"
+    "pegin-out-of-liquidity.json"
+    "pegout-out-of-liquidity.json"
+    "lps-penalization.json"
+)
+
+RULE_NAMES=(
+    "Node Eclipse Detection Alert"
+    "PegIn Out of Liquidity Alert"
+    "PegOut Out of Liquidity Alert"
+    "LPS Penalization Alert"
+)
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,6 +36,8 @@ NC='\033[0m' # No Color
 echo -e "${YELLOW}Importing LPS alert rules to Grafana...${NC}"
 echo "Target: $GRAFANA_URL"
 echo "Folder: $FOLDER_UID"
+echo "Loki Datasource UID: $DATASOURCE_UID"
+echo "Rules to import: ${#RULE_FILES[@]}"
 echo ""
 
 # Check if Grafana is accessible
@@ -57,6 +75,20 @@ else
     echo -e "${GREEN}Folder already exists${NC}"
 fi
 
+# Function to prepare rule file with correct datasource UID
+prepare_rule_file() {
+    local source_file="$1"
+    local temp_file="$2"
+
+    # Replace datasource UID in the rule file
+    sed "s/\"loki-uid\"/\"$DATASOURCE_UID\"/g" "$source_file" > "$temp_file"
+
+    # Also update the folderUID if needed
+    if [ "$FOLDER_UID" != "LPS" ]; then
+        sed -i.bak "s/\"folderUID\": \"LPS\"/\"folderUID\": \"$FOLDER_UID\"/g" "$temp_file" && rm -f "${temp_file}.bak"
+    fi
+}
+
 # Function to create individual alert rule
 create_alert_rule() {
     local rule_file="$1"
@@ -64,17 +96,23 @@ create_alert_rule() {
 
     echo -e "${BLUE}Creating rule: $rule_name${NC}"
 
+    # Prepare temporary file with correct datasource UID
+    TEMP_RULE_FILE=$(mktemp)
+    prepare_rule_file "$rule_file" "$TEMP_RULE_FILE"
+
     # Make a single API call and capture both response and HTTP status
-    TEMP_FILE=$(mktemp)
+    TEMP_RESPONSE_FILE=$(mktemp)
     HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST \
         -u "$USERNAME:$PASSWORD" \
         -H "Content-Type: application/json" \
-        -d "@$rule_file" \
-        -o "$TEMP_FILE" \
+        -d "@$TEMP_RULE_FILE" \
+        -o "$TEMP_RESPONSE_FILE" \
         "$GRAFANA_URL/api/v1/provisioning/alert-rules")
 
-    CREATE_RESPONSE=$(cat "$TEMP_FILE")
-    rm "$TEMP_FILE"
+    CREATE_RESPONSE=$(cat "$TEMP_RESPONSE_FILE")
+
+    # Cleanup temporary files
+    rm "$TEMP_RULE_FILE" "$TEMP_RESPONSE_FILE"
 
     if [ "$HTTP_STATUS" = "201" ]; then
         RULE_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
@@ -90,52 +128,52 @@ create_alert_rule() {
     fi
 }
 
-# Create alert rules
+# Check if all rule files exist before proceeding
+echo ""
+echo "Validating rule files..."
+MISSING_FILES=()
+
+for rule_file in "${RULE_FILES[@]}"; do
+    rule_path="$SCRIPT_DIR/alerts/$rule_file"
+    if [ ! -f "$rule_path" ]; then
+        MISSING_FILES=("${MISSING_FILES[@]}" "$rule_path")
+        echo -e "${RED}ERROR: Rule file not found: $rule_path${NC}"
+    else
+        echo -e "${GREEN}  Found: $rule_file${NC}"
+    fi
+done
+
+if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+    echo -e "${RED}ERROR: ${#MISSING_FILES[@]} rule file(s) missing. Aborting.${NC}"
+    exit 1
+fi
+
+# Import rules using iteration
 echo ""
 echo "Creating alert rules..."
-
-# Check if rule files exist
-if [ ! -f "$SCRIPT_DIR/alerts/node-eclipse-detection.json" ]; then
-    echo -e "${RED}ERROR: Node Eclipse Detection rule file not found: $SCRIPT_DIR/alerts/node-eclipse-detection.json${NC}"
-    exit 1
-fi
-
-if [ ! -f "$SCRIPT_DIR/alerts/pegin-out-of-liquidity.json" ]; then
-    echo -e "${RED}ERROR: PegIn Liquidity rule file not found: $SCRIPT_DIR/alerts/pegin-out-of-liquidity.json${NC}"
-    exit 1
-fi
-
-if [ ! -f "$SCRIPT_DIR/alerts/pegout-out-of-liquidity.json" ]; then
-    echo -e "${RED}ERROR: PegOut Liquidity rule file not found: $SCRIPT_DIR/alerts/pegout-out-of-liquidity.json${NC}"
-    exit 1
-fi
-
-if [ ! -f "$SCRIPT_DIR/alerts/lps-penalization.json" ]; then
-    echo -e "${RED}ERROR: LPS Penalization rule file not found: $SCRIPT_DIR/alerts/lps-penalization.json${NC}"
-    exit 1
-fi
-
-# Import rules
 FAILED_RULES=0
+SUCCESSFUL_RULES=0
 
-if ! create_alert_rule "$SCRIPT_DIR/alerts/node-eclipse-detection.json" "Node Eclipse Detection Alert"; then
-    FAILED_RULES=$((FAILED_RULES + 1))
-fi
+# Use index-based loop instead of associative arrays
+for i in $(seq 0 $((${#RULE_FILES[@]} - 1))); do
+    rule_file="${RULE_FILES[$i]}"
+    rule_name="${RULE_NAMES[$i]}"
+    rule_path="$SCRIPT_DIR/alerts/$rule_file"
 
-if ! create_alert_rule "$SCRIPT_DIR/alerts/pegin-out-of-liquidity.json" "PegIn Out of Liquidity Alert"; then
-    FAILED_RULES=$((FAILED_RULES + 1))
-fi
-
-if ! create_alert_rule "$SCRIPT_DIR/alerts/pegout-out-of-liquidity.json" "PegOut Out of Liquidity Alert"; then
-    FAILED_RULES=$((FAILED_RULES + 1))
-fi
-
-if ! create_alert_rule "$SCRIPT_DIR/alerts/lps-penalization.json" "LPS Penalization Alert"; then
-    FAILED_RULES=$((FAILED_RULES + 1))
-fi
+    if create_alert_rule "$rule_path" "$rule_name"; then
+        SUCCESSFUL_RULES=$((SUCCESSFUL_RULES + 1))
+    else
+        FAILED_RULES=$((FAILED_RULES + 1))
+    fi
+done
 
 # Summary
 echo ""
+echo "Import Summary:"
+echo "  Total rules: ${#RULE_FILES[@]}"
+echo "  Successful: $SUCCESSFUL_RULES"
+echo "  Failed: $FAILED_RULES"
+
 if [ $FAILED_RULES -eq 0 ]; then
     echo -e "${GREEN}All alert rules imported successfully!${NC}"
 else
@@ -147,7 +185,17 @@ echo ""
 echo "Verifying imported rules..."
 LIST_RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" "$GRAFANA_URL/api/v1/provisioning/alert-rules")
 
-if echo "$LIST_RESPONSE" | grep -q "Node Eclipse Detection Alert\|PegIn Out of Liquidity Alert\|PegOut Out of Liquidity Alert\|LPS Penalization Alert"; then
+# Build verification pattern from rule names
+VERIFICATION_PATTERN=""
+for rule_name in "${RULE_NAMES[@]}"; do
+    if [ -z "$VERIFICATION_PATTERN" ]; then
+        VERIFICATION_PATTERN="$rule_name"
+    else
+        VERIFICATION_PATTERN="$VERIFICATION_PATTERN\\|$rule_name"
+    fi
+done
+
+if echo "$LIST_RESPONSE" | grep -q "$VERIFICATION_PATTERN"; then
     echo -e "${GREEN}Rules verification successful!${NC}"
     echo ""
     echo "Current rules in Grafana:"
