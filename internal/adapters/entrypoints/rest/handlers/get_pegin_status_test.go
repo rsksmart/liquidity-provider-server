@@ -43,7 +43,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      6,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(50),
-	ProductFeeAmount:   25,
+	ProductFeeAmount:   entities.NewWei(25),
 }
 
 var testRetainedQuote = quote.RetainedPeginQuote{

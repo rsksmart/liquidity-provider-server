@@ -30,7 +30,7 @@ var testPegoutQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x1234567890123456789012345678901234567890",
 	LpBtcAddress:          "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2",
 	CallFee:               entities.NewWei(100),
-	PenaltyFee:            200,
+	PenaltyFee:            entities.NewWei(200),
 	Nonce:                 1,
 	DepositAddress:        "0x9D93929A9099be4355fC2389FbF253982F9dF47c",
 	Value:                 entities.NewWei(1000),
@@ -42,7 +42,7 @@ var testPegoutQuote = quote.PegoutQuote{
 	ExpireDate:            1641000000,
 	ExpireBlock:           1000000,
 	GasFee:                entities.NewWei(50),
-	ProductFeeAmount:      25,
+	ProductFeeAmount:      entities.NewWei(25),
 }
 
 var testRetainedPegoutQuote = quote.RetainedPegoutQuote{

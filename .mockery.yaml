@@ -39,9 +39,11 @@ packages:
     interfaces:
       PeginStatusUseCase:
       PegoutStatusUseCase:
+      SetGeneralConfigUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
+      TrustedAccountRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/quote:
       interfaces:
         PeginQuoteRepository:
@@ -54,9 +56,6 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:
-  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
-    interfaces:
-      Ticker:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry:
     interfaces:
       UseCaseRegistry:
@@ -66,3 +65,10 @@ packages:
   net/http:
     interfaces:
       Handler:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/utils:
+    interfaces:
+      Ticker:
+      Timer:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
+    interfaces:
+      EclipseCheckUseCase:

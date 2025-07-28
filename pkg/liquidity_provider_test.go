@@ -1,6 +1,7 @@
 package pkg_test
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 
@@ -145,5 +146,125 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		}
 		assert.Equal(t, expectedDTO, dto)
 		test.AssertNonZeroValues(t, dto)
+	})
+}
+
+func TestToTrustedAccountDTO(t *testing.T) {
+	btcLockingCap := new(big.Int)
+	btcLockingCap.SetString("5000000000000000000", 10)
+	rbtcLockingCap := new(big.Int)
+	rbtcLockingCap.SetString("7000000000000000000", 10)
+	trustedAccount := liquidity_provider.TrustedAccountDetails{
+		Address:        "0x1234567890abcdef",
+		Name:           "Test Trusted Account",
+		BtcLockingCap:  entities.NewBigWei(btcLockingCap),
+		RbtcLockingCap: entities.NewBigWei(rbtcLockingCap),
+	}
+	dto := pkg.ToTrustedAccountDTO(trustedAccount)
+	assert.Equal(t, "0x1234567890abcdef", dto.Address)
+	assert.Equal(t, "Test Trusted Account", dto.Name)
+	assert.Equal(t, "5000000000000000000", dto.BtcLockingCap.String())
+	assert.Equal(t, "7000000000000000000", dto.RbtcLockingCap.String())
+}
+
+func TestToTrustedAccountsDTO(t *testing.T) {
+	btcLockingCap1 := new(big.Int)
+	btcLockingCap1.SetString("5000000000000000000", 10)
+	rbtcLockingCap1 := new(big.Int)
+	rbtcLockingCap1.SetString("7000000000000000000", 10)
+	btcLockingCap2 := new(big.Int)
+	btcLockingCap2.SetString("9000000000000000000", 10)
+	rbtcLockingCap2 := new(big.Int)
+	rbtcLockingCap2.SetString("3000000000000000000", 10)
+	account1 := liquidity_provider.TrustedAccountDetails{
+		Address:        "0x1234567890abcdef",
+		Name:           "Test Trusted Account 1",
+		BtcLockingCap:  entities.NewBigWei(btcLockingCap1),
+		RbtcLockingCap: entities.NewBigWei(rbtcLockingCap1),
+	}
+	account2 := liquidity_provider.TrustedAccountDetails{
+		Address:        "0xabcdef1234567890",
+		Name:           "Test Trusted Account 2",
+		BtcLockingCap:  entities.NewBigWei(btcLockingCap2),
+		RbtcLockingCap: entities.NewBigWei(rbtcLockingCap2),
+	}
+
+	signedAccounts := []entities.Signed[liquidity_provider.TrustedAccountDetails]{
+		{
+			Value:     account1,
+			Signature: "signature1",
+			Hash:      "hash1",
+		},
+		{
+			Value:     account2,
+			Signature: "signature2",
+			Hash:      "hash2",
+		},
+	}
+
+	dtos := pkg.ToTrustedAccountsDTO(signedAccounts)
+	assert.Len(t, dtos, 2)
+	assert.Equal(t, "0x1234567890abcdef", dtos[0].Address)
+	assert.Equal(t, "Test Trusted Account 1", dtos[0].Name)
+	assert.Equal(t, "5000000000000000000", dtos[0].BtcLockingCap.String())
+	assert.Equal(t, "7000000000000000000", dtos[0].RbtcLockingCap.String())
+	assert.Equal(t, "0xabcdef1234567890", dtos[1].Address)
+	assert.Equal(t, "Test Trusted Account 2", dtos[1].Name)
+	assert.Equal(t, "9000000000000000000", dtos[1].BtcLockingCap.String())
+	assert.Equal(t, "3000000000000000000", dtos[1].RbtcLockingCap.String())
+}
+
+func TestFromGeneralConfigurationDTO(t *testing.T) {
+	t.Run("converts valid configuration", func(t *testing.T) {
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"2000000000000000000": 10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"4000000000000000000": 20,
+			},
+			PublicLiquidityCheck: true,
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
+
+		require.NoError(t, err)
+		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
+		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
+		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
+		test.AssertNonZeroValues(t, dto)
+	})
+
+	t.Run("returns error on invalid numeric keys", func(t *testing.T) {
+		invalidBtc := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+				"notanumber":          20,
+			},
+			PublicLiquidityCheck: true,
+		}
+		invalidRsk := pkg.GeneralConfigurationDTO{
+			RskConfirmations: map[string]uint16{
+				"1000000000000000000": 5,
+				"invalid":             10,
+			},
+			BtcConfirmations: map[string]uint16{
+				"3000000000000000000": 15,
+			},
+			PublicLiquidityCheck: false,
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(invalidBtc)
+		assert.Empty(t, config)
+		require.ErrorContains(t, err, "cannot deserialize BTC confirmations key notanumber")
+
+		config, err = pkg.FromGeneralConfigurationDTO(invalidRsk)
+		assert.Empty(t, config)
+		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
 	})
 }

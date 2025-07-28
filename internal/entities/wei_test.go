@@ -2,7 +2,7 @@ package entities_test
 
 import (
 	"database/sql/driver"
-	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -454,37 +454,63 @@ func TestWei_UnmarshalJSON(t *testing.T) {
 
 func TestWei_UnmarshalBSONValue(t *testing.T) {
 	dataTypeCases := test.Table[bsontype.Type, error]{
-		{Value: bson.TypeInt64, Result: entities.DeserializationError},
-		{Value: bson.TypeString},
 		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
 		{Value: bson.TypeBinary, Result: entities.DeserializationError},
 		{Value: bson.TypeDouble, Result: entities.DeserializationError},
 	}
 
-	zeroRepresentation := []byte{2, 0, 0, 0, 48, 0}
-	successCases := test.Table[*entities.Wei, []byte]{
-		{Value: entities.NewWei(0), Result: zeroRepresentation},
-		{Value: entities.NewWei(5), Result: []byte{2, 0, 0, 0, 53, 0}},
-		{Value: entities.NewWei(77), Result: []byte{3, 0, 0, 0, 55, 55, 0}},
-		{Value: entities.NewWei(5678), Result: []byte{5, 0, 0, 0, 53, 54, 55, 56, 0}},
-		{Value: entities.NewWei(math.MaxInt64 - 500), Result: []byte{20, 0, 0, 0, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 51, 48, 55, 0}},
-		{Value: entities.NewWei(math.MaxInt64), Result: []byte{20, 0, 0, 0, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 56, 48, 55, 0}},
-	}
+	zeroInt64 := []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	zeroString := []byte{0x2, 0x0, 0x0, 0x0, 0x30, 0x0}
 
-	var nilWei *entities.Wei
-	var bytes []byte
-	var bsonTypeResult bsontype.Type
-	var err error
-	weiValue := entities.NewWei(1)
-	require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeInt64, []byte{}), entities.DeserializationError)
-	test.RunTable(t, dataTypeCases, func(bsonType bsontype.Type) error {
-		return weiValue.UnmarshalBSONValue(bsonType, zeroRepresentation)
+	t.Run("should return error for unsupported bson type", func(t *testing.T) {
+		var nilWei *entities.Wei
+		zeroWei := entities.NewWei(0)
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeInt64, []byte{}), entities.DeserializationError)
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeString, []byte{}), entities.DeserializationError)
+		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeString, zeroString))
+		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeInt64, zeroInt64))
+		test.RunTable(t, dataTypeCases, func(dataType bsontype.Type) error {
+			return nilWei.UnmarshalBSONValue(dataType, zeroInt64)
+		})
 	})
-	test.RunTable(t, successCases, func(value *entities.Wei) []byte {
-		bsonTypeResult, bytes, err = value.MarshalBSONValue()
-		require.NoError(t, err)
-		assert.Equal(t, bson.TypeString, bsonTypeResult)
-		return bytes
+	t.Run("should unmarshal from bson.TypeInt64", func(t *testing.T) {
+		int64Cases := test.Table[[]byte, *entities.Wei]{
+			{Value: zeroInt64, Result: entities.NewWei(0)},
+			{Value: []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, Result: entities.NewWei(1)},
+			{Value: []byte{0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, Result: entities.NewWei(42)},
+			{Value: []byte{0x63, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, Result: entities.NewWei(99)},
+			{Value: []byte{0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, Result: entities.NewWei(100)},
+			{Value: []byte{0xf4, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, Result: entities.NewWei(500)},
+			{Value: []byte{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, Result: entities.NewWei(math.MaxInt64 - 1)},
+			{Value: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}, Result: entities.NewWei(math.MaxInt64)},
+		}
+		for _, tc := range int64Cases {
+			result := new(entities.Wei)
+			err := result.UnmarshalBSONValue(bson.TypeInt64, tc.Value)
+			require.NoError(t, err)
+			assert.Equal(t, tc.Result, result)
+		}
 	})
-
+	t.Run("should unmarshal from bson.TypeString", func(t *testing.T) {
+		stringCases := test.Table[[]byte, *entities.Wei]{
+			{Value: zeroString, Result: entities.NewWei(0)},
+			{Value: []byte{0x02, 0x00, 0x00, 0x00, 0x31, 0x00}, Result: entities.NewWei(1)},
+			{Value: []byte{2, 0, 0, 0, 53, 0}, Result: entities.NewWei(5)},
+			{Value: []byte{0x03, 0x00, 0x00, 0x00, 0x34, 0x32, 0x00}, Result: entities.NewWei(42)},
+			{Value: []byte{3, 0, 0, 0, 55, 55, 0}, Result: entities.NewWei(77)},
+			{Value: []byte{0x03, 0x00, 0x00, 0x00, 0x39, 0x39, 0x00}, Result: entities.NewWei(99)},
+			{Value: []byte{0x04, 0x00, 0x00, 0x00, 0x31, 0x30, 0x30, 0x00}, Result: entities.NewWei(100)},
+			{Value: []byte{0x04, 0x00, 0x00, 0x00, 0x35, 0x30, 0x30, 0x00}, Result: entities.NewWei(500)},
+			{Value: []byte{5, 0, 0, 0, 53, 54, 55, 56, 0}, Result: entities.NewWei(5678)},
+			{Value: []byte{20, 0, 0, 0, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 51, 48, 55, 0}, Result: entities.NewWei(math.MaxInt64 - 500)},
+			{Value: []byte{0x14, 0x00, 0x00, 0x00, 0x39, 0x32, 0x32, 0x33, 0x33, 0x37, 0x32, 0x30, 0x33, 0x36, 0x38, 0x35, 0x34, 0x37, 0x37, 0x35, 0x38, 0x30, 0x36, 0x00}, Result: entities.NewWei(math.MaxInt64 - 1)},
+			{Value: []byte{0x14, 0x00, 0x00, 0x00, 0x39, 0x32, 0x32, 0x33, 0x33, 0x37, 0x32, 0x30, 0x33, 0x36, 0x38, 0x35, 0x34, 0x37, 0x37, 0x35, 0x38, 0x30, 0x37, 0x00}, Result: entities.NewWei(math.MaxInt64)},
+		}
+		for _, tc := range stringCases {
+			result := new(entities.Wei)
+			err := result.UnmarshalBSONValue(bson.TypeString, tc.Value)
+			require.NoError(t, err)
+			assert.Equal(t, tc.Result, result)
+		}
+	})
 }

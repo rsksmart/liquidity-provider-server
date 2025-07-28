@@ -50,6 +50,24 @@ type TransactionReceipt struct {
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
 	Value             *entities.Wei
+	Logs              []TransactionLog
+}
+
+type TransactionLog struct {
+	Address     string
+	Topics      [][32]byte
+	Data        []byte
+	BlockNumber uint64
+	TxHash      string
+	TxIndex     uint
+	BlockHash   string
+	Index       uint
+	Removed     bool
+}
+
+type ParsedLog[E any] struct {
+	Log    E
+	RawLog TransactionLog
 }
 
 type BlockInfo struct {
@@ -74,6 +92,7 @@ type RootstockRpcServer interface {
 	GetTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
+	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 }
 
 type RootstockWallet interface {

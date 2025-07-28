@@ -18,7 +18,7 @@ import (
 type ParseFunc = func()
 type PasswordReader = func(int) ([]byte, error)
 type FileReader = func(string) ([]byte, error)
-type RskClientFactory = func(context.Context, environment.RskEnv) (*rootstock.RskClient, error)
+type RskClientFactory = func(context.Context, environment.Environment) (*rootstock.RskClient, error)
 
 func ExitWithError(code int, message string, err error) {
 	fmt.Printf("%s: %s\n", message, err.Error())
@@ -51,7 +51,7 @@ func CreateLiquidityBridgeContract(
 	env environment.Environment,
 	timeouts environment.ApplicationTimeouts,
 ) (blockchain.LiquidityBridgeContract, error) {
-	rskClient, err := factory(ctx, env.Rsk)
+	rskClient, err := factory(ctx, env)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
 	}
