@@ -120,13 +120,13 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPegoutQuote.BtcRefundAddress, response.Detail.BtcRefundAddr)
 	assert.Equal(t, testPegoutQuote.RskRefundAddress, response.Detail.RSKRefundAddr)
 	assert.Equal(t, testPegoutQuote.LpRskAddress, response.Detail.LPRSKAddr)
-	assert.Equal(t, testPegoutQuote.Value.Uint64(), response.Detail.Value)
-	assert.Equal(t, testPegoutQuote.CallFee.Uint64(), response.Detail.CallFee)
-	assert.Equal(t, testPegoutQuote.PenaltyFee, response.Detail.PenaltyFee)
+	assert.Equal(t, testPegoutQuote.Value.AsBigInt(), response.Detail.Value)
+	assert.Equal(t, testPegoutQuote.CallFee.AsBigInt(), response.Detail.CallFee)
+	assert.Equal(t, testPegoutQuote.PenaltyFee.AsBigInt(), response.Detail.PenaltyFee)
 
 	// Validate creation data fields
-	assert.Equal(t, testPegoutCreationData.GasPrice.Uint64(), response.CreationData.GasPrice)
-	assert.Equal(t, testPegoutCreationData.FixedFee.Uint64(), response.CreationData.FixedFee)
+	assert.Equal(t, testPegoutCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)
+	assert.Equal(t, testPegoutCreationData.FixedFee.AsBigInt(), response.CreationData.FixedFee)
 	expectedFeePercentage, _ := testPegoutCreationData.FeePercentage.Native().Float64()
 	assert.InDelta(t, expectedFeePercentage, response.CreationData.FeePercentage, 0.0)
 	expectedFeeRate, _ := testPegoutCreationData.FeeRate.Native().Float64()

@@ -119,13 +119,13 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPeginQuote.FedBtcAddress, response.Detail.FedBTCAddr)
 	assert.Equal(t, testPeginQuote.LbcAddress, response.Detail.LBCAddr)
 	assert.Equal(t, testPeginQuote.LpRskAddress, response.Detail.LPRSKAddr)
-	assert.Equal(t, testPeginQuote.Value.Uint64(), response.Detail.Value)
-	assert.Equal(t, testPeginQuote.CallFee.Uint64(), response.Detail.CallFee)
+	assert.Equal(t, testPeginQuote.Value.AsBigInt(), response.Detail.Value)
+	assert.Equal(t, testPeginQuote.CallFee.AsBigInt(), response.Detail.CallFee)
 	assert.Equal(t, testPeginQuote.GasLimit, response.Detail.GasLimit)
 
 	// Validate creation data fields
-	assert.Equal(t, testCreationData.GasPrice.Uint64(), response.CreationData.GasPrice)
-	assert.Equal(t, testCreationData.FixedFee.Uint64(), response.CreationData.FixedFee)
+	assert.Equal(t, testCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)
+	assert.Equal(t, testCreationData.FixedFee.AsBigInt(), response.CreationData.FixedFee)
 	expectedFeePercentage, _ := testCreationData.FeePercentage.Native().Float64()
 	assert.InDelta(t, expectedFeePercentage, response.CreationData.FeePercentage, 0.0)
 
