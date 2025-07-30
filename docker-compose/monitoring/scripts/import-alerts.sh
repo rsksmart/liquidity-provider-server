@@ -94,7 +94,7 @@ prepare_rule_file() {
     local temp_file="$2"
 
     # Replace datasource UID in the rule file
-    sed "s/\"loki-uid\"/\"$DATASOURCE_UID\"/g" "$source_file" > "$temp_file"
+    "${SED_INPLACE[@]}" "s/\"loki-uid\"/\"$DATASOURCE_UID\"/g" "$source_file" > "$temp_file"
 
     # Also update the folderUID if needed
     if [ "$FOLDER_UID" != "LPS" ]; then
