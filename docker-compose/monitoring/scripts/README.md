@@ -19,19 +19,19 @@ This directory contains the alert rules for the Liquidity Provider Server (LPS) 
 
 ```bash
 # From project root - basic usage (localhost:3000 with admin/test)
-./pkg/scripts/monitoring/import-alerts.sh
+./docker-compose/monitoring/scripts/import-alerts.sh
 
 # Custom Grafana instance
-./pkg/scripts/monitoring/import-alerts.sh http://grafana.example.com:3000 admin password
+./docker-compose/monitoring/scripts/import-alerts.sh http://grafana.example.com:3000 admin password
 
 # Different folder
-./pkg/scripts/monitoring/import-alerts.sh http://localhost:3000 admin test ALERTS
+./docker-compose/monitoring/scripts/import-alerts.sh http://localhost:3000 admin test ALERTS
 
 # Custom datasource UID
-./pkg/scripts/monitoring/import-alerts.sh http://localhost:3000 admin test LPS my-loki-uid
+./docker-compose/monitoring/scripts/import-alerts.sh http://localhost:3000 admin test LPS my-loki-uid
 
-# Or run from the monitoring directory
-cd pkg/scripts/monitoring
+# Or run from the monitoring scripts directory
+cd docker-compose/monitoring/scripts
 ./import-alerts.sh
 ```
 
@@ -45,9 +45,10 @@ cd pkg/scripts/monitoring
 ## Directory Structure
 
 ```
-pkg/scripts/monitoring/
-├── import-alerts.sh              # Main import script
-├── README.md                     # This documentation
+docker-compose/monitoring/
+├── scripts/
+│   ├── import-alerts.sh          # Main import script
+│   └── README.md                 # This documentation
 └── alerts/
     ├── node-eclipse-detection.json     # Eclipse attack alert
     ├── pegin-out-of-liquidity.json     # PegIn liquidity alert

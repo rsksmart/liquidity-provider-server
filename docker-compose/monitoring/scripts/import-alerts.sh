@@ -11,6 +11,19 @@ FOLDER_UID=${4:-"LPS"}  # Default to LPS folder
 DATASOURCE_UID=${5:-"loki-uid"}  # Default Loki datasource UID
 SCRIPT_DIR="$(dirname "$0")"
 
+# Detect OS for cross-platform sed compatibility
+OS_TYPE="$(uname)"
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    # macOS - requires backup extension even if empty
+    SED_INPLACE=("sed" "-i" "")
+elif [[ "$OS_TYPE" == "Linux" ]]; then
+    # Linux - no backup extension needed
+    SED_INPLACE=("sed" "-i")
+else
+    echo "Warning: Unsupported OS: $OS_TYPE"
+     exit 1
+fi
+
 # Alert rules configuration
 RULE_FILES=(
     "node-eclipse-detection.json"
@@ -85,7 +98,7 @@ prepare_rule_file() {
 
     # Also update the folderUID if needed
     if [ "$FOLDER_UID" != "LPS" ]; then
-        sed -i.bak "s/\"folderUID\": \"LPS\"/\"folderUID\": \"$FOLDER_UID\"/g" "$temp_file" && rm -f "${temp_file}.bak"
+        "${SED_INPLACE[@]}" "s/\"folderUID\": \"LPS\"/\"folderUID\": \"$FOLDER_UID\"/g" "$temp_file"
     fi
 }
 
