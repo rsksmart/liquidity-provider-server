@@ -1,4 +1,4 @@
-package entities
+package alerts
 
 import "context"
 
@@ -9,6 +9,7 @@ const (
 	AlertSubjectPenalization         = "LPS has been penalized"
 	AlertSubjectPeginOutOfLiquidity  = "PegIn: Out of liquidity"
 	AlertSubjectPegoutOutOfLiquidity = "PegOut: Out of liquidity"
+	AlertSubjectEclipseAttack        = "Node Eclipse Detected"
 )
 
 type AlertSender interface {

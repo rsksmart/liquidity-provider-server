@@ -5,13 +5,13 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	log "github.com/sirupsen/logrus"
 )
 
 type LogAlertSender struct{}
 
-func NewLogAlertSender() entities.AlertSender {
+func NewLogAlertSender() alerts.AlertSender {
 	return &LogAlertSender{}
 }
 

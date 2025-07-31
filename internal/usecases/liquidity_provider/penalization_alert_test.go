@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -50,7 +51,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		sender.On(
 			"SendAlert",
 			test.AnyCtx,
-			entities.AlertSubjectPenalization,
+			alerts.AlertSubjectPenalization,
 			fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", events[i].Penalty.ToRbtc(), events[i].QuoteHash),
 			[]string{recipient},
 		).Return(nil).Once()

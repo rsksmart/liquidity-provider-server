@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -40,7 +41,7 @@ func TestCheckLiquidityUseCase_Run_NoPeginLiquidity(t *testing.T) {
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
 		test.AnyCtx,
-		entities.AlertSubjectPeginOutOfLiquidity,
+		alerts.AlertSubjectPeginOutOfLiquidity,
 		"You are out of liquidity to perform a PegIn. Please, do a deposit",
 		[]string{recipient},
 	).Return(nil).Once()
@@ -63,7 +64,7 @@ func TestCheckLiquidityUseCase_Run_NoPegoutLiquidity(t *testing.T) {
 	recipient := "recipient@test.com"
 	alertSender.On("SendAlert",
 		test.AnyCtx,
-		entities.AlertSubjectPegoutOutOfLiquidity,
+		alerts.AlertSubjectPegoutOutOfLiquidity,
 		"You are out of liquidity to perform a PegOut. Please, do a deposit",
 		[]string{recipient},
 	).Return(nil).Once()
