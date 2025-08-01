@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
 
 // NewGetReportsRevenueHandler
 // @Title Get revenue Reports
 // @Description Get the revenue for the specified period.
-// @Param startDate query string true "Start date for the report"
-// @Param endDate query string true "End date for the report"
+// @Param startDate query string true "Start date for the report. Supports YYYY-MM-DD (expands to full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
+// @Param endDate query string true "End date for the report. Supports YYYY-MM-DD (expands to end of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
 // @Success 200 pkg.GetRevenueReportResponse
 // @Route /reports/revenue [get]
 func NewGetReportsRevenueHandler(useCase *reports.GetRevenueReportUseCase) http.HandlerFunc {
