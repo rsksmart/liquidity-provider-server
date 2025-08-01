@@ -362,26 +362,38 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
+// nolint:cyclop
+func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]quote.PegoutQuoteWithRetained, int, error) {
 	result := make([]quote.PegoutQuoteWithRetained, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
+
 	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
 		{Key: "$gte", Value: startDate.Unix()},
 		{Key: "$lte", Value: endDate.Unix()},
 	}}}
+
+	// Prepare find options with sorting
 	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+
+	// Apply pagination if page and perPage are provided (not 0)
+	// When page=0 and perPage=0, return all results (backward compatibility)
+	if page > 0 && perPage > 0 {
+		skip := (page - 1) * perPage
+		findOpts.SetSkip(int64(skip)).SetLimit(int64(perPage))
+	}
+
 	quoteCursor, err := repo.conn.Collection(PegoutQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var storedQuotes []StoredPegoutQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if len(storedQuotes) == 0 {
 		logDbInteraction(Read, result)
-		return result, nil
+		return result, 0, nil
 	}
 	hashToIndex := make(map[string]int, len(storedQuotes))
 	quoteHashes := make([]string, len(storedQuotes))
@@ -399,11 +411,11 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
 	)
 	if err != nil {
-		return result, err
+		return result, len(result), err
 	}
 	var retainedQuotes []quote.RetainedPegoutQuote
 	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
-		return result, err
+		return result, len(result), err
 	}
 	for _, retainedQuote := range retainedQuotes {
 		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
@@ -411,5 +423,5 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		}
 	}
 	logDbInteraction(Read, len(result))
-	return result, nil
+	return result, len(result), nil
 }
