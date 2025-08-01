@@ -79,18 +79,3 @@ func (r *GetTransactionHistoryRequest) applyDefaults() {
 		r.PerPage = 10
 	}
 }
-
-// CalculatePaginationMetadata calculates pagination metadata from results
-func CalculatePaginationMetadata(page, perPage, totalCount int) PaginationMetadata {
-	totalPages := (totalCount + perPage - 1) / perPage // Ceiling division
-	if totalPages < 1 {
-		totalPages = 1
-	}
-
-	return PaginationMetadata{
-		Total:      totalCount,
-		PerPage:    perPage,
-		TotalPages: totalPages,
-		Page:       page,
-	}
-}
