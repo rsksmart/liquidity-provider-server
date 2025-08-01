@@ -65,7 +65,7 @@ func (bf *BigFloat) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) err
 }
 
 func (bf *BigFloat) String() string {
-	return bf.Native().String()
+	return bf.Native().Text('f', -1)
 }
 
 func DecodeKey(key string, expectedBytes int) ([]byte, error) {
