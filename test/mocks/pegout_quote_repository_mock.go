@@ -533,34 +533,41 @@ func (_c *PegoutQuoteRepositoryMock_ListPegoutDepositsByAddress_Call) RunAndRetu
 	return _c
 }
 
-// ListQuotesByDateRange provides a mock function with given fields: ctx, startDate, endDate
-func (_m *PegoutQuoteRepositoryMock) ListQuotesByDateRange(ctx context.Context, startDate time.Time, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
-	ret := _m.Called(ctx, startDate, endDate)
+// ListQuotesByDateRange provides a mock function with given fields: ctx, startDate, endDate, page, perPage
+func (_m *PegoutQuoteRepositoryMock) ListQuotesByDateRange(ctx context.Context, startDate time.Time, endDate time.Time, page int, perPage int) ([]quote.PegoutQuoteWithRetained, int, error) {
+	ret := _m.Called(ctx, startDate, endDate, page, perPage)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListQuotesByDateRange")
 	}
 
 	var r0 []quote.PegoutQuoteWithRetained
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) ([]quote.PegoutQuoteWithRetained, error)); ok {
-		return rf(ctx, startDate, endDate)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int, int) ([]quote.PegoutQuoteWithRetained, int, error)); ok {
+		return rf(ctx, startDate, endDate, page, perPage)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) []quote.PegoutQuoteWithRetained); ok {
-		r0 = rf(ctx, startDate, endDate)
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, int, int) []quote.PegoutQuoteWithRetained); ok {
+		r0 = rf(ctx, startDate, endDate, page, perPage)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]quote.PegoutQuoteWithRetained)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
-		r1 = rf(ctx, startDate, endDate)
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, int, int) int); ok {
+		r1 = rf(ctx, startDate, endDate, page, perPage)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, time.Time, time.Time, int, int) error); ok {
+		r2 = rf(ctx, startDate, endDate, page, perPage)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListQuotesByDateRange'
@@ -572,23 +579,25 @@ type PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call struct {
 //   - ctx context.Context
 //   - startDate time.Time
 //   - endDate time.Time
-func (_e *PegoutQuoteRepositoryMock_Expecter) ListQuotesByDateRange(ctx interface{}, startDate interface{}, endDate interface{}) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
-	return &PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call{Call: _e.mock.On("ListQuotesByDateRange", ctx, startDate, endDate)}
+//   - page int
+//   - perPage int
+func (_e *PegoutQuoteRepositoryMock_Expecter) ListQuotesByDateRange(ctx interface{}, startDate interface{}, endDate interface{}, page interface{}, perPage interface{}) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	return &PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call{Call: _e.mock.On("ListQuotesByDateRange", ctx, startDate, endDate, page, perPage)}
 }
 
-func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Run(run func(ctx context.Context, startDate time.Time, endDate time.Time)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Run(run func(ctx context.Context, startDate time.Time, endDate time.Time, page int, perPage int)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time))
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), args[3].(int), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 []quote.PegoutQuoteWithRetained, _a1 error) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 []quote.PegoutQuoteWithRetained, _a1 int, _a2 error) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time) ([]quote.PegoutQuoteWithRetained, error)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
+func (_c *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, int, int) ([]quote.PegoutQuoteWithRetained, int, error)) *PegoutQuoteRepositoryMock_ListQuotesByDateRange_Call {
 	_c.Call.Return(run)
 	return _c
 }

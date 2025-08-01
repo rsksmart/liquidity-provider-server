@@ -254,26 +254,38 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	return uint(peginResult.DeletedCount + retainedResult.DeletedCount + creationDataResult.DeletedCount), nil
 }
 
-func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
+// nolint:cyclop
+func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]quote.PeginQuoteWithRetained, int, error) {
 	result := make([]quote.PeginQuoteWithRetained, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
+
 	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
 		{Key: "$gte", Value: startDate.Unix()},
 		{Key: "$lte", Value: endDate.Unix()},
 	}}}
+
+	// Prepare find options with sorting
 	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+
+	// Apply pagination if page and perPage are provided (not 0)
+	// When page=0 and perPage=0, return all results
+	if page > 0 && perPage > 0 {
+		skip := (page - 1) * perPage
+		findOpts.SetSkip(int64(skip)).SetLimit(int64(perPage))
+	}
+
 	quoteCursor, err := repo.conn.Collection(PeginQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var storedQuotes []StoredPeginQuote
 	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if len(storedQuotes) == 0 {
 		logDbInteraction(Read, result)
-		return result, nil
+		return result, 0, nil
 	}
 	hashToIndex := make(map[string]int, len(storedQuotes))
 	quoteHashes := make([]string, len(storedQuotes))
@@ -291,11 +303,11 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
 	)
 	if err != nil {
-		return result, err
+		return result, len(result), err
 	}
 	var retainedQuotes []quote.RetainedPeginQuote
 	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
-		return result, err
+		return result, len(result), err
 	}
 	for _, retainedQuote := range retainedQuotes {
 		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
@@ -303,5 +315,5 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 		}
 	}
 	logDbInteraction(Read, len(result))
-	return result, nil
+	return result, len(result), nil
 }

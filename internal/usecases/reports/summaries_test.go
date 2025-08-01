@@ -102,10 +102,10 @@ func TestSummariesUseCase_FullSetOfData(t *testing.T) { //nolint:funlen
 			RetainedQuote: retainedPegoutQuotes[1],
 		},
 	}
-	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(peginQuotesWithRetained, nil)
-	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(pegoutQuotesWithRetained, nil)
+	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(peginQuotesWithRetained, 0, nil)
+	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(pegoutQuotesWithRetained, 0, nil)
 	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
@@ -172,10 +172,10 @@ func TestSummariesUseCase_OnlyRegularQuotes(t *testing.T) { //nolint:funlen
 			RetainedQuote: quote.RetainedPegoutQuote{},
 		},
 	}
-	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(peginQuotesWithRetained, nil)
-	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(pegoutQuotesWithRetained, nil)
+	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(peginQuotesWithRetained, 0, nil)
+	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(pegoutQuotesWithRetained, 0, nil)
 	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
@@ -240,10 +240,10 @@ func TestSummariesUseCase_OnlyRetainedQuotes(t *testing.T) { //nolint:funlen
 			RetainedQuote: retainedPegoutQuote,
 		},
 	}
-	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(peginQuotesWithRetained, nil)
-	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return(pegoutQuotesWithRetained, nil)
+	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(peginQuotesWithRetained, 0, nil)
+	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return(pegoutQuotesWithRetained, 0, nil)
 	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	result, err := useCase.Run(context.Background(), startDate, endDate)
 	require.NoError(t, err)
@@ -269,8 +269,8 @@ func TestSummariesUseCase_ErrorGettingPeginQuotes(t *testing.T) {
 	endDate := time.Date(2023, 1, 31, 23, 59, 59, 0, time.UTC)
 	peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 	pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
-	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return([]quote.PeginQuoteWithRetained{}, errors.New("db error"))
+	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return([]quote.PeginQuoteWithRetained{}, 0, errors.New("db error"))
 	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	_, err := useCase.Run(context.Background(), startDate, endDate)
 	require.Error(t, err)
@@ -283,10 +283,10 @@ func TestSummariesUseCase_ErrorGettingPegoutQuotes(t *testing.T) {
 	endDate := time.Date(2023, 1, 31, 23, 59, 59, 0, time.UTC)
 	peginRepo := mocks.NewPeginQuoteRepositoryMock(t)
 	pegoutRepo := mocks.NewPegoutQuoteRepositoryMock(t)
-	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return([]quote.PeginQuoteWithRetained{}, nil)
-	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-		Return([]quote.PegoutQuoteWithRetained{}, errors.New("db error"))
+	peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return([]quote.PeginQuoteWithRetained{}, 0, nil)
+	pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+		Return([]quote.PegoutQuoteWithRetained{}, 0, errors.New("db error"))
 	useCase := reports.NewSummariesUseCase(peginRepo, pegoutRepo, nil)
 	_, err := useCase.Run(context.Background(), startDate, endDate)
 	require.Error(t, err)
