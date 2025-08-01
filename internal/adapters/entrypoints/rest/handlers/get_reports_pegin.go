@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
 
 // NewGetReportsPeginHandler
 // @Title Get Pegin Reports
 // @Description Get the last pegins on the API. Included in the management API.
-// @Param startDate query string true "Start date for the report"
-// @Param endDate query string true "End date for the report"
+// @Param startDate query string true "Start date for the report. Supports YYYY-MM-DD (expands to full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
+// @Param endDate query string true "End date for the report. Supports YYYY-MM-DD (expands to end of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
 // @Success 200 pkg.GetPeginReportResponse
 // @Route /reports/pegin [get]
 func NewGetReportsPeginHandler(useCase *reports.GetPeginReportUseCase) http.HandlerFunc {
