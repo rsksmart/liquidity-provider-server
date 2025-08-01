@@ -3,6 +3,7 @@ package pkg
 import (
 	"errors"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -88,8 +89,26 @@ type CredentialsUpdateRequest struct {
 }
 
 type GetReportsByPeriodRequest struct {
-	StartDate string `json:"startDate" validate:"required,datetime=2006-01-02"`
-	EndDate   string `json:"endDate" validate:"required,datetime=2006-01-02"`
+	StartDate string `json:"startDate" validate:"required"`
+	EndDate   string `json:"endDate" validate:"required"`
+}
+
+// parseDateTime parses a date string in either YYYY-MM-DD or ISO 8601 UTC format
+// Returns the parsed time, a boolean indicating if it's a date-only format, and any error
+func (r *GetReportsByPeriodRequest) parseDateTime(dateStr string) (time.Time, bool, error) {
+	// Try date-only format first (YYYY-MM-DD)
+	if t, err := time.Parse(time.DateOnly, dateStr); err == nil {
+		return t, true, nil
+	}
+
+	// Try ISO 8601 UTC format - must end with 'Z' to ensure UTC timezone
+	if strings.HasSuffix(dateStr, "Z") {
+		if t, err := time.Parse(time.RFC3339Nano, dateStr); err == nil {
+			return t.UTC(), false, nil
+		}
+	}
+
+	return time.Time{}, false, errors.New("invalid date format: must be YYYY-MM-DD or ISO 8601 UTC format (ending with Z)")
 }
 
 func (r *GetReportsByPeriodRequest) ValidateGetReportsByPeriodRequest() error {
@@ -100,49 +119,59 @@ func (r *GetReportsByPeriodRequest) ValidateGetReportsByPeriodRequest() error {
 		return errors.New("endDate is required")
 	}
 
-	startDate, err := time.Parse(time.DateOnly, r.StartDate)
+	startDate, _, err := r.parseDateTime(r.StartDate)
 	if err != nil {
-		return errors.New("startDate must be in format YYYY-MM-DD")
+		return errors.New("startDate " + err.Error())
 	}
 
-	endDate, err := time.Parse(time.DateOnly, r.EndDate)
+	endDate, _, err := r.parseDateTime(r.EndDate)
 	if err != nil {
-		return errors.New("endDate must be in format YYYY-MM-DD")
+		return errors.New("endDate " + err.Error())
 	}
 
-	if endDate.Before(startDate) || endDate.Equal(startDate) {
-		return errors.New("endDate must be after startDate")
+	// Allow same-day queries and require endDate to be >= startDate
+	if endDate.Before(startDate) {
+		return errors.New("endDate must be on or after startDate")
 	}
 
 	return nil
 }
 
 func (r *GetReportsByPeriodRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
-	startTime, err = time.Parse(time.DateOnly, r.StartDate)
+	startTime, isStartDateOnly, err := r.parseDateTime(r.StartDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 
-	endTime, err = time.Parse(time.DateOnly, r.EndDate)
+	endTime, isEndDateOnly, err := r.parseDateTime(r.EndDate)
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
 
-	startTime = time.Date(
-		startTime.Year(),
-		startTime.Month(),
-		startTime.Day(),
-		0, 0, 0, 0,
-		time.UTC,
-	)
+	// Apply smart defaults for date-only formats
+	if isStartDateOnly {
+		// For date-only start, use 00:00:00.000 UTC
+		startTime = time.Date(
+			startTime.Year(),
+			startTime.Month(),
+			startTime.Day(),
+			0, 0, 0, 0,
+			time.UTC,
+		)
+	}
+	// If it's ISO 8601 format, startTime is already in UTC from parseDateTime
 
-	endTime = time.Date(
-		endTime.Year(),
-		endTime.Month(),
-		endTime.Day(),
-		23, 59, 59, 0,
-		time.UTC,
-	)
+	if isEndDateOnly {
+		// For date-only end, use 23:59:59.999 UTC
+		endTime = time.Date(
+			endTime.Year(),
+			endTime.Month(),
+			endTime.Day(),
+			23, 59, 59, 999999999,
+			time.UTC,
+		)
+	}
+	// If it's ISO 8601 format, endTime is already in UTC from parseDateTime
 
 	return startTime, endTime, nil
 }
