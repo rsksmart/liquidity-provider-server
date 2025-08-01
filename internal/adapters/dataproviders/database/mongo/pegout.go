@@ -362,18 +362,56 @@ func (repo *pegoutMongoRepository) UpsertPegoutDeposits(ctx context.Context, dep
 	return err
 }
 
-// nolint:cyclop
 func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]quote.PegoutQuoteWithRetained, int, error) {
-	result := make([]quote.PegoutQuoteWithRetained, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
+	// Fetch quotes with pagination
+	storedQuotes, err := repo.fetchQuotesByDateRange(dbCtx, startDate, endDate, page, perPage)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if len(storedQuotes) == 0 {
+		result := make([]quote.PegoutQuoteWithRetained, 0)
+		logDbInteraction(Read, result)
+		return result, 0, nil
+	}
+
+	// Build initial result structure with quotes
+	result, quoteHashes := repo.buildQuoteResults(storedQuotes)
+
+	// Fetch and merge retained quotes
+	if err := repo.mergeRetainedQuotes(dbCtx, result, quoteHashes); err != nil {
+		return result, len(result), err
+	}
+
+	logDbInteraction(Read, len(result))
+	return result, len(result), nil
+}
+
+func (repo *pegoutMongoRepository) fetchQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]StoredPegoutQuote, error) {
 	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
 		{Key: "$gte", Value: startDate.Unix()},
 		{Key: "$lte", Value: endDate.Unix()},
 	}}}
 
-	// Prepare find options with sorting
+	findOpts := repo.buildFindOptions(page, perPage)
+
+	quoteCursor, err := repo.conn.Collection(PegoutQuoteCollection).Find(ctx, quoteFilter, findOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	var storedQuotes []StoredPegoutQuote
+	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
+		return nil, err
+	}
+
+	return storedQuotes, nil
+}
+
+func (repo *pegoutMongoRepository) buildFindOptions(page, perPage int) *options.FindOptions {
 	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
 
 	// Apply pagination if page and perPage are provided (not 0)
@@ -383,45 +421,59 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 		findOpts.SetSkip(int64(skip)).SetLimit(int64(perPage))
 	}
 
-	quoteCursor, err := repo.conn.Collection(PegoutQuoteCollection).Find(dbCtx, quoteFilter, findOpts)
-	if err != nil {
-		return nil, 0, err
-	}
-	var storedQuotes []StoredPegoutQuote
-	if err = quoteCursor.All(dbCtx, &storedQuotes); err != nil {
-		return nil, 0, err
-	}
-	if len(storedQuotes) == 0 {
-		logDbInteraction(Read, result)
-		return result, 0, nil
-	}
-	hashToIndex := make(map[string]int, len(storedQuotes))
+	return findOpts
+}
+
+func (repo *pegoutMongoRepository) buildQuoteResults(storedQuotes []StoredPegoutQuote) ([]quote.PegoutQuoteWithRetained, []string) {
+	result := make([]quote.PegoutQuoteWithRetained, len(storedQuotes))
 	quoteHashes := make([]string, len(storedQuotes))
-	result = make([]quote.PegoutQuoteWithRetained, len(storedQuotes))
+
 	for i, stored := range storedQuotes {
 		quoteHashes[i] = stored.Hash
-		hashToIndex[stored.Hash] = i
 		result[i] = quote.PegoutQuoteWithRetained{
 			Quote:         stored.PegoutQuote,
 			RetainedQuote: quote.RetainedPegoutQuote{},
 		}
 	}
-	retainedCursor, err := repo.conn.Collection(RetainedPegoutQuoteCollection).Find(
-		dbCtx,
-		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
-	)
+
+	return result, quoteHashes
+}
+
+func (repo *pegoutMongoRepository) mergeRetainedQuotes(ctx context.Context, result []quote.PegoutQuoteWithRetained, quoteHashes []string) error {
+	retainedQuotes, err := repo.fetchRetainedQuotes(ctx, quoteHashes)
 	if err != nil {
-		return result, len(result), err
+		return err
 	}
-	var retainedQuotes []quote.RetainedPegoutQuote
-	if err = retainedCursor.All(dbCtx, &retainedQuotes); err != nil {
-		return result, len(result), err
+
+	// Create hash to index mapping for efficient lookup
+	hashToIndex := make(map[string]int, len(quoteHashes))
+	for i, hash := range quoteHashes {
+		hashToIndex[hash] = i
 	}
+
+	// Merge retained quotes into result
 	for _, retainedQuote := range retainedQuotes {
 		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
 			result[idx].RetainedQuote = retainedQuote
 		}
 	}
-	logDbInteraction(Read, len(result))
-	return result, len(result), nil
+
+	return nil
+}
+
+func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quoteHashes []string) ([]quote.RetainedPegoutQuote, error) {
+	retainedCursor, err := repo.conn.Collection(RetainedPegoutQuoteCollection).Find(
+		ctx,
+		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var retainedQuotes []quote.RetainedPegoutQuote
+	if err = retainedCursor.All(ctx, &retainedQuotes); err != nil {
+		return nil, err
+	}
+
+	return retainedQuotes, nil
 }
