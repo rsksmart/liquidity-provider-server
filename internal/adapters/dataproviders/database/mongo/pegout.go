@@ -412,7 +412,7 @@ func (repo *pegoutMongoRepository) fetchQuotesByDateRange(ctx context.Context, s
 }
 
 func (repo *pegoutMongoRepository) buildFindOptions(page, perPage int) *options.FindOptions {
-	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: 1}})
+	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: SortAscending}})
 
 	// Apply pagination if page and perPage are provided (not 0)
 	// When page=0 and perPage=0, return all results (backward compatibility)
