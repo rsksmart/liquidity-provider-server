@@ -99,6 +99,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		},
 	}
 	t.Run("should run tick with a full page", func(t *testing.T) {
+		const mockUpdatedQuotes = 3
 		bridge := &mocks.BridgeMock{}
 		contracts := blockchain.RskContracts{Bridge: bridge}
 		rskRpc := &mocks.RootstockRpcServerMock{}
@@ -111,7 +112,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		bridge.On("GetBatchPegOutCreatedEvent", mock.Anything, uint64(10), mock.MatchedBy(func(toBlock *uint64) bool {
 			return toBlock != nil && *toBlock == 25
 		})).Return(mockEvents, nil).Once()
-		useCase.EXPECT().Run(mock.Anything, mockEvents[0]).Return(uint(3), nil).Once()
+		useCase.EXPECT().Run(mock.Anything, mockEvents[0]).Return(mockUpdatedQuotes, nil).Once()
 		useCase.EXPECT().Run(mock.Anything, mockEvents[1]).Return(uint(0), nil).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)

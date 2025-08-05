@@ -126,12 +126,12 @@ func (watcher *BtcReleaseWatcher) checkBatchPegOuts() (uint64, error) {
 }
 
 func (watcher *BtcReleaseWatcher) nextBlock(ctx context.Context) (uint64, error) {
+	var toBlock uint64 = 0
 	height, err := watcher.rpc.Rsk.GetHeight(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("error getting RSK height in BtcReleaseWatcher: %w", err)
+		return toBlock, fmt.Errorf("error getting RSK height in BtcReleaseWatcher: %w", err)
 	}
 
-	var toBlock uint64
 	if (watcher.currentBlock + watcher.pageSize) < height {
 		toBlock = watcher.currentBlock + watcher.pageSize
 	} else {
