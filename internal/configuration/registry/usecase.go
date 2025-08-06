@@ -67,6 +67,7 @@ type UseCaseRegistry struct {
 	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
 	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 }
 
 // NewUseCaseRegistry
@@ -290,6 +291,11 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 			&sync.Mutex{},
+		),
+		updateBtcReleaseUseCase: pegout.NewUpdateBtcReleaseUseCase(
+			databaseRegistry.PegoutRepository,
+			databaseRegistry.BatchPegOutRepository,
+			messaging.EventBus,
 		),
 	}
 }

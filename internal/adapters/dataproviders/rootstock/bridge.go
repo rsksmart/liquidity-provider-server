@@ -1,17 +1,21 @@
 package rootstock
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	log "github.com/sirupsen/logrus"
 	"math/big"
+	"slices"
 	"time"
 )
 
@@ -22,7 +26,7 @@ type rskBridgeImpl struct {
 	requiredConfirmations uint64
 	irisActivationHeight  int64
 	erpKeys               []string
-	contract              RskBridgeBinding
+	contract              RskBridgeAdapter
 	client                RpcClientBinding
 	btcParams             *chaincfg.Params
 	retryParams           RetryParams
@@ -39,13 +43,13 @@ type RskBridgeConfig struct {
 
 func NewRskBridgeImpl(
 	config RskBridgeConfig,
-	contract RskBridgeBinding,
+	contract RskBridgeAdapter,
 	client *RskClient,
 	btcParams *chaincfg.Params,
 	retryParams RetryParams,
 	signer TransactionSigner,
 	miningTimeout time.Duration,
-) blockchain.RootstockBridge {
+) rootstock.Bridge {
 	return &rskBridgeImpl{
 		address:               config.Address,
 		requiredConfirmations: config.RequiredConfirmations,
@@ -85,7 +89,7 @@ func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 	return entities.SatoshiToWei(result.Uint64()), nil
 }
 
-func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.FlyoverDerivationArgs) (blockchain.FlyoverDerivation, error) {
+func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args rootstock.FlyoverDerivationArgs) (rootstock.FlyoverDerivation, error) {
 	var err error
 	var fedRedeemScript, derivationValue []byte
 	derivationValue = federation.GetDerivationValueHash(args)
@@ -95,7 +99,7 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args blockchain.Flyover
 			return bridge.contract.GetActivePowpegRedeemScript(opts)
 		})
 	if err != nil {
-		return blockchain.FlyoverDerivation{}, fmt.Errorf("error retreiving fed redeem script from bridge: %w", err)
+		return rootstock.FlyoverDerivation{}, fmt.Errorf("error retreiving fed redeem script from bridge: %w", err)
 	}
 
 	return federation.CalculateFlyoverDerivationAddress(args.FedInfo, *bridge.btcParams, fedRedeemScript, derivationValue)
@@ -105,7 +109,7 @@ func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
 	return bridge.requiredConfirmations
 }
 
-func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, error) {
+func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, error) {
 	var err error
 	var pubKey []byte
 	var pubKeys []string
@@ -117,7 +121,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 			return bridge.contract.GetFederationSize(opts)
 		})
 	if err != nil {
-		return blockchain.FederationInfo{}, err
+		return rootstock.FederationInfo{}, err
 	}
 	federationSize = fedSize.Int64()
 
@@ -127,7 +131,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 				return bridge.contract.GetFederatorPublicKeyOfType(opts, big.NewInt(i), "btc")
 			})
 		if err != nil {
-			return blockchain.FederationInfo{}, fmt.Errorf("error fetching fed public key: %w", err)
+			return rootstock.FederationInfo{}, fmt.Errorf("error fetching fed public key: %w", err)
 		}
 		pubKeys = append(pubKeys, hex.EncodeToString(pubKey))
 	}
@@ -137,7 +141,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 			return bridge.contract.GetFederationThreshold(opts)
 		})
 	if err != nil {
-		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation size: %w", err)
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation size: %w", err)
 	}
 
 	fedAddress, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
@@ -145,7 +149,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 			return bridge.contract.GetFederationAddress(opts)
 		})
 	if err != nil {
-		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation address: %w", err)
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation address: %w", err)
 	}
 
 	activeFedBlockHeight, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
@@ -153,10 +157,10 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 			return bridge.contract.GetActiveFederationCreationBlockHeight(opts)
 		})
 	if err != nil {
-		return blockchain.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
 	}
 
-	return blockchain.FederationInfo{
+	return rootstock.FederationInfo{
 		FedThreshold:         fedThreshold.Int64(),
 		FedSize:              fedSize.Int64(),
 		PubKeys:              pubKeys,
@@ -169,7 +173,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 
 // RegisterBtcCoinbaseTransaction registers a new Bitcoin coinbase transaction in the bridge. Returns blockchain.WaitingForBridgeError
 // if the transaction has not been observed by the bridge yet. If the transaction was already registered, it returns an empty string instead of the hash.
-func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params blockchain.BtcCoinbaseTransactionInformation) (string, error) {
+func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params rootstock.BtcCoinbaseTransactionInformation) (string, error) {
 	var err error
 	var alreadyRegistered bool
 	var bestChainHeight *big.Int
@@ -208,4 +212,62 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params blockchain.Bt
 		return txHash, fmt.Errorf("register coinbase transaction error: transaction reverted (%s)", txHash)
 	}
 	return receipt.TxHash.String(), nil
+}
+
+func (bridge *rskBridgeImpl) GetBatchPegOutCreatedEvent(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]rootstock.BatchPegOut, error) {
+	var event *bindings.RskBridgeBatchPegoutCreated
+	result := make([]rootstock.BatchPegOut, 0)
+
+	rawIterator, err := bridge.contract.FilterBatchPegoutCreated(&bind.FilterOpts{
+		Start:   fromBlock,
+		End:     toBlock,
+		Context: ctx,
+	}, nil)
+
+	iterator := bridge.contract.BatchPegOutCreatedIteratorAdapter(rawIterator)
+	defer func() {
+		if rawIterator != nil {
+			if iteratorError := iterator.Close(); iteratorError != nil {
+				log.Error("Error closing BatchPegOutCreated event iterator: ", err)
+			}
+		}
+	}()
+	if err != nil {
+		return nil, err
+	} else if rawIterator == nil {
+		return nil, fmt.Errorf("no BatchPegOutCreated events found in the range %d to %d", fromBlock, *toBlock)
+	}
+
+	var rskHashes []string
+	for iterator.Next() {
+		event = iterator.Event()
+		if rskHashes, err = parseReleaseRskHashes(event.ReleaseRskTxHashes); err != nil {
+			return nil, fmt.Errorf("error parsing release RSK hashes: %w", err)
+		}
+		result = append(result, rootstock.BatchPegOut{
+			TransactionHash:    event.Raw.TxHash.String(),
+			BlockHash:          event.Raw.BlockHash.String(),
+			BlockNumber:        event.Raw.BlockNumber,
+			BtcTxHash:          hex.EncodeToString(event.BtcTxHash[:]),
+			ReleaseRskTxHashes: rskHashes,
+		})
+	}
+	if err = iterator.Error(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func parseReleaseRskHashes(hashes []byte) ([]string, error) {
+	const hashSize = 32
+	chunks := slices.Chunk(hashes, hashSize)
+	result := make([]string, 0)
+	for chunk := range chunks {
+		if len(chunk) != hashSize {
+			return nil, fmt.Errorf("invalid release RSK hash size: expected %d bytes, got %d bytes", hashSize, len(chunk))
+		}
+		result = append(result, "0x"+hex.EncodeToString(chunk))
+	}
+	return result, nil
 }

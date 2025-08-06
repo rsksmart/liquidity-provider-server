@@ -20,6 +20,7 @@ packages:
       RpcClientBinding:
       LbcCallerBinding:
       LbcAdapter:
+      RskBridgeAdapter:
       EventIteratorAdapter:
       RskSignerWallet:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
@@ -53,6 +54,9 @@ packages:
     interfaces:
       BitcoinWallet:
       RootstockRpcServer:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
+    interfaces:
+      BatchPegOutRepository:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:
@@ -72,3 +76,4 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
     interfaces:
       EclipseCheckUseCase:
+      UpdateBtcReleaseUseCase:

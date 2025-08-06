@@ -3,6 +3,7 @@ package watcher_test
 import (
 	w "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -87,5 +88,12 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		assert.Eventually(t, func() bool {
 			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
 		}, time.Second*1, time.Millisecond*100)
+	})
+}
+
+func TestEclipseWatcher_Shutdown(t *testing.T) {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) w.Watcher {
+		useCase := &mocks.EclipseCheckUseCaseMock{}
+		return w.NewEclipseWatcher(useCase, entities.NodeTypeBitcoin, 1, ticker)
 	})
 }

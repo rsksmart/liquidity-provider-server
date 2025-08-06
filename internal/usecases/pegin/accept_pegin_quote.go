@@ -3,6 +3,7 @@ package pegin
 import (
 	"context"
 	"encoding/hex"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -178,27 +179,27 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 	return nil
 }
 
-func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []byte, peginQuote quote.PeginQuote) (blockchain.FlyoverDerivation, error) {
+func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []byte, peginQuote quote.PeginQuote) (rootstock.FlyoverDerivation, error) {
 	var err error
 	errorArgs := usecases.NewErrorArgs()
-	var fedInfo blockchain.FederationInfo
+	var fedInfo rootstock.FederationInfo
 	var userBtcAddress, lpBtcAddress, lbcAddress []byte
 
 	if userBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.BtcRefundAddress); err != nil {
 		errorArgs["btcAddress"] = peginQuote.BtcRefundAddress
-		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
+		return rootstock.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	} else if lpBtcAddress, err = useCase.rpc.Btc.DecodeAddress(peginQuote.LpBtcAddress); err != nil {
 		errorArgs["btcAddress"] = peginQuote.LpBtcAddress
-		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
+		return rootstock.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	} else if lbcAddress, err = blockchain.DecodeStringTrimPrefix(peginQuote.LbcAddress); err != nil {
 		errorArgs["rskAddress"] = peginQuote.LbcAddress
-		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
+		return rootstock.FlyoverDerivation{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, err, errorArgs)
 	}
 
 	if fedInfo, err = useCase.contracts.Bridge.FetchFederationInfo(); err != nil {
-		return blockchain.FlyoverDerivation{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+		return rootstock.FlyoverDerivation{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
-	return useCase.contracts.Bridge.GetFlyoverDerivationAddress(blockchain.FlyoverDerivationArgs{
+	return useCase.contracts.Bridge.GetFlyoverDerivationAddress(rootstock.FlyoverDerivationArgs{
 		FedInfo:              fedInfo,
 		LbcAdress:            lbcAddress,
 		UserBtcRefundAddress: userBtcAddress,
@@ -230,7 +231,7 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 }
 
 func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quoteHash string, peginQuote *quote.PeginQuote, owner string) (*quote.RetainedPeginQuote, error) {
-	var derivation blockchain.FlyoverDerivation
+	var derivation rootstock.FlyoverDerivation
 	var requiredLiquidity *entities.Wei
 	var quoteHashBytes []byte
 	var quoteSignature string
