@@ -161,3 +161,46 @@ func TestSetPegoutConfigUseCase_Run_ZeroFixedFee(t *testing.T) {
     bridge.AssertExpectations(t)
     lpRepository.AssertExpectations(t)
 }
+
+func TestSetPegoutConfigUseCase_Run_ValidatePositiveWei_EachField(t *testing.T) {
+    lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+    walletMock := &mocks.RskWalletMock{}
+    hashMock := &mocks.HashMock{}
+
+    baseCfg := lp.PegoutConfiguration{
+        TimeForDeposit:       1,
+        ExpireTime:           2,
+        PenaltyFee:           entities.NewWei(3),
+        FixedFee:             entities.NewWei(4),
+        FeePercentage:        utils.NewBigFloat64(4.5),
+        MaxValue:             entities.NewWei(5),
+        MinValue:             entities.NewWei(1),
+        ExpireBlocks:         10,
+        BridgeTransactionMin: entities.NewWei(5),
+    }
+
+    makeCfg := func(modify func(*lp.PegoutConfiguration)) lp.PegoutConfiguration {
+        cfg := baseCfg
+        modify(&cfg)
+        return cfg
+    }
+
+    cases := []lp.PegoutConfiguration{
+        makeCfg(func(c *lp.PegoutConfiguration) { c.PenaltyFee = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PegoutConfiguration) { c.FixedFee = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PegoutConfiguration) { c.MaxValue = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PegoutConfiguration) { c.MinValue = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PegoutConfiguration) { c.BridgeTransactionMin = entities.NewWei(-1) }),
+    }
+
+    for _, cfg := range cases {
+        bridge := &mocks.BridgeMock{}
+        bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
+        contracts := blockchain.RskContracts{Bridge: bridge}
+
+        useCase := liquidity_provider.NewSetPegoutConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+        err := useCase.Run(context.Background(), cfg)
+        require.ErrorIs(t, err, usecases.NonPositiveWeiError)
+        bridge.AssertExpectations(t)
+    }
+}

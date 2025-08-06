@@ -124,6 +124,46 @@ func TestSetPeginConfigUseCase_Run_ValidatePositiveWei(t *testing.T) {
 	require.ErrorIs(t, err, usecases.NonPositiveWeiError)
 }
 
+func TestSetPeginConfigUseCase_Run_ValidatePositiveWei_EachField(t *testing.T) {
+    lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+    walletMock := &mocks.RskWalletMock{}
+    hashMock := &mocks.HashMock{}
+
+    baseCfg := lp.PeginConfiguration{
+        TimeForDeposit: 1,
+        CallTime:       2,
+        PenaltyFee:     entities.NewWei(3),
+        FixedFee:       entities.NewWei(4),
+        FeePercentage:  utils.NewBigFloat64(4.5),
+        MaxValue:       entities.NewWei(5),
+        MinValue:       entities.NewWei(1),
+    }
+
+    makeCfg := func(modify func(*lp.PeginConfiguration)) lp.PeginConfiguration {
+        cfg := baseCfg
+        modify(&cfg)
+        return cfg
+    }
+
+    cases := []lp.PeginConfiguration{
+        makeCfg(func(c *lp.PeginConfiguration) { c.PenaltyFee = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PeginConfiguration) { c.FixedFee = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PeginConfiguration) { c.MaxValue = entities.NewWei(-1) }),
+        makeCfg(func(c *lp.PeginConfiguration) { c.MinValue = entities.NewWei(-1) }),
+    }
+
+    for _, cfg := range cases {
+        bridge := &mocks.BridgeMock{}
+        bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
+        contracts := blockchain.RskContracts{Bridge: bridge}
+
+        useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+        err := useCase.Run(context.Background(), cfg)
+        require.ErrorIs(t, err, usecases.NonPositiveWeiError)
+        bridge.AssertNotCalled(t, "GetMinimumLockTxValue")
+    }
+}
+
 func TestSetPeginConfigUseCase_Run_ZeroFixedFee(t *testing.T) {
     lpRepository := &mocks.LiquidityProviderRepositoryMock{}
     walletMock := &mocks.RskWalletMock{}

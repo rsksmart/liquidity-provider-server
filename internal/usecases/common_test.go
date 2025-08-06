@@ -3,6 +3,9 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,8 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 const id = "anyUseCase"
@@ -285,5 +286,45 @@ func TestValidateBridgeUtxoMin(t *testing.T) {
 		require.ErrorContains(t, err, "no UTXO directed to address 2N991MLUtYHfHzLQgtNfK9NtUVUSEe9Ncaf present in transaction")
 		require.ErrorIs(t, err, u.TxBelowMinimumError)
 		bridge.AssertExpectations(t)
+	})
+}
+
+func TestValidatePositiveWeiValues(t *testing.T) {
+	var useCase u.UseCaseId = "validateWei"
+
+	t.Run("should return nil when all values are positive", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), entities.NewWei(0), entities.NewWei(100))
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail when any value is negative", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), entities.NewWei(-1))
+		require.ErrorIs(t, err, u.NonPositiveWeiError)
+	})
+
+	t.Run("should fail when any value is nil", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), nil)
+		require.ErrorIs(t, err, u.NonPositiveWeiError)
+	})
+}
+
+func TestValidateConfirmations(t *testing.T) {
+	var useCase u.UseCaseId = "validateConfirmations"
+
+	t.Run("should return nil for valid confirmations map", func(t *testing.T) {
+		confirmations := liquidity_provider.ConfirmationsPerAmount{1: 6, 10: 10}
+		err := u.ValidateConfirmations(useCase, confirmations)
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail for empty map", func(t *testing.T) {
+		err := u.ValidateConfirmations(useCase, liquidity_provider.ConfirmationsPerAmount{})
+		require.ErrorIs(t, err, u.EmptyConfirmationsMapError)
+	})
+
+	t.Run("should fail for non-positive keys", func(t *testing.T) {
+		confirmations := liquidity_provider.ConfirmationsPerAmount{0: 1, -5: 2}
+		err := u.ValidateConfirmations(useCase, confirmations)
+		require.ErrorIs(t, err, u.NonPositiveConfirmationKeyError)
 	})
 }

@@ -181,16 +181,8 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 }
 
 func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
-	zero := entities.NewWei(0)
-	for idx, val := range weiValues {
-		if val == nil || val.Cmp(zero) < 0 {
-			args := NewErrorArgs()
-			args["index"] = strconv.Itoa(idx)
-			if val != nil {
-				args["value"] = val.String()
-			}
-			return WrapUseCaseErrorArgs(useCase, NonPositiveWeiError, args)
-		}
+	if err := entities.ValidatePositiveWei(weiValues...); err != nil {
+		return WrapUseCaseError(useCase, NonPositiveWeiError)
 	}
 	return nil
 }
