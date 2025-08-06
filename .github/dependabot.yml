@@ -9,12 +9,6 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    target-branch: QA-Test
-    groups:
-      dependencies:
-        dependency-type: production
-      dev-dependencies:
-        dependency-type: development
   - package-ecosystem: docker
     directory: "/"
     schedule:
