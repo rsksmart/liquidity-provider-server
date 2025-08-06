@@ -611,3 +611,56 @@ func TestBigFloat_UnmarshalJSON_NullInput(t *testing.T) {
 	actualFloat64, _ := bf.Native().Float64()
 	require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
 }
+
+func TestCompareIgnore0x(t *testing.T) {
+	cases := []struct {
+		name     string
+		a        string
+		b        string
+		expected bool
+	}{
+		{
+			name:     "Equal with 0x prefix and without",
+			a:        "0x123abc",
+			b:        "123abc",
+			expected: true,
+		},
+		{
+			name:     "Different values",
+			a:        "0x123abc",
+			b:        "0x456def",
+			expected: false,
+		},
+		{
+			name:     "Both empty strings",
+			a:        "",
+			b:        "",
+			expected: true,
+		},
+		{
+			name:     "Case insensitive match",
+			a:        "0xABCDEF",
+			b:        "abcdef",
+			expected: true,
+		},
+		{
+			name:     "No prefix, equal",
+			a:        "123abc",
+			b:        "123abc",
+			expected: true,
+		},
+		{
+			name:     "Completely different",
+			a:        "0x123",
+			b:        "0x456",
+			expected: false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.CompareIgnore0x(tt.a, tt.b)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

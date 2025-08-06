@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -27,7 +29,7 @@ type PegoutRskDepositWatcher struct {
 	pegoutLp                     liquidity_provider.PegoutLiquidityProvider
 	rpc                          blockchain.Rpc
 	contracts                    blockchain.RskContracts
-	ticker                       Ticker
+	ticker                       utils.Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
 	currentBlock                 uint64
@@ -67,7 +69,7 @@ func NewPegoutRskDepositWatcher(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	cacheStartBlock uint64,
-	ticker Ticker,
+	ticker utils.Ticker,
 	depositCheckTimeout time.Duration,
 ) *PegoutRskDepositWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
@@ -276,9 +278,14 @@ func (watcher *PegoutRskDepositWatcher) GetCurrentBlock() uint64 {
 }
 
 func validateDepositedPegoutQuote(watchedQuote quote.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {
+	event, err := rootstock.ParseDepositEvent(receipt)
+	if err != nil {
+		log.Error(pegoutRskWatcherLog("Error parsing deposit event for quote %s: %v", watchedQuote.RetainedQuote.QuoteHash, err))
+		return false
+	}
 	return receipt.BlockNumber+uint64(watchedQuote.PegoutQuote.DepositConfirmations) < height &&
 		watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations &&
-		receipt.Value.Cmp(watchedQuote.PegoutQuote.Total()) >= 0
+		event.Log.Amount.Cmp(watchedQuote.PegoutQuote.Total()) >= 0
 }
 
 func (watcher *PegoutRskDepositWatcher) logRejectReason(deposit quote.PegoutDeposit, watchedQuote quote.WatchedPegoutQuote) {

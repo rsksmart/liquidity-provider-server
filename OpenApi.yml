@@ -1,6 +1,20 @@
 components:
   schemas:
     "": {}
+    AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
     AcceptPeginRespose:
       properties:
         bitcoinDepositAddressHash:
@@ -42,8 +56,7 @@ components:
       properties:
         amount:
           description: Amount to add to the collateral
-          example: 100000000000
-          type: integer
+          example: "100000000000"
       required:
       - amount
       type: object
@@ -51,8 +64,7 @@ components:
       properties:
         newCollateralBalance:
           description: New Collateral Balance
-          example: 100000000000
-          type: integer
+          example: "100000000000"
       type: object
     AvailableLiquidityDTO:
       properties:
@@ -70,11 +82,6 @@ components:
       properties:
         status:
           type: boolean
-      type: object
-    ConfirmationsPerAmount:
-      properties:
-        key:
-          type: integer
       type: object
     DepositEventDTO:
       properties:
@@ -95,27 +102,31 @@ components:
           format: date-time
           type: string
       type: object
-    GeneralConfiguration:
+    GeneralConfigurationDTO:
       properties:
         btcConfirmations:
-          $ref: '#/components/schemas/ConfirmationsPerAmount'
+          properties:
+            key:
+              type: integer
           type: object
         publicLiquidityCheck:
           type: boolean
         rskConfirmations:
-          $ref: '#/components/schemas/ConfirmationsPerAmount'
+          properties:
+            key:
+              type: integer
           type: object
       type: object
     GeneralConfigurationRequest:
       properties:
         configuration:
-          $ref: '#/components/schemas/GeneralConfiguration'
+          $ref: '#/components/schemas/GeneralConfigurationDTO'
           type: object
       type: object
     GetCollateralResponse:
       properties:
         collateral:
-          type: integer
+          $ref: '#/components/schemas/'
       required:
       - collateral
       type: object
@@ -225,11 +236,11 @@ components:
           description: The percentage fee used to compute the call fee
           type: number
         fixedFee:
+          $ref: '#/components/schemas/'
           description: The fixed fee used to compute the call fee
-          type: integer
         gasPrice:
+          $ref: '#/components/schemas/'
           description: The gas price used to compute the gas fee
-          type: integer
       required:
       - gasPrice
       - feePercentage
@@ -244,8 +255,8 @@ components:
           description: A User BTC refund address
           type: string
         callFee:
+          $ref: '#/components/schemas/'
           description: The fee charged by the LP
-          type: integer
         callOnRegister:
           description: A boolean value indicating whether the callForUser can be called
             on registerPegIn
@@ -264,9 +275,9 @@ components:
           description: The BTC address of the PowPeg
           type: string
         gasFee:
+          $ref: '#/components/schemas/'
           description: Fee to pay for the gas of every call done during the pegin
             (call on behalf of the user and call to the dao fee collector)
-          type: integer
         gasLimit:
           description: The gas limit
           type: integer
@@ -284,15 +295,15 @@ components:
           description: The RSK address of the LP
           type: string
         nonce:
+          $ref: '#/components/schemas/'
           description: A nonce that uniquely identifies this quote
-          type: integer
         penaltyFee:
+          $ref: '#/components/schemas/'
           description: The penalty fee that the LP pays if it fails to deliver the
             service
-          type: integer
         productFeeAmount:
+          $ref: '#/components/schemas/'
           description: The DAO Fee amount
-          type: integer
         rskRefundAddr:
           description: A User RSK refund address
           type: string
@@ -301,8 +312,8 @@ components:
             on the BTC deposit
           type: integer
         value:
+          $ref: '#/components/schemas/'
           description: The value to transfer in the call
-          type: integer
       required:
       - fedBTCAddr
       - lbcAddr
@@ -341,8 +352,7 @@ components:
           type: string
         valueToTransfer:
           description: Value to send in the call
-          example: 0
-          type: integer
+          example: "0x0"
       required:
       - callEoaOrContractAddress
       - callContractArguments
@@ -404,11 +414,11 @@ components:
           description: The fee rate used to compute the gas fee
           type: number
         fixedFee:
+          $ref: '#/components/schemas/'
           description: The fixed fee used to compute the call fee
-          type: integer
         gasPrice:
+          $ref: '#/components/schemas/'
           description: The gas price used to compute the gas fee
-          type: integer
       required:
       - gasPrice
       - feePercentage
@@ -422,7 +432,7 @@ components:
         btcRefundAddress:
           type: string
         callFee:
-          type: integer
+          $ref: '#/components/schemas/'
         depositAddr:
           type: string
         depositConfirmations:
@@ -434,10 +444,10 @@ components:
         expireDate:
           type: integer
         gasFee:
+          $ref: '#/components/schemas/'
           description: Fee to pay for the gas of every call done during the pegout
             (call on behalf of the user in Bitcoin network and call to the dao fee
             collector in Rootstock)
-          type: integer
         lbcAddress:
           type: string
         liquidityProviderRskAddress:
@@ -445,12 +455,12 @@ components:
         lpBtcAddr:
           type: string
         nonce:
-          type: integer
+          $ref: '#/components/schemas/'
         penaltyFee:
-          type: integer
+          $ref: '#/components/schemas/'
         productFeeAmount:
+          $ref: '#/components/schemas/'
           description: The DAO fee amount
-          type: integer
         rskRefundAddress:
           type: string
         transferConfirmations:
@@ -458,7 +468,7 @@ components:
         transferTime:
           type: integer
         value:
-          type: integer
+          $ref: '#/components/schemas/'
       required:
       - lbcAddress
       - liquidityProviderRskAddress
@@ -491,8 +501,7 @@ components:
           type: string
         valueToTransfer:
           description: ValueToTransfer
-          example: 10000000000000
-          type: integer
+          example: "10000000000000"
       required:
       - to
       - valueToTransfer
@@ -521,15 +530,15 @@ components:
       properties:
         fee:
           deprecated: true
-          type: integer
+          $ref: '#/components/schemas/'
         feePercentage:
           type: number
         fixedFee:
-          type: integer
+          $ref: '#/components/schemas/'
         maxTransactionValue:
-          type: integer
+          $ref: '#/components/schemas/'
         minTransactionValue:
-          type: integer
+          $ref: '#/components/schemas/'
         requiredConfirmations:
           type: integer
       required:
@@ -684,6 +693,59 @@ components:
         rsk:
           type: string
       type: object
+    TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
+      type: object
+    pkg.AcceptAuthenticatedQuoteRequest:
+      properties:
+        quoteHash:
+          description: QuoteHash
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature from a trusted account
+          example: "0x0"
+          type: string
+      required:
+      - quoteHash
+      - signature
+      type: object
+    pkg.AcceptPeginRespose:
+      properties:
+        bitcoinDepositAddressHash:
+          description: Hash of the deposit BTC address
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - bitcoinDepositAddressHash
+      type: object
+    pkg.AcceptPegoutResponse:
+      properties:
+        lbcAddress:
+          description: LBC address to execute depositPegout function
+          example: "0x0"
+          type: string
+        signature:
+          description: Signature of the quote
+          example: "0x0"
+          type: string
+      required:
+      - signature
+      - lbcAddress
+      type: object
     pkg.AcceptQuoteRequest:
       properties:
         quoteHash:
@@ -697,8 +759,7 @@ components:
       properties:
         amount:
           description: Amount to add to the collateral
-          example: 100000000000
-          type: integer
+          example: "100000000000"
       required:
       - amount
       type: object
@@ -706,15 +767,25 @@ components:
       properties:
         newCollateralBalance:
           description: New Collateral Balance
-          example: 100000000000
-          type: integer
+          example: "100000000000"
       type: object
     pkg.GetCollateralResponse:
       properties:
         collateral:
-          type: integer
+          $ref: '#/components/schemas/'
       required:
       - collateral
+      type: object
+    pkg.TrustedAccountRequest:
+      properties:
+        address:
+          type: string
+        btcLockingCap:
+          $ref: '#/components/schemas/'
+        name:
+          type: string
+        rbtcLockingCap:
+          $ref: '#/components/schemas/'
       type: object
 info:
   title: Liquidity Provider Server
@@ -792,6 +863,69 @@ paths:
         "204":
           description: ""
       summary: Management Logout
+  /management/trusted-accounts:
+    delete:
+      description: ' Deletes a trusted account'
+      parameters:
+      - description: Address of the trusted account to delete
+        in: query
+        name: address
+        required: true
+        schema:
+          description: Address of the trusted account to delete
+          format: string
+          type: string
+      responses:
+        "204":
+          description: ""
+      summary: Delete Trusted Account
+    get:
+      description: ' Returns all trusted accounts'
+      responses:
+        "200":
+          description: ""
+      summary: Get Trusted Accounts
+    post:
+      description: ' Adds a new trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Add Trusted Account
+    put:
+      description: ' Updates an existing trusted account'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustedAccountRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Update Trusted Account
+  /pegin/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPeginRespose'
+          description: ""
+      summary: Accept authenticated quote
   /pegin/acceptQuote:
     post:
       description: ' Accepts Quote'
@@ -888,6 +1022,23 @@ paths:
                 $ref: '#/components/schemas/PeginQuoteStatusDTO'
           description: Object containing the quote itself and its status
       summary: GetPeginStatus
+  /pegout/acceptAuthenticatedQuote:
+    post:
+      description: ' Accepts Quote with trusted account signature'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptPegoutResponse'
+          description: ""
+      summary: Accept authenticated quote
   /pegout/acceptQuote:
     post:
       description: ' Accepts Quote Pegout'

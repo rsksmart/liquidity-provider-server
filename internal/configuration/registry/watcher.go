@@ -4,6 +4,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 type WatcherRegistry struct {
@@ -15,6 +16,8 @@ type WatcherRegistry struct {
 	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
 	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
+	BitcoinEclipseWatcher      *watcher.EclipseWatcher
+	RskEclipseWatcher          *watcher.EclipseWatcher
 }
 
 // nolint:funlen
@@ -91,6 +94,18 @@ func NewWatcherRegistry(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.bridgePegoutUseCase,
 			tickers.PegoutBridgeWatcherTicker,
+		),
+		BitcoinEclipseWatcher: watcher.NewEclipseWatcher(
+			useCaseRegistry.btcEclipseCheckUseCase,
+			entities.NodeTypeBitcoin,
+			env.Eclipse.FillWithDefaults().AlertCooldownSeconds,
+			tickers.BitcoinEclipseCheckTicker,
+		),
+		RskEclipseWatcher: watcher.NewEclipseWatcher(
+			useCaseRegistry.rskEclipseCheckUseCase,
+			entities.NodeTypeRootstock,
+			env.Eclipse.FillWithDefaults().AlertCooldownSeconds,
+			tickers.RskEclipseCheckTicker,
 		),
 	}
 }

@@ -89,7 +89,7 @@ func buildMerkleBranch(merkleTree []*chainhash.Hash, txCount uint32, txIndex uin
 	}
 }
 
-func serializePartialMerkleTree(txHash *chainhash.Hash, block *btcutil.Block) ([]byte, error) {
+func SerializePartialMerkleTree(txHash *chainhash.Hash, block *btcutil.Block) ([]byte, error) {
 	var err error
 	filter := bloom.NewFilter(1, 0, 0, wire.BloomUpdateAll)
 	filter.AddHash(txHash)

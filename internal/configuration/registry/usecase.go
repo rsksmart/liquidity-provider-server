@@ -3,6 +3,7 @@ package registry
 import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -10,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"sync"
 )
 
 var signingHashFunction = crypto.Keccak256
@@ -58,6 +60,13 @@ type UseCaseRegistry struct {
 	availableLiquidityUseCase     *liquidity_provider.GetAvailableLiquidityUseCase
 	updatePeginDepositUseCase     *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase          *liquidity_provider.ServerInfoUseCase
+	updateTrustedAccountUseCase   *liquidity_provider.UpdateTrustedAccountUseCase
+	addTrustedAccountUseCase      *liquidity_provider.AddTrustedAccountUseCase
+	deleteTrustedAccountUseCase   *liquidity_provider.DeleteTrustedAccountUseCase
+	getTrustedAccountsUseCase     *liquidity_provider.GetTrustedAccountsUseCase
+	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
+	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 }
 
 // NewUseCaseRegistry
@@ -107,6 +116,8 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			messaging.EventBus,
 			mutexes.PeginLiquidityMutex(),
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 		getWatchedPeginQuoteUseCase: watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		expiredPeginQuoteUseCase:    pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
@@ -154,6 +165,8 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			messaging.EventBus,
 			mutexes.PegoutLiquidityMutex(),
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
 			btcRegistry.PaymentWallet,
@@ -162,6 +175,7 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
+			rootstock.ParseDepositEvent,
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(
@@ -234,6 +248,50 @@ func NewUseCaseRegistry(
 		availableLiquidityUseCase: liquidity_provider.NewGetAvailableLiquidityUseCase(liquidityProvider, liquidityProvider, liquidityProvider),
 		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
 		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		updateTrustedAccountUseCase: liquidity_provider.NewUpdateTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		addTrustedAccountUseCase: liquidity_provider.NewAddTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		deleteTrustedAccountUseCase: liquidity_provider.NewDeleteTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+		),
+		getTrustedAccountsUseCase: liquidity_provider.NewGetTrustedAccountsUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
+			rskRegistry.Wallet,
+		),
+		getTrustedAccountUseCase: liquidity_provider.NewGetTrustedAccountUseCase(
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
+			rskRegistry.Wallet,
+		),
+		// we want two separate instances of the same use case
+		btcEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
+		),
+		rskEclipseCheckUseCase: watcher.NewEclipseCheckUseCase(
+			env.Eclipse.FillWithDefaults().ToConfig(),
+			messaging.Rpc,
+			messaging.BtcExtraRpc,
+			messaging.RskExtraRpc,
+			messaging.EventBus,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			&sync.Mutex{},
+		),
 	}
 }
 
@@ -347,4 +405,24 @@ func (registry *UseCaseRegistry) GetAvailableLiquidityUseCase() *liquidity_provi
 
 func (registry *UseCaseRegistry) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	return registry.getServerInfoUseCase
+}
+
+func (registry *UseCaseRegistry) GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase {
+	return registry.getTrustedAccountsUseCase
+}
+
+func (registry *UseCaseRegistry) GetTrustedAccountUseCase() *liquidity_provider.GetTrustedAccountUseCase {
+	return registry.getTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {
+	return registry.updateTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase {
+	return registry.addTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase {
+	return registry.deleteTrustedAccountUseCase
 }
