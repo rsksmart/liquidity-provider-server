@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -85,6 +86,9 @@ var (
 	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
 	IllegalQuoteStateError      = errors.New("illegal quote state")
 	LockingCapExceededError     = errors.New("locking cap exceeded")
+	NonPositiveWeiError             = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
 type ErrorArgs map[string]string
@@ -276,4 +280,25 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 
 	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
 	return address, nil
+}
+
+func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
+	if err := entities.ValidatePositiveWei(weiValues...); err != nil {
+		return WrapUseCaseError(useCase, NonPositiveWeiError)
+	}
+	return nil
+}
+
+func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.ConfirmationsPerAmount) error {
+	if len(confirmations) == 0 {
+		return WrapUseCaseError(useCase, EmptyConfirmationsMapError)
+	}
+	for keyStr := range confirmations {
+		intKey, err := strconv.Atoi(keyStr)
+		if err != nil || intKey <= 0 {
+			args := ErrorArg("key", keyStr)
+			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
+		}
+	}
+	return nil
 }
