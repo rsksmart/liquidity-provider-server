@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"sync"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -11,7 +13,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"sync"
 )
 
 var signingHashFunction = crypto.Keccak256
@@ -209,6 +210,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
 			signingHashFunction,
+			rskRegistry.Contracts,
 		),
 		setPegoutConfigUseCase: liquidity_provider.NewSetPegoutConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
