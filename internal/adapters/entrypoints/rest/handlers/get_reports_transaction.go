@@ -31,7 +31,11 @@ func NewGetReportsTransactionHandler(useCase *reports.GetTransactionsUseCase) ht
 			return
 		}
 
-		if err = requestParams.ValidateGetTransactionHistoryRequest(); err != nil {
+		if err = rest.ValidateRequest(w, &requestParams); err != nil {
+			return
+		}
+
+		if err = requestParams.ValidateGetTransactionsRequest(); err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
@@ -60,8 +64,8 @@ func NewGetReportsTransactionHandler(useCase *reports.GetTransactionsUseCase) ht
 }
 
 // parseTransactionQueryParameters extracts and parses all query parameters from the HTTP request
-func parseTransactionQueryParameters(req *http.Request) (pkg.GetTransactionHistoryRequest, error) {
-	var requestParams pkg.GetTransactionHistoryRequest
+func parseTransactionQueryParameters(req *http.Request) (pkg.GetTransactionsRequest, error) {
+	var requestParams pkg.GetTransactionsRequest
 	var err error
 
 	// Parse basic query parameters
@@ -94,9 +98,9 @@ func parseTransactionQueryParameters(req *http.Request) (pkg.GetTransactionHisto
 }
 
 // mapUseCaseResultToResponse converts the use case result to the API response DTO
-func mapUseCaseResultToResponse(result reports.GetTransactionsResult) pkg.TransactionHistoryResponse {
-	response := pkg.TransactionHistoryResponse{
-		Data: make([]pkg.TransactionHistoryItem, len(result.Data)),
+func mapUseCaseResultToResponse(result reports.GetTransactionsResult) pkg.GetTransactionsResponse {
+	response := pkg.GetTransactionsResponse{
+		Data: make([]pkg.GetTransactionsItem, len(result.Data)),
 		Pagination: pkg.PaginationMetadata{
 			Total:      result.Pagination.Total,
 			PerPage:    result.Pagination.PerPage,
@@ -107,7 +111,7 @@ func mapUseCaseResultToResponse(result reports.GetTransactionsResult) pkg.Transa
 
 	// Map transaction items
 	for i, item := range result.Data {
-		response.Data[i] = pkg.TransactionHistoryItem{
+		response.Data[i] = pkg.GetTransactionsItem{
 			QuoteHash: item.QuoteHash,
 			Amount:    item.Amount,
 			CallFee:   item.CallFee,

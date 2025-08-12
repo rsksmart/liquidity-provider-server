@@ -101,6 +101,7 @@ func (useCase *GetTransactionsUseCase) getPeginTransactions(ctx context.Context,
 	for _, pair := range quotePairs {
 		// Skip quotes that have not been accepted
 		if pair.RetainedQuote.QuoteHash == "" {
+			totalCount--
 			continue
 		}
 
@@ -128,6 +129,7 @@ func (useCase *GetTransactionsUseCase) getPegoutTransactions(ctx context.Context
 	for _, pair := range quotePairs {
 		// Skip quotes that have not been accepted
 		if pair.RetainedQuote.QuoteHash == "" {
+			totalCount--
 			continue
 		}
 

@@ -22,6 +22,10 @@ func NewGetReportsRevenueHandler(useCase *reports.GetRevenueReportUseCase) http.
 		requestParams.StartDate = req.URL.Query().Get("startDate")
 		requestParams.EndDate = req.URL.Query().Get("endDate")
 
+		if err = rest.ValidateRequest(w, &requestParams); err != nil {
+			return
+		}
+
 		if err = requestParams.ValidateGetReportsByPeriodRequest(); err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)

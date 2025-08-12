@@ -6,16 +6,16 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
-// GetTransactionHistoryRequest extends GetReportsByPeriodRequest with pagination and type filtering
-type GetTransactionHistoryRequest struct {
-	GetReportsByPeriodRequest
+// GetTransactionsRequest combines date range filtering with pagination and type filtering
+type GetTransactionsRequest struct {
+	DateRangeRequest
 	Type    string `json:"type" validate:"required,oneof=pegin pegout"`
-	Page    int    `json:"page" validate:"min=1"`
-	PerPage int    `json:"perPage" validate:"min=1,max=100"`
+	Page    int    `json:"page" validate:"min=0"`
+	PerPage int    `json:"perPage" validate:"min=0,max=100"`
 }
 
-// TransactionHistoryItem represents a single transaction in the history response
-type TransactionHistoryItem struct {
+// GetTransactionsItem represents a single transaction in the history response
+type GetTransactionsItem struct {
 	QuoteHash string        `json:"quoteHash"`
 	Amount    *entities.Wei `json:"amount"`
 	CallFee   *entities.Wei `json:"callFee"`
@@ -31,29 +31,19 @@ type PaginationMetadata struct {
 	Page       int `json:"page"`
 }
 
-// TransactionHistoryResponse represents the complete paginated response for transaction history
-type TransactionHistoryResponse struct {
-	Data       []TransactionHistoryItem `json:"data"`
-	Pagination PaginationMetadata       `json:"pagination"`
+// GetTransactionsResponse represents the complete paginated response for transaction history
+type GetTransactionsResponse struct {
+	Data       []GetTransactionsItem `json:"data"`
+	Pagination PaginationMetadata    `json:"pagination"`
 }
 
-// ValidateGetTransactionHistoryRequest validates the transaction history request including inherited validation
-func (r *GetTransactionHistoryRequest) ValidateGetTransactionHistoryRequest() error {
-	// First validate the inherited date range fields
-	if err := r.ValidateGetReportsByPeriodRequest(); err != nil {
+func (r *GetTransactionsRequest) ValidateGetTransactionsRequest() error {
+	// Validate date range format and logical consistency
+	if err := r.ValidateDateRange(); err != nil {
 		return err
 	}
 
-	// Validate transaction type
-	if r.Type == "" {
-		return errors.New("type is required")
-	}
-	if r.Type != "pegin" && r.Type != "pegout" {
-		return errors.New("type must be 'pegin' or 'pegout'")
-	}
-
 	// Validate pagination parameters before applying defaults
-	// Check for explicit invalid values (negative values are invalid)
 	if r.Page < 0 {
 		return errors.New("page must be at least 1")
 	}
@@ -64,14 +54,13 @@ func (r *GetTransactionHistoryRequest) ValidateGetTransactionHistoryRequest() er
 		return errors.New("perPage cannot exceed 100")
 	}
 
-	// Apply default values after validation
 	r.applyDefaults()
 
 	return nil
 }
 
 // applyDefaults sets default values for optional pagination parameters
-func (r *GetTransactionHistoryRequest) applyDefaults() {
+func (r *GetTransactionsRequest) applyDefaults() {
 	if r.Page == 0 {
 		r.Page = 1
 	}

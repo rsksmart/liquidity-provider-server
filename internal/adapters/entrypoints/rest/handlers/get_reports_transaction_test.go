@@ -52,7 +52,7 @@ func TestGetReportsTransactionHandler_SuccessfulPeginRequest(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	var response pkg.TransactionHistoryResponse
+	var response pkg.GetTransactionsResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -96,7 +96,7 @@ func TestGetReportsTransactionHandler_SuccessfulPegoutRequest(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	var response pkg.TransactionHistoryResponse
+	var response pkg.GetTransactionsResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -222,7 +222,7 @@ func TestGetReportsTransactionHandler_DefaultPaginationParameters(t *testing.T) 
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	var response pkg.TransactionHistoryResponse
+	var response pkg.GetTransactionsResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -252,7 +252,7 @@ func TestGetReportsTransactionHandler_ISO8601DateFormat(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	var response pkg.TransactionHistoryResponse
+	var response pkg.GetTransactionsResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
