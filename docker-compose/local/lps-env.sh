@@ -169,7 +169,8 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 
     # deploy LBC contracts to RSKJ
     LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
+    LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
+    export LBC_ADDR
   fi
 fi
 
