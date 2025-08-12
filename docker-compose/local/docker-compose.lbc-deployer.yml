@@ -1,17 +1,9 @@
 services:
   lbc-deployer:
-    build:
-      context: ../lbc-deployer
-      secrets:
-        - gh_token
-      args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
-    image: lbc-deployer:latest
+    image: ghcr.io/rsksmart/liquidity-bridge-contract:${LBC_VERSION}
     container_name: lbc-deployer01
     environment:
-      - LPS_STAGE
+      - NETWORK_NAME=rskRegtest
+      - REGTEST_RPC_URL=${RSK_ENDPOINT}
     networks:
       - net_lps
-secrets:
-  gh_token:
-    file: ./gh_token.txt

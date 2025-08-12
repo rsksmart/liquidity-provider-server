@@ -80,16 +80,11 @@ services:
         "--regtest",
       ]
   lbc-deployer:
-    build:
-      context: ../../docker-compose/lbc-deployer
-      secrets:
-        - gh_token
-      args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
-    image: lbc-deployer:latest
+    image: ghcr.io/rsksmart/liquidity-bridge-contract:${LBC_VERSION}
     container_name: lbc-deployer01
     environment:
-      - LPS_STAGE=regtest
+      - NETWORK_NAME=rskRegtest
+      - REGTEST_RPC_URL=${RSK_ENDPOINT}
     networks:
       - lp-swap-network
   ui:

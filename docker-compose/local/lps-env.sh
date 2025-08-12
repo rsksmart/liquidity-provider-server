@@ -64,7 +64,7 @@ elif [ "$SCRIPT_CMD" = "down" ]; then
   exit 0
 elif [ "$SCRIPT_CMD" = "build" ]; then
   echo "Building LPS env..."
-  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml -f docker-compose.lps.yml build
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build
   exit 0
 elif [ "$SCRIPT_CMD" = "stop" ]; then
   echo "Stopping LPS env..."
@@ -167,9 +167,8 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
-    (grep GITHUB_TOKEN | head -n 1 | tr -d '\r' | awk '{gsub("GITHUB_TOKEN=",""); print}' > gh_token.txt) < $ENV_FILE
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
     export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
   fi
 fi
