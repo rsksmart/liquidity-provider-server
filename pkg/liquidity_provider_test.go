@@ -156,37 +156,21 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.T) {
 	t.Run("valid dates", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "2023-01-02",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-02",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		assert.NoError(t, err)
 	})
 
-	t.Run("empty startDate", func(t *testing.T) {
-		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "",
-			EndDate:   "2023-01-02",
-		}
-		err := request.ValidateGetReportsByPeriodRequest()
-		require.Error(t, err)
-		assert.Equal(t, "startDate is required", err.Error())
-	})
-
-	t.Run("empty endDate", func(t *testing.T) {
-		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "",
-		}
-		err := request.ValidateGetReportsByPeriodRequest()
-		require.Error(t, err)
-		assert.Equal(t, "endDate is required", err.Error())
-	})
-
 	t.Run("invalid startDate format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "01/01/2023",
-			EndDate:   "2023-01-02",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "01/01/2023",
+				EndDate:   "2023-01-02",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -195,8 +179,10 @@ func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.
 
 	t.Run("invalid endDate format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "01/02/2023",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "01/02/2023",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -205,8 +191,10 @@ func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.
 
 	t.Run("endDate equal to startDate", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "2023-01-01",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-01",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -214,8 +202,10 @@ func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.
 
 	t.Run("endDate before startDate", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-02",
-			EndDate:   "2023-01-01",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-02",
+				EndDate:   "2023-01-01",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -227,8 +217,10 @@ func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.
 func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 	t.Run("valid dates", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "2023-01-02",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-02",
+			},
 		}
 		startTime, endTime, err := request.GetTimestamps()
 		require.NoError(t, err)
@@ -242,8 +234,10 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 
 	t.Run("invalid startDate format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "01/01/2023",
-			EndDate:   "2023-01-02",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "01/01/2023",
+				EndDate:   "2023-01-02",
+			},
 		}
 		startTime, endTime, err := request.GetTimestamps()
 		require.Error(t, err)
@@ -253,8 +247,10 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 
 	t.Run("invalid endDate format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "01/02/2023",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "01/02/2023",
+			},
 		}
 		startTime, endTime, err := request.GetTimestamps()
 		require.Error(t, err)
@@ -264,8 +260,10 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 
 	t.Run("sets time component correctly", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-05-15",
-			EndDate:   "2023-06-20",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-05-15",
+				EndDate:   "2023-06-20",
+			},
 		}
 		startTime, endTime, err := request.GetTimestamps()
 		require.NoError(t, err)
@@ -298,8 +296,10 @@ func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
 func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 	t.Run("ISO 8601 format - basic", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00Z",
-			EndDate:   "2023-01-15T17:45:00Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00Z",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -316,8 +316,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("ISO 8601 format - with milliseconds", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00.123Z",
-			EndDate:   "2023-01-15T17:45:00.999Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123Z",
+				EndDate:   "2023-01-15T17:45:00.999Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -334,8 +336,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("ISO 8601 format - with microseconds", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00.123456Z",
-			EndDate:   "2023-01-15T17:45:00.999999Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123456Z",
+				EndDate:   "2023-01-15T17:45:00.999999Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -352,8 +356,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("ISO 8601 format - with nanoseconds", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00.123456789Z",
-			EndDate:   "2023-01-15T17:45:00.999999999Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123456789Z",
+				EndDate:   "2023-01-15T17:45:00.999999999Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -370,8 +376,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("unsupported format - without Z suffix", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00",
-			EndDate:   "2023-01-15T17:45:00Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -380,8 +388,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("mixed format usage - date start, precise end", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15",
-			EndDate:   "2023-01-15T23:59:59Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15",
+				EndDate:   "2023-01-15T23:59:59Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -398,8 +408,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("mixed format usage - precise start, date end", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T00:00:00Z",
-			EndDate:   "2023-01-15",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T00:00:00Z",
+				EndDate:   "2023-01-15",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -416,8 +428,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("same-day query with different formats", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15",
-			EndDate:   "2023-01-15T23:59:59.999Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15",
+				EndDate:   "2023-01-15T23:59:59.999Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err) // Should now be allowed
@@ -434,8 +448,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("unsupported timezone format - RFC3339 with offset", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T09:30:00+02:00",
-			EndDate:   "2023-01-15T17:45:00Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00+02:00",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -444,8 +460,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("YYYY-MM-DD format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-01",
-			EndDate:   "2023-01-31",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-31",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.NoError(t, err)
@@ -462,8 +480,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("invalid ISO 8601 format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "2023-01-15T25:30:00Z", // Invalid hour
-			EndDate:   "2023-01-15T17:45:00Z",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T25:30:00Z", // Invalid hour
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)
@@ -472,8 +492,10 @@ func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
 
 	t.Run("completely invalid format", func(t *testing.T) {
 		request := pkg.GetReportsByPeriodRequest{
-			StartDate: "not-a-date",
-			EndDate:   "2023-01-15",
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "not-a-date",
+				EndDate:   "2023-01-15",
+			},
 		}
 		err := request.ValidateGetReportsByPeriodRequest()
 		require.Error(t, err)

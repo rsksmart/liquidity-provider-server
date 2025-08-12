@@ -9,17 +9,17 @@ import (
 )
 
 // nolint:funlen
-func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *testing.T) {
+func TestGetTransactionsRequest_ValidateGetTransactionsRequest(t *testing.T) {
 	tests := []struct {
 		name        string
-		request     GetTransactionHistoryRequest
+		request     GetTransactionsRequest
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "Valid pegin request with default pagination",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -29,8 +29,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Valid pegout request with explicit pagination",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -42,8 +42,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Valid request with ISO 8601 dates",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01T00:00:00Z",
 					EndDate:   "2023-01-31T23:59:59Z",
 				},
@@ -52,32 +52,9 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 			expectError: false,
 		},
 		{
-			name: "Missing type",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
-					StartDate: "2023-01-01",
-					EndDate:   "2023-01-31",
-				},
-			},
-			expectError: true,
-			errorMsg:    "type is required",
-		},
-		{
-			name: "Invalid type",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
-					StartDate: "2023-01-01",
-					EndDate:   "2023-01-31",
-				},
-				Type: "invalid",
-			},
-			expectError: true,
-			errorMsg:    "type must be 'pegin' or 'pegout'",
-		},
-		{
 			name: "Valid request with zero page (should apply default)",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -88,8 +65,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Valid request with zero perPage (should apply default)",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -100,8 +77,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Invalid page (negative)",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -113,8 +90,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Invalid perPage (negative)",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -126,8 +103,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Invalid perPage (too large)",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-01",
 					EndDate:   "2023-01-31",
 				},
@@ -139,8 +116,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "Invalid date format",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "invalid-date",
 					EndDate:   "2023-01-31",
 				},
@@ -151,8 +128,8 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 		},
 		{
 			name: "End date before start date",
-			request: GetTransactionHistoryRequest{
-				GetReportsByPeriodRequest: GetReportsByPeriodRequest{
+			request: GetTransactionsRequest{
+				DateRangeRequest: DateRangeRequest{
 					StartDate: "2023-01-31",
 					EndDate:   "2023-01-01",
 				},
@@ -165,7 +142,7 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.request.ValidateGetTransactionHistoryRequest()
+			err := tt.request.ValidateGetTransactionsRequest()
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -180,16 +157,16 @@ func TestGetTransactionHistoryRequest_ValidateGetTransactionHistoryRequest(t *te
 	}
 }
 
-func TestGetTransactionHistoryRequest_applyDefaults(t *testing.T) {
+func TestGetTransactionsRequest_applyDefaults(t *testing.T) {
 	tests := []struct {
 		name            string
-		request         GetTransactionHistoryRequest
+		request         GetTransactionsRequest
 		expectedPage    int
 		expectedPerPage int
 	}{
 		{
 			name: "Apply default page and perPage",
-			request: GetTransactionHistoryRequest{
+			request: GetTransactionsRequest{
 				Type: "pegin",
 			},
 			expectedPage:    1,
@@ -197,7 +174,7 @@ func TestGetTransactionHistoryRequest_applyDefaults(t *testing.T) {
 		},
 		{
 			name: "Apply default page only",
-			request: GetTransactionHistoryRequest{
+			request: GetTransactionsRequest{
 				Type:    "pegin",
 				PerPage: 25,
 			},
@@ -206,7 +183,7 @@ func TestGetTransactionHistoryRequest_applyDefaults(t *testing.T) {
 		},
 		{
 			name: "Apply default perPage only",
-			request: GetTransactionHistoryRequest{
+			request: GetTransactionsRequest{
 				Type: "pegin",
 				Page: 3,
 			},
@@ -215,7 +192,7 @@ func TestGetTransactionHistoryRequest_applyDefaults(t *testing.T) {
 		},
 		{
 			name: "No defaults needed",
-			request: GetTransactionHistoryRequest{
+			request: GetTransactionsRequest{
 				Type:    "pegin",
 				Page:    2,
 				PerPage: 50,
@@ -237,8 +214,8 @@ func TestGetTransactionHistoryRequest_applyDefaults(t *testing.T) {
 
 func TestTransactionHistoryResponse_Structure(t *testing.T) {
 	// Test that the response structure matches the expected JSON format
-	response := TransactionHistoryResponse{
-		Data: []TransactionHistoryItem{
+	response := GetTransactionsResponse{
+		Data: []GetTransactionsItem{
 			{
 				QuoteHash: "0x1234567890abcdef1234567890abcdef12345678",
 				Amount:    entities.NewWei(1000000000000000000),
