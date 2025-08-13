@@ -52,6 +52,7 @@ func (wallet *DerivativeWallet) initWallet() error {
 	var addressInfo *btcjson.GetAddressInfoResult
 
 	if info, err = wallet.conn.client.GetWalletInfo(); err != nil || info.WalletName != wallet.conn.WalletId {
+		log.Error(err)
 		if info, err = wallet.createWallet(); err != nil {
 			return err
 		}
