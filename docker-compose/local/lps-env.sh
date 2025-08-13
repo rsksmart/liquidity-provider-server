@@ -195,6 +195,7 @@ do
     && echo "LPS is up and running" \
     && FAIL=false \
     || echo "LPS is not up yet"
+  chmod -R 777 ./volumes/lps
   ls -lah .
   ls -lah ./volumes/lps/logs
   namei -om ./volumes/lps/logs/lps.log
