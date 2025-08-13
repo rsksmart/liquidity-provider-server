@@ -1062,6 +1062,53 @@ func (_c *UseCaseRegistryMock_GetServerInfoUseCase_Call) RunAndReturn(run func()
 	return _c
 }
 
+// GetTransactionsReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetTransactionsReportUseCase() *reports.GetTransactionsUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransactionsReportUseCase")
+	}
+
+	var r0 *reports.GetTransactionsUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetTransactionsUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetTransactionsUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetTransactionsReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransactionsReportUseCase'
+type UseCaseRegistryMock_GetTransactionsReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetTransactionsReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetTransactionsReportUseCase() *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	return &UseCaseRegistryMock_GetTransactionsReportUseCase_Call{Call: _e.mock.On("GetTransactionsReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) Return(_a0 *reports.GetTransactionsUseCase) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) RunAndReturn(run func() *reports.GetTransactionsUseCase) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserDepositsUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetUserDepositsUseCase() *pegout.GetUserDepositsUseCase {
 	ret := _m.Called()

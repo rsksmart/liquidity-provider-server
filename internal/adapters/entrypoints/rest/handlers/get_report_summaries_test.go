@@ -61,10 +61,10 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				endDate, err := time.Parse(reports.DateFormat, "2023-01-31")
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
-				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PeginQuoteWithRetained{}, nil)
-				pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PegoutQuoteWithRetained{}, nil)
+				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+					Return([]quote.PeginQuoteWithRetained{}, 0, nil)
+				pegoutRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+					Return([]quote.PegoutQuoteWithRetained{}, 0, nil)
 			},
 		},
 		{
@@ -119,8 +119,8 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 				endDate, err := time.Parse(reports.DateFormat, "2023-01-31")
 				require.NoError(t, err)
 				endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, endDate.Location())
-				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate).
-					Return([]quote.PeginQuoteWithRetained{}, errors.New("test error"))
+				peginRepo.On("ListQuotesByDateRange", mock.Anything, startDate, endDate, 0, 0).
+					Return([]quote.PeginQuoteWithRetained{}, 0, errors.New("test error"))
 			},
 		},
 	}

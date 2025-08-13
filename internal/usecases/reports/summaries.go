@@ -127,7 +127,7 @@ func (u *SummariesUseCase) aggregatePeginData(ctx context.Context, startDate, en
 		quotePairs []quote.PeginQuoteWithRetained
 		err        error
 	)
-	quotePairs, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	quotePairs, _, err = u.peginRepo.ListQuotesByDateRange(ctx, startDate, endDate, 0, 0)
 	if err != nil {
 		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
 	}
@@ -163,7 +163,7 @@ func (u *SummariesUseCase) aggregatePegoutData(ctx context.Context, startDate, e
 		quotePairs []quote.PegoutQuoteWithRetained
 		err        error
 	)
-	quotePairs, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate)
+	quotePairs, _, err = u.pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate, 0, 0)
 	if err != nil {
 		return NewSummaryData(), usecases.WrapUseCaseError(usecases.SummariesUseCaseId, err)
 	}

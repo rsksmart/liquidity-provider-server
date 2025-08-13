@@ -196,6 +196,17 @@ components:
       - status
       - providerType
       type: object
+    PaginationMetadata:
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      type: object
     PeginConfigurationDTO:
       properties:
         callTime:
@@ -684,34 +695,68 @@ components:
         rsk:
           type: string
       type: object
-    SummaryData:
+    SummaryDataDTO:
       properties:
         acceptedQuotesCount:
           type: integer
         lpEarnings:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         paidQuotesAmount:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         paidQuotesCount:
           type: integer
         refundedQuotesCount:
           type: integer
         totalAcceptedQuotedAmount:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         totalFeesCollected:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         totalPenaltyAmount:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         totalQuotesCount:
           type: integer
       type: object
-    SummaryResult:
+    SummaryResultDTO:
       properties:
         peginSummary:
-          $ref: '#/components/schemas/SummaryData'
+          $ref: '#/components/schemas/SummaryDataDTO'
           type: object
         pegoutSummary:
-          $ref: '#/components/schemas/SummaryData'
+          $ref: '#/components/schemas/SummaryDataDTO'
+          type: object
+      type: object
+    TransactionHistoryItem:
+      properties:
+        amount:
+          $ref: '#/components/schemas/Wei'
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        gasFee:
+          $ref: '#/components/schemas/Wei'
+        quoteHash:
+          type: string
+        status:
+          type: string
+      type: object
+    TransactionHistoryResponse:
+      properties:
+        data:
+          items:
+            properties:
+              amount:
+                $ref: '#/components/schemas/Wei'
+              callFee:
+                $ref: '#/components/schemas/Wei'
+              gasFee:
+                $ref: '#/components/schemas/Wei'
+              quoteHash:
+                type: string
+              status:
+                type: string
+            type: object
+          type: array
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
           type: object
       type: object
     Wei: {}
@@ -1066,13 +1111,6 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
-  /reports/assets:
-    get:
-      description: ' Get the asset information for the LPS.'
-      responses:
-        "200":
-          description: ""
-      summary: Get asset Reports
   /report/summaries:
     get:
       description: ' Returns financial data for a given period'
@@ -1098,27 +1136,38 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SummaryResult'
+                $ref: '#/components/schemas/SummaryResultDTO'
           description: Financial data for the given period
       summary: Summaries
+  /reports/assets:
+    get:
+      description: ' Get the asset information for the LPS.'
+      responses:
+        "200":
+          description: ""
+      summary: Get asset Reports
   /reports/pegin:
     get:
       description: ' Get the last pegins on the API. Included in the management API.'
       parameters:
-      - description: Start date for the report
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: startDate
         required: true
         schema:
-          description: Start date for the report
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
-      - description: End date for the report
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: endDate
         required: true
         schema:
-          description: End date for the report
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
       responses:
@@ -1129,20 +1178,24 @@ paths:
     get:
       description: ' Get the last pegouts on the API. Included in the management API.'
       parameters:
-      - description: Start date for the report
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: startDate
         required: true
         schema:
-          description: Start date for the report
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
-      - description: End date for the report
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: endDate
         required: true
         schema:
-          description: End date for the report
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
       responses:
@@ -1153,26 +1206,83 @@ paths:
     get:
       description: ' Get the revenue for the specified period.'
       parameters:
-      - description: Start date for the report
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: startDate
         required: true
         schema:
-          description: Start date for the report
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
-      - description: End date for the report
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: endDate
         required: true
         schema:
-          description: End date for the report
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
       responses:
         "200":
           description: ""
       summary: Get revenue Reports
+  /reports/transactions:
+    get:
+      description: ' Get a paginated list of individual transactions of a specific
+        type processed by the liquidity provider within a specified time period'
+      parameters:
+      - description: 'Transaction type filter: ''pegin'' or ''pegout'''
+        in: query
+        name: type
+        required: true
+        schema:
+          description: 'Transaction type filter: ''pegin'' or ''pegout'''
+          format: string
+          type: string
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: startDate
+        schema:
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: endDate
+        schema:
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: 'Page number to retrieve (1-indexed, default: 1)'
+        in: query
+        name: page
+        schema:
+          description: 'Page number to retrieve (1-indexed, default: 1)'
+          format: int64
+          type: integer
+      - description: 'Number of transactions per page (max: 100, default: 10)'
+        in: query
+        name: perPage
+        schema:
+          description: 'Number of transactions per page (max: 100, default: 10)'
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionHistoryResponse'
+          description: Paginated list of transactions with metadata
+      summary: Get Transaction Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

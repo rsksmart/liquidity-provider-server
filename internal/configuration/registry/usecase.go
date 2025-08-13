@@ -64,6 +64,7 @@ type UseCaseRegistry struct {
 	getPegoutReportUseCase        *reports.GetPegoutReportUseCase
 	getRevenueReportUseCase       *reports.GetRevenueReportUseCase
 	getAssetsReportUseCase        *reports.GetAssetsReportUseCase
+	getTransactionsReportUseCase  *reports.GetTransactionsUseCase
 }
 
 // NewUseCaseRegistry
@@ -261,6 +262,10 @@ func NewUseCaseRegistry(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
 		),
+		getTransactionsReportUseCase: reports.NewGetTransactionsUseCase(
+			databaseRegistry.PeginRepository,
+			databaseRegistry.PegoutRepository,
+		),
 	}
 }
 
@@ -394,4 +399,8 @@ func (registry *UseCaseRegistry) GetRevenueReportUseCase() *reports.GetRevenueRe
 
 func (registry *UseCaseRegistry) GetAssetsReportUseCase() *reports.GetAssetsReportUseCase {
 	return registry.getAssetsReportUseCase
+}
+
+func (registry *UseCaseRegistry) GetTransactionsReportUseCase() *reports.GetTransactionsUseCase {
+	return registry.getTransactionsReportUseCase
 }
