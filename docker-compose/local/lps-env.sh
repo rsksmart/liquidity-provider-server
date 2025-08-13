@@ -194,7 +194,11 @@ do
   curl -s "http://127.0.0.1:8080/health" \
     && echo "LPS is up and running" \
     && FAIL=false \
-    || (echo "LPS is not up yet" && tail -n 20 "./volumes/lps/logs/lps.log" && echo "Retrying...")
+    || echo "LPS is not up yet"
+  ls -lah .
+  ls -lah ./volumes/lps/logs
+  namei -om ./volumes/lps/logs/lps.log
+  tail -n 20 ./volumes/lps/logs/lps.log && echo "Retrying..."
   if [ "$FAIL" = false ]; then
     break
   fi
