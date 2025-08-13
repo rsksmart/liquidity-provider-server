@@ -191,9 +191,10 @@ FAIL=true
 for _ in $(seq 1 10);
 do
   sleep 5
-  curl -s "http://localhost:8080/health" \
+  curl -s "http://127.0.0.1:8080/health" \
     && echo "LPS is up and running" \
-    && FAIL=false
+    && FAIL=false \
+    || echo "LPS is not up yet"
   if [ "$FAIL" = false ]; then
     break
   fi
@@ -222,21 +223,21 @@ CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
                       -H 'Accept: */*' \
                       -H 'Connection: keep-alive' \
                       -H 'Content-Type: application/json' \
-                      -H 'Origin: http://localhost:8080' \
+                      -H 'Origin: http://127.0.0.1:8080' \
                       -H 'Sec-Fetch-Dest: empty' \
                       -H 'Sec-Fetch-Mode: cors' \
                       -H 'Sec-Fetch-Site: same-origin' \
-  "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
+  "http://127.0.0.1:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
 # shellcheck disable=SC2001
 CSRF_TOKEN=$(echo "$CSRF_TOKEN" | sed 's/&#43;/+/g')
-curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
+curl -s -b cookie_jar.txt -c cookie_jar.txt "http://127.0.0.1:8080/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://localhost:8080' \
-  -H 'Referer: http://localhost:8080/management' \
+  -H 'Origin: http://127.0.0.1:8080' \
+  -H 'Referer: http://127.0.0.1:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -246,13 +247,13 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/lo
   }" || { echo "Error: login to Management UI failed"; exit 1; }
 
 echo "Setting up general regtest configuration"
-curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
+curl -sfS -b cookie_jar.txt 'http://127.0.0.1:8080/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://localhost:8080' \
-  -H 'Referer: http://localhost:8080/management' \
+  -H 'Origin: http://127.0.0.1:8080' \
+  -H 'Referer: http://127.0.0.1:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -277,13 +278,13 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
   }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 
 echo "Setting up pegin regtest configuration"
-CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://127.0.0.1:8080/pegin/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://localhost:8080' \
-  -H 'Referer: http://localhost:8080/management' \
+  -H 'Origin: http://127.0.0.1:8080' \
+  -H 'Referer: http://127.0.0.1:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -311,13 +312,13 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
 fi
 
 echo "Setting up pegout regtest configuration"
-CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://127.0.0.1:8080/pegout/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://localhost:8080' \
-  -H 'Referer: http://localhost:8080/management' \
+  -H 'Origin: http://127.0.0.1:8080' \
+  -H 'Referer: http://127.0.0.1:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
