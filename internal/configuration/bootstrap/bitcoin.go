@@ -61,8 +61,6 @@ func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, er
 		DisableTLS:   true,
 		HTTPPostMode: true,
 	}
-	log.Info("Client args")
-	log.Info(config)
 
 	client, err := rpcclient.New(&config, nil)
 	if err != nil {
