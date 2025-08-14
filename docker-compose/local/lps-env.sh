@@ -107,7 +107,7 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
 [ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME"
 [ -d "$POWPEG_PEGOUT_HOME" ] || mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod -R 777 "$POWPEG_PEGOUT_HOME"
-[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME"
+[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME/logs" && touch "$LPS_HOME/logs/lps.log" && chmod 666 "$LPS_HOME/logs/lps.log"
 [ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
 [ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
 
@@ -195,7 +195,6 @@ do
     && echo "LPS is up and running" \
     && FAIL=false \
     || echo "LPS is not up yet"
-  chmod -R 777 ./volumes/lps
   ls -lah .
   ls -lah ./volumes/lps/logs
   namei -om ./volumes/lps/logs/lps.log
