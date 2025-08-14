@@ -152,8 +152,6 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
 
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
 
 if [ "$LPS_STAGE" = "regtest" ]; then
   PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
@@ -189,6 +187,38 @@ docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
+
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+
+docker exec lps01 sh -lc '
+  auth=$(printf %s "$BTC_USERNAME:$BTC_PASSWORD" | base64 | tr -d "\n")
+  cat <<EOF | nc -w 5 bitcoind 5555
+POST / HTTP/1.1
+Host: bitcoind
+Authorization: Basic $auth
+Content-Type: application/json
+Content-Length: 77
+Connection: close
+
+{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}
+EOF
+'
+
+docker exec lps01 sh -lc '
+  auth=$(printf %s "$BTC_USERNAME:$BTC_PASSWORD" | base64 | tr -d "\n")
+  cat <<EOF | nc -w 5 bitcoind 5555
+POST /wallet/rsk-wallet HTTP/1.1
+Host: bitcoind
+Authorization: Basic $auth
+Content-Type: application/json
+Content-Length: 75
+Connection: close
+
+{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}
+EOF
+'
+
 
 FAIL=true
 for _ in $(seq 1 10);
