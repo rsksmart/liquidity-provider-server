@@ -198,7 +198,7 @@ do
   ls -lah .
   ls -lah ./volumes/lps/logs
   namei -om ./volumes/lps/logs/lps.log
-  tail -n 20 ./volumes/lps/logs/lps.log && echo "Retrying..."
+  cat ./volumes/lps/logs/lps.log && echo "Retrying..."
   if [ "$FAIL" = false ]; then
     break
   fi
