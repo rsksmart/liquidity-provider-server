@@ -151,6 +151,9 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 5, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
+  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+  curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
 
 
 if [ "$LPS_STAGE" = "regtest" ]; then
@@ -190,6 +193,7 @@ docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lp
 
 curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
 curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
 
 docker exec lps01 sh -lc '
   auth=$(printf %s "$BTC_USERNAME:$BTC_PASSWORD" | base64 | tr -d "\n")
