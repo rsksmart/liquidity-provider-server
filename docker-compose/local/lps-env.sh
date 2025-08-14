@@ -193,7 +193,7 @@ if [ -z "${LBC_ADDR}" ]; then
 fi
 echo "LBC deployed at $LBC_ADDR"
 
-docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d powpeg-pegin powpeg-pegout
+docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
 
 curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
