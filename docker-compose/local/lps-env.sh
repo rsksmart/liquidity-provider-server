@@ -64,7 +64,7 @@ elif [ "$SCRIPT_CMD" = "down" ]; then
   exit 0
 elif [ "$SCRIPT_CMD" = "build" ]; then
   echo "Building LPS env..."
-  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml -f docker-compose.lps.yml build
   exit 0
 elif [ "$SCRIPT_CMD" = "stop" ]; then
   echo "Stopping LPS env..."
@@ -107,7 +107,7 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
 [ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME"
 [ -d "$POWPEG_PEGOUT_HOME" ] || mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod -R 777 "$POWPEG_PEGOUT_HOME"
-[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME/logs" && touch "$LPS_HOME/logs/lps.log" && chmod 666 "$LPS_HOME/logs/lps.log"
+[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME"
 [ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
 [ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
 
@@ -151,10 +151,6 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 5, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
-  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-  curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
-
 
 if [ "$LPS_STAGE" = "regtest" ]; then
   PROVIDER_TX_COUNT=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"$LIQUIDITY_PROVIDER_RSK_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
@@ -171,20 +167,12 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
-      curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-      curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-      curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
-
     # deploy LBC contracts to RSKJ
     LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
     LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
     export LBC_ADDR
   fi
 fi
-
-  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-  curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
 
 if [ -z "${LBC_ADDR}" ]; then
   docker compose down
@@ -195,64 +183,17 @@ echo "LBC deployed at $LBC_ADDR"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
-
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
-
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
-
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
-
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
-
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
-curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
-curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
-
-docker exec lps01 sh -lc '
-  auth=$(printf %s "$BTC_USERNAME:$BTC_PASSWORD" | base64 | tr -d "\n")
-  cat <<EOF | nc -w 5 bitcoind 5555
-POST / HTTP/1.1
-Host: bitcoind
-Authorization: Basic $auth
-Content-Type: application/json
-Content-Length: 77
-Connection: close
-
-{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}
-EOF
-'
-
-docker exec lps01 sh -lc '
-  auth=$(printf %s "$BTC_USERNAME:$BTC_PASSWORD" | base64 | tr -d "\n")
-  cat <<EOF | nc -w 5 bitcoind 5555
-POST /wallet/rsk-wallet HTTP/1.1
-Host: bitcoind
-Authorization: Basic $auth
-Content-Type: application/json
-Content-Length: 75
-Connection: close
-
-{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}
-EOF
-'
-
 
 FAIL=true
 for _ in $(seq 1 10);
 do
   sleep 5
-  curl -s "http://127.0.0.1:8080/health" \
+  curl -s "http://localhost:8080/health" \
     && echo "LPS is up and running" \
     && FAIL=false \
     || echo "LPS is not up yet"
-  ls -lah .
-  ls -lah ./volumes/lps/logs
-  namei -om ./volumes/lps/logs/lps.log
-  cat ./volumes/lps/logs/lps.log && echo "Retrying..."
   if [ "$FAIL" = false ]; then
     break
   fi
@@ -281,21 +222,21 @@ CSRF_TOKEN=$(curl -s -c cookie_jar.txt \
                       -H 'Accept: */*' \
                       -H 'Connection: keep-alive' \
                       -H 'Content-Type: application/json' \
-                      -H 'Origin: http://127.0.0.1:8080' \
+                      -H 'Origin: http://localhost:8080' \
                       -H 'Sec-Fetch-Dest: empty' \
                       -H 'Sec-Fetch-Mode: cors' \
                       -H 'Sec-Fetch-Site: same-origin' \
-  "http://127.0.0.1:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
+  "http://localhost:8080/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
 
 # shellcheck disable=SC2001
 CSRF_TOKEN=$(echo "$CSRF_TOKEN" | sed 's/&#43;/+/g')
-curl -s -b cookie_jar.txt -c cookie_jar.txt "http://127.0.0.1:8080/management/login" \
+curl -s -b cookie_jar.txt -c cookie_jar.txt "http://localhost:8080/management/login" \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://127.0.0.1:8080' \
-  -H 'Referer: http://127.0.0.1:8080/management' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -305,13 +246,13 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "http://127.0.0.1:8080/management/lo
   }" || { echo "Error: login to Management UI failed"; exit 1; }
 
 echo "Setting up general regtest configuration"
-curl -sfS -b cookie_jar.txt 'http://127.0.0.1:8080/configuration' \
+curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://127.0.0.1:8080' \
-  -H 'Referer: http://127.0.0.1:8080/management' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -336,13 +277,13 @@ curl -sfS -b cookie_jar.txt 'http://127.0.0.1:8080/configuration' \
   }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 
 echo "Setting up pegin regtest configuration"
-CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://127.0.0.1:8080/pegin/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegin/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://127.0.0.1:8080' \
-  -H 'Referer: http://127.0.0.1:8080/management' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \
@@ -370,13 +311,13 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
 fi
 
 echo "Setting up pegout regtest configuration"
-CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://127.0.0.1:8080/pegout/configuration' \
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/pegout/configuration' \
   -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   -H 'Accept: */*' \
   -H 'Connection: keep-alive' \
-  -H 'Origin: http://127.0.0.1:8080' \
-  -H 'Referer: http://127.0.0.1:8080/management' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
   -H 'Sec-Fetch-Site: same-origin' \

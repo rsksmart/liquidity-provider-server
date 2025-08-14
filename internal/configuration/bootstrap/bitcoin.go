@@ -60,9 +60,7 @@ func createBitcoinClient(env environment.BtcEnv, host string) (CreatedClient, er
 		// Rationale why this is disabled: https://en.bitcoin.it/wiki/Enabling_SSL_on_original_client_daemon
 		DisableTLS:   true,
 		HTTPPostMode: true,
-	}
-	log.Info("Client args")
-	log.Info(config)
+	}d
 
 	client, err := rpcclient.New(&config, nil)
 	if err != nil {
