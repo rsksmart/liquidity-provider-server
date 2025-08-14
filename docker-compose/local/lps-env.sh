@@ -193,10 +193,19 @@ if [ -z "${LBC_ADDR}" ]; then
 fi
 echo "LBC deployed at $LBC_ADDR"
 
-docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d powpeg-pegin powpeg-pegout
 # start LPS
 
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
+
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
+
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
+
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
 curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
