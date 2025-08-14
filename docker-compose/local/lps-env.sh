@@ -171,12 +171,20 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
+      curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+      curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+      curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
+
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up --rm lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
     LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
     export LBC_ADDR
   fi
 fi
+
+  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "listwallets", "params": [], "id":"listwallets"}'
+  curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getbalance", "params": [], "id":"getbalance"}'
+  curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getblockchaininfo", "params": [], "id":"getblockchaininfo"}'
 
 if [ -z "${LBC_ADDR}" ]; then
   docker compose down
