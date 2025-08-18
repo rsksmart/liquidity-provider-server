@@ -1,4 +1,4 @@
-# Liquidity Provider Server
+# Liquidity Provider Server.
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge?branch=master)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
 [![CodeQL](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml?query=branch%3Amaster)
 [![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml?query=branch%3Amaster)
