@@ -96,8 +96,9 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	bridge.AssertExpectations(t)
 }
 
+//nolint:funlen
 func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
-	callForUser := "0x1a1b1c"
+	callForUserTxHash := "0x1a1b1c"
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -110,7 +111,9 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserSucceeded
-	expectedRetainedQuote.CallForUserTxHash = callForUser
+	expectedRetainedQuote.CallForUserTxHash = callForUserTxHash
+	expectedRetainedQuote.CallForUserGasUsed = uint64(21000)
+	expectedRetainedQuote.CallForUserGasPrice = entities.NewWei(1000000000)
 
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
@@ -119,7 +122,18 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(600), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(29400), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
-	lbc.On("CallForUser", txConfig, testPeginQuote).Return(callForUser, nil).Once()
+	callForUserReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   callForUserTxHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              testPeginQuote.LpRskAddress,
+		To:                testPeginQuote.ContractAddress,
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(29400),
+		GasPrice:          entities.NewWei(1000000000),
+	}
+	lbc.On("CallForUser", txConfig, testPeginQuote).Return(callForUserReceipt, nil).Once()
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
 		Hash:          retainedPeginQuote.UserBtcTxHash,
@@ -147,6 +161,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	rsk.On("GetBalance", test.AnyCtx, lpRskAddress).Return(entities.NewWei(80000), nil).Once()
 	contracts := blockchain.RskContracts{Lbc: lbc, Bridge: bridge}
 	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, eventBus, mutex)
+
 	err := useCase.Run(context.Background(), retainedPeginQuote)
 
 	require.NoError(t, err)
@@ -566,8 +581,9 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 	bridge.AssertExpectations(t)
 }
 
+//nolint:funlen
 func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
-	callForUser := "0x1a1b1c"
+	callForUserTxHash := "0x1a1b1c"
 	lpRskAddress := testPeginQuote.LpRskAddress
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -579,7 +595,9 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	}
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateCallForUserFailed
-	expectedRetainedQuote.CallForUserTxHash = callForUser
+	expectedRetainedQuote.CallForUserTxHash = callForUserTxHash
+	expectedRetainedQuote.CallForUserGasUsed = uint64(21000)
+	expectedRetainedQuote.CallForUserGasPrice = entities.NewWei(1000000000)
 
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return(lpRskAddress).Twice()
@@ -588,7 +606,18 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(600), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(29400), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
-	lbc.On("CallForUser", txConfig, testPeginQuote).Return(callForUser, assert.AnError).Once()
+	callForUserReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   callForUserTxHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              testPeginQuote.LpRskAddress,
+		To:                testPeginQuote.ContractAddress,
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(1234),
+		GasPrice:          entities.NewWei(1000000000),
+	}
+	lbc.On("CallForUser", txConfig, testPeginQuote).Return(callForUserReceipt, assert.AnError).Once()
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
 		Hash:          retainedPeginQuote.UserBtcTxHash,
