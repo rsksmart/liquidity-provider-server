@@ -2,6 +2,9 @@ package pegout_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,8 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
@@ -54,7 +55,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
 	quoteRepositoryMock.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(creationData).Once()
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetAddress").Return("0xabcd01").Once()
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
@@ -115,7 +116,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(&retainedQuote, nil).Once()
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
@@ -162,7 +163,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
@@ -185,7 +186,7 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	quoteHash := "0x654321"
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
@@ -231,7 +232,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(usecases.NoLiquidityError).Once()
 	eventBus := new(mocks.EventBusMock)
@@ -285,7 +286,7 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		State:             quote.PegoutStateWaitingForDeposit,
 	}
 
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetAddress").Return("0xabcd01")
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPegoutQuoteEvent) bool {
@@ -382,7 +383,7 @@ func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 		ProductFeeAmount:      2,
 	}
 
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetAddress").Return("")
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()

@@ -3,6 +3,10 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -16,9 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestPeginDepositAddressWatcher_Shutdown(t *testing.T) {
@@ -164,7 +165,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
 	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(test.AnyHash, nil)
 	bridge := &mocks.BridgeMock{}

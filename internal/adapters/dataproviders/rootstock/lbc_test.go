@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -762,7 +763,9 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(tx, nil).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), result.TransactionHash)
+		assert.NotEmpty(t, result.GasUsed)
+		assert.NotEmpty(t, result.GasPrice)
 		lbcMock.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
@@ -770,14 +773,17 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(nil, assert.AnError).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Empty(t, result.TransactionHash)
 	})
 	t.Run("Error handling (callForUser tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, modifiers...)
 		lbcMock.On("CallForUser", mock.Anything, parsedPeginQuote).Return(tx, nil).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.ErrorContains(t, err, "call for user error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		// Should return receipt with gas data even on revert
+		assert.Equal(t, tx.Hash().String(), result.TransactionHash)
+		assert.NotEmpty(t, result.GasUsed)
+		assert.NotEmpty(t, result.GasPrice)
 	})
 	t.Run("Error handling (invalid quote)", func(t *testing.T) {
 		invalid := peginQuote
@@ -855,7 +861,9 @@ func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RegisterPegin(registerParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, tx.Hash().String(), result.TransactionHash)
+		assert.NotEmpty(t, result.GasUsed)
+		assert.NotEmpty(t, result.GasPrice)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -929,7 +937,7 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Empty(t, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})

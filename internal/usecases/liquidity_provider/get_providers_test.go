@@ -2,17 +2,18 @@ package liquidity_provider_test
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestGetProvidersUseCase_Run(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 
 	provider := lpEntity.RegisteredLiquidityProvider{
 		Id:           1,
@@ -34,7 +35,7 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 }
 
 func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 
 	lbc.On("GetProviders").Return(
 		[]lpEntity.RegisteredLiquidityProvider{},

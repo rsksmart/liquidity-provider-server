@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -18,9 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestPeginBridgeWatcher_Prepare(t *testing.T) {
@@ -148,7 +149,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return([]quote.RetainedPeginQuote{}, nil)
 	bridge := &mocks.BridgeMock{}
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	lbc.On("RegisterPegin", mock.Anything).Return(test.AnyHash, nil)
 	contracts := blockchain.RskContracts{Bridge: bridge, Lbc: lbc}
 	btcRpc := &mocks.BtcRpcMock{}

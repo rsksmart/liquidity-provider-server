@@ -3,6 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"flag"
+	"math/big"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -13,10 +18,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
-	"math/big"
-	"os"
-	"testing"
-	"time"
 )
 
 // nolint:funlen
@@ -60,7 +61,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 	}
 	t.Run("should execute RegisterPegIn successfully", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()
@@ -78,7 +79,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 	t.Run("should return error if GetPartialMerkleTree fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return([]byte{}, assert.AnError).Once()
 
 		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
@@ -90,7 +91,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 	t.Run("should return error if GetRawTransaction fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return([]byte{}, assert.AnError).Once()
 
@@ -103,7 +104,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 	t.Run("should return error if GetTransactionBlockInfo fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
@@ -118,7 +119,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 	t.Run("should return error if RegisterPegin fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()

@@ -3,6 +3,8 @@ package liquidity_provider_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
@@ -12,11 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPenalizationAlertUseCase_Run(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	events := []penalization.PenalizedEvent{
 		{
 			LiquidityProvider: "0x01",
@@ -67,7 +68,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 }
 
 func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	sender := &mocks.AlertSenderMock{}
 	lbc.On("GetPenalizedEvents", test.AnyCtx, uint64(5), mock.Anything).
 		Return([]penalization.PenalizedEvent{}, assert.AnError).Once()

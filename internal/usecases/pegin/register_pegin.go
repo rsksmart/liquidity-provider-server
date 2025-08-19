@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"sync"
 )
 
 type RegisterPeginUseCase struct {
@@ -126,20 +127,22 @@ func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, re
 }
 
 func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, params blockchain.RegisterPeginParams, retainedQuote quote.RetainedPeginQuote) error {
-	var registerPeginTxHash string
+	var receipt blockchain.TransactionReceipt
 	var newState quote.PeginState
 	var err error
 
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if receipt, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed
 	} else {
 		newState = quote.PeginStateRegisterPegInSucceeded
+		retainedQuote.RegisterPeginGasUsed = receipt.GasUsed.Uint64()
+		retainedQuote.RegisterPeginGasPrice = receipt.GasPrice
+		retainedQuote.RegisterPeginTxHash = receipt.TransactionHash
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
 	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
 		RetainedQuote: retainedQuote,
