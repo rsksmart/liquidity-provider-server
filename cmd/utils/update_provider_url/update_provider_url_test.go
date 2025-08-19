@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
-	"testing"
 )
 
 func TestNewUpdateProviderArgs(t *testing.T) {
@@ -149,7 +150,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 }
 
 func TestExecuteUpdateProvider(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	lbc.On("UpdateProvider", "name", "http://test.com").Return(test.AnyHash, nil)
 	args, err := NewUpdateProviderArgs("name", "http://test.com", "regtest")
 	require.NoError(t, err)

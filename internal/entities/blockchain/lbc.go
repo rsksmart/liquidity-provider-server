@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -92,8 +93,8 @@ type LiquidityBridgeContract interface {
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
+	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
 	IsOperationalPegin(address string) (bool, error)
 	IsOperationalPegout(address string) (bool, error)

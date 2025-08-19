@@ -2,17 +2,18 @@ package liquidity_provider_test
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestWithdrawCollateralUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("WithdrawCollateral").Return(nil)
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewWithdrawCollateralUseCase(contracts)
@@ -22,7 +23,7 @@ func TestWithdrawCollateralUseCase_Run(t *testing.T) {
 }
 
 func TestWithdrawCollateralUseCase_Run_ErrorHandling(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	useCase := liquidity_provider.NewWithdrawCollateralUseCase(contracts)
 

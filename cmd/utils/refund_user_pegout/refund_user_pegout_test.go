@@ -92,7 +92,7 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 
 func TestRefundUserPegOut(t *testing.T) {
 	t.Run("should execute refund user peg out successfully", func(t *testing.T) {
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		expectedTxHash := test.AnyHash
 
 		// Setup mock expectations

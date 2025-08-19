@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"math/big"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 const (
@@ -50,6 +51,7 @@ type TransactionReceipt struct {
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
 	Value             *entities.Wei
+	GasPrice          *entities.Wei
 }
 
 type BlockInfo struct {

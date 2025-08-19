@@ -1,6 +1,8 @@
 package pegout_test
 
 import (
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -10,11 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestAddCollateralUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
@@ -31,7 +32,7 @@ func TestAddCollateralUseCase_Run(t *testing.T) {
 }
 
 func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
@@ -50,20 +51,20 @@ func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
 func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return("rskAddress")
-	cases := test.Table[func(lbc *mocks.LbcMock), error]{
+	cases := test.Table[func(lbc *mocks.LiquidityBridgeContractMock), error]{
 		{
-			Value: func(lbc *mocks.LbcMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock) {
 				lbc.On("GetMinimumCollateral").Return(nil, assert.AnError)
 			},
 		},
 		{
-			Value: func(lbc *mocks.LbcMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock) {
 				lbc.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 				lbc.On("GetPegoutCollateral", mock.Anything).Return(nil, assert.AnError)
 			},
 		},
 		{
-			Value: func(lbc *mocks.LbcMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock) {
 				lbc.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 				lbc.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(100), nil)
 				lbc.On("AddPegoutCollateral", mock.Anything).Return(assert.AnError)
@@ -72,7 +73,7 @@ func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		c.Value(lbc)
 		contracts := blockchain.RskContracts{Lbc: lbc}
 		useCase := pegout.NewAddCollateralUseCase(contracts, lp)

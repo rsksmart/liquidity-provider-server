@@ -3,6 +3,10 @@ package rootstock_test
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,9 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 const (
@@ -232,6 +233,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			CumulativeGasUsed: big.NewInt(123),
 			GasUsed:           big.NewInt(456),
 			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewBigWei(big.NewInt(65826581)),
 		}, receipt)
 	})
 }
