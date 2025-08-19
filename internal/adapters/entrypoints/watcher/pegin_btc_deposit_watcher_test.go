@@ -167,7 +167,17 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	ticker.EXPECT().Stop().Return()
 	lbc := &mocks.LiquidityBridgeContractMock{}
 	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
-	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(test.AnyHash, nil)
+	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x1234",
+		To:                "0x5678",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}, nil)
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
 	peginProvider := &mocks.ProviderMock{}

@@ -150,7 +150,17 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return([]quote.RetainedPeginQuote{}, nil)
 	bridge := &mocks.BridgeMock{}
 	lbc := &mocks.LiquidityBridgeContractMock{}
-	lbc.On("RegisterPegin", mock.Anything).Return(test.AnyHash, nil)
+	lbc.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x1234",
+		To:                "0x5678",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}, nil)
 	contracts := blockchain.RskContracts{Bridge: bridge, Lbc: lbc}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
