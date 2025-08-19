@@ -31,6 +31,7 @@ var (
 	cfuTx           = "cfu tx hash"
 )
 
+// nolint:funlen
 func TestRegisterPeginUseCase_Run(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",

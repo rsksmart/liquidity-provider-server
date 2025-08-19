@@ -137,9 +137,12 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 		newState = quote.PeginStateRegisterPegInFailed
 	} else {
 		newState = quote.PeginStateRegisterPegInSucceeded
+	}
+
+	if receipt.TransactionHash != "" {
+		retainedQuote.RegisterPeginTxHash = receipt.TransactionHash
 		retainedQuote.RegisterPeginGasUsed = receipt.GasUsed.Uint64()
 		retainedQuote.RegisterPeginGasPrice = receipt.GasPrice
-		retainedQuote.RegisterPeginTxHash = receipt.TransactionHash
 	}
 
 	retainedQuote.State = newState

@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:funlen
 func TestCallForUserUseCase_Run(t *testing.T) {
 	callForUserTxHash := "0x1a1b1c"
 	lpRskAddress := testPeginQuote.LpRskAddress
