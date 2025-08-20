@@ -31,11 +31,6 @@ services:
       - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/logs:/home/powpeg/logs
     networks:
       - net_lps
-    depends_on:
-      rskj:
-        condition: service_healthy
-      bitcoind:
-        condition: service_healthy
     command:
       [
         "java",
