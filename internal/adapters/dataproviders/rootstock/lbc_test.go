@@ -1076,7 +1076,20 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1148,7 +1161,20 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
