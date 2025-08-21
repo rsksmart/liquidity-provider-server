@@ -1,0 +1,34 @@
+name: CD for flyover-api Testnet 
+
+on:
+  push:
+    branches:
+      - QA-Test
+
+jobs:
+  execute-command:
+    runs-on: ubuntu-latest
+    environment: testnet
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+            role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+            aws-region: ${{ secrets.AWS_REGION }}    
+
+      - name: Execute deployment command on EC2 instance
+        run: |
+          aws ssm send-command \
+            --document-name "deployBETestnetDocument" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-version '$LATEST'
+          echo "Deploy sent to EC2 instance"
+        env:
+          INSTANCE_ID: ${{ secrets.TESTNET_INSTANCE_ID }}
