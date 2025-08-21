@@ -20,7 +20,6 @@ const registerCoinbaseTxGasLimit = 100000
 type rskBridgeImpl struct {
 	address               string
 	requiredConfirmations uint64
-	irisActivationHeight  int64
 	erpKeys               []string
 	contract              RskBridgeBinding
 	client                RpcClientBinding
@@ -33,7 +32,6 @@ type rskBridgeImpl struct {
 type RskBridgeConfig struct {
 	Address               string
 	RequiredConfirmations uint64
-	IrisActivationHeight  int64
 	ErpKeys               []string
 }
 
@@ -49,7 +47,6 @@ func NewRskBridgeImpl(
 	return &rskBridgeImpl{
 		address:               config.Address,
 		requiredConfirmations: config.RequiredConfirmations,
-		irisActivationHeight:  config.IrisActivationHeight,
 		erpKeys:               config.ErpKeys,
 		contract:              contract,
 		client:                client.client,
@@ -162,7 +159,6 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (blockchain.FederationInfo, e
 		PubKeys:              pubKeys,
 		FedAddress:           fedAddress,
 		ActiveFedBlockHeight: activeFedBlockHeight.Int64(),
-		IrisActivationHeight: bridge.irisActivationHeight,
 		ErpKeys:              bridge.erpKeys,
 	}, nil
 }
