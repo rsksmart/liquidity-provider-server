@@ -4,6 +4,12 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"math/big"
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -20,11 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"os"
-	"path/filepath"
-	"slices"
-	"testing"
 )
 
 const (
@@ -498,7 +499,10 @@ func testSendWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressI
 	require.NoError(t, err)
 	result, err := wallet.SendWithOpReturn(testnetAddress, value, []byte{0xf1, 0xf2, 0xf3, 0xf4, 0x00})
 	require.NoError(t, err)
-	assert.NotEmpty(t, result)
+	assert.NotEmpty(t, result.Hash)
+	assert.NotNil(t, result.Fee)
+	expectedFee := entities.SatoshiToWei(5000000000)
+	assert.Equal(t, expectedFee, result.Fee)
 	client.AssertExpectations(t)
 }
 
@@ -522,7 +526,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(test.AnyString, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -534,7 +539,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -547,7 +553,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -562,7 +569,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -576,7 +584,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -590,7 +599,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -605,7 +615,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -621,7 +632,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
@@ -636,7 +648,8 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.NoError(t, err)
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.Error(t, err)
-				assert.Empty(t, result)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
 				client.AssertExpectations(t)
 			},
 		},
