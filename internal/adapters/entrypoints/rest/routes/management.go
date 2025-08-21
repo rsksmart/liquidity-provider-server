@@ -58,7 +58,7 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
 		},
 		{
-			Path:    "/report/summaries",
+			Path:    "/reports/summaries",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
 		},
@@ -92,16 +92,18 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsPegoutHandler(useCaseRegistry.GetPegoutReportUseCase()),
 		},
-		{
+		// TODO enable again when final implementation is ready
+		/*{
 			Path:    "/reports/revenue",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsRevenueHandler(useCaseRegistry.GetRevenueReportUseCase()),
-		},
-		{
+		},*/
+		// TODO enable again when final implementation is ready
+		/*{
 			Path:    "/reports/assets",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
-		},
+		},*/
 		{
 			Path:    "/reports/transactions",
 			Method:  http.MethodGet,
@@ -136,6 +138,26 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    IconPath,
 			Method:  http.MethodGet,
 			Handler: http.FileServer(http.FS(assets.FileSystem)),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetTrustedAccountsHandler(useCaseRegistry.GetTrustedAccountsUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPost,
+			Handler: handlers.NewAddTrustedAccountHandler(useCaseRegistry.AddTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPut,
+			Handler: handlers.NewUpdateTrustedAccountHandler(useCaseRegistry.UpdateTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodDelete,
+			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.DeleteTrustedAccountUseCase()),
 		},
 	}
 }

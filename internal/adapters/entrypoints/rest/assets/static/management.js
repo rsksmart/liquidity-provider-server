@@ -7,7 +7,8 @@ import {
     postConfig,
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
-    isToggableFeeKey
+    isToggableFeeKey,
+    formatCap
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -649,13 +650,13 @@ const fetchSummariesReport = async (csrfToken) => {
         return;
     }
     try {
-        const response = await fetch(`/report/summaries?startDate=${startDate}&endDate=${endDate}`, {
+        const response = await fetch(`/reports/summaries?startDate=${startDate}&endDate=${endDate}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             }
-        }); 
+        });
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Failed to fetch summaries');
@@ -666,6 +667,165 @@ const fetchSummariesReport = async (csrfToken) => {
         displaySummaryData(document.getElementById('pegoutSummary'), data.pegoutSummary);
     } catch (error) {
         showErrorToast(`Error fetching summaries: ${error.message}`);
+    } finally {
+        loadingBar.style.display = 'none';
+    }
+};
+
+const fetchTrustedAccounts = async (csrfToken) => {
+    const loadingBar = document.getElementById('trustedAccountsLoadingBar');
+    loadingBar.style.display = 'block';
+    try {
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            const errorMessage = data.details?.error || data.message || 'Unknown error';
+            populateTrustedAccountsTable([], csrfToken, errorMessage);
+            showErrorToast(`Failed to load trusted accounts: ${errorMessage}`);
+        } else {
+            const accountsData = data.accounts || [];
+            populateTrustedAccountsTable(accountsData, csrfToken);
+        }
+    } catch (error) {
+        console.error('Error fetching trusted accounts:', error);
+        populateTrustedAccountsTable([], csrfToken, error.message);
+        showErrorToast(`Failed to load trusted accounts: ${error.message}`);
+    } finally {
+        loadingBar.style.display = 'none';
+    }
+};
+
+const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) => {
+    const tableBody = document.getElementById('trustedAccountsTable');
+    tableBody.innerHTML = '';
+    
+    if (errorMessage) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center', 'text-danger');
+        cell.textContent = `Error: ${errorMessage}`;
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+    
+    if (!accounts || accounts.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center');
+        cell.textContent = 'No trusted accounts found.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+    
+    accounts.forEach(account => {
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        nameCell.textContent = account.name || 'Unknown';
+        const addressCell = document.createElement('td');
+        addressCell.classList.add('address-cell');
+        addressCell.textContent = account.address;
+        
+        const btcCapCell = document.createElement('td');
+        btcCapCell.classList.add('cap-cell');
+        const btcValue = weiToEther(account.btcLockingCap);
+        btcCapCell.textContent = formatCap(btcValue, 'BTC');
+        
+        const rbtcCapCell = document.createElement('td');
+        rbtcCapCell.classList.add('cap-cell');
+        const rbtcValue = weiToEther(account.rbtcLockingCap);
+        rbtcCapCell.textContent = formatCap(rbtcValue, 'rBTC');
+        
+        const actionsCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
+        deleteButton.textContent = 'Remove';
+        deleteButton.addEventListener('click', () => removeTrustedAccount(account.address, csrfToken));
+        actionsCell.appendChild(deleteButton);
+        
+        row.appendChild(nameCell);
+        row.appendChild(addressCell);
+        row.appendChild(btcCapCell);
+        row.appendChild(rbtcCapCell);
+        row.appendChild(actionsCell);
+        tableBody.appendChild(row);
+    });
+};
+
+const addTrustedAccount = async (csrfToken) => {
+    const name = document.getElementById('accountName').value.trim();
+    const address = document.getElementById('accountAddress').value.trim();
+    let btcLockingCap = document.getElementById('btc_locking_cap').value.trim();
+    let rbtcLockingCap = document.getElementById('rbtc_locking_cap').value.trim();
+    if (!name || !address) {
+        showErrorToast('Account name and address are required.');
+        return;
+    }
+    try {
+        btcLockingCap = btcLockingCap ? etherToWei(btcLockingCap) : "0";
+        rbtcLockingCap = rbtcLockingCap ? etherToWei(rbtcLockingCap) : "0";
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: `{
+                "name": ${JSON.stringify(name)},
+                "address": ${JSON.stringify(address)},
+                "btcLockingCap": ${btcLockingCap},
+                "rbtcLockingCap": ${rbtcLockingCap}
+            }`
+        });
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addTrustedAccountModal'));
+            modal.hide();            
+            document.getElementById('accountName').value = '';
+            document.getElementById('accountAddress').value = '';
+            document.getElementById('btc_locking_cap').value = '';
+            document.getElementById('rbtc_locking_cap').value = '';
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error adding trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error adding trusted account: ${error.message}`);
+    }
+};
+
+const removeTrustedAccount = async (address, csrfToken) => {
+    if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
+    try {
+        const response = await fetch(`/management/trusted-accounts?address=${encodeURIComponent(address)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        if (response.ok) {
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error removing trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error removing trusted account: ${error.message}`);
     }
 };
 
@@ -680,6 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
     document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
+    document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
 
     document.querySelectorAll('#configTabs a[data-bs-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', () => checkFeeWarnings());
@@ -697,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(today.getMonth() - 1);
-    
+    fetchTrustedAccounts(csrfToken);
     document.getElementById('summaryStartDate').value = lastMonth.toISOString().split('T')[0];
     document.getElementById('summaryEndDate').value = today.toISOString().split('T')[0];
 });

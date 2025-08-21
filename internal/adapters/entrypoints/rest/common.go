@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -48,6 +49,24 @@ func decimalPlacesValidator(fl validator.FieldLevel) bool {
 	return diff < 1e-9
 }
 
+func ConfirmationsMapValidator(fl validator.FieldLevel) bool {
+	kind := fl.Field().Kind()
+	if kind != reflect.Map {
+		return false
+	}
+	confirmations, ok := fl.Field().Interface().(map[string]uint16)
+	if !ok {
+		return false
+	}
+	for key := range confirmations {
+		bigInt, valid := new(big.Int).SetString(key, 10)
+		if !valid || bigInt.Sign() <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func init() {
 	if err := registerValidations(); err != nil {
 		log.Fatal("Error registering validations: ", err)
@@ -63,6 +82,10 @@ func registerValidations() error {
 
 	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
 		return fmt.Errorf("registering max_decimal_places validation: %w", err)
+	}
+
+	if err := RequestValidator.RegisterValidation("confirmations_map", ConfirmationsMapValidator); err != nil {
+		return fmt.Errorf("registering confirmations_map validation: %w", err)
 	}
 	return nil
 }

@@ -42,4 +42,8 @@ type UseCaseRegistry interface {
 	GetRevenueReportUseCase() *reports.GetRevenueReportUseCase
 	GetAssetsReportUseCase() *reports.GetAssetsReportUseCase
 	GetTransactionsReportUseCase() *reports.GetTransactionsUseCase
+	GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase
+	UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase
+	AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase
+	DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase
 }

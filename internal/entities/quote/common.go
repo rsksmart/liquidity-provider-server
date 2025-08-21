@@ -19,7 +19,7 @@ type Fees struct {
 	CallFee          *entities.Wei
 	GasFee           *entities.Wei
 	PenaltyFee       *entities.Wei
-	ProductFeeAmount uint64
+	ProductFeeAmount *entities.Wei
 }
 
 type PegConfiguration interface {

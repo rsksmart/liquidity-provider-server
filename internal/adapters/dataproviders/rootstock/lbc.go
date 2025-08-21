@@ -695,8 +695,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(peginQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
 	return parsedQuote, nil
@@ -732,8 +731,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	}
 
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
-	parsedQuote.PenaltyFee = new(big.Int)
-	parsedQuote.PenaltyFee.SetUint64(pegoutQuote.PenaltyFee)
+	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
 	parsedQuote.Nonce = pegoutQuote.Nonce
 	parsedQuote.Value = pegoutQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = pegoutQuote.AgreementTimestamp
@@ -743,8 +741,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(pegoutQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
 	return parsedQuote, nil
 }

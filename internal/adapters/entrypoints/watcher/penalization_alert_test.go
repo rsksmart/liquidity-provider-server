@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -97,7 +98,7 @@ func TestPenalizationAlertWatcher_Prepare(t *testing.T) {
 }
 
 func TestPenalizationAlertWatcher_Shutdown(t *testing.T) {
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPenalizationAlertWatcher(blockchain.Rpc{}, nil, ticker, time.Duration(1))
 	})
 }

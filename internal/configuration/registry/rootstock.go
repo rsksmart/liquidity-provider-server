@@ -53,7 +53,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 					IrisActivationHeight:  env.Rsk.IrisActivationHeight,
 					ErpKeys:               env.Rsk.ErpKeys,
 				},
-				bridge,
+				rootstock.NewRskBridgeAdapter(bridge),
 				client,
 				btcParams,
 				rootstock.DefaultRetryParams,
