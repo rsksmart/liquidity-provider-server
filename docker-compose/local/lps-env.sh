@@ -167,10 +167,10 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
-    (grep GITHUB_TOKEN | head -n 1 | tr -d '\r' | awk '{gsub("GITHUB_TOKEN=",""); print}' > gh_token.txt) < $ENV_FILE
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
+    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
+    export LBC_ADDR
   fi
 fi
 
@@ -183,7 +183,6 @@ echo "LBC deployed at $LBC_ADDR"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
-
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
@@ -193,7 +192,8 @@ do
   sleep 5
   curl -s "http://localhost:8080/health" \
     && echo "LPS is up and running" \
-    && FAIL=false
+    && FAIL=false \
+    || echo "LPS is not up yet"
   if [ "$FAIL" = false ]; then
     break
   fi
