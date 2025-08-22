@@ -113,9 +113,9 @@ func mapUseCaseResultToResponse(result reports.GetTransactionsResult) pkg.GetTra
 	for i, item := range result.Data {
 		response.Data[i] = pkg.GetTransactionsItem{
 			QuoteHash: item.QuoteHash,
-			Amount:    item.Amount,
-			CallFee:   item.CallFee,
-			GasFee:    item.GasFee,
+			Amount:    item.Amount.AsBigInt(),
+			CallFee:   item.CallFee.AsBigInt(),
+			GasFee:    item.GasFee.AsBigInt(),
 			Status:    item.Status,
 		}
 	}
