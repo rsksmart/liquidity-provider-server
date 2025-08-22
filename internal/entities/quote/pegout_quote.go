@@ -35,6 +35,7 @@ type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
 	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
+	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
@@ -45,6 +46,7 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PegoutQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
 	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
 }
@@ -185,4 +187,9 @@ type PegoutBtcSentToUserEvent struct {
 	RetainedQuote RetainedPegoutQuote
 	CreationData  PegoutCreationData
 	Error         error
+}
+
+type PegoutQuoteWithRetained struct {
+	Quote         PegoutQuote
+	RetainedQuote RetainedPegoutQuote
 }

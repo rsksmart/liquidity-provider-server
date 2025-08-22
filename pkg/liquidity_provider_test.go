@@ -1,13 +1,16 @@
 package pkg_test
 
 import (
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -147,6 +150,416 @@ func TestLocalLiquidityProvider_ProviderDTOValidation(t *testing.T) {
 		assert.Equal(t, expectedDTO, dto)
 		test.AssertNonZeroValues(t, dto)
 	})
+}
+
+// nolint:funlen
+func TestGetReportsByPeriodRequest_ValidateGetReportsByPeriodRequest(t *testing.T) {
+	t.Run("valid dates", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-02",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid startDate format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "01/01/2023",
+				EndDate:   "2023-01-02",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Equal(t, "startDate invalid date format: must be YYYY-MM-DD or ISO 8601 UTC format (ending with Z)", err.Error())
+	})
+
+	t.Run("invalid endDate format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "01/02/2023",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate invalid date format: must be YYYY-MM-DD or ISO 8601 UTC format (ending with Z)", err.Error())
+	})
+
+	t.Run("endDate equal to startDate", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-01",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+	})
+
+	t.Run("endDate before startDate", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-02",
+				EndDate:   "2023-01-01",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Equal(t, "endDate must be on or after startDate", err.Error())
+	})
+}
+
+// nolint:funlen
+func TestGetReportsByPeriodRequest_GetTimestamps(t *testing.T) {
+	t.Run("valid dates", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-02",
+			},
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 2, 23, 59, 59, 999999999, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("invalid startDate format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "01/01/2023",
+				EndDate:   "2023-01-02",
+			},
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.Error(t, err)
+		assert.True(t, startTime.IsZero())
+		assert.True(t, endTime.IsZero())
+	})
+
+	t.Run("invalid endDate format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "01/02/2023",
+			},
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.Error(t, err)
+		assert.True(t, startTime.IsZero())
+		assert.True(t, endTime.IsZero())
+	})
+
+	t.Run("sets time component correctly", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-05-15",
+				EndDate:   "2023-06-20",
+			},
+		}
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		// Start time should be at 00:00:00
+		assert.Equal(t, 0, startTime.Hour())
+		assert.Equal(t, 0, startTime.Minute())
+		assert.Equal(t, 0, startTime.Second())
+		assert.Equal(t, 0, startTime.Nanosecond())
+
+		// End time should be at 23:59:59
+		assert.Equal(t, 23, endTime.Hour())
+		assert.Equal(t, 59, endTime.Minute())
+		assert.Equal(t, 59, endTime.Second())
+		assert.Equal(t, 999999999, endTime.Nanosecond())
+
+		// Dates should be preserved
+		assert.Equal(t, 2023, startTime.Year())
+		assert.Equal(t, time.Month(5), startTime.Month())
+		assert.Equal(t, 15, startTime.Day())
+
+		assert.Equal(t, 2023, endTime.Year())
+		assert.Equal(t, time.Month(6), endTime.Month())
+		assert.Equal(t, 20, endTime.Day())
+	})
+}
+
+// TestGetReportsByPeriodRequest_DualFormatSupport tests the dual datetime format support
+// nolint:funlen
+func TestGetReportsByPeriodRequest_DualFormatSupport(t *testing.T) {
+	t.Run("ISO 8601 format - basic", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00Z",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 9, 30, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 17, 45, 0, 0, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("ISO 8601 format - with milliseconds", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123Z",
+				EndDate:   "2023-01-15T17:45:00.999Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 9, 30, 0, 123000000, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 17, 45, 0, 999000000, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("ISO 8601 format - with microseconds", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123456Z",
+				EndDate:   "2023-01-15T17:45:00.999999Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 9, 30, 0, 123456000, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 17, 45, 0, 999999000, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("ISO 8601 format - with nanoseconds", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00.123456789Z",
+				EndDate:   "2023-01-15T17:45:00.999999999Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 9, 30, 0, 123456789, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 17, 45, 0, 999999999, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("unsupported format - without Z suffix", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "startDate invalid date format")
+	})
+
+	t.Run("mixed format usage - date start, precise end", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15",
+				EndDate:   "2023-01-15T23:59:59Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 23, 59, 59, 0, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("mixed format usage - precise start, date end", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T00:00:00Z",
+				EndDate:   "2023-01-15",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 23, 59, 59, 999999999, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("same-day query with different formats", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15",
+				EndDate:   "2023-01-15T23:59:59.999Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err) // Should now be allowed
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 15, 23, 59, 59, 999000000, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("unsupported timezone format - RFC3339 with offset", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T09:30:00+02:00",
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "startDate invalid date format")
+	})
+
+	t.Run("YYYY-MM-DD format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-01",
+				EndDate:   "2023-01-31",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.NoError(t, err)
+
+		startTime, endTime, err := request.GetTimestamps()
+		require.NoError(t, err)
+
+		expectedStartTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+		expectedEndTime := time.Date(2023, 1, 31, 23, 59, 59, 999999999, time.UTC)
+
+		assert.Equal(t, expectedStartTime, startTime)
+		assert.Equal(t, expectedEndTime, endTime)
+	})
+
+	t.Run("invalid ISO 8601 format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "2023-01-15T25:30:00Z", // Invalid hour
+				EndDate:   "2023-01-15T17:45:00Z",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "startDate invalid date format")
+	})
+
+	t.Run("completely invalid format", func(t *testing.T) {
+		request := pkg.GetReportsByPeriodRequest{
+			DateRangeRequest: pkg.DateRangeRequest{
+				StartDate: "not-a-date",
+				EndDate:   "2023-01-15",
+			},
+		}
+		err := request.ValidateGetReportsByPeriodRequest()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "startDate invalid date format")
+	})
+}
+
+func TestToSummaryDataDTO(t *testing.T) {
+	data := reports.SummaryData{
+		TotalQuotesCount:          10,
+		AcceptedQuotesCount:       8,
+		PaidQuotesCount:           5,
+		PaidQuotesAmount:          entities.NewWei(1500),
+		TotalAcceptedQuotedAmount: entities.NewWei(2500),
+		TotalFeesCollected:        entities.NewWei(300),
+		RefundedQuotesCount:       2,
+		TotalPenaltyAmount:        entities.NewWei(50),
+		LpEarnings:                entities.NewWei(250),
+	}
+	dto := pkg.ToSummaryDataDTO(data)
+	assert.Equal(t, data.TotalQuotesCount, dto.TotalQuotesCount)
+	assert.Equal(t, data.AcceptedQuotesCount, dto.AcceptedQuotesCount)
+	assert.Equal(t, data.PaidQuotesCount, dto.PaidQuotesCount)
+	assert.Equal(t, 0, data.PaidQuotesAmount.AsBigInt().Cmp(dto.PaidQuotesAmount))
+	assert.Equal(t, 0, data.TotalAcceptedQuotedAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotedAmount))
+	assert.Equal(t, 0, data.TotalFeesCollected.AsBigInt().Cmp(dto.TotalFeesCollected))
+	assert.Equal(t, data.RefundedQuotesCount, dto.RefundedQuotesCount)
+	assert.Equal(t, 0, data.TotalPenaltyAmount.AsBigInt().Cmp(dto.TotalPenaltyAmount))
+	assert.Equal(t, 0, data.LpEarnings.AsBigInt().Cmp(dto.LpEarnings))
+	test.AssertNonZeroValues(t, dto)
+}
+
+func TestToSummaryResultDTO(t *testing.T) {
+	pegin := reports.SummaryData{
+		TotalQuotesCount:          3,
+		AcceptedQuotesCount:       2,
+		PaidQuotesCount:           1,
+		PaidQuotesAmount:          entities.NewWei(500),
+		TotalAcceptedQuotedAmount: entities.NewWei(800),
+		TotalFeesCollected:        entities.NewWei(100),
+		RefundedQuotesCount:       0,
+		TotalPenaltyAmount:        entities.NewWei(0),
+		LpEarnings:                entities.NewWei(100),
+	}
+	pegout := reports.SummaryData{
+		TotalQuotesCount:          4,
+		AcceptedQuotesCount:       3,
+		PaidQuotesCount:           2,
+		PaidQuotesAmount:          entities.NewWei(900),
+		TotalAcceptedQuotedAmount: entities.NewWei(1200),
+		TotalFeesCollected:        entities.NewWei(150),
+		RefundedQuotesCount:       1,
+		TotalPenaltyAmount:        entities.NewWei(20),
+		LpEarnings:                entities.NewWei(130),
+	}
+	result := reports.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
+	dto := pkg.ToSummaryResultDTO(result)
+	expected := pkg.SummaryResultDTO{
+		PeginSummary:  pkg.ToSummaryDataDTO(pegin),
+		PegoutSummary: pkg.ToSummaryDataDTO(pegout),
+	}
+	assert.Equal(t, expected, dto)
+	test.AssertMaxZeroValues(t, dto.PeginSummary, 1)
+	test.AssertNonZeroValues(t, dto.PegoutSummary)
 }
 
 func TestToTrustedAccountDTO(t *testing.T) {

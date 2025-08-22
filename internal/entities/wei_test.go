@@ -514,3 +514,51 @@ func TestWei_UnmarshalBSONValue(t *testing.T) {
 		}
 	})
 }
+
+func TestWei_Div(t *testing.T) {
+	tests := []struct {
+		name    string
+		w       *entities.Wei
+		x       *entities.Wei
+		y       *entities.Wei
+		want    *entities.Wei
+		wantErr bool
+	}{
+		{
+			name:    "divide two positive Wei values",
+			w:       entities.NewWei(0),
+			x:       entities.NewWei(10),
+			y:       entities.NewWei(5),
+			want:    entities.NewWei(2),
+			wantErr: false,
+		},
+		{
+			name:    "divide by zero",
+			w:       entities.NewWei(0),
+			x:       entities.NewWei(10),
+			y:       entities.NewWei(0),
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "divide zero by a number",
+			w:       entities.NewWei(0),
+			x:       entities.NewWei(0),
+			y:       entities.NewWei(5),
+			want:    entities.NewWei(0),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.w.Div(tt.x, tt.y)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Div() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Div() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -58,6 +58,11 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
 		},
 		{
+			Path:    "/reports/summaries",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
+		},
+		{
 			Path:    "/configuration",
 			Method:  http.MethodPost,
 			Handler: handlers.NewSetGeneralConfigHandler(useCaseRegistry.SetGeneralConfigUseCase()),
@@ -76,6 +81,33 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    "/pegout/configuration",
 			Method:  http.MethodPost,
 			Handler: handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()),
+		},
+		{
+			Path:    "/reports/pegin",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsPeginHandler(useCaseRegistry.GetPeginReportUseCase()),
+		},
+		{
+			Path:    "/reports/pegout",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsPegoutHandler(useCaseRegistry.GetPegoutReportUseCase()),
+		},
+		// TODO enable again when final implementation is ready
+		/*{
+			Path:    "/reports/revenue",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsRevenueHandler(useCaseRegistry.GetRevenueReportUseCase()),
+		},*/
+		// TODO enable again when final implementation is ready
+		/*{
+			Path:    "/reports/assets",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
+		},*/
+		{
+			Path:    "/reports/transactions",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsTransactionHandler(useCaseRegistry.GetTransactionsReportUseCase()),
 		},
 		{
 			Path:    LoginPath,

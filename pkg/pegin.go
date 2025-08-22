@@ -69,6 +69,15 @@ type AcceptPeginRespose struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 
+type GetPeginReportResponse struct {
+	NumberOfQuotes     int      `json:"numberOfQuotes" required:"" description:"Number of finalized pegin quotes"`
+	MinimumQuoteValue  *big.Int `json:"minimumQuoteValue" required:"" description:"Minimum value of the quote"`
+	MaximumQuoteValue  *big.Int `json:"maximumQuoteValue" required:"" description:"Maximum value of the quote"`
+	AverageQuoteValue  *big.Int `json:"averageQuoteValue" required:"" description:"Average value of the quote"`
+	TotalFeesCollected *big.Int `json:"totalFeesCollected" required:"" description:"Total fees collected"`
+	AverageFeePerQuote *big.Int `json:"averageFeePerQuote" required:"" description:"Average fee per quote"`
+}
+
 func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 	return quote.PeginQuote{
 		FedBtcAddress:      dto.FedBTCAddr,

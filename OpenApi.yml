@@ -156,6 +156,40 @@ components:
       - quote
       - quoteHash
       type: object
+    GetTransactionsItem:
+      properties:
+        amount:
+          $ref: '#/components/schemas/Wei'
+        callFee:
+          $ref: '#/components/schemas/Wei'
+        gasFee:
+          $ref: '#/components/schemas/Wei'
+        quoteHash:
+          type: string
+        status:
+          type: string
+      type: object
+    GetTransactionsResponse:
+      properties:
+        data:
+          items:
+            properties:
+              amount:
+                $ref: '#/components/schemas/Wei'
+              callFee:
+                $ref: '#/components/schemas/Wei'
+              gasFee:
+                $ref: '#/components/schemas/Wei'
+              quoteHash:
+                type: string
+              status:
+                type: string
+            type: object
+          type: array
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+          type: object
+      type: object
     HealthResponse:
       properties:
         services:
@@ -206,6 +240,17 @@ components:
       - apiBaseUrl
       - status
       - providerType
+      type: object
+    PaginationMetadata:
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
       type: object
     PeginConfigurationDTO:
       properties:
@@ -295,8 +340,8 @@ components:
           description: The RSK address of the LP
           type: string
         nonce:
-          $ref: '#/components/schemas/'
           description: A nonce that uniquely identifies this quote
+          type: integer
         penaltyFee:
           $ref: '#/components/schemas/'
           description: The penalty fee that the LP pays if it fails to deliver the
@@ -455,7 +500,7 @@ components:
         lpBtcAddr:
           type: string
         nonce:
-          $ref: '#/components/schemas/'
+          type: integer
         penaltyFee:
           $ref: '#/components/schemas/'
         productFeeAmount:
@@ -529,8 +574,8 @@ components:
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           $ref: '#/components/schemas/'
+          deprecated: true
         feePercentage:
           type: number
         fixedFee:
@@ -693,6 +738,36 @@ components:
         rsk:
           type: string
       type: object
+    SummaryDataDTO:
+      properties:
+        acceptedQuotesCount:
+          type: integer
+        lpEarnings:
+          $ref: '#/components/schemas/'
+        paidQuotesAmount:
+          $ref: '#/components/schemas/'
+        paidQuotesCount:
+          type: integer
+        refundedQuotesCount:
+          type: integer
+        totalAcceptedQuotedAmount:
+          $ref: '#/components/schemas/'
+        totalFeesCollected:
+          $ref: '#/components/schemas/'
+        totalPenaltyAmount:
+          $ref: '#/components/schemas/'
+        totalQuotesCount:
+          type: integer
+      type: object
+    SummaryResultDTO:
+      properties:
+        peginSummary:
+          $ref: '#/components/schemas/SummaryDataDTO'
+          type: object
+        pegoutSummary:
+          $ref: '#/components/schemas/SummaryDataDTO'
+          type: object
+      type: object
     TrustedAccountRequest:
       properties:
         address:
@@ -704,6 +779,8 @@ components:
         rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
+    Wei: {}
+    entities.Wei: {}
     pkg.AcceptAuthenticatedQuoteRequest:
       properties:
         quoteHash:
@@ -1185,6 +1262,178 @@ paths:
         "204":
           description: ""
       summary: Withdraw PegIn Collateral
+  /reports/assets:
+    get:
+      description: ' Get the asset information for the LPS.'
+      responses:
+        "200":
+          description: ""
+      summary: Get asset Reports
+  /reports/pegin:
+    get:
+      description: ' Get the last pegins on the API. Included in the management API.'
+      parameters:
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegin Reports
+  /reports/pegout:
+    get:
+      description: ' Get the last pegouts on the API. Included in the management API.'
+      parameters:
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get Pegout Reports
+  /reports/revenue:
+    get:
+      description: ' Get the revenue for the specified period.'
+      parameters:
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      responses:
+        "200":
+          description: ""
+      summary: Get revenue Reports
+  /reports/summaries:
+    get:
+      description: ' Returns financial data for a given period'
+      parameters:
+      - description: Start date in YYYY-MM-DD format
+        in: query
+        name: startDate
+        required: true
+        schema:
+          description: Start date in YYYY-MM-DD format
+          format: string
+          type: string
+      - description: End date in YYYY-MM-DD format
+        in: query
+        name: endDate
+        required: true
+        schema:
+          description: End date in YYYY-MM-DD format
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryResultDTO'
+          description: Financial data for the given period
+      summary: Summaries
+  /reports/transactions:
+    get:
+      description: ' Get a paginated list of individual transactions of a specific
+        type processed by the liquidity provider within a specified time period'
+      parameters:
+      - description: 'Transaction type filter: ''pegin'' or ''pegout'''
+        in: query
+        name: type
+        required: true
+        schema:
+          description: 'Transaction type filter: ''pegin'' or ''pegout'''
+          format: string
+          type: string
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: startDate
+        schema:
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+        in: query
+        name: endDate
+        schema:
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
+          format: string
+          type: string
+      - description: 'Page number to retrieve (1-indexed, default: 1)'
+        in: query
+        name: page
+        schema:
+          description: 'Page number to retrieve (1-indexed, default: 1)'
+          format: int64
+          type: integer
+      - description: 'Number of transactions per page (max: 100, default: 10)'
+        in: query
+        name: perPage
+        schema:
+          description: 'Number of transactions per page (max: 100, default: 10)'
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTransactionsResponse'
+          description: Paginated list of transactions with metadata
+      summary: Get Transaction Reports
   /userQuotes:
     get:
       description: ' Returns user quotes for address.'

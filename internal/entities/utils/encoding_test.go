@@ -165,18 +165,18 @@ func TestNewBigFloat64(t *testing.T) {
 }
 
 func TestBigFloat_StringFormatsFixedPoint(t *testing.T) {
-    bf := utils.NewBigFloat64(0.000012)
-    expected := "0.000012"
-    require.Equal(t, expected, bf.String())
+	bf := utils.NewBigFloat64(0.000012)
+	expected := "0.000012"
+	require.Equal(t, expected, bf.String())
 }
 
 func TestStructFormatting_UsesFixedPoint(t *testing.T) {
-    type sample struct {
-        FeeRate *utils.BigFloat
-    }
-    payload := sample{FeeRate: utils.NewBigFloat64(0.000012)}
-    formatted := fmt.Sprintf("%+v", payload)
-    require.Contains(t, formatted, "FeeRate:0.000012")
+	type sample struct {
+		FeeRate *utils.BigFloat
+	}
+	payload := sample{FeeRate: utils.NewBigFloat64(0.000012)}
+	formatted := fmt.Sprintf("%+v", payload)
+	require.Contains(t, formatted, "FeeRate:0.000012")
 }
 func TestBigFloat_Native(t *testing.T) {
 	tests := []struct {

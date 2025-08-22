@@ -38,6 +38,7 @@ packages:
       DefaultCredentialsProvider:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
     interfaces:
+      GetAssetsReportUseCase:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:
@@ -45,6 +46,9 @@ packages:
     interfaces:
       LiquidityProviderRepository:
       TrustedAccountRepository:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/penalization:
+    interfaces:
+      PenalizedEventRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/quote:
       interfaces:
         PeginQuoteRepository:

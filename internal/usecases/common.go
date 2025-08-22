@@ -68,6 +68,11 @@ const (
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
+	SummariesUseCaseId         UseCaseId = "Summaries"
+	GetPeginReportId           UseCaseId = "GetPeginReport"
+	GetPegoutReportId          UseCaseId = "GetPegoutReport"
+	GetRevenueReportId         UseCaseId = "GetRevenueReport"
+	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 )

@@ -165,3 +165,11 @@ func (w *Wei) Mul(x, y *Wei) *Wei {
 	w.AsBigInt().Mul(x.AsBigInt(), y.AsBigInt())
 	return w
 }
+
+func (w *Wei) Div(x, y *Wei) (*Wei, error) {
+	if y.AsBigInt().Cmp(big.NewInt(0)) == 0 {
+		return nil, DivideByZeroError
+	}
+	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
+	return w, nil
+}
