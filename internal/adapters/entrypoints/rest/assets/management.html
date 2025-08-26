@@ -108,13 +108,13 @@
                         <h5 class="card-title">Current Configuration</h5>
                         <ul class="nav nav-tabs" id="configTabs" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab" aria-controls="general" aria-selected="true">General</a>
+                                <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab" data-testid="config-tab-general" aria-controls="general" aria-selected="true">General</a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" id="peginConfig-tab" data-bs-toggle="tab" href="#peginConfig" role="tab" aria-controls="peginConfig" aria-selected="false">Pegin</a>
+                                <a class="nav-link" id="peginConfig-tab" data-bs-toggle="tab" href="#peginConfig" role="tab" data-testid="config-tab-pegin" aria-controls="peginConfig" aria-selected="false">Pegin</a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" id="pegoutConfig-tab" data-bs-toggle="tab" href="#pegoutConfig" role="tab" aria-controls="pegoutConfig" aria-selected="false">Pegout</a>
+                                <a class="nav-link" id="pegoutConfig-tab" data-bs-toggle="tab" href="#pegoutConfig" role="tab" data-testid="config-tab-pegout" aria-controls="pegoutConfig" aria-selected="false">Pegout</a>
                             </li>
                         </ul>
                         <div class="tab-content" id="configTabContent">
@@ -143,7 +143,7 @@
                                 <div id="pegoutConfig"></div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary" id="saveConfig">Save Configuration</button>
+                        <button type="button" class="btn btn-primary" data-testid="config-save-button" id="saveConfig">Save Configuration</button>
                     </div>
                 </div>
             </div>
