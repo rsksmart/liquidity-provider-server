@@ -73,6 +73,7 @@ const createCheckboxInput = (inputContainer, section, key, value) => {
     checkbox.classList.add('form-check-input');
     checkbox.style.marginRight = '10px';
     checkbox.dataset.key = key;
+    checkbox.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-checkbox`);
     checkbox.checked = value;
     checkbox.addEventListener('change', () => setChanged(section.id));
     inputContainer.appendChild(checkbox);
@@ -84,12 +85,14 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     checkbox.classList.add('form-check-input');
     checkbox.style.marginRight = '10px';
     checkbox.dataset.key = `${key}_enabled`;
+    checkbox.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-checkbox`);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.dataset.originalValue = value;
 
     if (value === '0' || value === 0) {
@@ -128,6 +131,7 @@ const createFeeInput = (inputContainer, label, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = isFeeKey(key) ? weiToEther(value) : value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -141,6 +145,7 @@ const createFeePercentageInput = (inputContainer, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = typeof value === 'number' ? value.toString() : value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -152,6 +157,7 @@ const createDefaultInput = (inputContainer, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -270,6 +276,7 @@ const createConfirmationEntry = (container, configKey, index, amount = '', confi
     confirmationInput.dataset.field = 'confirmation';
     confirmationInput.dataset.index = index;
     confirmationInput.style.maxWidth = fieldWidth;
+    confirmationInput.setAttribute('data-testid', `config-${configKey}-${index}`);
 
     const confirmationInputAppend = document.createElement('span');
     confirmationInputAppend.classList.add('input-group-text', 'input-group-text-sm');
