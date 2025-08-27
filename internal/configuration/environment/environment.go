@@ -79,6 +79,7 @@ type TimeoutEnv struct {
 	ServerWrite         uint64 `env:"SERVER_WRITE_TIMEOUT"`
 	ServerIdle          uint64 `env:"SERVER_IDLE_TIMEOUT"`
 	PegoutDepositCheck  uint64 `env:"PEGOUT_DEPOSIT_CHECK_TIMEOUT"`
+	BtcReleaseCheck     uint64 `env:"BTC_RELEASE_CHECK_TIMEOUT"`
 }
 
 type EclipseEnv struct {
@@ -148,7 +149,9 @@ type ProviderEnv struct {
 type PeginEnv struct{}
 
 type PegoutEnv struct {
-	DepositCacheStartBlock uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
+	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
+	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
+	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
 }
 
 type CaptchaEnv struct {

@@ -20,6 +20,7 @@ packages:
       RpcClientBinding:
       LbcCallerBinding:
       LbcAdapter:
+      RskBridgeAdapter:
       EventIteratorAdapter:
       RskSignerWallet:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
@@ -35,10 +36,19 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider:
     interfaces:
       DefaultCredentialsProvider:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
+    interfaces:
+      GetAssetsReportUseCase:
+      PeginStatusUseCase:
+      PegoutStatusUseCase:
+      SetGeneralConfigUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
       TrustedAccountRepository:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/penalization:
+    interfaces:
+      PenalizedEventRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/quote:
       interfaces:
         PeginQuoteRepository:
@@ -48,6 +58,9 @@ packages:
     interfaces:
       BitcoinWallet:
       RootstockRpcServer:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
+    interfaces:
+      BatchPegOutRepository:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:
@@ -57,6 +70,9 @@ packages:
   github.com/gorilla/sessions:
     interfaces:
       Store:
+  net/http:
+    interfaces:
+      Handler:
   github.com/rsksmart/liquidity-provider-server/internal/entities/utils:
     interfaces:
       Ticker:
@@ -64,6 +80,4 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher:
     interfaces:
       EclipseCheckUseCase:
-  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
-    interfaces:
-      SetGeneralConfigUseCase:
+      UpdateBtcReleaseUseCase:

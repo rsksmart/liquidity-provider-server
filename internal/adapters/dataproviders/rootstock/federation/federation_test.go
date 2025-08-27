@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ type testQuote struct {
 	ExpectedDerivationValueHash string
 	ExpectedAddressHash         string
 	NetworkParams               *chaincfg.Params
-	FedInfo                     blockchain.FederationInfo
+	FedInfo                     rootstock.FederationInfo
 }
 
 const (
@@ -100,7 +100,7 @@ func TestDerivationComplete(t *testing.T) {
 		lpBtcAddress, err := bitcoin.DecodeAddressBase58(test.LpBtcAddress, true)
 		require.NoError(t, err)
 
-		args := blockchain.FlyoverDerivationArgs{
+		args := rootstock.FlyoverDerivationArgs{
 			QuoteHash:            quoteHash,
 			UserBtcRefundAddress: userBtcAddress,
 			LbcAdress:            lbcAddress,
@@ -138,7 +138,7 @@ func TestGetDerivationValueHash(t *testing.T) {
 		require.NoError(t, err)
 		lpBtcAddress, err := bitcoin.DecodeAddressBase58(test.LpBtcAddress, true)
 		require.NoError(t, err)
-		args := blockchain.FlyoverDerivationArgs{
+		args := rootstock.FlyoverDerivationArgs{
 			QuoteHash:            quoteHash,
 			UserBtcRefundAddress: userBtcAddress,
 			LbcAdress:            lbcAddress,
@@ -351,7 +351,7 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 		require.NoError(t, err)
 		lpBtcAddress, err := bitcoin.DecodeAddressBase58(test.LpBtcAddress, true)
 		require.NoError(t, err)
-		derivationArgs := blockchain.FlyoverDerivationArgs{
+		derivationArgs := rootstock.FlyoverDerivationArgs{
 			QuoteHash:            quoteHash,
 			UserBtcRefundAddress: userBtcAddress,
 			LbcAdress:            lbcAddress,
@@ -370,7 +370,7 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 	t.Run("malformed redeem script", func(t *testing.T) {
 		derivation, err := federation.CalculateFlyoverDerivationAddress(mocks.GetFakeFedInfo(), chaincfg.TestNet3Params, []byte{1}, []byte{1})
-		assert.Equal(t, blockchain.FlyoverDerivation{}, derivation)
+		assert.Equal(t, rootstock.FlyoverDerivation{}, derivation)
 		require.Error(t, err)
 	})
 	t.Run("empty redeem script", func(t *testing.T) {
@@ -390,7 +390,7 @@ func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 		fedInfo := mocks.GetFakeFedInfo()
 		fedInfo.FedAddress = "invalid"
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, chaincfg.MainNetParams, []byte{}, derivationBytes)
-		assert.Equal(t, blockchain.FlyoverDerivation{}, derivation)
+		assert.Equal(t, rootstock.FlyoverDerivation{}, derivation)
 		require.ErrorContains(t, err, "error generating fed redeem script")
 	})
 }
@@ -406,7 +406,7 @@ func TestValidateRedeemScript_ErrorHandling(t *testing.T) {
 
 func TestGetFedRedeemScript_ErrorHandling(t *testing.T) {
 	t.Run(invalidFailInfoTestName, func(t *testing.T) {
-		script, err := federation.GetFedRedeemScript(blockchain.FederationInfo{}, chaincfg.MainNetParams)
+		script, err := federation.GetFedRedeemScript(rootstock.FederationInfo{}, chaincfg.MainNetParams)
 		assert.Nil(t, script)
 		require.Error(t, err)
 	})
@@ -414,7 +414,7 @@ func TestGetFedRedeemScript_ErrorHandling(t *testing.T) {
 
 func TestGetErpRedeemScriptBuf_ErrorHandling(t *testing.T) {
 	t.Run(invalidFailInfoTestName, func(t *testing.T) {
-		script, err := federation.GetErpRedeemScriptBuf(blockchain.FederationInfo{
+		script, err := federation.GetErpRedeemScriptBuf(rootstock.FederationInfo{
 			ErpKeys: []string{invalidKey},
 		}, chaincfg.MainNetParams)
 		assert.Nil(t, script)
@@ -424,7 +424,7 @@ func TestGetErpRedeemScriptBuf_ErrorHandling(t *testing.T) {
 
 func TestGetRedeemScriptBuf_ErrorHandling(t *testing.T) {
 	t.Run(invalidFailInfoTestName, func(t *testing.T) {
-		script, err := federation.GetRedeemScriptBuf(blockchain.FederationInfo{PubKeys: []string{invalidKey}}, true)
+		script, err := federation.GetRedeemScriptBuf(rootstock.FederationInfo{PubKeys: []string{invalidKey}}, true)
 		assert.Nil(t, script)
 		require.Error(t, err)
 	})

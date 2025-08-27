@@ -17,11 +17,12 @@ import (
 
 const (
 	HeaderContentType = "Content-Type"
-)
 
-const (
 	ContentTypeJson = "application/json"
 	ContentTypeForm = "application/x-www-form-urlencoded"
+
+	StartDateParam = "startDate"
+	EndDateParam   = "endDate"
 )
 
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
@@ -196,4 +197,37 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 
 func RequiredQueryParam(name string) error {
 	return fmt.Errorf("required query parameter %s is missing", name)
+}
+
+func ParseDateRange(req *http.Request, dateFormat string) (time.Time, time.Time, error) {
+	start := req.URL.Query().Get(StartDateParam)
+	end := req.URL.Query().Get(EndDateParam)
+	if start == "" || end == "" {
+		missing := []string{}
+		if start == "" {
+			missing = append(missing, StartDateParam)
+		}
+		if end == "" {
+			missing = append(missing, EndDateParam)
+		}
+		return time.Time{}, time.Time{}, fmt.Errorf("missing required parameters: %v", missing)
+	}
+	startDate, err := time.Parse(dateFormat, start)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid start date format: %w", err)
+	}
+	endDate, err := time.Parse(dateFormat, end)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid end date format: %w", err)
+	}
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, time.UTC)
+	return startDate, endDate, nil
+}
+
+func ValidateDateRange(startDate, endDate time.Time, dateFormat string) error {
+	if endDate.Before(startDate) {
+		return fmt.Errorf("invalid date range: end date %s is before start date %s",
+			endDate.Format(dateFormat), startDate.Format(dateFormat))
+	}
+	return nil
 }

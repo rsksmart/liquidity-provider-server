@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/mock"
 	"math/big"
 )
@@ -60,9 +61,9 @@ func (m *BtcRpcMock) GetHeight() (*big.Int, error) {
 	return args.Get(0).(*big.Int), args.Error(1)
 }
 
-func (m *BtcRpcMock) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+func (m *BtcRpcMock) GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error) {
 	args := m.Called(txHash)
-	return args.Get(0).(blockchain.BtcCoinbaseTransactionInformation), args.Error(1)
+	return args.Get(0).(rootstock.BtcCoinbaseTransactionInformation), args.Error(1)
 }
 
 func (m *BtcRpcMock) NetworkName() string {

@@ -17,7 +17,6 @@ pwd.txt
 test/integration/integration-test.config.json
 integration/geth_keystore
 
-/docker-compose/lbc-deployer/liquidity-bridge-contract/
 keystore/
 build/
 /utils/*
@@ -28,3 +27,4 @@ build/
 !sample-config.env
 /**/*.env
 /**/.env*
+.cursorrules

@@ -4,10 +4,13 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"math/big"
 )
+
+var ErrNonPositiveWei = errors.New("wei value must be positive")
 
 type Wei big.Int
 
@@ -17,6 +20,16 @@ var bTen = big.NewInt(10)
 var bEighteen = big.NewInt(18)
 var bTenPowTen = new(big.Int).Exp(bTen, bTen, nil)           // 10**10
 var bTenPowEighteen = new(big.Int).Exp(bTen, bEighteen, nil) // 10**18
+
+func ValidatePositiveWei(values ...*Wei) error {
+	zero := NewWei(0)
+	for _, v := range values {
+		if v == nil || v.Cmp(zero) < 0 {
+			return ErrNonPositiveWei
+		}
+	}
+	return nil
+}
 
 func NewWei(x int64) *Wei {
 	w := new(Wei)
@@ -151,4 +164,12 @@ func (w *Wei) Sub(x, y *Wei) *Wei {
 func (w *Wei) Mul(x, y *Wei) *Wei {
 	w.AsBigInt().Mul(x.AsBigInt(), y.AsBigInt())
 	return w
+}
+
+func (w *Wei) Div(x, y *Wei) (*Wei, error) {
+	if y.AsBigInt().Cmp(big.NewInt(0)) == 0 {
+		return nil, DivideByZeroError
+	}
+	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
+	return w, nil
 }

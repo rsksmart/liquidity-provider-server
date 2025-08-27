@@ -24,6 +24,7 @@ type ApplicationTimeouts struct {
 	ServerWrite         Timeout `validate:"required"`
 	ServerIdle          Timeout `validate:"required"`
 	PegoutDepositCheck  Timeout `validate:"required"`
+	BtcReleaseCheck     Timeout `validate:"required"`
 }
 
 func DefaultTimeouts() ApplicationTimeouts {
@@ -38,6 +39,7 @@ func DefaultTimeouts() ApplicationTimeouts {
 		ServerWrite:         60,
 		ServerIdle:          10,
 		PegoutDepositCheck:  60,
+		BtcReleaseCheck:     180,
 	}
 }
 
@@ -54,6 +56,7 @@ func TimeoutsFromEnv(env TimeoutEnv) (ApplicationTimeouts, error) {
 	timeouts.ServerWrite = utils.FirstNonZero(Timeout(env.ServerWrite), defaultTimeouts.ServerWrite)
 	timeouts.ServerIdle = utils.FirstNonZero(Timeout(env.ServerIdle), defaultTimeouts.ServerIdle)
 	timeouts.PegoutDepositCheck = utils.FirstNonZero(Timeout(env.PegoutDepositCheck), defaultTimeouts.PegoutDepositCheck)
+	timeouts.BtcReleaseCheck = utils.FirstNonZero(Timeout(env.BtcReleaseCheck), defaultTimeouts.BtcReleaseCheck)
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(timeouts); err != nil {
 		return ApplicationTimeouts{}, fmt.Errorf("error validating timeouts: %w", err)

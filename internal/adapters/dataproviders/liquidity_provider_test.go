@@ -87,23 +87,44 @@ func TestLocalLiquidityProvider_SignQuote_ErrorHandling(t *testing.T) {
 }
 
 func TestLocalLiquidityProvider_AvailablePegoutLiquidity(t *testing.T) {
-	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
-	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-		quote.PegoutStateWaitingForDeposit,
-		quote.PegoutStateWaitingForDepositConfirmations,
-	).Return([]quote.RetainedPegoutQuote{
-		{RequiredLiquidity: entities.NewWei(100)},
-		{RequiredLiquidity: entities.NewWei(300)},
-		{RequiredLiquidity: entities.NewWei(200)},
-	}, nil).Once()
-	btcWallet := new(mocks.BitcoinWalletMock)
-	btcWallet.On("GetBalance").Return(entities.NewWei(1500), nil).Once()
-	lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepository, nil, blockchain.Rpc{}, nil, btcWallet, blockchain.RskContracts{})
-	liquidity, err := lp.AvailablePegoutLiquidity(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, entities.NewWei(900), liquidity)
-	btcWallet.AssertExpectations(t)
-	pegoutRepository.AssertExpectations(t)
+	t.Run("should return available pegout liquidity", func(t *testing.T) {
+		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateWaitingForDepositConfirmations,
+		).Return([]quote.RetainedPegoutQuote{
+			{RequiredLiquidity: entities.NewWei(100)},
+			{RequiredLiquidity: entities.NewWei(300)},
+			{RequiredLiquidity: entities.NewWei(200)},
+		}, nil).Once()
+		btcWallet := new(mocks.BitcoinWalletMock)
+		btcWallet.On("GetBalance").Return(entities.NewWei(1500), nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepository, nil, blockchain.Rpc{}, nil, btcWallet, blockchain.RskContracts{})
+		liquidity, err := lp.AvailablePegoutLiquidity(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(900), liquidity)
+		btcWallet.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+	})
+	t.Run("should return 0 if the locked liquidity is higher than the available", func(t *testing.T) {
+		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateWaitingForDepositConfirmations,
+		).Return([]quote.RetainedPegoutQuote{
+			{RequiredLiquidity: entities.NewWei(100)},
+			{RequiredLiquidity: entities.NewWei(300)},
+			{RequiredLiquidity: entities.NewWei(200)},
+		}, nil).Once()
+		btcWallet := new(mocks.BitcoinWalletMock)
+		btcWallet.On("GetBalance").Return(entities.NewWei(100), nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepository, nil, blockchain.Rpc{}, nil, btcWallet, blockchain.RskContracts{})
+		liquidity, err := lp.AvailablePegoutLiquidity(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(0), liquidity)
+		btcWallet.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+	})
 }
 
 func TestLocalLiquidityProvider_AvailablePegoutLiquidity_ErrorHandling(t *testing.T) {
@@ -192,6 +213,7 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 	peginRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
 		quote.PeginStateWaitingForDeposit,
+		quote.PeginStateWaitingForDepositConfirmations,
 	).Return([]quote.RetainedPeginQuote{
 		{RequiredLiquidity: entities.NewWei(100)},
 		{RequiredLiquidity: entities.NewWei(200)},
@@ -260,6 +282,7 @@ func TestLocalLiquidityProvider_HasPeginLiquidity_ErrorHandling(t *testing.T) {
 		peginRepository := new(mocks.PeginQuoteRepositoryMock)
 		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
 			quote.PeginStateWaitingForDeposit,
+			quote.PeginStateWaitingForDepositConfirmations,
 		).Return(nil, assert.AnError).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(peginRepository, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 		err := lp.HasPeginLiquidity(context.Background(), entities.NewWei(1))
@@ -268,38 +291,66 @@ func TestLocalLiquidityProvider_HasPeginLiquidity_ErrorHandling(t *testing.T) {
 }
 
 func TestLocalLiquidityProvider_AvailablePeginLiquidity(t *testing.T) {
-	signer := new(mocks.TransactionSignerMock)
-	signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Twice()
-	peginRepository := new(mocks.PeginQuoteRepositoryMock)
-	peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-		quote.PeginStateWaitingForDeposit,
-	).Return([]quote.RetainedPeginQuote{
-		{RequiredLiquidity: entities.NewWei(300)},
-		{RequiredLiquidity: entities.NewWei(500)},
-		{RequiredLiquidity: entities.NewWei(400)},
-	}, nil).Once()
-	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
-	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-		quote.PegoutStateRefundPegOutSucceeded,
-	).Return([]quote.RetainedPegoutQuote{
-		{RequiredLiquidity: entities.NewWei(100)},
-		{RequiredLiquidity: entities.NewWei(150)},
-	}, nil).Once()
-	lbcMock := new(mocks.LbcMock)
-	lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(2000), nil).Once()
-	rpcMock := new(mocks.RootstockRpcServerMock)
-	rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(800), nil).Once()
-	lp := dataproviders.NewLocalLiquidityProvider(peginRepository, pegoutRepository, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
+	t.Run("should return available pegin liquidity", func(t *testing.T) {
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Twice()
+		peginRepository := new(mocks.PeginQuoteRepositoryMock)
+		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
+		).Return([]quote.RetainedPeginQuote{
+			{RequiredLiquidity: entities.NewWei(300)}, {RequiredLiquidity: entities.NewWei(500)}, {RequiredLiquidity: entities.NewWei(400)},
+		}, nil).Once()
+		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PegoutStateRefundPegOutSucceeded,
+		).Return([]quote.RetainedPegoutQuote{
+			{RequiredLiquidity: entities.NewWei(100)}, {RequiredLiquidity: entities.NewWei(150)},
+		}, nil).Once()
+		lbcMock := new(mocks.LbcMock)
+		lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(2000), nil).Once()
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(800), nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepository, pegoutRepository, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 
-	liquidity, err := lp.AvailablePeginLiquidity(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, entities.NewWei(1350), liquidity)
+		liquidity, err := lp.AvailablePeginLiquidity(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(1350), liquidity)
+		lbcMock.AssertExpectations(t)
+		rpcMock.AssertExpectations(t)
+		peginRepository.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+		signer.AssertExpectations(t)
+	})
+	t.Run("should return 0 if the locked liquidity is higher than the available", func(t *testing.T) {
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Twice()
+		peginRepository := new(mocks.PeginQuoteRepositoryMock)
+		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
+		).Return([]quote.RetainedPeginQuote{
+			{RequiredLiquidity: entities.NewWei(300)}, {RequiredLiquidity: entities.NewWei(500)}, {RequiredLiquidity: entities.NewWei(400)},
+		}, nil).Once()
+		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+			quote.PegoutStateRefundPegOutSucceeded,
+		).Return([]quote.RetainedPegoutQuote{
+			{RequiredLiquidity: entities.NewWei(100)}, {RequiredLiquidity: entities.NewWei(150)},
+		}, nil).Once()
+		lbcMock := new(mocks.LbcMock)
+		lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(100), nil).Once()
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(500), nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepository, pegoutRepository, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 
-	lbcMock.AssertExpectations(t)
-	rpcMock.AssertExpectations(t)
-	peginRepository.AssertExpectations(t)
-	pegoutRepository.AssertExpectations(t)
-	signer.AssertExpectations(t)
+		liquidity, err := lp.AvailablePeginLiquidity(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(0), liquidity)
+		lbcMock.AssertExpectations(t)
+		rpcMock.AssertExpectations(t)
+		peginRepository.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
+		signer.AssertExpectations(t)
+	})
 }
 
 func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing.T) {
@@ -329,7 +380,7 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing
 		lbcMock := new(mocks.LbcMock)
 		lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(200), nil).Once()
 		peginRepository := new(mocks.PeginQuoteRepositoryMock)
-		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit).Return(nil, assert.AnError).Once()
+		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return(nil, assert.AnError).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(peginRepository, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{Lbc: lbcMock})
 		liquidity, err := lp.AvailablePeginLiquidity(context.Background())
 		require.Error(t, err)
@@ -341,7 +392,7 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing
 		lbcMock := new(mocks.LbcMock)
 		lbcMock.On("GetBalance", rskTestAddress).Return(entities.NewWei(200), nil).Once()
 		peginRepository := new(mocks.PeginQuoteRepositoryMock)
-		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit).
+		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
 			Return([]quote.RetainedPeginQuote{{RequiredLiquidity: entities.NewWei(300)}}, nil).Once()
 		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateRefundPegOutSucceeded).Return(nil, assert.AnError).Once()

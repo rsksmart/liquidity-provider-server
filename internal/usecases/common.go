@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -66,25 +68,34 @@ const (
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
+	SummariesUseCaseId         UseCaseId = "Summaries"
+	GetPeginReportId           UseCaseId = "GetPeginReport"
+	GetPegoutReportId          UseCaseId = "GetPegoutReport"
+	GetRevenueReportId         UseCaseId = "GetRevenueReport"
+	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 )
 
 var (
-	NonRecoverableError         = errors.New("non recoverable")
-	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	RskAddressNotSupportedError = errors.New("rsk address not supported")
-	QuoteNotFoundError          = errors.New("quote not found")
-	QuoteNotAcceptedError       = errors.New("quote not accepted")
-	ExpiredQuoteError           = errors.New("expired quote")
-	NoLiquidityError            = errors.New("not enough liquidity")
-	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	WrongStateError             = errors.New("quote with wrong state")
-	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
-	InsufficientAmountError     = errors.New("insufficient amount")
-	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
-	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
-	IllegalQuoteStateError      = errors.New("illegal quote state")
-	LockingCapExceededError     = errors.New("locking cap exceeded")
+	NonRecoverableError             = errors.New("non recoverable")
+	TxBelowMinimumError             = errors.New("requested amount below bridge's min transaction value")
+	RskAddressNotSupportedError     = errors.New("rsk address not supported")
+	QuoteNotFoundError              = errors.New("quote not found")
+	QuoteNotAcceptedError           = errors.New("quote not accepted")
+	ExpiredQuoteError               = errors.New("expired quote")
+	NoLiquidityError                = errors.New("not enough liquidity")
+	ProviderConfigurationError      = errors.New("pegin and pegout providers are not using the same account")
+	WrongStateError                 = errors.New("quote with wrong state")
+	NoEnoughConfirmationsError      = errors.New("not enough confirmations for transaction")
+	InsufficientAmountError         = errors.New("insufficient amount")
+	AlreadyRegisteredError          = errors.New("liquidity provider already registered")
+	ProviderNotResignedError        = errors.New("provided hasn't completed resignation process")
+	IllegalQuoteStateError          = errors.New("illegal quote state")
+	LockingCapExceededError         = errors.New("locking cap exceeded")
+	NonPositiveWeiError             = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
 type ErrorArgs map[string]string
@@ -145,7 +156,7 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	}, nil
 }
 
-func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
 	var err error
 	var minLockTxValue *entities.Wei
 
@@ -186,7 +197,7 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
 // IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
-func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract rootstock.Bridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
 	}
@@ -200,7 +211,7 @@ func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContrac
 }
 
 // ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
-func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
 	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return err
@@ -276,4 +287,25 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 
 	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
 	return address, nil
+}
+
+func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
+	if err := entities.ValidatePositiveWei(weiValues...); err != nil {
+		return WrapUseCaseError(useCase, NonPositiveWeiError)
+	}
+	return nil
+}
+
+func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.ConfirmationsPerAmount) error {
+	if len(confirmations) == 0 {
+		return WrapUseCaseError(useCase, EmptyConfirmationsMapError)
+	}
+	for keyStr := range confirmations {
+		intKey, err := strconv.Atoi(keyStr)
+		if err != nil || intKey <= 0 {
+			args := ErrorArg("key", keyStr)
+			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
+		}
+	}
+	return nil
 }

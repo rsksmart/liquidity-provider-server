@@ -107,8 +107,12 @@ func (lp *LocalLiquidityProvider) AvailablePegoutLiquidity(ctx context.Context) 
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s satoshi", lockedLiquidity.ToSatoshi().String())
-	availableLiquidity := new(entities.Wei).Sub(liquidity, lockedLiquidity)
-	return availableLiquidity, nil
+
+	if liquidity.Cmp(lockedLiquidity) < 0 {
+		log.Warning("There is more locked liquidity than available liquidity! Review the currently available UTXOs and accepted quotes.")
+		return entities.NewWei(0), nil
+	}
+	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
 func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
@@ -141,7 +145,9 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
 	log.Debugf("Liquidity: %s wei", liquidity.String())
-	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit)
+	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx,
+		quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +163,11 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s wei", lockedLiquidity.String())
+
+	if liquidity.Cmp(lockedLiquidity) < 0 {
+		log.Warning("There is more locked liquidity than available liquidity! Review the RBTC locked in the contract, in the wallet and the accepted quotes.")
+		return entities.NewWei(0), nil
+	}
 	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 

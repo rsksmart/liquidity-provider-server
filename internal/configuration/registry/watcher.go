@@ -18,6 +18,7 @@ type WatcherRegistry struct {
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
 	BitcoinEclipseWatcher      *watcher.EclipseWatcher
 	RskEclipseWatcher          *watcher.EclipseWatcher
+	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
 }
 
 // nolint:funlen
@@ -106,6 +107,15 @@ func NewWatcherRegistry(
 			entities.NodeTypeRootstock,
 			env.Eclipse.FillWithDefaults().AlertCooldownSeconds,
 			tickers.RskEclipseCheckTicker,
+		),
+		BtcReleaseWatcher: watcher.NewBtcReleaseWatcher(
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			useCaseRegistry.updateBtcReleaseUseCase,
+			tickers.BtcReleaseCheckTicker,
+			env.Pegout.BtcReleaseWatcherStartBlock,
+			env.Pegout.BtcReleaseWatcherPageSize,
+			timeouts.BtcReleaseCheck.Seconds(),
 		),
 	}
 }

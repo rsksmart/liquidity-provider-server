@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -27,12 +28,14 @@ const (
 	PegoutStateWaitingForDepositConfirmations PegoutState = "WaitingForDepositConfirmations"
 	PegoutStateBridgeTxSucceeded              PegoutState = "BridgeTxSucceeded"
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
+	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 )
 
 type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
 	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
+	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
@@ -43,7 +46,9 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PegoutQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
+	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
 }
 
 type CreatedPegoutQuote struct {
@@ -133,6 +138,7 @@ type RetainedPegoutQuote struct {
 	LpBtcTxHash         string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
 	RefundPegoutTxHash  string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
 	BridgeRefundTxHash  string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	BtcReleaseTxHash    string        `json:"btcReleaseTxHash" bson:"btc_release_tx_hash"`
 	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
@@ -181,4 +187,9 @@ type PegoutBtcSentToUserEvent struct {
 	RetainedQuote RetainedPegoutQuote
 	CreationData  PegoutCreationData
 	Error         error
+}
+
+type PegoutQuoteWithRetained struct {
+	Quote         PegoutQuote
+	RetainedQuote RetainedPegoutQuote
 }
