@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
 	"testing"
@@ -52,7 +53,7 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
-	ProductFeeAmount:   500,
+	ProductFeeAmount:   entities.NewWei(500),
 }
 
 var parsedPeginQuote = bindings.QuotesPeginQuote{
@@ -85,7 +86,7 @@ var pegoutQuote = quote.PegoutQuote{
 	RskRefundAddress:      "0x0d8A0F1ef26B4b9650d98E1c22c560327cF387FE",
 	LpBtcAddress:          "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6",
 	CallFee:               entities.NewWei(1),
-	PenaltyFee:            2,
+	PenaltyFee:            entities.NewWei(2),
 	Nonce:                 3,
 	DepositAddress:        "mzpvGLbwqFK7zvtFanb3r83WpwDxNQUYcz",
 	Value:                 entities.NewWei(11),
@@ -97,7 +98,7 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                entities.NewWei(888),
-	ProductFeeAmount:      789,
+	ProductFeeAmount:      entities.NewWei(789),
 }
 
 var parsedPegoutQuote = bindings.QuotesPegOutQuote{
@@ -165,7 +166,7 @@ var penalizations = []*bindings.LiquidityBridgeContractPenalized{
 	{QuoteHash: [32]byte{7, 8, 9}, LiquidityProvider: common.Address{3}, Penalty: big.NewInt(777)},
 }
 
-var parsedPenalizations = []liquidity_provider.PunishmentEvent{
+var parsedPenalizations = []penalization.PenalizedEvent{
 	{
 		QuoteHash:         "0102030000000000000000000000000000000000000000000000000000000000",
 		Penalty:           entities.NewWei(555),
@@ -1324,7 +1325,7 @@ func TestLiquidityBridgeContractImpl_GetDepositEvents(t *testing.T) {
 	})
 }
 
-func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
+func TestLiquidityBridgeContractImpl_GetPunishmentEvents(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	iteratorMock := &mocks.EventIteratorAdapterMock[bindings.LiquidityBridgeContractPenalized]{}
 	filterMatchFunc := func(from uint64, to uint64) func(opts *bind.FilterOpts) bool {
@@ -1347,7 +1348,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		}
 		iteratorMock.On("Error").Return(nil).Once()
 		iteratorMock.On("Close").Return(nil).Once()
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPenalizedEvents(context.Background(), from, &to)
 		require.NoError(t, err)
 		assert.Equal(t, parsedPenalizations, result)
 		lbcMock.AssertExpectations(t)
@@ -1360,7 +1361,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 			Return(nil, assert.AnError).Once()
 		lbcMock.On("PenalizedEventIteratorAdapter", mock.AnythingOfType(penalizedIteratorString)).
 			Return(nil)
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPenalizedEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)
@@ -1375,7 +1376,7 @@ func TestLiquidityBridgeContractImpl_GetPeginPunishmentEvents(t *testing.T) {
 		iteratorMock.On("Next").Return(false).Once()
 		iteratorMock.On("Error").Return(assert.AnError).Once()
 		iteratorMock.On("Close").Return(nil).Once()
-		result, err := lbc.GetPeginPunishmentEvents(context.Background(), from, &to)
+		result, err := lbc.GetPenalizedEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
 		lbcMock.AssertExpectations(t)

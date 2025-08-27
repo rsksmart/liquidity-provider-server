@@ -2,22 +2,24 @@ package liquidity_provider_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations: map[int]uint16{5: 10},
-			BtcConfirmations: map[int]uint16{10: 20},
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{"10": 20},
 		},
 		Signature: "010203",
 		Hash:      "040506",
@@ -42,8 +44,8 @@ func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations: map[int]uint16{5: 10},
-			BtcConfirmations: map[int]uint16{10: 20},
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{"10": 20},
 		},
 		Signature: "010203",
 		Hash:      "040506",
@@ -71,5 +73,45 @@ func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 		require.Error(t, err)
 		lpRepository.AssertExpectations(t)
 		walletMock.AssertExpectations(t)
+	}
+}
+
+func TestSetGeneralConfigUseCase_Run_ValidateConfirmations(t *testing.T) {
+	walletMock := &mocks.RskWalletMock{}
+	hashMock := &mocks.HashMock{}
+
+	invalidConfigs := []lp.GeneralConfiguration{
+		// Empty RSK confirmations
+		{
+			RskConfirmations: map[string]uint16{},
+			BtcConfirmations: map[string]uint16{"10": 20},
+		},
+		// Empty BTC confirmations
+		{
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{},
+		},
+		// Negative key in RSK confirmations
+		{
+			RskConfirmations: map[string]uint16{"-1": 10},
+			BtcConfirmations: map[string]uint16{"10": 20},
+		},
+		// Zero key in BTC confirmations
+		{
+			RskConfirmations: map[string]uint16{"5": 10},
+			BtcConfirmations: map[string]uint16{"0": 20},
+		},
+	}
+
+	for _, cfg := range invalidConfigs {
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, walletMock, hashMock.Hash)
+		err := useCase.Run(context.Background(), cfg)
+		require.Error(t, err)
+		if len(cfg.RskConfirmations) == 0 || len(cfg.BtcConfirmations) == 0 {
+			require.ErrorIs(t, err, usecases.EmptyConfirmationsMapError)
+		} else {
+			require.ErrorIs(t, err, usecases.NonPositiveConfirmationKeyError)
+		}
 	}
 }

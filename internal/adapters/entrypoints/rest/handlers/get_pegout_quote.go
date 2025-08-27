@@ -31,7 +31,7 @@ func NewGetPegoutQuoteHandler(useCase *pegout.GetQuoteUseCase) http.HandlerFunc 
 
 		pegoutRequest := pegout.NewQuoteRequest(
 			quoteRequest.To,
-			entities.NewUWei(quoteRequest.ValueToTransfer),
+			entities.NewBigWei(quoteRequest.ValueToTransfer),
 			quoteRequest.RskRefundAddress,
 		)
 

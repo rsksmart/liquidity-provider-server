@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -163,6 +164,20 @@ func TestNewBigFloat64(t *testing.T) {
 	}
 }
 
+func TestBigFloat_StringFormatsFixedPoint(t *testing.T) {
+	bf := utils.NewBigFloat64(0.000012)
+	expected := "0.000012"
+	require.Equal(t, expected, bf.String())
+}
+
+func TestStructFormatting_UsesFixedPoint(t *testing.T) {
+	type sample struct {
+		FeeRate *utils.BigFloat
+	}
+	payload := sample{FeeRate: utils.NewBigFloat64(0.000012)}
+	formatted := fmt.Sprintf("%+v", payload)
+	require.Contains(t, formatted, "FeeRate:0.000012")
+}
 func TestBigFloat_Native(t *testing.T) {
 	tests := []struct {
 		name string
@@ -610,4 +625,57 @@ func TestBigFloat_UnmarshalJSON_NullInput(t *testing.T) {
 	expectedFloat64, _ := expected.Float64()
 	actualFloat64, _ := bf.Native().Float64()
 	require.InDelta(t, expectedFloat64, actualFloat64, 1e-10)
+}
+
+func TestCompareIgnore0x(t *testing.T) {
+	cases := []struct {
+		name     string
+		a        string
+		b        string
+		expected bool
+	}{
+		{
+			name:     "Equal with 0x prefix and without",
+			a:        "0x123abc",
+			b:        "123abc",
+			expected: true,
+		},
+		{
+			name:     "Different values",
+			a:        "0x123abc",
+			b:        "0x456def",
+			expected: false,
+		},
+		{
+			name:     "Both empty strings",
+			a:        "",
+			b:        "",
+			expected: true,
+		},
+		{
+			name:     "Case insensitive match",
+			a:        "0xABCDEF",
+			b:        "abcdef",
+			expected: true,
+		},
+		{
+			name:     "No prefix, equal",
+			a:        "123abc",
+			b:        "123abc",
+			expected: true,
+		},
+		{
+			name:     "Completely different",
+			a:        "0x123",
+			b:        "0x456",
+			expected: false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.CompareIgnore0x(tt.a, tt.b)
+			require.Equal(t, tt.expected, result)
+		})
+	}
 }

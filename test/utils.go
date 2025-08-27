@@ -2,10 +2,15 @@ package test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/account"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +20,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -205,4 +212,68 @@ func WriteTestFile(t *testing.T, name string, content []byte) string {
 
 func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+}
+
+func AddDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	const depositTopic = "b1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
+	parsedDepositTopic, err := hex.DecodeString(depositTopic)
+	require.NoError(t, err)
+	quoteHashTopic, err := hex.DecodeString(retainedQuote.QuoteHash)
+	require.NoError(t, err)
+	senderTopic, err := hex.DecodeString(strings.TrimPrefix(receipt.From, "0x"))
+	require.NoError(t, err)
+
+	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
+	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
+	parsedData, err := hex.DecodeString(amountHex + timestampHex)
+	require.NoError(t, err)
+
+	log := blockchain.TransactionLog{
+		Address: pegoutQuote.LbcAddress,
+		Topics: [][32]byte{
+			utils.To32Bytes(parsedDepositTopic),
+			utils.To32Bytes(quoteHashTopic),
+			utils.To32Bytes(senderTopic),
+		},
+		Data:        parsedData,
+		BlockNumber: receipt.BlockNumber,
+		TxHash:      receipt.TransactionHash,
+		TxIndex:     0,
+		BlockHash:   receipt.BlockHash,
+		Index:       0,
+		Removed:     false,
+	}
+	receipt.Logs = slices.Insert(receipt.Logs, 0, log)
+	return receipt
+}
+
+func GetBitcoinTestBlock(t *testing.T, path string) *btcutil.Block {
+	absolutePath, err := filepath.Abs(path)
+	require.NoError(t, err)
+	blockFile, err := os.ReadFile(absolutePath)
+	require.NoError(t, err)
+	blockBytes, err := hex.DecodeString(string(blockFile))
+	require.NoError(t, err)
+	block, err := btcutil.NewBlockFromBytes(blockBytes)
+	require.NoError(t, err)
+	return block
+}
+
+func MustReadFileString(path string) string {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("MustRead: could not determine caller info")
+	}
+	baseDir := filepath.Dir(thisFile)
+	fullPath := filepath.Join(baseDir, path)
+	b, err := os.ReadFile(fullPath)
+	if err != nil {
+		panic(fmt.Errorf("MustRead: failed to read %q: %w", path, err))
+	}
+	return string(b)
 }

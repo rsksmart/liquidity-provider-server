@@ -3,6 +3,7 @@ package blockchain
 import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"regexp"
@@ -111,8 +112,9 @@ type BitcoinNetwork interface {
 	BuildMerkleBranch(txHash string) (MerkleBranch, error)
 	GetTransactionBlockInfo(txHash string) (BitcoinBlockInformation, error)
 	// GetCoinbaseInformation returns the coinbase transaction information of the block that includes txHash
-	GetCoinbaseInformation(txHash string) (BtcCoinbaseTransactionInformation, error)
+	GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error)
 	NetworkName() string
+	GetBlockchainInfo() (BitcoinBlockchainInfo, error)
 }
 
 type BitcoinTransactionInformation struct {
@@ -120,6 +122,13 @@ type BitcoinTransactionInformation struct {
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
 	HasWitness    bool
+}
+
+type BitcoinBlockchainInfo struct {
+	NetworkName      string
+	ValidatedBlocks  *big.Int
+	ValidatedHeaders *big.Int
+	BestBlockHash    string
 }
 
 func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entities.Wei {

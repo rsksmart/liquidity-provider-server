@@ -27,8 +27,8 @@ func TestNewProviderDetailsHandler(t *testing.T) {
 
 	providerMock := &mocks.ProviderMock{}
 	providerMock.On("GeneralConfiguration", mock.Anything).Return(lpEntity.GeneralConfiguration{
-		RskConfirmations:     map[int]uint16{1: 10, 2: 20, 3: 50, 4: 15},
-		BtcConfirmations:     map[int]uint16{1: 15, 2: 11, 3: 14, 4: 11},
+		RskConfirmations:     map[string]uint16{"1": 10, "2": 20, "3": 50, "4": 15},
+		BtcConfirmations:     map[string]uint16{"1": 15, "2": 11, "3": 14, "4": 11},
 		PublicLiquidityCheck: true,
 	}).Times(5)
 	providerMock.On("PeginConfiguration", mock.Anything).Return(lpEntity.PeginConfiguration{
