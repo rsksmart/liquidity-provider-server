@@ -83,14 +83,22 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()),
 		},
 		{
-			Path:    "/reports/pegin",
-			Method:  http.MethodGet,
-			Handler: handlers.NewGetReportsPeginHandler(useCaseRegistry.GetPeginReportUseCase()),
+			Path:   "/reports/pegin",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsPeginHandler(
+				handlers.SingleFlightGroup,
+				handlers.PegInReportSingleFlightKey,
+				useCaseRegistry.GetPeginReportUseCase(),
+			),
 		},
 		{
-			Path:    "/reports/pegout",
-			Method:  http.MethodGet,
-			Handler: handlers.NewGetReportsPegoutHandler(useCaseRegistry.GetPegoutReportUseCase()),
+			Path:   "/reports/pegout",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsPegoutHandler(
+				handlers.SingleFlightGroup,
+				handlers.PegOutReportSingleFlightKey,
+				useCaseRegistry.GetPegoutReportUseCase(),
+			),
 		},
 		// TODO enable again when final implementation is ready
 		/*{
