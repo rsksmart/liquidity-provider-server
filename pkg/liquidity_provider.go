@@ -248,7 +248,7 @@ type TrustedAccountDTO struct {
 
 type TrustedAccountRequest struct {
 	Address        string   `json:"address" validate:"required,eth_addr"`
-	Name           string   `json:"name" validate:"required"`
+	Name           string   `json:"name" validate:"required,max=100,min=1,not_blank"`
 	BtcLockingCap  *big.Int `json:"btcLockingCap" validate:"required,positive_integer_bigint"`
 	RbtcLockingCap *big.Int `json:"rbtcLockingCap" validate:"required,positive_integer_bigint"`
 }

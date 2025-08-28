@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -73,42 +74,61 @@ func init() {
 	}
 }
 
+func positiveIntegerBigintValidator(field validator.FieldLevel) bool {
+	fieldValue := field.Field().Interface()
+
+	// Handle both *big.Int and big.Int
+	var bigIntVal *big.Int
+	switch v := fieldValue.(type) {
+	case *big.Int:
+		bigIntVal = v
+	case big.Int:
+		bigIntVal = &v
+	default:
+		return false // Not a big.Int type
+	}
+
+	if bigIntVal == nil {
+		return false
+	}
+
+	return bigIntVal.Sign() > 0 // Only positive values (> 0)
+}
+
+func notBlankValidator(field validator.FieldLevel) bool {
+	str, ok := field.Field().Interface().(string)
+	if !ok {
+		return false // Not a string type
+	}
+
+	// Check if string is not empty after trimming whitespace
+	return len(strings.TrimSpace(str)) > 0
+}
+
+func positiveStringValidator(field validator.FieldLevel) bool {
+	return PositiveStringValidationRule(field.Field().String())
+}
+
+func registerValidator(tag string, fn validator.Func) error {
+	if err := RequestValidator.RegisterValidation(tag, fn); err != nil {
+		return fmt.Errorf("registering %s validation: %w", tag, err)
+	}
+	return nil
+}
+
 func registerValidations() error {
-	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	}); err != nil {
-		return fmt.Errorf("registering positive_string validation: %w", err)
+	validators := map[string]validator.Func{
+		"positive_string":         positiveStringValidator,
+		"max_decimal_places":      decimalPlacesValidator,
+		"confirmations_map":       ConfirmationsMapValidator,
+		"positive_integer_bigint": positiveIntegerBigintValidator,
+		"not_blank":               notBlankValidator,
 	}
 
-	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
-		return fmt.Errorf("registering max_decimal_places validation: %w", err)
-	}
-
-	if err := RequestValidator.RegisterValidation("confirmations_map", ConfirmationsMapValidator); err != nil {
-		return fmt.Errorf("registering confirmations_map validation: %w", err)
-	}
-
-	if err := RequestValidator.RegisterValidation("positive_integer_bigint", func(field validator.FieldLevel) bool {
-		fieldValue := field.Field().Interface()
-
-		// Handle both *big.Int and big.Int
-		var bigIntVal *big.Int
-		switch v := fieldValue.(type) {
-		case *big.Int:
-			bigIntVal = v
-		case big.Int:
-			bigIntVal = &v
-		default:
-			return false // Not a big.Int type
+	for tag, fn := range validators {
+		if err := registerValidator(tag, fn); err != nil {
+			return err
 		}
-
-		if bigIntVal == nil {
-			return false
-		}
-
-		return bigIntVal.Sign() > 0 // Only positive values (> 0)
-	}); err != nil {
-		return fmt.Errorf("registering positive_integer_bigint validation: %w", err)
 	}
 
 	return nil
@@ -198,6 +218,8 @@ func getValidationMessage(field validator.FieldError) string {
 		return fmt.Sprintf("must have at most %s decimal places", field.Param())
 	case "positive_integer_bigint":
 		return "must be a positive integer"
+	case "not_blank":
+		return "cannot be blank"
 	default:
 		return "validation failed: " + field.Tag()
 	}

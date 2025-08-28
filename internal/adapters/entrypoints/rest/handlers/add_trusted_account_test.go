@@ -380,6 +380,119 @@ func TestAddTrustedAccountHandler_CapValidation(t *testing.T) {
 	}
 }
 
+// Name validation test cases
+var nameValidationTests = []struct {
+	name           string
+	nameValue      string
+	expectStatus   int
+	expectError    bool
+	errorSubstring string
+}{
+	{
+		name:         "Valid company name should pass",
+		nameValue:    "Appleton Inc.",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:         "Valid name with international characters should pass",
+		nameValue:    "Juan & María Inc.",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:         "Valid name with special characters should pass",
+		nameValue:    "O'Rulz & Associates",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:         "Valid name with numbers and punctuation should pass",
+		nameValue:    "Company-2024 (Holdings) Ltd.",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:         "Single character name should pass",
+		nameValue:    "A",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:         "Name at max length (100 chars) should pass",
+		nameValue:    "Company Name Test String For Maximum Length Validation Testing Purposesxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:           "Empty name should fail",
+		nameValue:      "",
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "is required",
+	},
+	{
+		name:           "Whitespace-only name should fail",
+		nameValue:      "    ",
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "cannot be blank",
+	},
+	{
+		name:           "Tab and newline only name should fail",
+		nameValue:      "\t\n\r ",
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "cannot be blank",
+	},
+	{
+		name:           "Name exceeding max length (101 chars) should fail",
+		nameValue:      "Company Name Test String For Maximum Length Validation Testing Purposesxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "validation failed: max",
+	},
+}
+
+func TestAddTrustedAccountHandler_NameValidation(t *testing.T) {
+	for _, tc := range nameValidationTests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup handler with mocks
+			handler, repo, signer, hashMock := createAddressValidationHandler(tc.expectError)
+
+			// Create request with test name value
+			requestBody := pkg.TrustedAccountRequest{
+				Address:        "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b",
+				Name:           tc.nameValue,
+				BtcLockingCap:  big.NewInt(1000000),
+				RbtcLockingCap: big.NewInt(1000000),
+			}
+
+			bodyBytes, err := json.Marshal(requestBody)
+			require.NoError(t, err)
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/management/trusted-accounts", bytes.NewBuffer(bodyBytes))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			// Validate response
+			assert.Equal(t, tc.expectStatus, rr.Code, "Status code should match expected")
+
+			if tc.expectError {
+				validateFieldErrorResponse(t, rr.Body.Bytes(), tc.errorSubstring, "Name")
+			} else {
+				// Verify mock expectations for successful cases
+				repo.AssertExpectations(t)
+				signer.AssertExpectations(t)
+				hashMock.AssertExpectations(t)
+			}
+		})
+	}
+}
+
 // Decimal value test cases (testing JSON parsing behavior)
 var decimalValueTests = []struct {
 	name           string
