@@ -87,6 +87,30 @@ func registerValidations() error {
 	if err := RequestValidator.RegisterValidation("confirmations_map", ConfirmationsMapValidator); err != nil {
 		return fmt.Errorf("registering confirmations_map validation: %w", err)
 	}
+
+	if err := RequestValidator.RegisterValidation("positive_integer_bigint", func(field validator.FieldLevel) bool {
+		fieldValue := field.Field().Interface()
+
+		// Handle both *big.Int and big.Int
+		var bigIntVal *big.Int
+		switch v := fieldValue.(type) {
+		case *big.Int:
+			bigIntVal = v
+		case big.Int:
+			bigIntVal = &v
+		default:
+			return false // Not a big.Int type
+		}
+
+		if bigIntVal == nil {
+			return false
+		}
+
+		return bigIntVal.Sign() > 0 // Only positive values (> 0)
+	}); err != nil {
+		return fmt.Errorf("registering positive_integer_bigint validation: %w", err)
+	}
+
 	return nil
 }
 
@@ -172,6 +196,8 @@ func getValidationMessage(field validator.FieldError) string {
 		return "must be less than or equal to " + field.Param()
 	case "max_decimal_places":
 		return fmt.Sprintf("must have at most %s decimal places", field.Param())
+	case "positive_integer_bigint":
+		return "must be a positive integer"
 	default:
 		return "validation failed: " + field.Tag()
 	}

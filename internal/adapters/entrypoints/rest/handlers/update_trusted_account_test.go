@@ -24,7 +24,7 @@ func createValidRequest() *http.Request {
 	rbtcLockingCap := new(big.Int)
 	rbtcLockingCap.SetString("2000000000000000000", 10)
 	reqBody := &pkg.TrustedAccountRequest{
-		Address:        "0x123",
+		Address:        "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b",
 		Name:           "Test Account",
 		BtcLockingCap:  btcLockingCap,
 		RbtcLockingCap: rbtcLockingCap,

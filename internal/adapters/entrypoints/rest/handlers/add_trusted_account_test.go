@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -141,19 +142,33 @@ func createAddressValidationHandler(expectError bool) (http.HandlerFunc, *mocks.
 	return handler, repo, signer, hashMock
 }
 
-// Helper function to validate error response
-func validateErrorResponse(t *testing.T, body []byte, expectedSubstring string) {
+// Helper function to validate error response for specific fields
+func validateFieldErrorResponse(t *testing.T, body []byte, expectedSubstring string, fieldNames ...string) {
 	var errorResponse rest.ErrorResponse
 	err := json.Unmarshal(body, &errorResponse)
 	require.NoError(t, err, "Should be able to unmarshal error response")
 	assert.Equal(t, "validation error", errorResponse.Message, "Main error message should be 'validation error'")
 
-	if addressError, exists := errorResponse.Details["Address"]; exists {
-		addressErrorStr, ok := addressError.(string)
-		require.True(t, ok, "Address error should be a string")
-		assert.Contains(t, addressErrorStr, expectedSubstring, "Address validation error should contain expected substring")
-	} else {
-		t.Errorf("Expected 'Address' field in error details, but got: %+v", errorResponse.Details)
+	// Check if any of the specified fields has the expected error
+	found := false
+	for fieldName, fieldError := range errorResponse.Details {
+		for _, expectedField := range fieldNames {
+			if fieldName == expectedField {
+				errorStr, ok := fieldError.(string)
+				require.True(t, ok, "%s error should be a string", fieldName)
+				if strings.Contains(errorStr, expectedSubstring) {
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		t.Errorf("Expected error containing '%s' in fields %v, but got: %+v", expectedSubstring, fieldNames, errorResponse.Details)
 	}
 }
 
@@ -231,8 +246,8 @@ func TestAddTrustedAccountHandler_AddressValidation(t *testing.T) {
 			requestBody := pkg.TrustedAccountRequest{
 				Address:        tc.address,
 				Name:           "Test Account",
-				BtcLockingCap:  big.NewInt(0),
-				RbtcLockingCap: big.NewInt(0),
+				BtcLockingCap:  big.NewInt(1000000),
+				RbtcLockingCap: big.NewInt(1000000),
 			}
 
 			bodyBytes, err := json.Marshal(requestBody)
@@ -249,13 +264,177 @@ func TestAddTrustedAccountHandler_AddressValidation(t *testing.T) {
 			assert.Equal(t, tc.expectStatus, rr.Code, "Status code should match expected")
 
 			if tc.expectError {
-				validateErrorResponse(t, rr.Body.Bytes(), tc.errorSubstring)
+				validateFieldErrorResponse(t, rr.Body.Bytes(), tc.errorSubstring, "Address")
 			} else {
 				// Verify mock expectations for successful cases
 				repo.AssertExpectations(t)
 				signer.AssertExpectations(t)
 				hashMock.AssertExpectations(t)
 			}
+		})
+	}
+}
+
+// Cap validation test cases
+var capValidationTests = []struct {
+	name           string
+	btcCap         *big.Int
+	rbtcCap        *big.Int
+	expectStatus   int
+	expectError    bool
+	errorSubstring string
+}{
+	{
+		name:         "Valid positive caps should pass",
+		btcCap:       big.NewInt(1000000000000000000),
+		rbtcCap:      big.NewInt(2000000000000000000),
+		expectStatus: http.StatusNoContent,
+		expectError:  false,
+	},
+	{
+		name:           "Zero BTC cap should fail",
+		btcCap:         big.NewInt(0),
+		rbtcCap:        big.NewInt(1),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+	{
+		name:           "Zero RBTC cap should fail",
+		btcCap:         big.NewInt(1),
+		rbtcCap:        big.NewInt(0),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+	{
+		name:           "Both zero caps should fail",
+		btcCap:         big.NewInt(0),
+		rbtcCap:        big.NewInt(0),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+	{
+		name:           "Negative BTC cap should fail",
+		btcCap:         big.NewInt(-1),
+		rbtcCap:        big.NewInt(1),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+	{
+		name:           "Negative RBTC cap should fail",
+		btcCap:         big.NewInt(1),
+		rbtcCap:        big.NewInt(-100),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+	{
+		name:           "Both negative caps should fail",
+		btcCap:         big.NewInt(-1),
+		rbtcCap:        big.NewInt(-1),
+		expectStatus:   http.StatusBadRequest,
+		expectError:    true,
+		errorSubstring: "must be a positive integer",
+	},
+}
+
+func TestAddTrustedAccountHandler_CapValidation(t *testing.T) {
+	for _, tc := range capValidationTests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup handler with mocks
+			handler, repo, signer, hashMock := createAddressValidationHandler(tc.expectError)
+
+			// Create request with test cap values
+			requestBody := pkg.TrustedAccountRequest{
+				Address:        "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b",
+				Name:           "Test Account",
+				BtcLockingCap:  tc.btcCap,
+				RbtcLockingCap: tc.rbtcCap,
+			}
+
+			bodyBytes, err := json.Marshal(requestBody)
+			require.NoError(t, err)
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/management/trusted-accounts", bytes.NewBuffer(bodyBytes))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			// Validate response
+			assert.Equal(t, tc.expectStatus, rr.Code, "Status code should match expected")
+
+			if tc.expectError {
+				validateFieldErrorResponse(t, rr.Body.Bytes(), tc.errorSubstring, "BtcLockingCap", "RbtcLockingCap")
+			} else {
+				// Verify mock expectations for successful cases
+				repo.AssertExpectations(t)
+				signer.AssertExpectations(t)
+				hashMock.AssertExpectations(t)
+			}
+		})
+	}
+}
+
+// Decimal value test cases (testing JSON parsing behavior)
+var decimalValueTests = []struct {
+	name           string
+	jsonPayload    string
+	expectStatus   int
+	errorSubstring string
+}{
+	{
+		name:           "Decimal with .1 should be rejected during JSON parsing",
+		jsonPayload:    `{"name": "Test Account", "address": "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b", "btcLockingCap": 1000000.1, "rbtcLockingCap": 2000000.5}`,
+		expectStatus:   http.StatusBadRequest,
+		errorSubstring: "cannot unmarshal",
+	},
+	{
+		name:           "String values should be rejected during JSON parsing",
+		jsonPayload:    `{"name": "Test Account", "address": "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b", "btcLockingCap": "1000000", "rbtcLockingCap": "2000000"}`,
+		expectStatus:   http.StatusBadRequest,
+		errorSubstring: "cannot unmarshal",
+	},
+	{
+		name:           "Scientific notation should be rejected during JSON parsing",
+		jsonPayload:    `{"name": "Test Account", "address": "0x7C4890A0f1D4bBf2C669Ac2d1efFa185c505359b", "btcLockingCap": 1e6, "rbtcLockingCap": 2e6}`,
+		expectStatus:   http.StatusBadRequest,
+		errorSubstring: "cannot unmarshal",
+	},
+}
+
+func TestAddTrustedAccountHandler_DecimalValueRejection(t *testing.T) {
+	for _, tc := range decimalValueTests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mocks.TrustedAccountRepositoryMock{}
+			signer := &mocks.TransactionSignerMock{}
+			hashMock := &mocks.HashMock{}
+
+			useCase := lpuc.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
+			handler := http.HandlerFunc(handlers.NewAddTrustedAccountHandler(useCase))
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/management/trusted-accounts", strings.NewReader(tc.jsonPayload))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+
+			// Should fail during JSON parsing before reaching validation
+			assert.Equal(t, tc.expectStatus, rr.Code, "Status code should match expected")
+
+			var errorResponse rest.ErrorResponse
+			err = json.Unmarshal(rr.Body.Bytes(), &errorResponse)
+			require.NoError(t, err, "Should be able to unmarshal error response")
+			assert.Contains(t, errorResponse.Message, tc.errorSubstring, "Error message should contain expected substring")
+
+			repo.AssertNotCalled(t, "AddTrustedAccount")
+			signer.AssertNotCalled(t, "SignBytes")
+			hashMock.AssertNotCalled(t, "Hash")
 		})
 	}
 }
