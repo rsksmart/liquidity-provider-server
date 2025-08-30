@@ -1,11 +1,13 @@
-package integration_test
+package integration
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/suite"
 	"io"
+	"math/big"
 	"net/http"
 )
 
@@ -21,7 +23,7 @@ type Result[responseType any] struct {
 	StatusCode  int
 }
 
-func execute[responseType any](execution Execution) (Result[responseType], error) {
+func ExecuteHttpRequest[responseType any](execution Execution) (Result[responseType], error) {
 	payload, err := json.Marshal(execution.Body)
 	if err != nil {
 		return Result[responseType]{}, err
@@ -63,4 +65,19 @@ func execute[responseType any](execution Execution) (Result[responseType], error
 		RawResponse: bodyBytes,
 	}
 	return result, nil
+}
+
+func AssertFields(s *suite.Suite, expectedFields []string, object map[string]any) {
+	for _, field := range expectedFields {
+		_, exists := object[field]
+		s.Require().True(exists, "Field %v is missing", field)
+	}
+}
+
+func SumAll(numbers ...*big.Int) *big.Int {
+	sum := new(big.Int)
+	for _, number := range numbers {
+		sum.Add(sum, number)
+	}
+	return sum
 }
