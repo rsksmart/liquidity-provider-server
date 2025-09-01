@@ -76,7 +76,7 @@
 
 .table-responsive {
     border-radius: 4px;
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 #trustedAccountsTable button {
@@ -92,6 +92,15 @@
 #trustedAccountsTable .cap-cell {
     text-align: right;
     font-family: monospace;
+}
+
+#trustedAccountsTableWrapper td,
+#trustedAccountsTableWrapper th {
+    white-space: nowrap;
+}
+
+#trustedAccountsTable .name-cell {
+    white-space: nowrap;
 }
 
 .collateral-inputs {
