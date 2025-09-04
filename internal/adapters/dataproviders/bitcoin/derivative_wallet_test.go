@@ -501,7 +501,7 @@ func testSendWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressI
 	require.NoError(t, err)
 	assert.NotEmpty(t, result.Hash)
 	assert.NotNil(t, result.Fee)
-	expectedFee := entities.SatoshiToWei(5000000000)
+	expectedFee := entities.SatoshiToWei(50)
 	assert.Equal(t, expectedFee, result.Fee)
 	client.AssertExpectations(t)
 }

@@ -233,7 +233,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	}
 
 	// Convert fee from satoshis to wei
-	feeSatoshis := uint64(fundedTx.Fee * 100000000) // Convert from BTC to satoshis
+	feeSatoshis := uint64(fundedTx.Fee)
 	feeWei := entities.SatoshiToWei(feeSatoshis)
 
 	return blockchain.BitcoinTransactionResult{
