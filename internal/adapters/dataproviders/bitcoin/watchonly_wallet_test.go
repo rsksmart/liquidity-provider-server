@@ -5,6 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -18,11 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math"
-	"os"
-	"path/filepath"
-	"slices"
-	"testing"
 )
 
 var getTransactionsExpectedResult = []blockchain.BitcoinTransactionInformation{
@@ -302,5 +303,6 @@ func TestWatchOnlyWallet_SendWithOpReturn(t *testing.T) {
 	require.NoError(t, err)
 	result, err := wallet.SendWithOpReturn("address", nil, nil)
 	require.ErrorContains(t, err, "cannot send from a watch-only wallet")
-	require.Empty(t, result)
+	require.Empty(t, result.Hash)
+	require.Nil(t, result.Fee)
 }

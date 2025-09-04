@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"sync"
 )
 
 type SendPegoutUseCase struct {
@@ -150,7 +151,6 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 ) (quote.RetainedPegoutQuote, error) {
 	var err error
 	var newState quote.PegoutState
-	var txHash string
 
 	quoteHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
 	if err != nil {
@@ -158,7 +158,8 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
-	if txHash, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
+	var txResult blockchain.BitcoinTransactionResult
+	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
 	} else {
 		newState = quote.PegoutStateSendPegoutSucceeded
@@ -166,7 +167,10 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, retainedQuote.QuoteHash)
 
-	retainedQuote.LpBtcTxHash = txHash
+	retainedQuote.LpBtcTxHash = txResult.Hash
+	if txResult.Fee != nil {
+		retainedQuote.SendPegoutBtcFee = txResult.Fee
+	}
 	retainedQuote.State = newState
 	useCase.eventBus.Publish(quote.PegoutBtcSentToUserEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),

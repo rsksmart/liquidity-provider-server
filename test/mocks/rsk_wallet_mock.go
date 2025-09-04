@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/stretchr/testify/mock"
@@ -22,9 +23,9 @@ type RskWalletMock struct {
 	mock.Mock
 }
 
-func (m *RskWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (string, error) {
+func (m *RskWalletMock) SendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (blockchain.TransactionReceipt, error) {
 	args := m.Called(ctx, config, toAddress)
-	return args.String(0), args.Error(1)
+	return args.Get(0).(blockchain.TransactionReceipt), args.Error(1)
 }
 
 func (m *RskWalletMock) SignBytes(msg []byte) ([]byte, error) {
