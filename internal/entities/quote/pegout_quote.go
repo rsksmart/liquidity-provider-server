@@ -2,6 +2,7 @@ package quote
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -27,12 +28,14 @@ const (
 	PegoutStateWaitingForDepositConfirmations PegoutState = "WaitingForDepositConfirmations"
 	PegoutStateBridgeTxSucceeded              PegoutState = "BridgeTxSucceeded"
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
+	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 )
 
 type PegoutQuoteRepository interface {
 	InsertQuote(ctx context.Context, quote CreatedPegoutQuote) error
 	GetPegoutCreationData(ctx context.Context, hash string) PegoutCreationData
 	GetQuote(ctx context.Context, hash string) (*PegoutQuote, error)
+	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PegoutQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPegoutQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPegoutQuote) error
 	ListPegoutDepositsByAddress(ctx context.Context, address string) ([]PegoutDeposit, error)
@@ -43,6 +46,9 @@ type PegoutQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	UpsertPegoutDeposit(ctx context.Context, deposit PegoutDeposit) error
 	UpsertPegoutDeposits(ctx context.Context, deposits []PegoutDeposit) error
+	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PegoutQuoteWithRetained, int, error)
+	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
+	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
 }
 
 type CreatedPegoutQuote struct {
@@ -74,7 +80,7 @@ type PegoutQuote struct {
 	RskRefundAddress      string        `json:"rskRefundAddress" bson:"rsk_refund_address" validate:"required"`
 	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"required"`
 	CallFee               *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
-	PenaltyFee            uint64        `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
+	PenaltyFee            *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
 	Nonce                 int64         `json:"nonce" bson:"nonce" validate:"required"`
 	DepositAddress        string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
 	Value                 *entities.Wei `json:"value" bson:"value" validate:"required"`
@@ -86,7 +92,7 @@ type PegoutQuote struct {
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`
 	ExpireBlock           uint32        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
 	GasFee                *entities.Wei `json:"gasFee" bson:"gas_fee" validate:"required"`
-	ProductFeeAmount      uint64        `json:"productFeeAmount" bson:"product_fee_amount" validate:""`
+	ProductFeeAmount      *entities.Wei `json:"productFeeAmount" bson:"product_fee_amount" validate:""`
 }
 
 func (quote *PegoutQuote) ExpireTime() time.Time {
@@ -111,24 +117,29 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 	if quote.GasFee == nil {
 		quote.GasFee = entities.NewWei(0)
 	}
+	if quote.ProductFeeAmount == nil {
+		quote.ProductFeeAmount = entities.NewWei(0)
+	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)
-	total.Add(total, entities.NewUWei(quote.ProductFeeAmount))
+	total.Add(total, quote.ProductFeeAmount)
 	total.Add(total, quote.GasFee)
 	return total
 }
 
 type RetainedPegoutQuote struct {
-	QuoteHash          string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress     string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature          string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity  *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State              PegoutState   `json:"state" bson:"state" validate:"required"`
-	UserRskTxHash      string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
-	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
-	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	QuoteHash           string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress      string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature           string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity   *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State               PegoutState   `json:"state" bson:"state" validate:"required"`
+	UserRskTxHash       string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
+	LpBtcTxHash         string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
+	RefundPegoutTxHash  string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	BridgeRefundTxHash  string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	BtcReleaseTxHash    string        `json:"btcReleaseTxHash" bson:"btc_release_tx_hash"`
+	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 type WatchedPegoutQuote struct {
@@ -176,4 +187,9 @@ type PegoutBtcSentToUserEvent struct {
 	RetainedQuote RetainedPegoutQuote
 	CreationData  PegoutCreationData
 	Error         error
+}
+
+type PegoutQuoteWithRetained struct {
+	Quote         PegoutQuote
+	RetainedQuote RetainedPegoutQuote
 }

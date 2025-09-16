@@ -52,7 +52,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 					RequiredConfirmations: env.Rsk.BridgeRequiredConfirmations,
 					ErpKeys:               env.Rsk.ErpKeys,
 				},
-				bridge,
+				rootstock.NewRskBridgeAdapter(bridge),
 				client,
 				btcParams,
 				rootstock.DefaultRetryParams,

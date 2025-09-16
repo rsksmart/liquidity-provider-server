@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
 	"regexp"
 	"strings"
@@ -23,7 +23,7 @@ var (
 )
 
 type RskContracts struct {
-	Bridge       RootstockBridge
+	Bridge       rootstock.Bridge
 	Lbc          LiquidityBridgeContract
 	FeeCollector FeeCollector
 }
@@ -50,6 +50,24 @@ type TransactionReceipt struct {
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
 	Value             *entities.Wei
+	Logs              []TransactionLog
+}
+
+type TransactionLog struct {
+	Address     string
+	Topics      [][32]byte
+	Data        []byte
+	BlockNumber uint64
+	TxHash      string
+	TxIndex     uint
+	BlockHash   string
+	Index       uint
+	Removed     bool
+}
+
+type ParsedLog[E any] struct {
+	Log    E
+	RawLog TransactionLog
 }
 
 type BlockInfo struct {
@@ -74,63 +92,10 @@ type RootstockRpcServer interface {
 	GetTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
+	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 }
 
 type RootstockWallet interface {
 	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (string, error)
 	GetBalance(ctx context.Context) (*entities.Wei, error)
-}
-
-type FlyoverDerivationArgs struct {
-	FedInfo              FederationInfo
-	LbcAdress            []byte
-	UserBtcRefundAddress []byte
-	LpBtcAddress         []byte
-	QuoteHash            []byte
-}
-
-type FlyoverDerivation struct {
-	Address      string
-	RedeemScript string
-}
-
-type BtcCoinbaseTransactionInformation struct {
-	BtcTxSerialized      []byte
-	BlockHash            [32]byte
-	BlockHeight          *big.Int
-	SerializedPmt        []byte
-	WitnessMerkleRoot    [32]byte
-	WitnessReservedValue [32]byte
-}
-
-func (params BtcCoinbaseTransactionInformation) String() string {
-	return fmt.Sprintf(
-		"RegisterPeginParams { BtcTxSerialized: %s, BlockHash: %s, BlockHeight: %d"+
-			"SerializedPmt: %s, WitnessMerkleRoot: %s, WitnessReservedValue: %s }",
-		hex.EncodeToString(params.BtcTxSerialized),
-		hex.EncodeToString(params.BlockHash[:]),
-		params.BlockHeight.Uint64(),
-		hex.EncodeToString(params.SerializedPmt),
-		hex.EncodeToString(params.WitnessMerkleRoot[:]),
-		hex.EncodeToString(params.WitnessReservedValue[:]),
-	)
-}
-
-type RootstockBridge interface {
-	GetAddress() string
-	GetFedAddress() (string, error)
-	GetMinimumLockTxValue() (*entities.Wei, error)
-	GetFlyoverDerivationAddress(args FlyoverDerivationArgs) (FlyoverDerivation, error)
-	GetRequiredTxConfirmations() uint64
-	FetchFederationInfo() (FederationInfo, error)
-	RegisterBtcCoinbaseTransaction(registrationParams BtcCoinbaseTransactionInformation) (string, error)
-}
-
-type FederationInfo struct {
-	FedSize              int64
-	FedThreshold         int64
-	PubKeys              []string
-	FedAddress           string
-	ActiveFedBlockHeight int64
-	ErpKeys              []string
 }

@@ -3,16 +3,19 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
+	"slices"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"slices"
+	"math/big"
 )
 
 var (
 	AmountOutOfRangeError = errors.New("amount out of range")
 )
 
-type ConfirmationsPerAmount map[int]uint16
+// ConfirmationsPerAmount the key represents the amount in wei serialized as a string, and the value represents the number of confirmations required for that amount.
+type ConfirmationsPerAmount map[string]uint16
 
 type PeginConfiguration struct {
 	TimeForDeposit uint32          `json:"timeForDeposit" bson:"time_for_deposit" validate:"required"`
@@ -74,7 +77,7 @@ type HashedCredentials struct {
 }
 
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
 }
 
 func validateRange(min, max, amount *entities.Wei) error {
@@ -97,19 +100,25 @@ func (confirmations ConfirmationsPerAmount) Max() uint16 {
 }
 
 func (confirmations ConfirmationsPerAmount) ForValue(value *entities.Wei) uint16 {
-	values := make([]int, 0)
+	values := make([]*big.Int, 0)
 	for key := range confirmations {
-		values = append(values, key)
+		bigIntKey := new(big.Int)
+		_, ok := bigIntKey.SetString(key, 10)
+		if !ok {
+			bigIntKey.SetInt64(0)
+		}
+		values = append(values, bigIntKey)
 	}
-	slices.Sort(values)
-	index := slices.IndexFunc(values, func(item int) bool {
-		bigItem := entities.NewWei(int64(item))
-		return value.Cmp(bigItem) <= 0
+	slices.SortFunc(values, func(a, b *big.Int) int {
+		return a.Cmp(b)
+	})
+	index := slices.IndexFunc(values, func(item *big.Int) bool {
+		return value.AsBigInt().Cmp(item) <= 0
 	})
 	if index == -1 {
-		return confirmations[values[len(values)-1]]
+		return confirmations[values[len(values)-1].String()]
 	} else {
-		return confirmations[values[index]]
+		return confirmations[values[index].String()]
 	}
 }
 
