@@ -31,12 +31,14 @@ type rskBridgeImpl struct {
 	retryParams           RetryParams
 	signer                TransactionSigner
 	miningTimeout         time.Duration
+	useSegwitFederation   bool
 }
 
 type RskBridgeConfig struct {
 	Address               string
 	RequiredConfirmations uint64
 	ErpKeys               []string
+	UseSegwitFederation   bool
 }
 
 func NewRskBridgeImpl(
@@ -58,6 +60,7 @@ func NewRskBridgeImpl(
 		retryParams:           retryParams,
 		signer:                signer,
 		miningTimeout:         miningTimeout,
+		useSegwitFederation:   config.UseSegwitFederation,
 	}
 }
 
@@ -164,6 +167,7 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, er
 		FedAddress:           fedAddress,
 		ActiveFedBlockHeight: activeFedBlockHeight.Int64(),
 		ErpKeys:              bridge.erpKeys,
+		UseSegwit:            bridge.useSegwitFederation,
 	}, nil
 }
 

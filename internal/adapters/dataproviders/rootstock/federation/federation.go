@@ -76,12 +76,17 @@ func addStdNToMScriptPart(fedInfo rootstock.FederationInfo, builder *txscript.Sc
 }
 
 func ValidateRedeemScript(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params, script []byte) error {
-	segwitScript, err := bitcoin.ScriptToP2shP2wsh(script)
-	if err != nil {
-		return err
+	var federationScript []byte
+	var err error
+	if fedInfo.UseSegwit {
+		if federationScript, err = bitcoin.ScriptToP2shP2wsh(script); err != nil {
+			return err
+		}
+	} else {
+		federationScript = script
 	}
 
-	addr, err := btcutil.NewAddressScriptHash(segwitScript, &btcParams)
+	addr, err := btcutil.NewAddressScriptHash(federationScript, &btcParams)
 	if err != nil {
 		return err
 	}
@@ -263,7 +268,12 @@ func CalculateFlyoverDerivationAddress(fedInfo rootstock.FederationInfo, btcPara
 
 	flyoverScript := GetFlyoverRedeemScript(derivationValue, fedRedeemScript)
 
-	addressScriptHash, err = bitcoin.ScriptToAddressP2shP2wsh(flyoverScript, &btcParams)
+	if fedInfo.UseSegwit {
+		addressScriptHash, err = bitcoin.ScriptToAddressP2shP2wsh(flyoverScript, &btcParams)
+	} else {
+		addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
+	}
+
 	if err != nil {
 		return rootstock.FlyoverDerivation{}, err
 	}

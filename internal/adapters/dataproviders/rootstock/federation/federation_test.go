@@ -24,14 +24,17 @@ type testQuote struct {
 	QuoteHash                   string
 	ExpectedDerivationValueHash string
 	ExpectedAddressHash         string
+	ExpectedP2SHAddressHash     string
 	NetworkParams               *chaincfg.Params
 	FedInfo                     rootstock.FederationInfo
 }
 
 const (
-	federationMainnetAddress = "3MQ5CLsHWjzz24ZGnHDECjKxvPmdNdyEVX"
-	federationTestnetAddress = "2NCxHG5oK8CWLDrBpTQq6pgKE8jyoB2DpTe"
-	invalidKey               = "invalidKey"
+	federationMainnetAddress       = "3MQ5CLsHWjzz24ZGnHDECjKxvPmdNdyEVX"
+	federationTestnetAddress       = "2NCxHG5oK8CWLDrBpTQq6pgKE8jyoB2DpTe"
+	federationLegacyMainnetAddress = "3PiQttcndFEfsE9jUjEdqAUeNESHgEa76T"
+	federationLegacyTestnetAddress = "2NFGcxdYpEhk251nH9rrWT7TuaaeTVjRDQZ"
+	invalidKey                     = "invalidKey"
 )
 
 const (
@@ -51,6 +54,7 @@ var testQuotes = []testQuote{
 		LbcAddress:                  "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "2MxeEHVx71taCeVsXFsfQ7TKK6v943PFVEu",
+		ExpectedP2SHAddressHash:     "2NEpDCrxcENF6ySQVXvSEDEY7SdSnkNgd1U",
 		ExpectedDerivationValueHash: "ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c72",
 		NetworkParams:               &chaincfg.TestNet3Params,
 		FedInfo:                     mocks.GetFakeFedInfo(),
@@ -61,6 +65,7 @@ var testQuotes = []testQuote{
 		LbcAddress:                  "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "2MwR3FgiXewcWM9xUEWDyZXjCxmT3p5ahrR",
+		ExpectedP2SHAddressHash:     "2MwudEEwcB4Quo1NvGMnGkvvHBVTrkVuBTP",
 		ExpectedDerivationValueHash: "4cd8a9037f5342217092a9ccc027ab0af1be60bf015e4228afc87214f86f2e51",
 		NetworkParams:               &chaincfg.TestNet3Params,
 		FedInfo:                     mocks.GetFakeFedInfo(),
@@ -71,6 +76,7 @@ var testQuotes = []testQuote{
 		LbcAddress:                  "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "3DPRV3zbqGkb3orYADRMrh3AhdZJiPteS4",
+		ExpectedP2SHAddressHash:     "3CqwMXq1bLKjgb7XXVr12fsWX9Dmehs5xp",
 		ExpectedDerivationValueHash: "f07f644aa9123cd339f232be7f02ec536d40247f6f0c89a93d625ee57918c544",
 		NetworkParams:               &chaincfg.MainNetParams,
 		FedInfo:                     mocks.GetFakeFedInfo(),
@@ -81,6 +87,7 @@ var testQuotes = []testQuote{
 		LbcAddress:                  "2ff74F841b95E000625b3A77fed03714874C4fEa",
 		QuoteHash:                   "4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0",
 		ExpectedAddressHash:         "35PZtxos7QCwU3mYAiUQRgA5o1QFbkBycx",
+		ExpectedP2SHAddressHash:     "33o1WZxf27visUUt3nN6GEVNQWQWw2Fv9S",
 		ExpectedDerivationValueHash: "edb9cfe28705fa1619fe1c1bc70e55d5eee4965aea0de631bcf56434a7c454cc",
 		NetworkParams:               &chaincfg.MainNetParams,
 		FedInfo:                     mocks.GetFakeFedInfo(),
@@ -124,6 +131,47 @@ func TestDerivationComplete(t *testing.T) {
 		err = federation.ValidateRedeemScript(fedInfo, *test.NetworkParams, fedRedeemScript)
 		require.NoError(t, err)
 		require.EqualValues(t, test.ExpectedAddressHash, address.EncodeAddress())
+	}
+}
+
+func TestLegacyDerivationComplete(t *testing.T) {
+	for _, test := range testQuotes {
+
+		quoteHash, err := hex.DecodeString(test.QuoteHash)
+		require.NoError(t, err)
+		userBtcAddress, err := bitcoin.DecodeAddressBase58(test.BtcRefundAddress, true)
+		require.NoError(t, err)
+		lbcAddress, err := hex.DecodeString(test.LbcAddress)
+		require.NoError(t, err)
+		lpBtcAddress, err := bitcoin.DecodeAddressBase58(test.LpBtcAddress, true)
+		require.NoError(t, err)
+
+		args := rootstock.FlyoverDerivationArgs{
+			QuoteHash:            quoteHash,
+			UserBtcRefundAddress: userBtcAddress,
+			LbcAdress:            lbcAddress,
+			LpBtcAddress:         lpBtcAddress,
+		}
+		derivationHash := federation.GetDerivationValueHash(args)
+
+		fedInfo := mocks.GetFakeFedInfo()
+		fedInfo.UseSegwit = false
+		if test.NetworkParams.Name == chaincfg.TestNet3Params.Name {
+			fedInfo.FedAddress = federationLegacyTestnetAddress
+		} else {
+			fedInfo.FedAddress = federationLegacyMainnetAddress
+		}
+
+		fedRedeemScript, err := federation.GetFedRedeemScript(fedInfo, *test.NetworkParams)
+		require.NoError(t, err)
+
+		flyoverRedeemScript := federation.GetFlyoverRedeemScript(derivationHash, fedRedeemScript)
+		address, err := btcutil.NewAddressScriptHash(flyoverRedeemScript, test.NetworkParams)
+		require.NoError(t, err)
+
+		err = federation.ValidateRedeemScript(fedInfo, *test.NetworkParams, fedRedeemScript)
+		require.NoError(t, err)
+		require.EqualValues(t, test.ExpectedP2SHAddressHash, address.EncodeAddress())
 	}
 }
 
@@ -337,6 +385,42 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, *params, fedRedeemScript, derivationValue)
 		require.NoError(t, err)
 		assert.EqualValues(t, test.ExpectedAddressHash, derivation.Address)
+	}
+}
+
+func TestGetLegacyDerivedBitcoinAddress(t *testing.T) {
+	for _, test := range testQuotes {
+		params := test.NetworkParams
+		fedInfo := mocks.GetFakeFedInfo()
+
+		fedInfo.UseSegwit = false
+		if params.Name == chaincfg.TestNet3Params.Name {
+			fedInfo.FedAddress = federationLegacyTestnetAddress
+		} else {
+			fedInfo.FedAddress = federationLegacyMainnetAddress
+		}
+
+		quoteHash, err := hex.DecodeString(test.QuoteHash)
+		require.NoError(t, err)
+		userBtcAddress, err := bitcoin.DecodeAddressBase58(test.BtcRefundAddress, true)
+		require.NoError(t, err)
+		lbcAddress, err := hex.DecodeString(test.LbcAddress)
+		require.NoError(t, err)
+		lpBtcAddress, err := bitcoin.DecodeAddressBase58(test.LpBtcAddress, true)
+		require.NoError(t, err)
+		derivationArgs := rootstock.FlyoverDerivationArgs{
+			QuoteHash:            quoteHash,
+			UserBtcRefundAddress: userBtcAddress,
+			LbcAdress:            lbcAddress,
+			LpBtcAddress:         lpBtcAddress,
+		}
+
+		fedRedeemScript, err := federation.GetFedRedeemScript(fedInfo, *test.NetworkParams)
+		require.NoError(t, err)
+		derivationValue := federation.GetDerivationValueHash(derivationArgs)
+		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, *params, fedRedeemScript, derivationValue)
+		require.NoError(t, err)
+		assert.EqualValues(t, test.ExpectedP2SHAddressHash, derivation.Address)
 	}
 }
 

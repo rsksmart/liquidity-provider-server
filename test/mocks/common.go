@@ -22,5 +22,6 @@ func GetFakeFedInfo() rootstock.FederationInfo {
 		FedSize:              int64(len(keys)),
 		FedThreshold:         int64(len(keys)/2 + 1),
 		PubKeys:              keys,
+		UseSegwit:            true,
 	}
 }

@@ -32,7 +32,7 @@ const (
 )
 
 func TestNewRskBridgeImpl(t *testing.T) {
-	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, ErpKeys: []string{"key1", "key2", "key3"}}
+	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true}
 	client := rootstock.NewRskClient(&mocks.RpcClientBindingMock{})
 	bridge := rootstock.NewRskBridgeImpl(config, &mocks.RskBridgeAdapterMock{}, client, &chaincfg.TestNet3Params, rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)}, &mocks.TransactionSignerMock{}, time.Duration(1))
 	test.AssertNonZeroValues(t, bridge)
@@ -146,7 +146,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return(test.AnyAddress, nil).Once()
 		bridgeMock.On("GetActiveFederationCreationBlockHeight", mock.Anything).Return(big.NewInt(500), nil).Once()
 
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{ErpKeys: []string{"key1", "key2", "key3"}},
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true},
 			bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		fedInfo, err := bridge.FetchFederationInfo()
 		require.NoError(t, err)
@@ -157,6 +157,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 			PubKeys:              []string{"010203", "0a0b0c"},
 			ActiveFedBlockHeight: 500,
 			ErpKeys:              []string{"key1", "key2", "key3"},
+			UseSegwit:            true,
 		}, fedInfo)
 		bridgeMock.AssertExpectations(t)
 	})
