@@ -77,34 +77,43 @@ func NewProviderRegistrationParams(
 	}
 }
 
-type LiquidityBridgeContract interface {
+type PeginContract interface {
 	GetAddress() string
+	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
+	RegisterPegin(params RegisterPeginParams) (string, error)
+	DaoFeePercentage() (uint64, error)
+}
+
+type PegoutContract interface {
+	GetAddress() string
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
+	RefundUserPegOut(quoteHash string) (string, error)
+	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
+	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
+	DaoFeePercentage() (uint64, error)
+}
+
+type DiscoveryContract interface {
+	GetAddress() string
+	SetProviderStatus(id uint64, newStatus bool) error
+	UpdateProvider(name, url string) (string, error)
+	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
 	GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error)
 	GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error)
+	IsOperational(providerType liquidity_provider.ProviderType, address string) (bool, error)
+}
+
+type CollateralManagementContract interface {
+	GetAddress() string
+	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
 	ProviderResign() error
-	SetProviderStatus(id uint64, newStatus bool) error
+	WithdrawCollateral() error
+	AddCollateral(amount *entities.Wei) error
+	AddPegoutCollateral(amount *entities.Wei) error
 	GetCollateral(address string) (*entities.Wei, error)
 	GetPegoutCollateral(address string) (*entities.Wei, error)
 	GetMinimumCollateral() (*entities.Wei, error)
-	AddCollateral(amount *entities.Wei) error
-	AddPegoutCollateral(amount *entities.Wei) error
-	WithdrawCollateral() error
-	GetBalance(address string) (*entities.Wei, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
-	IsOperationalPegin(address string) (bool, error)
-	IsOperationalPegout(address string) (bool, error)
-	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
-	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
-	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
-	UpdateProvider(name, url string) (string, error)
-	RefundUserPegOut(quoteHash string) (string, error)
-}
-
-type FeeCollector interface {
-	DaoFeePercentage() (uint64, error)
 }

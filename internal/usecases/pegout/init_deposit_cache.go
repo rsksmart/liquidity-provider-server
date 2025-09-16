@@ -25,7 +25,7 @@ func (useCase *InitPegoutDepositCacheUseCase) Run(ctx context.Context, cacheStar
 		return usecases.WrapUseCaseError(usecases.InitPegoutDepositCacheId, err)
 	}
 
-	if deposits, err = useCase.contracts.Lbc.GetDepositEvents(ctx, cacheStartBlock, &height); err != nil {
+	if deposits, err = useCase.contracts.PegOut.GetDepositEvents(ctx, cacheStartBlock, &height); err != nil {
 		return usecases.WrapUseCaseError(usecases.InitPegoutDepositCacheId, err)
 	}
 

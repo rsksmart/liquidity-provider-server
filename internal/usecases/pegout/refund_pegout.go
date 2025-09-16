@@ -133,7 +133,7 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	var refundPegoutTxHash string
 	var err, updateError error
 
-	if refundPegoutTxHash, err = useCase.contracts.Lbc.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if refundPegoutTxHash, err = useCase.contracts.PegOut.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PegoutStateRefundPegOutFailed

@@ -126,7 +126,7 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.btcRegistry.MonitoringWallet)
 	app.addRunningService(app.messagingRegistry.EventBus)
 
-	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType)
+	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType())
 	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)
 	if errors.Is(err, usecases.AlreadyRegisteredError) {
 		log.Info("Provider already registered")

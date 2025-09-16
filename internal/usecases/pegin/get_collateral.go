@@ -17,7 +17,7 @@ func NewGetCollateralUseCase(contracts blockchain.RskContracts, peginProvider li
 }
 
 func (useCase *GetCollateralUseCase) Run() (*entities.Wei, error) {
-	collateral, err := useCase.contracts.Lbc.GetCollateral(useCase.peginProvider.RskAddress())
+	collateral, err := useCase.contracts.CollateralManagement.GetCollateral(useCase.peginProvider.RskAddress())
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.GetCollateralId, err)
 	}

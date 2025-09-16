@@ -46,41 +46,59 @@ type RskBridgeBinding interface {
 	FilterBatchPegoutCreated(opts *bind.FilterOpts, btcTxHash [][32]byte) (*bindings.RskBridgeBatchPegoutCreatedIterator, error)
 }
 
-type LbcBinding interface {
-	HashQuote(opts *bind.CallOpts, quote bindings.QuotesPeginQuote) ([32]byte, error)
-	HashPegoutQuote(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error)
-	GetProviderIds(opts *bind.CallOpts) (*big.Int, error)
-	GetProviders(opts *bind.CallOpts) ([]bindings.LiquidityBridgeContractLiquidityProvider, error)
-	GetProvider(opts *bind.CallOpts, providerAddress common.Address) (bindings.LiquidityBridgeContractLiquidityProvider, error)
-	Resign(opts *bind.TransactOpts) (*types.Transaction, error)
-	SetProviderStatus(opts *bind.TransactOpts, _providerId *big.Int, status bool) (*types.Transaction, error)
-	GetCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
-	GetPegoutCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
-	GetMinCollateral(opts *bind.CallOpts) (*big.Int, error)
-	AddCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
-	AddPegoutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
-	WithdrawCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
-	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
-	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote) (*types.Transaction, error)
-	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPeginQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
+type PegoutBinding interface {
+	HashPegOutQuote(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error)
 	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error)
-	IsOperational(opts *bind.CallOpts, addr common.Address) (bool, error)
-	IsOperationalForPegout(opts *bind.CallOpts, addr common.Address) (bool, error)
-	Register(opts *bind.TransactOpts, _name string, _apiBaseUrl string, _status bool, _providerType string) (*types.Transaction, error)
-	FilterPegOutDeposit(opts *bind.FilterOpts, quoteHash [][32]byte, sender []common.Address) (*bindings.LiquidityBridgeContractPegOutDepositIterator, error)
-	FilterPenalized(opts *bind.FilterOpts) (*bindings.LiquidityBridgeContractPenalizedIterator, error)
-	ParseRegister(log types.Log) (*bindings.LiquidityBridgeContractRegister, error)
-	ProductFeePercentage(opts *bind.CallOpts) (*big.Int, error)
-	IsPegOutQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
-	UpdateProvider(opts *bind.TransactOpts, _name string, _url string) (*types.Transaction, error)
+	FilterPegOutDeposit(opts *bind.FilterOpts, quoteHash [][32]byte, sender []common.Address, timestamp []*big.Int) (*bindings.IPegOutPegOutDepositIterator, error)
+	IsQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
 	RefundUserPegOut(opts *bind.TransactOpts, quoteHash [32]byte) (*types.Transaction, error)
+	GetFeePercentage(opts *bind.CallOpts) (*big.Int, error)
 }
 
-type LbcAdapter interface {
-	LbcBinding
+type PegoutContractAdapter interface {
+	PegoutBinding
 	Caller() ContractCallerBinding
-	DepositEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPegOutDepositIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPegOutDeposit]
-	PenalizedEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPenalizedIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPenalized]
+	DepositEventIteratorAdapter(rawIterator *bindings.IPegOutPegOutDepositIterator) EventIteratorAdapter[bindings.IPegOutPegOutDeposit]
+}
+
+type PeginBinding interface {
+	HashPegInQuote(opts *bind.CallOpts, quote bindings.QuotesPegInQuote) ([32]byte, error)
+	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
+	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote) (*types.Transaction, error)
+	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
+	GetFeePercentage(opts *bind.CallOpts) (*big.Int, error)
+}
+
+type PeginContractAdapter interface {
+	PeginBinding
+	Caller() ContractCallerBinding
+}
+
+type DiscoveryBinding interface {
+	IsOperational(opts *bind.CallOpts, providerType uint8, addr common.Address) (bool, error)
+	GetProviders(opts *bind.CallOpts) ([]bindings.FlyoverLiquidityProvider, error)
+	GetProvider(opts *bind.CallOpts, providerAddress common.Address) (bindings.FlyoverLiquidityProvider, error)
+	Register(opts *bind.TransactOpts, name string, apiBaseUrl string, status bool, providerType uint8) (*types.Transaction, error)
+	UpdateProvider(opts *bind.TransactOpts, _name string, _url string) (*types.Transaction, error)
+	SetProviderStatus(opts *bind.TransactOpts, _providerId *big.Int, status bool) (*types.Transaction, error)
+	ParseRegister(log types.Log) (*bindings.IFlyoverDiscoveryRegister, error)
+}
+
+type CollateralManagementBinding interface {
+	FilterPenalized(opts *bind.FilterOpts, liquidityProvider []common.Address, punisher []common.Address, quoteHash [][32]byte) (*bindings.ICollateralManagementPenalizedIterator, error)
+	Resign(opts *bind.TransactOpts) (*types.Transaction, error)
+	GetPegInCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
+	GetPegOutCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
+	GetMinCollateral(opts *bind.CallOpts) (*big.Int, error)
+	AddPegInCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
+	AddPegOutCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
+	WithdrawCollateral(opts *bind.TransactOpts) (*types.Transaction, error)
+}
+
+type CollateralManagementAdapter interface {
+	CollateralManagementBinding
+	Caller() ContractCallerBinding
+	PenalizedEventIteratorAdapter(rawIterator *bindings.ICollateralManagementPenalizedIterator) EventIteratorAdapter[bindings.ICollateralManagementPenalized]
 }
 
 type RskBridgeAdapter interface {
@@ -88,71 +106,6 @@ type RskBridgeAdapter interface {
 	BatchPegOutCreatedIteratorAdapter(rawIterator *bindings.RskBridgeBatchPegoutCreatedIterator) EventIteratorAdapter[bindings.RskBridgeBatchPegoutCreated]
 }
 
-type EventIteratorAdapter[T any] interface {
-	Next() bool
-	Close() error
-	Event() *T
-	Error() error
-}
-
 type ContractCallerBinding interface {
 	Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error
-}
-
-type depositEventIteratorAdapter struct {
-	*bindings.LiquidityBridgeContractPegOutDepositIterator
-}
-
-func (i *depositEventIteratorAdapter) Event() *bindings.LiquidityBridgeContractPegOutDeposit {
-	return i.LiquidityBridgeContractPegOutDepositIterator.Event
-}
-
-type penalizedEventIteratorAdapter struct {
-	*bindings.LiquidityBridgeContractPenalizedIterator
-}
-
-func (i *penalizedEventIteratorAdapter) Event() *bindings.LiquidityBridgeContractPenalized {
-	return i.LiquidityBridgeContractPenalizedIterator.Event
-}
-
-type lbcAdapter struct {
-	*bindings.LiquidityBridgeContract
-}
-
-func NewLbcAdapter(liquidityBridgeContract *bindings.LiquidityBridgeContract) LbcAdapter {
-	return &lbcAdapter{LiquidityBridgeContract: liquidityBridgeContract}
-}
-
-func (lbc *lbcAdapter) Caller() ContractCallerBinding {
-	return &bindings.LiquidityBridgeContractCallerRaw{
-		Contract: &lbc.LiquidityBridgeContract.LiquidityBridgeContractCaller,
-	}
-}
-
-func (lbc *lbcAdapter) DepositEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPegOutDepositIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPegOutDeposit] {
-	return &depositEventIteratorAdapter{LiquidityBridgeContractPegOutDepositIterator: rawIterator}
-}
-
-func (lbc *lbcAdapter) PenalizedEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPenalizedIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPenalized] {
-	return &penalizedEventIteratorAdapter{LiquidityBridgeContractPenalizedIterator: rawIterator}
-}
-
-type batchPegOutCreatedEventIteratorAdapter struct {
-	*bindings.RskBridgeBatchPegoutCreatedIterator
-}
-
-func (i *batchPegOutCreatedEventIteratorAdapter) Event() *bindings.RskBridgeBatchPegoutCreated {
-	return i.RskBridgeBatchPegoutCreatedIterator.Event
-}
-
-type rskBridgeAdapter struct {
-	*bindings.RskBridge
-}
-
-func NewRskBridgeAdapter(rskBridge *bindings.RskBridge) RskBridgeAdapter {
-	return &rskBridgeAdapter{RskBridge: rskBridge}
-}
-
-func (r rskBridgeAdapter) BatchPegOutCreatedIteratorAdapter(rawIterator *bindings.RskBridgeBatchPegoutCreatedIterator) EventIteratorAdapter[bindings.RskBridgeBatchPegoutCreated] {
-	return &batchPegOutCreatedEventIteratorAdapter{RskBridgeBatchPegoutCreatedIterator: rawIterator}
 }

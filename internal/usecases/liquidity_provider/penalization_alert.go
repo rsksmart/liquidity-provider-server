@@ -33,7 +33,7 @@ func NewPenalizationAlertUseCase(
 
 func (useCase *PenalizationAlertUseCase) Run(ctx context.Context, fromBlock, toBlock uint64) error {
 	var body string
-	events, err := useCase.contracts.Lbc.GetPenalizedEvents(ctx, fromBlock, &toBlock)
+	events, err := useCase.contracts.CollateralManagement.GetPenalizedEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.PenalizationId, err)
 	}

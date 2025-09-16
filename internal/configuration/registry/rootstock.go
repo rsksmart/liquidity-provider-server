@@ -16,10 +16,22 @@ type Rootstock struct {
 }
 
 func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory, timeouts environment.ApplicationTimeouts) (*Rootstock, error) {
-	var bridgeAddress, lbcAddress common.Address
-	var err error
+	var (
+		err                         error
+		bridgeAddress               common.Address
+		peginContractAddress        common.Address
+		pegoutContractAddress       common.Address
+		collateralManagementAddress common.Address
+		discoveryAddress            common.Address
+	)
 
-	if err = rootstock.ParseAddress(&lbcAddress, env.Rsk.LbcAddress); err != nil {
+	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
+		return nil, err
+	} else if err = rootstock.ParseAddress(&pegoutContractAddress, env.Rsk.PegoutContractAddress); err != nil {
+		return nil, err
+	} else if err = rootstock.ParseAddress(&collateralManagementAddress, env.Rsk.CollateralManagementAddress); err != nil {
+		return nil, err
+	} else if err = rootstock.ParseAddress(&discoveryAddress, env.Rsk.DiscoveryAddress); err != nil {
 		return nil, err
 	} else if err = rootstock.ParseAddress(&bridgeAddress, env.Rsk.BridgeAddress); err != nil {
 		return nil, err
@@ -30,7 +42,19 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 		return nil, err
 	}
 
-	lbc, err := bindings.NewLiquidityBridgeContract(lbcAddress, client.Rpc())
+	peginContract, err := bindings.NewIPegIn(peginContractAddress, client.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	pegoutContract, err := bindings.NewIPegOut(pegoutContractAddress, client.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	collateralManagement, err := bindings.NewICollateralManagement(collateralManagementAddress, client.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	discovery, err := bindings.NewIFlyoverDiscovery(discoveryAddress, client.Rpc())
 	if err != nil {
 		return nil, err
 	}
@@ -60,15 +84,39 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				wallet,
 				timeouts.MiningWait.Seconds(),
 			),
-			Lbc: rootstock.NewLiquidityBridgeContractImpl(
+			PegIn: rootstock.NewPeginContractImpl(
 				client,
-				env.Rsk.LbcAddress,
-				rootstock.NewLbcAdapter(lbc),
+				env.Rsk.PeginContractAddress,
+				rootstock.NewPeginContractAdapter(peginContract),
 				wallet,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
 			),
-			FeeCollector: rootstock.NewFeeCollectorImpl(rootstock.NewLbcAdapter(lbc), rootstock.DefaultRetryParams),
+			PegOut: rootstock.NewPegoutContractImpl(
+				client,
+				env.Rsk.PegoutContractAddress,
+				rootstock.NewPegoutContractAdapter(pegoutContract),
+				wallet,
+				rootstock.DefaultRetryParams,
+				timeouts.MiningWait.Seconds(),
+			),
+			CollateralManagement: rootstock.NewCollateralManagementContractImpl(
+				client,
+				wallet.Address().String(),
+				env.Rsk.CollateralManagementAddress,
+				rootstock.NewCollateralManagementAdapter(collateralManagement),
+				wallet,
+				rootstock.DefaultRetryParams,
+				timeouts.MiningWait.Seconds(),
+			),
+			Discovery: rootstock.NewDiscoveryContractImpl(
+				client,
+				env.Rsk.DiscoveryAddress,
+				discovery,
+				wallet,
+				rootstock.DefaultRetryParams,
+				timeouts.MiningWait.Seconds(),
+			),
 		},
 		Wallet: wallet,
 		Client: client,

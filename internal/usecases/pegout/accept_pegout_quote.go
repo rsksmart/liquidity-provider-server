@@ -90,7 +90,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 
 	retainedQuote = &quote.RetainedPegoutQuote{
 		QuoteHash:           quoteHash,
-		DepositAddress:      useCase.contracts.Lbc.GetAddress(),
+		DepositAddress:      useCase.contracts.PegOut.GetAddress(),
 		Signature:           quoteSignature,
 		RequiredLiquidity:   requiredLiquidity,
 		State:               quote.PegoutStateWaitingForDeposit,

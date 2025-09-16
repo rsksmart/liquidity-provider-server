@@ -8,12 +8,12 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
-type ProviderType string
+type ProviderType int
 
 const (
-	PeginProvider  ProviderType = "pegin"
-	PegoutProvider ProviderType = "pegout"
-	FullProvider   ProviderType = "both"
+	PeginProvider  ProviderType = 0
+	PegoutProvider ProviderType = 1
+	FullProvider   ProviderType = 2
 )
 
 const (
@@ -25,6 +25,7 @@ var (
 	ProviderNotFoundError      = errors.New("liquidity provider not found")
 	ConfigurationNotFoundError = errors.New("configuration not found")
 	InvalidSignatureError      = errors.New("invalid signature")
+	ProviderNotResignedError   = errors.New("provided hasn't completed resignation process")
 )
 
 func (p ProviderType) IsValid() bool {
@@ -44,12 +45,12 @@ func (p ProviderType) AcceptsPegout() bool {
 	return p == PegoutProvider || p == FullProvider
 }
 
-func ToProviderType(value string) (ProviderType, error) {
+func ToProviderType(value int) (ProviderType, error) {
 	providerType := ProviderType(value)
 	if providerType.IsValid() {
 		return providerType, nil
 	} else {
-		return "", InvalidProviderTypeError
+		return -1, InvalidProviderTypeError
 	}
 }
 

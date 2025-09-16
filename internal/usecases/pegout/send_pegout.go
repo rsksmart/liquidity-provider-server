@@ -141,7 +141,7 @@ func (useCase *SendPegoutUseCase) validateQuote(
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 
-	if completed, err = useCase.contracts.Lbc.IsPegOutQuoteCompleted(retainedQuote.QuoteHash); err != nil {
+	if completed, err = useCase.contracts.PegOut.IsPegOutQuoteCompleted(retainedQuote.QuoteHash); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if completed {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, fmt.Errorf("quote %s was already completed", retainedQuote.QuoteHash), false)

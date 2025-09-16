@@ -130,7 +130,7 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 	var newState quote.PeginState
 	var err error
 
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if registerPeginTxHash, err = useCase.contracts.PegIn.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed
