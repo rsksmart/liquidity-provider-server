@@ -93,7 +93,12 @@ func (s *PegOutSuite) SetupSuite() {
 		panic(err)
 	}
 	s.btcClient = btc
-	lbcExecutor, err := contracts.NewLegacyLbcExecutor(config.Rsk.LbcAddress, rsk)
+	lbcExecutor, err := contracts.NewSplityLbcExecutor(contracts.SplitAddresses{
+		Discovery:            config.Rsk.DiscoveryContract,
+		Pegout:               config.Rsk.PegoutContract,
+		Pegin:                config.Rsk.PeginContract,
+		CollateralManagement: config.Rsk.CollateralManagementContract,
+	}, rsk)
 	if err != nil {
 		panic(err)
 	}

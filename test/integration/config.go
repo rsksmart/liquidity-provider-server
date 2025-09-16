@@ -20,9 +20,12 @@ type InterfacesConfig struct {
 		WalletUnlockSeconds int64  `json:"walletUnlockSeconds"`
 	} `json:"btc"`
 	Rsk struct {
-		RpcUrl         string `json:"rpcUrl"`
-		LbcAddress     string `json:"lbcAddress"`
-		UserPrivateKey string `json:"userPrivateKey"`
+		RpcUrl                       string `json:"rpcUrl"`
+		PeginContract                string `json:"peginContract"`
+		PegoutContract               string `json:"pegoutContract"`
+		DiscoveryContract            string `json:"discoveryContract"`
+		CollateralManagementContract string `json:"collateralManagementContract"`
+		UserPrivateKey               string `json:"userPrivateKey"`
 	} `json:"rsk"`
 }
 

@@ -19,25 +19,44 @@ import (
 	"time"
 )
 
-type LegacyLbcExecutor struct {
-	lbc *bindings.LiquidityBridgeContract
+type SplitLbcExecutor struct {
+	pegin                *bindings.IPegIn
+	pegout               *bindings.IPegOut
+	discovery            *bindings.IFlyoverDiscovery
+	collateralManagement *bindings.ICollateralManagement
 }
 
-func NewLegacyLbcExecutor(address string, backend bind.ContractBackend) (*LegacyLbcExecutor, error) {
-	var lbc *bindings.LiquidityBridgeContract
-	var err error
-	if lbc, err = bindings.NewLiquidityBridgeContract(common.HexToAddress(address), backend); err != nil {
+type SplitAddresses struct {
+	Discovery            string
+	Pegout               string
+	Pegin                string
+	CollateralManagement string
+}
+
+func NewSplityLbcExecutor(addresses SplitAddresses, backend bind.ContractBackend) (*SplitLbcExecutor, error) {
+	var (
+		err                  error
+		pegin                *bindings.IPegIn
+		pegout               *bindings.IPegOut
+		discovery            *bindings.IFlyoverDiscovery
+		collateralManagement *bindings.ICollateralManagement
+	)
+	if pegin, err = bindings.NewIPegIn(common.HexToAddress(addresses.Pegin), backend); err != nil {
 		return nil, err
 	}
-	return &LegacyLbcExecutor{lbc: lbc}, nil
+	if pegout, err = bindings.NewIPegOut(common.HexToAddress(addresses.Pegout), backend); err != nil {
+		return nil, err
+	}
+	if discovery, err = bindings.NewIFlyoverDiscovery(common.HexToAddress(addresses.Discovery), backend); err != nil {
+		return nil, err
+	}
+	if collateralManagement, err = bindings.NewICollateralManagement(common.HexToAddress(addresses.CollateralManagement), backend); err != nil {
+		return nil, err
+	}
+	return &SplitLbcExecutor{pegin: pegin, pegout: pegout, discovery: discovery, collateralManagement: collateralManagement}, nil
 }
 
-func (executor *LegacyLbcExecutor) DepositPegout(
-	s TestSuite,
-	opts *bind.TransactOpts,
-	pegoutQuote pkg.PegoutQuoteDTO,
-	hexSignature string,
-) (*types.Receipt, *types.Transaction) {
+func (e *SplitLbcExecutor) DepositPegout(s TestSuite, opts *bind.TransactOpts, pegoutQuote pkg.PegoutQuoteDTO, hexSignature string) (*types.Receipt, *types.Transaction) {
 	opts.Value = integration.SumAll(
 		pegoutQuote.Value,
 		pegoutQuote.CallFee,
@@ -50,11 +69,11 @@ func (executor *LegacyLbcExecutor) DepositPegout(
 	s.Raw().Require().NoError(err)
 	opts.GasPrice = gasPrice
 
-	parsedQuote := executor.parsePegoutQuote(s.Raw(), pegoutQuote)
+	parsedQuote := e.parsePegoutQuote(s.Raw(), pegoutQuote)
 	signature, err := hex.DecodeString(hexSignature)
 	s.Raw().Require().NoError(err)
 
-	depositTx, err := executor.lbc.DepositPegout(opts, parsedQuote, signature)
+	depositTx, err := e.pegout.DepositPegOut(opts, parsedQuote, signature)
 	s.Raw().Require().NoError(err)
 	receipt, err := bind.WaitMined(ctx, s.RskClient(), depositTx)
 	s.Raw().Require().NoError(err)
@@ -62,18 +81,14 @@ func (executor *LegacyLbcExecutor) DepositPegout(
 	return receipt, depositTx
 }
 
-func (executor *LegacyLbcExecutor) GetRefundPegoutEvent(
-	s TestSuite,
-	timeout time.Duration,
-	quoteHash string,
-) RefundPegoutEvent {
+func (e *SplitLbcExecutor) GetRefundPegoutEvent(s TestSuite, timeout time.Duration, quoteHash string) RefundPegoutEvent {
 	var quoteHashByes [32]byte
-	eventChannel := make(chan *bindings.LiquidityBridgeContractPegOutRefunded)
+	eventChannel := make(chan *bindings.IPegOutPegOutRefunded)
 	parsedHash, err := hex.DecodeString(quoteHash)
 	s.Raw().Require().NoError(err)
 	copy(quoteHashByes[:], parsedHash)
 
-	subscription, err := executor.lbc.WatchPegOutRefunded(
+	subscription, err := e.pegout.WatchPegOutRefunded(
 		nil,
 		eventChannel,
 		[][32]byte{quoteHashByes},
@@ -99,17 +114,14 @@ func (executor *LegacyLbcExecutor) GetRefundPegoutEvent(
 	return RefundPegoutEvent{}
 }
 
-func (executor *LegacyLbcExecutor) GetCallForUserEvent(
-	s TestSuite,
-	timeout time.Duration,
-	userAddress, providerAddress string,
-) CallForUserEvent {
-	eventChannel := make(chan *bindings.LiquidityBridgeContractCallForUser)
-	subscription, err := executor.lbc.WatchCallForUser(
+func (e *SplitLbcExecutor) GetCallForUserEvent(s TestSuite, timeout time.Duration, userAddress, providerAddress string) CallForUserEvent {
+	eventChannel := make(chan *bindings.IPegInCallForUser)
+	subscription, err := e.pegin.WatchCallForUser(
 		nil,
 		eventChannel,
 		[]common.Address{common.HexToAddress(providerAddress)},
 		[]common.Address{common.HexToAddress(userAddress)},
+		nil,
 	)
 	s.Raw().Require().NoError(err)
 	defer subscription.Unsubscribe()
@@ -140,17 +152,18 @@ func (executor *LegacyLbcExecutor) GetCallForUserEvent(
 	return CallForUserEvent{}
 }
 
-func (executor *LegacyLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout time.Duration, quoteHash string) PegInRegisteredEvent {
+func (e *SplitLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout time.Duration, quoteHash string) PegInRegisteredEvent {
 	var quoteHashByes [32]byte
-	eventChannel := make(chan *bindings.LiquidityBridgeContractPegInRegistered)
+	eventChannel := make(chan *bindings.IPegInPegInRegistered)
 	parsedHash, err := hex.DecodeString(quoteHash)
 	s.Raw().Require().NoError(err)
 
 	copy(quoteHashByes[:], parsedHash)
-	subscription, err := executor.lbc.WatchPegInRegistered(
+	subscription, err := e.pegin.WatchPegInRegistered(
 		nil,
 		eventChannel,
 		[][32]byte{quoteHashByes},
+		nil,
 	)
 	s.Raw().Require().NoError(err)
 	defer subscription.Unsubscribe()
@@ -177,7 +190,7 @@ func (executor *LegacyLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout 
 	return PegInRegisteredEvent{}
 }
 
-func (executor *LegacyLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuote pkg.PegoutQuoteDTO) bindings.QuotesPegOutQuote {
+func (e *SplitLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuote pkg.PegoutQuoteDTO) bindings.QuotesPegOutQuote {
 	lpBtcAddress, err := bitcoin.DecodeAddress(originalQuote.LpBTCAddr)
 	s.Require().NoError(err)
 	btcRefundAddress, err := bitcoin.DecodeAddress(originalQuote.BtcRefundAddr)
@@ -193,7 +206,7 @@ func (executor *LegacyLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuot
 		CallFee:               originalQuote.CallFee,
 		PenaltyFee:            originalQuote.PenaltyFee,
 		Nonce:                 originalQuote.Nonce,
-		DeposityAddress:       depositAddress,
+		DepositAddress:        depositAddress,
 		Value:                 originalQuote.Value,
 		AgreementTimestamp:    originalQuote.AgreementTimestamp,
 		DepositDateLimit:      originalQuote.DepositDateLimit,
