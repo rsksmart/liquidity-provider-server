@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"slices"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"math/big"
-	"slices"
-	"time"
 )
 
 func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.TransactionReceipt, error) {
@@ -41,6 +42,7 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		GasUsed:           gasUsed,
 		Value:             entities.NewBigWei(tx.Value()),
 		Logs:              make([]blockchain.TransactionLog, len(receipt.Logs)),
+		GasPrice:          entities.NewBigWei(tx.GasPrice()),
 	}
 
 	for i, eventLog := range receipt.Logs {
