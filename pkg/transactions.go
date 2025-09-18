@@ -2,8 +2,7 @@ package pkg
 
 import (
 	"errors"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"math/big"
 )
 
 // GetTransactionsRequest combines date range filtering with pagination and type filtering
@@ -16,11 +15,11 @@ type GetTransactionsRequest struct {
 
 // GetTransactionsItem represents a single transaction in the history response
 type GetTransactionsItem struct {
-	QuoteHash string        `json:"quoteHash"`
-	Amount    *entities.Wei `json:"amount"`
-	CallFee   *entities.Wei `json:"callFee"`
-	GasFee    *entities.Wei `json:"gasFee"`
-	Status    string        `json:"status"`
+	QuoteHash string   `json:"quoteHash"`
+	Amount    *big.Int `json:"amount"`
+	CallFee   *big.Int `json:"callFee"`
+	GasFee    *big.Int `json:"gasFee"`
+	Status    string   `json:"status"`
 }
 
 // PaginationMetadata provides pagination information for paginated responses

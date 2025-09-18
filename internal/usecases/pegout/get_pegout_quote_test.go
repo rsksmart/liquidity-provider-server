@@ -75,11 +75,11 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, toAddress, result.PegoutQuote.BtcRefundAddress)
 	assert.Equal(t, entities.NewWei(1000000000000000000), result.PegoutQuote.Value)
 	assert.Equal(t, entities.NewWei(15500000000000200), result.PegoutQuote.CallFee)
-	assert.Equal(t, uint64(20), result.PegoutQuote.PenaltyFee)
+	assert.Equal(t, entities.NewWei(20), result.PegoutQuote.PenaltyFee)
 	assert.Equal(t, "0x1234", result.PegoutQuote.LbcAddress)
 	assert.NotEmpty(t, result.PegoutQuote.Nonce)
 	assert.NotEmpty(t, result.PegoutQuote.AgreementTimestamp)
-	assert.Zero(t, result.PegoutQuote.ProductFeeAmount)
+	assert.Equal(t, entities.NewWei(0), result.PegoutQuote.ProductFeeAmount)
 	assert.Equal(t, uint16(10), result.PegoutQuote.DepositConfirmations)
 	assert.Equal(t, uint16(10), result.PegoutQuote.TransferConfirmations)
 	assert.Equal(t, uint32(60000), result.PegoutQuote.TransferTime)
@@ -350,5 +350,5 @@ func getPegoutConfiguration() lpEntity.PegoutConfiguration {
 }
 
 func getGeneralConfiguration() lpEntity.GeneralConfiguration {
-	return lpEntity.GeneralConfiguration{RskConfirmations: map[int]uint16{1: 10}, BtcConfirmations: map[int]uint16{1: 10}}
+	return lpEntity.GeneralConfiguration{RskConfirmations: map[string]uint16{"1": 10}, BtcConfirmations: map[string]uint16{"1": 10}}
 }

@@ -67,7 +67,7 @@ func TestPeginBridgeWatcher_Prepare_ErrorHandling(t *testing.T) {
 func TestPeginBridgeWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPeginBridgeWatcher(nil, nil, blockchain.RskContracts{}, blockchain.Rpc{}, eventBus, ticker)
 	})
 	eventBus.AssertExpectations(t)

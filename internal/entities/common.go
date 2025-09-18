@@ -17,6 +17,13 @@ var (
 	DivideByZeroError    = errors.New("divide by zero error")
 )
 
+type NodeType = string
+
+const (
+	NodeTypeRootstock NodeType = "rootstock"
+	NodeTypeBitcoin   NodeType = "bitcoin"
+)
+
 func ValidateStruct(s any) error {
 	return validate.Struct(s)
 }

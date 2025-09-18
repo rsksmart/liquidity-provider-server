@@ -7,7 +7,8 @@ import {
     postConfig,
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
-    isToggableFeeKey
+    isToggableFeeKey,
+    formatCap
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -72,6 +73,7 @@ const createCheckboxInput = (inputContainer, section, key, value) => {
     checkbox.classList.add('form-check-input');
     checkbox.style.marginRight = '10px';
     checkbox.dataset.key = key;
+    checkbox.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-checkbox`);
     checkbox.checked = value;
     checkbox.addEventListener('change', () => setChanged(section.id));
     inputContainer.appendChild(checkbox);
@@ -83,12 +85,14 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     checkbox.classList.add('form-check-input');
     checkbox.style.marginRight = '10px';
     checkbox.dataset.key = `${key}_enabled`;
+    checkbox.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-checkbox`);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.dataset.originalValue = value;
 
     if (value === '0' || value === 0) {
@@ -104,7 +108,7 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
             input.disabled = false;
-            input.value = (input.dataset.originalValue === '0' || input.dataset.originalValue === 0) ? '' : 
+            input.value = (input.dataset.originalValue === '0' || input.dataset.originalValue === 0) ? '' :
                             isFeeKey(key) ? weiToEther(input.dataset.originalValue) : input.dataset.originalValue;
         } else {
             input.disabled = true;
@@ -127,6 +131,7 @@ const createFeeInput = (inputContainer, label, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = isFeeKey(key) ? weiToEther(value) : value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -140,6 +145,7 @@ const createFeePercentageInput = (inputContainer, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = typeof value === 'number' ? value.toString() : value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -151,6 +157,7 @@ const createDefaultInput = (inputContainer, section, key, value) => {
     input.style.width = '40%';
     input.classList.add('form-control');
     input.dataset.key = key;
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-${key}-input`);
     input.value = value;
     input.addEventListener('input', () => setChanged(section.id));
     inputContainer.appendChild(input);
@@ -269,6 +276,7 @@ const createConfirmationEntry = (container, configKey, index, amount = '', confi
     confirmationInput.dataset.field = 'confirmation';
     confirmationInput.dataset.index = index;
     confirmationInput.style.maxWidth = fieldWidth;
+    confirmationInput.setAttribute('data-testid', `config-${configKey}-${index}`);
 
     const confirmationInputAppend = document.createElement('span');
     confirmationInputAppend.classList.add('input-group-text', 'input-group-text-sm');
@@ -336,7 +344,7 @@ const showErrorToast = (errorMessage) => {
 const showWarningToast = (warningMessage) => {
     const existingToast = document.getElementById('warningToast');
     if (existingToast) existingToast.parentNode.removeChild(existingToast);
-    
+
     const toastElement = document.createElement('div');
     toastElement.id = 'warningToast';
     toastElement.classList.add('toast', 'text-bg-warning');
@@ -616,7 +624,7 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
 const displaySummaryData = (container, data) => {
     container.innerHTML = '';
     const table = document.createElement('table');
-    table.classList.add('table', 'table-striped'); 
+    table.classList.add('table', 'table-striped');
     const rows = [
         { label: 'Total Quotes', value: data.totalQuotesCount },
         { label: 'Accepted Quotes', value: data.acceptedQuotesCount },
@@ -649,13 +657,13 @@ const fetchSummariesReport = async (csrfToken) => {
         return;
     }
     try {
-        const response = await fetch(`/report/summaries?startDate=${startDate}&endDate=${endDate}`, {
+        const response = await fetch(`/reports/summaries?startDate=${startDate}&endDate=${endDate}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             }
-        }); 
+        });
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Failed to fetch summaries');
@@ -666,6 +674,271 @@ const fetchSummariesReport = async (csrfToken) => {
         displaySummaryData(document.getElementById('pegoutSummary'), data.pegoutSummary);
     } catch (error) {
         showErrorToast(`Error fetching summaries: ${error.message}`);
+    } finally {
+        loadingBar.style.display = 'none';
+    }
+};
+
+const fetchTrustedAccounts = async (csrfToken) => {
+    const loadingBar = document.getElementById('trustedAccountsLoadingBar');
+    loadingBar.style.display = 'block';
+    try {
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            const errorMessage = data.details?.error || data.message || 'Unknown error';
+            populateTrustedAccountsTable([], csrfToken, errorMessage);
+            showErrorToast(`Failed to load trusted accounts: ${errorMessage}`);
+        } else {
+            const accountsData = data.accounts || [];
+            populateTrustedAccountsTable(accountsData, csrfToken);
+        }
+    } catch (error) {
+        console.error('Error fetching trusted accounts:', error);
+        populateTrustedAccountsTable([], csrfToken, error.message);
+        showErrorToast(`Failed to load trusted accounts: ${error.message}`);
+    } finally {
+        loadingBar.style.display = 'none';
+    }
+};
+
+const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) => {
+    const tableBody = document.getElementById('trustedAccountsTable');
+    tableBody.innerHTML = '';
+
+    if (errorMessage) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center', 'text-danger');
+        cell.textContent = `Error: ${errorMessage}`;
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    if (!accounts || accounts.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.classList.add('text-center');
+        cell.textContent = 'No trusted accounts found.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    accounts.forEach(account => {
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        nameCell.textContent = account.name || 'Unknown';
+        const addressCell = document.createElement('td');
+        addressCell.classList.add('address-cell');
+        addressCell.textContent = account.address;
+
+        const btcCapCell = document.createElement('td');
+        btcCapCell.classList.add('cap-cell');
+        const btcValue = weiToEther(account.btcLockingCap);
+        btcCapCell.textContent = formatCap(btcValue, 'BTC');
+
+        const rbtcCapCell = document.createElement('td');
+        rbtcCapCell.classList.add('cap-cell');
+        const rbtcValue = weiToEther(account.rbtcLockingCap);
+        rbtcCapCell.textContent = formatCap(rbtcValue, 'rBTC');
+
+        const actionsCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
+        deleteButton.textContent = 'Remove';
+        deleteButton.addEventListener('click', () => removeTrustedAccount(account.address, csrfToken));
+        actionsCell.appendChild(deleteButton);
+
+        row.appendChild(nameCell);
+        row.appendChild(addressCell);
+        row.appendChild(btcCapCell);
+        row.appendChild(rbtcCapCell);
+        row.appendChild(actionsCell);
+        tableBody.appendChild(row);
+    });
+};
+
+// Helper function to clear form validation states
+const clearFormValidation = () => {
+    const formFields = ['accountName', 'accountAddress', 'btc_locking_cap', 'rbtc_locking_cap'];
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        field.classList.remove('is-invalid', 'is-valid');
+        // Remove any existing error message
+        const feedback = field.parentElement.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.remove();
+        }
+    });
+};
+
+// Helper function to show field-specific validation errors
+const showFieldError = (fieldId, errorMessage) => {
+    const field = document.getElementById(fieldId);
+    field.classList.add('is-invalid');
+    field.classList.remove('is-valid');
+
+    // Remove existing error message if any
+    const existingFeedback = field.parentElement.querySelector('.invalid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+
+    // Add new error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback';
+    errorDiv.textContent = errorMessage;
+    field.parentElement.appendChild(errorDiv);
+};
+
+// Helper function to validate numeric input
+const validatePositiveNumber = (value, fieldName) => {
+    if (!value || value.trim() === '') {
+        return `${fieldName} is required`;
+    }
+
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue <= 0) {
+        return `${fieldName} must be a positive number`;
+    }
+
+    return null;
+};
+
+const addTrustedAccount = async (csrfToken) => {
+    // Clear any previous validation states
+    clearFormValidation();
+
+    const name = document.getElementById('accountName').value.trim();
+    const address = document.getElementById('accountAddress').value.trim();
+    let btcLockingCap = document.getElementById('btc_locking_cap').value.trim();
+    let rbtcLockingCap = document.getElementById('rbtc_locking_cap').value.trim();
+
+    let hasValidationErrors = false;
+
+    if (!name) {
+        showFieldError('accountName', 'Account name is required');
+        hasValidationErrors = true;
+    }
+
+    if (!address) {
+        showFieldError('accountAddress', 'Account address is required');
+        hasValidationErrors = true;
+    }
+
+    const btcCapError = validatePositiveNumber(btcLockingCap, 'BTC Locking Cap');
+    if (btcCapError) {
+        showFieldError('btc_locking_cap', btcCapError);
+        hasValidationErrors = true;
+    }
+
+    const rbtcCapError = validatePositiveNumber(rbtcLockingCap, 'rBTC Locking Cap');
+    if (rbtcCapError) {
+        showFieldError('rbtc_locking_cap', rbtcCapError);
+        hasValidationErrors = true;
+    }
+
+    if (hasValidationErrors) {
+        return;
+    }
+
+    try {
+        // Convert to wei only for valid positive numbers
+        btcLockingCap = etherToWei(btcLockingCap);
+        rbtcLockingCap = etherToWei(rbtcLockingCap);
+
+        const response = await fetch('/management/trusted-accounts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: `{
+                "name": ${JSON.stringify(name)},
+                "address": ${JSON.stringify(address)},
+                "btcLockingCap": ${btcLockingCap},
+                "rbtcLockingCap": ${rbtcLockingCap}
+            }`
+        });
+
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addTrustedAccountModal'));
+            modal.hide();
+            document.getElementById('accountName').value = '';
+            document.getElementById('accountAddress').value = '';
+            document.getElementById('btc_locking_cap').value = '';
+            document.getElementById('rbtc_locking_cap').value = '';
+            clearFormValidation();
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+
+            // Handle field-specific validation errors from backend
+            if (errorData.message === 'validation error' && errorData.details) {
+                let hasFieldErrors = false;
+
+                // Map backend field names to frontend field IDs
+                const fieldMapping = {
+                    'Name': 'accountName',
+                    'Address': 'accountAddress',
+                    'BtcLockingCap': 'btc_locking_cap',
+                    'RbtcLockingCap': 'rbtc_locking_cap'
+                };
+
+                for (const [backendField, errorMessage] of Object.entries(errorData.details)) {
+                    const frontendFieldId = fieldMapping[backendField];
+                    if (frontendFieldId) {
+                        showFieldError(frontendFieldId, errorMessage);
+                        hasFieldErrors = true;
+                    }
+                }
+
+                if (hasFieldErrors) {
+                    return; // Don't show toast if we have field-specific errors
+                }
+            }
+
+            // Show generic error if no field-specific errors
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error adding trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error adding trusted account: ${error.message}`);
+    }
+};
+
+const removeTrustedAccount = async (address, csrfToken) => {
+    if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
+    try {
+        const response = await fetch(`/management/trusted-accounts?address=${encodeURIComponent(address)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        if (response.ok) {
+            showSuccessToast();
+            fetchTrustedAccounts(csrfToken);
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
+            showErrorToast(`Error removing trusted account: ${errorMessage}`);
+        }
+    } catch (error) {
+        showErrorToast(`Error removing trusted account: ${error.message}`);
     }
 };
 
@@ -680,11 +953,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
     document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
+    document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
+
+    // Clear validation states when modal is opened
+    document.getElementById('addTrustedAccountModal').addEventListener('show.bs.modal', () => {
+        clearFormValidation();
+    });
+
+    // Clear field-specific validation errors when user starts typing
+    ['accountName', 'accountAddress', 'btc_locking_cap', 'rbtc_locking_cap'].forEach(fieldId => {
+        document.getElementById(fieldId).addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentElement.querySelector('.invalid-feedback');
+            if (feedback) {
+                feedback.remove();
+            }
+        });
+    });
 
     document.querySelectorAll('#configTabs a[data-bs-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', () => checkFeeWarnings());
     });
-    
+
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
     populateConfigSection('pegoutConfig', configurations.pegout);
@@ -693,11 +983,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
     checkFeeWarnings();
-    
+
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(today.getMonth() - 1);
-    
+    fetchTrustedAccounts(csrfToken);
     document.getElementById('summaryStartDate').value = lastMonth.toISOString().split('T')[0];
     document.getElementById('summaryEndDate').value = today.toISOString().split('T')[0];
 });
