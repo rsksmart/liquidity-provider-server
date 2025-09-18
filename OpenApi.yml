@@ -1270,19 +1270,6 @@ paths:
             of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
-  /reports/pegin:
-    get:
-      description: ' Get the last pegins on the API. Included in the management API.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/'
-        required: true
-      responses:
-        "200":
-          description: ""
-      summary: Get Pegin Reports
   /reports/pegout:
     get:
       description: ' Get the last pegouts on the API. Included in the management API.'

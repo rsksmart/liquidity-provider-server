@@ -248,65 +248,6 @@ func (_c *PeginQuoteRepositoryMock_GetQuotesByHashesAndDate_Call) RunAndReturn(r
 	return _c
 }
 
-// GetQuotesByState provides a mock function with given fields: ctx, filter
-func (_m *PeginQuoteRepositoryMock) GetQuotesByState(ctx context.Context, filter quote.GetPeginQuotesByStateFilter) ([]quote.PeginQuote, error) {
-	ret := _m.Called(ctx, filter)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetQuotesByState")
-	}
-
-	var r0 []quote.PeginQuote
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, quote.GetPeginQuotesByStateFilter) ([]quote.PeginQuote, error)); ok {
-		return rf(ctx, filter)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, quote.GetPeginQuotesByStateFilter) []quote.PeginQuote); ok {
-		r0 = rf(ctx, filter)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]quote.PeginQuote)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, quote.GetPeginQuotesByStateFilter) error); ok {
-		r1 = rf(ctx, filter)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PeginQuoteRepositoryMock_GetQuotesByState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuotesByState'
-type PeginQuoteRepositoryMock_GetQuotesByState_Call struct {
-	*mock.Call
-}
-
-// GetQuotesByState is a helper method to define mock.On call
-//   - ctx context.Context
-//   - filter quote.GetPeginQuotesByStateFilter
-func (_e *PeginQuoteRepositoryMock_Expecter) GetQuotesByState(ctx interface{}, filter interface{}) *PeginQuoteRepositoryMock_GetQuotesByState_Call {
-	return &PeginQuoteRepositoryMock_GetQuotesByState_Call{Call: _e.mock.On("GetQuotesByState", ctx, filter)}
-}
-
-func (_c *PeginQuoteRepositoryMock_GetQuotesByState_Call) Run(run func(ctx context.Context, filter quote.GetPeginQuotesByStateFilter)) *PeginQuoteRepositoryMock_GetQuotesByState_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(quote.GetPeginQuotesByStateFilter))
-	})
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_GetQuotesByState_Call) Return(_a0 []quote.PeginQuote, _a1 error) *PeginQuoteRepositoryMock_GetQuotesByState_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_GetQuotesByState_Call) RunAndReturn(run func(context.Context, quote.GetPeginQuotesByStateFilter) ([]quote.PeginQuote, error)) *PeginQuoteRepositoryMock_GetQuotesByState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetRetainedQuote provides a mock function with given fields: ctx, hash
 func (_m *PeginQuoteRepositoryMock) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
 	ret := _m.Called(ctx, hash)
