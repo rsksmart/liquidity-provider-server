@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"regexp"
 	"time"
 
@@ -476,4 +477,52 @@ func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quot
 	}
 
 	return retainedQuotes, nil
+}
+
+func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
+	result := make([]quote.RetainedPegoutQuote, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+	filter := bson.D{
+		primitive.E{Key: "owner_account_address", Value: address},
+		primitive.E{Key: "state", Value: bson.D{
+			primitive.E{Key: "$in", Value: states},
+		}},
+	}
+
+	rows, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if err = rows.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
+}
+
+func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]quote.RetainedPegoutQuote, error) {
+	var result []quote.RetainedPegoutQuote
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
+	query := bson.D{
+		primitive.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
+		primitive.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+			primitive.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+		}},
+	}
+
+	docs, err := collection.Find(dbCtx, query)
+	if err != nil {
+		return nil, err
+	}
+	if err = docs.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
 }

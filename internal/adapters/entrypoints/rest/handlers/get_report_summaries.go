@@ -10,13 +10,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
-// NewGetReportSummariesHandler handles GET /report/summaries
+// NewGetReportSummariesHandler handles GET /reports/summaries
 // @Title Summaries
 // @Description Returns financial data for a given period
 // @Param startDate query string true "Start date in YYYY-MM-DD format" Format(date)
 // @Param endDate query string true "End date in YYYY-MM-DD format" Format(date)
 // @Success 200 {object} pkg.SummaryResultDTO "Financial data for the given period"
-// @Router /report/summaries [get]
+// @Router /reports/summaries [get]
 func NewGetReportSummariesHandler(useCase *reports.SummariesUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startDate, endDate, err := rest.ParseDateRange(req, reports.DateFormat)

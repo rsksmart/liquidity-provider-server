@@ -58,7 +58,7 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			Confirmations:      10,
 			CallOnRegister:     true,
 			GasFee:             entities.NewWei(1),
-			ProductFeeAmount:   11,
+			ProductFeeAmount:   entities.NewWei(11),
 		},
 	}
 	assert.Equal(t,

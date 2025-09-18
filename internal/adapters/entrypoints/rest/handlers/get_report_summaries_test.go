@@ -30,7 +30,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 	}{
 		{
 			name:           "Success with valid date range",
-			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
+			url:            "/reports/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusOK,
 			mockResponse: reports.SummaryResult{
 				PeginSummary: reports.SummaryData{
@@ -69,7 +69,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "Missing startDate parameter",
-			url:            "/report/summaries?endDate=2023-01-31",
+			url:            "/reports/summaries?endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
@@ -77,7 +77,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "Missing endDate parameter",
-			url:            "/report/summaries?startDate=2023-01-01",
+			url:            "/reports/summaries?startDate=2023-01-01",
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
@@ -85,7 +85,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "Invalid startDate format",
-			url:            "/report/summaries?startDate=01/01/2023&endDate=2023-01-31",
+			url:            "/reports/summaries?startDate=01/01/2023&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
@@ -93,7 +93,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "Invalid endDate format",
-			url:            "/report/summaries?startDate=2023-01-01&endDate=31/01/2023",
+			url:            "/reports/summaries?startDate=2023-01-01&endDate=31/01/2023",
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
@@ -101,7 +101,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "EndDate before StartDate",
-			url:            "/report/summaries?startDate=2023-02-01&endDate=2023-01-31",
+			url:            "/reports/summaries?startDate=2023-02-01&endDate=2023-01-31",
 			expectedStatus: http.StatusBadRequest,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        nil,
@@ -109,7 +109,7 @@ func TestGetReportSummariesHandler(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:           "Error in use case",
-			url:            "/report/summaries?startDate=2023-01-01&endDate=2023-01-31",
+			url:            "/reports/summaries?startDate=2023-01-01&endDate=2023-01-31",
 			expectedStatus: http.StatusInternalServerError,
 			mockResponse:   reports.SummaryResult{},
 			mockErr:        errors.New("test error"),

@@ -26,14 +26,14 @@ func TestSummariesUseCase_FullSetOfData(t *testing.T) { //nolint:funlen
 			CallFee:          entities.NewWei(5),
 			GasFee:           entities.NewWei(2),
 			PenaltyFee:       entities.NewWei(1),
-			ProductFeeAmount: 3,
+			ProductFeeAmount: entities.NewWei(3),
 		},
 		{
 			Value:            entities.NewWei(200),
 			CallFee:          entities.NewWei(10),
 			GasFee:           entities.NewWei(4),
 			PenaltyFee:       entities.NewWei(2),
-			ProductFeeAmount: 6,
+			ProductFeeAmount: entities.NewWei(6),
 		},
 	}
 	retainedPeginQuotes := []quote.RetainedPeginQuote{
@@ -59,15 +59,15 @@ func TestSummariesUseCase_FullSetOfData(t *testing.T) { //nolint:funlen
 			Value:            entities.NewWei(300),
 			CallFee:          entities.NewWei(15),
 			GasFee:           entities.NewWei(6),
-			PenaltyFee:       10,
-			ProductFeeAmount: 9,
+			PenaltyFee:       entities.NewWei(10),
+			ProductFeeAmount: entities.NewWei(9),
 		},
 		{
 			Value:            entities.NewWei(400),
 			CallFee:          entities.NewWei(20),
 			GasFee:           entities.NewWei(8),
-			PenaltyFee:       15,
-			ProductFeeAmount: 12,
+			PenaltyFee:       entities.NewWei(15),
+			ProductFeeAmount: entities.NewWei(12),
 		},
 	}
 	retainedPegoutQuotes := []quote.RetainedPegoutQuote{
@@ -137,14 +137,14 @@ func TestSummariesUseCase_OnlyRegularQuotes(t *testing.T) { //nolint:funlen
 			CallFee:          entities.NewWei(5),
 			GasFee:           entities.NewWei(2),
 			PenaltyFee:       entities.NewWei(1),
-			ProductFeeAmount: 3,
+			ProductFeeAmount: entities.NewWei(3),
 		},
 		{
 			Value:            entities.NewWei(200),
 			CallFee:          entities.NewWei(10),
 			GasFee:           entities.NewWei(4),
 			PenaltyFee:       entities.NewWei(2),
-			ProductFeeAmount: 6,
+			ProductFeeAmount: entities.NewWei(6),
 		},
 	}
 	pegoutQuotes := []quote.PegoutQuote{
@@ -152,8 +152,8 @@ func TestSummariesUseCase_OnlyRegularQuotes(t *testing.T) { //nolint:funlen
 			Value:            entities.NewWei(300),
 			CallFee:          entities.NewWei(15),
 			GasFee:           entities.NewWei(6),
-			PenaltyFee:       10,
-			ProductFeeAmount: 9,
+			PenaltyFee:       entities.NewWei(10),
+			ProductFeeAmount: entities.NewWei(9),
 		},
 	}
 	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
@@ -206,7 +206,7 @@ func TestSummariesUseCase_OnlyRetainedQuotes(t *testing.T) { //nolint:funlen
 		CallFee:          entities.NewWei(5),
 		GasFee:           entities.NewWei(2),
 		PenaltyFee:       entities.NewWei(1),
-		ProductFeeAmount: 3,
+		ProductFeeAmount: entities.NewWei(3),
 	}
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "hash1",
@@ -220,8 +220,8 @@ func TestSummariesUseCase_OnlyRetainedQuotes(t *testing.T) { //nolint:funlen
 		Value:            entities.NewWei(300),
 		CallFee:          entities.NewWei(15),
 		GasFee:           entities.NewWei(6),
-		PenaltyFee:       10,
-		ProductFeeAmount: 9,
+		PenaltyFee:       entities.NewWei(10),
+		ProductFeeAmount: entities.NewWei(9),
 	}
 	retainedPegoutQuote := quote.RetainedPegoutQuote{
 		QuoteHash: "hash3",

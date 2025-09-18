@@ -16,11 +16,11 @@
                             <input type="hidden" name="csrf" value="{{ .CsrfToken }}" required/>
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
-                                <input type="text" name="username" id="username" class="form-control" required/>
+                                <input type="text" name="username" id="username" data-testid="login-username-input" class="form-control" required/>
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
-                                <input type="password" name="password" id="password" class="form-control" required/>
+                                <input type="password" name="password" id="password" data-testid="login-password-input" class="form-control" required/>
                             </div>
                             {{if not .CredentialsSet}}
                             <div class="mb-3">
@@ -35,7 +35,7 @@
                             <div class="alert alert-danger d-none" id="error-message" role="alert">
                                 Invalid username or password.
                             </div>
-                            <button type="submit" class="btn btn-primary">Login</button>
+                            <button type="submit" class="btn btn-primary" data-testid="login-submit-button">Login</button>
                         </form>
                     </div>
                 </div>

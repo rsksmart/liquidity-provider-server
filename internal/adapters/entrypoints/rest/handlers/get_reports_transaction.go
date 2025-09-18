@@ -19,7 +19,7 @@ import (
 // @Param endDate query string false "End date for the report. Supports YYYY-MM-DD (expands to end of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
 // @Param page query int false "Page number to retrieve (1-indexed, default: 1)"
 // @Param perPage query int false "Number of transactions per page (max: 100, default: 10)"
-// @Success 200 {object} pkg.TransactionHistoryResponse "Paginated list of transactions with metadata"
+// @Success 200 {object} pkg.GetTransactionsResponse "Paginated list of transactions with metadata"
 // @Router /reports/transactions [get]
 func NewGetReportsTransactionHandler(useCase *reports.GetTransactionsUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -113,9 +113,9 @@ func mapUseCaseResultToResponse(result reports.GetTransactionsResult) pkg.GetTra
 	for i, item := range result.Data {
 		response.Data[i] = pkg.GetTransactionsItem{
 			QuoteHash: item.QuoteHash,
-			Amount:    item.Amount,
-			CallFee:   item.CallFee,
-			GasFee:    item.GasFee,
+			Amount:    item.Amount.AsBigInt(),
+			CallFee:   item.CallFee.AsBigInt(),
+			GasFee:    item.GasFee.AsBigInt(),
 			Status:    item.Status,
 		}
 	}

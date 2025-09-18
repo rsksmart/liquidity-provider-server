@@ -1,9 +1,9 @@
 package pkg
 
 import (
+	"math/big"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -218,9 +218,9 @@ func TestTransactionHistoryResponse_Structure(t *testing.T) {
 		Data: []GetTransactionsItem{
 			{
 				QuoteHash: "0x1234567890abcdef1234567890abcdef12345678",
-				Amount:    entities.NewWei(1000000000000000000),
-				CallFee:   entities.NewWei(50000000000000000),
-				GasFee:    entities.NewWei(10000000000000000),
+				Amount:    big.NewInt(1000000000000000000),
+				CallFee:   big.NewInt(50000000000000000),
+				GasFee:    big.NewInt(10000000000000000),
 				Status:    "RegisterPegInSucceeded",
 			},
 		},
