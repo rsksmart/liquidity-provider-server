@@ -297,7 +297,7 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity(t *testing.T) {
 		signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Twice()
 		peginRepository := new(mocks.PeginQuoteRepositoryMock)
 		peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-			quote.PeginStateWaitingForDeposit,
+			quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
 		).Return([]quote.RetainedPeginQuote{
 			{RequiredLiquidity: entities.NewWei(300)},
 			{RequiredLiquidity: entities.NewWei(500)},
