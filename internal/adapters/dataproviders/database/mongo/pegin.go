@@ -369,3 +369,27 @@ func (repo *peginMongoRepository) fetchRetainedQuotes(ctx context.Context, quote
 
 	return retainedQuotes, nil
 }
+
+func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
+	result := make([]quote.RetainedPeginQuote, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
+	filter := bson.D{
+		primitive.E{Key: "owner_account_address", Value: address},
+		primitive.E{Key: "state", Value: bson.D{
+			primitive.E{Key: "$in", Value: states},
+		}},
+	}
+
+	rows, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if err = rows.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, result)
+	return result, nil
+}

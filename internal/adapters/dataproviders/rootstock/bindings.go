@@ -28,6 +28,7 @@ type RpcClientBinding interface {
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 }
 
 type RskBridgeBinding interface {
@@ -42,6 +43,7 @@ type RskBridgeBinding interface {
 	HasBtcBlockCoinbaseTransactionInformation(opts *bind.CallOpts, blockHash [32]byte) (bool, error)
 	GetBtcBlockchainBestChainHeight(opts *bind.CallOpts) (*big.Int, error)
 	RegisterBtcCoinbaseTransaction(opts *bind.TransactOpts, btcTxSerialized []byte, blockHash [32]byte, pmtSerialized []byte, witnessMerkleRoot [32]byte, witnessReservedValue [32]byte) (*types.Transaction, error)
+	FilterBatchPegoutCreated(opts *bind.FilterOpts, btcTxHash [][32]byte) (*bindings.RskBridgeBatchPegoutCreatedIterator, error)
 }
 
 type LbcBinding interface {
@@ -79,6 +81,11 @@ type LbcAdapter interface {
 	Caller() ContractCallerBinding
 	DepositEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPegOutDepositIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPegOutDeposit]
 	PenalizedEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPenalizedIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPenalized]
+}
+
+type RskBridgeAdapter interface {
+	RskBridgeBinding
+	BatchPegOutCreatedIteratorAdapter(rawIterator *bindings.RskBridgeBatchPegoutCreatedIterator) EventIteratorAdapter[bindings.RskBridgeBatchPegoutCreated]
 }
 
 type EventIteratorAdapter[T any] interface {
@@ -128,4 +135,24 @@ func (lbc *lbcAdapter) DepositEventIteratorAdapter(rawIterator *bindings.Liquidi
 
 func (lbc *lbcAdapter) PenalizedEventIteratorAdapter(rawIterator *bindings.LiquidityBridgeContractPenalizedIterator) EventIteratorAdapter[bindings.LiquidityBridgeContractPenalized] {
 	return &penalizedEventIteratorAdapter{LiquidityBridgeContractPenalizedIterator: rawIterator}
+}
+
+type batchPegOutCreatedEventIteratorAdapter struct {
+	*bindings.RskBridgeBatchPegoutCreatedIterator
+}
+
+func (i *batchPegOutCreatedEventIteratorAdapter) Event() *bindings.RskBridgeBatchPegoutCreated {
+	return i.RskBridgeBatchPegoutCreatedIterator.Event
+}
+
+type rskBridgeAdapter struct {
+	*bindings.RskBridge
+}
+
+func NewRskBridgeAdapter(rskBridge *bindings.RskBridge) RskBridgeAdapter {
+	return &rskBridgeAdapter{RskBridge: rskBridge}
+}
+
+func (r rskBridgeAdapter) BatchPegOutCreatedIteratorAdapter(rawIterator *bindings.RskBridgeBatchPegoutCreatedIterator) EventIteratorAdapter[bindings.RskBridgeBatchPegoutCreated] {
+	return &batchPegOutCreatedEventIteratorAdapter{RskBridgeBatchPegoutCreatedIterator: rawIterator}
 }

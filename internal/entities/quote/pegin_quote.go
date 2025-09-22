@@ -38,6 +38,7 @@ type PeginQuoteRepository interface {
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
+	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
 }
 
 type PeginQuoteWithRetained struct {
@@ -85,7 +86,7 @@ type PeginQuote struct {
 	Confirmations      uint16        `json:"confirmations" bson:"confirmations"  validate:"required"`
 	CallOnRegister     bool          `json:"callOnRegister" bson:"call_on_register"`
 	GasFee             *entities.Wei `json:"gasFee" bson:"gas_fee"  validate:"required"`
-	ProductFeeAmount   uint64        `json:"productFeeAmount" bson:"product_fee_amount"  validate:""`
+	ProductFeeAmount   *entities.Wei `json:"productFeeAmount" bson:"product_fee_amount"  validate:""`
 }
 
 func (quote *PeginQuote) ExpireTime() time.Time {
@@ -106,10 +107,13 @@ func (quote *PeginQuote) Total() *entities.Wei {
 	if quote.GasFee == nil {
 		quote.GasFee = entities.NewWei(0)
 	}
+	if quote.ProductFeeAmount == nil {
+		quote.ProductFeeAmount = entities.NewWei(0)
+	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)
-	total.Add(total, entities.NewUWei(quote.ProductFeeAmount))
+	total.Add(total, quote.ProductFeeAmount)
 	total.Add(total, quote.GasFee)
 	return total
 }
@@ -127,6 +131,7 @@ type RetainedPeginQuote struct {
 	CallForUserGasPrice   *entities.Wei `json:"callForUserGasPrice" bson:"call_for_user_gas_price"`
 	RegisterPeginGasUsed  uint64        `json:"registerPeginGasUsed" bson:"register_pegin_gas_used"`
 	RegisterPeginGasPrice *entities.Wei `json:"registerPeginGasPrice" bson:"register_pegin_gas_price"`
+	OwnerAccountAddress   string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 type WatchedPeginQuote struct {

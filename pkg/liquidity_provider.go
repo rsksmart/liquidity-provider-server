@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -14,12 +15,12 @@ import (
 
 type ProviderDetail struct {
 	// Deprecated: Fee is deprecated, use FixedFee and FeePercentage instead
-	Fee                   uint64  `json:"fee" required:""`
-	FixedFee              uint64  `json:"fixedFee"  required:""`
-	FeePercentage         float64 `json:"feePercentage"  required:""`
-	MinTransactionValue   uint64  `json:"minTransactionValue"  required:""`
-	MaxTransactionValue   uint64  `json:"maxTransactionValue"  required:""`
-	RequiredConfirmations uint16  `json:"requiredConfirmations"  required:""`
+	Fee                   *big.Int `json:"fee" required:""`
+	FixedFee              *big.Int `json:"fixedFee"  required:""`
+	FeePercentage         float64  `json:"feePercentage"  required:""`
+	MinTransactionValue   *big.Int `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   *big.Int `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16   `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -73,7 +74,13 @@ type PegoutConfigurationDTO struct {
 }
 
 type GeneralConfigurationRequest struct {
-	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
+	Configuration GeneralConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type GeneralConfigurationDTO struct {
+	RskConfirmations     map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations     map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck bool              `json:"publicLiquidityCheck" validate:""`
 }
 
 type LoginRequest struct {
@@ -232,6 +239,24 @@ func ToSummaryResultDTO(result reports.SummaryResult) SummaryResultDTO {
 	}
 }
 
+type TrustedAccountDTO struct {
+	Address        string   `json:"address" example:"0x1234567890abcdef" description:"Trusted account address" required:""`
+	Name           string   `json:"name" example:"Example Trusted Account" description:"Trusted account name" required:""`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
+}
+
+type TrustedAccountRequest struct {
+	Address        string   `json:"address" validate:"required,eth_addr"`
+	Name           string   `json:"name" validate:"required,max=100,min=1,not_blank"`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" validate:"required,positive_integer_bigint"`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" validate:"required,positive_integer_bigint"`
+}
+
+type TrustedAccountsResponse struct {
+	Accounts []TrustedAccountDTO `json:"accounts"`
+}
+
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
 	return AvailableLiquidityDTO{
 		PeginLiquidityAmount:  entity.PeginLiquidity.AsBigInt(),
@@ -321,4 +346,42 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 		Version:  entity.Version,
 		Revision: entity.Revision,
 	}
+}
+
+func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) TrustedAccountDTO {
+	return TrustedAccountDTO{
+		Address:        entity.Address,
+		Name:           entity.Name,
+		BtcLockingCap:  entity.BtcLockingCap.AsBigInt(),
+		RbtcLockingCap: entity.RbtcLockingCap.AsBigInt(),
+	}
+}
+
+func ToTrustedAccountsDTO(signedEntities []entities.Signed[liquidity_provider.TrustedAccountDetails]) []TrustedAccountDTO {
+	result := make([]TrustedAccountDTO, len(signedEntities))
+	for i, signedEntity := range signedEntities {
+		result[i] = ToTrustedAccountDTO(signedEntity.Value)
+	}
+	return result
+}
+
+func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provider.GeneralConfiguration, error) {
+	bigInt := new(big.Int)
+	for key := range dto.RskConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize RSK confirmations key %s", key)
+		}
+	}
+	for key := range dto.BtcConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize BTC confirmations key %s", key)
+		}
+	}
+	return liquidity_provider.GeneralConfiguration{
+		RskConfirmations:     dto.RskConfirmations,
+		BtcConfirmations:     dto.BtcConfirmations,
+		PublicLiquidityCheck: dto.PublicLiquidityCheck,
+	}, nil
 }

@@ -1,12 +1,20 @@
 package handlers
 
 import (
+	"context"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/singleflight"
 	"net/http"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
+
+type GetPegoutReportUseCase interface {
+	Run(ctx context.Context, startDate, endDate time.Time) (reports.GetPegoutReportResult, error)
+}
 
 // NewGetReportsPegoutHandler
 // @Title Get Pegout Reports
@@ -15,13 +23,19 @@ import (
 // @Param endDate query string true "End date for the report. Supports YYYY-MM-DD (expands to end of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
 // @Success 200 pkg.GetPegoutReportResponse
 // @Route /reports/pegout [get]
-func NewGetReportsPegoutHandler(useCase *reports.GetPegoutReportUseCase) http.HandlerFunc {
+func NewGetReportsPegoutHandler(
+	singleFlightGroup *singleflight.Group,
+	singleFlightKey string,
+	useCase GetPegoutReportUseCase,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var requestParams pkg.GetReportsByPeriodRequest
 		var err error
 		requestParams.StartDate = req.URL.Query().Get("startDate")
 		requestParams.EndDate = req.URL.Query().Get("endDate")
 
+		// callback function signature comes from the std lib we can't modify it
+		// nolint:contextcheck
 		if err = rest.ValidateRequest(w, &requestParams); err != nil {
 			return
 		}
@@ -39,7 +53,22 @@ func NewGetReportsPegoutHandler(useCase *reports.GetPegoutReportUseCase) http.Ha
 			return
 		}
 
-		pegoutReport, err := useCase.Run(req.Context(), startTime, endTime)
+		rawPegoutReport, err, shared := singleFlightGroup.Do(
+			CalculateSingleFlightKey(singleFlightKey, req),
+			// callback function signature comes from the std lib, we can't modify it
+			// nolint:contextcheck
+			func() (any, error) {
+				return useCase.Run(req.Context(), startTime, endTime)
+			})
+		pegoutReport, ok := rawPegoutReport.(reports.GetPegoutReportResult)
+		if !ok {
+			jsonErr := rest.NewErrorResponse("Internal error parsing result", false)
+			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+			return
+		} else if shared {
+			log.Info("GetPegoutReport result was shared with multiple requests")
+		}
+
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

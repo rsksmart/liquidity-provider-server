@@ -46,7 +46,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 			q.PenaltyFee.Cmp(config.PenaltyFee) == 0 && q.ContractAddress == userRskAddress && q.CallFee.Cmp(entities.NewWei(163)) == 0 &&
 			q.Data == hex.EncodeToString(quoteData) && q.GasLimit == uint32(gasLimit.Uint64()) && q.Value.Cmp(quoteValue) == 0 &&
 			q.Nonce > 0 && q.TimeForDeposit == config.TimeForDeposit && q.LpCallTime == config.CallTime && q.Confirmations == 10 &&
-			q.CallOnRegister == false && q.GasFee.Cmp(entities.NewWei(10000)) == 0 && q.ProductFeeAmount == 0
+			q.CallOnRegister == false && q.GasFee.Cmp(entities.NewWei(10000)) == 0 && q.ProductFeeAmount.Cmp(entities.NewWei(0)) == 0
 	})
 
 	rsk := new(mocks.RootstockRpcServerMock)
@@ -363,8 +363,8 @@ func getPeginConfiguration() lpEntity.PeginConfiguration {
 
 func getGeneralConfiguration() lpEntity.GeneralConfiguration {
 	return lpEntity.GeneralConfiguration{
-		RskConfirmations: map[int]uint16{1: 10},
-		BtcConfirmations: map[int]uint16{1: 10},
+		RskConfirmations: map[string]uint16{"1": 10},
+		BtcConfirmations: map[string]uint16{"1": 10},
 	}
 }
 

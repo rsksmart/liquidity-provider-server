@@ -1,13 +1,17 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
+	"strconv"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -16,6 +20,8 @@ import (
 // used for error logging
 
 type UseCaseId string
+
+const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
 	GetPeginQuoteId            UseCaseId = "GetPeginQuote"
@@ -49,6 +55,9 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
+	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
+	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
+	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
@@ -64,23 +73,29 @@ const (
 	GetPegoutReportId          UseCaseId = "GetPegoutReport"
 	GetRevenueReportId         UseCaseId = "GetRevenueReport"
 	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
+	EclipseCheckId             UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 )
 
 var (
-	NonRecoverableError         = errors.New("non recoverable")
-	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	RskAddressNotSupportedError = errors.New("rsk address not supported")
-	QuoteNotFoundError          = errors.New("quote not found")
-	QuoteNotAcceptedError       = errors.New("quote not accepted")
-	ExpiredQuoteError           = errors.New("expired quote")
-	NoLiquidityError            = errors.New("not enough liquidity")
-	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	WrongStateError             = errors.New("quote with wrong state")
-	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
-	InsufficientAmountError     = errors.New("insufficient amount")
-	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
-	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
-	IllegalQuoteStateError      = errors.New("illegal quote state")
+	NonRecoverableError             = errors.New("non recoverable")
+	TxBelowMinimumError             = errors.New("requested amount below bridge's min transaction value")
+	RskAddressNotSupportedError     = errors.New("rsk address not supported")
+	QuoteNotFoundError              = errors.New("quote not found")
+	QuoteNotAcceptedError           = errors.New("quote not accepted")
+	ExpiredQuoteError               = errors.New("expired quote")
+	NoLiquidityError                = errors.New("not enough liquidity")
+	ProviderConfigurationError      = errors.New("pegin and pegout providers are not using the same account")
+	WrongStateError                 = errors.New("quote with wrong state")
+	NoEnoughConfirmationsError      = errors.New("not enough confirmations for transaction")
+	InsufficientAmountError         = errors.New("insufficient amount")
+	AlreadyRegisteredError          = errors.New("liquidity provider already registered")
+	ProviderNotResignedError        = errors.New("provided hasn't completed resignation process")
+	IllegalQuoteStateError          = errors.New("illegal quote state")
+	LockingCapExceededError         = errors.New("locking cap exceeded")
+	NonPositiveWeiError             = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
 type ErrorArgs map[string]string
@@ -141,7 +156,7 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	}, nil
 }
 
-func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
 	var err error
 	var minLockTxValue *entities.Wei
 
@@ -182,7 +197,7 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
 // IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
-func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract rootstock.Bridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
 	}
@@ -196,7 +211,7 @@ func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContrac
 }
 
 // ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
-func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
 	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return err
@@ -210,6 +225,86 @@ func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockc
 		if minLockTxValueInWei.Cmp(utxo) > 0 {
 			err = errors.New("not all the UTXOs are above the min lock value")
 			return errors.Join(TxBelowMinimumError, err)
+		}
+	}
+	return nil
+}
+
+// RecoverSignerAddress recovers the address from a signature. Important function for the management
+// of trusted accounts.
+func RecoverSignerAddress(quoteHash, signature string) (string, error) {
+	if quoteHash == "" {
+		return "", errors.New("empty hash provided")
+	}
+
+	if signature == "" {
+		return "", errors.New("empty signature provided")
+	}
+
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		return "", fmt.Errorf("error decoding signature: %w", err)
+	}
+
+	// Ethereum signatures should be 65 bytes (r,s,v) where v is the recovery ID
+	if len(signatureBytes) != 65 {
+		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
+	}
+
+	hashBytes, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return "", fmt.Errorf("error decoding hash: %w", err)
+	}
+
+	// Hash should be 32 bytes
+	if len(hashBytes) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hashBytes))
+	}
+
+	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
+	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
+	v := signatureBytes[64]
+	if v >= 27 {
+		signatureBytes[64] = v - 27
+	}
+
+	// Create the Ethereum prefixed message
+	var buf bytes.Buffer
+	buf.WriteString(EthereumSignedMessagePrefix)
+	buf.Write(hashBytes)
+	prefixedHash := crypto.Keccak256(buf.Bytes())
+
+	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	if err != nil {
+		return "", errors.New("error recovering public key: " + err.Error())
+	}
+
+	// Convert the public key to an Ethereum address
+	pubKeyECDSA, err := crypto.UnmarshalPubkey(pubKey)
+	if err != nil {
+		return "", errors.New("error unmarshalling public key: " + err.Error())
+	}
+
+	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	return address, nil
+}
+
+func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
+	if err := entities.ValidatePositiveWei(weiValues...); err != nil {
+		return WrapUseCaseError(useCase, NonPositiveWeiError)
+	}
+	return nil
+}
+
+func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.ConfirmationsPerAmount) error {
+	if len(confirmations) == 0 {
+		return WrapUseCaseError(useCase, EmptyConfirmationsMapError)
+	}
+	for keyStr := range confirmations {
+		intKey, err := strconv.Atoi(keyStr)
+		if err != nil || intKey <= 0 {
+			args := ErrorArg("key", keyStr)
+			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
 		}
 	}
 	return nil

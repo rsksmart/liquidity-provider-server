@@ -8,6 +8,8 @@ import (
 	quote "github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	mock "github.com/stretchr/testify/mock"
 
+	rootstock "github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+
 	time "time"
 )
 
@@ -376,6 +378,139 @@ func (_c *PegoutQuoteRepositoryMock_GetRetainedQuoteByState_Call) Return(_a0 []q
 }
 
 func (_c *PegoutQuoteRepositoryMock_GetRetainedQuoteByState_Call) RunAndReturn(run func(context.Context, ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error)) *PegoutQuoteRepositoryMock_GetRetainedQuoteByState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetainedQuotesForAddress provides a mock function with given fields: ctx, address, states
+func (_m *PegoutQuoteRepositoryMock) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
+	_va := make([]interface{}, len(states))
+	for _i := range states {
+		_va[_i] = states[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, address)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetainedQuotesForAddress")
+	}
+
+	var r0 []quote.RetainedPegoutQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error)); ok {
+		return rf(ctx, address, states...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...quote.PegoutState) []quote.RetainedPegoutQuote); ok {
+		r0 = rf(ctx, address, states...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.RetainedPegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...quote.PegoutState) error); ok {
+		r1 = rf(ctx, address, states...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetainedQuotesForAddress'
+type PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call struct {
+	*mock.Call
+}
+
+// GetRetainedQuotesForAddress is a helper method to define mock.On call
+//   - ctx context.Context
+//   - address string
+//   - states ...quote.PegoutState
+func (_e *PegoutQuoteRepositoryMock_Expecter) GetRetainedQuotesForAddress(ctx interface{}, address interface{}, states ...interface{}) *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
+	return &PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call{Call: _e.mock.On("GetRetainedQuotesForAddress",
+		append([]interface{}{ctx, address}, states...)...)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) Run(run func(ctx context.Context, address string, states ...quote.PegoutState)) *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]quote.PegoutState, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(quote.PegoutState)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) Return(_a0 []quote.RetainedPegoutQuote, _a1 error) *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) RunAndReturn(run func(context.Context, string, ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error)) *PegoutQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetainedQuotesInBatch provides a mock function with given fields: ctx, batch
+func (_m *PegoutQuoteRepositoryMock) GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]quote.RetainedPegoutQuote, error) {
+	ret := _m.Called(ctx, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetainedQuotesInBatch")
+	}
+
+	var r0 []quote.RetainedPegoutQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.BatchPegOut) ([]quote.RetainedPegoutQuote, error)); ok {
+		return rf(ctx, batch)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.BatchPegOut) []quote.RetainedPegoutQuote); ok {
+		r0 = rf(ctx, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.RetainedPegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, rootstock.BatchPegOut) error); ok {
+		r1 = rf(ctx, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetainedQuotesInBatch'
+type PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call struct {
+	*mock.Call
+}
+
+// GetRetainedQuotesInBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - batch rootstock.BatchPegOut
+func (_e *PegoutQuoteRepositoryMock_Expecter) GetRetainedQuotesInBatch(ctx interface{}, batch interface{}) *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call {
+	return &PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call{Call: _e.mock.On("GetRetainedQuotesInBatch", ctx, batch)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call) Run(run func(ctx context.Context, batch rootstock.BatchPegOut)) *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(rootstock.BatchPegOut))
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call) Return(_a0 []quote.RetainedPegoutQuote, _a1 error) *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call) RunAndReturn(run func(context.Context, rootstock.BatchPegOut) ([]quote.RetainedPegoutQuote, error)) *PegoutQuoteRepositoryMock_GetRetainedQuotesInBatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/btc_bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -83,7 +84,7 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error parsing input", err)
 	}
 
-	btcClient, err := bootstrap.Bitcoin(env.Btc)
+	btcClient, err := btc_bootstrap.Bitcoin(env.Btc)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error connecting to BTC node", err)
 	}

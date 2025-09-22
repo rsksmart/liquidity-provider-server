@@ -282,7 +282,7 @@ func TestPegoutBtcTransferWatcher_Prepare(t *testing.T) {
 func TestPegoutBtcTransferWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPegoutBtcTransferWatcher(nil, nil, blockchain.Rpc{}, eventBus, ticker)
 	})
 }
