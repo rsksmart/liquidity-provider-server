@@ -53,20 +53,20 @@ func TestNewProviderDetailsHandler(t *testing.T) {
 	}).Times(5)
 
 	t.Run("should return 200 on success", func(t *testing.T) {
-		useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, captchaDisabled, providerMock, providerMock, providerMock)
+		useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, captchaDisabled, true, providerMock, providerMock, providerMock)
 		handler := handlers.NewProviderDetailsHandler(useCase)
 		assert.HTTPSuccess(t, handler, verb, path, nil)
-		assert.HTTPBodyContains(t, handler, verb, path, nil, `{"siteKey":"captchaKey","liquidityCheckEnabled":true,"pegin":{"fee":700,"fixedFee":700,"feePercentage":15.77,"minTransactionValue":100,"maxTransactionValue":800,"requiredConfirmations":15},"pegout":{"fee":444,"fixedFee":444,"feePercentage":0.33,"minTransactionValue":10,"maxTransactionValue":1000,"requiredConfirmations":50}}`)
+		assert.HTTPBodyContains(t, handler, verb, path, nil, `{"siteKey":"captchaKey","liquidityCheckEnabled":true,"usingSegwitFederation":true,"pegin":{"fee":700,"fixedFee":700,"feePercentage":15.77,"minTransactionValue":100,"maxTransactionValue":800,"requiredConfirmations":15},"pegout":{"fee":444,"fixedFee":444,"feePercentage":0.33,"minTransactionValue":10,"maxTransactionValue":1000,"requiredConfirmations":50}}`)
 	})
 	t.Run("should handle internal error", func(t *testing.T) {
-		useCase := liquidity_provider.NewGetDetailUseCase("", false, providerMock, providerMock, providerMock)
+		useCase := liquidity_provider.NewGetDetailUseCase("", false, true, providerMock, providerMock, providerMock)
 		handler := handlers.NewProviderDetailsHandler(useCase)
 		assert.HTTPStatusCode(t, handler, verb, path, nil, http.StatusInternalServerError)
 		assert.HTTPBodyContains(t, handler, verb, path, nil, `"details":{"error":"ProviderDetail: missing captcha key"}`)
 	})
 	t.Run("should return deprecated fee field", func(t *testing.T) {
 		var result pkg.ProviderDetailResponse
-		useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, captchaDisabled, providerMock, providerMock, providerMock)
+		useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, captchaDisabled, true, providerMock, providerMock, providerMock)
 		handler := handlers.NewProviderDetailsHandler(useCase)
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, httptest.NewRequest(verb, path, nil))

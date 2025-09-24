@@ -32,6 +32,11 @@ type RpcClientBinding interface {
 }
 
 type RskBridgeBinding interface {
+	GetRetiringFederationAddress(opts *bind.CallOpts) (string, error)
+	GetRetiringFederationCreationBlockNumber(opts *bind.CallOpts) (*big.Int, error)
+	GetRetiringFederatorPublicKeyOfType(opts *bind.CallOpts, index *big.Int, atype string) ([]byte, error)
+	GetRetiringFederationSize(opts *bind.CallOpts) (*big.Int, error)
+	GetRetiringFederationThreshold(opts *bind.CallOpts) (*big.Int, error)
 	GetFederationAddress(opts *bind.CallOpts) (string, error)
 	GetMinimumLockTxValue(opts *bind.CallOpts) (*big.Int, error)
 	GetActivePowpegRedeemScript(opts *bind.CallOpts) ([]byte, error)

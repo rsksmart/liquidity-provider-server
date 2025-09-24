@@ -110,6 +110,14 @@ func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
 }
 
 func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, error) {
+	if bridge.useSegwitFederation {
+		return bridge.fetchActiveFederationInfo()
+	} else {
+		return bridge.fetchRetiringFederationInfo()
+	}
+}
+
+func (bridge *rskBridgeImpl) fetchActiveFederationInfo() (rootstock.FederationInfo, error) {
 	var err error
 	var pubKey []byte
 	var pubKeys []string
@@ -160,6 +168,69 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, er
 		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
 	}
 
+	return rootstock.FederationInfo{
+		FedThreshold:         fedThreshold.Int64(),
+		FedSize:              fedSize.Int64(),
+		PubKeys:              pubKeys,
+		FedAddress:           fedAddress,
+		ActiveFedBlockHeight: activeFedBlockHeight.Int64(),
+		ErpKeys:              bridge.erpKeys,
+		UseSegwit:            bridge.useSegwitFederation,
+	}, nil
+}
+
+func (bridge *rskBridgeImpl) fetchRetiringFederationInfo() (rootstock.FederationInfo, error) {
+	var err error
+	var pubKey []byte
+	var pubKeys []string
+	var i, federationSize int64
+
+	opts := &bind.CallOpts{}
+	fedSize, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetRetiringFederationSize(opts)
+		})
+	if err != nil {
+		return rootstock.FederationInfo{}, err
+	}
+	federationSize = fedSize.Int64()
+
+	for i = 0; i < federationSize; i++ {
+		pubKey, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+			func() ([]byte, error) {
+				return bridge.contract.GetRetiringFederatorPublicKeyOfType(opts, big.NewInt(i), "btc")
+			})
+		if err != nil {
+			return rootstock.FederationInfo{}, fmt.Errorf("error fetching fed public key: %w", err)
+		}
+		pubKeys = append(pubKeys, hex.EncodeToString(pubKey))
+	}
+
+	fedThreshold, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetRetiringFederationThreshold(opts)
+		})
+	if err != nil {
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation size: %w", err)
+	}
+
+	fedAddress, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (string, error) {
+			return bridge.contract.GetRetiringFederationAddress(opts)
+		})
+	if err != nil {
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation address: %w", err)
+	}
+
+	activeFedBlockHeight, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+		func() (*big.Int, error) {
+			return bridge.contract.GetRetiringFederationCreationBlockNumber(opts)
+		})
+	if err != nil {
+		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
+	}
+
+	log.Warning("Retrieving retiring federation info from the bridge. This federation will be retired soon. Please set USE_SEGWIT_FEDERATION env var to true to use a segwit federation.")
 	return rootstock.FederationInfo{
 		FedThreshold:         fedThreshold.Int64(),
 		FedSize:              fedSize.Int64(),

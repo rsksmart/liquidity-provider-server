@@ -9,32 +9,36 @@ import (
 )
 
 type GetDetailUseCase struct {
-	captchaSiteKey  string
-	captchaDisabled bool
-	provider        liquidity_provider.LiquidityProvider
-	peginProvider   liquidity_provider.PeginLiquidityProvider
-	pegoutProvider  liquidity_provider.PegoutLiquidityProvider
+	captchaSiteKey   string
+	captchaDisabled  bool
+	segwitFederation bool
+	provider         liquidity_provider.LiquidityProvider
+	peginProvider    liquidity_provider.PeginLiquidityProvider
+	pegoutProvider   liquidity_provider.PegoutLiquidityProvider
 }
 
 func NewGetDetailUseCase(
 	captchaSiteKey string,
 	captchaDisabled bool,
+	segwitFederation bool,
 	provider liquidity_provider.LiquidityProvider,
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 ) *GetDetailUseCase {
 	return &GetDetailUseCase{
-		captchaSiteKey:  captchaSiteKey,
-		captchaDisabled: captchaDisabled,
-		provider:        provider,
-		peginProvider:   peginProvider,
-		pegoutProvider:  pegoutProvider,
+		captchaSiteKey:   captchaSiteKey,
+		captchaDisabled:  captchaDisabled,
+		provider:         provider,
+		peginProvider:    peginProvider,
+		pegoutProvider:   pegoutProvider,
+		segwitFederation: segwitFederation,
 	}
 }
 
 type FullLiquidityProvider struct {
 	SiteKey               string                                     `json:"siteKey"`
 	LiquidityCheckEnabled bool                                       `json:"liquidityCheckEnabled"`
+	UsingSegwitFederation bool                                       `json:"usingSegwitFederation"`
 	Pegin                 liquidity_provider.LiquidityProviderDetail `json:"pegin"`
 	Pegout                liquidity_provider.LiquidityProviderDetail `json:"pegout"`
 }
@@ -47,6 +51,7 @@ func (useCase *GetDetailUseCase) Run(ctx context.Context) (FullLiquidityProvider
 	detail := FullLiquidityProvider{
 		SiteKey:               useCase.captchaSiteKey,
 		LiquidityCheckEnabled: generalConfiguration.PublicLiquidityCheck,
+		UsingSegwitFederation: useCase.segwitFederation,
 		Pegin: liquidity_provider.LiquidityProviderDetail{
 			FixedFee:              peginConfig.FixedFee,
 			FeePercentage:         peginConfig.FeePercentage,

@@ -142,6 +142,7 @@ func NewUseCaseRegistry(
 		getProviderDetailUseCase: liquidity_provider.NewGetDetailUseCase(
 			env.Captcha.SiteKey,
 			env.Captcha.Disabled,
+			env.Rsk.UseSegwitFederation,
 			liquidityProvider,
 			liquidityProvider,
 			liquidityProvider,

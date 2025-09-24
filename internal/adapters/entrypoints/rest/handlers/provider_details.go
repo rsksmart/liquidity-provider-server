@@ -25,6 +25,7 @@ func NewProviderDetailsHandler(useCase *liquidity_provider.GetDetailUseCase) htt
 		response := pkg.ProviderDetailResponse{
 			SiteKey:               result.SiteKey,
 			LiquidityCheckEnabled: result.LiquidityCheckEnabled,
+			UsingSegwitFederation: result.UsingSegwitFederation,
 			Pegin: pkg.ProviderDetail{
 				Fee:                   result.Pegin.FixedFee.AsBigInt(),
 				FixedFee:              result.Pegin.FixedFee.AsBigInt(),

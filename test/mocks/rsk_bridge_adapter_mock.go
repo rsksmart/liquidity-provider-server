@@ -598,6 +598,296 @@ func (_c *RskBridgeAdapterMock_GetMinimumLockTxValue_Call) RunAndReturn(run func
 	return _c
 }
 
+// GetRetiringFederationAddress provides a mock function with given fields: opts
+func (_m *RskBridgeAdapterMock) GetRetiringFederationAddress(opts *bind.CallOpts) (string, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetiringFederationAddress")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (string, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) string); ok {
+		r0 = rf(opts)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RskBridgeAdapterMock_GetRetiringFederationAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetiringFederationAddress'
+type RskBridgeAdapterMock_GetRetiringFederationAddress_Call struct {
+	*mock.Call
+}
+
+// GetRetiringFederationAddress is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+func (_e *RskBridgeAdapterMock_Expecter) GetRetiringFederationAddress(opts interface{}) *RskBridgeAdapterMock_GetRetiringFederationAddress_Call {
+	return &RskBridgeAdapterMock_GetRetiringFederationAddress_Call{Call: _e.mock.On("GetRetiringFederationAddress", opts)}
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationAddress_Call) Run(run func(opts *bind.CallOpts)) *RskBridgeAdapterMock_GetRetiringFederationAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts))
+	})
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationAddress_Call) Return(_a0 string, _a1 error) *RskBridgeAdapterMock_GetRetiringFederationAddress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationAddress_Call) RunAndReturn(run func(*bind.CallOpts) (string, error)) *RskBridgeAdapterMock_GetRetiringFederationAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetiringFederationCreationBlockNumber provides a mock function with given fields: opts
+func (_m *RskBridgeAdapterMock) GetRetiringFederationCreationBlockNumber(opts *bind.CallOpts) (*big.Int, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetiringFederationCreationBlockNumber")
+	}
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (*big.Int, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) *big.Int); ok {
+		r0 = rf(opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetiringFederationCreationBlockNumber'
+type RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call struct {
+	*mock.Call
+}
+
+// GetRetiringFederationCreationBlockNumber is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+func (_e *RskBridgeAdapterMock_Expecter) GetRetiringFederationCreationBlockNumber(opts interface{}) *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call {
+	return &RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call{Call: _e.mock.On("GetRetiringFederationCreationBlockNumber", opts)}
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call) Run(run func(opts *bind.CallOpts)) *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts))
+	})
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call) Return(_a0 *big.Int, _a1 error) *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call) RunAndReturn(run func(*bind.CallOpts) (*big.Int, error)) *RskBridgeAdapterMock_GetRetiringFederationCreationBlockNumber_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetiringFederationSize provides a mock function with given fields: opts
+func (_m *RskBridgeAdapterMock) GetRetiringFederationSize(opts *bind.CallOpts) (*big.Int, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetiringFederationSize")
+	}
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (*big.Int, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) *big.Int); ok {
+		r0 = rf(opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RskBridgeAdapterMock_GetRetiringFederationSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetiringFederationSize'
+type RskBridgeAdapterMock_GetRetiringFederationSize_Call struct {
+	*mock.Call
+}
+
+// GetRetiringFederationSize is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+func (_e *RskBridgeAdapterMock_Expecter) GetRetiringFederationSize(opts interface{}) *RskBridgeAdapterMock_GetRetiringFederationSize_Call {
+	return &RskBridgeAdapterMock_GetRetiringFederationSize_Call{Call: _e.mock.On("GetRetiringFederationSize", opts)}
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationSize_Call) Run(run func(opts *bind.CallOpts)) *RskBridgeAdapterMock_GetRetiringFederationSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts))
+	})
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationSize_Call) Return(_a0 *big.Int, _a1 error) *RskBridgeAdapterMock_GetRetiringFederationSize_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationSize_Call) RunAndReturn(run func(*bind.CallOpts) (*big.Int, error)) *RskBridgeAdapterMock_GetRetiringFederationSize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetiringFederationThreshold provides a mock function with given fields: opts
+func (_m *RskBridgeAdapterMock) GetRetiringFederationThreshold(opts *bind.CallOpts) (*big.Int, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetiringFederationThreshold")
+	}
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (*big.Int, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) *big.Int); ok {
+		r0 = rf(opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RskBridgeAdapterMock_GetRetiringFederationThreshold_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetiringFederationThreshold'
+type RskBridgeAdapterMock_GetRetiringFederationThreshold_Call struct {
+	*mock.Call
+}
+
+// GetRetiringFederationThreshold is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+func (_e *RskBridgeAdapterMock_Expecter) GetRetiringFederationThreshold(opts interface{}) *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call {
+	return &RskBridgeAdapterMock_GetRetiringFederationThreshold_Call{Call: _e.mock.On("GetRetiringFederationThreshold", opts)}
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call) Run(run func(opts *bind.CallOpts)) *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts))
+	})
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call) Return(_a0 *big.Int, _a1 error) *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call) RunAndReturn(run func(*bind.CallOpts) (*big.Int, error)) *RskBridgeAdapterMock_GetRetiringFederationThreshold_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRetiringFederatorPublicKeyOfType provides a mock function with given fields: opts, index, atype
+func (_m *RskBridgeAdapterMock) GetRetiringFederatorPublicKeyOfType(opts *bind.CallOpts, index *big.Int, atype string) ([]byte, error) {
+	ret := _m.Called(opts, index, atype)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRetiringFederatorPublicKeyOfType")
+	}
+
+	var r0 []byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, *big.Int, string) ([]byte, error)); ok {
+		return rf(opts, index, atype)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, *big.Int, string) []byte); ok {
+		r0 = rf(opts, index, atype)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts, *big.Int, string) error); ok {
+		r1 = rf(opts, index, atype)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetiringFederatorPublicKeyOfType'
+type RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call struct {
+	*mock.Call
+}
+
+// GetRetiringFederatorPublicKeyOfType is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+//   - index *big.Int
+//   - atype string
+func (_e *RskBridgeAdapterMock_Expecter) GetRetiringFederatorPublicKeyOfType(opts interface{}, index interface{}, atype interface{}) *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call {
+	return &RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call{Call: _e.mock.On("GetRetiringFederatorPublicKeyOfType", opts, index, atype)}
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call) Run(run func(opts *bind.CallOpts, index *big.Int, atype string)) *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts), args[1].(*big.Int), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call) Return(_a0 []byte, _a1 error) *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call) RunAndReturn(run func(*bind.CallOpts, *big.Int, string) ([]byte, error)) *RskBridgeAdapterMock_GetRetiringFederatorPublicKeyOfType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HasBtcBlockCoinbaseTransactionInformation provides a mock function with given fields: opts, blockHash
 func (_m *RskBridgeAdapterMock) HasBtcBlockCoinbaseTransactionInformation(opts *bind.CallOpts, blockHash [32]byte) (bool, error) {
 	ret := _m.Called(opts, blockHash)

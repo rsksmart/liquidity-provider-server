@@ -136,8 +136,9 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
+	t.Run("Success for segwit federation", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetFederationSize", mock.Anything).Return(big.NewInt(2), nil).Once()
 		bridgeMock.On("GetFederatorPublicKeyOfType", mock.Anything, big.NewInt(0), "btc").Return([]byte{0x01, 0x02, 0x03}, nil).Once()
@@ -162,11 +163,48 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		bridgeMock.AssertExpectations(t)
 	})
 
-	t.Run("Error handling", func(t *testing.T) {
+	t.Run("Success for legacy federation", func(t *testing.T) {
+		bridgeMock := &mocks.RskBridgeAdapterMock{}
+		bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(big.NewInt(2), nil).Once()
+		bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(0), "btc").Return([]byte{0x01, 0x02, 0x03}, nil).Once()
+		bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(1), "btc").Return([]byte{0x0a, 0x0b, 0x0c}, nil).Once()
+		bridgeMock.EXPECT().GetRetiringFederationThreshold(mock.Anything).Return(big.NewInt(5), nil).Once()
+		bridgeMock.EXPECT().GetRetiringFederationAddress(mock.Anything).Return(test.AnyAddress, nil).Once()
+		bridgeMock.EXPECT().GetRetiringFederationCreationBlockNumber(mock.Anything).Return(big.NewInt(500), nil).Once()
+
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: false},
+			bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+		fedInfo, err := bridge.FetchFederationInfo()
+		require.NoError(t, err)
+		assert.Equal(t, rsk.FederationInfo{
+			FedSize:              2,
+			FedThreshold:         5,
+			FedAddress:           test.AnyAddress,
+			PubKeys:              []string{"010203", "0a0b0c"},
+			ActiveFedBlockHeight: 500,
+			ErpKeys:              []string{"key1", "key2", "key3"},
+			UseSegwit:            false,
+		}, fedInfo)
+		bridgeMock.AssertExpectations(t)
+	})
+
+	t.Run("Error handling segwit federation", func(t *testing.T) {
 		for _, setUp := range fetchFedInfoErrorSetUps() {
 			bridgeMock := &mocks.RskBridgeAdapterMock{}
 			setUp(bridgeMock)
-			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{UseSegwitFederation: true}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+			result, err := bridge.FetchFederationInfo()
+			require.Error(t, err)
+			assert.Empty(t, result)
+			bridgeMock.AssertExpectations(t)
+		}
+	})
+
+	t.Run("Error handling legacy federation", func(t *testing.T) {
+		for _, setUp := range fetchLegacyFedInfoErrorSetUps() {
+			bridgeMock := &mocks.RskBridgeAdapterMock{}
+			setUp(bridgeMock)
+			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{UseSegwitFederation: false}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 			result, err := bridge.FetchFederationInfo()
 			require.Error(t, err)
 			assert.Empty(t, result)
@@ -201,6 +239,36 @@ func fetchFedInfoErrorSetUps() []func(bridgeMock *mocks.RskBridgeAdapterMock) {
 			bridgeMock.On("GetFederationThreshold", mock.Anything).Return(big.NewInt(5), nil).Once()
 			bridgeMock.On("GetFederationAddress", mock.Anything).Return(test.AnyAddress, nil).Once()
 			bridgeMock.On("GetActiveFederationCreationBlockHeight", mock.Anything).Return(nil, assert.AnError).Once()
+		},
+	}
+}
+
+func fetchLegacyFedInfoErrorSetUps() []func(bridgeMock *mocks.RskBridgeAdapterMock) {
+	return []func(bridgeMock *mocks.RskBridgeAdapterMock){
+		func(bridgeMock *mocks.RskBridgeAdapterMock) {
+			bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(nil, assert.AnError).Once()
+		},
+		func(bridgeMock *mocks.RskBridgeAdapterMock) {
+			bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(big.NewInt(1), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(0), "btc").Return(nil, assert.AnError).Once()
+		},
+		func(bridgeMock *mocks.RskBridgeAdapterMock) {
+			bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(big.NewInt(1), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(0), "btc").Return([]byte{0x01, 0x02, 0x03}, nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationThreshold(mock.Anything).Return(nil, assert.AnError).Once()
+		},
+		func(bridgeMock *mocks.RskBridgeAdapterMock) {
+			bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(big.NewInt(1), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(0), "btc").Return([]byte{0x01, 0x02, 0x03}, nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationThreshold(mock.Anything).Return(big.NewInt(5), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationAddress(mock.Anything).Return("", assert.AnError).Once()
+		},
+		func(bridgeMock *mocks.RskBridgeAdapterMock) {
+			bridgeMock.EXPECT().GetRetiringFederationSize(mock.Anything).Return(big.NewInt(1), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederatorPublicKeyOfType(mock.Anything, big.NewInt(0), "btc").Return([]byte{0x01, 0x02, 0x03}, nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationThreshold(mock.Anything).Return(big.NewInt(5), nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationAddress(mock.Anything).Return(test.AnyAddress, nil).Once()
+			bridgeMock.EXPECT().GetRetiringFederationCreationBlockNumber(mock.Anything).Return(nil, assert.AnError).Once()
 		},
 	}
 }

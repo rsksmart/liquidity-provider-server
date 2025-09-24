@@ -18,12 +18,13 @@ func TestGetDetailUseCase_Run(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	prepareDetailMock(provider)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, false, provider, provider, provider)
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, true, true, provider, provider, provider)
 	result, err := useCase.Run(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, liquidity_provider.FullLiquidityProvider{
 		SiteKey:               captchaKey,
 		LiquidityCheckEnabled: true,
+		UsingSegwitFederation: true,
 		Pegin: lp.LiquidityProviderDetail{
 			FixedFee:              entities.NewWei(100),
 			FeePercentage:         utils.NewBigFloat64(1.33),
@@ -46,12 +47,12 @@ func TestGetDetailUseCase_Run_InvalidCaptchaKey(t *testing.T) {
 	captchaKey := ""
 
 	prepareDetailMock(provider)
-	useCaseCaptchaEnabled := liquidity_provider.NewGetDetailUseCase(captchaKey, false, provider, provider, provider)
+	useCaseCaptchaEnabled := liquidity_provider.NewGetDetailUseCase(captchaKey, false, true, provider, provider, provider)
 	_, err := useCaseCaptchaEnabled.Run(context.Background())
 	assert.Equal(t, "ProviderDetail: missing captcha key", err.Error())
 
 	prepareDetailMock(provider)
-	useCaseCaptchaDisabled := liquidity_provider.NewGetDetailUseCase(captchaKey, true, provider, provider, provider)
+	useCaseCaptchaDisabled := liquidity_provider.NewGetDetailUseCase(captchaKey, true, false, provider, provider, provider)
 	_, err = useCaseCaptchaDisabled.Run(context.Background())
 	require.NoError(t, err)
 }
@@ -65,7 +66,7 @@ func TestGetDetailUseCase_Run_InvalidPeginDetail(t *testing.T) {
 	config.MinValue = nilWei
 	provider.On("PeginConfiguration", mock.AnythingOfType("context.backgroundCtx")).Return(config)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, false, provider, provider, provider)
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, false, true, provider, provider, provider)
 	_, err := useCase.Run(ctx)
 	assert.Equal(t, "ProviderDetail: Key: 'LiquidityProviderDetail.MinTransactionValue' "+
 		"Error:Field validation for 'MinTransactionValue' failed on the 'required' tag", err.Error())
@@ -80,7 +81,7 @@ func TestGetDetailUseCase_Run_InvalidPegoutDetail(t *testing.T) {
 	config.MinValue = nilWei
 	provider.On("PegoutConfiguration", mock.AnythingOfType("context.backgroundCtx")).Return(config)
 	captchaKey := "testKey"
-	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, false, provider, provider, provider)
+	useCase := liquidity_provider.NewGetDetailUseCase(captchaKey, false, true, provider, provider, provider)
 	_, err := useCase.Run(ctx)
 	assert.Equal(t, "ProviderDetail: Key: 'LiquidityProviderDetail.MinTransactionValue' "+
 		"Error:Field validation for 'MinTransactionValue' failed on the 'required' tag", err.Error())
