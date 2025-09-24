@@ -40,6 +40,7 @@ type FederationInfo struct {
 	ActiveFedBlockHeight int64
 	IrisActivationHeight int64
 	ErpKeys              []string
+	UseSegwit            bool
 }
 
 type BtcCoinbaseTransactionInformation struct {

@@ -32,7 +32,7 @@ const (
 )
 
 func TestNewRskBridgeImpl(t *testing.T) {
-	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, IrisActivationHeight: 100, ErpKeys: []string{"key1", "key2", "key3"}}
+	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true}
 	client := rootstock.NewRskClient(&mocks.RpcClientBindingMock{})
 	bridge := rootstock.NewRskBridgeImpl(config, &mocks.RskBridgeAdapterMock{}, client, &chaincfg.TestNet3Params, rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)}, &mocks.TransactionSignerMock{}, time.Duration(1))
 	test.AssertNonZeroValues(t, bridge)
@@ -52,7 +52,7 @@ func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return(test.AnyAddress, nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Equal(t, test.AnyAddress, result)
 		require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 	t.Run("Error handling on GetFederationAddress call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return("", assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Empty(t, result)
 		require.Error(t, err)
@@ -72,7 +72,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetMinimumLockTxValue", mock.Anything).Return(big.NewInt(5), nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.IsType(t, &entities.Wei{}, result)
 		assert.Equal(t, entities.NewWei(50000000000), result)
@@ -82,7 +82,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 	t.Run("Error handling on GetMinimumLockTxValue call fail", func(t *testing.T) {
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetMinimumLockTxValue", mock.Anything).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, nil, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.Nil(t, result)
 		require.Error(t, err)
@@ -90,7 +90,7 @@ func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 }
 
 func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
-	const redeemScriptString = "522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae"
+	const redeemScriptString = "64522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae670350cd00b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec8054ae68"
 	lbcAddress, err := hex.DecodeString("2ff74F841b95E000625b3A77fed03714874C4fEa")
 	require.NoError(t, err)
 	quoteHash, err := hex.DecodeString("4a3eca107f22707e5dbc79964f3e6c21ec5e354e0903391245d9fdbe6bd2b2f0")
@@ -106,7 +106,7 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		LpBtcAddress:         lpBtcAddress,
 		QuoteHash:            quoteHash,
 	}
-	args.FedInfo.FedAddress = "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p"
+	args.FedInfo.FedAddress = "2NCxHG5oK8CWLDrBpTQq6pgKE8jyoB2DpTe"
 	t.Run("Success", func(t *testing.T) {
 		var testError error
 		var redeemScriptBytes []byte
@@ -115,11 +115,11 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		redeemScriptBytes, testError = hex.DecodeString(redeemScriptString)
 		require.NoError(t, testError)
 		bridgeMock.On("GetActivePowpegRedeemScript", mock.Anything).Return(redeemScriptBytes, nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Equal(t, rsk.FlyoverDerivation{
-			Address:      "2Mx7jaPHtsgJTbqGnjU5UqBpkekHgfigXay",
-			RedeemScript: "20ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c7275522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae",
+			Address:      "2MxeEHVx71taCeVsXFsfQ7TKK6v943PFVEu",
+			RedeemScript: "20ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c727564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae670350cd00b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec8054ae68",
 		}, result)
 		require.NoError(t, testError)
 		bridgeMock.AssertExpectations(t)
@@ -129,7 +129,7 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 		var result rsk.FlyoverDerivation
 		bridgeMock := &mocks.RskBridgeAdapterMock{}
 		bridgeMock.On("GetActivePowpegRedeemScript", mock.Anything).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Empty(t, result)
 		require.ErrorContains(t, testError, "error retreiving fed redeem script from bridge")
@@ -146,7 +146,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		bridgeMock.On("GetFederationAddress", mock.Anything).Return(test.AnyAddress, nil).Once()
 		bridgeMock.On("GetActiveFederationCreationBlockHeight", mock.Anything).Return(big.NewInt(500), nil).Once()
 
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100, ErpKeys: []string{"key1", "key2", "key3"}},
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true},
 			bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 		fedInfo, err := bridge.FetchFederationInfo()
 		require.NoError(t, err)
@@ -156,8 +156,8 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 			FedAddress:           test.AnyAddress,
 			PubKeys:              []string{"010203", "0a0b0c"},
 			ActiveFedBlockHeight: 500,
-			IrisActivationHeight: 100,
 			ErpKeys:              []string{"key1", "key2", "key3"},
+			UseSegwit:            true,
 		}, fedInfo)
 		bridgeMock.AssertExpectations(t)
 	})
@@ -166,7 +166,7 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 		for _, setUp := range fetchFedInfoErrorSetUps() {
 			bridgeMock := &mocks.RskBridgeAdapterMock{}
 			setUp(bridgeMock)
-			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{IrisActivationHeight: 100}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
+			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, bridgeMock, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, time.Duration(1))
 			result, err := bridge.FetchFederationInfo()
 			require.Error(t, err)
 			assert.Empty(t, result)

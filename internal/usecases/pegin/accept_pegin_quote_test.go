@@ -59,8 +59,8 @@ var federationInfo = rootstock.FederationInfo{
 	PubKeys:              []string{"01", "02", "03"},
 	FedAddress:           test.AnyAddress,
 	ActiveFedBlockHeight: 500,
-	IrisActivationHeight: 500,
 	ErpKeys:              []string{"04", "05", "06"},
+	UseSegwit:            true,
 }
 var trustedAccountRepository = new(mocks.TrustedAccountRepositoryMock)
 
