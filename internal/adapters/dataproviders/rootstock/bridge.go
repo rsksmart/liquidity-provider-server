@@ -32,6 +32,7 @@ type rskBridgeImpl struct {
 	signer                TransactionSigner
 	miningTimeout         time.Duration
 	useSegwitFederation   bool
+	useRetiringFederation bool
 }
 
 type RskBridgeConfig struct {
@@ -39,6 +40,7 @@ type RskBridgeConfig struct {
 	RequiredConfirmations uint64
 	ErpKeys               []string
 	UseSegwitFederation   bool
+	UseRetiringFederation bool
 }
 
 func NewRskBridgeImpl(
@@ -61,6 +63,7 @@ func NewRskBridgeImpl(
 		signer:                signer,
 		miningTimeout:         miningTimeout,
 		useSegwitFederation:   config.UseSegwitFederation,
+		useRetiringFederation: config.UseRetiringFederation,
 	}
 }
 
@@ -110,10 +113,10 @@ func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
 }
 
 func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, error) {
-	if bridge.useSegwitFederation {
-		return bridge.fetchActiveFederationInfo()
-	} else {
+	if bridge.useRetiringFederation {
 		return bridge.fetchRetiringFederationInfo()
+	} else {
+		return bridge.fetchActiveFederationInfo()
 	}
 }
 
@@ -230,7 +233,7 @@ func (bridge *rskBridgeImpl) fetchRetiringFederationInfo() (rootstock.Federation
 		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
 	}
 
-	log.Warning("Retrieving retiring federation info from the bridge. This federation will be retired soon. Please set USE_SEGWIT_FEDERATION env var to true to use a segwit federation.")
+	log.Warning("Retrieving retiring federation info from the bridge. This federation will be retired soon. Please set USE_RETIRING_FEDERATION env var to false to use the active federation.")
 	return rootstock.FederationInfo{
 		FedThreshold:         fedThreshold.Int64(),
 		FedSize:              fedSize.Int64(),

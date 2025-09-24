@@ -25,6 +25,7 @@ These are the environment variables required by the liquidity provider server (L
 | `RSK_REQUIRED_BRIDGE_CONFIRMATIONS` | The number of confirmations that need to pass before being able to register a pegin, it changes depending on the network. | `100` | YES |
 | `ERP_KEYS` | Keys that are used as a secondary multisig that would be allowed to spend UTXOs after a year they were created. |`0216c23b2ea8e4f11c3f9e22711addb1d16a93964796913830856b568cc3ea21d3`,`0275562901dd8faae20de0a4166362a4f82188db77dbed4ca887422ea1ec185f14`,`034db69f2112f4fb1bb6141bf6e2bd6631f0484d0bd95b16767902c9fe219d4a6f` | YES |
 | `USE_SEGWIT_FEDERATION` | Wether to generate the federation address as a P2SH-P2WSH or not | true | NO |
+| `USE_RETIRING_FEDERATION` | Wether to use the retiring federation instead of the active federation or not. This is only used for testing purposes and should not be set to true | false | NO |
 | `ACCOUNT_NUM` | The keystore account number to use. If not provided default value will be 0. | `0` | NO |
 | `DAO_FEE_COLLECTOR_ADDRESS` | Address of the DAO fee collector. | `0x86B6534687A176A476C16083a373fB9Fe4FAb449` | YES |
 | `KEY_SECRET` | Name of the secret of AWS secrets manager that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-KEY` | NO |

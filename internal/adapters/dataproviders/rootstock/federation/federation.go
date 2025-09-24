@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	log "github.com/sirupsen/logrus"
 )
 
 const flyoverPrefix byte = 0x20
@@ -271,6 +272,7 @@ func CalculateFlyoverDerivationAddress(fedInfo rootstock.FederationInfo, btcPara
 	if fedInfo.UseSegwit {
 		addressScriptHash, err = bitcoin.ScriptToAddressP2shP2wsh(flyoverScript, &btcParams)
 	} else {
+		log.Warn("Using non-segwit federation. Consider changing to a segwit compatible federation if its supported by the network.")
 		addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
 	}
 

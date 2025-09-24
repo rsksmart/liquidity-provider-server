@@ -52,6 +52,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 					RequiredConfirmations: env.Rsk.BridgeRequiredConfirmations,
 					ErpKeys:               env.Rsk.ErpKeys,
 					UseSegwitFederation:   env.Rsk.UseSegwitFederation,
+					UseRetiringFederation: env.Rsk.UseRetiringFederation,
 				},
 				rootstock.NewRskBridgeAdapter(bridge),
 				client,
