@@ -34,12 +34,12 @@ func main() {
 	}
 
 	ctx := context.Background()
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	pegoutContract, err := scripts.CreatePegoutContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(2, "Error accessing the Liquidity Bridge Contract", err)
 	}
 
-	txHash, err := ExecuteRefundUserPegOut(lbc, scriptInput.QuoteHashBytes)
+	txHash, err := ExecuteRefundUserPegOut(pegoutContract, scriptInput.QuoteHashBytes)
 	if err != nil {
 		scripts.ExitWithError(2, "Error on transaction execution", err)
 	}
@@ -53,7 +53,7 @@ func ReadRefundUserPegOutScriptInput(scriptInput *RefundUserPegOutScriptInput) {
 	flag.StringVar(&scriptInput.AwsLocalEndpoint, "aws-endpoint", "http://localhost:4566", "AWS endpoint for localstack")
 	flag.StringVar(&scriptInput.SecretSource, "secret-src", "", "The source of the secrets to execute the transaction. Must be one of the following: env, aws")
 	flag.StringVar(&scriptInput.RskEndpoint, "rsk-endpoint", "", "The URL of the RSK RPC server. E.g. http://localhost:4444")
-	flag.StringVar(&scriptInput.CustomLbcAddress, "lbc-address", "", "Custom address of the liquidity bridge contract. If not provided will use the network default.")
+	flag.StringVar(&scriptInput.CustomPegoutAddress, "custom-pegout-address", "", "Custom address of the pegout contract. If not provided will use the network default.")
 
 	flag.StringVar(&scriptInput.KeystoreFile, "keystore-file", "", "Path to the keystore file. Only required if the secret source is env")
 	flag.StringVar(&scriptInput.EncryptedJsonSecret, "keystore-secret", "", "Name of the secret storing the keystore. Only required if the secret source is aws")
@@ -71,6 +71,6 @@ func ParseRefundUserPegOutScriptInput(parse scripts.ParseFunc, scriptInput *Refu
 	return scriptInput.BaseInput.ToEnv(pwdReader)
 }
 
-func ExecuteRefundUserPegOut(lbc blockchain.LiquidityBridgeContract, quoteHash string) (string, error) {
-	return lbc.RefundUserPegOut(quoteHash)
+func ExecuteRefundUserPegOut(pegoutContract blockchain.PegoutContract, quoteHash string) (string, error) {
+	return pegoutContract.RefundUserPegOut(quoteHash)
 }

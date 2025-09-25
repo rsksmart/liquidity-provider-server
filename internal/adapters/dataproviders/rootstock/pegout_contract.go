@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -27,7 +26,7 @@ type pegoutContractImpl struct {
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
-	abi           *abi.ABI
+	abis          *FlyoverABIs
 }
 
 func NewPegoutContractImpl(
@@ -37,11 +36,8 @@ func NewPegoutContractImpl(
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	abis *FlyoverABIs,
 ) blockchain.PegoutContract {
-	contractAbi, err := bindings.IPegOutMetaData.GetAbi()
-	if err != nil {
-		panic(fmt.Sprintf("could not get ABI for Pegout contract: %v", err))
-	}
 	return &pegoutContractImpl{
 		client:        client.client,
 		address:       address,
@@ -49,7 +45,7 @@ func NewPegoutContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
-		abi:           contractAbi,
+		abis:          abis,
 	}
 }
 
@@ -156,7 +152,7 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 		params.MerkleBranchPath,
 		params.MerkleBranchHashes,
 	)
-	parsedRevert, err := ParseRevertReason(pegoutContract.abi, revert)
+	parsedRevert, err := ParseRevertReason(pegoutContract.abis.PegOut, revert)
 	if err != nil && parsedRevert == nil {
 		return "", fmt.Errorf("error parsing refundPegout result: %w", err)
 	} else if parsedRevert != nil && (strings.EqualFold(notEnoughConfirmationsError, parsedRevert.Name) || strings.EqualFold(unableToGetConfirmations, parsedRevert.Name)) {

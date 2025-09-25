@@ -109,6 +109,179 @@ type QuotesV2PegOutQuote struct {
 	GasFee                *big.Int
 }
 
+// FlyoverMetaData contains all meta data concerning the Flyover contract.
+var FlyoverMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"heightOrHash\",\"type\":\"bytes32\"}],\"name\":\"EmptyBlockHeader\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"IncorrectContract\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"InsufficientAmount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"InvalidAddress\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"InvalidSender\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"wanted\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"actual\",\"type\":\"uint256\"}],\"name\":\"NoBalance\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"NoContract\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"passedAmount\",\"type\":\"uint256\"}],\"name\":\"Overflow\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"reason\",\"type\":\"bytes\"}],\"name\":\"PaymentFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"PaymentNotAllowed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"ProviderNotRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteNotFound\",\"type\":\"error\"}]",
+	Bin: "0x60566037600b82828239805160001a607314602a57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600080fdfea26469706673582212204950f2ab918c24153aca756ac5d2f6ef8e1f2d64d15998f39f1a3c907a4966ad64736f6c63430008190033",
+}
+
+// FlyoverABI is the input ABI used to generate the binding from.
+// Deprecated: Use FlyoverMetaData.ABI instead.
+var FlyoverABI = FlyoverMetaData.ABI
+
+// FlyoverBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use FlyoverMetaData.Bin instead.
+var FlyoverBin = FlyoverMetaData.Bin
+
+// DeployFlyover deploys a new Ethereum contract, binding an instance of Flyover to it.
+func DeployFlyover(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Flyover, error) {
+	parsed, err := FlyoverMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(FlyoverBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &Flyover{FlyoverCaller: FlyoverCaller{contract: contract}, FlyoverTransactor: FlyoverTransactor{contract: contract}, FlyoverFilterer: FlyoverFilterer{contract: contract}}, nil
+}
+
+// Flyover is an auto generated Go binding around an Ethereum contract.
+type Flyover struct {
+	FlyoverCaller     // Read-only binding to the contract
+	FlyoverTransactor // Write-only binding to the contract
+	FlyoverFilterer   // Log filterer for contract events
+}
+
+// FlyoverCaller is an auto generated read-only Go binding around an Ethereum contract.
+type FlyoverCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// FlyoverTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type FlyoverTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// FlyoverFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type FlyoverFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// FlyoverSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type FlyoverSession struct {
+	Contract     *Flyover          // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// FlyoverCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type FlyoverCallerSession struct {
+	Contract *FlyoverCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts  // Call options to use throughout this session
+}
+
+// FlyoverTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type FlyoverTransactorSession struct {
+	Contract     *FlyoverTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts  // Transaction auth options to use throughout this session
+}
+
+// FlyoverRaw is an auto generated low-level Go binding around an Ethereum contract.
+type FlyoverRaw struct {
+	Contract *Flyover // Generic contract binding to access the raw methods on
+}
+
+// FlyoverCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type FlyoverCallerRaw struct {
+	Contract *FlyoverCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// FlyoverTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type FlyoverTransactorRaw struct {
+	Contract *FlyoverTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewFlyover creates a new instance of Flyover, bound to a specific deployed contract.
+func NewFlyover(address common.Address, backend bind.ContractBackend) (*Flyover, error) {
+	contract, err := bindFlyover(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Flyover{FlyoverCaller: FlyoverCaller{contract: contract}, FlyoverTransactor: FlyoverTransactor{contract: contract}, FlyoverFilterer: FlyoverFilterer{contract: contract}}, nil
+}
+
+// NewFlyoverCaller creates a new read-only instance of Flyover, bound to a specific deployed contract.
+func NewFlyoverCaller(address common.Address, caller bind.ContractCaller) (*FlyoverCaller, error) {
+	contract, err := bindFlyover(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &FlyoverCaller{contract: contract}, nil
+}
+
+// NewFlyoverTransactor creates a new write-only instance of Flyover, bound to a specific deployed contract.
+func NewFlyoverTransactor(address common.Address, transactor bind.ContractTransactor) (*FlyoverTransactor, error) {
+	contract, err := bindFlyover(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &FlyoverTransactor{contract: contract}, nil
+}
+
+// NewFlyoverFilterer creates a new log filterer instance of Flyover, bound to a specific deployed contract.
+func NewFlyoverFilterer(address common.Address, filterer bind.ContractFilterer) (*FlyoverFilterer, error) {
+	contract, err := bindFlyover(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &FlyoverFilterer{contract: contract}, nil
+}
+
+// bindFlyover binds a generic wrapper to an already deployed contract.
+func bindFlyover(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := FlyoverMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Flyover *FlyoverRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Flyover.Contract.FlyoverCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Flyover *FlyoverRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Flyover.Contract.FlyoverTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Flyover *FlyoverRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Flyover.Contract.FlyoverTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Flyover *FlyoverCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Flyover.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Flyover *FlyoverTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Flyover.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Flyover *FlyoverTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Flyover.Contract.contract.Transact(opts, method, params...)
+}
+
 // IBridgeMetaData contains all meta data concerning the IBridge contract.
 var IBridgeMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"key\",\"type\":\"bytes\"}],\"name\":\"addFederatorPublicKey\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"btcKey\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"rskKey\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"mstKey\",\"type\":\"bytes\"}],\"name\":\"addFederatorPublicKeyMultikey\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"aaddress\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"maxTransferValue\",\"type\":\"int256\"}],\"name\":\"addLockWhitelistAddress\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"aaddress\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"maxTransferValue\",\"type\":\"int256\"}],\"name\":\"addOneOffLockWhitelistAddress\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"pubkey\",\"type\":\"bytes\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"},{\"internalType\":\"bytes\",\"name\":\"txhash\",\"type\":\"bytes\"}],\"name\":\"addSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"aaddress\",\"type\":\"string\"}],\"name\":\"addUnlimitedLockWhitelistAddress\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"hash\",\"type\":\"bytes\"}],\"name\":\"commitFederation\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"createFederation\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getActiveFederationCreationBlockHeight\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getActivePowpegRedeemScript\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBtcBlockchainBestBlockHeader\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBtcBlockchainBestChainHeight\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"depth\",\"type\":\"int256\"}],\"name\":\"getBtcBlockchainBlockHashAtDepth\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"btcBlockHash\",\"type\":\"bytes32\"}],\"name\":\"getBtcBlockchainBlockHeaderByHash\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"btcBlockHeight\",\"type\":\"uint256\"}],\"name\":\"getBtcBlockchainBlockHeaderByHeight\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBtcBlockchainInitialBlockHeight\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"btcBlockHash\",\"type\":\"bytes32\"}],\"name\":\"getBtcBlockchainParentBlockHeaderByHash\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"txHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"merkleBranchPath\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"getBtcTransactionConfirmations\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"}],\"name\":\"getBtcTxHashProcessedHeight\",\"outputs\":[{\"internalType\":\"int64\",\"name\":\"\",\"type\":\"int64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFederationAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFederationCreationBlockNumber\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFederationCreationTime\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFederationSize\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFederationThreshold\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"}],\"name\":\"getFederatorPublicKey\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"},{\"internalType\":\"string\",\"name\":\"atype\",\"type\":\"string\"}],\"name\":\"getFederatorPublicKeyOfType\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeePerKb\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"}],\"name\":\"getLockWhitelistAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"aaddress\",\"type\":\"string\"}],\"name\":\"getLockWhitelistEntryByAddress\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getLockWhitelistSize\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getLockingCap\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinimumLockTxValue\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPendingFederationHash\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPendingFederationSize\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"}],\"name\":\"getPendingFederatorPublicKey\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"},{\"internalType\":\"string\",\"name\":\"atype\",\"type\":\"string\"}],\"name\":\"getPendingFederatorPublicKeyOfType\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRetiringFederationAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRetiringFederationCreationBlockNumber\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRetiringFederationCreationTime\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRetiringFederationSize\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRetiringFederationThreshold\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"}],\"name\":\"getRetiringFederatorPublicKey\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"index\",\"type\":\"int256\"},{\"internalType\":\"string\",\"name\":\"atype\",\"type\":\"string\"}],\"name\":\"getRetiringFederatorPublicKeyOfType\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getStateForBtcReleaseClient\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getStateForDebugging\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"hasBtcBlockCoinbaseTransactionInformation\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"newLockingCap\",\"type\":\"int256\"}],\"name\":\"increaseLockingCap\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"}],\"name\":\"isBtcTxHashAlreadyProcessed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"ablock\",\"type\":\"bytes\"}],\"name\":\"receiveHeader\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"blocks\",\"type\":\"bytes[]\"}],\"name\":\"receiveHeaders\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"witnessMerkleRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"witnessReservedValue\",\"type\":\"bytes32\"}],\"name\":\"registerBtcCoinbaseTransaction\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"atx\",\"type\":\"bytes\"},{\"internalType\":\"int256\",\"name\":\"height\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"pmt\",\"type\":\"bytes\"}],\"name\":\"registerBtcTransaction\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"btcTxSerialized\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"pmtSerialized\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"derivationArgumentsHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"userRefundBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"addresspayable\",\"name\":\"liquidityBridgeContractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bool\",\"name\":\"shouldTransferToContract\",\"type\":\"bool\"}],\"name\":\"registerFastBridgeBtcTransaction\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"aaddress\",\"type\":\"string\"}],\"name\":\"removeLockWhitelistAddress\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"rollbackFederation\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"disableDelay\",\"type\":\"int256\"}],\"name\":\"setLockWhitelistDisableBlockDelay\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"updateCollections\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"feePerKb\",\"type\":\"int256\"}],\"name\":\"voteFeePerKbChange\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
@@ -7240,4 +7413,472 @@ func (_IPegOut *IPegOutFilterer) ParsePegOutUserRefunded(log types.Log) (*IPegOu
 	}
 	event.Raw = log
 	return event, nil
+}
+
+// QuotesMetaData contains all meta data concerning the Quotes contract.
+var QuotesMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"AmountTooLow\",\"type\":\"error\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"transferredAmount\",\"type\":\"uint256\"}],\"name\":\"checkAgreedAmount\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodePegOutQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodeQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	Bin: "0x610b2c610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe730000000000000000000000000000000000000000301460806040526004361061004b5760003560e01c80632770727a14610050578063e5648b9a14610065578063fb19b88b1461008e575b600080fd5b61006361005e36600461034a565b6100a1565b005b61007861007336600461038e565b61012a565b6040516100859190610410565b60405180910390f35b61007861009c36600461042a565b610175565b6000608083013560608401356100bc8535604087013561047b565b6100c6919061047b565b6100d0919061047b565b905060006100e061271083610494565b9050826100ed82846104b6565b111561012457826100fe82846104b6565b604051631cc6243f60e01b81526004810192909252602482015260440160405180910390fd5b50505050565b606061013d61013883610633565b610199565b61014e61014984610633565b6101e4565b60405160200161015f9291906107d6565b6040516020818303038152906040529050919050565b606061018861018383610804565b61023f565b61014e61019484610804565b61028a565b60608160a001518260c001518360e001518461022001518561012001518661024001518760000151886020015189610100015160405160200161015f9998979695949392919061097a565b60608161026001518261016001518361014001518460400151856101800151866101a00151876101c00151886101e001518961020001518a606001518b6080015160405160200161015f9b9a999897969594939291906109f9565b60608160a001518260c001518361022001518460e001518561024001518660000151876020015188610100015189610200015160405160200161015f99989796959493929190610a72565b60608160400151826101200151836101400151846101c00151856101e00151866101600151876101800151886101a0015189606001518a6080015160405160200161015f9a99989796959493929190998a5263ffffffff98891660208b015296881660408a015261ffff95861660608a015293909416608088015290851660a0870152841660c0860152921660e08401526101008301919091526101208201526101400190565b6000610280828403121561034457600080fd5b50919050565b6000806040838503121561035d57600080fd5b82356001600160401b0381111561037357600080fd5b61037f85828601610331565b95602094909401359450505050565b6000602082840312156103a057600080fd5b81356001600160401b038111156103b657600080fd5b6103c284828501610331565b949350505050565b6000815180845260005b818110156103f0576020818501810151868301820152016103d4565b506000602082860101526020601f19601f83011685010191505092915050565b60208152600061042360208301846103ca565b9392505050565b60006020828403121561043c57600080fd5b81356001600160401b0381111561045257600080fd5b8201610260818503121561042357600080fd5b634e487b7160e01b600052601160045260246000fd5b8082018082111561048e5761048e610465565b92915050565b6000826104b157634e487b7160e01b600052601260045260246000fd5b500490565b8181038181111561048e5761048e610465565b634e487b7160e01b600052604160045260246000fd5b60405161028081016001600160401b0381118282101715610502576105026104c9565b60405290565b60405161026081016001600160401b0381118282101715610502576105026104c9565b80356001600160601b03198116811461054357600080fd5b919050565b80356001600160a01b038116811461054357600080fd5b8035600781900b811461054357600080fd5b803563ffffffff8116811461054357600080fd5b803561ffff8116811461054357600080fd5b8035801515811461054357600080fd5b600082601f8301126105b857600080fd5b81356001600160401b03808211156105d2576105d26104c9565b604051601f8301601f19908116603f011681019082821181831017156105fa576105fa6104c9565b8160405283815286602085880101111561061357600080fd5b836020870160208301376000602085830101528094505050505092915050565b6000610280823603121561064657600080fd5b61064e6104df565b823581526020830135602082015260408301356040820152606083013560608201526080830135608082015261068660a0840161052b565b60a082015261069760c08401610548565b60c08201526106a860e08401610548565b60e08201526101006106bb818501610548565b908201526101206106cd848201610548565b908201526101406106df84820161055f565b908201526101606106f1848201610571565b90820152610180610703848201610571565b908201526101a0610715848201610571565b908201526101c0610727848201610571565b908201526101e0610739848201610585565b9082015261020061074b848201610597565b90820152610220838101356001600160401b038082111561076b57600080fd5b610777368388016105a7565b8385015261024092508286013591508082111561079357600080fd5b61079f368388016105a7565b838501526102609250828601359150808211156107bb57600080fd5b506107c8368287016105a7565b918301919091525092915050565b6040815260006107e960408301856103ca565b82810360208401526107fb81856103ca565b95945050505050565b6000610260823603121561081757600080fd5b61081f610508565b823581526020830135602082015260408301356040820152606083013560608201526080830135608082015261085760a08401610548565b60a082015261086860c08401610548565b60c082015261087960e08401610548565b60e082015261010061088c81850161055f565b9082015261012061089e848201610571565b908201526101406108b0848201610571565b908201526101606108c2848201610571565b908201526101806108d4848201610571565b908201526101a06108e6848201610571565b908201526101c06108f8848201610585565b908201526101e061090a848201610585565b90820152610200838101356001600160401b038082111561092a57600080fd5b610936368388016105a7565b8385015261022092508286013591508082111561095257600080fd5b61095e368388016105a7565b838501526102409250828601359150808211156107bb57600080fd5b6001600160601b03198a1681526001600160a01b0389811660208301528881166040830152610120606083018190526000916109b88483018b6103ca565b9150808916608085015283820360a08501526109d482896103ca565b60c085019790975260e084019590955250509116610100909101529695505050505050565b6000610160808352610a0d8184018f6103ca565b63ffffffff9d8e16602085015260079c909c0b604084015250506060810198909852958916608088015293881660a08701529190961660c085015261ffff90951660e08401529315156101008301526101208201939093526101400191909152919050565b6001600160a01b038a81168252898116602083015261012060408301819052600091610aa08483018c6103ca565b908a16606085015283810360808501529050610abc81896103ca565b90508660a08401528560c08401528460070b60e0840152828103610100840152610ae681856103ca565b9c9b50505050505050505050505056fea26469706673582212206b918946ed9107ffd1f4f22d1afe315ae833a25486c0ccc8d06428588be7d2a364736f6c63430008190033",
+}
+
+// QuotesABI is the input ABI used to generate the binding from.
+// Deprecated: Use QuotesMetaData.ABI instead.
+var QuotesABI = QuotesMetaData.ABI
+
+// QuotesBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use QuotesMetaData.Bin instead.
+var QuotesBin = QuotesMetaData.Bin
+
+// DeployQuotes deploys a new Ethereum contract, binding an instance of Quotes to it.
+func DeployQuotes(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Quotes, error) {
+	parsed, err := QuotesMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(QuotesBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &Quotes{QuotesCaller: QuotesCaller{contract: contract}, QuotesTransactor: QuotesTransactor{contract: contract}, QuotesFilterer: QuotesFilterer{contract: contract}}, nil
+}
+
+// Quotes is an auto generated Go binding around an Ethereum contract.
+type Quotes struct {
+	QuotesCaller     // Read-only binding to the contract
+	QuotesTransactor // Write-only binding to the contract
+	QuotesFilterer   // Log filterer for contract events
+}
+
+// QuotesCaller is an auto generated read-only Go binding around an Ethereum contract.
+type QuotesCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// QuotesTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type QuotesTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// QuotesFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type QuotesFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// QuotesSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type QuotesSession struct {
+	Contract     *Quotes           // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// QuotesCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type QuotesCallerSession struct {
+	Contract *QuotesCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts // Call options to use throughout this session
+}
+
+// QuotesTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type QuotesTransactorSession struct {
+	Contract     *QuotesTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// QuotesRaw is an auto generated low-level Go binding around an Ethereum contract.
+type QuotesRaw struct {
+	Contract *Quotes // Generic contract binding to access the raw methods on
+}
+
+// QuotesCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type QuotesCallerRaw struct {
+	Contract *QuotesCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// QuotesTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type QuotesTransactorRaw struct {
+	Contract *QuotesTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewQuotes creates a new instance of Quotes, bound to a specific deployed contract.
+func NewQuotes(address common.Address, backend bind.ContractBackend) (*Quotes, error) {
+	contract, err := bindQuotes(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &Quotes{QuotesCaller: QuotesCaller{contract: contract}, QuotesTransactor: QuotesTransactor{contract: contract}, QuotesFilterer: QuotesFilterer{contract: contract}}, nil
+}
+
+// NewQuotesCaller creates a new read-only instance of Quotes, bound to a specific deployed contract.
+func NewQuotesCaller(address common.Address, caller bind.ContractCaller) (*QuotesCaller, error) {
+	contract, err := bindQuotes(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &QuotesCaller{contract: contract}, nil
+}
+
+// NewQuotesTransactor creates a new write-only instance of Quotes, bound to a specific deployed contract.
+func NewQuotesTransactor(address common.Address, transactor bind.ContractTransactor) (*QuotesTransactor, error) {
+	contract, err := bindQuotes(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &QuotesTransactor{contract: contract}, nil
+}
+
+// NewQuotesFilterer creates a new log filterer instance of Quotes, bound to a specific deployed contract.
+func NewQuotesFilterer(address common.Address, filterer bind.ContractFilterer) (*QuotesFilterer, error) {
+	contract, err := bindQuotes(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &QuotesFilterer{contract: contract}, nil
+}
+
+// bindQuotes binds a generic wrapper to an already deployed contract.
+func bindQuotes(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := QuotesMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Quotes *QuotesRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Quotes.Contract.QuotesCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Quotes *QuotesRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Quotes.Contract.QuotesTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Quotes *QuotesRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Quotes.Contract.QuotesTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_Quotes *QuotesCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _Quotes.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_Quotes *QuotesTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Quotes.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_Quotes *QuotesTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _Quotes.Contract.contract.Transact(opts, method, params...)
+}
+
+// CheckAgreedAmount is a free data retrieval call binding the contract method 0x62e2e937.
+//
+// Solidity: function checkAgreedAmount((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, uint256 transferredAmount) pure returns()
+func (_Quotes *QuotesCaller) CheckAgreedAmount(opts *bind.CallOpts, quote QuotesPegInQuote, transferredAmount *big.Int) error {
+	var out []interface{}
+	err := _Quotes.contract.Call(opts, &out, "checkAgreedAmount", quote, transferredAmount)
+
+	if err != nil {
+		return err
+	}
+
+	return err
+
+}
+
+// CheckAgreedAmount is a free data retrieval call binding the contract method 0x62e2e937.
+//
+// Solidity: function checkAgreedAmount((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, uint256 transferredAmount) pure returns()
+func (_Quotes *QuotesSession) CheckAgreedAmount(quote QuotesPegInQuote, transferredAmount *big.Int) error {
+	return _Quotes.Contract.CheckAgreedAmount(&_Quotes.CallOpts, quote, transferredAmount)
+}
+
+// CheckAgreedAmount is a free data retrieval call binding the contract method 0x62e2e937.
+//
+// Solidity: function checkAgreedAmount((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, uint256 transferredAmount) pure returns()
+func (_Quotes *QuotesCallerSession) CheckAgreedAmount(quote QuotesPegInQuote, transferredAmount *big.Int) error {
+	return _Quotes.Contract.CheckAgreedAmount(&_Quotes.CallOpts, quote, transferredAmount)
+}
+
+// EncodePegOutQuote is a free data retrieval call binding the contract method 0x1bc6d4a4.
+//
+// Solidity: function encodePegOutQuote((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesCaller) EncodePegOutQuote(opts *bind.CallOpts, quote QuotesPegOutQuote) ([]byte, error) {
+	var out []interface{}
+	err := _Quotes.contract.Call(opts, &out, "encodePegOutQuote", quote)
+
+	if err != nil {
+		return *new([]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
+
+	return out0, err
+
+}
+
+// EncodePegOutQuote is a free data retrieval call binding the contract method 0x1bc6d4a4.
+//
+// Solidity: function encodePegOutQuote((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesSession) EncodePegOutQuote(quote QuotesPegOutQuote) ([]byte, error) {
+	return _Quotes.Contract.EncodePegOutQuote(&_Quotes.CallOpts, quote)
+}
+
+// EncodePegOutQuote is a free data retrieval call binding the contract method 0x1bc6d4a4.
+//
+// Solidity: function encodePegOutQuote((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesCallerSession) EncodePegOutQuote(quote QuotesPegOutQuote) ([]byte, error) {
+	return _Quotes.Contract.EncodePegOutQuote(&_Quotes.CallOpts, quote)
+}
+
+// EncodeQuote is a free data retrieval call binding the contract method 0xb77b6c0b.
+//
+// Solidity: function encodeQuote((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesCaller) EncodeQuote(opts *bind.CallOpts, quote QuotesPegInQuote) ([]byte, error) {
+	var out []interface{}
+	err := _Quotes.contract.Call(opts, &out, "encodeQuote", quote)
+
+	if err != nil {
+		return *new([]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]byte)).(*[]byte)
+
+	return out0, err
+
+}
+
+// EncodeQuote is a free data retrieval call binding the contract method 0xb77b6c0b.
+//
+// Solidity: function encodeQuote((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesSession) EncodeQuote(quote QuotesPegInQuote) ([]byte, error) {
+	return _Quotes.Contract.EncodeQuote(&_Quotes.CallOpts, quote)
+}
+
+// EncodeQuote is a free data retrieval call binding the contract method 0xb77b6c0b.
+//
+// Solidity: function encodeQuote((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) pure returns(bytes)
+func (_Quotes *QuotesCallerSession) EncodeQuote(quote QuotesPegInQuote) ([]byte, error) {
+	return _Quotes.Contract.EncodeQuote(&_Quotes.CallOpts, quote)
+}
+
+// SignatureValidatorMetaData contains all meta data concerning the SignatureValidator contract.
+var SignatureValidatorMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expectedAddress\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"usedHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"IncorrectSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"verify\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	Bin: "0x6102a7610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600436106100355760003560e01c80631a86b5501461003a575b600080fd5b61004d610048366004610167565b610061565b604051901515815260200160405180910390f35b602081810151604080840151606085015182518084018452601c81527b0ca2ba3432b932bab69029b4b3b732b21026b2b9b9b0b3b29d05199960211b818701529251600095929391861a9286916100bc9184918b910161023f565b60408051601f1981840301815282825280516020918201206000845290830180835281905260ff861691830191909152606082018790526080820186905291506001600160a01b038a169060019060a0016020604051602081039080840390855afa15801561012f573d6000803e3d6000fd5b505050602060405103516001600160a01b031614955050505050509392505050565b634e487b7160e01b600052604160045260246000fd5b60008060006060848603121561017c57600080fd5b83356001600160a01b038116811461019357600080fd5b92506020840135915060408401356001600160401b03808211156101b657600080fd5b818601915086601f8301126101ca57600080fd5b8135818111156101dc576101dc610151565b604051601f8201601f19908116603f0116810190838211818310171561020457610204610151565b8160405282815289602084870101111561021d57600080fd5b8260208601602083013760006020848301015280955050505050509250925092565b6000835160005b818110156102605760208187018101518583015201610246565b50919091019182525060200191905056fea2646970667358221220aa28be7fb4c916241e4be09ce37be2e061b3ad7002abda8fe0eaee1d9430d8b564736f6c63430008190033",
+}
+
+// SignatureValidatorABI is the input ABI used to generate the binding from.
+// Deprecated: Use SignatureValidatorMetaData.ABI instead.
+var SignatureValidatorABI = SignatureValidatorMetaData.ABI
+
+// SignatureValidatorBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use SignatureValidatorMetaData.Bin instead.
+var SignatureValidatorBin = SignatureValidatorMetaData.Bin
+
+// DeploySignatureValidator deploys a new Ethereum contract, binding an instance of SignatureValidator to it.
+func DeploySignatureValidator(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *SignatureValidator, error) {
+	parsed, err := SignatureValidatorMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(SignatureValidatorBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &SignatureValidator{SignatureValidatorCaller: SignatureValidatorCaller{contract: contract}, SignatureValidatorTransactor: SignatureValidatorTransactor{contract: contract}, SignatureValidatorFilterer: SignatureValidatorFilterer{contract: contract}}, nil
+}
+
+// SignatureValidator is an auto generated Go binding around an Ethereum contract.
+type SignatureValidator struct {
+	SignatureValidatorCaller     // Read-only binding to the contract
+	SignatureValidatorTransactor // Write-only binding to the contract
+	SignatureValidatorFilterer   // Log filterer for contract events
+}
+
+// SignatureValidatorCaller is an auto generated read-only Go binding around an Ethereum contract.
+type SignatureValidatorCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// SignatureValidatorTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type SignatureValidatorTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// SignatureValidatorFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type SignatureValidatorFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// SignatureValidatorSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type SignatureValidatorSession struct {
+	Contract     *SignatureValidator // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts       // Call options to use throughout this session
+	TransactOpts bind.TransactOpts   // Transaction auth options to use throughout this session
+}
+
+// SignatureValidatorCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type SignatureValidatorCallerSession struct {
+	Contract *SignatureValidatorCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts             // Call options to use throughout this session
+}
+
+// SignatureValidatorTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type SignatureValidatorTransactorSession struct {
+	Contract     *SignatureValidatorTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts             // Transaction auth options to use throughout this session
+}
+
+// SignatureValidatorRaw is an auto generated low-level Go binding around an Ethereum contract.
+type SignatureValidatorRaw struct {
+	Contract *SignatureValidator // Generic contract binding to access the raw methods on
+}
+
+// SignatureValidatorCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type SignatureValidatorCallerRaw struct {
+	Contract *SignatureValidatorCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// SignatureValidatorTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type SignatureValidatorTransactorRaw struct {
+	Contract *SignatureValidatorTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewSignatureValidator creates a new instance of SignatureValidator, bound to a specific deployed contract.
+func NewSignatureValidator(address common.Address, backend bind.ContractBackend) (*SignatureValidator, error) {
+	contract, err := bindSignatureValidator(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &SignatureValidator{SignatureValidatorCaller: SignatureValidatorCaller{contract: contract}, SignatureValidatorTransactor: SignatureValidatorTransactor{contract: contract}, SignatureValidatorFilterer: SignatureValidatorFilterer{contract: contract}}, nil
+}
+
+// NewSignatureValidatorCaller creates a new read-only instance of SignatureValidator, bound to a specific deployed contract.
+func NewSignatureValidatorCaller(address common.Address, caller bind.ContractCaller) (*SignatureValidatorCaller, error) {
+	contract, err := bindSignatureValidator(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &SignatureValidatorCaller{contract: contract}, nil
+}
+
+// NewSignatureValidatorTransactor creates a new write-only instance of SignatureValidator, bound to a specific deployed contract.
+func NewSignatureValidatorTransactor(address common.Address, transactor bind.ContractTransactor) (*SignatureValidatorTransactor, error) {
+	contract, err := bindSignatureValidator(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &SignatureValidatorTransactor{contract: contract}, nil
+}
+
+// NewSignatureValidatorFilterer creates a new log filterer instance of SignatureValidator, bound to a specific deployed contract.
+func NewSignatureValidatorFilterer(address common.Address, filterer bind.ContractFilterer) (*SignatureValidatorFilterer, error) {
+	contract, err := bindSignatureValidator(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &SignatureValidatorFilterer{contract: contract}, nil
+}
+
+// bindSignatureValidator binds a generic wrapper to an already deployed contract.
+func bindSignatureValidator(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := SignatureValidatorMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_SignatureValidator *SignatureValidatorRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _SignatureValidator.Contract.SignatureValidatorCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_SignatureValidator *SignatureValidatorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _SignatureValidator.Contract.SignatureValidatorTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_SignatureValidator *SignatureValidatorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _SignatureValidator.Contract.SignatureValidatorTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_SignatureValidator *SignatureValidatorCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _SignatureValidator.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_SignatureValidator *SignatureValidatorTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _SignatureValidator.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_SignatureValidator *SignatureValidatorTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _SignatureValidator.Contract.contract.Transact(opts, method, params...)
+}
+
+// Verify is a free data retrieval call binding the contract method 0x1a86b550.
+//
+// Solidity: function verify(address addr, bytes32 quoteHash, bytes signature) pure returns(bool)
+func (_SignatureValidator *SignatureValidatorCaller) Verify(opts *bind.CallOpts, addr common.Address, quoteHash [32]byte, signature []byte) (bool, error) {
+	var out []interface{}
+	err := _SignatureValidator.contract.Call(opts, &out, "verify", addr, quoteHash, signature)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// Verify is a free data retrieval call binding the contract method 0x1a86b550.
+//
+// Solidity: function verify(address addr, bytes32 quoteHash, bytes signature) pure returns(bool)
+func (_SignatureValidator *SignatureValidatorSession) Verify(addr common.Address, quoteHash [32]byte, signature []byte) (bool, error) {
+	return _SignatureValidator.Contract.Verify(&_SignatureValidator.CallOpts, addr, quoteHash, signature)
+}
+
+// Verify is a free data retrieval call binding the contract method 0x1a86b550.
+//
+// Solidity: function verify(address addr, bytes32 quoteHash, bytes signature) pure returns(bool)
+func (_SignatureValidator *SignatureValidatorCallerSession) Verify(addr common.Address, quoteHash [32]byte, signature []byte) (bool, error) {
+	return _SignatureValidator.Contract.Verify(&_SignatureValidator.CallOpts, addr, quoteHash, signature)
 }

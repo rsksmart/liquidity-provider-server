@@ -60,7 +60,7 @@ type ProviderRegistrationParams struct {
 	Name       string                          `validate:"required"`
 	ApiBaseUrl string                          `validate:"required"`
 	Status     bool                            `validate:"required"`
-	Type       liquidity_provider.ProviderType `validate:"required"`
+	Type       liquidity_provider.ProviderType `validate:"oneof=0 1 2"`
 }
 
 func NewProviderRegistrationParams(

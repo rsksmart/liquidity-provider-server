@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -26,7 +25,7 @@ type collateralManagementContractImpl struct {
 	contractAddress string
 	contract        CollateralManagementAdapter
 	signer          TransactionSigner
-	abi             *abi.ABI
+	abis            *FlyoverABIs
 	retryParams     RetryParams
 	miningTimeout   time.Duration
 }
@@ -39,11 +38,8 @@ func NewCollateralManagementContractImpl(
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	abis *FlyoverABIs,
 ) blockchain.CollateralManagementContract {
-	contractAbi, err := bindings.IPegOutMetaData.GetAbi()
-	if err != nil {
-		panic(fmt.Sprintf("could not get ABI for Collateral Management contract: %v", err))
-	}
 	return &collateralManagementContractImpl{
 		client:          client.client,
 		contractAddress: contractAddress,
@@ -52,7 +48,7 @@ func NewCollateralManagementContractImpl(
 		signer:          signer,
 		retryParams:     retryParams,
 		miningTimeout:   miningTimeout,
-		abi:             contractAbi,
+		abis:            abis,
 	}
 }
 
@@ -181,7 +177,7 @@ func (collateral *collateralManagementContractImpl) WithdrawCollateral() error {
 	var err error
 
 	revert := collateral.contract.Caller().Call(&bind.CallOpts{From: collateral.signer.Address()}, &res, functionName)
-	parsedRevert, err := ParseRevertReason(collateral.abi, revert)
+	parsedRevert, err := ParseRevertReason(collateral.abis.CollateralManagement, revert)
 	if err != nil && parsedRevert == nil {
 		return fmt.Errorf("error parsing withdrawCollateral result: %w", err)
 	} else if parsedRevert != nil && (strings.EqualFold(notResignedError, parsedRevert.Name) || strings.EqualFold(resignationDelayNotPassedError, parsedRevert.Name)) {

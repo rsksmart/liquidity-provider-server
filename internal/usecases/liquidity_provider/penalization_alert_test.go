@@ -16,7 +16,7 @@ import (
 )
 
 func TestPenalizationAlertUseCase_Run(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	collateral := &mocks.CollateralManagementContractMock{}
 	events := []penalization.PenalizedEvent{
 		{
 			LiquidityProvider: "0x01",
@@ -35,7 +35,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		},
 	}
 	toBlock := uint64(10)
-	lbc.On(
+	collateral.On(
 		"GetPenalizedEvents",
 		test.AnyCtx,
 		uint64(5),
@@ -58,23 +58,23 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		).Return(nil).Once()
 	}
 
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, recipient, repo)
 	err := useCase.Run(context.Background(), 5, 10)
 	require.NoError(t, err)
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	sender.AssertExpectations(t)
 }
 
 func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	collateral := &mocks.CollateralManagementContractMock{}
 	sender := &mocks.AlertSenderMock{}
-	lbc.On("GetPenalizedEvents", test.AnyCtx, uint64(5), mock.Anything).
+	collateral.On("GetPenalizedEvents", test.AnyCtx, uint64(5), mock.Anything).
 		Return([]penalization.PenalizedEvent{}, assert.AnError).Once()
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	repo := mocks.NewPenalizedEventRepositoryMock(t)
 	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, "recipient", repo)
 	err := useCase.Run(context.Background(), 5, 10)
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	require.Error(t, err)
 }

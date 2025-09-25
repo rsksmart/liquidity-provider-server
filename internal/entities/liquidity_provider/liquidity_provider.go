@@ -45,6 +45,19 @@ func (p ProviderType) AcceptsPegout() bool {
 	return p == PegoutProvider || p == FullProvider
 }
 
+func (p ProviderType) Name() string {
+	switch p {
+	case PeginProvider:
+		return "pegin"
+	case PegoutProvider:
+		return "pegout"
+	case FullProvider:
+		return "both"
+	default:
+		return "unknown"
+	}
+}
+
 func ToProviderType(value int) (ProviderType, error) {
 	providerType := ProviderType(value)
 	if providerType.IsValid() {

@@ -96,7 +96,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		require.NoError(t, flag.Set("secret-src", "aws"))
 		require.NoError(t, flag.Set("aws-endpoint", "http://localhost:1122"))
 		require.NoError(t, flag.Set("rsk-endpoint", "http://localhost:3344"))
-		require.NoError(t, flag.Set("lbc-address", "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975"))
+		require.NoError(t, flag.Set("custom-discovery-address", "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975"))
 		require.NoError(t, flag.Set("keystore-secret", "UnitTest/Keystore-Secret"))
 		require.NoError(t, flag.Set("password-secret", "UnitTest/Password-Secret"))
 		env, err := scriptInput.ToEnv(term.ReadPassword)
@@ -107,7 +107,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "native", env.WalletManagement)
 		assert.Equal(t, "http://localhost:3344", env.Rsk.Endpoint)
 		assert.Equal(t, uint64(33), env.Rsk.ChainId)
-		assert.Equal(t, "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975", env.Rsk.LbcAddress)
+		assert.Equal(t, "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975", env.Rsk.DiscoveryAddress)
 		assert.Equal(t, "0x0000000000000000000000000000000001000006", env.Rsk.BridgeAddress)
 		assert.Equal(t, 0, env.Rsk.AccountNumber)
 		assert.Equal(t, "UnitTest/Keystore-Secret", env.Rsk.EncryptedJsonSecret)
@@ -127,7 +127,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		require.NoError(t, flag.Set("provider-name", "a name 2"))
 		require.NoError(t, flag.Set("secret-src", "env"))
 		require.NoError(t, flag.Set("rsk-endpoint", "http://localhost:5566"))
-		require.NoError(t, flag.Set("lbc-address", "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6"))
+		require.NoError(t, flag.Set("custom-discovery-address", "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6"))
 		require.NoError(t, flag.Set("keystore-file", "path/to/a/file"))
 		env, err := scriptInput.ToEnv(func(fd int) ([]byte, error) { return []byte("secret-password-123"), nil })
 		require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "native", env.WalletManagement)
 		assert.Equal(t, "http://localhost:5566", env.Rsk.Endpoint)
 		assert.Equal(t, uint64(31), env.Rsk.ChainId)
-		assert.Equal(t, "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6", env.Rsk.LbcAddress)
+		assert.Equal(t, "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6", env.Rsk.DiscoveryAddress)
 		assert.Equal(t, "0x0000000000000000000000000000000001000006", env.Rsk.BridgeAddress)
 		assert.Equal(t, 0, env.Rsk.AccountNumber)
 		assert.Equal(t, "path/to/a/file", env.Rsk.KeystoreFile)
@@ -149,12 +149,12 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 }
 
 func TestExecuteUpdateProvider(t *testing.T) {
-	lbc := &mocks.LbcMock{}
-	lbc.On("UpdateProvider", "name", "http://test.com").Return(test.AnyHash, nil)
+	discovery := &mocks.DiscoveryContractMock{}
+	discovery.EXPECT().UpdateProvider("name", "http://test.com").Return(test.AnyHash, nil)
 	args, err := NewUpdateProviderArgs("name", "http://test.com", "regtest")
 	require.NoError(t, err)
-	txHash, err := ExecuteUpdateProvider(lbc, args)
+	txHash, err := ExecuteUpdateProvider(discovery, args)
 	require.NoError(t, err)
 	assert.Equal(t, test.AnyHash, txHash)
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 }
