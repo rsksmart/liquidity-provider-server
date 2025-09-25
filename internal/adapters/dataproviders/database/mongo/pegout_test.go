@@ -187,6 +187,7 @@ func TestPegoutMongoRepository_GetQuote(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 	log.SetLevel(log.DebugLevel)
@@ -225,6 +226,48 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		collection.AssertNotCalled(t, "FindOne")
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quote with missing gas fields", func(t *testing.T) {
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		oldBsonDocument := bson.D{
+			{Key: "quote_hash", Value: testRetainedPegoutQuote.QuoteHash},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPegoutQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPegoutQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: testRetainedPegoutQuote.State},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: testRetainedPegoutQuote.BridgeRefundGasUsed},
+			{Key: "refund_pegout_gas_used", Value: testRetainedPegoutQuote.RefundPegoutGasUsed},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		singleResult := mongoDb.NewSingleResultFromDocument(oldBsonDocument, nil, nil)
+
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
+			Return(singleResult).Once()
+
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.NotNil(t, result.BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result.RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result.SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result.BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result.RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result.SendPegoutBtcFee)
+
+		assert.Equal(t, testRetainedPegoutQuote.QuoteHash, result.QuoteHash)
+		assert.Equal(t, testRetainedPegoutQuote.BridgeRefundGasUsed, result.BridgeRefundGasUsed)
+		assert.Equal(t, testRetainedPegoutQuote.RefundPegoutGasUsed, result.RefundPegoutGasUsed)
 	})
 }
 
@@ -409,6 +452,7 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 	log.SetLevel(log.DebugLevel)
@@ -437,6 +481,76 @@ func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		firstOldDocument := bson.D{
+			{Key: "quote_hash", Value: "state_first"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPegoutQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPegoutQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: quote.PegoutStateSendPegoutSucceeded},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: testRetainedPegoutQuote.BridgeRefundGasUsed},
+			{Key: "refund_pegout_gas_used", Value: testRetainedPegoutQuote.RefundPegoutGasUsed},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		secondOldDocument := bson.D{
+			{Key: "quote_hash", Value: "state_second"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: "state_signature"},
+			{Key: "required_liquidity", Value: entities.NewWei(400).String()},
+			{Key: "state", Value: quote.PegoutStateSendPegoutFailed},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: uint64(25000)},
+			{Key: "refund_pegout_gas_used", Value: uint64(30000)},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		cursor, err := mongoDb.NewCursorFromDocuments([]any{firstOldDocument, secondOldDocument}, nil, nil)
+		require.NoError(t, err)
+
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("Find", mock.Anything,
+			bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}},
+		).Return(cursor, nil).Once()
+
+		result, err := repo.GetRetainedQuoteByState(context.Background(), states...)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		// Verify normalization applied to first document
+		assert.NotNil(t, result[0].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[0].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].SendPegoutBtcFee)
+		assert.Equal(t, "state_first", result[0].QuoteHash)
+
+		// Verify normalization applied to second document
+		assert.NotNil(t, result[1].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[1].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].SendPegoutBtcFee)
+		assert.Equal(t, "state_second", result[1].QuoteHash)
+		assert.Equal(t, uint64(25000), result[1].BridgeRefundGasUsed)
+		assert.Equal(t, uint64(30000), result[1].RefundPegoutGasUsed)
 	})
 }
 
@@ -1127,8 +1241,80 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
+	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		firstOldDocument := bson.D{
+			{Key: "quote_hash", Value: "address_first"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPegoutQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPegoutQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: quote.PegoutStateSendPegoutSucceeded},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: testRetainedPegoutQuote.BridgeRefundGasUsed},
+			{Key: "refund_pegout_gas_used", Value: testRetainedPegoutQuote.RefundPegoutGasUsed},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: address},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		secondOldDocument := bson.D{
+			{Key: "quote_hash", Value: "address_second"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: "address_signature"},
+			{Key: "required_liquidity", Value: entities.NewWei(600).String()},
+			{Key: "state", Value: quote.PegoutStateSendPegoutFailed},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: uint64(35000)},
+			{Key: "refund_pegout_gas_used", Value: uint64(40000)},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: address},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		cursor, err := mongoDb.NewCursorFromDocuments([]any{firstOldDocument, secondOldDocument}, nil, nil)
+		require.NoError(t, err)
+
+		collection.On("Find", mock.Anything, mock.Anything).
+			Return(cursor, nil).Once()
+
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateSendPegoutFailed)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		// Verify normalization applied to first document
+		assert.NotNil(t, result[0].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[0].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].SendPegoutBtcFee)
+		assert.Equal(t, "address_first", result[0].QuoteHash)
+
+		// Verify normalization applied to second document
+		assert.NotNil(t, result[1].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[1].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].SendPegoutBtcFee)
+		assert.Equal(t, "address_second", result[1].QuoteHash)
+		assert.Equal(t, uint64(35000), result[1].BridgeRefundGasUsed)
+		assert.Equal(t, uint64(40000), result[1].RefundPegoutGasUsed)
+	})
 }
 
+//nolint:funlen
 func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	batch := rootstock.BatchPegOut{
@@ -1183,5 +1369,75 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 		retainedQuotes, err := repo.GetRetainedQuotesInBatch(context.Background(), batch)
 		require.Error(t, err)
 		assert.Empty(t, retainedQuotes)
+	})
+	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		firstOldDocument := bson.D{
+			{Key: "quote_hash", Value: "batch_first"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPegoutQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPegoutQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: testRetainedPegoutQuote.State},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: testRetainedPegoutQuote.BridgeRefundGasUsed},
+			{Key: "refund_pegout_gas_used", Value: testRetainedPegoutQuote.RefundPegoutGasUsed},
+			{Key: "btc_release_tx_hash", Value: batch.TransactionHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		secondOldDocument := bson.D{
+			{Key: "quote_hash", Value: "batch_second"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: "batch_signature"},
+			{Key: "required_liquidity", Value: entities.NewWei(800).String()},
+			{Key: "state", Value: quote.PegoutStateSendPegoutSucceeded},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: uint64(45000)},
+			{Key: "refund_pegout_gas_used", Value: uint64(50000)},
+			{Key: "btc_release_tx_hash", Value: batch.TransactionHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}
+
+		cursor, err := mongoDb.NewCursorFromDocuments([]any{firstOldDocument, secondOldDocument}, nil, nil)
+		require.NoError(t, err)
+
+		collection.On("Find", mock.Anything, mock.Anything).Return(cursor, nil).Once()
+
+		result, err := repo.GetRetainedQuotesInBatch(context.Background(), batch)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		// Verify normalization applied to first document
+		assert.NotNil(t, result[0].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[0].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].SendPegoutBtcFee)
+		assert.Equal(t, "batch_first", result[0].QuoteHash)
+
+		// Verify normalization applied to second document
+		assert.NotNil(t, result[1].BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[1].BridgeRefundGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].RefundPegoutGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].SendPegoutBtcFee)
+		assert.Equal(t, "batch_second", result[1].QuoteHash)
+		assert.Equal(t, uint64(45000), result[1].BridgeRefundGasUsed)
+		assert.Equal(t, uint64(50000), result[1].RefundPegoutGasUsed)
 	})
 }

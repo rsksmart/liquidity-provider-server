@@ -148,6 +148,20 @@ type RetainedPegoutQuote struct {
 	OwnerAccountAddress  string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
+// EnsureRetainedPegoutQuoteZeroValues ensures that gas-related Wei fields have zero values instead of nil
+// for older database records that don't have these fields populated.
+func EnsureRetainedPegoutQuoteZeroValues(quote *RetainedPegoutQuote) {
+	if quote.BridgeRefundGasPrice == nil {
+		quote.BridgeRefundGasPrice = entities.NewWei(0)
+	}
+	if quote.RefundPegoutGasPrice == nil {
+		quote.RefundPegoutGasPrice = entities.NewWei(0)
+	}
+	if quote.SendPegoutBtcFee == nil {
+		quote.SendPegoutBtcFee = entities.NewWei(0)
+	}
+}
+
 type WatchedPegoutQuote struct {
 	PegoutQuote   PegoutQuote
 	RetainedQuote RetainedPegoutQuote

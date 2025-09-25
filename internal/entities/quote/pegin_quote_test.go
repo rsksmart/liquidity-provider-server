@@ -1,12 +1,13 @@
 package quote_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestPeginQuote_Total(t *testing.T) {
@@ -115,5 +116,95 @@ func TestPeginQuote_IsExpired(t *testing.T) {
 	}
 	test.RunTable(t, quotes, func(value quote.PeginQuote) bool {
 		return value.IsExpired()
+	})
+}
+
+//nolint:funlen
+func TestEnsureRetainedPeginQuoteZeroValues(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    quote.RetainedPeginQuote
+		expected quote.RetainedPeginQuote
+	}{
+		{
+			name: "should set nil gas prices to zero",
+			input: quote.RetainedPeginQuote{
+				QuoteHash:             "0x123",
+				CallForUserGasPrice:   nil,
+				RegisterPeginGasPrice: nil,
+				CallForUserGasUsed:    100,
+				RegisterPeginGasUsed:  200,
+			},
+			expected: quote.RetainedPeginQuote{
+				QuoteHash:             "0x123",
+				CallForUserGasPrice:   entities.NewWei(0),
+				RegisterPeginGasPrice: entities.NewWei(0),
+				CallForUserGasUsed:    100,
+				RegisterPeginGasUsed:  200,
+			},
+		},
+		{
+			name: "should not modify existing non-nil gas prices",
+			input: quote.RetainedPeginQuote{
+				QuoteHash:             "0x456",
+				CallForUserGasPrice:   entities.NewWei(1000),
+				RegisterPeginGasPrice: entities.NewWei(2000),
+				CallForUserGasUsed:    150,
+			},
+			expected: quote.RetainedPeginQuote{
+				QuoteHash:             "0x456",
+				CallForUserGasPrice:   entities.NewWei(1000),
+				RegisterPeginGasPrice: entities.NewWei(2000),
+				CallForUserGasUsed:    150,
+			},
+		},
+		{
+			name: "should handle mixed nil and non-nil values",
+			input: quote.RetainedPeginQuote{
+				QuoteHash:             "0x789",
+				CallForUserGasPrice:   entities.NewWei(500),
+				RegisterPeginGasPrice: nil,
+				OwnerAccountAddress:   "0xowner",
+			},
+			expected: quote.RetainedPeginQuote{
+				QuoteHash:             "0x789",
+				CallForUserGasPrice:   entities.NewWei(500),
+				RegisterPeginGasPrice: entities.NewWei(0),
+				OwnerAccountAddress:   "0xowner",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualQuote := tc.input
+			quote.EnsureRetainedPeginQuoteZeroValues(&actualQuote)
+
+			assert.Equal(t, tc.expected.QuoteHash, actualQuote.QuoteHash)
+			assert.Equal(t, tc.expected.CallForUserGasPrice, actualQuote.CallForUserGasPrice)
+			assert.Equal(t, tc.expected.RegisterPeginGasPrice, actualQuote.RegisterPeginGasPrice)
+			assert.Equal(t, tc.expected.CallForUserGasUsed, actualQuote.CallForUserGasUsed)
+			assert.Equal(t, tc.expected.RegisterPeginGasUsed, actualQuote.RegisterPeginGasUsed)
+			assert.Equal(t, tc.expected.OwnerAccountAddress, actualQuote.OwnerAccountAddress)
+		})
+	}
+
+	t.Run("should be idempotent", func(t *testing.T) {
+		originalQuote := quote.RetainedPeginQuote{
+			QuoteHash:             "0xabc",
+			CallForUserGasPrice:   nil,
+			RegisterPeginGasPrice: nil,
+		}
+
+		quote.EnsureRetainedPeginQuoteZeroValues(&originalQuote)
+		firstCallResult := originalQuote
+
+		quote.EnsureRetainedPeginQuoteZeroValues(&originalQuote)
+		secondCallResult := originalQuote
+
+		assert.Equal(t, firstCallResult.CallForUserGasPrice, secondCallResult.CallForUserGasPrice)
+		assert.Equal(t, firstCallResult.RegisterPeginGasPrice, secondCallResult.RegisterPeginGasPrice)
+		assert.NotNil(t, secondCallResult.CallForUserGasPrice)
+		assert.NotNil(t, secondCallResult.RegisterPeginGasPrice)
 	})
 }

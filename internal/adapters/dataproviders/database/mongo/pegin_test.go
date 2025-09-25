@@ -171,6 +171,7 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
@@ -209,6 +210,45 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 		collection.AssertNotCalled(t, "FindOne")
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quote with missing gas fields", func(t *testing.T) {
+		// Create a BSON document that represents what an old database record would look like
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		oldBsonDocument := bson.D{
+			{Key: "quote_hash", Value: testRetainedPeginQuote.QuoteHash},
+			{Key: "deposit_address", Value: testRetainedPeginQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPeginQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPeginQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: testRetainedPeginQuote.State},
+			{Key: "user_btc_tx_hash", Value: testRetainedPeginQuote.UserBtcTxHash},
+			{Key: "call_for_user_tx_hash", Value: testRetainedPeginQuote.CallForUserTxHash},
+			{Key: "register_pegin_tx_hash", Value: testRetainedPeginQuote.RegisterPeginTxHash},
+			{Key: "call_for_user_gas_used", Value: testRetainedPeginQuote.CallForUserGasUsed},
+			{Key: "register_pegin_gas_used", Value: testRetainedPeginQuote.RegisterPeginGasUsed},
+			{Key: "owner_account_address", Value: testRetainedPeginQuote.OwnerAccountAddress},
+			// NOTE: call_for_user_gas_price and register_pegin_gas_price are MISSING
+		}
+
+		singleResult := mongoDb.NewSingleResultFromDocument(oldBsonDocument, nil, nil)
+
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
+			Return(singleResult).Once()
+
+		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.NotNil(t, result.CallForUserGasPrice, "CallForUserGasPrice should not be nil after normalization")
+		assert.NotNil(t, result.RegisterPeginGasPrice, "RegisterPeginGasPrice should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result.CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result.RegisterPeginGasPrice)
+
+		assert.Equal(t, testRetainedPeginQuote.QuoteHash, result.QuoteHash)
+		assert.Equal(t, testRetainedPeginQuote.CallForUserGasUsed, result.CallForUserGasUsed)
+		assert.Equal(t, testRetainedPeginQuote.RegisterPeginGasUsed, result.RegisterPeginGasUsed)
 	})
 }
 
@@ -295,6 +335,7 @@ func TestPeginMongoRepository_UpdateRetainedQuote(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
@@ -323,6 +364,69 @@ func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		firstOldDocument := bson.D{
+			{Key: "quote_hash", Value: "first"},
+			{Key: "deposit_address", Value: testRetainedPeginQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPeginQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPeginQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: testRetainedPeginQuote.State},
+			{Key: "user_btc_tx_hash", Value: testRetainedPeginQuote.UserBtcTxHash},
+			{Key: "call_for_user_tx_hash", Value: testRetainedPeginQuote.CallForUserTxHash},
+			{Key: "register_pegin_tx_hash", Value: testRetainedPeginQuote.RegisterPeginTxHash},
+			{Key: "call_for_user_gas_used", Value: testRetainedPeginQuote.CallForUserGasUsed},
+			{Key: "register_pegin_gas_used", Value: testRetainedPeginQuote.RegisterPeginGasUsed},
+			{Key: "owner_account_address", Value: testRetainedPeginQuote.OwnerAccountAddress},
+			// NOTE: call_for_user_gas_price and register_pegin_gas_price are MISSING
+		}
+
+		secondOldDocument := bson.D{
+			{Key: "quote_hash", Value: "second"},
+			{Key: "deposit_address", Value: testRetainedPeginQuote.DepositAddress},
+			{Key: "signature", Value: "different_signature"},
+			{Key: "required_liquidity", Value: entities.NewWei(500).String()},
+			{Key: "state", Value: quote.PeginStateCallForUserFailed},
+			{Key: "user_btc_tx_hash", Value: testRetainedPeginQuote.UserBtcTxHash},
+			{Key: "call_for_user_tx_hash", Value: testRetainedPeginQuote.CallForUserTxHash},
+			{Key: "register_pegin_tx_hash", Value: testRetainedPeginQuote.RegisterPeginTxHash},
+			{Key: "call_for_user_gas_used", Value: uint64(75000)},
+			{Key: "register_pegin_gas_used", Value: uint64(55000)},
+			{Key: "owner_account_address", Value: testRetainedPeginQuote.OwnerAccountAddress},
+			// NOTE: call_for_user_gas_price and register_pegin_gas_price are MISSING
+		}
+
+		cursor, err := mongoDb.NewCursorFromDocuments([]any{firstOldDocument, secondOldDocument}, nil, nil)
+		require.NoError(t, err)
+
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("Find", mock.Anything,
+			bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}},
+		).Return(cursor, nil).Once()
+
+		result, err := repo.GetRetainedQuoteByState(context.Background(), states...)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		// Verify normalization applied to first document
+		assert.NotNil(t, result[0].CallForUserGasPrice, "CallForUserGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].RegisterPeginGasPrice, "RegisterPeginGasPrice should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[0].CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RegisterPeginGasPrice)
+		assert.Equal(t, "first", result[0].QuoteHash)
+		assert.Equal(t, testRetainedPeginQuote.CallForUserGasUsed, result[0].CallForUserGasUsed)
+
+		// Verify normalization applied to second document
+		assert.NotNil(t, result[1].CallForUserGasPrice, "CallForUserGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].RegisterPeginGasPrice, "RegisterPeginGasPrice should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[1].CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].RegisterPeginGasPrice)
+		assert.Equal(t, "second", result[1].QuoteHash)
+		assert.Equal(t, uint64(75000), result[1].CallForUserGasUsed)
+		assert.Equal(t, uint64(55000), result[1].RegisterPeginGasUsed)
 	})
 }
 
@@ -897,5 +1001,69 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+
+		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
+		firstOldDocument := bson.D{
+			{Key: "quote_hash", Value: "address_first"},
+			{Key: "deposit_address", Value: testRetainedPeginQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPeginQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPeginQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: quote.PeginStateWaitingForDeposit},
+			{Key: "user_btc_tx_hash", Value: testRetainedPeginQuote.UserBtcTxHash},
+			{Key: "call_for_user_tx_hash", Value: testRetainedPeginQuote.CallForUserTxHash},
+			{Key: "register_pegin_tx_hash", Value: testRetainedPeginQuote.RegisterPeginTxHash},
+			{Key: "call_for_user_gas_used", Value: testRetainedPeginQuote.CallForUserGasUsed},
+			{Key: "register_pegin_gas_used", Value: testRetainedPeginQuote.RegisterPeginGasUsed},
+			{Key: "owner_account_address", Value: address},
+			// NOTE: call_for_user_gas_price and register_pegin_gas_price are MISSING
+		}
+
+		secondOldDocument := bson.D{
+			{Key: "quote_hash", Value: "address_second"},
+			{Key: "deposit_address", Value: testRetainedPeginQuote.DepositAddress},
+			{Key: "signature", Value: "address_signature"},
+			{Key: "required_liquidity", Value: entities.NewWei(300).String()},
+			{Key: "state", Value: quote.PeginStateWaitingForDepositConfirmations},
+			{Key: "user_btc_tx_hash", Value: testRetainedPeginQuote.UserBtcTxHash},
+			{Key: "call_for_user_tx_hash", Value: testRetainedPeginQuote.CallForUserTxHash},
+			{Key: "register_pegin_tx_hash", Value: testRetainedPeginQuote.RegisterPeginTxHash},
+			{Key: "call_for_user_gas_used", Value: uint64(90000)},
+			{Key: "register_pegin_gas_used", Value: uint64(70000)},
+			{Key: "owner_account_address", Value: address},
+			// NOTE: call_for_user_gas_price and register_pegin_gas_price are MISSING
+		}
+
+		cursor, err := mongoDb.NewCursorFromDocuments([]any{firstOldDocument, secondOldDocument}, nil, nil)
+		require.NoError(t, err)
+
+		collection.On("Find", mock.Anything, mock.Anything).
+			Return(cursor, nil).Once()
+
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
+
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		// Verify normalization applied to first document
+		assert.NotNil(t, result[0].CallForUserGasPrice, "CallForUserGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[0].RegisterPeginGasPrice, "RegisterPeginGasPrice should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[0].CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RegisterPeginGasPrice)
+		assert.Equal(t, "address_first", result[0].QuoteHash)
+		assert.Equal(t, testRetainedPeginQuote.CallForUserGasUsed, result[0].CallForUserGasUsed)
+
+		// Verify normalization applied to second document
+		assert.NotNil(t, result[1].CallForUserGasPrice, "CallForUserGasPrice should not be nil after normalization")
+		assert.NotNil(t, result[1].RegisterPeginGasPrice, "RegisterPeginGasPrice should not be nil after normalization")
+		assert.Equal(t, entities.NewWei(0), result[1].CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[1].RegisterPeginGasPrice)
+		assert.Equal(t, "address_second", result[1].QuoteHash)
+		assert.Equal(t, uint64(90000), result[1].CallForUserGasUsed)
+		assert.Equal(t, uint64(70000), result[1].RegisterPeginGasUsed)
 	})
 }

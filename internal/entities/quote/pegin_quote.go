@@ -134,6 +134,17 @@ type RetainedPeginQuote struct {
 	OwnerAccountAddress   string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
+// EnsureRetainedPeginQuoteZeroValues ensures that gas-related Wei fields have zero values instead of nil
+// for older database records that don't have these fields populated.
+func EnsureRetainedPeginQuoteZeroValues(quote *RetainedPeginQuote) {
+	if quote.CallForUserGasPrice == nil {
+		quote.CallForUserGasPrice = entities.NewWei(0)
+	}
+	if quote.RegisterPeginGasPrice == nil {
+		quote.RegisterPeginGasPrice = entities.NewWei(0)
+	}
+}
+
 type WatchedPeginQuote struct {
 	PeginQuote    PeginQuote
 	RetainedQuote RetainedPeginQuote

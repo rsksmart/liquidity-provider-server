@@ -2,16 +2,17 @@ package entities_test
 
 import (
 	"database/sql/driver"
+	"math"
+	"math/big"
+	"reflect"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"math"
-	"math/big"
-	"reflect"
-	"testing"
 )
 
 func TestSatoshiToWei(t *testing.T) {
@@ -473,6 +474,52 @@ func TestWei_UnmarshalBSONValue(t *testing.T) {
 			return nilWei.UnmarshalBSONValue(dataType, zeroInt64)
 		})
 	})
+	t.Run("should handle null values gracefully", func(t *testing.T) {
+		zeroWei := entities.NewWei(0)
+		// When BSON contains a null value, UnmarshalBSONValue should succeed
+		// This allows the Go MongoDB driver to set the field to nil
+		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeNull, []byte{}))
+	})
+	t.Run("should handle '<nil>' string values gracefully", func(t *testing.T) {
+		zeroWei := entities.NewWei(0)
+		// When MongoDB stores nil pointers as the string "<nil>", we should handle it gracefully
+		nilStringBytes := []byte{0x06, 0x00, 0x00, 0x00, 0x3c, 0x6e, 0x69, 0x6c, 0x3e, 0x00} // BSON string "<nil>"
+		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeString, nilStringBytes))
+
+		// Test with nil Wei pointer should still error
+		var nilWei *entities.Wei
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeString, nilStringBytes), entities.DeserializationError)
+	})
+}
+
+func TestWei_MarshalBSONValue(t *testing.T) {
+	t.Run("should marshal nil Wei as BSON null", func(t *testing.T) {
+		var nilWei *entities.Wei
+		bsonType, bytes, err := nilWei.MarshalBSONValue()
+		require.NoError(t, err)
+		assert.Equal(t, bson.TypeNull, bsonType)
+		assert.Empty(t, bytes)
+	})
+
+	t.Run("should marshal non-nil Wei as string", func(t *testing.T) {
+		wei := entities.NewWei(12345)
+		bsonType, bytes, err := wei.MarshalBSONValue()
+		require.NoError(t, err)
+		assert.Equal(t, bson.TypeString, bsonType)
+		assert.NotEmpty(t, bytes)
+
+		// Verify we can unmarshal it back
+		var result string
+		err = bson.UnmarshalValue(bsonType, bytes, &result)
+		require.NoError(t, err)
+		assert.Equal(t, "12345", result)
+	})
+}
+
+func TestWei_UnmarshalBSONValue_Integration(t *testing.T) {
+	zeroInt64 := []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	zeroString := []byte{0x2, 0x0, 0x0, 0x0, 0x30, 0x0}
+
 	t.Run("should unmarshal from bson.TypeInt64", func(t *testing.T) {
 		int64Cases := test.Table[[]byte, *entities.Wei]{
 			{Value: zeroInt64, Result: entities.NewWei(0)},

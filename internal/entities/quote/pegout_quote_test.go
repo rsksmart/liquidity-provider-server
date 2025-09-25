@@ -1,14 +1,15 @@
 package quote_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 type LpMock struct {
@@ -240,5 +241,108 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 	}
 	test.RunTable(t, cases, func(value quote.PegoutDeposit) bool {
 		return value.IsValidForQuote(pegoutQuote)
+	})
+}
+
+//nolint:funlen
+func TestEnsureRetainedPegoutQuoteZeroValues(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    quote.RetainedPegoutQuote
+		expected quote.RetainedPegoutQuote
+	}{
+		{
+			name: "should set all nil gas-related Wei fields to zero",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x123",
+				BridgeRefundGasPrice: nil,
+				RefundPegoutGasPrice: nil,
+				SendPegoutBtcFee:     nil,
+				BridgeRefundGasUsed:  100,
+				RefundPegoutGasUsed:  200,
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x123",
+				BridgeRefundGasPrice: entities.NewWei(0),
+				RefundPegoutGasPrice: entities.NewWei(0),
+				SendPegoutBtcFee:     entities.NewWei(0),
+				BridgeRefundGasUsed:  100,
+				RefundPegoutGasUsed:  200,
+			},
+		},
+		{
+			name: "should not modify existing non-nil gas-related values",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x456",
+				BridgeRefundGasPrice: entities.NewWei(1000),
+				RefundPegoutGasPrice: entities.NewWei(2000),
+				SendPegoutBtcFee:     entities.NewWei(3000),
+				BridgeRefundGasUsed:  150,
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x456",
+				BridgeRefundGasPrice: entities.NewWei(1000),
+				RefundPegoutGasPrice: entities.NewWei(2000),
+				SendPegoutBtcFee:     entities.NewWei(3000),
+				BridgeRefundGasUsed:  150,
+			},
+		},
+		{
+			name: "should handle mixed nil and non-nil values",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x789",
+				BridgeRefundGasPrice: entities.NewWei(500),
+				RefundPegoutGasPrice: nil,
+				SendPegoutBtcFee:     entities.NewWei(1500),
+				BtcReleaseTxHash:     "0xbtc123",
+				OwnerAccountAddress:  "0xowner",
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x789",
+				BridgeRefundGasPrice: entities.NewWei(500),
+				RefundPegoutGasPrice: entities.NewWei(0),
+				SendPegoutBtcFee:     entities.NewWei(1500),
+				BtcReleaseTxHash:     "0xbtc123",
+				OwnerAccountAddress:  "0xowner",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualQuote := tc.input
+			quote.EnsureRetainedPegoutQuoteZeroValues(&actualQuote)
+
+			assert.Equal(t, tc.expected.QuoteHash, actualQuote.QuoteHash)
+			assert.Equal(t, tc.expected.BridgeRefundGasPrice, actualQuote.BridgeRefundGasPrice)
+			assert.Equal(t, tc.expected.RefundPegoutGasPrice, actualQuote.RefundPegoutGasPrice)
+			assert.Equal(t, tc.expected.SendPegoutBtcFee, actualQuote.SendPegoutBtcFee)
+			assert.Equal(t, tc.expected.BridgeRefundGasUsed, actualQuote.BridgeRefundGasUsed)
+			assert.Equal(t, tc.expected.RefundPegoutGasUsed, actualQuote.RefundPegoutGasUsed)
+			assert.Equal(t, tc.expected.BtcReleaseTxHash, actualQuote.BtcReleaseTxHash)
+			assert.Equal(t, tc.expected.OwnerAccountAddress, actualQuote.OwnerAccountAddress)
+		})
+	}
+
+	t.Run("should be idempotent", func(t *testing.T) {
+		originalQuote := quote.RetainedPegoutQuote{
+			QuoteHash:            "0xdef",
+			BridgeRefundGasPrice: nil,
+			RefundPegoutGasPrice: nil,
+			SendPegoutBtcFee:     nil,
+		}
+
+		quote.EnsureRetainedPegoutQuoteZeroValues(&originalQuote)
+		firstCallResult := originalQuote
+
+		quote.EnsureRetainedPegoutQuoteZeroValues(&originalQuote)
+		secondCallResult := originalQuote
+
+		assert.Equal(t, firstCallResult.BridgeRefundGasPrice, secondCallResult.BridgeRefundGasPrice)
+		assert.Equal(t, firstCallResult.RefundPegoutGasPrice, secondCallResult.RefundPegoutGasPrice)
+		assert.Equal(t, firstCallResult.SendPegoutBtcFee, secondCallResult.SendPegoutBtcFee)
+		assert.NotNil(t, secondCallResult.BridgeRefundGasPrice)
+		assert.NotNil(t, secondCallResult.RefundPegoutGasPrice)
+		assert.NotNil(t, secondCallResult.SendPegoutBtcFee)
 	})
 }
