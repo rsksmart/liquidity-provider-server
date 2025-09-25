@@ -9,7 +9,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	test_utils "github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
@@ -389,9 +391,11 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 }
 
 func TestGetLegacyDerivedBitcoinAddress(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	for _, test := range testQuotes {
 		params := test.NetworkParams
 		fedInfo := mocks.GetFakeFedInfo()
+		logAssertion := test_utils.AssertLogContains(t, "Using non-segwit federation.")
 
 		fedInfo.UseSegwit = false
 		if params.Name == chaincfg.TestNet3Params.Name {
@@ -421,6 +425,7 @@ func TestGetLegacyDerivedBitcoinAddress(t *testing.T) {
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, *params, fedRedeemScript, derivationValue)
 		require.NoError(t, err)
 		assert.EqualValues(t, test.ExpectedP2SHAddressHash, derivation.Address)
+		logAssertion()
 	}
 }
 
