@@ -83,32 +83,33 @@ func TestRskClient_Shutdown(t *testing.T) {
 // Since the function is private, it will be tested through HashPeginQuote
 func TestRskRetry(t *testing.T) {
 	const retries = 3
-	lbcMock := &mocks.LbcAdapterMock{}
-	lbc := rootstock.NewLiquidityBridgeContractImpl(
+	contractBinding := &mocks.PeginContractAdapterMock{}
+	contract := rootstock.NewPeginContractImpl(
 		dummyClient,
 		test.AnyAddress,
-		lbcMock,
+		contractBinding,
 		nil,
 		rootstock.RetryParams{Retries: retries, Sleep: 1 * time.Second},
 		time.Duration(1),
+		Abis,
 	)
 	t.Run("Error on every attempt", func(t *testing.T) {
-		lbcMock.On("HashQuote", mock.Anything, mock.Anything).Return(nil, assert.AnError).Times(retries)
+		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{}, assert.AnError).Times(retries)
 		start := time.Now()
-		result, err := lbc.HashPeginQuote(peginQuote)
+		result, err := contract.HashPeginQuote(peginQuote)
 		end := time.Now()
 		assert.WithinRange(t, end, start, start.Add(3*time.Second).Add(500*time.Millisecond))
 		require.Error(t, err)
 		assert.Empty(t, result)
-		lbcMock.AssertExpectations(t)
+		contractBinding.AssertExpectations(t)
 	})
 	t.Run("Error first attempt", func(t *testing.T) {
-		lbcMock.On("HashQuote", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		lbcMock.On("HashQuote", mock.Anything, mock.Anything).Return([32]byte{1, 2, 3}, nil).Once()
-		result, err := lbc.HashPeginQuote(peginQuote)
+		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{}, assert.AnError).Once()
+		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{1, 2, 3}, nil).Once()
+		result, err := contract.HashPeginQuote(peginQuote)
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
-		lbcMock.AssertExpectations(t)
+		contractBinding.AssertExpectations(t)
 	})
 }
 

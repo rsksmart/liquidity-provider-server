@@ -3,6 +3,7 @@ package liquidity_provider_test
 import (
 	"encoding/hex"
 	"errors"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -15,11 +16,11 @@ import (
 
 func TestProviderType_IsValid(t *testing.T) {
 	cases := test.Table[liquidity_provider.ProviderType, bool]{
-		{Value: "pegin", Result: true},
-		{Value: "pegout", Result: true},
-		{Value: "both", Result: true},
-		{Value: "", Result: false},
-		{Value: test.AnyString, Result: false},
+		{Value: liquidity_provider.PeginProvider, Result: true},
+		{Value: liquidity_provider.PegoutProvider, Result: true},
+		{Value: liquidity_provider.FullProvider, Result: true},
+		{Value: -1, Result: false},
+		{Value: 5, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.IsValid()
@@ -28,11 +29,11 @@ func TestProviderType_IsValid(t *testing.T) {
 
 func TestProviderType_AcceptsPegin(t *testing.T) {
 	cases := test.Table[liquidity_provider.ProviderType, bool]{
-		{Value: "pegin", Result: true},
-		{Value: "pegout", Result: false},
-		{Value: "both", Result: true},
-		{Value: "", Result: false},
-		{Value: test.AnyString, Result: false},
+		{Value: liquidity_provider.PeginProvider, Result: true},
+		{Value: liquidity_provider.PegoutProvider, Result: false},
+		{Value: liquidity_provider.FullProvider, Result: true},
+		{Value: -1, Result: false},
+		{Value: 5, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.AcceptsPegin()
@@ -41,11 +42,11 @@ func TestProviderType_AcceptsPegin(t *testing.T) {
 
 func TestProviderType_AcceptsPegout(t *testing.T) {
 	cases := test.Table[liquidity_provider.ProviderType, bool]{
-		{Value: "pegin", Result: false},
-		{Value: "pegout", Result: true},
-		{Value: "both", Result: true},
-		{Value: "", Result: false},
-		{Value: test.AnyString, Result: false},
+		{Value: liquidity_provider.PeginProvider, Result: false},
+		{Value: liquidity_provider.PegoutProvider, Result: true},
+		{Value: liquidity_provider.FullProvider, Result: true},
+		{Value: -1, Result: false},
+		{Value: 5, Result: false},
 	}
 	test.RunTable(t, cases, func(value liquidity_provider.ProviderType) bool {
 		return value.AcceptsPegout()
@@ -58,15 +59,15 @@ func TestToProviderType(t *testing.T) {
 		Error  error
 	}
 
-	cases := test.Table[string, testResult]{
-		{Value: "pegin", Result: testResult{Result: liquidity_provider.PeginProvider, Error: nil}},
-		{Value: "pegout", Result: testResult{Result: liquidity_provider.PegoutProvider, Error: nil}},
-		{Value: "both", Result: testResult{Result: liquidity_provider.FullProvider, Error: nil}},
-		{Value: "", Result: testResult{Result: "", Error: liquidity_provider.InvalidProviderTypeError}},
-		{Value: test.AnyString, Result: testResult{Result: "", Error: liquidity_provider.InvalidProviderTypeError}},
+	cases := test.Table[int, testResult]{
+		{Value: 0, Result: testResult{Result: liquidity_provider.PeginProvider, Error: nil}},
+		{Value: 1, Result: testResult{Result: liquidity_provider.PegoutProvider, Error: nil}},
+		{Value: 2, Result: testResult{Result: liquidity_provider.FullProvider, Error: nil}},
+		{Value: -1, Result: testResult{Result: -1, Error: liquidity_provider.InvalidProviderTypeError}},
+		{Value: 5, Result: testResult{Result: -1, Error: liquidity_provider.InvalidProviderTypeError}},
 	}
 
-	test.RunTable(t, cases, func(value string) testResult {
+	test.RunTable(t, cases, func(value int) testResult {
 		result, err := liquidity_provider.ToProviderType(value)
 		return testResult{
 			Result: result,
@@ -217,4 +218,19 @@ func TestValidateConfiguration(t *testing.T) {
 		require.Nil(t, result)
 		mockSigner.AssertExpectations(t)
 	})
+}
+
+func TestProviderType_Name(t *testing.T) {
+	tests := []struct {
+		p    liquidity_provider.ProviderType
+		want string
+	}{
+		{p: liquidity_provider.PeginProvider, want: "pegin"},
+		{p: liquidity_provider.PegoutProvider, want: "pegout"},
+		{p: liquidity_provider.FullProvider, want: "both"},
+		{p: -5, want: "unknown"},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, tt.p.Name())
+	}
 }

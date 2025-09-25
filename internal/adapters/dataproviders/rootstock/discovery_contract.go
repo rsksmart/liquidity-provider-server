@@ -3,7 +3,6 @@ package rootstock
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -22,7 +21,7 @@ type discoveryContractImpl struct {
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
-	abi           *abi.ABI
+	abis          *FlyoverABIs
 }
 
 func NewDiscoveryContractImpl(
@@ -32,11 +31,8 @@ func NewDiscoveryContractImpl(
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	abis *FlyoverABIs,
 ) blockchain.DiscoveryContract {
-	contractAbi, err := bindings.IFlyoverDiscoveryMetaData.GetAbi()
-	if err != nil {
-		panic(fmt.Sprintf("could not get ABI for Discovery contract: %v", err))
-	}
 	return &discoveryContractImpl{
 		client:        client.client,
 		address:       address,
@@ -44,7 +40,7 @@ func NewDiscoveryContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
-		abi:           contractAbi,
+		abis:          abis,
 	}
 }
 
@@ -85,7 +81,7 @@ func (discovery *discoveryContractImpl) GetProvider(address string) (liquidity_p
 
 	opts := &bind.CallOpts{}
 	provider, revert := discovery.contract.GetProvider(opts, common.HexToAddress(address))
-	parsedRevert, err := ParseRevertReason(discovery.abi, revert)
+	parsedRevert, err := ParseRevertReason(discovery.abis.Flyover, revert)
 	if err != nil && parsedRevert == nil {
 		return liquidity_provider.RegisteredLiquidityProvider{}, fmt.Errorf("error parsing getProvider result: %w", err)
 	} else if parsedRevert != nil && strings.EqualFold(lbcProviderNotRegisteredError, parsedRevert.Name) {

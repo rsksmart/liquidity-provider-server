@@ -15,11 +15,11 @@ docker cp temp_lbc_deployer:/home/node/artifacts bindings/artifacts
 FILE=$(ls -t bindings/artifacts/build-info/*.json | head -n1)
 
 
-jq --arg prefix "contracts/interfaces/" '{
+jq '{
   contracts:
     ( .output.contracts
     | to_entries
-    | map(select(.key|startswith($prefix))) # only files under contracts/interfaces
+    | map(select(.key|test("^contracts/(interfaces|libraries)/"))) # only files under contracts/interfaces
     | map(
         .key as $path
         | (.value | to_entries
