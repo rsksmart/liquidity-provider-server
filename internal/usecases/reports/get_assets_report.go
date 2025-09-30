@@ -2,20 +2,52 @@ package reports
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"math/big"
 )
 
+type BtcAssetLocation struct {
+	BtcWallet  *entities.Wei `json:"btcWallet" validate:"required"`
+	Federation *entities.Wei `json:"federation" validate:"required"`
+	RskWallet  *entities.Wei `json:"rskWallet" validate:"required"`
+	Lbc        *entities.Wei `json:"lbc" validate:"required"`
+}
+
+type BtcAssetAllocation struct {
+	ReservedForUsers *entities.Wei `json:"reservedForUsers" validate:"required"`
+	WaitingForRefund *entities.Wei `json:"waitingForRefund" validate:"required"`
+	Available        *entities.Wei `json:"available" validate:"required"`
+}
+
+type BtcAssetReport struct {
+	Total      *entities.Wei      `json:"total" validate:"required"`
+	Location   BtcAssetLocation   `json:"location" validate:"required"`
+	Allocation BtcAssetAllocation `json:"allocation" validate:"required"`
+}
+
+type RbtcAssetLocation struct {
+	RskWallet  *entities.Wei `json:"rskWallet" validate:"required"`
+	Lbc        *entities.Wei `json:"lbc" validate:"required"`
+	Federation *entities.Wei `json:"federation" validate:"required"`
+}
+
+type RbtcAssetAllocation struct {
+	ReservedForUsers *entities.Wei `json:"reservedForUsers" validate:"required"`
+	WaitingForRefund *entities.Wei `json:"waitingForRefund" validate:"required"`
+	Available        *entities.Wei `json:"available" validate:"required"`
+}
+
+type RbtcAssetReport struct {
+	Total      *entities.Wei       `json:"total" validate:"required"`
+	Location   RbtcAssetLocation   `json:"location" validate:"required"`
+	Allocation RbtcAssetAllocation `json:"allocation" validate:"required"`
+}
 type GetAssetsReportResult struct {
-	BtcBalance    *big.Int `json:"btcBalance" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtcBalance" validate:"required"`
-	BtcLocked     *big.Int `json:"btcLocked" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtcLocked" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btcLiquidity" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtcLiquidity" validate:"required"`
+	BtcAssetReport  BtcAssetReport
+	RbtcAssetReport RbtcAssetReport
 }
 
 type GetAssetsReportUseCase struct {
@@ -26,6 +58,7 @@ type GetAssetsReportUseCase struct {
 	pegoutProvider   liquidity_provider.PegoutLiquidityProvider
 	peginRepository  quote.PeginQuoteRepository
 	pegoutRepository quote.PegoutQuoteRepository
+	contracts        blockchain.RskContracts
 }
 
 func NewGetAssetsReportUseCase(
@@ -36,6 +69,7 @@ func NewGetAssetsReportUseCase(
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	peginRepository quote.PeginQuoteRepository,
 	pegoutRepository quote.PegoutQuoteRepository,
+	contracts blockchain.RskContracts,
 ) *GetAssetsReportUseCase {
 	return &GetAssetsReportUseCase{
 		btcWallet:        wallet,
@@ -45,114 +79,161 @@ func NewGetAssetsReportUseCase(
 		pegoutProvider:   pegoutProvider,
 		peginRepository:  peginRepository,
 		pegoutRepository: pegoutRepository,
+		contracts:        contracts,
 	}
 }
 
 func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResult, error) {
-	response := GetAssetsReportResult{
-		BtcBalance:    entities.NewWei(0).AsBigInt(),
-		RbtcBalance:   entities.NewWei(0).AsBigInt(),
-		BtcLocked:     entities.NewWei(0).AsBigInt(),
-		RbtcLocked:    entities.NewWei(0).AsBigInt(),
-		BtcLiquidity:  entities.NewWei(0).AsBigInt(),
-		RbtcLiquidity: entities.NewWei(0).AsBigInt(),
-	}
-	btcBalance, err := useCase.GetBtcBalance()
+	btcReport, btcWaitingForRebalancing, err := useCase.calculateBtcAssetReport(ctx)
 	if err != nil {
-		return response, err
+		return GetAssetsReportResult{}, err
 	}
 
-	rbtcBalance, err := useCase.GetRBTCBalance(ctx)
+	rbtcReport, err := useCase.calculateRbtcAssetReport(ctx, btcWaitingForRebalancing)
 	if err != nil {
-		return response, err
+		return GetAssetsReportResult{}, err
 	}
 
-	rbtcLocked, err := useCase.GetRBTCLocked(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	lockedBtc, err := useCase.GetBTCLocked(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	btcLiquidity, err := useCase.GetBTCLiquidity(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	rbtcLiquidity, err := useCase.GetRBTCLiquidity(ctx)
-	if err != nil {
-		return response, err
-	}
-
-	response.BtcBalance = btcBalance.AsBigInt()
-	response.RbtcLiquidity = rbtcLiquidity.AsBigInt()
-	response.BtcLiquidity = btcLiquidity.AsBigInt()
-	response.BtcLocked = lockedBtc.AsBigInt()
-	response.RbtcLocked = rbtcLocked.AsBigInt()
-	response.RbtcBalance = rbtcBalance.AsBigInt()
-
-	return response, nil
+	return GetAssetsReportResult{
+		BtcAssetReport:  btcReport,
+		RbtcAssetReport: rbtcReport,
+	}, nil
 }
 
-func (useCase *GetAssetsReportUseCase) GetRBTCLiquidity(ctx context.Context) (*entities.Wei, error) {
-	rbtcLiquidity, err := useCase.peginProvider.AvailablePeginLiquidity(ctx)
+func (useCase *GetAssetsReportUseCase) calculateBtcAssetReport(ctx context.Context) (BtcAssetReport, *entities.Wei, error) {
+	btcWalletBalance, err := useCase.btcWallet.GetBalance()
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	// A threshold of RBTC was reached and a bridge transaction initiated but not yet finished
+	btcRebalancing, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateBridgeTxSucceeded)
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	// A threshold of RBTC has not been reached yet and is sitting in the RBTC wallet
+	btcWaitingForRebalancing, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	// The LP already sent the BTC to the user, but the LBC has not yet sent the RBTC to the LP
+	btcInLbc, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateSendPegoutSucceeded)
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	// Already accepted pegout quotes
+	btcReservedForUsers, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	btcWaitingForRefund, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded)
+	if err != nil {
+		return BtcAssetReport{}, nil, err
+	}
+
+	// Calculate BTC total as sum of all location fields
+	btcTotal := entities.NewWei(0)
+	btcTotal.Add(btcTotal, btcWalletBalance)
+	btcTotal.Add(btcTotal, btcRebalancing)
+	btcTotal.Add(btcTotal, btcWaitingForRebalancing)
+	btcTotal.Add(btcTotal, btcInLbc)
+
+	return BtcAssetReport{
+		Total: btcTotal,
+		Location: BtcAssetLocation{
+			BtcWallet:  btcWalletBalance,
+			Federation: btcRebalancing,
+			RskWallet:  btcWaitingForRebalancing,
+			Lbc:        btcInLbc,
+		},
+		Allocation: BtcAssetAllocation{
+			ReservedForUsers: btcReservedForUsers,
+			WaitingForRefund: btcWaitingForRefund,
+			Available:        entities.NewWei(0).Sub(btcWalletBalance, btcReservedForUsers),
+		},
+	}, btcWaitingForRebalancing, nil
+}
+
+func (useCase *GetAssetsReportUseCase) calculateRbtcAssetReport(ctx context.Context, btcWaitingForRebalancing *entities.Wei) (RbtcAssetReport, error) {
+	rbtcWalletBalance, err := useCase.rsk.Rsk.GetBalance(ctx, useCase.lp.RskAddress())
+	if err != nil {
+		return RbtcAssetReport{}, err
+	}
+	// A part of the RBTC in the RSK wallet is a representation of BTC waiting to be sent to the bridge for rebalancing
+	rbtcInRskWallet := entities.NewWei(0).Sub(rbtcWalletBalance, btcWaitingForRebalancing)
+
+	// Initial balance + the cases when registerPegin succeded and the LBC balance for the LP was increased
+	rbtcLockedInLbc, err := useCase.contracts.Lbc.GetBalance(useCase.lp.RskAddress())
+	if err != nil {
+		return RbtcAssetReport{}, err
+	}
+
+	// LP spent RBTC by calling callForUser so the user now have the funds but the LP has not called registerPegin yet and is waiting the
+	// number of blocks of the native pegin
+	rbtcWaitingForRefund, err := useCase.sumPeginQuotesByState(ctx, quote.PeginStateCallForUserSucceeded)
+	if err != nil {
+		return RbtcAssetReport{}, err
+	}
+
+	// Already accepted pegin quotes
+	rbtcReservedForUsers, err := useCase.sumPeginQuotesByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
+	if err != nil {
+		return RbtcAssetReport{}, err
+	}
+
+	rbtcTotal := entities.NewWei(0)
+	rbtcTotal.Add(rbtcTotal, rbtcInRskWallet)
+	rbtcTotal.Add(rbtcTotal, rbtcLockedInLbc)
+	rbtcTotal.Add(rbtcTotal, rbtcWaitingForRefund)
+
+	return RbtcAssetReport{
+		Total: rbtcTotal,
+		Location: RbtcAssetLocation{
+			RskWallet:  rbtcInRskWallet,
+			Lbc:        rbtcLockedInLbc,
+			Federation: rbtcWaitingForRefund,
+		},
+		Allocation: RbtcAssetAllocation{
+			ReservedForUsers: rbtcReservedForUsers,
+			WaitingForRefund: rbtcWaitingForRefund,
+			Available: entities.NewWei(0).Add(
+				entities.NewWei(0).Sub(rbtcInRskWallet, rbtcReservedForUsers),
+				rbtcLockedInLbc,
+			),
+		},
+	}, nil
+}
+
+func (useCase *GetAssetsReportUseCase) sumPegoutQuotesByState(ctx context.Context, states ...quote.PegoutState) (*entities.Wei, error) {
+	total := entities.NewWei(0)
+
+	pegoutQuotes, err := useCase.pegoutRepository.GetRetainedQuoteByState(ctx, states...)
 	if err != nil {
 		return nil, err
 	}
-	return rbtcLiquidity, nil
+
+	for _, retainedQuote := range pegoutQuotes {
+		total.Add(total, retainedQuote.RequiredLiquidity)
+	}
+
+	return total, nil
 }
 
-func (useCase *GetAssetsReportUseCase) GetBTCLiquidity(ctx context.Context) (*entities.Wei, error) {
-	btcLiquidity, err := useCase.pegoutProvider.AvailablePegoutLiquidity(ctx)
+func (useCase *GetAssetsReportUseCase) sumPeginQuotesByState(ctx context.Context, states ...quote.PeginState) (*entities.Wei, error) {
+	total := entities.NewWei(0)
+
+	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, states...)
 	if err != nil {
 		return nil, err
 	}
-	return btcLiquidity, nil
-}
 
-func (useCase *GetAssetsReportUseCase) GetBTCLocked(ctx context.Context) (*entities.Wei, error) {
-	lockedPegout := entities.NewWei(0)
-	quotes, err := useCase.pegoutRepository.GetRetainedQuoteByState(ctx,
-		quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations,
-	)
-	if err != nil {
-		return nil, err
-	}
-	for _, retainedQuote := range quotes {
-		lockedPegout.Add(lockedPegout, retainedQuote.RequiredLiquidity)
-	}
-
-	return lockedPegout, nil
-}
-
-func (useCase *GetAssetsReportUseCase) GetRBTCLocked(ctx context.Context) (*entities.Wei, error) {
-	lockedPegin := entities.NewWei(0)
-	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
-	if err != nil {
-		return nil, err
-	}
 	for _, retainedQuote := range peginQuotes {
-		lockedPegin.Add(lockedPegin, retainedQuote.RequiredLiquidity)
+		total.Add(total, retainedQuote.RequiredLiquidity)
 	}
 
-	return lockedPegin, nil
-}
-
-func (useCase *GetAssetsReportUseCase) GetRBTCBalance(ctx context.Context) (*entities.Wei, error) {
-	lpsBalance, err := useCase.rsk.Rsk.GetBalance(ctx, useCase.lp.RskAddress())
-	if err != nil {
-		return nil, err
-	}
-	return lpsBalance, nil
-}
-
-func (useCase *GetAssetsReportUseCase) GetBtcBalance() (*entities.Wei, error) {
-	btcBalance, err := useCase.btcWallet.GetBalance()
-	if err != nil {
-		return nil, err
-	}
-	return btcBalance, nil
+	return total, nil
 }
