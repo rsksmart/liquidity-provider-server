@@ -106,12 +106,11 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsRevenueHandler(useCaseRegistry.GetRevenueReportUseCase()),
 		},*/
-		// TODO enable again when final implementation is ready
-		/*{
+		{
 			Path:    "/reports/assets",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
-		},*/
+		},
 		{
 			Path:    "/reports/transactions",
 			Method:  http.MethodGet,
