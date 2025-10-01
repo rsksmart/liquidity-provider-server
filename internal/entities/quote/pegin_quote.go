@@ -119,15 +119,19 @@ func (quote *PeginQuote) Total() *entities.Wei {
 }
 
 type RetainedPeginQuote struct {
-	QuoteHash           string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress      string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature           string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity   *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State               PeginState    `json:"state" bson:"state" validate:"required"`
-	UserBtcTxHash       string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
-	CallForUserTxHash   string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
-	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
-	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
+	QuoteHash             string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress        string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature             string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity     *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State                 PeginState    `json:"state" bson:"state" validate:"required"`
+	UserBtcTxHash         string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
+	CallForUserTxHash     string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
+	RegisterPeginTxHash   string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
+	CallForUserGasUsed    uint64        `json:"callForUserGasUsed" bson:"call_for_user_gas_used"`
+	CallForUserGasPrice   *entities.Wei `json:"callForUserGasPrice" bson:"call_for_user_gas_price"`
+	RegisterPeginGasUsed  uint64        `json:"registerPeginGasUsed" bson:"register_pegin_gas_used"`
+	RegisterPeginGasPrice *entities.Wei `json:"registerPeginGasPrice" bson:"register_pegin_gas_price"`
+	OwnerAccountAddress   string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 type WatchedPeginQuote struct {
