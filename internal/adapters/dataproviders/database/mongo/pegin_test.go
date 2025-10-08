@@ -869,6 +869,61 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 		peginCollection.AssertExpectations(t)
 		retainedCollection.AssertExpectations(t)
 	})
+
+	t.Run("Should fill zero values for retained pegin quotes with missing gas fields", func(t *testing.T) {
+		client, db := getClientAndDatabaseMocks()
+		peginCollection := &mocks.CollectionBindingMock{}
+		retainedCollection := &mocks.CollectionBindingMock{}
+
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
+		db.EXPECT().Collection(mongo.RetainedPeginQuoteCollection).Return(retainedCollection).Times(1)
+
+		// Create old database record with missing gas fields (represented as BSON document)
+		oldRetainedDocument := bson.D{
+			{Key: "quote_hash", Value: testHash1},
+			{Key: "deposit_address", Value: "test_deposit_address"},
+			{Key: "signature", Value: "test_signature"},
+			{Key: "required_liquidity", Value: uint64(1000000)},
+			{Key: "state", Value: "WaitingForDeposit"},
+			{Key: "call_for_user_gas_used", Value: uint64(21000)},
+			{Key: "register_pegin_gas_used", Value: uint64(22000)},
+			{Key: "owner_account_address", Value: "0x123"},
+			// Note: CallForUserGasPrice and RegisterPeginGasPrice are missing (nil)
+		}
+
+		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
+			{Key: "$gte", Value: startDate.Unix()},
+			{Key: "$lte", Value: endDate.Unix()},
+		}}}
+
+		peginCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
+
+		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
+		retainedCollection.On("Find", mock.Anything, retainedFilter).
+			Return(mongoDb.NewCursorFromDocuments([]any{oldRetainedDocument}, nil, nil)).Once()
+
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+
+		defer assertDbInteractionLog(t, "READ interaction with db: 1")()
+
+		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+		require.Len(t, result, 1)
+		assert.Equal(t, testPeginQuote, result[0].Quote)
+
+		// Verify that FillZeroValues() was applied - gas prices should be zero Wei instead of nil
+		assert.NotNil(t, result[0].RetainedQuote.CallForUserGasPrice)
+		assert.NotNil(t, result[0].RetainedQuote.RegisterPeginGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.CallForUserGasPrice)
+		assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.RegisterPeginGasPrice)
+
+		peginCollection.AssertExpectations(t)
+		retainedCollection.AssertExpectations(t)
+	})
 }
 
 // nolint:funlen

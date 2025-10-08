@@ -110,6 +110,7 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				GasUsed:           big.NewInt(21000),
 				Value:             entities.NewWei(89607151182921727),
 				GasPrice:          entities.NewWei(65164000),
+				Logs:              []blockchain.TransactionLog{},
 			}
 
 			assert.Equal(t, expectedReceipt, tx)
@@ -203,6 +204,7 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 				GasUsed:           big.NewInt(21000),
 				Value:             entities.NewWei(1),
 				GasPrice:          entities.NewWei(5),
+				Logs:              []blockchain.TransactionLog{},
 			}
 
 			assert.Equal(t, expectedReceipt, tx)
