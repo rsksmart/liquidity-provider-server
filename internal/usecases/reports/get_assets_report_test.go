@@ -24,6 +24,28 @@ type ExpectedBtcCalculations struct {
 	Available             *entities.Wei
 }
 
+// The states are stored in the retained quotes, so the filtering is done based on those structures but the amount calculations are obtained
+// by calling quote.Total(). Here we convert the retained quotes to the regular quotes to be able to call that method.
+func retainedPegoutQuotesToPegoutQuotes(retainedQuotes []quote.RetainedPegoutQuote) []quote.PegoutQuote {
+	result := make([]quote.PegoutQuote, len(retainedQuotes))
+	for i, rq := range retainedQuotes {
+		result[i] = quote.PegoutQuote{
+			Value: rq.RequiredLiquidity,
+		}
+	}
+	return result
+}
+
+func retainedPeginQuotesToPeginQuotes(retainedQuotes []quote.RetainedPeginQuote) []quote.PeginQuote {
+	result := make([]quote.PeginQuote, len(retainedQuotes))
+	for i, rq := range retainedQuotes {
+		result[i] = quote.PeginQuote{
+			Value: rq.RequiredLiquidity,
+		}
+	}
+	return result
+}
+
 type ExpectedRbtcCalculations struct {
 	RskWalletBalance *entities.Wei // Raw RSK wallet balance
 	InRskWallet      *entities.Wei // Adjusted RSK wallet (subtracting BTC waiting for rebalancing)
@@ -288,33 +310,33 @@ func TestGetAssetsReportUseCase_Run_BtcAssetReport_Success(t *testing.T) {
 			}
 
 			// BridgeTxSucceeded state (rebalancing)
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-				Return(bridgeQuotes, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(bridgeQuotes), nil).Once()
 
 			// RefundPegOutSucceeded state (waiting for rebalancing)
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-				Return(refundQuotes, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(refundQuotes), nil).Once()
 
 			// SendPegoutSucceeded state (in LBC)
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-				Return(sendQuotes, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(sendQuotes), nil).Once()
 
 			// WaitingForDeposit and WaitingForDepositConfirmations states (reserved for users)
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-				Return(waitingQuotes, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+				Return(retainedPegoutQuotesToPegoutQuotes(waitingQuotes), nil).Once()
 
 			// Combined states for waiting for refund calculation
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-				Return(combinedWaitingForRefundQuotes, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(combinedWaitingForRefundQuotes), nil).Once()
 
 			// Setup mock expectations for RBTC-related calls (minimal setup to make them pass)
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(0), nil).Once()
 			lp.On("RskAddress").Return("test-rsk-address").Twice() // Called twice: once for RSK balance, once for LBC balance
 			lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(0), nil).Once()
-			peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-				Return([]quote.RetainedPeginQuote{}, nil).Once()
-			peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-				Return([]quote.RetainedPeginQuote{}, nil).Once()
+			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+				Return([]quote.PeginQuote{}, nil).Once()
+			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+				Return([]quote.PeginQuote{}, nil).Once()
 
 			useCase := reports.NewGetAssetsReportUseCase(
 				btcWallet,
@@ -486,16 +508,16 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 				})
 			}
 
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-				Return([]quote.RetainedPegoutQuote{}, nil).Once()
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-				Return(pegoutQuotesForRebalancing, nil).Once()
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-				Return([]quote.RetainedPegoutQuote{}, nil).Once()
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-				Return([]quote.RetainedPegoutQuote{}, nil).Once()
-			pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-				Return(pegoutQuotesForRebalancing, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+				Return([]quote.PegoutQuote{}, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesForRebalancing), nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+				Return([]quote.PegoutQuote{}, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+				Return([]quote.PegoutQuote{}, nil).Once()
+			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+				Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesForRebalancing), nil).Once()
 
 			// Setup mock expectations for RBTC-related calls
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(tc.rbtcWalletBalance, nil).Once()
@@ -515,10 +537,10 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 				}
 			}
 
-			peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-				Return(callSucceededQuotes, nil).Once()
-			peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-				Return(waitingQuotes, nil).Once()
+			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+				Return(retainedPeginQuotesToPeginQuotes(callSucceededQuotes), nil).Once()
+			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+				Return(retainedPeginQuotesToPeginQuotes(waitingQuotes), nil).Once()
 
 			useCase := reports.NewGetAssetsReportUseCase(
 				btcWallet,
@@ -612,22 +634,22 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(pegoutQuotes, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotes), nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
 
 		// Pegin repository mocks
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-			Return([]quote.RetainedPeginQuote{}, nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(peginQuotes, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+			Return([]quote.PeginQuote{}, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+			Return(retainedPeginQuotesToPeginQuotes(peginQuotes), nil).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
@@ -695,22 +717,22 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return(pegoutQuotesRefunded, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(pegoutQuotesReserved, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return(pegoutQuotesRefunded, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesReserved), nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
 
 		// Pegin repository mocks
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-			Return(peginQuotesWaitingRefund, nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(peginQuotesReserved, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+			Return(retainedPeginQuotesToPeginQuotes(peginQuotesWaitingRefund), nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+			Return(retainedPeginQuotesToPeginQuotes(peginQuotesReserved), nil).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
@@ -767,22 +789,22 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return(pegoutQuotesRefunded, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(pegoutQuotesStillWaiting, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return(pegoutQuotesRefunded, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesStillWaiting), nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
 
 		// Pegin repository mocks
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-			Return([]quote.RetainedPeginQuote{}, nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(peginQuotesStillWaiting, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+			Return([]quote.PeginQuote{}, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+			Return(retainedPeginQuotesToPeginQuotes(peginQuotesStillWaiting), nil).Once()
 
 		// Expected totals: Same as Scenario 2 since pegout_1 is still in RefundPegOutSucceeded state
 		expectedBtcScenario3 := entities.NewWei(0).Add(expectedTotalBtc, pegoutQuote1Amount)
@@ -842,7 +864,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -866,9 +888,9 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -892,11 +914,11 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -920,13 +942,13 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -950,15 +972,15 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -982,16 +1004,16 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Once()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(nil, assert.AnError).Once()
 
@@ -1018,16 +1040,16 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
 		lbcContract.On("GetBalance", "test-rsk-address").Return(nil, assert.AnError).Once()
@@ -1056,20 +1078,20 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
 		lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
@@ -1097,22 +1119,22 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		contracts := blockchain.RskContracts{Lbc: lbcContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
-		pegoutRepository.On("GetRetainedQuoteByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return([]quote.RetainedPegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
+			Return([]quote.PegoutQuote{}, nil).Once()
+		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
+			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
 		lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateCallForUserSucceeded).
-			Return([]quote.RetainedPeginQuote{}, nil).Once()
-		peginRepository.On("GetRetainedQuoteByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
+			Return([]quote.PeginQuote{}, nil).Once()
+		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
 			Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)

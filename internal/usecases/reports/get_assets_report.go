@@ -84,12 +84,12 @@ func NewGetAssetsReportUseCase(
 }
 
 func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReportResult, error) {
-	btcReport, btcWaitingForRebalancing, err := useCase.calculateBtcAssetReport(ctx)
+	btcReport, err := useCase.calculateBtcAssetReport(ctx)
 	if err != nil {
 		return GetAssetsReportResult{}, err
 	}
 
-	rbtcReport, err := useCase.calculateRbtcAssetReport(ctx, btcWaitingForRebalancing)
+	rbtcReport, err := useCase.calculateRbtcAssetReport(ctx, btcReport.Location.RskWallet)
 	if err != nil {
 		return GetAssetsReportResult{}, err
 	}
@@ -100,39 +100,39 @@ func (useCase *GetAssetsReportUseCase) Run(ctx context.Context) (GetAssetsReport
 	}, nil
 }
 
-func (useCase *GetAssetsReportUseCase) calculateBtcAssetReport(ctx context.Context) (BtcAssetReport, *entities.Wei, error) {
+func (useCase *GetAssetsReportUseCase) calculateBtcAssetReport(ctx context.Context) (BtcAssetReport, error) {
 	btcWalletBalance, err := useCase.btcWallet.GetBalance()
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	// A threshold of RBTC was reached and a bridge transaction initiated but not yet finished
 	btcRebalancing, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateBridgeTxSucceeded)
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	// A threshold of RBTC has not been reached yet and is sitting in the RBTC wallet
 	btcWaitingForRebalancing, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	// The LP already sent the BTC to the user, but the LBC has not yet sent the RBTC to the LP
 	btcInLbc, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateSendPegoutSucceeded)
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	// Already accepted pegout quotes
 	btcReservedForUsers, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	btcWaitingForRefund, err := useCase.sumPegoutQuotesByState(ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded)
 	if err != nil {
-		return BtcAssetReport{}, nil, err
+		return BtcAssetReport{}, err
 	}
 
 	// Calculate BTC total as sum of all location fields
@@ -155,7 +155,7 @@ func (useCase *GetAssetsReportUseCase) calculateBtcAssetReport(ctx context.Conte
 			WaitingForRefund: btcWaitingForRefund,
 			Available:        entities.NewWei(0).Sub(btcWalletBalance, btcReservedForUsers),
 		},
-	}, btcWaitingForRebalancing, nil
+	}, nil
 }
 
 func (useCase *GetAssetsReportUseCase) calculateRbtcAssetReport(ctx context.Context, btcWaitingForRebalancing *entities.Wei) (RbtcAssetReport, error) {
@@ -211,13 +211,13 @@ func (useCase *GetAssetsReportUseCase) calculateRbtcAssetReport(ctx context.Cont
 func (useCase *GetAssetsReportUseCase) sumPegoutQuotesByState(ctx context.Context, states ...quote.PegoutState) (*entities.Wei, error) {
 	total := entities.NewWei(0)
 
-	pegoutQuotes, err := useCase.pegoutRepository.GetRetainedQuoteByState(ctx, states...)
+	pegoutQuotes, err := useCase.pegoutRepository.GetQuotesByState(ctx, states...)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, retainedQuote := range pegoutQuotes {
-		total.Add(total, retainedQuote.RequiredLiquidity)
+	for _, pegoutQuote := range pegoutQuotes {
+		total.Add(total, pegoutQuote.Total())
 	}
 
 	return total, nil
@@ -226,13 +226,13 @@ func (useCase *GetAssetsReportUseCase) sumPegoutQuotesByState(ctx context.Contex
 func (useCase *GetAssetsReportUseCase) sumPeginQuotesByState(ctx context.Context, states ...quote.PeginState) (*entities.Wei, error) {
 	total := entities.NewWei(0)
 
-	peginQuotes, err := useCase.peginRepository.GetRetainedQuoteByState(ctx, states...)
+	peginQuotes, err := useCase.peginRepository.GetQuotesByState(ctx, states...)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, retainedQuote := range peginQuotes {
-		total.Add(total, retainedQuote.RequiredLiquidity)
+	for _, peginQuote := range peginQuotes {
+		total.Add(total, peginQuote.Total())
 	}
 
 	return total, nil
