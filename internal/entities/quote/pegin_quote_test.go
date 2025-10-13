@@ -120,7 +120,7 @@ func TestPeginQuote_IsExpired(t *testing.T) {
 }
 
 //nolint:funlen
-func TestEnsureRetainedPeginQuoteZeroValues(t *testing.T) {
+func TestRetainedPeginQuote_FillZeroValues(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    quote.RetainedPeginQuote
@@ -178,7 +178,7 @@ func TestEnsureRetainedPeginQuoteZeroValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			actualQuote := tc.input
-			quote.EnsureRetainedPeginQuoteZeroValues(&actualQuote)
+			actualQuote.FillZeroValues()
 
 			assert.Equal(t, tc.expected.QuoteHash, actualQuote.QuoteHash)
 			assert.Equal(t, tc.expected.CallForUserGasPrice, actualQuote.CallForUserGasPrice)
@@ -196,10 +196,10 @@ func TestEnsureRetainedPeginQuoteZeroValues(t *testing.T) {
 			RegisterPeginGasPrice: nil,
 		}
 
-		quote.EnsureRetainedPeginQuoteZeroValues(&originalQuote)
+		originalQuote.FillZeroValues()
 		firstCallResult := originalQuote
 
-		quote.EnsureRetainedPeginQuoteZeroValues(&originalQuote)
+		originalQuote.FillZeroValues()
 		secondCallResult := originalQuote
 
 		assert.Equal(t, firstCallResult.CallForUserGasPrice, secondCallResult.CallForUserGasPrice)

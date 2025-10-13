@@ -149,9 +149,9 @@ type RetainedPegoutQuote struct {
 	OwnerAccountAddress  string        `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
-// EnsureRetainedPegoutQuoteZeroValues ensures that gas-related Wei fields have zero values instead of nil
+// FillZeroValues ensures that gas-related Wei fields have zero values instead of nil
 // for older database records that don't have these fields populated.
-func EnsureRetainedPegoutQuoteZeroValues(quote *RetainedPegoutQuote) {
+func (quote *RetainedPegoutQuote) FillZeroValues() {
 	if quote.BridgeRefundGasPrice == nil {
 		quote.BridgeRefundGasPrice = entities.NewWei(0)
 	}

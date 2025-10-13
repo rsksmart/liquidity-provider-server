@@ -468,6 +468,7 @@ func (lbc *liquidityBridgeContractImpl) RegisterPegin(params blockchain.Register
 	return transactionReceipt, nil
 }
 
+//nolint:funlen
 func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
 	var res []any
 	var err error
@@ -495,9 +496,12 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 		GasLimit: *txConfig.GasLimit,
 	}
 
+	var tx *geth.Transaction
 	receipt, err := awaitTx(lbc.client, lbc.miningTimeout, "RefundPegOut", func() (*geth.Transaction, error) {
-		return lbc.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
+		var txErr error
+		tx, txErr = lbc.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
 			params.BtcBlockHeaderHash, params.MerkleBranchPath, params.MerkleBranchHashes)
+		return tx, txErr
 	})
 
 	if err != nil {
@@ -507,7 +511,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 	}
 	toAddress := ""
 	txValue := entities.NewWei(0)
-	if tx, _, txErr := lbc.client.TransactionByHash(context.Background(), receipt.TxHash); txErr == nil {
+	if tx != nil {
 		if tx.To() != nil {
 			toAddress = tx.To().String()
 		}
@@ -523,6 +527,7 @@ func (lbc *liquidityBridgeContractImpl) RefundPegout(txConfig blockchain.Transac
 		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
 		Value:             txValue,
 		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
+		Logs:              convertReceiptLogs(receipt),
 	}
 	// Return populated receipt even on revert, but with error
 	if receipt.Status == 0 {
