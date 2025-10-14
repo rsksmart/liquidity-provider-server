@@ -104,7 +104,18 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	mutex.On("Lock").Return(nil)
 	mutex.On("Unlock").Return()
 	lbc := &mocks.LiquidityBridgeContractMock{}
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+	refundPegoutReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                "0x456",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
 	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{Lbc: lbc}, eventBus, rpc, mutex)
 	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
 	resetMocks := func() {

@@ -81,24 +81,39 @@ var btcRawTxMock = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 
 func TestRefundPegoutUseCase_Run(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	refundPegoutReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   refundPegoutTxHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                "0x456",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}
 	expectedRetained := quote.RetainedPegoutQuote{
-		QuoteHash:          retainedQuote.QuoteHash,
-		DepositAddress:     retainedQuote.DepositAddress,
-		Signature:          retainedQuote.Signature,
-		RequiredLiquidity:  retainedQuote.RequiredLiquidity,
-		State:              quote.PegoutStateRefundPegOutSucceeded,
-		UserRskTxHash:      retainedQuote.UserRskTxHash,
-		LpBtcTxHash:        retainedQuote.LpBtcTxHash,
-		RefundPegoutTxHash: refundPegoutTxHash,
+		QuoteHash:            retainedQuote.QuoteHash,
+		DepositAddress:       retainedQuote.DepositAddress,
+		Signature:            retainedQuote.Signature,
+		RequiredLiquidity:    retainedQuote.RequiredLiquidity,
+		State:                quote.PegoutStateRefundPegOutSucceeded,
+		UserRskTxHash:        retainedQuote.UserRskTxHash,
+		LpBtcTxHash:          retainedQuote.LpBtcTxHash,
+		RefundPegoutTxHash:   refundPegoutTxHash,
+		RefundPegoutGasUsed:  refundPegoutReceipt.GasUsed.Uint64(),
+		RefundPegoutGasPrice: refundPegoutReceipt.GasPrice,
 	}
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, expectedRetained).Return(nil).Once()
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	lbc := new(mocks.LiquidityBridgeContractMock)
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil).Once()
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
 		expected := retainedQuote
 		expected.RefundPegoutTxHash = refundPegoutTxHash
+		expected.RefundPegoutGasUsed = refundPegoutReceipt.GasUsed.Uint64()
+		expected.RefundPegoutGasPrice = refundPegoutReceipt.GasPrice
 		expected.State = quote.PegoutStateRefundPegOutSucceeded
 		require.NoError(t, event.Error)
 		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
@@ -131,12 +146,25 @@ func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(updateError).Once()
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	lbc := new(mocks.LiquidityBridgeContractMock)
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutTxHash, nil).Once()
+	refundPegoutReceipt2 := blockchain.TransactionReceipt{
+		TransactionHash:   refundPegoutTxHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                "0x456",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt2, nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
 		expected := retainedQuote
 		expected.RefundPegoutTxHash = refundPegoutTxHash
 		expected.State = quote.PegoutStateRefundPegOutSucceeded
+		expected.RefundPegoutGasUsed = uint64(21000)
+		expected.RefundPegoutGasPrice = entities.NewWei(1000000000)
 		require.NoError(t, event.Error)
 		return assert.Equal(t, expected, event.RetainedQuote) && assert.Equal(t, quote.PegoutQuoteCompletedEventId, event.Event.Id())
 	})).Return().Once()
@@ -195,7 +223,7 @@ func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
 			btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil).Once()
-			lbc.On("RefundPegout", mock.Anything, mock.Anything).Return("", blockchain.WaitingForBridgeError).Once()
+			lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{}, blockchain.WaitingForBridgeError).Once()
 		},
 	}
 	for _, setup := range recoverableSetups {
@@ -238,7 +266,7 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 			btc.On("BuildMerkleBranch", mock.Anything).Return(merkleBranchMock, nil).Once()
 			btc.On("GetTransactionBlockInfo", mock.Anything).Return(btcBlockInfoMock, nil).Once()
 			btc.On("GetRawTransaction", mock.Anything).Return(btcRawTxMock, nil).Once()
-			lbc.On("RefundPegout", mock.Anything, mock.Anything).Return("", assert.AnError).Once()
+			lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
 		},
 	}
 

@@ -122,10 +122,18 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 }
 
 func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	if w == nil {
+		return bson.TypeNull, []byte{}, nil
+	}
 	return bson.MarshalValue(w.AsBigInt().String())
 }
 
+// nolint:cyclop
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
+	if bsonType == bson.TypeNull {
+		return nil
+	}
+
 	supportedType := bsonType == bson.TypeInt64 || bsonType == bson.TypeString
 	if w == nil || !supportedType || len(bytes) == 0 {
 		return DeserializationError
@@ -144,6 +152,12 @@ func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
 	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
 		return errors.Join(DeserializationError, err)
 	}
+
+	// Handle the case where nil pointers were stored as the string "<nil>"
+	if value == "<nil>" {
+		return nil
+	}
+
 	_, ok := w.AsBigInt().SetString(value, 10)
 	if !ok {
 		return fmt.Errorf("%w: cannot unmarshal value %s to Wei", DeserializationError, value)

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"regexp"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -171,6 +172,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	} else if err != nil {
 		return nil, err
 	}
+	result.FillZeroValues()
 	logDbInteraction(Read, result)
 	return &result, nil
 }
@@ -281,6 +283,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 	}
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
+	}
+	for i := range result {
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -476,6 +481,10 @@ func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quot
 		return nil, err
 	}
 
+	for i := range retainedQuotes {
+		retainedQuotes[i].FillZeroValues()
+	}
+
 	return retainedQuotes, nil
 }
 
@@ -498,6 +507,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Conte
 	}
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
+	}
+	for i := range result {
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -522,6 +534,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 	}
 	if err = docs.All(ctx, &result); err != nil {
 		return nil, err
+	}
+	for i := range result {
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil

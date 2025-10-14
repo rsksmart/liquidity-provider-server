@@ -77,7 +77,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: "010203", DepositAddress: test.AnyAddress}
 	testPeginQuote := quote.PeginQuote{Nonce: 5}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	rpc := blockchain.Rpc{}
 	eventBus := &mocks.EventBusMock{}
 	acceptPeginChannel := make(chan entities.Event)
@@ -155,7 +155,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	peginRepository := &mocks.PeginQuoteRepositoryMock{}
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
