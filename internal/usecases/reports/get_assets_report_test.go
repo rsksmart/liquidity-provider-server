@@ -2,6 +2,7 @@ package reports_test
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -12,6 +13,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Fixed fees per quote (not part of RequiredLiquidity but added to each quote's Total())
+const (
+	callFeePerQuote          = 1000000 // 0.000001 RBTC (1e6 wei)
+	productFeeAmountPerQuote = 500000  // 0.0000005 RBTC (5e5 wei)
+)
+
+// additionalFeesPerQuote returns the sum of fixed fees added to each quote
+func additionalFeesPerQuote() *entities.Wei {
+	total := entities.NewWei(callFeePerQuote)
+	total.Add(total, entities.NewWei(productFeeAmountPerQuote))
+	return total
+}
 
 type ExpectedBtcCalculations struct {
 	WalletBalance         *entities.Wei
@@ -24,23 +38,66 @@ type ExpectedBtcCalculations struct {
 	Available             *entities.Wei
 }
 
+type splitQuoteValues struct {
+	Value            *entities.Wei
+	CallFee          *entities.Wei
+	ProductFeeAmount *entities.Wei
+	GasFee           *entities.Wei
+}
+
+// splitRequiredLiquidity splits the RequiredLiquidity into quote field values so the call to Total() is more realistic:
+// RequiredLiquidity is composed of Value and GasFee. We split it as 5% for GasFee and 95% for Value.
+// CallFee and ProductFeeAmount are set to reasonable fixed values (not part of the required liquidity calculation).
+func splitRequiredLiquidity(t *testing.T, requiredLiquidity *entities.Wei) splitQuoteValues {
+	callFee := entities.NewWei(callFeePerQuote)
+	productFeeAmount := entities.NewWei(productFeeAmountPerQuote)
+
+	// Calculate 5% for GasFee
+	gasFeeInt := new(big.Int).Mul(requiredLiquidity.AsBigInt(), big.NewInt(5))
+	gasFeeInt.Div(gasFeeInt, big.NewInt(100))
+	gasFee := entities.NewBigWei(gasFeeInt)
+
+	// Calculate 95% for Value (remainder ensures perfect precision)
+	valueBigInt := new(big.Int).Sub(requiredLiquidity.AsBigInt(), gasFeeInt)
+	value := entities.NewBigWei(valueBigInt)
+
+	valueAndGas := new(entities.Wei).Add(value, gasFee)
+	require.Equal(t, 0, valueAndGas.Cmp(requiredLiquidity),
+		"Value + GasFee must equal RequiredLiquidity")
+
+	return splitQuoteValues{
+		Value:            value,
+		CallFee:          callFee,
+		ProductFeeAmount: productFeeAmount,
+		GasFee:           gasFee,
+	}
+}
+
 // The states are stored in the retained quotes, so the filtering is done based on those structures but the amount calculations are obtained
 // by calling quote.Total(). Here we convert the retained quotes to the regular quotes to be able to call that method.
-func retainedPegoutQuotesToPegoutQuotes(retainedQuotes []quote.RetainedPegoutQuote) []quote.PegoutQuote {
+func retainedPegoutQuotesToPegoutQuotes(t *testing.T, retainedQuotes []quote.RetainedPegoutQuote) []quote.PegoutQuote {
 	result := make([]quote.PegoutQuote, len(retainedQuotes))
 	for i, rq := range retainedQuotes {
+		split := splitRequiredLiquidity(t, rq.RequiredLiquidity)
 		result[i] = quote.PegoutQuote{
-			Value: rq.RequiredLiquidity,
+			Value:            split.Value,
+			CallFee:          split.CallFee,
+			ProductFeeAmount: split.ProductFeeAmount,
+			GasFee:           split.GasFee,
 		}
 	}
 	return result
 }
 
-func retainedPeginQuotesToPeginQuotes(retainedQuotes []quote.RetainedPeginQuote) []quote.PeginQuote {
+func retainedPeginQuotesToPeginQuotes(t *testing.T, retainedQuotes []quote.RetainedPeginQuote) []quote.PeginQuote {
 	result := make([]quote.PeginQuote, len(retainedQuotes))
 	for i, rq := range retainedQuotes {
+		split := splitRequiredLiquidity(t, rq.RequiredLiquidity)
 		result[i] = quote.PeginQuote{
-			Value: rq.RequiredLiquidity,
+			Value:            split.Value,
+			CallFee:          split.CallFee,
+			ProductFeeAmount: split.ProductFeeAmount,
+			GasFee:           split.GasFee,
 		}
 	}
 	return result
@@ -65,19 +122,24 @@ func calculateExpectedBtcValues(quotes []quote.RetainedPegoutQuote, btcWalletBal
 	expectedBtcWaitingForRefund := entities.NewWei(0)      // RefundPegOutSucceeded + SendPegoutSucceeded + BridgeTxSucceeded
 
 	// Calculate sums based on quote states
+	// Each quote's Total() = RequiredLiquidity + callFeePerQuote + productFeeAmountPerQuote
+	additionalFees := additionalFeesPerQuote()
+
 	for _, q := range quotes {
+		quoteTotal := new(entities.Wei).Add(q.RequiredLiquidity, additionalFees)
+
 		switch q.State {
 		case quote.PegoutStateBridgeTxSucceeded:
-			expectedBtcRebalancing.Add(expectedBtcRebalancing, q.RequiredLiquidity)
-			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, q.RequiredLiquidity)
+			expectedBtcRebalancing.Add(expectedBtcRebalancing, quoteTotal)
+			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, quoteTotal)
 		case quote.PegoutStateRefundPegOutSucceeded:
-			expectedBtcWaitingForRebalancing.Add(expectedBtcWaitingForRebalancing, q.RequiredLiquidity)
-			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, q.RequiredLiquidity)
+			expectedBtcWaitingForRebalancing.Add(expectedBtcWaitingForRebalancing, quoteTotal)
+			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, quoteTotal)
 		case quote.PegoutStateSendPegoutSucceeded:
-			expectedBtcInLbc.Add(expectedBtcInLbc, q.RequiredLiquidity)
-			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, q.RequiredLiquidity)
+			expectedBtcInLbc.Add(expectedBtcInLbc, quoteTotal)
+			expectedBtcWaitingForRefund.Add(expectedBtcWaitingForRefund, quoteTotal)
 		case quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations:
-			expectedBtcReservedForUsers.Add(expectedBtcReservedForUsers, q.RequiredLiquidity)
+			expectedBtcReservedForUsers.Add(expectedBtcReservedForUsers, quoteTotal)
 		}
 	}
 
@@ -112,12 +174,17 @@ func calculateExpectedRbtcValues(
 	expectedRbtcReservedForUsers := entities.NewWei(0) // WaitingForDeposit + WaitingForDepositConfirmations
 
 	// Calculate sums based on pegin quote states
+	// Each quote's Total() = RequiredLiquidity + callFeePerQuote + productFeeAmountPerQuote
+	additionalFees := additionalFeesPerQuote()
+
 	for _, q := range peginQuotes {
+		quoteTotal := new(entities.Wei).Add(q.RequiredLiquidity, additionalFees)
+
 		switch q.State {
 		case quote.PeginStateCallForUserSucceeded:
-			expectedRbtcWaitingForRefund.Add(expectedRbtcWaitingForRefund, q.RequiredLiquidity)
+			expectedRbtcWaitingForRefund.Add(expectedRbtcWaitingForRefund, quoteTotal)
 		case quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations:
-			expectedRbtcReservedForUsers.Add(expectedRbtcReservedForUsers, q.RequiredLiquidity)
+			expectedRbtcReservedForUsers.Add(expectedRbtcReservedForUsers, quoteTotal)
 		}
 	}
 
@@ -311,23 +378,23 @@ func TestGetAssetsReportUseCase_Run_BtcAssetReport_Success(t *testing.T) {
 
 			// BridgeTxSucceeded state (rebalancing)
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(bridgeQuotes), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, bridgeQuotes), nil).Once()
 
 			// RefundPegOutSucceeded state (waiting for rebalancing)
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(refundQuotes), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, refundQuotes), nil).Once()
 
 			// SendPegoutSucceeded state (in LBC)
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(sendQuotes), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, sendQuotes), nil).Once()
 
 			// WaitingForDeposit and WaitingForDepositConfirmations states (reserved for users)
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-				Return(retainedPegoutQuotesToPegoutQuotes(waitingQuotes), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, waitingQuotes), nil).Once()
 
 			// Combined states for waiting for refund calculation
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(combinedWaitingForRefundQuotes), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, combinedWaitingForRefundQuotes), nil).Once()
 
 			// Setup mock expectations for RBTC-related calls (minimal setup to make them pass)
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(0), nil).Once()
@@ -499,11 +566,15 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 
 			// Create pegout quotes that will result in the desired btcWaitingForRebalancing
+			// Note: The quote's Total() = RequiredLiquidity + additionalFees, so we subtract the fees
+			// to ensure the final Total() equals the desired btcWaitingForRebalancing amount
 			pegoutQuotesForRebalancing := []quote.RetainedPegoutQuote{}
 			if tc.btcWaitingForRebalancing.Cmp(entities.NewWei(0)) > 0 {
+				// Subtract additional fees from the required liquidity so that Total() equals btcWaitingForRebalancing
+				requiredLiquidityForQuote := new(entities.Wei).Sub(tc.btcWaitingForRebalancing, additionalFeesPerQuote())
 				pegoutQuotesForRebalancing = append(pegoutQuotesForRebalancing, quote.RetainedPegoutQuote{
 					QuoteHash:         "refund_for_test",
-					RequiredLiquidity: tc.btcWaitingForRebalancing,
+					RequiredLiquidity: requiredLiquidityForQuote,
 					State:             quote.PegoutStateRefundPegOutSucceeded,
 				})
 			}
@@ -511,13 +582,13 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
 				Return([]quote.PegoutQuote{}, nil).Once()
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesForRebalancing), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesForRebalancing), nil).Once()
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
 				Return([]quote.PegoutQuote{}, nil).Once()
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
 				Return([]quote.PegoutQuote{}, nil).Once()
 			pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-				Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesForRebalancing), nil).Once()
+				Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesForRebalancing), nil).Once()
 
 			// Setup mock expectations for RBTC-related calls
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(tc.rbtcWalletBalance, nil).Once()
@@ -538,9 +609,9 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			}
 
 			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
-				Return(retainedPeginQuotesToPeginQuotes(callSucceededQuotes), nil).Once()
+				Return(retainedPeginQuotesToPeginQuotes(t, callSucceededQuotes), nil).Once()
 			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-				Return(retainedPeginQuotesToPeginQuotes(waitingQuotes), nil).Once()
+				Return(retainedPeginQuotesToPeginQuotes(t, waitingQuotes), nil).Once()
 
 			useCase := reports.NewGetAssetsReportUseCase(
 				btcWallet,
@@ -641,7 +712,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotes), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotes), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 
@@ -649,7 +720,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 			Return([]quote.PeginQuote{}, nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(retainedPeginQuotesToPeginQuotes(peginQuotes), nil).Once()
+			Return(retainedPeginQuotesToPeginQuotes(t, peginQuotes), nil).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
@@ -707,9 +778,10 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		currentRbtcWalletBalance.Add(currentRbtcWalletBalance, pegoutQuote1Amount)
 
 		// Expected totals adjust for the asset type conversion:
-		// BTC total increases by pegoutQuote1Amount (RBTC counted as "BTC waiting for rebalancing")
+		// BTC total increases by pegoutQuote1Amount + fees (RBTC counted as "BTC waiting for rebalancing")
 		// RBTC total stays the same (pegin_1 sent out, pegout_1 received in)
-		expectedBtcScenario2 := entities.NewWei(0).Add(expectedTotalBtc, pegoutQuote1Amount)
+		pegoutQuote1Total := new(entities.Wei).Add(pegoutQuote1Amount, additionalFeesPerQuote())
+		expectedBtcScenario2 := entities.NewWei(0).Add(expectedTotalBtc, pegoutQuote1Total)
 
 		btcWallet.On("GetBalance").Return(initialBtcWalletBalance, nil).Once()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(currentRbtcWalletBalance, nil).Once()
@@ -720,19 +792,19 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesRefunded), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesReserved), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesReserved), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesRefunded), nil).Once()
 
 		// Pegin repository mocks
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
-			Return(retainedPeginQuotesToPeginQuotes(peginQuotesWaitingRefund), nil).Once()
+			Return(retainedPeginQuotesToPeginQuotes(t, peginQuotesWaitingRefund), nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(retainedPeginQuotesToPeginQuotes(peginQuotesReserved), nil).Once()
+			Return(retainedPeginQuotesToPeginQuotes(t, peginQuotesReserved), nil).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
@@ -792,29 +864,33 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesRefunded), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateSendPegoutSucceeded).
 			Return([]quote.PegoutQuote{}, nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesStillWaiting), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesStillWaiting), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateBridgeTxSucceeded).
-			Return(retainedPegoutQuotesToPegoutQuotes(pegoutQuotesRefunded), nil).Once()
+			Return(retainedPegoutQuotesToPegoutQuotes(t, pegoutQuotesRefunded), nil).Once()
 
 		// Pegin repository mocks
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 			Return([]quote.PeginQuote{}, nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
-			Return(retainedPeginQuotesToPeginQuotes(peginQuotesStillWaiting), nil).Once()
+			Return(retainedPeginQuotesToPeginQuotes(t, peginQuotesStillWaiting), nil).Once()
 
 		// Expected totals: Same as Scenario 2 since pegout_1 is still in RefundPegOutSucceeded state
-		expectedBtcScenario3 := entities.NewWei(0).Add(expectedTotalBtc, pegoutQuote1Amount)
+		// Include additional fees in the quote total
+		pegoutQuote1Total := new(entities.Wei).Add(pegoutQuote1Amount, additionalFeesPerQuote())
+		expectedBtcScenario3 := entities.NewWei(0).Add(expectedTotalBtc, pegoutQuote1Total)
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
 
 		require.NoError(t, err)
 		assert.Equal(t, expectedBtcScenario3.String(), result.BtcAssetReport.Total.String(), "Scenario 3: BTC total includes RBTC waiting for rebalancing")
-		assert.Equal(t, expectedTotalRbtc.String(), result.RbtcAssetReport.Total.String(), "Scenario 3: RBTC total remains constant")
+		// In Scenario 3, pegin_1 is complete (no longer waiting), so RBTC total is reduced by the fees that were part of pegin_1's Total()
+		expectedRbtcScenario3 := new(entities.Wei).Sub(expectedTotalRbtc, additionalFeesPerQuote())
+		assert.Equal(t, expectedRbtcScenario3.String(), result.RbtcAssetReport.Total.String(), "Scenario 3: RBTC total adjusted for completed pegin_1")
 
 		btcWallet.AssertExpectations(t)
 		rskRpc.AssertExpectations(t)
