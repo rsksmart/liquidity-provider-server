@@ -1,12 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
+
+type GetRevenueReportUseCase interface {
+	Run(ctx context.Context, startDate, endDate time.Time) (reports.GetRevenueReportResult, error)
+}
 
 // NewGetReportsRevenueHandler
 // @Title Get revenue Reports
@@ -15,7 +21,7 @@ import (
 // @Param endDate query string true "End date for the report. Supports YYYY-MM-DD (expands to end of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
 // @Success 200 pkg.GetRevenueReportResponse
 // @Route /reports/revenue [get]
-func NewGetReportsRevenueHandler(useCase *reports.GetRevenueReportUseCase) http.HandlerFunc {
+func NewGetReportsRevenueHandler(useCase GetRevenueReportUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var requestParams pkg.GetReportsByPeriodRequest
 		var err error
@@ -46,9 +52,11 @@ func NewGetReportsRevenueHandler(useCase *reports.GetRevenueReportUseCase) http.
 			return
 		}
 		response := pkg.GetRevenueReportResponse{
-			TotalQuoteCallFees: revenueReport.TotalQuoteCallFees.AsBigInt(),
-			TotalPenalizations: revenueReport.TotalPenalizations.AsBigInt(),
-			TotalProfit:        revenueReport.TotalProfit.AsBigInt(),
+			TotalQuoteCallFees:    revenueReport.TotalQuoteCallFees.AsBigInt(),
+			TotalPenalizations:    revenueReport.TotalPenalizations.AsBigInt(),
+			TotalGasFeesCollected: revenueReport.TotalGasFeesCollected.AsBigInt(),
+			TotalGasSpent:         revenueReport.TotalGasSpent.AsBigInt(),
+			TotalProfit:           revenueReport.TotalProfit.AsBigInt(),
 		}
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
 	}

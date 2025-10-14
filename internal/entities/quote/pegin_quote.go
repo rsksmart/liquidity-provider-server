@@ -40,6 +40,7 @@ type PeginQuoteRepository interface {
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
+	GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []PeginState, startDate, endDate time.Time) ([]PeginQuoteWithRetained, error)
 }
 
 type PeginQuoteWithRetained struct {

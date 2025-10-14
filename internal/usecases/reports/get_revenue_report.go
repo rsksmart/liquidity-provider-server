@@ -2,27 +2,18 @@ package reports
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"time"
 )
 
 type GetRevenueReportUseCase struct {
 	peginQuoteRepository     quote.PeginQuoteRepository
 	pegoutQuoteRepository    quote.PegoutQuoteRepository
 	penalizedEventRepository penalization.PenalizedEventRepository
-}
-
-type peginQuotesReturn struct {
-	Quotes      []quote.PeginQuote
-	QuoteHashes []string
-}
-
-type pegoutQuotesReturn struct {
-	Quotes      []quote.PegoutQuote
-	QuoteHashes []string
 }
 
 func NewGetRevenueReportUseCase(
@@ -38,11 +29,14 @@ func NewGetRevenueReportUseCase(
 }
 
 type GetRevenueReportResult struct {
-	TotalQuoteCallFees *entities.Wei
-	TotalPenalizations *entities.Wei
-	TotalProfit        *entities.Wei
+	TotalQuoteCallFees    *entities.Wei
+	TotalGasFeesCollected *entities.Wei
+	TotalGasSpent         *entities.Wei
+	TotalPenalizations    *entities.Wei
+	TotalProfit           *entities.Wei
 }
 
+// nolint:funlen
 func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetRevenueReportResult, error) {
 	peginResult, err := useCase.getPeginQuotes(ctx, startDate, endDate)
 	if err != nil {
@@ -54,32 +48,70 @@ func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
-	allQuoteHashes := append(peginResult.QuoteHashes, pegoutResult.QuoteHashes...)
-	penalizations, err := useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
+	penalizations, err := useCase.getPenalizations(ctx, peginResult, pegoutResult)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
 	totalQuoteCallFees := entities.NewWei(0)
+	totalGasFeesCollected := entities.NewWei(0)
+	totalGasSpent := entities.NewWei(0)
 	totalPenalizations := entities.NewWei(0)
-	totalProfit := entities.NewWei(0)
 
-	for _, q := range peginResult.Quotes {
-		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
+	// Calculate totals from pegin quotes
+	for _, quoteWithRetained := range peginResult {
+		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, quoteWithRetained.Quote.CallFee)
+
+		totalGasFeesCollected = totalGasFeesCollected.Add(totalGasFeesCollected, quoteWithRetained.Quote.GasFee)
+
+		// Calculate actual gas spent
+		callForUserGasSpent := entities.NewWei(0).Mul(
+			entities.NewWei(int64(quoteWithRetained.RetainedQuote.CallForUserGasUsed)),
+			quoteWithRetained.RetainedQuote.CallForUserGasPrice,
+		)
+		registerPeginGasSpent := entities.NewWei(0).Mul(
+			entities.NewWei(int64(quoteWithRetained.RetainedQuote.RegisterPeginGasUsed)),
+			quoteWithRetained.RetainedQuote.RegisterPeginGasPrice,
+		)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, callForUserGasSpent)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, registerPeginGasSpent)
 	}
-	for _, q := range pegoutResult.Quotes {
-		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
+
+	// Calculate totals from pegout quotes
+	for _, pair := range pegoutResult {
+		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, pair.Quote.CallFee)
+
+		totalGasFeesCollected = totalGasFeesCollected.Add(totalGasFeesCollected, pair.Quote.GasFee)
+
+		// Calculate actual gas spent (RSK gas + BTC fees)
+		refundPegoutGasCost := entities.NewWei(0).Mul(
+			entities.NewWei(int64(pair.RetainedQuote.RefundPegoutGasUsed)),
+			pair.RetainedQuote.RefundPegoutGasPrice,
+		)
+		bridgeRefundGasCost := entities.NewWei(0).Mul(
+			entities.NewWei(int64(pair.RetainedQuote.BridgeRefundGasUsed)),
+			pair.RetainedQuote.BridgeRefundGasPrice,
+		)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, refundPegoutGasCost)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, bridgeRefundGasCost)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, pair.RetainedQuote.SendPegoutBtcFee)
 	}
+
 	for _, p := range penalizations {
 		totalPenalizations = totalPenalizations.Add(totalPenalizations, p.Penalty)
 	}
 
-	totalProfit = totalProfit.Sub(totalQuoteCallFees, totalPenalizations)
+	// Total profit: callFees + (gasCollected - gasSpent) - penalizations
+	gasProfit := entities.NewWei(0).Sub(totalGasFeesCollected, totalGasSpent)
+	totalProfit := entities.NewWei(0).Add(totalQuoteCallFees, gasProfit)
+	totalProfit = totalProfit.Sub(totalProfit, totalPenalizations)
 
 	return GetRevenueReportResult{
-		TotalQuoteCallFees: totalQuoteCallFees,
-		TotalPenalizations: totalPenalizations,
-		TotalProfit:        totalProfit,
+		TotalQuoteCallFees:    totalQuoteCallFees,
+		TotalGasFeesCollected: totalGasFeesCollected,
+		TotalGasSpent:         totalGasSpent,
+		TotalPenalizations:    totalPenalizations,
+		TotalProfit:           totalProfit,
 	}, nil
 }
 
@@ -87,62 +119,32 @@ func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (peginQuotesReturn, error) {
+) ([]quote.PeginQuoteWithRetained, error) {
 	peginStates := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
-	peginRetainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, peginStates...)
-
-	peginQuotesToReturn := peginQuotesReturn{
-		Quotes:      make([]quote.PeginQuote, 0),
-		QuoteHashes: make([]string, 0),
-	}
-
-	if err != nil {
-		return peginQuotesToReturn, err
-	}
-
-	peginQuoteHashes := make([]string, 0, len(peginRetainedQuotes))
-	for _, q := range peginRetainedQuotes {
-		peginQuoteHashes = append(peginQuoteHashes, q.QuoteHash)
-	}
-
-	peginQuotes, err := useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, peginQuoteHashes, startDate, endDate)
-	peginQuotesToReturn.Quotes = peginQuotes
-	peginQuotesToReturn.QuoteHashes = peginQuoteHashes
-	if err != nil {
-		return peginQuotesToReturn, err
-	}
-	return peginQuotesToReturn, nil
+	return useCase.peginQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, peginStates, startDate, endDate)
 }
 
 func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (pegoutQuotesReturn, error) {
+) ([]quote.PegoutQuoteWithRetained, error) {
 	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
-	pegoutRetainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, pegoutStates...)
+	return useCase.pegoutQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, pegoutStates, startDate, endDate)
+}
 
-	pegoutQuotesToReturn := pegoutQuotesReturn{
-		Quotes:      make([]quote.PegoutQuote, 0),
-		QuoteHashes: make([]string, 0),
+func (useCase *GetRevenueReportUseCase) getPenalizations(
+	ctx context.Context,
+	peginResult []quote.PeginQuoteWithRetained,
+	pegoutResult []quote.PegoutQuoteWithRetained,
+) ([]penalization.PenalizedEvent, error) {
+	allQuoteHashes := make([]string, 0, len(peginResult)+len(pegoutResult))
+	for _, quoteWithRetained := range peginResult {
+		allQuoteHashes = append(allQuoteHashes, quoteWithRetained.RetainedQuote.QuoteHash)
+	}
+	for _, pair := range pegoutResult {
+		allQuoteHashes = append(allQuoteHashes, pair.RetainedQuote.QuoteHash)
 	}
 
-	if err != nil {
-		return pegoutQuotesToReturn, err
-	}
-
-	pegoutQuoteHashes := make([]string, 0, len(pegoutRetainedQuotes))
-	for _, q := range pegoutRetainedQuotes {
-		pegoutQuoteHashes = append(pegoutQuoteHashes, q.QuoteHash)
-	}
-
-	pegoutQuotes, err := useCase.pegoutQuoteRepository.GetQuotesByHashesAndDate(ctx, pegoutQuoteHashes, startDate, endDate)
-	pegoutQuotesToReturn.Quotes = pegoutQuotes
-	pegoutQuotesToReturn.QuoteHashes = pegoutQuoteHashes
-
-	if err != nil {
-		return pegoutQuotesToReturn, err
-	}
-
-	return pegoutQuotesToReturn, nil
+	return useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
 }

@@ -455,3 +455,76 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 	logDbInteraction(Read, result)
 	return result, nil
 }
+
+func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PeginState, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	retainedQuotes, err := repo.GetRetainedQuoteByState(ctx, states...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(retainedQuotes) == 0 {
+		result := make([]quote.PeginQuoteWithRetained, 0)
+		logDbInteraction(Read, result)
+		return result, nil
+	}
+
+	quoteHashes := make([]string, len(retainedQuotes))
+	for i, rq := range retainedQuotes {
+		quoteHashes[i] = rq.QuoteHash
+	}
+
+	storedQuotes, err := repo.fetchQuotesByHashesAndDate(dbCtx, quoteHashes, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(storedQuotes) == 0 {
+		result := make([]quote.PeginQuoteWithRetained, 0)
+		logDbInteraction(Read, result)
+		return result, nil
+	}
+
+	retainedMap := make(map[string]quote.RetainedPeginQuote, len(retainedQuotes))
+	for _, rq := range retainedQuotes {
+		retainedMap[rq.QuoteHash] = rq
+	}
+
+	result := make([]quote.PeginQuoteWithRetained, 0, len(storedQuotes))
+	for _, stored := range storedQuotes {
+		if retained, exists := retainedMap[stored.Hash]; exists {
+			result = append(result, quote.PeginQuoteWithRetained{
+				Quote:         stored.PeginQuote,
+				RetainedQuote: retained,
+			})
+		}
+	}
+
+	logDbInteraction(Read, len(result))
+	return result, nil
+}
+
+func (repo *peginMongoRepository) fetchQuotesByHashesAndDate(ctx context.Context, quoteHashes []string, startDate, endDate time.Time) ([]StoredPeginQuote, error) {
+	collection := repo.conn.Collection(PeginQuoteCollection)
+	filter := bson.M{
+		"hash": bson.M{"$in": quoteHashes},
+		"agreement_timestamp": bson.M{
+			"$gte": startDate.Unix(),
+			"$lte": endDate.Unix(),
+		},
+	}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var storedQuotes []StoredPeginQuote
+	if err = cursor.All(ctx, &storedQuotes); err != nil {
+		return nil, err
+	}
+
+	return storedQuotes, nil
+}

@@ -177,9 +177,11 @@ func (r *DateRangeRequest) GetTimestamps() (startTime, endTime time.Time, err er
 }
 
 type GetRevenueReportResponse struct {
-	TotalQuoteCallFees *big.Int `json:"totalQuoteCallFees" validate:"required"`
-	TotalPenalizations *big.Int `json:"totalPenalizations" validate:"required"`
-	TotalProfit        *big.Int `json:"totalProfit" validate:"required"`
+	TotalQuoteCallFees    *big.Int `json:"totalQuoteCallFees" validate:"required"`
+	TotalPenalizations    *big.Int `json:"totalPenalizations" validate:"required"`
+	TotalGasFeesCollected *big.Int `json:"totalGasFeesCollected" validate:"required"`
+	TotalGasSpent         *big.Int `json:"totalGasSpent" validate:"required"`
+	TotalProfit           *big.Int `json:"totalProfit" validate:"required"`
 }
 
 // BTC Asset Report structures
