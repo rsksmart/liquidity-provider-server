@@ -19,12 +19,12 @@ func (s *IntegrationTestSuite) TestPegInOverPayFlow() {
 	URL := s.config.Lps.Url
 
 	s.Run("Should be able to get pegin quote", func() { getPeginQuoteTest(s, URL, &quote) })
-	value = entities.NewUWei(quote.Quote.Value)
-	callFee = entities.NewUWei(quote.Quote.CallFee)
-	gasFee = entities.NewUWei(quote.Quote.GasFee)
+	value = entities.NewBigWei(quote.Quote.Value)
+	callFee = entities.NewBigWei(quote.Quote.CallFee)
+	gasFee = entities.NewBigWei(quote.Quote.GasFee)
 	s.Run("Should be able to accept pegin quote", func() { acceptPeginQuoteTest(s, URL, quote, &acceptedQuote) })
 	s.Run("Should deposit 1.5 of the expected BTC and receive the requested amount in the callForUser", func() {
-		productFee := entities.NewUWei(quote.Quote.ProductFeeAmount)
+		productFee := entities.NewBigWei(quote.Quote.ProductFeeAmount)
 		totalFees := new(entities.Wei).Add(new(entities.Wei).Add(callFee, gasFee), productFee)
 		totalAmount := new(entities.Wei).Add(totalFees, value)
 		extraAmount = new(big.Int).Div(totalAmount.AsBigInt(), big.NewInt(2))

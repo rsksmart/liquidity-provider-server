@@ -10,6 +10,8 @@ import (
 
 	pegout "github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 
+	reports "github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
+
 	usecases "github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
@@ -120,6 +122,53 @@ func (_c *UseCaseRegistryMock_AddPegoutCollateralUseCase_Call) RunAndReturn(run 
 	return _c
 }
 
+// AddTrustedAccountUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddTrustedAccountUseCase")
+	}
+
+	var r0 *liquidity_provider.AddTrustedAccountUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.AddTrustedAccountUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*liquidity_provider.AddTrustedAccountUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_AddTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddTrustedAccountUseCase'
+type UseCaseRegistryMock_AddTrustedAccountUseCase_Call struct {
+	*mock.Call
+}
+
+// AddTrustedAccountUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) AddTrustedAccountUseCase() *UseCaseRegistryMock_AddTrustedAccountUseCase_Call {
+	return &UseCaseRegistryMock_AddTrustedAccountUseCase_Call{Call: _e.mock.On("AddTrustedAccountUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_AddTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_AddTrustedAccountUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_AddTrustedAccountUseCase_Call) Return(_a0 *liquidity_provider.AddTrustedAccountUseCase) *UseCaseRegistryMock_AddTrustedAccountUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_AddTrustedAccountUseCase_Call) RunAndReturn(run func() *liquidity_provider.AddTrustedAccountUseCase) *UseCaseRegistryMock_AddTrustedAccountUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChangeStatusUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) ChangeStatusUseCase() *liquidity_provider.ChangeStatusUseCase {
 	ret := _m.Called()
@@ -163,6 +212,53 @@ func (_c *UseCaseRegistryMock_ChangeStatusUseCase_Call) Return(_a0 *liquidity_pr
 }
 
 func (_c *UseCaseRegistryMock_ChangeStatusUseCase_Call) RunAndReturn(run func() *liquidity_provider.ChangeStatusUseCase) *UseCaseRegistryMock_ChangeStatusUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteTrustedAccountUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteTrustedAccountUseCase")
+	}
+
+	var r0 *liquidity_provider.DeleteTrustedAccountUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.DeleteTrustedAccountUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*liquidity_provider.DeleteTrustedAccountUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteTrustedAccountUseCase'
+type UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call struct {
+	*mock.Call
+}
+
+// DeleteTrustedAccountUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) DeleteTrustedAccountUseCase() *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call {
+	return &UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call{Call: _e.mock.On("DeleteTrustedAccountUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call) Return(_a0 *liquidity_provider.DeleteTrustedAccountUseCase) *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call) RunAndReturn(run func() *liquidity_provider.DeleteTrustedAccountUseCase) *UseCaseRegistryMock_DeleteTrustedAccountUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -304,6 +400,53 @@ func (_c *UseCaseRegistryMock_GetAcceptPegoutQuoteUseCase_Call) Return(_a0 *pego
 }
 
 func (_c *UseCaseRegistryMock_GetAcceptPegoutQuoteUseCase_Call) RunAndReturn(run func() *pegout.AcceptQuoteUseCase) *UseCaseRegistryMock_GetAcceptPegoutQuoteUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAssetsReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetAssetsReportUseCase() *reports.GetAssetsReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAssetsReportUseCase")
+	}
+
+	var r0 *reports.GetAssetsReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetAssetsReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetAssetsReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetAssetsReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAssetsReportUseCase'
+type UseCaseRegistryMock_GetAssetsReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetAssetsReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetAssetsReportUseCase() *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
+	return &UseCaseRegistryMock_GetAssetsReportUseCase_Call{Call: _e.mock.On("GetAssetsReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) Return(_a0 *reports.GetAssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAssetsReportUseCase_Call) RunAndReturn(run func() *reports.GetAssetsReportUseCase) *UseCaseRegistryMock_GetAssetsReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -543,6 +686,53 @@ func (_c *UseCaseRegistryMock_GetPeginQuoteUseCase_Call) RunAndReturn(run func()
 	return _c
 }
 
+// GetPeginReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetPeginReportUseCase() *reports.GetPeginReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPeginReportUseCase")
+	}
+
+	var r0 *reports.GetPeginReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetPeginReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetPeginReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetPeginReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPeginReportUseCase'
+type UseCaseRegistryMock_GetPeginReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetPeginReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetPeginReportUseCase() *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+	return &UseCaseRegistryMock_GetPeginReportUseCase_Call{Call: _e.mock.On("GetPeginReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) Return(_a0 *reports.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPeginReportUseCase_Call) RunAndReturn(run func() *reports.GetPeginReportUseCase) *UseCaseRegistryMock_GetPeginReportUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPeginStatusUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetPeginStatusUseCase() *pegin.StatusUseCase {
 	ret := _m.Called()
@@ -680,6 +870,53 @@ func (_c *UseCaseRegistryMock_GetPegoutQuoteUseCase_Call) Return(_a0 *pegout.Get
 }
 
 func (_c *UseCaseRegistryMock_GetPegoutQuoteUseCase_Call) RunAndReturn(run func() *pegout.GetQuoteUseCase) *UseCaseRegistryMock_GetPegoutQuoteUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPegoutReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetPegoutReportUseCase() *reports.GetPegoutReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPegoutReportUseCase")
+	}
+
+	var r0 *reports.GetPegoutReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetPegoutReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetPegoutReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetPegoutReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegoutReportUseCase'
+type UseCaseRegistryMock_GetPegoutReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetPegoutReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetPegoutReportUseCase() *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	return &UseCaseRegistryMock_GetPegoutReportUseCase_Call{Call: _e.mock.On("GetPegoutReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) Return(_a0 *reports.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPegoutReportUseCase_Call) RunAndReturn(run func() *reports.GetPegoutReportUseCase) *UseCaseRegistryMock_GetPegoutReportUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -825,6 +1062,53 @@ func (_c *UseCaseRegistryMock_GetProvidersUseCase_Call) RunAndReturn(run func() 
 	return _c
 }
 
+// GetRevenueReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetRevenueReportUseCase() *reports.GetRevenueReportUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRevenueReportUseCase")
+	}
+
+	var r0 *reports.GetRevenueReportUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetRevenueReportUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetRevenueReportUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetRevenueReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRevenueReportUseCase'
+type UseCaseRegistryMock_GetRevenueReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetRevenueReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetRevenueReportUseCase() *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	return &UseCaseRegistryMock_GetRevenueReportUseCase_Call{Call: _e.mock.On("GetRevenueReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) Return(_a0 *reports.GetRevenueReportUseCase) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetRevenueReportUseCase_Call) RunAndReturn(run func() *reports.GetRevenueReportUseCase) *UseCaseRegistryMock_GetRevenueReportUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetServerInfoUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetServerInfoUseCase() *liquidity_provider.ServerInfoUseCase {
 	ret := _m.Called()
@@ -868,6 +1152,100 @@ func (_c *UseCaseRegistryMock_GetServerInfoUseCase_Call) Return(_a0 *liquidity_p
 }
 
 func (_c *UseCaseRegistryMock_GetServerInfoUseCase_Call) RunAndReturn(run func() *liquidity_provider.ServerInfoUseCase) *UseCaseRegistryMock_GetServerInfoUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTransactionsReportUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetTransactionsReportUseCase() *reports.GetTransactionsUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransactionsReportUseCase")
+	}
+
+	var r0 *reports.GetTransactionsUseCase
+	if rf, ok := ret.Get(0).(func() *reports.GetTransactionsUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.GetTransactionsUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetTransactionsReportUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransactionsReportUseCase'
+type UseCaseRegistryMock_GetTransactionsReportUseCase_Call struct {
+	*mock.Call
+}
+
+// GetTransactionsReportUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetTransactionsReportUseCase() *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	return &UseCaseRegistryMock_GetTransactionsReportUseCase_Call{Call: _e.mock.On("GetTransactionsReportUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) Return(_a0 *reports.GetTransactionsUseCase) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTransactionsReportUseCase_Call) RunAndReturn(run func() *reports.GetTransactionsUseCase) *UseCaseRegistryMock_GetTransactionsReportUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTrustedAccountsUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetTrustedAccountsUseCase() *liquidity_provider.GetTrustedAccountsUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTrustedAccountsUseCase")
+	}
+
+	var r0 *liquidity_provider.GetTrustedAccountsUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.GetTrustedAccountsUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*liquidity_provider.GetTrustedAccountsUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetTrustedAccountsUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTrustedAccountsUseCase'
+type UseCaseRegistryMock_GetTrustedAccountsUseCase_Call struct {
+	*mock.Call
+}
+
+// GetTrustedAccountsUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetTrustedAccountsUseCase() *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call {
+	return &UseCaseRegistryMock_GetTrustedAccountsUseCase_Call{Call: _e.mock.On("GetTrustedAccountsUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call) Return(_a0 *liquidity_provider.GetTrustedAccountsUseCase) *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call) RunAndReturn(run func() *liquidity_provider.GetTrustedAccountsUseCase) *UseCaseRegistryMock_GetTrustedAccountsUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1244,6 +1622,100 @@ func (_c *UseCaseRegistryMock_SetPegoutConfigUseCase_Call) Return(_a0 *liquidity
 }
 
 func (_c *UseCaseRegistryMock_SetPegoutConfigUseCase_Call) RunAndReturn(run func() *liquidity_provider.SetPegoutConfigUseCase) *UseCaseRegistryMock_SetPegoutConfigUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SummariesUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) SummariesUseCase() *reports.SummariesUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SummariesUseCase")
+	}
+
+	var r0 *reports.SummariesUseCase
+	if rf, ok := ret.Get(0).(func() *reports.SummariesUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*reports.SummariesUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_SummariesUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SummariesUseCase'
+type UseCaseRegistryMock_SummariesUseCase_Call struct {
+	*mock.Call
+}
+
+// SummariesUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) SummariesUseCase() *UseCaseRegistryMock_SummariesUseCase_Call {
+	return &UseCaseRegistryMock_SummariesUseCase_Call{Call: _e.mock.On("SummariesUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_SummariesUseCase_Call) Run(run func()) *UseCaseRegistryMock_SummariesUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_SummariesUseCase_Call) Return(_a0 *reports.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_SummariesUseCase_Call) RunAndReturn(run func() *reports.SummariesUseCase) *UseCaseRegistryMock_SummariesUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateTrustedAccountUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateTrustedAccountUseCase")
+	}
+
+	var r0 *liquidity_provider.UpdateTrustedAccountUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.UpdateTrustedAccountUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*liquidity_provider.UpdateTrustedAccountUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateTrustedAccountUseCase'
+type UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call struct {
+	*mock.Call
+}
+
+// UpdateTrustedAccountUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) UpdateTrustedAccountUseCase() *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
+	return &UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call{Call: _e.mock.On("UpdateTrustedAccountUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) Run(run func()) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) Return(_a0 *liquidity_provider.UpdateTrustedAccountUseCase) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call) RunAndReturn(run func() *liquidity_provider.UpdateTrustedAccountUseCase) *UseCaseRegistryMock_UpdateTrustedAccountUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }

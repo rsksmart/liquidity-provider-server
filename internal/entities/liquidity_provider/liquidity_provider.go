@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
@@ -20,8 +21,10 @@ const (
 )
 
 var (
-	InvalidProviderTypeError = errors.New("invalid liquidity provider type")
-	ProviderNotFoundError    = errors.New("liquidity provider not found")
+	InvalidProviderTypeError   = errors.New("invalid liquidity provider type")
+	ProviderNotFoundError      = errors.New("liquidity provider not found")
+	ConfigurationNotFoundError = errors.New("configuration not found")
+	InvalidSignatureError      = errors.New("invalid signature")
 )
 
 func (p ProviderType) IsValid() bool {
@@ -55,6 +58,7 @@ type LiquidityProvider interface {
 	BtcAddress() string
 	SignQuote(quoteHash string) (string, error)
 	GeneralConfiguration(ctx context.Context) GeneralConfiguration
+	GetSigner() entities.Signer
 }
 
 type PeginLiquidityProvider interface {
@@ -102,12 +106,6 @@ type AvailableLiquidity struct {
 	PegoutLiquidity *entities.Wei
 }
 
-type PunishmentEvent struct {
-	LiquidityProvider string
-	Penalty           *entities.Wei
-	QuoteHash         string
-}
-
 type Credentials struct {
 	Username string
 	Password string
@@ -116,4 +114,25 @@ type Credentials struct {
 type DefaultCredentialsSetEvent struct {
 	entities.Event
 	Credentials *HashedCredentials
+}
+
+func ValidateConfiguration[T ConfigurationType](
+	signer entities.Signer,
+	hashFunction entities.HashFunction,
+	readFunction func() (*entities.Signed[T], error),
+) (*entities.Signed[T], error) {
+	configuration, err := readFunction()
+	if err != nil {
+		return nil, err
+	}
+	if configuration == nil {
+		return nil, ConfigurationNotFoundError
+	}
+	if err = configuration.CheckIntegrity(hashFunction); err != nil {
+		return nil, err
+	}
+	if !signer.Validate(configuration.Signature, configuration.Hash) {
+		return nil, InvalidSignatureError
+	}
+	return configuration, nil
 }

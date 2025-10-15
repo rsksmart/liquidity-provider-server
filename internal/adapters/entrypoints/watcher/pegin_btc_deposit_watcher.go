@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -24,7 +25,7 @@ type PeginDepositAddressWatcher struct {
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
 	rpc                         blockchain.Rpc
-	ticker                      Ticker
+	ticker                      utils.Ticker
 	eventBus                    entities.EventBus
 	watcherStopChannel          chan bool
 	currentBlock                *big.Int
@@ -59,7 +60,7 @@ func NewPeginDepositAddressWatcher(
 	btcWallet blockchain.BitcoinWallet,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
-	ticker Ticker,
+	ticker utils.Ticker,
 ) *PeginDepositAddressWatcher {
 	quotes := make(map[string]quote.WatchedPeginQuote)
 	watcherStopChannel := make(chan bool, 1)

@@ -103,7 +103,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		CallFee:          quote.CalculateCallFee(request.valueToTransfer, peginConfiguration),
 		GasFee:           new(entities.Wei).Mul(totalGas, creationData.GasPrice),
 		PenaltyFee:       peginConfiguration.PenaltyFee,
-		ProductFeeAmount: daoTxAmounts.DaoFeeAmount.Uint64(),
+		ProductFeeAmount: daoTxAmounts.DaoFeeAmount,
 	}
 	if peginQuote, err = useCase.buildPeginQuote(generalConfiguration, peginConfiguration, request, fedAddress, totalGas, fees); err != nil {
 		return GetPeginQuoteResult{}, err

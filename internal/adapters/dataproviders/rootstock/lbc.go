@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
 	"time"
@@ -536,9 +537,9 @@ func (lbc *liquidityBridgeContractImpl) GetDepositEvents(ctx context.Context, fr
 	return result, nil
 }
 
-func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error) {
+func (lbc *liquidityBridgeContractImpl) GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error) {
 	var lbcEvent *bindings.LiquidityBridgeContractPenalized
-	result := make([]liquidity_provider.PunishmentEvent, 0)
+	result := make([]penalization.PenalizedEvent, 0)
 
 	rawIterator, err := lbc.contract.FilterPenalized(&bind.FilterOpts{
 		Start:   fromBlock,
@@ -559,7 +560,7 @@ func (lbc *liquidityBridgeContractImpl) GetPeginPunishmentEvents(ctx context.Con
 
 	for iterator.Next() {
 		lbcEvent = iterator.Event()
-		result = append(result, liquidity_provider.PunishmentEvent{
+		result = append(result, penalization.PenalizedEvent{
 			LiquidityProvider: lbcEvent.LiquidityProvider.String(),
 			Penalty:           entities.NewBigWei(lbcEvent.Penalty),
 			QuoteHash:         hex.EncodeToString(lbcEvent.QuoteHash[:]),
@@ -694,8 +695,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPeginQuote, er
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(peginQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
 	return parsedQuote, nil
@@ -731,8 +731,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	}
 
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
-	parsedQuote.PenaltyFee = new(big.Int)
-	parsedQuote.PenaltyFee.SetUint64(pegoutQuote.PenaltyFee)
+	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
 	parsedQuote.Nonce = pegoutQuote.Nonce
 	parsedQuote.Value = pegoutQuote.Value.AsBigInt()
 	parsedQuote.AgreementTimestamp = pegoutQuote.AgreementTimestamp
@@ -742,8 +741,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = new(big.Int)
-	parsedQuote.ProductFeeAmount.SetUint64(pegoutQuote.ProductFeeAmount)
+	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
 	return parsedQuote, nil
 }
