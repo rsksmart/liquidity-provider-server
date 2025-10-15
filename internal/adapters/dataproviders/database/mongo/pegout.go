@@ -172,7 +172,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	} else if err != nil {
 		return nil, err
 	}
-	quote.EnsureRetainedPegoutQuoteZeroValues(&result)
+	result.FillZeroValues()
 	logDbInteraction(Read, result)
 	return &result, nil
 }
@@ -285,7 +285,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 		return nil, err
 	}
 	for i := range result {
-		quote.EnsureRetainedPegoutQuoteZeroValues(&result[i])
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -533,7 +533,7 @@ func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quot
 	}
 
 	for i := range retainedQuotes {
-		quote.EnsureRetainedPegoutQuoteZeroValues(&retainedQuotes[i])
+		retainedQuotes[i].FillZeroValues()
 	}
 
 	return retainedQuotes, nil
@@ -560,7 +560,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Conte
 		return nil, err
 	}
 	for i := range result {
-		quote.EnsureRetainedPegoutQuoteZeroValues(&result[i])
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -587,7 +587,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 		return nil, err
 	}
 	for i := range result {
-		quote.EnsureRetainedPegoutQuoteZeroValues(&result[i])
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil

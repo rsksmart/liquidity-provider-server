@@ -170,7 +170,7 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	} else if err != nil {
 		return nil, err
 	}
-	quote.EnsureRetainedPeginQuoteZeroValues(&result)
+	result.FillZeroValues()
 	logDbInteraction(Read, result)
 	return &result, nil
 }
@@ -223,7 +223,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 		return nil, err
 	}
 	for i := range result {
-		quote.EnsureRetainedPeginQuoteZeroValues(&result[i])
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -423,7 +423,7 @@ func (repo *peginMongoRepository) fetchRetainedQuotes(ctx context.Context, quote
 	}
 
 	for i := range retainedQuotes {
-		quote.EnsureRetainedPeginQuoteZeroValues(&retainedQuotes[i])
+		retainedQuotes[i].FillZeroValues()
 	}
 
 	return retainedQuotes, nil
@@ -450,7 +450,7 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 		return nil, err
 	}
 	for i := range result {
-		quote.EnsureRetainedPeginQuoteZeroValues(&result[i])
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil

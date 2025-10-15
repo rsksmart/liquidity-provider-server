@@ -1087,6 +1087,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0),
 			GasPrice:          entities.NewWei(20000000000),
+			Logs:              []blockchain.TransactionLog{},
 		}
 
 		assert.Equal(t, expectedReceipt, result)
@@ -1172,6 +1173,7 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0),
 			GasPrice:          entities.NewWei(20000000000),
+			Logs:              []blockchain.TransactionLog{},
 		}
 
 		assert.Equal(t, expectedReceipt, result)

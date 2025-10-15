@@ -28,7 +28,6 @@ build/
 /**/*.env
 /**/.env*
 
-# Coverage files
-coverage/
+/coverage/
 
 /.cursor/

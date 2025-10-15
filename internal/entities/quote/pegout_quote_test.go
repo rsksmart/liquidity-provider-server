@@ -245,7 +245,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 }
 
 //nolint:funlen
-func TestEnsureRetainedPegoutQuoteZeroValues(t *testing.T) {
+func TestRetainedPegoutQuote_FillZeroValues(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    quote.RetainedPegoutQuote
@@ -311,7 +311,7 @@ func TestEnsureRetainedPegoutQuoteZeroValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			actualQuote := tc.input
-			quote.EnsureRetainedPegoutQuoteZeroValues(&actualQuote)
+			actualQuote.FillZeroValues()
 
 			assert.Equal(t, tc.expected.QuoteHash, actualQuote.QuoteHash)
 			assert.Equal(t, tc.expected.BridgeRefundGasPrice, actualQuote.BridgeRefundGasPrice)
@@ -332,10 +332,10 @@ func TestEnsureRetainedPegoutQuoteZeroValues(t *testing.T) {
 			SendPegoutBtcFee:     nil,
 		}
 
-		quote.EnsureRetainedPegoutQuoteZeroValues(&originalQuote)
+		originalQuote.FillZeroValues()
 		firstCallResult := originalQuote
 
-		quote.EnsureRetainedPegoutQuoteZeroValues(&originalQuote)
+		originalQuote.FillZeroValues()
 		secondCallResult := originalQuote
 
 		assert.Equal(t, firstCallResult.BridgeRefundGasPrice, secondCallResult.BridgeRefundGasPrice)
