@@ -3,10 +3,14 @@ package entities
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
+	"math/big"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
-	"math/big"
 )
+
+var ErrNonPositiveWei = errors.New("wei value must be positive")
 
 type Wei big.Int
 
@@ -16,6 +20,16 @@ var bTen = big.NewInt(10)
 var bEighteen = big.NewInt(18)
 var bTenPowTen = new(big.Int).Exp(bTen, bTen, nil)           // 10**10
 var bTenPowEighteen = new(big.Int).Exp(bTen, bEighteen, nil) // 10**18
+
+func ValidatePositiveWei(values ...*Wei) error {
+	zero := NewWei(0)
+	for _, v := range values {
+		if v == nil || v.Cmp(zero) < 0 {
+			return ErrNonPositiveWei
+		}
+	}
+	return nil
+}
 
 func NewWei(x int64) *Wei {
 	w := new(Wei)
@@ -112,14 +126,28 @@ func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
 }
 
 func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if w == nil || bsonType != bson.TypeString || len(bytes) == 0 {
+	supportedType := bsonType == bson.TypeInt64 || bsonType == bson.TypeString
+	if w == nil || !supportedType || len(bytes) == 0 {
 		return DeserializationError
 	}
+
+	if bsonType == bson.TypeInt64 {
+		var value int64
+		if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+			return errors.Join(DeserializationError, err)
+		}
+		w.AsBigInt().SetInt64(value)
+		return nil
+	}
+
 	var value string
 	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
 		return errors.Join(DeserializationError, err)
 	}
-	w.AsBigInt().SetString(value, 10)
+	_, ok := w.AsBigInt().SetString(value, 10)
+	if !ok {
+		return fmt.Errorf("%w: cannot unmarshal value %s to Wei", DeserializationError, value)
+	}
 	return nil
 }
 
@@ -136,4 +164,12 @@ func (w *Wei) Sub(x, y *Wei) *Wei {
 func (w *Wei) Mul(x, y *Wei) *Wei {
 	w.AsBigInt().Mul(x.AsBigInt(), y.AsBigInt())
 	return w
+}
+
+func (w *Wei) Div(x, y *Wei) (*Wei, error) {
+	if y.AsBigInt().Cmp(big.NewInt(0)) == 0 {
+		return nil, DivideByZeroError
+	}
+	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
+	return w, nil
 }

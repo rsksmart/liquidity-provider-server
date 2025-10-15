@@ -7,7 +7,9 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,11 +18,12 @@ import (
 
 const (
 	HeaderContentType = "Content-Type"
-)
 
-const (
 	ContentTypeJson = "application/json"
 	ContentTypeForm = "application/x-www-form-urlencoded"
+
+	StartDateParam = "startDate"
+	EndDateParam   = "endDate"
 )
 
 var RequestValidator = validator.New(validator.WithRequiredStructEnabled())
@@ -47,22 +50,87 @@ func decimalPlacesValidator(fl validator.FieldLevel) bool {
 	return diff < 1e-9
 }
 
+func ConfirmationsMapValidator(fl validator.FieldLevel) bool {
+	kind := fl.Field().Kind()
+	if kind != reflect.Map {
+		return false
+	}
+	confirmations, ok := fl.Field().Interface().(map[string]uint16)
+	if !ok {
+		return false
+	}
+	for key := range confirmations {
+		bigInt, valid := new(big.Int).SetString(key, 10)
+		if !valid || bigInt.Sign() <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func init() {
 	if err := registerValidations(); err != nil {
 		log.Fatal("Error registering validations: ", err)
 	}
 }
 
-func registerValidations() error {
-	if err := RequestValidator.RegisterValidation("positive_string", func(field validator.FieldLevel) bool {
-		return PositiveStringValidationRule(field.Field().String())
-	}); err != nil {
-		return fmt.Errorf("registering positive_string validation: %w", err)
+func positiveIntegerBigintValidator(field validator.FieldLevel) bool {
+	fieldValue := field.Field().Interface()
+
+	// Handle both *big.Int and big.Int
+	var bigIntVal *big.Int
+	switch v := fieldValue.(type) {
+	case *big.Int:
+		bigIntVal = v
+	case big.Int:
+		bigIntVal = &v
+	default:
+		return false // Not a big.Int type
 	}
 
-	if err := RequestValidator.RegisterValidation("max_decimal_places", decimalPlacesValidator); err != nil {
-		return fmt.Errorf("registering max_decimal_places validation: %w", err)
+	if bigIntVal == nil {
+		return false
 	}
+
+	return bigIntVal.Sign() > 0 // Only positive values (> 0)
+}
+
+func notBlankValidator(field validator.FieldLevel) bool {
+	str, ok := field.Field().Interface().(string)
+	if !ok {
+		return false // Not a string type
+	}
+
+	// Check if string is not empty after trimming whitespace
+	return len(strings.TrimSpace(str)) > 0
+}
+
+func positiveStringValidator(field validator.FieldLevel) bool {
+	return PositiveStringValidationRule(field.Field().String())
+}
+
+func registerValidator(tag string, fn validator.Func) error {
+	if err := RequestValidator.RegisterValidation(tag, fn); err != nil {
+		return fmt.Errorf("registering %s validation: %w", tag, err)
+	}
+	return nil
+}
+
+func registerValidations() error {
+	validators := map[string]validator.Func{
+		"positive_string":         positiveStringValidator,
+		"max_decimal_places":      decimalPlacesValidator,
+		"confirmations_map":       ConfirmationsMapValidator,
+		"positive_integer_bigint": positiveIntegerBigintValidator,
+		"not_blank":               notBlankValidator,
+	}
+
+	for tag, fn := range validators {
+		if err := registerValidator(tag, fn); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -148,6 +216,10 @@ func getValidationMessage(field validator.FieldError) string {
 		return "must be less than or equal to " + field.Param()
 	case "max_decimal_places":
 		return fmt.Sprintf("must have at most %s decimal places", field.Param())
+	case "positive_integer_bigint":
+		return "must be a positive integer"
+	case "not_blank":
+		return "cannot be blank"
 	default:
 		return "validation failed: " + field.Tag()
 	}
@@ -173,4 +245,37 @@ func ValidateRequest[T any](w http.ResponseWriter, body *T) error {
 
 func RequiredQueryParam(name string) error {
 	return fmt.Errorf("required query parameter %s is missing", name)
+}
+
+func ParseDateRange(req *http.Request, dateFormat string) (time.Time, time.Time, error) {
+	start := req.URL.Query().Get(StartDateParam)
+	end := req.URL.Query().Get(EndDateParam)
+	if start == "" || end == "" {
+		missing := []string{}
+		if start == "" {
+			missing = append(missing, StartDateParam)
+		}
+		if end == "" {
+			missing = append(missing, EndDateParam)
+		}
+		return time.Time{}, time.Time{}, fmt.Errorf("missing required parameters: %v", missing)
+	}
+	startDate, err := time.Parse(dateFormat, start)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid start date format: %w", err)
+	}
+	endDate, err := time.Parse(dateFormat, end)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid end date format: %w", err)
+	}
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, time.UTC)
+	return startDate, endDate, nil
+}
+
+func ValidateDateRange(startDate, endDate time.Time, dateFormat string) error {
+	if endDate.Before(startDate) {
+		return fmt.Errorf("invalid date range: end date %s is before start date %s",
+			endDate.Format(dateFormat), startDate.Format(dateFormat))
+	}
+	return nil
 }

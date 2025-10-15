@@ -2,6 +2,7 @@ package environment_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
 	"reflect"
@@ -9,17 +10,29 @@ import (
 	"testing"
 )
 
-func TestLoad(t *testing.T) {
+func setUpEnv(t *testing.T) {
 	// this map is to define the value for the vars that intentionally have a zero value in the sample-config.env file
 	var sampleZeroVars = map[string]string{
-		"ENABLE_SECURITY_HEADERS":          "true",
-		"MANAGEMENT_USE_HTTPS":             "true",
-		"ENABLE_MANAGEMENT_API":            "true",
-		"LBC_ADDR":                         "0x1234",
-		"ACCOUNT_NUM":                      "1",
-		"CAPTCHA_SECRET_KEY":               "secret",
-		"CAPTCHA_SITE_KEY":                 "site",
-		"PEGOUT_DEPOSIT_CACHE_START_BLOCK": "1",
+		"ENABLE_SECURITY_HEADERS":              "true",
+		"MANAGEMENT_USE_HTTPS":                 "true",
+		"ENABLE_MANAGEMENT_API":                "true",
+		"LBC_ADDR":                             "0x1234",
+		"ACCOUNT_NUM":                          "1",
+		"CAPTCHA_SECRET_KEY":                   "secret",
+		"CAPTCHA_SITE_KEY":                     "site",
+		"PEGOUT_DEPOSIT_CACHE_START_BLOCK":     "1",
+		"RSK_EXTRA_SOURCES":                    "test1,test2",
+		"BTC_EXTRA_SOURCES":                    `[{"format": "rpc", "url": "test3.com"}, {"format": "mempool", "url": "test4.com"}]`,
+		"ECLIPSE_RSK_TOLERANCE_THRESHOLD":      "5",
+		"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK":    "1000",
+		"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL": "500",
+		"ECLIPSE_BTC_TOLERANCE_THRESHOLD":      "5",
+		"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK":    "1000",
+		"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL": "500",
+		"ECLIPSE_ALERT_COOLDOWN_SECONDS":       "60",
+		"ECLIPSE_CHECK_ENABLED":                "true",
+		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
+		"USE_SEGWIT_FEDERATION":                "true",
 	}
 	const envFilePath = "../../../sample-config.env"
 	envFile, err := os.ReadFile(envFilePath)
@@ -36,10 +49,31 @@ func TestLoad(t *testing.T) {
 		}
 	}
 	require.NoError(t, err)
-	env := &environment.Environment{}
-	err = environment.Load(env)
-	require.NoError(t, err)
-	assertNonZeroFieldsRecursive(t, env)
+}
+
+func TestLoad(t *testing.T) {
+	t.Run("env vars are loaded correctly", func(t *testing.T) {
+		setUpEnv(t)
+		env := &environment.Environment{}
+		err := environment.Load(env)
+		require.NoError(t, err)
+		assertNonZeroFieldsRecursive(t, env)
+	})
+	t.Run("parses empty string as false for bool values", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("ENABLE_SECURITY_HEADERS", "")
+		env := &environment.Environment{}
+		err := environment.Load(env)
+		require.NoError(t, err)
+		assert.False(t, env.Management.EnableSecurityHeaders)
+	})
+	t.Run("does not fail when a slice is an empty string", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("RSK_EXTRA_SOURCES", "")
+		env := &environment.Environment{}
+		err := environment.Load(env)
+		require.NoError(t, err)
+	})
 }
 
 func assertNonZeroFieldsRecursive(t *testing.T, aStruct any) {

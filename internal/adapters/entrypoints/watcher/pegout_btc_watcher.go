@@ -7,6 +7,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -21,7 +22,7 @@ type PegoutBtcTransferWatcher struct {
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	refundPegoutUseCase          *pegout.RefundPegoutUseCase
 	rpc                          blockchain.Rpc
-	ticker                       Ticker
+	ticker                       utils.Ticker
 	eventBus                     entities.EventBus
 	watcherStopChannel           chan bool
 	currentBlock                 *big.Int
@@ -33,7 +34,7 @@ func NewPegoutBtcTransferWatcher(
 	refundPegoutUseCase *pegout.RefundPegoutUseCase,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
-	ticker Ticker,
+	ticker utils.Ticker,
 ) *PegoutBtcTransferWatcher {
 	quotes := make(map[string]quote.WatchedPegoutQuote)
 	watcherStopChannel := make(chan bool, 1)
