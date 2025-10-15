@@ -229,6 +229,57 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 	return result, nil
 }
 
+func (repo *peginMongoRepository) GetQuotesByState(ctx context.Context, states ...quote.PeginState) ([]quote.PeginQuote, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	retainedQuotes, err := repo.GetRetainedQuoteByState(ctx, states...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(retainedQuotes) == 0 {
+		result := make([]quote.PeginQuote, 0)
+		logDbInteraction(Read, result)
+		return result, nil
+	}
+
+	quoteHashes := make([]string, len(retainedQuotes))
+	for i, rq := range retainedQuotes {
+		quoteHashes[i] = rq.QuoteHash
+	}
+
+	storedQuotes, err := repo.fetchQuotesByHashes(dbCtx, quoteHashes)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]quote.PeginQuote, len(storedQuotes))
+	for i, stored := range storedQuotes {
+		result[i] = stored.PeginQuote
+	}
+
+	logDbInteraction(Read, len(result))
+	return result, nil
+}
+
+func (repo *peginMongoRepository) fetchQuotesByHashes(ctx context.Context, quoteHashes []string) ([]StoredPeginQuote, error) {
+	collection := repo.conn.Collection(PeginQuoteCollection)
+	filter := bson.D{{Key: "hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var storedQuotes []StoredPeginQuote
+	if err = cursor.All(ctx, &storedQuotes); err != nil {
+		return nil, err
+	}
+
+	return storedQuotes, nil
+}
+
 func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()

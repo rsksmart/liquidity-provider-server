@@ -28,4 +28,6 @@ build/
 /**/*.env
 /**/.env*
 
+/coverage/
+
 /.cursor/

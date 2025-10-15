@@ -278,6 +278,7 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
+			rskRegistry.Contracts,
 		),
 		getTransactionsReportUseCase: reports.NewGetTransactionsUseCase(
 			databaseRegistry.PeginRepository,

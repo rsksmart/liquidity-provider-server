@@ -250,6 +250,79 @@ func (_c *PegoutQuoteRepositoryMock_GetQuotesByHashesAndDate_Call) RunAndReturn(
 	return _c
 }
 
+// GetQuotesByState provides a mock function with given fields: ctx, states
+func (_m *PegoutQuoteRepositoryMock) GetQuotesByState(ctx context.Context, states ...quote.PegoutState) ([]quote.PegoutQuote, error) {
+	_va := make([]interface{}, len(states))
+	for _i := range states {
+		_va[_i] = states[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetQuotesByState")
+	}
+
+	var r0 []quote.PegoutQuote
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...quote.PegoutState) ([]quote.PegoutQuote, error)); ok {
+		return rf(ctx, states...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...quote.PegoutState) []quote.PegoutQuote); ok {
+		r0 = rf(ctx, states...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.PegoutQuote)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...quote.PegoutState) error); ok {
+		r1 = rf(ctx, states...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutQuoteRepositoryMock_GetQuotesByState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuotesByState'
+type PegoutQuoteRepositoryMock_GetQuotesByState_Call struct {
+	*mock.Call
+}
+
+// GetQuotesByState is a helper method to define mock.On call
+//   - ctx context.Context
+//   - states ...quote.PegoutState
+func (_e *PegoutQuoteRepositoryMock_Expecter) GetQuotesByState(ctx interface{}, states ...interface{}) *PegoutQuoteRepositoryMock_GetQuotesByState_Call {
+	return &PegoutQuoteRepositoryMock_GetQuotesByState_Call{Call: _e.mock.On("GetQuotesByState",
+		append([]interface{}{ctx}, states...)...)}
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotesByState_Call) Run(run func(ctx context.Context, states ...quote.PegoutState)) *PegoutQuoteRepositoryMock_GetQuotesByState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]quote.PegoutState, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(quote.PegoutState)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotesByState_Call) Return(_a0 []quote.PegoutQuote, _a1 error) *PegoutQuoteRepositoryMock_GetQuotesByState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutQuoteRepositoryMock_GetQuotesByState_Call) RunAndReturn(run func(context.Context, ...quote.PegoutState) ([]quote.PegoutQuote, error)) *PegoutQuoteRepositoryMock_GetQuotesByState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRetainedQuote provides a mock function with given fields: ctx, hash
 func (_m *PegoutQuoteRepositoryMock) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPegoutQuote, error) {
 	ret := _m.Called(ctx, hash)
