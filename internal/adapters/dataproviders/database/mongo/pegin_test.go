@@ -489,6 +489,7 @@ func TestPeginMongoRepository_GetQuotes(t *testing.T) {
 		endDateTime := time.Date(2025, 1, 1, 23, 59, 59, 0, time.UTC)
 
 		quotes, err := repo.GetQuotesByHashesAndDate(context.Background(), hashList, startDateTime, endDateTime)
+
 		require.Error(t, err)
 		assert.Equal(t, "mongo: no documents in result", err.Error())
 		assert.Nil(t, quotes)

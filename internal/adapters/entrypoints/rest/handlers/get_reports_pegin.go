@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/singleflight"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
