@@ -321,6 +321,67 @@ func (_c *PeginQuoteRepositoryMock_GetQuotesByState_Call) RunAndReturn(run func(
 	return _c
 }
 
+// GetQuotesWithRetainedByStateAndDate provides a mock function with given fields: ctx, states, startDate, endDate
+func (_m *PeginQuoteRepositoryMock) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PeginState, startDate time.Time, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
+	ret := _m.Called(ctx, states, startDate, endDate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetQuotesWithRetainedByStateAndDate")
+	}
+
+	var r0 []quote.PeginQuoteWithRetained
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []quote.PeginState, time.Time, time.Time) ([]quote.PeginQuoteWithRetained, error)); ok {
+		return rf(ctx, states, startDate, endDate)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []quote.PeginState, time.Time, time.Time) []quote.PeginQuoteWithRetained); ok {
+		r0 = rf(ctx, states, startDate, endDate)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]quote.PeginQuoteWithRetained)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []quote.PeginState, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, states, startDate, endDate)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuotesWithRetainedByStateAndDate'
+type PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call struct {
+	*mock.Call
+}
+
+// GetQuotesWithRetainedByStateAndDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - states []quote.PeginState
+//   - startDate time.Time
+//   - endDate time.Time
+func (_e *PeginQuoteRepositoryMock_Expecter) GetQuotesWithRetainedByStateAndDate(ctx interface{}, states interface{}, startDate interface{}, endDate interface{}) *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call {
+	return &PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call{Call: _e.mock.On("GetQuotesWithRetainedByStateAndDate", ctx, states, startDate, endDate)}
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call) Run(run func(ctx context.Context, states []quote.PeginState, startDate time.Time, endDate time.Time)) *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]quote.PeginState), args[2].(time.Time), args[3].(time.Time))
+	})
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call) Return(_a0 []quote.PeginQuoteWithRetained, _a1 error) *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call) RunAndReturn(run func(context.Context, []quote.PeginState, time.Time, time.Time) ([]quote.PeginQuoteWithRetained, error)) *PeginQuoteRepositoryMock_GetQuotesWithRetainedByStateAndDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRetainedQuote provides a mock function with given fields: ctx, hash
 func (_m *PeginQuoteRepositoryMock) GetRetainedQuote(ctx context.Context, hash string) (*quote.RetainedPeginQuote, error) {
 	ret := _m.Called(ctx, hash)

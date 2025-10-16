@@ -227,7 +227,7 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quote with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quote with missing gas fields", func(t *testing.T) {
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		oldBsonDocument := bson.D{
 			{Key: "quote_hash", Value: testRetainedPegoutQuote.QuoteHash},
@@ -482,7 +482,7 @@ func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		firstOldDocument := bson.D{
 			{Key: "quote_hash", Value: "state_first"},
@@ -1298,7 +1298,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 
@@ -1427,7 +1427,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, retainedQuotes)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 
@@ -1497,4 +1497,338 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 		assert.Equal(t, uint64(45000), result[1].BridgeRefundGasUsed)
 		assert.Equal(t, uint64(50000), result[1].RefundPegoutGasUsed)
 	})
+}
+
+// nolint: cyclop, funlen
+func validatePegoutPipelineStructure(pipeline mongoDb.Pipeline, states []quote.PegoutState, startDate, endDate time.Time) bool {
+	// Verify the pipeline structure
+	if len(pipeline) != 4 {
+		return false
+	}
+
+	// Stage 1: $match by date - verify dates are correct
+	matchStage := pipeline[0]
+	if len(matchStage) == 0 || matchStage[0].Key != "$match" {
+		return false
+	}
+	matchDateFilter, ok := matchStage[0].Value.(bson.M)
+	if !ok {
+		return false
+	}
+	timestampFilter, ok := matchDateFilter["agreement_timestamp"].(bson.M)
+	if !ok {
+		return false
+	}
+	gteValue, hasGte := timestampFilter["$gte"]
+	lteValue, hasLte := timestampFilter["$lte"]
+	if !hasGte || !hasLte {
+		return false
+	}
+	// Verify the dates match
+	if gteValue != startDate.Unix() || lteValue != endDate.Unix() {
+		return false
+	}
+
+	// Stage 2: $lookup
+	lookupStage := pipeline[1]
+	if len(lookupStage) == 0 || lookupStage[0].Key != "$lookup" {
+		return false
+	}
+
+	// Stage 3: $unwind
+	unwindStage := pipeline[2]
+	if len(unwindStage) == 0 || unwindStage[0].Key != "$unwind" {
+		return false
+	}
+
+	// Stage 4: $match by state - verify states are correct
+	matchStateStage := pipeline[3]
+	if len(matchStateStage) == 0 || matchStateStage[0].Key != "$match" {
+		return false
+	}
+	matchStateFilter, ok := matchStateStage[0].Value.(bson.M)
+	if !ok {
+		return false
+	}
+	stateFilter, ok := matchStateFilter["retained.state"].(bson.M)
+	if !ok {
+		return false
+	}
+	inStates, ok := stateFilter["$in"].([]quote.PegoutState)
+	if !ok {
+		return false
+	}
+	// Verify the states match (must have same length and contain same elements)
+	if len(inStates) != len(states) {
+		return false
+	}
+	stateMap := make(map[quote.PegoutState]bool)
+	for _, s := range states {
+		stateMap[s] = true
+	}
+	for _, s := range inStates {
+		if !stateMap[s] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func buildPegoutAggregationDocument(q quote.PegoutQuote, retained quote.RetainedPegoutQuote) bson.D {
+	return bson.D{
+		{Key: "lbc_address", Value: q.LbcAddress},
+		{Key: "lp_rsk_address", Value: q.LpRskAddress},
+		{Key: "btc_refund_address", Value: q.BtcRefundAddress},
+		{Key: "rsk_refund_address", Value: q.RskRefundAddress},
+		{Key: "lp_btc_address", Value: q.LpBtcAddress},
+		{Key: "call_fee", Value: q.CallFee.String()},
+		{Key: "penalty_fee", Value: q.PenaltyFee.String()},
+		{Key: "nonce", Value: q.Nonce},
+		{Key: "deposit_address", Value: q.DepositAddress},
+		{Key: "value", Value: q.Value.String()},
+		{Key: "agreement_timestamp", Value: q.AgreementTimestamp},
+		{Key: "deposit_date_limit", Value: q.DepositDateLimit},
+		{Key: "deposit_confirmations", Value: q.DepositConfirmations},
+		{Key: "transfer_confirmations", Value: q.TransferConfirmations},
+		{Key: "transfer_time", Value: q.TransferTime},
+		{Key: "expire_date", Value: q.ExpireDate},
+		{Key: "expire_block", Value: q.ExpireBlock},
+		{Key: "gas_fee", Value: q.GasFee.String()},
+		{Key: "product_fee_amount", Value: q.ProductFeeAmount.String()},
+		{Key: "hash", Value: retained.QuoteHash},
+		{Key: "retained", Value: bson.D{
+			{Key: "quote_hash", Value: retained.QuoteHash},
+			{Key: "deposit_address", Value: retained.DepositAddress},
+			{Key: "signature", Value: retained.Signature},
+			{Key: "required_liquidity", Value: retained.RequiredLiquidity.String()},
+			{Key: "state", Value: retained.State},
+			{Key: "user_rsk_tx_hash", Value: retained.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: retained.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: retained.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: retained.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: retained.BridgeRefundGasUsed},
+			{Key: "bridge_refund_gas_price", Value: retained.BridgeRefundGasPrice.String()},
+			{Key: "refund_pegout_gas_used", Value: retained.RefundPegoutGasUsed},
+			{Key: "refund_pegout_gas_price", Value: retained.RefundPegoutGasPrice.String()},
+			{Key: "send_pegout_btc_fee", Value: retained.SendPegoutBtcFee.String()},
+			{Key: "btc_release_tx_hash", Value: retained.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: retained.OwnerAccountAddress},
+		}},
+	}
+}
+
+// nolint: funlen
+func TestPegoutMongoRepository_GetQuotesWithRetainedByStateAndDate_Success(t *testing.T) {
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}
+
+	client, db := getClientAndDatabaseMocks()
+	collection := &mocks.CollectionBindingMock{}
+	db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(collection)
+
+	// Create test documents that simulate aggregation pipeline results
+	firstQuote := testPegoutQuote
+	firstQuote.AgreementTimestamp = uint32(startDate.Add(24 * time.Hour).Unix())
+	firstRetained := testRetainedPegoutQuote
+	firstRetained.QuoteHash = "test-hash-1"
+	firstRetained.State = quote.PegoutStateRefundPegOutSucceeded
+
+	secondQuote := testPegoutQuote
+	secondQuote.AgreementTimestamp = uint32(startDate.Add(48 * time.Hour).Unix())
+	secondRetained := testRetainedPegoutQuote
+	secondRetained.QuoteHash = "test-hash-2"
+	secondRetained.State = quote.PegoutStateBridgeTxSucceeded
+
+	thirdQuote := testPegoutQuote
+	thirdQuote.AgreementTimestamp = uint32(startDate.Add(72 * time.Hour).Unix())
+	thirdRetained := testRetainedPegoutQuote
+	thirdRetained.QuoteHash = "test-hash-3"
+	thirdRetained.State = quote.PegoutStateBtcReleased
+
+	// Simulate aggregation result documents
+	doc1 := buildPegoutAggregationDocument(firstQuote, firstRetained)
+	doc2 := buildPegoutAggregationDocument(secondQuote, secondRetained)
+	doc3 := buildPegoutAggregationDocument(thirdQuote, thirdRetained)
+
+	cursor, err := mongoDb.NewCursorFromDocuments([]any{doc1, doc2, doc3}, nil, nil)
+	require.NoError(t, err)
+
+	collection.On("Aggregate", mock.Anything, mock.MatchedBy(func(pipeline mongoDb.Pipeline) bool {
+		return validatePegoutPipelineStructure(pipeline, states, startDate, endDate)
+	})).Return(cursor, nil).Once()
+
+	conn := mongo.NewConnection(client, time.Duration(1))
+	repo := mongo.NewPegoutMongoRepository(conn)
+
+	result, err := repo.GetQuotesWithRetainedByStateAndDate(context.Background(), states, startDate, endDate)
+
+	collection.AssertExpectations(t)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+
+	assert.Equal(t, firstRetained.QuoteHash, result[0].RetainedQuote.QuoteHash)
+	assert.Equal(t, firstRetained.State, result[0].RetainedQuote.State)
+	assert.Equal(t, firstQuote.CallFee, result[0].Quote.CallFee)
+
+	assert.Equal(t, secondRetained.QuoteHash, result[1].RetainedQuote.QuoteHash)
+	assert.Equal(t, secondRetained.State, result[1].RetainedQuote.State)
+	assert.Equal(t, secondQuote.CallFee, result[1].Quote.CallFee)
+
+	assert.Equal(t, thirdRetained.QuoteHash, result[2].RetainedQuote.QuoteHash)
+	assert.Equal(t, thirdRetained.State, result[2].RetainedQuote.State)
+	assert.Equal(t, thirdQuote.CallFee, result[2].Quote.CallFee)
+}
+
+func TestPegoutMongoRepository_GetQuotesWithRetainedByStateAndDate_EmptyResult(t *testing.T) {
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+
+	client, db := getClientAndDatabaseMocks()
+	collection := &mocks.CollectionBindingMock{}
+	db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(collection)
+
+	cursor, err := mongoDb.NewCursorFromDocuments([]any{}, nil, nil)
+	require.NoError(t, err)
+
+	collection.On("Aggregate", mock.Anything, mock.Anything).Return(cursor, nil).Once()
+
+	conn := mongo.NewConnection(client, time.Duration(1))
+	repo := mongo.NewPegoutMongoRepository(conn)
+
+	result, err := repo.GetQuotesWithRetainedByStateAndDate(context.Background(), states, startDate, endDate)
+
+	collection.AssertExpectations(t)
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestPegoutMongoRepository_GetQuotesWithRetainedByStateAndDate_AggregationError(t *testing.T) {
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+	states := []quote.PegoutState{quote.PegoutStateBridgeTxSucceeded}
+
+	client, db := getClientAndDatabaseMocks()
+	collection := &mocks.CollectionBindingMock{}
+	db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(collection)
+
+	expectedError := assert.AnError
+	collection.On("Aggregate", mock.Anything, mock.Anything).Return(nil, expectedError).Once()
+
+	conn := mongo.NewConnection(client, time.Duration(1))
+	repo := mongo.NewPegoutMongoRepository(conn)
+
+	result, err := repo.GetQuotesWithRetainedByStateAndDate(context.Background(), states, startDate, endDate)
+
+	collection.AssertExpectations(t)
+	require.Error(t, err)
+	assert.Equal(t, expectedError, err)
+	assert.Nil(t, result)
+}
+
+func TestPegoutMongoRepository_GetQuotesWithRetainedByStateAndDate_DecodeError(t *testing.T) {
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+
+	client, db := getClientAndDatabaseMocks()
+	collection := &mocks.CollectionBindingMock{}
+	db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(collection)
+
+	// Create a document with invalid data that will fail decode
+	invalidDoc := bson.D{
+		{Key: "call_fee", Value: "invalid"}, // Invalid type for Wei
+	}
+
+	cursor, err := mongoDb.NewCursorFromDocuments([]any{invalidDoc}, nil, nil)
+	require.NoError(t, err)
+
+	collection.On("Aggregate", mock.Anything, mock.Anything).Return(cursor, nil).Once()
+
+	conn := mongo.NewConnection(client, time.Duration(1))
+	repo := mongo.NewPegoutMongoRepository(conn)
+
+	result, err := repo.GetQuotesWithRetainedByStateAndDate(context.Background(), states, startDate, endDate)
+
+	collection.AssertExpectations(t)
+	require.Error(t, err)
+	assert.Nil(t, result)
+}
+
+// nolint: funlen
+func TestPegoutMongoRepository_GetQuotesWithRetainedByStateAndDate_ZeroValueNormalization(t *testing.T) {
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+	states := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded}
+
+	client, db := getClientAndDatabaseMocks()
+	collection := &mocks.CollectionBindingMock{}
+	db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(collection)
+
+	testQuote := testPegoutQuote
+	testQuote.AgreementTimestamp = uint32(startDate.Add(24 * time.Hour).Unix())
+
+	// Create document with missing gas price fields
+	doc := bson.D{
+		{Key: "lbc_address", Value: testQuote.LbcAddress},
+		{Key: "lp_rsk_address", Value: testQuote.LpRskAddress},
+		{Key: "btc_refund_address", Value: testQuote.BtcRefundAddress},
+		{Key: "rsk_refund_address", Value: testQuote.RskRefundAddress},
+		{Key: "lp_btc_address", Value: testQuote.LpBtcAddress},
+		{Key: "call_fee", Value: testQuote.CallFee.String()},
+		{Key: "penalty_fee", Value: testQuote.PenaltyFee.String()},
+		{Key: "nonce", Value: testQuote.Nonce},
+		{Key: "deposit_address", Value: testQuote.DepositAddress},
+		{Key: "value", Value: testQuote.Value.String()},
+		{Key: "agreement_timestamp", Value: testQuote.AgreementTimestamp},
+		{Key: "deposit_date_limit", Value: testQuote.DepositDateLimit},
+		{Key: "deposit_confirmations", Value: testQuote.DepositConfirmations},
+		{Key: "transfer_confirmations", Value: testQuote.TransferConfirmations},
+		{Key: "transfer_time", Value: testQuote.TransferTime},
+		{Key: "expire_date", Value: testQuote.ExpireDate},
+		{Key: "expire_block", Value: testQuote.ExpireBlock},
+		{Key: "gas_fee", Value: testQuote.GasFee.String()},
+		{Key: "product_fee_amount", Value: testQuote.ProductFeeAmount.String()},
+		{Key: "hash", Value: "test-hash"},
+		{Key: "retained", Value: bson.D{
+			{Key: "quote_hash", Value: "test-hash"},
+			{Key: "deposit_address", Value: testRetainedPegoutQuote.DepositAddress},
+			{Key: "signature", Value: testRetainedPegoutQuote.Signature},
+			{Key: "required_liquidity", Value: testRetainedPegoutQuote.RequiredLiquidity.String()},
+			{Key: "state", Value: quote.PegoutStateRefundPegOutSucceeded},
+			{Key: "user_rsk_tx_hash", Value: testRetainedPegoutQuote.UserRskTxHash},
+			{Key: "lp_btc_tx_hash", Value: testRetainedPegoutQuote.LpBtcTxHash},
+			{Key: "refund_pegout_tx_hash", Value: testRetainedPegoutQuote.RefundPegoutTxHash},
+			{Key: "bridge_refund_tx_hash", Value: testRetainedPegoutQuote.BridgeRefundTxHash},
+			{Key: "bridge_refund_gas_used", Value: uint64(21000)},
+			{Key: "refund_pegout_gas_used", Value: uint64(22000)},
+			{Key: "btc_release_tx_hash", Value: testRetainedPegoutQuote.BtcReleaseTxHash},
+			{Key: "owner_account_address", Value: testRetainedPegoutQuote.OwnerAccountAddress},
+			// NOTE: bridge_refund_gas_price, refund_pegout_gas_price, and send_pegout_btc_fee are MISSING
+		}},
+	}
+
+	cursor, err := mongoDb.NewCursorFromDocuments([]any{doc}, nil, nil)
+	require.NoError(t, err)
+
+	collection.On("Aggregate", mock.Anything, mock.Anything).Return(cursor, nil).Once()
+
+	conn := mongo.NewConnection(client, time.Duration(1))
+	repo := mongo.NewPegoutMongoRepository(conn)
+
+	result, err := repo.GetQuotesWithRetainedByStateAndDate(context.Background(), states, startDate, endDate)
+
+	collection.AssertExpectations(t)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+
+	// Verify normalization applied
+	assert.NotNil(t, result[0].RetainedQuote.BridgeRefundGasPrice, "BridgeRefundGasPrice should not be nil after normalization")
+	assert.NotNil(t, result[0].RetainedQuote.RefundPegoutGasPrice, "RefundPegoutGasPrice should not be nil after normalization")
+	assert.NotNil(t, result[0].RetainedQuote.SendPegoutBtcFee, "SendPegoutBtcFee should not be nil after normalization")
+	assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.BridgeRefundGasPrice)
+	assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.RefundPegoutGasPrice)
+	assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.SendPegoutBtcFee)
 }

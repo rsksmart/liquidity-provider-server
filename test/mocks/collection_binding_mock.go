@@ -25,6 +25,80 @@ func (_m *CollectionBindingMock) EXPECT() *CollectionBindingMock_Expecter {
 	return &CollectionBindingMock_Expecter{mock: &_m.Mock}
 }
 
+// Aggregate provides a mock function with given fields: ctx, pipeline, opts
+func (_m *CollectionBindingMock) Aggregate(ctx context.Context, pipeline any, opts ...*options.AggregateOptions) (*mongo.Cursor, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, pipeline)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Aggregate")
+	}
+
+	var r0 *mongo.Cursor
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, any, ...*options.AggregateOptions) (*mongo.Cursor, error)); ok {
+		return rf(ctx, pipeline, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, any, ...*options.AggregateOptions) *mongo.Cursor); ok {
+		r0 = rf(ctx, pipeline, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*mongo.Cursor)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, any, ...*options.AggregateOptions) error); ok {
+		r1 = rf(ctx, pipeline, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CollectionBindingMock_Aggregate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Aggregate'
+type CollectionBindingMock_Aggregate_Call struct {
+	*mock.Call
+}
+
+// Aggregate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - pipeline any
+//   - opts ...*options.AggregateOptions
+func (_e *CollectionBindingMock_Expecter) Aggregate(ctx interface{}, pipeline interface{}, opts ...interface{}) *CollectionBindingMock_Aggregate_Call {
+	return &CollectionBindingMock_Aggregate_Call{Call: _e.mock.On("Aggregate",
+		append([]interface{}{ctx, pipeline}, opts...)...)}
+}
+
+func (_c *CollectionBindingMock_Aggregate_Call) Run(run func(ctx context.Context, pipeline any, opts ...*options.AggregateOptions)) *CollectionBindingMock_Aggregate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]*options.AggregateOptions, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(*options.AggregateOptions)
+			}
+		}
+		run(args[0].(context.Context), args[1].(any), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *CollectionBindingMock_Aggregate_Call) Return(_a0 *mongo.Cursor, _a1 error) *CollectionBindingMock_Aggregate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *CollectionBindingMock_Aggregate_Call) RunAndReturn(run func(context.Context, any, ...*options.AggregateOptions) (*mongo.Cursor, error)) *CollectionBindingMock_Aggregate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BulkWrite provides a mock function with given fields: ctx, models, opts
 func (_m *CollectionBindingMock) BulkWrite(ctx context.Context, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
 	_va := make([]interface{}, len(opts))

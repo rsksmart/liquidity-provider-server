@@ -2,27 +2,18 @@ package reports
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"time"
 )
 
 type GetRevenueReportUseCase struct {
 	peginQuoteRepository     quote.PeginQuoteRepository
 	pegoutQuoteRepository    quote.PegoutQuoteRepository
 	penalizedEventRepository penalization.PenalizedEventRepository
-}
-
-type peginQuotesReturn struct {
-	Quotes      []quote.PeginQuote
-	QuoteHashes []string
-}
-
-type pegoutQuotesReturn struct {
-	Quotes      []quote.PegoutQuote
-	QuoteHashes []string
 }
 
 func NewGetRevenueReportUseCase(
@@ -38,9 +29,16 @@ func NewGetRevenueReportUseCase(
 }
 
 type GetRevenueReportResult struct {
-	TotalQuoteCallFees *entities.Wei
-	TotalPenalizations *entities.Wei
-	TotalProfit        *entities.Wei
+	TotalQuoteCallFees    *entities.Wei
+	TotalGasFeesCollected *entities.Wei
+	TotalGasSpent         *entities.Wei
+	TotalPenalizations    *entities.Wei
+}
+
+type revenueTotals struct {
+	CallFees     *entities.Wei
+	GasCollected *entities.Wei
+	GasSpent     *entities.Wei
 }
 
 func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.Time, endDate time.Time) (GetRevenueReportResult, error) {
@@ -54,95 +52,130 @@ func (useCase *GetRevenueReportUseCase) Run(ctx context.Context, startDate time.
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
-	allQuoteHashes := append(peginResult.QuoteHashes, pegoutResult.QuoteHashes...)
-	penalizations, err := useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
+	penalizations, err := useCase.getPenalizations(ctx, peginResult, pegoutResult)
 	if err != nil {
 		return GetRevenueReportResult{}, usecases.WrapUseCaseError(usecases.GetRevenueReportId, err)
 	}
 
-	totalQuoteCallFees := entities.NewWei(0)
-	totalPenalizations := entities.NewWei(0)
-	totalProfit := entities.NewWei(0)
+	peginTotals := useCase.calculatePeginTotals(peginResult)
+	pegoutTotals := useCase.calculatePegoutTotals(pegoutResult)
+	totalPenalizations := useCase.calculateTotalPenalizations(penalizations)
 
-	for _, q := range peginResult.Quotes {
-		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
-	}
-	for _, q := range pegoutResult.Quotes {
-		totalQuoteCallFees = totalQuoteCallFees.Add(totalQuoteCallFees, q.CallFee)
-	}
-	for _, p := range penalizations {
-		totalPenalizations = totalPenalizations.Add(totalPenalizations, p.Penalty)
-	}
-
-	totalProfit = totalProfit.Sub(totalQuoteCallFees, totalPenalizations)
+	totalQuoteCallFees := entities.NewWei(0).Add(peginTotals.CallFees, pegoutTotals.CallFees)
+	totalGasFeesCollected := entities.NewWei(0).Add(peginTotals.GasCollected, pegoutTotals.GasCollected)
+	totalGasSpent := entities.NewWei(0).Add(peginTotals.GasSpent, pegoutTotals.GasSpent)
 
 	return GetRevenueReportResult{
-		TotalQuoteCallFees: totalQuoteCallFees,
-		TotalPenalizations: totalPenalizations,
-		TotalProfit:        totalProfit,
+		TotalQuoteCallFees:    totalQuoteCallFees,
+		TotalGasFeesCollected: totalGasFeesCollected,
+		TotalGasSpent:         totalGasSpent,
+		TotalPenalizations:    totalPenalizations,
 	}, nil
+}
+
+func (useCase *GetRevenueReportUseCase) calculatePeginTotals(
+	peginResult []quote.PeginQuoteWithRetained,
+) revenueTotals {
+	totalCallFees := entities.NewWei(0)
+	totalGasCollected := entities.NewWei(0)
+	totalGasSpent := entities.NewWei(0)
+
+	for _, quoteWithRetained := range peginResult {
+		totalCallFees = totalCallFees.Add(totalCallFees, quoteWithRetained.Quote.CallFee)
+		totalGasCollected = totalGasCollected.Add(totalGasCollected, quoteWithRetained.Quote.GasFee)
+
+		// Calculate actual gas spent
+		callForUserGasSpent := entities.NewWei(0).Mul(
+			entities.NewUWei(quoteWithRetained.RetainedQuote.CallForUserGasUsed),
+			quoteWithRetained.RetainedQuote.CallForUserGasPrice,
+		)
+		registerPeginGasSpent := entities.NewWei(0).Mul(
+			entities.NewUWei(quoteWithRetained.RetainedQuote.RegisterPeginGasUsed),
+			quoteWithRetained.RetainedQuote.RegisterPeginGasPrice,
+		)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, callForUserGasSpent)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, registerPeginGasSpent)
+	}
+
+	return revenueTotals{
+		CallFees:     totalCallFees,
+		GasCollected: totalGasCollected,
+		GasSpent:     totalGasSpent,
+	}
+}
+
+func (useCase *GetRevenueReportUseCase) calculatePegoutTotals(
+	pegoutResult []quote.PegoutQuoteWithRetained,
+) revenueTotals {
+	totalCallFees := entities.NewWei(0)
+	totalGasCollected := entities.NewWei(0)
+	totalGasSpent := entities.NewWei(0)
+
+	for _, pair := range pegoutResult {
+		totalCallFees = totalCallFees.Add(totalCallFees, pair.Quote.CallFee)
+		totalGasCollected = totalGasCollected.Add(totalGasCollected, pair.Quote.GasFee)
+
+		// Calculate actual gas spent (RSK gas + BTC fees)
+		refundPegoutGasCost := entities.NewWei(0).Mul(
+			entities.NewUWei(pair.RetainedQuote.RefundPegoutGasUsed),
+			pair.RetainedQuote.RefundPegoutGasPrice,
+		)
+		bridgeRefundGasCost := entities.NewWei(0).Mul(
+			entities.NewUWei(pair.RetainedQuote.BridgeRefundGasUsed),
+			pair.RetainedQuote.BridgeRefundGasPrice,
+		)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, refundPegoutGasCost)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, bridgeRefundGasCost)
+		totalGasSpent = totalGasSpent.Add(totalGasSpent, pair.RetainedQuote.SendPegoutBtcFee)
+	}
+
+	return revenueTotals{
+		CallFees:     totalCallFees,
+		GasCollected: totalGasCollected,
+		GasSpent:     totalGasSpent,
+	}
+}
+
+func (useCase *GetRevenueReportUseCase) calculateTotalPenalizations(
+	penalizations []penalization.PenalizedEvent,
+) *entities.Wei {
+	total := entities.NewWei(0)
+	for _, p := range penalizations {
+		total = total.Add(total, p.Penalty)
+	}
+	return total
 }
 
 func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (peginQuotesReturn, error) {
+) ([]quote.PeginQuoteWithRetained, error) {
 	peginStates := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
-	peginRetainedQuotes, err := useCase.peginQuoteRepository.GetRetainedQuoteByState(ctx, peginStates...)
-
-	peginQuotesToReturn := peginQuotesReturn{
-		Quotes:      make([]quote.PeginQuote, 0),
-		QuoteHashes: make([]string, 0),
-	}
-
-	if err != nil {
-		return peginQuotesToReturn, err
-	}
-
-	peginQuoteHashes := make([]string, 0, len(peginRetainedQuotes))
-	for _, q := range peginRetainedQuotes {
-		peginQuoteHashes = append(peginQuoteHashes, q.QuoteHash)
-	}
-
-	peginQuotes, err := useCase.peginQuoteRepository.GetQuotesByHashesAndDate(ctx, peginQuoteHashes, startDate, endDate)
-	peginQuotesToReturn.Quotes = peginQuotes
-	peginQuotesToReturn.QuoteHashes = peginQuoteHashes
-	if err != nil {
-		return peginQuotesToReturn, err
-	}
-	return peginQuotesToReturn, nil
+	return useCase.peginQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, peginStates, startDate, endDate)
 }
 
 func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	ctx context.Context,
 	startDate time.Time,
 	endDate time.Time,
-) (pegoutQuotesReturn, error) {
-	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}
-	pegoutRetainedQuotes, err := useCase.pegoutQuoteRepository.GetRetainedQuoteByState(ctx, pegoutStates...)
+) ([]quote.PegoutQuoteWithRetained, error) {
+	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}
+	return useCase.pegoutQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, pegoutStates, startDate, endDate)
+}
 
-	pegoutQuotesToReturn := pegoutQuotesReturn{
-		Quotes:      make([]quote.PegoutQuote, 0),
-		QuoteHashes: make([]string, 0),
+func (useCase *GetRevenueReportUseCase) getPenalizations(
+	ctx context.Context,
+	peginResult []quote.PeginQuoteWithRetained,
+	pegoutResult []quote.PegoutQuoteWithRetained,
+) ([]penalization.PenalizedEvent, error) {
+	allQuoteHashes := make([]string, 0, len(peginResult)+len(pegoutResult))
+	for _, quoteWithRetained := range peginResult {
+		allQuoteHashes = append(allQuoteHashes, quoteWithRetained.RetainedQuote.QuoteHash)
+	}
+	for _, pair := range pegoutResult {
+		allQuoteHashes = append(allQuoteHashes, pair.RetainedQuote.QuoteHash)
 	}
 
-	if err != nil {
-		return pegoutQuotesToReturn, err
-	}
-
-	pegoutQuoteHashes := make([]string, 0, len(pegoutRetainedQuotes))
-	for _, q := range pegoutRetainedQuotes {
-		pegoutQuoteHashes = append(pegoutQuoteHashes, q.QuoteHash)
-	}
-
-	pegoutQuotes, err := useCase.pegoutQuoteRepository.GetQuotesByHashesAndDate(ctx, pegoutQuoteHashes, startDate, endDate)
-	pegoutQuotesToReturn.Quotes = pegoutQuotes
-	pegoutQuotesToReturn.QuoteHashes = pegoutQuoteHashes
-
-	if err != nil {
-		return pegoutQuotesToReturn, err
-	}
-
-	return pegoutQuotesToReturn, nil
+	return useCase.penalizedEventRepository.GetPenalizationsByQuoteHashes(ctx, allQuoteHashes)
 }
