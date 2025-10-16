@@ -227,7 +227,7 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quote with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quote with missing gas fields", func(t *testing.T) {
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		oldBsonDocument := bson.D{
 			{Key: "quote_hash", Value: testRetainedPegoutQuote.QuoteHash},
@@ -482,7 +482,7 @@ func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		firstOldDocument := bson.D{
 			{Key: "quote_hash", Value: "state_first"},
@@ -1298,7 +1298,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 
@@ -1427,7 +1427,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, retainedQuotes)
 	})
-	t.Run("EnsureRetainedPegoutQuoteZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 

@@ -646,7 +646,7 @@ func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx conte
 			return nil, err
 		}
 
-		quote.EnsureRetainedPegoutQuoteZeroValues(&doc.Retained)
+		doc.Retained.FillZeroValues()
 		result = append(result, quote.PegoutQuoteWithRetained{
 			Quote:         doc.PegoutQuote,
 			RetainedQuote: doc.Retained,

@@ -509,7 +509,7 @@ func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx contex
 			return nil, err
 		}
 
-		quote.EnsureRetainedPeginQuoteZeroValues(&doc.Retained)
+		doc.Retained.FillZeroValues()
 		result = append(result, quote.PeginQuoteWithRetained{
 			Quote:         doc.PeginQuote,
 			RetainedQuote: doc.Retained,

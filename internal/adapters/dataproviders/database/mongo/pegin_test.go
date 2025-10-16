@@ -211,7 +211,7 @@ func TestPeginMongoRepository_GetRetainedQuote(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quote with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegin quote with missing gas fields", func(t *testing.T) {
 		// Create a BSON document that represents what an old database record would look like
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		oldBsonDocument := bson.D{
@@ -365,7 +365,7 @@ func TestPeginMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
 		// Mock strategy for similar tests did not work for mock limitations on unmarshalling into a struct
 		firstOldDocument := bson.D{
 			{Key: "quote_hash", Value: "first"},
@@ -1057,7 +1057,7 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
-	t.Run("EnsureRetainedPeginQuoteZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
+	t.Run("FillZeroValues is applied to retained pegin quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 
