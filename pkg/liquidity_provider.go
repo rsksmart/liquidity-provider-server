@@ -181,7 +181,6 @@ type GetRevenueReportResponse struct {
 	TotalPenalizations    *big.Int `json:"totalPenalizations" validate:"required"`
 	TotalGasFeesCollected *big.Int `json:"totalGasFeesCollected" validate:"required"`
 	TotalGasSpent         *big.Int `json:"totalGasSpent" validate:"required"`
-	TotalProfit           *big.Int `json:"totalProfit" validate:"required"`
 }
 
 // BTC Asset Report structures

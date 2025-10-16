@@ -597,71 +597,66 @@ func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx conte
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	retainedQuotes, err := repo.GetRetainedQuoteByState(ctx, states...)
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+
+	// Single aggregation pipeline that:
+	// 1. Filters by date (most selective filter)
+	// 2. Joins with retained quotes
+	// 3. Filters by state
+	pipeline := mongo.Pipeline{
+		// Stage 1: Filter by date (most selective)
+		{{Key: "$match", Value: bson.M{
+			"agreement_timestamp": bson.M{
+				"$gte": startDate.Unix(),
+				"$lte": endDate.Unix(),
+			},
+		}}},
+		// Stage 2: Lookup retained quotes
+		{{Key: "$lookup", Value: bson.M{
+			"from":         RetainedPegoutQuoteCollection,
+			"localField":   "hash",
+			"foreignField": "quote_hash",
+			"as":           "retained",
+		}}},
+		// Stage 3: Unwind retained array (should have 0 or 1 element)
+		{{Key: "$unwind", Value: bson.M{
+			"path":                       "$retained",
+			"preserveNullAndEmptyArrays": false, // Only keep quotes with retained data
+		}}},
+		// Stage 4: Filter by state
+		{{Key: "$match", Value: bson.M{
+			"retained.state": bson.M{"$in": states},
+		}}},
+	}
+
+	cursor, err := collection.Aggregate(dbCtx, pipeline)
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(dbCtx)
 
-	if len(retainedQuotes) == 0 {
-		result := make([]quote.PegoutQuoteWithRetained, 0)
-		logDbInteraction(Read, result)
-		return result, nil
-	}
-
-	quoteHashes := make([]string, len(retainedQuotes))
-	for i, rq := range retainedQuotes {
-		quoteHashes[i] = rq.QuoteHash
-	}
-
-	storedQuotes, err := repo.fetchQuotesByHashesAndDate(dbCtx, quoteHashes, startDate, endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(storedQuotes) == 0 {
-		result := make([]quote.PegoutQuoteWithRetained, 0)
-		logDbInteraction(Read, result)
-		return result, nil
-	}
-
-	retainedMap := make(map[string]quote.RetainedPegoutQuote, len(retainedQuotes))
-	for _, rq := range retainedQuotes {
-		retainedMap[rq.QuoteHash] = rq
-	}
-
-	result := make([]quote.PegoutQuoteWithRetained, 0, len(storedQuotes))
-	for _, stored := range storedQuotes {
-		if retained, exists := retainedMap[stored.Hash]; exists {
-			result = append(result, quote.PegoutQuoteWithRetained{
-				Quote:         stored.PegoutQuote,
-				RetainedQuote: retained,
-			})
+	result := make([]quote.PegoutQuoteWithRetained, 0)
+	for cursor.Next(dbCtx) {
+		var doc struct {
+			StoredPegoutQuote `bson:",inline"`
+			Retained          quote.RetainedPegoutQuote `bson:"retained"`
 		}
+
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+
+		quote.EnsureRetainedPegoutQuoteZeroValues(&doc.Retained)
+		result = append(result, quote.PegoutQuoteWithRetained{
+			Quote:         doc.PegoutQuote,
+			RetainedQuote: doc.Retained,
+		})
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
 	}
 
 	logDbInteraction(Read, len(result))
 	return result, nil
-}
-
-func (repo *pegoutMongoRepository) fetchQuotesByHashesAndDate(ctx context.Context, quoteHashes []string, startDate, endDate time.Time) ([]StoredPegoutQuote, error) {
-	collection := repo.conn.Collection(PegoutQuoteCollection)
-	filter := bson.M{
-		"hash": bson.M{"$in": quoteHashes},
-		"agreement_timestamp": bson.M{
-			"$gte": startDate.Unix(),
-			"$lte": endDate.Unix(),
-		},
-	}
-
-	cursor, err := collection.Find(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	var storedQuotes []StoredPegoutQuote
-	if err = cursor.All(ctx, &storedQuotes); err != nil {
-		return nil, err
-	}
-
-	return storedQuotes, nil
 }

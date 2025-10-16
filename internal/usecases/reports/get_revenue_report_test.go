@@ -98,14 +98,11 @@ func TestGetRevenueReportUseCase_Run(t *testing.T) {
 	// TotalGasSpent (pegout) = (40000*4 + 30000*3 + 1000) + (45000*5 + 35000*4 + 1500) = (160000 + 90000 + 1000) + (225000 + 140000 + 1500) = 251000 + 366500 = 617500
 	// TotalGasSpent = 706000 + 617500 = 1323500
 	// TotalPenalizations = 50 + 80 = 130
-	// GasProfit = 1480000 - 1323500 = 156500
-	// TotalProfit = 5500 + 156500 - 130 = 161870
 
 	expectedTotalQuoteCallFees := entities.NewWei(5500)
 	expectedTotalGasFeesCollected := entities.NewWei(1480000)
 	expectedTotalGasSpent := entities.NewWei(1323500)
 	expectedTotalPenalizations := entities.NewWei(130)
-	expectedTotalProfit := entities.NewWei(161870)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -114,7 +111,7 @@ func TestGetRevenueReportUseCase_Run(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil).Once()
 
 	allQuoteHashes := []string{"pegin-hash-1", "pegin-hash-2", "pegout-hash-1", "pegout-hash-2"}
@@ -134,7 +131,6 @@ func TestGetRevenueReportUseCase_Run(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected, "TotalGasFeesCollected mismatch")
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent, "TotalGasSpent mismatch")
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations, "TotalPenalizations mismatch")
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit, "TotalProfit mismatch")
 }
 
 // nolint:funlen
@@ -164,14 +160,11 @@ func TestGetRevenueReportUseCase_Run_OnlyPeginQuotes(t *testing.T) {
 	// TotalGasFeesCollected = 300
 	// TotalGasSpent = (25000*5 + 55000*6) = 125000 + 330000 = 455000
 	// TotalPenalizations = 0
-	// GasProfit = 300 - 455000 = -454700
-	// TotalProfit = 500 + (-454700) - 0 = -454200
 
 	expectedTotalQuoteCallFees := entities.NewWei(500)
 	expectedTotalGasFeesCollected := entities.NewWei(300)
 	expectedTotalGasSpent := entities.NewWei(455000)
 	expectedTotalPenalizations := entities.NewWei(0)
-	expectedTotalProfit := entities.NewWei(-454200)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -180,7 +173,7 @@ func TestGetRevenueReportUseCase_Run_OnlyPeginQuotes(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegin-hash-1"}).
@@ -195,7 +188,6 @@ func TestGetRevenueReportUseCase_Run_OnlyPeginQuotes(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit)
 }
 
 // nolint:funlen
@@ -226,14 +218,11 @@ func TestGetRevenueReportUseCase_Run_OnlyPegoutQuotes(t *testing.T) {
 	// TotalGasFeesCollected = 250
 	// TotalGasSpent = (35000*8 + 28000*6 + 4000) = 280000 + 168000 + 4000 = 452000
 	// TotalPenalizations = 0
-	// GasProfit = 250 - 452000 = -451750
-	// TotalProfit = 400 + (-451750) - 0 = -451350
 
 	expectedTotalQuoteCallFees := entities.NewWei(400)
 	expectedTotalGasFeesCollected := entities.NewWei(250)
 	expectedTotalGasSpent := entities.NewWei(452000)
 	expectedTotalPenalizations := entities.NewWei(0)
-	expectedTotalProfit := entities.NewWei(-451350)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -242,7 +231,7 @@ func TestGetRevenueReportUseCase_Run_OnlyPegoutQuotes(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return([]quote.PeginQuoteWithRetained{}, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegout-hash-1"}).
@@ -257,7 +246,6 @@ func TestGetRevenueReportUseCase_Run_OnlyPegoutQuotes(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit)
 }
 
 // nolint:funlen
@@ -288,14 +276,11 @@ func TestGetRevenueReportUseCase_Run_PositiveProfit(t *testing.T) {
 	// TotalGasFeesCollected = 500000
 	// TotalGasSpent = (21000*5 + 50000*4) = 105000 + 200000 = 305000
 	// TotalPenalizations = 0
-	// GasProfit = 500000 - 305000 = 195000
-	// TotalProfit = 1000000 + 195000 - 0 = 1195000
 
 	expectedTotalQuoteCallFees := entities.NewWei(1000000)
 	expectedTotalGasFeesCollected := entities.NewWei(500000)
 	expectedTotalGasSpent := entities.NewWei(305000)
 	expectedTotalPenalizations := entities.NewWei(0)
-	expectedTotalProfit := entities.NewWei(1195000)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -304,7 +289,7 @@ func TestGetRevenueReportUseCase_Run_PositiveProfit(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegin-hash-1"}).
@@ -319,7 +304,6 @@ func TestGetRevenueReportUseCase_Run_PositiveProfit(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit)
 }
 
 // nolint:funlen
@@ -369,14 +353,11 @@ func TestGetRevenueReportUseCase_Run_NegativeProfit(t *testing.T) {
 	// TotalGasSpent (pegout) = (40000*9 + 30000*7 + 5000) = 360000 + 210000 + 5000 = 575000
 	// TotalGasSpent = 610000 + 575000 = 1185000
 	// TotalPenalizations = 0
-	// GasProfit = 250000 - 1185000 = -935000
-	// TotalProfit = 1100 + (-935000) - 0 = -933900
 
 	expectedTotalQuoteCallFees := entities.NewWei(1100)
 	expectedTotalGasFeesCollected := entities.NewWei(250000)
 	expectedTotalGasSpent := entities.NewWei(1185000)
 	expectedTotalPenalizations := entities.NewWei(0)
-	expectedTotalProfit := entities.NewWei(-933900)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -385,7 +366,7 @@ func TestGetRevenueReportUseCase_Run_NegativeProfit(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegin-hash-1", "pegout-hash-1"}).
@@ -400,8 +381,6 @@ func TestGetRevenueReportUseCase_Run_NegativeProfit(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit)
-	assert.Negative(t, result.TotalProfit.AsBigInt().Sign(), "Expected negative profit")
 }
 
 // nolint:funlen
@@ -438,14 +417,11 @@ func TestGetRevenueReportUseCase_Run_WithHighPenalizations(t *testing.T) {
 	// TotalGasFeesCollected = 50000
 	// TotalGasSpent = (21000*3 + 50000*3) = 63000 + 150000 = 213000
 	// TotalPenalizations = 80000
-	// GasProfit = 50000 - 213000 = -163000
-	// TotalProfit = 100000 + (-163000) - 80000 = -143000
 
 	expectedTotalQuoteCallFees := entities.NewWei(100000)
 	expectedTotalGasFeesCollected := entities.NewWei(50000)
 	expectedTotalGasSpent := entities.NewWei(213000)
 	expectedTotalPenalizations := entities.NewWei(80000)
-	expectedTotalProfit := entities.NewWei(-143000)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -454,7 +430,7 @@ func TestGetRevenueReportUseCase_Run_WithHighPenalizations(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegin-hash-1"}).
@@ -469,7 +445,6 @@ func TestGetRevenueReportUseCase_Run_WithHighPenalizations(t *testing.T) {
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit)
 }
 
 func TestGetRevenueReportUseCase_Run_EmptyQuotes(t *testing.T) {
@@ -484,7 +459,7 @@ func TestGetRevenueReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return([]quote.PeginQuoteWithRetained{}, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{}).
@@ -503,7 +478,6 @@ func TestGetRevenueReportUseCase_Run_EmptyQuotes(t *testing.T) {
 	assert.Equal(t, entities.NewWei(0), result.TotalGasFeesCollected)
 	assert.Equal(t, entities.NewWei(0), result.TotalGasSpent)
 	assert.Equal(t, entities.NewWei(0), result.TotalPenalizations)
-	assert.Equal(t, entities.NewWei(0), result.TotalProfit)
 }
 
 func TestGetRevenueReportUseCase_Run_ErrorFetchingPeginQuotes(t *testing.T) {
@@ -528,7 +502,6 @@ func TestGetRevenueReportUseCase_Run_ErrorFetchingPeginQuotes(t *testing.T) {
 	assert.Zero(t, result.TotalGasFeesCollected)
 	assert.Zero(t, result.TotalGasSpent)
 	assert.Zero(t, result.TotalPenalizations)
-	assert.Zero(t, result.TotalProfit)
 }
 
 func TestGetRevenueReportUseCase_Run_ErrorFetchingPegoutQuotes(t *testing.T) {
@@ -543,7 +516,7 @@ func TestGetRevenueReportUseCase_Run_ErrorFetchingPegoutQuotes(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return([]quote.PeginQuoteWithRetained{}, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return(nil, assert.AnError).Once()
 
 	useCase := reports.NewGetRevenueReportUseCase(peginQuoteRepo, pegoutQuoteRepo, penalizationRepo)
@@ -557,7 +530,6 @@ func TestGetRevenueReportUseCase_Run_ErrorFetchingPegoutQuotes(t *testing.T) {
 	assert.Zero(t, result.TotalGasFeesCollected)
 	assert.Zero(t, result.TotalGasSpent)
 	assert.Zero(t, result.TotalPenalizations)
-	assert.Zero(t, result.TotalProfit)
 }
 
 func TestGetRevenueReportUseCase_Run_ErrorFetchingPenalizations(t *testing.T) {
@@ -588,7 +560,7 @@ func TestGetRevenueReportUseCase_Run_ErrorFetchingPenalizations(t *testing.T) {
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
 
 	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"pegin-hash-1"}).
@@ -606,7 +578,6 @@ func TestGetRevenueReportUseCase_Run_ErrorFetchingPenalizations(t *testing.T) {
 	assert.Zero(t, result.TotalGasFeesCollected)
 	assert.Zero(t, result.TotalGasSpent)
 	assert.Zero(t, result.TotalPenalizations)
-	assert.Zero(t, result.TotalProfit)
 }
 
 // nolint:funlen
@@ -709,22 +680,15 @@ func TestGetRevenueReportUseCase_Run_MultipleQuotesWithComplexScenario(t *testin
 	// Expected calculations:
 	// TotalQuoteCallFees = (2000 + 2500 + 3000) + (2200 + 2800) = 7500 + 5000 = 12500
 	// TotalGasFeesCollected = (1100000 + 1300000 + 1600000) + (800000 + 1000000) = 4000000 + 1800000 = 5800000
-	// TotalGasSpent (pegin) = (22000*15 + 52000*12) + (23000*18 + 58000*14) + (24000*20 + 60000*16)
-	//                       = (330000 + 624000) + (414000 + 812000) + (480000 + 960000)
-	//                       = 954000 + 1226000 + 1440000 = 3620000
-	// TotalGasSpent (pegout) = (38000*11 + 32000*9 + 5500) + (42000*13 + 36000*10 + 6500)
-	//                        = (418000 + 288000 + 5500) + (546000 + 360000 + 6500)
-	//                        = 711500 + 912500 = 1624000
+	// TotalGasSpent (pegin) = (22000*15 + 52000*12) + (23000*18 + 58000*14) + (24000*20 + 60000*16) = 3620000
+	// TotalGasSpent (pegout) = (38000*11 + 32000*9 + 5500) + (42000*13 + 36000*10 + 6500) = 1624000
 	// TotalGasSpent = 3620000 + 1624000 = 5244000
 	// TotalPenalizations = 500 + 700 + 800 = 2000
-	// GasProfit = 5800000 - 5244000 = 556000
-	// TotalProfit = 12500 + 556000 - 2000 = 566500
 
 	expectedTotalQuoteCallFees := entities.NewWei(12500)
 	expectedTotalGasFeesCollected := entities.NewWei(5800000)
 	expectedTotalGasSpent := entities.NewWei(5244000)
 	expectedTotalPenalizations := entities.NewWei(2000)
-	expectedTotalProfit := entities.NewWei(566500)
 
 	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
 	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
@@ -733,7 +697,7 @@ func TestGetRevenueReportUseCase_Run_MultipleQuotesWithComplexScenario(t *testin
 	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
 		Return(peginQuotesWithRetained, nil).Once()
 
-	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded}, startDate, endDate).
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
 		Return(pegoutQuotesWithRetained, nil).Once()
 
 	allQuoteHashes := []string{"pegin-hash-1", "pegin-hash-2", "pegin-hash-3", "pegout-hash-1", "pegout-hash-2"}
@@ -753,5 +717,4 @@ func TestGetRevenueReportUseCase_Run_MultipleQuotesWithComplexScenario(t *testin
 	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected, "TotalGasFeesCollected mismatch")
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent, "TotalGasSpent mismatch")
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations, "TotalPenalizations mismatch")
-	assert.Equal(t, expectedTotalProfit, result.TotalProfit, "TotalProfit mismatch")
 }
