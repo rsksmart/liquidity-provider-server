@@ -700,3 +700,36 @@ func TestZeroAddresses(t *testing.T) {
 		assert.Equal(t, uint8(0x6f), version)
 	})
 }
+
+func TestBtcAddressTypeFromString(t *testing.T) {
+	tests := []struct {
+		value    string
+		expected blockchain.BtcAddressType
+		err      error
+	}{
+		{"p2pkh", blockchain.BtcAddressTypeP2PKH, nil},
+		{"P2PKH", blockchain.BtcAddressTypeP2PKH, nil},
+		{"p2sh", blockchain.BtcAddressTypeP2SH, nil},
+		{"P2SH", blockchain.BtcAddressTypeP2SH, nil},
+		{"p2wpkh", blockchain.BtcAddressTypeP2WPKH, nil},
+		{"P2WPKH", blockchain.BtcAddressTypeP2WPKH, nil},
+		{"p2wsh", blockchain.BtcAddressTypeP2WSH, nil},
+		{"P2WSH", blockchain.BtcAddressTypeP2WSH, nil},
+		{"p2tr", blockchain.BtcAddressTypeP2TR, nil},
+		{"P2TR", blockchain.BtcAddressTypeP2TR, nil},
+		{"unknown", "", blockchain.BtcAddressNotSupportedError},
+		{"", "", blockchain.BtcAddressNotSupportedError},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.value, func(t *testing.T) {
+			result, err := blockchain.BtcAddressTypeFromString(testCase.value)
+			if testCase.err != nil {
+				assert.Empty(t, result)
+				require.ErrorIs(t, err, testCase.err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, testCase.expected, result)
+			}
+		})
+	}
+}

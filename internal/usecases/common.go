@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"strconv"
 
@@ -75,6 +76,7 @@ const (
 	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
+	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
 )
 
 var (
@@ -97,6 +99,13 @@ var (
 	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
 	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
+
+type RecommendedOperationResult struct {
+	RecommendedQuoteValue *entities.Wei
+	EstimatedCallFee      *entities.Wei
+	EstimatedGasFee       *entities.Wei
+	EstimatedProductFee   *entities.Wei
+}
 
 type ErrorArgs map[string]string
 
@@ -145,7 +154,7 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	}
 
 	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(100))
+	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(utils.Scale))
 	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
 	if err != nil {
 		return DaoAmounts{}, err

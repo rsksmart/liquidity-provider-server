@@ -159,11 +159,11 @@ components:
     GetTransactionsItem:
       properties:
         amount:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         callFee:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         gasFee:
-          $ref: '#/components/schemas/Wei'
+          $ref: '#/components/schemas/'
         quoteHash:
           type: string
         status:
@@ -175,11 +175,11 @@ components:
           items:
             properties:
               amount:
-                $ref: '#/components/schemas/Wei'
+                $ref: '#/components/schemas/'
               callFee:
-                $ref: '#/components/schemas/Wei'
+                $ref: '#/components/schemas/'
               gasFee:
-                $ref: '#/components/schemas/Wei'
+                $ref: '#/components/schemas/'
               quoteHash:
                 type: string
               status:
@@ -612,6 +612,29 @@ components:
       - pegin
       - pegout
       type: object
+    RecommendedOperationDTO:
+      properties:
+        estimatedCallFee:
+          description: Estimated call fee if a quote is created with the recommended
+            amount
+          example: "100000"
+        estimatedGasFee:
+          description: Estimated gas fee if a quote is created with the recommended
+            amount
+          example: "100000"
+        estimatedProductFee:
+          description: Estimated product fee if a quote is created with the recommended
+            amount
+          example: "100000"
+        recommendedQuoteValue:
+          description: Recommended quote value for the input amount
+          example: "100000"
+      required:
+      - recommendedQuoteValue
+      - estimatedCallFee
+      - estimatedGasFee
+      - estimatedProductFee
+      type: object
     RetainedPeginQuoteDTO:
       properties:
         callForUserTxHash:
@@ -779,8 +802,6 @@ components:
         rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
-    Wei: {}
-    entities.Wei: {}
     pkg.AcceptAuthenticatedQuoteRequest:
       properties:
         quoteHash:
@@ -1192,6 +1213,38 @@ paths:
                 $ref: '#/components/schemas/GetPegoutQuoteResponse'
           description: ""
       summary: Pegout GetQuote
+  /pegout/recommended:
+    get:
+      description: ' Returns the recommended quote value to create a quote whose total
+        payment is the input amount'
+      parameters:
+      - description: Amount in wei expected to use as total payment for the quote
+        in: query
+        name: amount
+        required: true
+        schema:
+          description: Amount in wei expected to use as total payment for the quote
+          format: string
+          type: string
+      - description: 'Destination address type for the pegout. Is optional, but if
+          provided, it will  increase the estimation accuracy. Must be one of: p2pkh,
+          p2sh, p2wpkh, p2wsh, p2tr'
+        in: query
+        name: destination_type
+        schema:
+          description: 'Destination address type for the pegout. Is optional, but
+            if provided, it will  increase the estimation accuracy. Must be one of:
+            p2pkh, p2sh, p2wpkh, p2wsh, p2tr'
+          format: string
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendedOperationDTO'
+          description: Recommended operation object
+      summary: Recommended pegout
   /pegout/status:
     get:
       description: ' Returns the status of an accepted pegout quote'

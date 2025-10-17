@@ -7,7 +7,18 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
+)
+
+type BtcAddressType string
+
+const (
+	BtcAddressTypeP2PKH  BtcAddressType = "p2pkh"
+	BtcAddressTypeP2SH   BtcAddressType = "p2sh"
+	BtcAddressTypeP2WPKH BtcAddressType = "p2wpkh"
+	BtcAddressTypeP2WSH  BtcAddressType = "p2wsh"
+	BtcAddressTypeP2TR   BtcAddressType = "p2tr"
 )
 
 var (
@@ -37,8 +48,19 @@ const (
 )
 
 const (
-	BitcoinMainnetP2PKHZeroAddress = "1111111111111111111114oLvT2"
-	BitcoinTestnetP2PKHZeroAddress = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+	BitcoinMainnetP2PKHZeroAddress  = "1111111111111111111114oLvT2"
+	BitcoinTestnetP2PKHZeroAddress  = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+	BitcoinMainnetP2SHZeroAddress   = "31h1vYVSYuKP6AhS86fbRdMw9XHieotbST"
+	BitcoinTestnetP2SHZeroAddress   = "2MsFDzHRUAMpjHxKyoEHU3aMCMsVtMqs1PV"
+	BitcoinMainnetP2WPKHZeroAddress = "bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9e75rs"
+	BitcoinTestnetP2WPKHZeroAddress = "tb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr"
+	BitcoinRegtestP2WPKHZeroAddress = "bcrt1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdku202"
+	BitcoinMainnetP2WSHZeroAddress  = "bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqthqst8"
+	BitcoinTestnetP2WSHZeroAddress  = "tb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqulkl3g"
+	BitcoinRegtestP2WSHZeroAddress  = "bcrt1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3xueyj"
+	BitcoinMainnetP2TRZeroAddress   = "bc1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqqenm"
+	BitcoinTestnetP2TRZeroAddress   = "tb1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkgkkf5"
+	BitcoinRegtestP2TRZeroAddress   = "bcrt1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzssp5h"
 )
 
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
@@ -115,6 +137,7 @@ type BitcoinNetwork interface {
 	GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error)
 	NetworkName() string
 	GetBlockchainInfo() (BitcoinBlockchainInfo, error)
+	GetZeroAddress(addressType BtcAddressType) (string, error)
 }
 
 type BitcoinTransactionInformation struct {
@@ -149,6 +172,24 @@ func (tx *BitcoinTransactionInformation) UTXOsToAddress(address string) []*entit
 		return []*entities.Wei{}
 	}
 	return utxos
+}
+
+func BtcAddressTypeFromString(value string) (BtcAddressType, error) {
+	value = strings.ToLower(value)
+	switch value {
+	case string(BtcAddressTypeP2PKH):
+		return BtcAddressTypeP2PKH, nil
+	case string(BtcAddressTypeP2SH):
+		return BtcAddressTypeP2SH, nil
+	case string(BtcAddressTypeP2WPKH):
+		return BtcAddressTypeP2WPKH, nil
+	case string(BtcAddressTypeP2WSH):
+		return BtcAddressTypeP2WSH, nil
+	case string(BtcAddressTypeP2TR):
+		return BtcAddressTypeP2TR, nil
+	default:
+		return "", BtcAddressNotSupportedError
+	}
 }
 
 type BitcoinBlockInformation struct {

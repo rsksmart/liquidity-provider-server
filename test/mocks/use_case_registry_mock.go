@@ -1391,6 +1391,53 @@ func (_c *UseCaseRegistryMock_LoginUseCase_Call) RunAndReturn(run func() *liquid
 	return _c
 }
 
+// RecommendedPegoutUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecommendedPegoutUseCase")
+	}
+
+	var r0 *pegout.RecommendedPegoutUseCase
+	if rf, ok := ret.Get(0).(func() *pegout.RecommendedPegoutUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegout.RecommendedPegoutUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_RecommendedPegoutUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecommendedPegoutUseCase'
+type UseCaseRegistryMock_RecommendedPegoutUseCase_Call struct {
+	*mock.Call
+}
+
+// RecommendedPegoutUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) RecommendedPegoutUseCase() *UseCaseRegistryMock_RecommendedPegoutUseCase_Call {
+	return &UseCaseRegistryMock_RecommendedPegoutUseCase_Call{Call: _e.mock.On("RecommendedPegoutUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPegoutUseCase_Call) Run(run func()) *UseCaseRegistryMock_RecommendedPegoutUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPegoutUseCase_Call) Return(_a0 *pegout.RecommendedPegoutUseCase) *UseCaseRegistryMock_RecommendedPegoutUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPegoutUseCase_Call) RunAndReturn(run func() *pegout.RecommendedPegoutUseCase) *UseCaseRegistryMock_RecommendedPegoutUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResignationUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) ResignationUseCase() *liquidity_provider.ResignUseCase {
 	ret := _m.Called()

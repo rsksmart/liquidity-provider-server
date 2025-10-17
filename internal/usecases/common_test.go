@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"math"
 	"math/big"
 	"strings"
 	"testing"
@@ -61,21 +62,21 @@ func TestCalculateDaoAmounts(t *testing.T) {
 			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
 		},
 		{
-			Value: testArgs{entities.NewWei(500000000000000000), 50},
+			Value: testArgs{entities.NewWei(500000000000000000), 0.5 * utils.Scale},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(250000000000000000),
 			},
 		},
 		{
-			Value: testArgs{entities.NewWei(6000000000000000000), 1},
+			Value: testArgs{entities.NewWei(6000000000000000000), 0.01 * utils.Scale},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(60000000000000000),
 			},
 		},
 		{
-			Value: testArgs{entities.NewWei(7700000000000000000), 17},
+			Value: testArgs{entities.NewWei(7700000000000000000), uint64(math.Round(0.17 * float64(utils.Scale)))},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(1309000000000000000),

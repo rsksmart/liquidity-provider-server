@@ -246,7 +246,6 @@ func TestBuildFlyoverErpRedeemScript(t *testing.T) {
 	flyoverScript := federation.GetFlyoverRedeemScript(derivationBytes, fedRedeemScript)
 
 	str := hex.EncodeToString(flyoverScript)
-	fmt.Println(str)
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
 	assert.EqualValues(t, flyoverErpScriptString, str)
 }
