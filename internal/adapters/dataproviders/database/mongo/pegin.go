@@ -456,16 +456,19 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 	return result, nil
 }
 
+// TODO: add pagination to this method
 func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PeginState, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
+	const maxRecordLimit = 500
 
 	// Single aggregation pipeline that:
 	// 1. Filters by date (most selective filter)
 	// 2. Joins with retained quotes
 	// 3. Filters by state
+	// 4. Limits results to protect server
 	pipeline := mongo.Pipeline{
 		// Stage 1: Filter by date (most selective)
 		{{Key: "$match", Value: bson.M{
@@ -484,12 +487,17 @@ func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx contex
 		// Stage 3: Unwind retained array (should have 0 or 1 element)
 		{{Key: "$unwind", Value: bson.M{
 			"path":                       "$retained",
-			"preserveNullAndEmptyArrays": false, // Only keep quotes with retained data
+			"preserveNullAndEmptyArrays": true, // Keep all quotes, even without retained data
 		}}},
-		// Stage 4: Filter by state
+		// Stage 4: Filter by state (or include quotes without retained data)
 		{{Key: "$match", Value: bson.M{
-			"retained.state": bson.M{"$in": states},
+			"$or": []bson.M{
+				{"retained.state": bson.M{"$in": states}},
+				{"retained.state": nil}, // Include quotes without retained quote (non-accepted)
+			},
 		}}},
+		// Stage 5: Limit to maxRecordLimit + 1 to detect if we exceeded
+		{{Key: "$limit", Value: maxRecordLimit + 1}},
 	}
 
 	cursor, err := collection.Aggregate(dbCtx, pipeline)
@@ -504,11 +512,9 @@ func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx contex
 			StoredPeginQuote `bson:",inline"`
 			Retained         quote.RetainedPeginQuote `bson:"retained"`
 		}
-
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
-
 		doc.Retained.FillZeroValues()
 		result = append(result, quote.PeginQuoteWithRetained{
 			Quote:         doc.PeginQuote,
@@ -519,7 +525,9 @@ func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx contex
 	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
-
+	if len(result) > maxRecordLimit {
+		return nil, errors.New("dataset too large, please try a shorter time range")
+	}
 	logDbInteraction(Read, len(result))
 	return result, nil
 }

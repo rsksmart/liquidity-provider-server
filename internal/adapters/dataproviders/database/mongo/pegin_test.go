@@ -1123,10 +1123,10 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 	})
 }
 
-// nolint: cyclop, funlen
+// nolint: cyclop, funlen, gocognit, gocyclo
 func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.PeginState, startDate, endDate time.Time) bool {
 	// Verify the pipeline structure
-	if len(pipeline) != 4 {
+	if len(pipeline) != 5 {
 		return false
 	}
 
@@ -1164,8 +1164,16 @@ func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.Pe
 	if len(unwindStage) == 0 || unwindStage[0].Key != "$unwind" {
 		return false
 	}
+	unwindConfig, ok := unwindStage[0].Value.(bson.M)
+	if !ok {
+		return false
+	}
+	preserveNullAndEmptyArrays, ok := unwindConfig["preserveNullAndEmptyArrays"].(bool)
+	if !ok || !preserveNullAndEmptyArrays {
+		return false
+	}
 
-	// Stage 4: $match by state - verify states are correct
+	// Stage 4: $match by state with $or to include non-accepted quotes
 	matchStateStage := pipeline[3]
 	if len(matchStateStage) == 0 || matchStateStage[0].Key != "$match" {
 		return false
@@ -1174,7 +1182,12 @@ func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.Pe
 	if !ok {
 		return false
 	}
-	stateFilter, ok := matchStateFilter["retained.state"].(bson.M)
+	orConditions, ok := matchStateFilter["$or"].([]bson.M)
+	if !ok || len(orConditions) != 2 {
+		return false
+	}
+	// First condition: retained.state in states
+	stateFilter, ok := orConditions[0]["retained.state"].(bson.M)
 	if !ok {
 		return false
 	}
@@ -1194,6 +1207,20 @@ func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.Pe
 		if !stateMap[s] {
 			return false
 		}
+	}
+	// Second condition: retained.state is nil (for non-accepted quotes)
+	if orConditions[1]["retained.state"] != nil {
+		return false
+	}
+
+	// Stage 5: $limit - verify limit is set to 501
+	limitStage := pipeline[4]
+	if len(limitStage) == 0 || limitStage[0].Key != "$limit" {
+		return false
+	}
+	limitValue, ok := limitStage[0].Value.(int)
+	if !ok || limitValue != 501 {
+		return false
 	}
 
 	return true
