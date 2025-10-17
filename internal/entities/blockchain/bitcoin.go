@@ -60,7 +60,7 @@ const (
 	BitcoinRegtestP2WSHZeroAddress  = "bcrt1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3xueyj"
 	BitcoinMainnetP2TRZeroAddress   = "bc1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqqenm"
 	BitcoinTestnetP2TRZeroAddress   = "tb1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkgkkf5"
-	BitcoinRegtestP2TRZeroAddress   = "bcrt1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzssp5h"
+	BitcoinRegtestP2TRZeroAddress   = "bcrt1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqm3usuw"
 )
 
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
