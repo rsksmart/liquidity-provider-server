@@ -17,6 +17,7 @@ import (
 	"testing"
 )
 
+// nolint:funlen
 func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	var result usecases.RecommendedOperationResult
 	amount := entities.NewWei(602180000000000000)
