@@ -77,6 +77,7 @@ const (
 	EclipseCheckId             UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
+	RecommendedPeginId         UseCaseId = "RecommendedPegin"
 )
 
 var (

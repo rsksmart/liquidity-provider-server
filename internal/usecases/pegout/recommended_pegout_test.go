@@ -133,7 +133,6 @@ func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 		assert.Empty(t, result)
 		require.Error(t, err)
 	}
-
 }
 
 func recommendedPegoutErrorSetups() []func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BtcWalletMock, lp *mocks.ProviderMock) {

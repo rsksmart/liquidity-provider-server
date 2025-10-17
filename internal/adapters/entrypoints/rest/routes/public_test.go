@@ -34,6 +34,7 @@ func TestGetPublicEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
 	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
+	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
 
 	endpoints := routes.GetPublicEndpoints(registryMock)
 	specBytes := test.ReadFile(t, "OpenApi.yml")
@@ -42,7 +43,7 @@ func TestGetPublicEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 15)
+	assert.Len(t, endpoints, 16)
 	for _, endpoint := range endpoints {
 		lowerCaseMethod := strings.ToLower(endpoint.Method)
 		assert.NotNilf(t, spec.Paths[endpoint.Path][lowerCaseMethod], "Handler not found for path %s and verb %s", endpoint.Path, endpoint.Method)

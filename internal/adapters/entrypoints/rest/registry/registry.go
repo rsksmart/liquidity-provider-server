@@ -47,4 +47,5 @@ type UseCaseRegistry interface {
 	AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase
 	DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase
 	RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase
+	RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase
 }

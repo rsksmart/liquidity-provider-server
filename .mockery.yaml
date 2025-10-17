@@ -45,6 +45,7 @@ packages:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
+      RecommendedPeginUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:

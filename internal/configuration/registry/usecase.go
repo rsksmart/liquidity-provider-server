@@ -78,6 +78,7 @@ type UseCaseRegistry struct {
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
+	recommendedPeginUseCase       *pegin.RecommendedPeginUseCase
 }
 
 // NewUseCaseRegistry
@@ -342,6 +343,13 @@ func NewUseCaseRegistry(
 			utils.Scale,
 			env.Rsk.FeeCollectorAddress,
 		),
+		recommendedPeginUseCase: pegin.NewRecommendedPeginUseCase(
+			liquidityProvider,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			env.Rsk.FeeCollectorAddress,
+			utils.Scale,
+		),
 	}
 }
 
@@ -503,4 +511,8 @@ func (registry *UseCaseRegistry) DeleteTrustedAccountUseCase() *liquidity_provid
 
 func (registry *UseCaseRegistry) RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase {
 	return registry.recommendedPegoutUseCase
+}
+
+func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase {
+	return registry.recommendedPeginUseCase
 }
