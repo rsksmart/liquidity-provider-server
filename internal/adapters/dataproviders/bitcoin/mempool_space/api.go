@@ -466,6 +466,10 @@ func (api *MempoolSpaceApi) GetBlockchainInfo() (blockchain.BitcoinBlockchainInf
 	}, nil
 }
 
+func (api *MempoolSpaceApi) GetZeroAddress(addressType blockchain.BtcAddressType) (string, error) {
+	return "", errors.New("not supported in MempoolSpace API")
+}
+
 func (api *MempoolSpaceApi) getBlock(blockHash string) (*btcutil.Block, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("%s/block/%s/raw", api.url, blockHash), nil)
 	if err != nil {

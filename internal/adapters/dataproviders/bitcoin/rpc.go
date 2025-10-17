@@ -253,6 +253,14 @@ func (rpc *bitcoindRpc) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, e
 	}, nil
 }
 
+func (rpc *bitcoindRpc) GetZeroAddress(addressType blockchain.BtcAddressType) (string, error) {
+	addresses, err := bitcoinZeroAddresses.Network(rpc.conn.NetworkParams.Name)
+	if err != nil {
+		return "", err
+	}
+	return addresses.Address(addressType)
+}
+
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {
 	parsedTxHash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {
