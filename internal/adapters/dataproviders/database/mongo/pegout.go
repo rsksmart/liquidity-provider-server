@@ -625,9 +625,12 @@ func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx conte
 			"path":                       "$retained",
 			"preserveNullAndEmptyArrays": true, // Keep all quotes, even without retained data
 		}}},
-		// Stage 4: Filter by state
+		// Stage 4: Filter by state (or include quotes without retained data)
 		{{Key: "$match", Value: bson.M{
-			"retained.state": bson.M{"$in": states},
+			"$or": []bson.M{
+				{"retained.state": bson.M{"$in": states}},
+				{"retained.state": nil}, // Include quotes without retained quote (non-accepted)
+			},
 		}}},
 		// Stage 5: Limit to maxRecordLimit + 1 to detect if we exceeded
 		{{Key: "$limit", Value: maxRecordLimit + 1}},
@@ -645,11 +648,9 @@ func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx conte
 			StoredPegoutQuote `bson:",inline"`
 			Retained          quote.RetainedPegoutQuote `bson:"retained"`
 		}
-
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
-
 		doc.Retained.FillZeroValues()
 		result = append(result, quote.PegoutQuoteWithRetained{
 			Quote:         doc.PegoutQuote,
