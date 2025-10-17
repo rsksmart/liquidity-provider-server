@@ -1126,7 +1126,7 @@ func TestPeginMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 // nolint: cyclop, funlen
 func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.PeginState, startDate, endDate time.Time) bool {
 	// Verify the pipeline structure
-	if len(pipeline) != 4 {
+	if len(pipeline) != 5 {
 		return false
 	}
 
@@ -1164,6 +1164,14 @@ func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.Pe
 	if len(unwindStage) == 0 || unwindStage[0].Key != "$unwind" {
 		return false
 	}
+	unwindConfig, ok := unwindStage[0].Value.(bson.M)
+	if !ok {
+		return false
+	}
+	preserveNullAndEmptyArrays, ok := unwindConfig["preserveNullAndEmptyArrays"].(bool)
+	if !ok || !preserveNullAndEmptyArrays {
+		return false
+	}
 
 	// Stage 4: $match by state - verify states are correct
 	matchStateStage := pipeline[3]
@@ -1194,6 +1202,16 @@ func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.Pe
 		if !stateMap[s] {
 			return false
 		}
+	}
+
+	// Stage 5: $limit - verify limit is set to 501
+	limitStage := pipeline[4]
+	if len(limitStage) == 0 || limitStage[0].Key != "$limit" {
+		return false
+	}
+	limitValue, ok := limitStage[0].Value.(int)
+	if !ok || limitValue != 501 {
+		return false
 	}
 
 	return true

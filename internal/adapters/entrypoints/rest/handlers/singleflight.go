@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	PegInReportSingleFlightKey   = "pegin-report-singleflight"
-	PegOutReportSingleFlightKey  = "pegout-report-singleflight"
-	RevenueReportSingleFlightKey = "revenue-report-singleflight"
+	PegInReportSingleFlightKey     = "pegin-report-singleflight"
+	PegOutReportSingleFlightKey    = "pegout-report-singleflight"
+	RevenueReportSingleFlightKey   = "revenue-report-singleflight"
+	SummariesReportSingleFlightKey = "summaries-report-singleflight"
 )
 
 var SingleFlightGroup = new(singleflight.Group)
