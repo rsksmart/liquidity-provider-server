@@ -592,3 +592,71 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 	logDbInteraction(Read, result)
 	return result, nil
 }
+
+func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PegoutState, startDate, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+
+	// Single aggregation pipeline that:
+	// 1. Filters by date (most selective filter)
+	// 2. Joins with retained quotes
+	// 3. Filters by state
+	pipeline := mongo.Pipeline{
+		// Stage 1: Filter by date (most selective)
+		{{Key: "$match", Value: bson.M{
+			"agreement_timestamp": bson.M{
+				"$gte": startDate.Unix(),
+				"$lte": endDate.Unix(),
+			},
+		}}},
+		// Stage 2: Lookup retained quotes
+		{{Key: "$lookup", Value: bson.M{
+			"from":         RetainedPegoutQuoteCollection,
+			"localField":   "hash",
+			"foreignField": "quote_hash",
+			"as":           "retained",
+		}}},
+		// Stage 3: Unwind retained array (should have 0 or 1 element)
+		{{Key: "$unwind", Value: bson.M{
+			"path":                       "$retained",
+			"preserveNullAndEmptyArrays": false, // Only keep quotes with retained data
+		}}},
+		// Stage 4: Filter by state
+		{{Key: "$match", Value: bson.M{
+			"retained.state": bson.M{"$in": states},
+		}}},
+	}
+
+	cursor, err := collection.Aggregate(dbCtx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(dbCtx)
+
+	result := make([]quote.PegoutQuoteWithRetained, 0)
+	for cursor.Next(dbCtx) {
+		var doc struct {
+			StoredPegoutQuote `bson:",inline"`
+			Retained          quote.RetainedPegoutQuote `bson:"retained"`
+		}
+
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+
+		doc.Retained.FillZeroValues()
+		result = append(result, quote.PegoutQuoteWithRetained{
+			Quote:         doc.PegoutQuote,
+			RetainedQuote: doc.Retained,
+		})
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	logDbInteraction(Read, len(result))
+	return result, nil
+}

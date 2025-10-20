@@ -51,6 +51,7 @@ type PegoutQuoteRepository interface {
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PegoutQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PegoutState) ([]RetainedPegoutQuote, error)
 	GetRetainedQuotesInBatch(ctx context.Context, batch rootstock.BatchPegOut) ([]RetainedPegoutQuote, error)
+	GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []PegoutState, startDate, endDate time.Time) ([]PegoutQuoteWithRetained, error)
 }
 
 type CreatedPegoutQuote struct {
