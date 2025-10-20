@@ -574,6 +574,7 @@ components:
     ProviderDetail:
       properties:
         fee:
+          deprecated: true
           $ref: '#/components/schemas/'
         feePercentage:
           type: number
