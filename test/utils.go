@@ -227,10 +227,12 @@ func AddDepositLogFromQuote(
 	require.NoError(t, err)
 	senderTopic, err := hex.DecodeString(strings.TrimPrefix(receipt.From, "0x"))
 	require.NoError(t, err)
+	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
+	timestampTopic, err := hex.DecodeString(timestampHex)
+	require.NoError(t, err)
 
 	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
-	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
-	parsedData, err := hex.DecodeString(amountHex + timestampHex)
+	parsedData, err := hex.DecodeString(amountHex)
 	require.NoError(t, err)
 
 	log := blockchain.TransactionLog{
@@ -239,6 +241,7 @@ func AddDepositLogFromQuote(
 			utils.To32Bytes(parsedDepositTopic),
 			utils.To32Bytes(quoteHashTopic),
 			utils.To32Bytes(senderTopic),
+			utils.To32Bytes(timestampTopic),
 		},
 		Data:        parsedData,
 		BlockNumber: receipt.BlockNumber,

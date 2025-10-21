@@ -30,10 +30,10 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
-		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		collateral := &mocks.CollateralManagementContractMock{}
+		collateral.EXPECT().GetPenalizedEvents(mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
-			blockchain.RskContracts{Lbc: lbc},
+			blockchain.RskContracts{CollateralManagement: collateral},
 			&mocks.AlertSenderMock{},
 			test.AnyString,
 			mocks.NewPenalizedEventRepositoryMock(t),
@@ -47,17 +47,17 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && lbc.AssertExpectations(t)
+			return assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should update block if use case executed successfully", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
-		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return([]penalization.PenalizedEvent{}, nil)
+		collateral := &mocks.CollateralManagementContractMock{}
+		collateral.EXPECT().GetPenalizedEvents(mock.Anything, mock.Anything, mock.Anything).Return([]penalization.PenalizedEvent{}, nil)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
-			blockchain.RskContracts{Lbc: lbc},
+			blockchain.RskContracts{CollateralManagement: collateral},
 			&mocks.AlertSenderMock{},
 			test.AnyString,
 			mocks.NewPenalizedEventRepositoryMock(t),
@@ -71,7 +71,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(599), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && lbc.AssertExpectations(t)
+			return assert.Equal(t, uint64(599), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
 		}, time.Second, 10*time.Millisecond)
 	})
 }

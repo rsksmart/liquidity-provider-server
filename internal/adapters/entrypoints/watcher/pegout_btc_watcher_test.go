@@ -102,9 +102,9 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return(nil)
 	mutex.On("Unlock").Return()
-	lbc := &mocks.LbcMock{}
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
-	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{Lbc: lbc}, eventBus, rpc, mutex)
+	pegoutContract := &mocks.PegoutContractMock{}
+	pegoutContract.EXPECT().RefundPegout(mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{PegOut: pegoutContract}, eventBus, rpc, mutex)
 	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
 	resetMocks := func() {
 		btcRpc.Calls = []mock.Call{}
@@ -218,7 +218,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 
 		assert.Eventually(t, func() bool {
 			watchedQuote, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.False(t, ok) && assert.Empty(t, watchedQuote) && btcRpc.AssertExpectations(t) && pegoutRepository.AssertExpectations(t) && lbc.AssertExpectations(t)
+			return assert.False(t, ok) && assert.Empty(t, watchedQuote) && btcRpc.AssertExpectations(t) && pegoutRepository.AssertExpectations(t) && pegoutContract.AssertExpectations(t)
 		}, time.Second, 10*time.Millisecond)
 	})
 	closeChannel := make(chan bool)

@@ -45,12 +45,12 @@ func GetWallet(
 	return walletFactory.RskWallet()
 }
 
-func CreateLiquidityBridgeContract(
+func CreatePeginContract(
 	ctx context.Context,
 	factory RskClientFactory,
 	env environment.Environment,
 	timeouts environment.ApplicationTimeouts,
-) (blockchain.LiquidityBridgeContract, error) {
+) (blockchain.PeginContract, error) {
 	rskClient, err := factory(ctx, env)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
@@ -59,17 +59,76 @@ func CreateLiquidityBridgeContract(
 	if err != nil {
 		return nil, fmt.Errorf("error accessing to wallet: %w", err)
 	}
-	lbc, err := bindings.NewLiquidityBridgeContract(common.HexToAddress(env.Rsk.LbcAddress), rskClient.Rpc())
+	peginBinding, err := bindings.NewIPegIn(common.HexToAddress(env.Rsk.PeginContractAddress), rskClient.Rpc())
 	if err != nil {
 		return nil, err
 	}
-	return rootstock.NewLiquidityBridgeContractImpl(
+	return rootstock.NewPeginContractImpl(
 		rskClient,
-		env.Rsk.LbcAddress,
-		rootstock.NewLbcAdapter(lbc),
+		env.Rsk.PeginContractAddress,
+		rootstock.NewPeginContractAdapter(peginBinding),
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
+		rootstock.MustLoadFlyoverABIs(),
+	), nil
+}
+
+func CreatePegoutContract(
+	ctx context.Context,
+	factory RskClientFactory,
+	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
+) (blockchain.PegoutContract, error) {
+	rskClient, err := factory(ctx, env)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
+	}
+	rskWallet, err := GetWallet(ctx, env, timeouts, rskClient)
+	if err != nil {
+		return nil, fmt.Errorf("error accessing to wallet: %w", err)
+	}
+	pegoutContract, err := bindings.NewIPegOut(common.HexToAddress(env.Rsk.PegoutContractAddress), rskClient.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	return rootstock.NewPegoutContractImpl(
+		rskClient,
+		env.Rsk.PeginContractAddress,
+		rootstock.NewPegoutContractAdapter(pegoutContract),
+		rskWallet,
+		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
+		rootstock.MustLoadFlyoverABIs(),
+	), nil
+}
+
+func CreateDiscoveryContract(
+	ctx context.Context,
+	factory RskClientFactory,
+	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
+) (blockchain.DiscoveryContract, error) {
+	rskClient, err := factory(ctx, env)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
+	}
+	rskWallet, err := GetWallet(ctx, env, timeouts, rskClient)
+	if err != nil {
+		return nil, fmt.Errorf("error accessing to wallet: %w", err)
+	}
+	discoveryContract, err := bindings.NewIFlyoverDiscovery(common.HexToAddress(env.Rsk.DiscoveryAddress), rskClient.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	return rootstock.NewDiscoveryContractImpl(
+		rskClient,
+		env.Rsk.PeginContractAddress,
+		discoveryContract,
+		rskWallet,
+		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
+		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }
 

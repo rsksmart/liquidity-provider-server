@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +28,7 @@ type peginContractImpl struct {
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
-	abi           *abi.ABI
+	abis          *FlyoverABIs
 }
 
 func NewPeginContractImpl(
@@ -39,11 +38,8 @@ func NewPeginContractImpl(
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	abis *FlyoverABIs,
 ) blockchain.PeginContract {
-	contractAbi, err := bindings.IPegInMetaData.GetAbi()
-	if err != nil {
-		panic(fmt.Sprintf("could not get ABI for Pegin contract: %v", err))
-	}
 	return &peginContractImpl{
 		client:        client.client,
 		address:       address,
@@ -51,7 +47,7 @@ func NewPeginContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
-		abi:           contractAbi,
+		abis:          abis,
 	}
 }
 
@@ -157,7 +153,7 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 		params.BlockHeight,
 	)
 
-	parsedRevert, err := ParseRevertReason(peginContract.abi, revert)
+	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
 	if err != nil && parsedRevert == nil {
 		return "", fmt.Errorf("error parsing registerPegIn result: %w", err)
 	} else if parsedRevert != nil && strings.EqualFold(waitingForBridgeError, parsedRevert.Name) {

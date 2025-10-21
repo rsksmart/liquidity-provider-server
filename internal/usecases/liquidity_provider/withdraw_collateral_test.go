@@ -3,7 +3,7 @@ package liquidity_provider_test
 import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -12,30 +12,30 @@ import (
 )
 
 func TestWithdrawCollateralUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LbcMock)
-	lbc.On("WithdrawCollateral").Return(nil)
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	collateral := new(mocks.CollateralManagementContractMock)
+	collateral.On("WithdrawCollateral").Return(nil)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := liquidity_provider.NewWithdrawCollateralUseCase(contracts)
 	err := useCase.Run()
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	require.NoError(t, err)
 }
 
 func TestWithdrawCollateralUseCase_Run_ErrorHandling(t *testing.T) {
-	lbc := new(mocks.LbcMock)
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	collateral := new(mocks.CollateralManagementContractMock)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := liquidity_provider.NewWithdrawCollateralUseCase(contracts)
 
-	lbc.On("WithdrawCollateral").Return(errors.New("LBC021")).Once()
+	collateral.On("WithdrawCollateral").Return(lpEntity.ProviderNotResignedError).Once()
 	err := useCase.Run()
-	require.ErrorIs(t, err, usecases.ProviderNotResignedError)
+	require.ErrorIs(t, err, lpEntity.ProviderNotResignedError)
 
-	lbc.On("WithdrawCollateral").Return(errors.New("LBC022")).Once()
+	collateral.On("WithdrawCollateral").Return(errors.New("some error")).Once()
 	err = useCase.Run()
-	require.ErrorIs(t, err, usecases.ProviderNotResignedError)
+	require.ErrorContains(t, err, "some error")
 
-	lbc.On("WithdrawCollateral").Return(assert.AnError).Once()
+	collateral.On("WithdrawCollateral").Return(assert.AnError).Once()
 	err = useCase.Run()
-	require.NotErrorIs(t, err, usecases.ProviderNotResignedError)
+	require.NotErrorIs(t, err, lpEntity.ProviderNotResignedError)
 	require.Error(t, err)
 }

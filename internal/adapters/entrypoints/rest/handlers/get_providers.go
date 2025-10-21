@@ -30,7 +30,7 @@ func NewGetProvidersHandler(useCase *liquidity_provider.GetProvidersUseCase) htt
 					Name:         provider.Name,
 					ApiBaseUrl:   provider.ApiBaseUrl,
 					Status:       provider.Status,
-					ProviderType: string(provider.ProviderType),
+					ProviderType: provider.ProviderType.Name(),
 				},
 			)
 		}
