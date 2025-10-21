@@ -280,3 +280,11 @@ func MustReadFileString(path string) string {
 	}
 	return string(b)
 }
+
+func MustParseDate(s string) time.Time {
+	parsed, err := time.Parse(time.DateOnly, s)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}

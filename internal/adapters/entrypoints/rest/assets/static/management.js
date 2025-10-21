@@ -108,7 +108,7 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
             input.disabled = false;
-            input.value = (input.dataset.originalValue === '0' || input.dataset.originalValue === 0) ? '' : 
+            input.value = (input.dataset.originalValue === '0' || input.dataset.originalValue === 0) ? '' :
                             isFeeKey(key) ? weiToEther(input.dataset.originalValue) : input.dataset.originalValue;
         } else {
             input.disabled = true;
@@ -344,7 +344,7 @@ const showErrorToast = (errorMessage) => {
 const showWarningToast = (warningMessage) => {
     const existingToast = document.getElementById('warningToast');
     if (existingToast) existingToast.parentNode.removeChild(existingToast);
-    
+
     const toastElement = document.createElement('div');
     toastElement.id = 'warningToast';
     toastElement.classList.add('toast', 'text-bg-warning');
@@ -624,7 +624,7 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
 const displaySummaryData = (container, data) => {
     container.innerHTML = '';
     const table = document.createElement('table');
-    table.classList.add('table', 'table-striped'); 
+    table.classList.add('table', 'table-striped');
     const rows = [
         { label: 'Total Quotes', value: data.totalQuotesCount },
         { label: 'Accepted Quotes', value: data.acceptedQuotesCount },
@@ -711,7 +711,7 @@ const fetchTrustedAccounts = async (csrfToken) => {
 const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) => {
     const tableBody = document.getElementById('trustedAccountsTable');
     tableBody.innerHTML = '';
-    
+
     if (errorMessage) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
@@ -722,7 +722,7 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         tableBody.appendChild(row);
         return;
     }
-    
+
     if (!accounts || accounts.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
@@ -733,7 +733,7 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         tableBody.appendChild(row);
         return;
     }
-    
+
     accounts.forEach(account => {
         const row = document.createElement('tr');
         const nameCell = document.createElement('td');
@@ -741,17 +741,17 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         const addressCell = document.createElement('td');
         addressCell.classList.add('address-cell');
         addressCell.textContent = account.address;
-        
+
         const btcCapCell = document.createElement('td');
         btcCapCell.classList.add('cap-cell');
         const btcValue = weiToEther(account.btcLockingCap);
         btcCapCell.textContent = formatCap(btcValue, 'BTC');
-        
+
         const rbtcCapCell = document.createElement('td');
         rbtcCapCell.classList.add('cap-cell');
         const rbtcValue = weiToEther(account.rbtcLockingCap);
         rbtcCapCell.textContent = formatCap(rbtcValue, 'rBTC');
-        
+
         const actionsCell = document.createElement('td');
         const deleteButton = document.createElement('button');
         deleteButton.type = 'button';
@@ -759,7 +759,7 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         deleteButton.textContent = 'Remove';
         deleteButton.addEventListener('click', () => removeTrustedAccount(account.address, csrfToken));
         actionsCell.appendChild(deleteButton);
-        
+
         row.appendChild(nameCell);
         row.appendChild(addressCell);
         row.appendChild(btcCapCell);
@@ -769,18 +769,95 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
     });
 };
 
+// Helper function to clear form validation states
+const clearFormValidation = () => {
+    const formFields = ['accountName', 'accountAddress', 'btc_locking_cap', 'rbtc_locking_cap'];
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        field.classList.remove('is-invalid', 'is-valid');
+        // Remove any existing error message
+        const feedback = field.parentElement.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.remove();
+        }
+    });
+};
+
+// Helper function to show field-specific validation errors
+const showFieldError = (fieldId, errorMessage) => {
+    const field = document.getElementById(fieldId);
+    field.classList.add('is-invalid');
+    field.classList.remove('is-valid');
+
+    // Remove existing error message if any
+    const existingFeedback = field.parentElement.querySelector('.invalid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+
+    // Add new error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback';
+    errorDiv.textContent = errorMessage;
+    field.parentElement.appendChild(errorDiv);
+};
+
+// Helper function to validate numeric input
+const validatePositiveNumber = (value, fieldName) => {
+    if (!value || value.trim() === '') {
+        return `${fieldName} is required`;
+    }
+
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue <= 0) {
+        return `${fieldName} must be a positive number`;
+    }
+
+    return null;
+};
+
 const addTrustedAccount = async (csrfToken) => {
+    // Clear any previous validation states
+    clearFormValidation();
+
     const name = document.getElementById('accountName').value.trim();
     const address = document.getElementById('accountAddress').value.trim();
     let btcLockingCap = document.getElementById('btc_locking_cap').value.trim();
     let rbtcLockingCap = document.getElementById('rbtc_locking_cap').value.trim();
-    if (!name || !address) {
-        showErrorToast('Account name and address are required.');
+
+    let hasValidationErrors = false;
+
+    if (!name) {
+        showFieldError('accountName', 'Account name is required');
+        hasValidationErrors = true;
+    }
+
+    if (!address) {
+        showFieldError('accountAddress', 'Account address is required');
+        hasValidationErrors = true;
+    }
+
+    const btcCapError = validatePositiveNumber(btcLockingCap, 'BTC Locking Cap');
+    if (btcCapError) {
+        showFieldError('btc_locking_cap', btcCapError);
+        hasValidationErrors = true;
+    }
+
+    const rbtcCapError = validatePositiveNumber(rbtcLockingCap, 'rBTC Locking Cap');
+    if (rbtcCapError) {
+        showFieldError('rbtc_locking_cap', rbtcCapError);
+        hasValidationErrors = true;
+    }
+
+    if (hasValidationErrors) {
         return;
     }
+
     try {
-        btcLockingCap = btcLockingCap ? etherToWei(btcLockingCap) : "0";
-        rbtcLockingCap = rbtcLockingCap ? etherToWei(rbtcLockingCap) : "0";
+        // Convert to wei only for valid positive numbers
+        btcLockingCap = etherToWei(btcLockingCap);
+        rbtcLockingCap = etherToWei(rbtcLockingCap);
+
         const response = await fetch('/management/trusted-accounts', {
             method: 'POST',
             headers: {
@@ -794,17 +871,46 @@ const addTrustedAccount = async (csrfToken) => {
                 "rbtcLockingCap": ${rbtcLockingCap}
             }`
         });
+
         if (response.ok) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('addTrustedAccountModal'));
-            modal.hide();            
+            modal.hide();
             document.getElementById('accountName').value = '';
             document.getElementById('accountAddress').value = '';
             document.getElementById('btc_locking_cap').value = '';
             document.getElementById('rbtc_locking_cap').value = '';
+            clearFormValidation();
             showSuccessToast();
             fetchTrustedAccounts(csrfToken);
         } else {
             const errorData = await response.json();
+
+            // Handle field-specific validation errors from backend
+            if (errorData.message === 'validation error' && errorData.details) {
+                let hasFieldErrors = false;
+
+                // Map backend field names to frontend field IDs
+                const fieldMapping = {
+                    'Name': 'accountName',
+                    'Address': 'accountAddress',
+                    'BtcLockingCap': 'btc_locking_cap',
+                    'RbtcLockingCap': 'rbtc_locking_cap'
+                };
+
+                for (const [backendField, errorMessage] of Object.entries(errorData.details)) {
+                    const frontendFieldId = fieldMapping[backendField];
+                    if (frontendFieldId) {
+                        showFieldError(frontendFieldId, errorMessage);
+                        hasFieldErrors = true;
+                    }
+                }
+
+                if (hasFieldErrors) {
+                    return; // Don't show toast if we have field-specific errors
+                }
+            }
+
+            // Show generic error if no field-specific errors
             const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
             showErrorToast(`Error adding trusted account: ${errorMessage}`);
         }
@@ -849,10 +955,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
     document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
 
+    // Clear validation states when modal is opened
+    document.getElementById('addTrustedAccountModal').addEventListener('show.bs.modal', () => {
+        clearFormValidation();
+    });
+
+    // Clear field-specific validation errors when user starts typing
+    ['accountName', 'accountAddress', 'btc_locking_cap', 'rbtc_locking_cap'].forEach(fieldId => {
+        document.getElementById(fieldId).addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+            const feedback = this.parentElement.querySelector('.invalid-feedback');
+            if (feedback) {
+                feedback.remove();
+            }
+        });
+    });
+
     document.querySelectorAll('#configTabs a[data-bs-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', () => checkFeeWarnings());
     });
-    
+
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
     populateConfigSection('pegoutConfig', configurations.pegout);
@@ -861,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
     checkFeeWarnings();
-    
+
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(today.getMonth() - 1);
