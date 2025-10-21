@@ -92,17 +92,17 @@ func TestParseRefundUserPegOutScriptInput(t *testing.T) {
 
 func TestRefundUserPegOut(t *testing.T) {
 	t.Run("should execute refund user peg out successfully", func(t *testing.T) {
-		lbc := &mocks.LbcMock{}
+		pegoutContract := &mocks.PegoutContractMock{}
 		expectedTxHash := test.AnyHash
 
 		// Setup mock expectations
-		lbc.On("RefundUserPegOut", testQuoteHash).Return(expectedTxHash, nil)
+		pegoutContract.On("RefundUserPegOut", testQuoteHash).Return(expectedTxHash, nil)
 
-		txHash, err := ExecuteRefundUserPegOut(lbc, testQuoteHash)
+		txHash, err := ExecuteRefundUserPegOut(pegoutContract, testQuoteHash)
 		require.NoError(t, err)
 		assert.Equal(t, expectedTxHash, txHash)
 
 		// Verify all expectations were met
-		lbc.AssertExpectations(t)
+		pegoutContract.AssertExpectations(t)
 	})
 }

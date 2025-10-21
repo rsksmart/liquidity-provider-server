@@ -3,7 +3,7 @@ package handlers
 import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"net/http"
 )
@@ -16,7 +16,7 @@ import (
 func NewWithdrawCollateralHandler(useCase *liquidity_provider.WithdrawCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()
-		if errors.Is(err, usecases.ProviderNotResignedError) {
+		if errors.Is(err, lpEntity.ProviderNotResignedError) {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
 		} else if err != nil {

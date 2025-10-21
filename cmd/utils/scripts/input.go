@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/defaults"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"syscall"
 )
 
 type BaseInput struct {
 	Network                     string `validate:"required,oneof=regtest testnet mainnet"`
 	RskEndpoint                 string `validate:"required,http_url"`
-	CustomLbcAddress            string `validate:"omitempty,eth_addr"`
+	CustomPeginAddress          string `validate:"omitempty,eth_addr"`
+	CustomPegoutAddress         string `validate:"omitempty,eth_addr"`
+	CustomCollateralAddress     string `validate:"omitempty,eth_addr"`
+	CustomDiscoveryAddress      string `validate:"omitempty,eth_addr"`
 	AwsLocalEndpoint            string `validate:"http_url"`
 	SecretSource                string `validate:"required,oneof=aws env"`
 	EncryptedJsonSecret         string
@@ -26,7 +30,10 @@ func ReadBaseInput(scriptInput *BaseInput) {
 	flag.StringVar(&scriptInput.AwsLocalEndpoint, "aws-endpoint", "http://localhost:4566", "AWS endpoint for localstack")
 	flag.StringVar(&scriptInput.SecretSource, "secret-src", "", "The source of the secrets to execute the transaction. Must be one of the following: env, aws")
 	flag.StringVar(&scriptInput.RskEndpoint, "rsk-endpoint", "", "The URL of the RSK RPC server. E.g. http://localhost:4444")
-	flag.StringVar(&scriptInput.CustomLbcAddress, "lbc-address", "", "Custom address of the liquidity bridge contract. If not provided will use the network default.")
+	flag.StringVar(&scriptInput.CustomPeginAddress, "custom-pegin-address", "", "Custom address of the pegin contract. If not provided will use the network default.")
+	flag.StringVar(&scriptInput.CustomPegoutAddress, "custom-pegout-address", "", "Custom address of the pegout contract. If not provided will use the network default.")
+	flag.StringVar(&scriptInput.CustomCollateralAddress, "custom-collateral-address", "", "Custom address of the collateral management contract. If not provided will use the network default.")
+	flag.StringVar(&scriptInput.CustomDiscoveryAddress, "custom-discovery-address", "", "Custom address of the discovery contract. If not provided will use the network default.")
 
 	flag.StringVar(&scriptInput.KeystoreFile, "keystore-file", "", "Path to the keystore file. Only required if the secret source is env")
 	flag.StringVar(&scriptInput.EncryptedJsonSecret, "keystore-secret", "", "Name of the secret storing the keystore. Only required if the secret source is aws")
@@ -51,12 +58,17 @@ func (input BaseInput) ToEnv(pwdReader PasswordReader) (environment.Environment,
 		return environment.Environment{}, fmt.Errorf("invalid input: %w", err)
 	}
 
-	var lbcAddress string
-	if input.CustomLbcAddress != "" {
-		lbcAddress = input.CustomLbcAddress
-	} else {
-		lbcAddress = rskEnvDefaults.LbcAddress
-	}
+	var (
+		peginAddress      string
+		pegoutAddress     string
+		collateralAddress string
+		discoveryAddress  string
+	)
+
+	peginAddress = utils.FirstNonZero(input.CustomPeginAddress, rskEnvDefaults.PeginContractAddress)
+	pegoutAddress = utils.FirstNonZero(input.CustomPegoutAddress, rskEnvDefaults.PegoutContractAddress)
+	collateralAddress = utils.FirstNonZero(input.CustomCollateralAddress, rskEnvDefaults.CollateralManagementAddress)
+	discoveryAddress = utils.FirstNonZero(input.CustomDiscoveryAddress, rskEnvDefaults.DiscoveryAddress)
 
 	env.LpsStage = input.Network
 	env.AwsLocalEndpoint = input.AwsLocalEndpoint
@@ -65,7 +77,10 @@ func (input BaseInput) ToEnv(pwdReader PasswordReader) (environment.Environment,
 	env.Rsk = environment.RskEnv{
 		Endpoint:                    input.RskEndpoint,
 		ChainId:                     rskEnvDefaults.ChainId,
-		LbcAddress:                  lbcAddress,
+		PeginContractAddress:        peginAddress,
+		PegoutContractAddress:       pegoutAddress,
+		CollateralManagementAddress: collateralAddress,
+		DiscoveryAddress:            discoveryAddress,
 		BridgeAddress:               rskEnvDefaults.BridgeAddress,
 		AccountNumber:               rskEnvDefaults.AccountNumber,
 		EncryptedJsonSecret:         input.EncryptedJsonSecret,

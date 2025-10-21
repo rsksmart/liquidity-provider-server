@@ -18,11 +18,11 @@ func NewAddCollateralUseCase(contracts blockchain.RskContracts, lp liquidity_pro
 
 func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, error) {
 	var err error
-	minCollateral, err := useCase.contracts.Lbc.GetMinimumCollateral()
+	minCollateral, err := useCase.contracts.CollateralManagement.GetMinimumCollateral()
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}
-	collateral, err := useCase.contracts.Lbc.GetCollateral(useCase.lp.RskAddress())
+	collateral, err := useCase.contracts.CollateralManagement.GetCollateral(useCase.lp.RskAddress())
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}
@@ -31,7 +31,7 @@ func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, e
 	if minCollateral.Cmp(result) > 0 {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, usecases.InsufficientAmountError)
 	}
-	err = useCase.contracts.Lbc.AddCollateral(amount)
+	err = useCase.contracts.CollateralManagement.AddCollateral(amount)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
 	}

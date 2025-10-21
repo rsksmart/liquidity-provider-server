@@ -84,7 +84,7 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 	pegoutConfiguration := useCase.pegoutLp.PegoutConfiguration(ctx)
 
 	rskAddress := useCase.lp.RskAddress()
-	providerInfo, err := useCase.contracts.Lbc.GetProvider(rskAddress)
+	providerInfo, err := useCase.contracts.Discovery.GetProvider(rskAddress)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.GetManagementUiId, err)
 	}

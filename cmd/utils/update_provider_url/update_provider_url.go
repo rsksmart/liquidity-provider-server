@@ -68,7 +68,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	discovery, err := scripts.CreateDiscoveryContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing the Liquidity Bridge Contract", err)
 	}
@@ -80,7 +80,7 @@ func main() {
 		scripts.ExitWithError(errorCode, "Invalid provider information", err)
 	}
 
-	txHash, err := ExecuteUpdateProvider(lbc, updateArgs)
+	txHash, err := ExecuteUpdateProvider(discovery, updateArgs)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error executing update provider", err)
 	}
@@ -103,8 +103,8 @@ func ReadUpdateProviderScriptInput(scriptInput *UpdateProviderScriptInput) {
 }
 
 func ExecuteUpdateProvider(
-	lbc blockchain.LiquidityBridgeContract,
+	discovery blockchain.DiscoveryContract,
 	args UpdateProviderArgs,
 ) (string, error) {
-	return lbc.UpdateProvider(args.Name, args.Url())
+	return discovery.UpdateProvider(args.Name, args.Url())
 }

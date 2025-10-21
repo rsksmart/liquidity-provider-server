@@ -1,18 +1,39 @@
 {
   "network": "regtest",
   "lps": {
-    "url": "http://localhost:8080",
-    "useTestInstance": true
+    "url": "http://localhost:8080"
   },
   "btc": {
-      "rpcEndpoint": "localhost:5555",
+      "rpcEndpoint": "localhost:5555/wallet/main",
       "user": "test",
       "password": "test",
-      "walletPassword": "test-password"
+      "walletPassword": "test-password",
+      "walletUnlockSeconds": 10
   },
   "rsk": {
     "rpcUrl": "ws://localhost:4445/websocket",
-    "lbcAddress": "<lbc address>",
+    "peginContract": "0x8650B271F7cC565aa604F9f98Aa1A5B723B5b2f3",
+    "pegoutContract": "0x145845fd06c85B7EA1AA2d030E1a747B3d8d15D7",
+    "discoveryContract": "0x75A656f083B217F91f32D6BAC18694ddd38e036A",
+    "collateralManagementContract": "0x13cF0a53b6102b518e8b547d5E50b38C1b089E08",
     "userPrivateKey": "<user private key>"
+  },
+  "tests": {
+    "mempool": {},
+    "pegin": {
+      "value": 700000000000000000,
+      "destinationAddress": "0x79568c2989232dCa1840087D73d403602364c0D4",
+      "refundAddress": "0x79568c2989232dCa1840087D73d403602364c0D4",
+      "data": "",
+      "callForUserWait": 600,
+      "registerPeginWait": 600
+    },
+    "pegout": {
+      "value": 700000000000000000,
+      "destinationAddress": "mwPaRkHM1CpNVz7UGddNeyAJry5z1rvqv5",
+      "refundAddress": "0x79568c2989232dCa1840087D73d403602364c0D4",
+      "pegoutPaymentWait": 600,
+      "pegoutRefundWait": 600
+    }
   }
 }

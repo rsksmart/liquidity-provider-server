@@ -114,7 +114,7 @@ func (useCase *CallForUserUseCase) calculateValueToSend(
 	var contractBalance, networkBalance *entities.Wei
 	var err error
 
-	if contractBalance, err = useCase.contracts.Lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
+	if contractBalance, err = useCase.contracts.PegIn.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
 	}
 
@@ -144,7 +144,7 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	var err error
 
 	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.contracts.Lbc.CallForUser(config, *peginQuote); err != nil {
+	if callForUserTx, err = useCase.contracts.PegIn.CallForUser(config, *peginQuote); err != nil {
 		quoteState = quote.PeginStateCallForUserFailed
 	} else {
 		quoteState = quote.PeginStateCallForUserSucceeded

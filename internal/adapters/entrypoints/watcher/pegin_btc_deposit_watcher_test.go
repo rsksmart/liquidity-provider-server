@@ -165,9 +165,9 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
-	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
-	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(test.AnyHash, nil)
+	peginContract := &mocks.PeginContractMock{}
+	peginContract.EXPECT().GetBalance(mock.Anything).Return(entities.NewWei(1000), nil)
+	peginContract.EXPECT().CallForUser(mock.Anything, mock.Anything).Return(test.AnyHash, nil)
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
 	peginProvider := &mocks.ProviderMock{}
@@ -176,7 +176,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
 	expireUseCase := pegin.NewExpiredPeginQuoteUseCase(peginRepository)
 	updateUseCase := w.NewUpdatePeginDepositUseCase(peginRepository)
-	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{Lbc: lbc, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
+	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
 	useCases := watcher.NewPeginDepositAddressWatcherUseCases(cfuUseCase, getUseCase, updateUseCase, expireUseCase)
 	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
 

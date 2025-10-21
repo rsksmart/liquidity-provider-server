@@ -49,7 +49,7 @@ func TestGetWallet(t *testing.T) {
 	})
 }
 
-func TestCreateLiquidityBridgeContract(t *testing.T) {
+func TestCreatePeginContract(t *testing.T) {
 	t.Run("should return contract", func(t *testing.T) {
 		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
 		env := environment.Environment{
@@ -64,7 +64,49 @@ func TestCreateLiquidityBridgeContract(t *testing.T) {
 		factoryMock := func(ctx context.Context, env environment.Environment) (*rootstock.RskClient, error) {
 			return &rootstock.RskClient{}, nil
 		}
-		contract, err := scripts.CreateLiquidityBridgeContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
+		contract, err := scripts.CreatePeginContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
+		require.NoError(t, err)
+		require.NotNil(t, contract)
+	})
+}
+
+func TestCreatePegoutContract(t *testing.T) {
+	t.Run("should return contract", func(t *testing.T) {
+		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		env := environment.Environment{
+			SecretSource:     "env",
+			WalletManagement: "native",
+			Rsk: environment.RskEnv{
+				KeystoreFile:     keystorePath,
+				KeystorePassword: "test",
+			},
+			Btc: environment.BtcEnv{Network: "regtest"},
+		}
+		factoryMock := func(ctx context.Context, env environment.Environment) (*rootstock.RskClient, error) {
+			return &rootstock.RskClient{}, nil
+		}
+		contract, err := scripts.CreatePegoutContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
+		require.NoError(t, err)
+		require.NotNil(t, contract)
+	})
+}
+
+func TestCreateDiscoveryContract(t *testing.T) {
+	t.Run("should return contract", func(t *testing.T) {
+		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		env := environment.Environment{
+			SecretSource:     "env",
+			WalletManagement: "native",
+			Rsk: environment.RskEnv{
+				KeystoreFile:     keystorePath,
+				KeystorePassword: "test",
+			},
+			Btc: environment.BtcEnv{Network: "regtest"},
+		}
+		factoryMock := func(ctx context.Context, env environment.Environment) (*rootstock.RskClient, error) {
+			return &rootstock.RskClient{}, nil
+		}
+		contract, err := scripts.CreateDiscoveryContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, contract)
 	})

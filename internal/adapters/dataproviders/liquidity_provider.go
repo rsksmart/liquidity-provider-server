@@ -139,7 +139,7 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	if err != nil {
 		return nil, err
 	}
-	lpLbcBalance, err := lp.contracts.Lbc.GetBalance(lp.RskAddress())
+	lpLbcBalance, err := lp.contracts.PegIn.GetBalance(lp.RskAddress())
 	if err != nil {
 		return nil, err
 	}

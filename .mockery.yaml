@@ -14,15 +14,17 @@ packages:
       sesClient:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock:
     interfaces:
-      LbcBinding:
       RskBridgeBinding:
       TransactionSigner:
       RpcClientBinding:
-      LbcCallerBinding:
-      LbcAdapter:
       RskBridgeAdapter:
       EventIteratorAdapter:
       RskSignerWallet:
+      PeginContractAdapter:
+      PegoutContractAdapter:
+      CollateralManagementAdapter:
+      DiscoveryBinding:
+      ContractCallerBinding:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
     interfaces:
       DbClientBinding:
@@ -60,6 +62,10 @@ packages:
     interfaces:
       BitcoinWallet:
       RootstockRpcServer:
+      PeginContract:
+      PegoutContract:
+      DiscoveryContract:
+      CollateralManagementContract:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
       BatchPegOutRepository:
