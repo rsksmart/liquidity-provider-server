@@ -290,7 +290,7 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 		callerMock.EXPECT().Call(mock.Anything, mock.Anything, functionName).Return(e).Once()
 		contractBinding.EXPECT().Caller().Return(callerMock)
 		err := collateral.WithdrawCollateral()
-		require.ErrorContains(t, err, "error parsing withdrawCollateral result")
+		require.ErrorContains(t, err, "provided hasn't completed resignation process")
 		contractBinding.AssertExpectations(t)
 	})
 	t.Run("Error handling (withdrawCollateral tx reverted by delay not passed)", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 		callerMock.EXPECT().Call(mock.Anything, mock.Anything, functionName).Return(e).Once()
 		contractBinding.EXPECT().Caller().Return(callerMock)
 		err := collateral.WithdrawCollateral()
-		require.ErrorContains(t, err, "error parsing withdrawCollateral result")
+		require.ErrorContains(t, err, "provided hasn't completed resignation process")
 		contractBinding.AssertExpectations(t)
 	})
 }
