@@ -27,7 +27,7 @@ func MustLoadFlyoverABIs() *FlyoverABIs {
 	if err != nil {
 		panic("could not load Discovery ABI: " + err.Error())
 	}
-	collateralManagementAbi, err := bindings.IPegOutMetaData.GetAbi()
+	collateralManagementAbi, err := bindings.ICollateralManagementMetaData.GetAbi()
 	if err != nil {
 		panic("could not load Collateral Management ABI: " + err.Error())
 	}
