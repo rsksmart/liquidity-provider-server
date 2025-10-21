@@ -133,9 +133,9 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.InDelta(t, expectedFeeRate, response.CreationData.FeeRate, 0.0)
 
 	// Count fields in all three main objects and assert expected counts
-	detailFieldCount := reflect.TypeOf(response.Detail).NumField()
-	statusFieldCount := reflect.TypeOf(response.Status).NumField()
-	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
+	detailFieldCount := reflect.TypeFor[pkg.PegoutQuoteDTO]().NumField()
+	statusFieldCount := reflect.TypeFor[pkg.RetainedPegoutQuoteDTO]().NumField()
+	creationDataFieldCount := reflect.TypeFor[pkg.PegoutCreationDataDTO]().NumField()
 
 	const expectedDetailFields = 19      // PegoutQuoteDTO has 19 fields
 	const expectedStatusFields = 9       // RetainedPegoutQuoteDTO has 9 fields
