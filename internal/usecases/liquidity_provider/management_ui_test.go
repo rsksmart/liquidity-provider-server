@@ -2,6 +2,8 @@ package liquidity_provider_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -10,14 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // nolint:funlen
 func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 	const testUrl = "http://localhost:8080"
 	t.Run("Return correct data when not logged in and credentials not set", func(t *testing.T) {
-		lbcMock := &mocks.LbcMock{}
+		lbcMock := &mocks.LiquidityBridgeContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, nil).Once()
@@ -36,7 +37,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		lbcMock.AssertNotCalled(t, "GetProvider")
 	})
 	t.Run("Return correct data when not logged in and credentials set", func(t *testing.T) {
-		lbcMock := &mocks.LbcMock{}
+		lbcMock := &mocks.LiquidityBridgeContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(storedCredentials, nil).Once()
@@ -59,7 +60,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 			btcAddress = test.AnyAddress
 			rskAddress = test.AnyHash
 		)
-		lbcMock := &mocks.LbcMock{}
+		lbcMock := &mocks.LiquidityBridgeContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		fullConfig := liquidity_provider.FullConfiguration{
@@ -96,7 +97,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		lbcMock.AssertExpectations(t)
 	})
 	t.Run("Return error when repository fails", func(t *testing.T) {
-		lbcMock := &mocks.LbcMock{}
+		lbcMock := &mocks.LiquidityBridgeContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, assert.AnError).Once()
@@ -106,7 +107,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		assert.Empty(t, result)
 	})
 	t.Run("Return error when provider doesn't exists", func(t *testing.T) {
-		lbcMock := &mocks.LbcMock{}
+		lbcMock := &mocks.LiquidityBridgeContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		fullConfig := liquidity_provider.FullConfiguration{

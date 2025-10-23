@@ -100,18 +100,20 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 				useCaseRegistry.GetPegoutReportUseCase(),
 			),
 		},
-		// TODO enable again when final implementation is ready
-		/*{
-			Path:    "/reports/revenue",
-			Method:  http.MethodGet,
-			Handler: handlers.NewGetReportsRevenueHandler(useCaseRegistry.GetRevenueReportUseCase()),
-		},*/
-		// TODO enable again when final implementation is ready
-		/*{
+		{
+			Path:   "/reports/revenue",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsRevenueHandler(
+				handlers.SingleFlightGroup,
+				handlers.RevenueReportSingleFlightKey,
+				useCaseRegistry.GetRevenueReportUseCase(),
+			),
+		},
+		{
 			Path:    "/reports/assets",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
-		},*/
+		},
 		{
 			Path:    "/reports/transactions",
 			Method:  http.MethodGet,

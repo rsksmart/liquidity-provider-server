@@ -44,6 +44,7 @@ packages:
       SetGeneralConfigUseCase:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
+      GetRevenueReportUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
@@ -60,6 +61,7 @@ packages:
     interfaces:
       BitcoinWallet:
       RootstockRpcServer:
+      LiquidityBridgeContract:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
       BatchPegOutRepository:

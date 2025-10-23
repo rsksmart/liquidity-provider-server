@@ -3,6 +3,9 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -19,14 +22,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestNewPegoutRskDepositWatcher(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	providerMock := &mocks.ProviderMock{}
-	contracts := blockchain.RskContracts{Lbc: &mocks.LbcMock{}}
+	contracts := blockchain.RskContracts{Lbc: &mocks.LiquidityBridgeContractMock{}}
 	rpc := blockchain.Rpc{Btc: &mocks.BtcRpcMock{}, Rsk: &mocks.RootstockRpcServerMock{}}
 	eventBus := &mocks.EventBusMock{}
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(
@@ -61,7 +62,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 			{QuoteHash: "0203", State: quote.PegoutStateWaitingForDepositConfirmations},
 			{QuoteHash: "0304", State: quote.PegoutStateWaitingForDeposit},
 		}
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		lbc.On("GetDepositEvents", mock.Anything, mock.Anything, mock.Anything).Return([]quote.PegoutDeposit{}, nil)
 		providerMock := &mocks.ProviderMock{}
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
@@ -103,7 +104,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 	t.Run("should start from the current block if cacheStartBlock is not provided", func(t *testing.T) {
 		latestBlock := uint64(567)
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		contracts := blockchain.RskContracts{Lbc: lbc}
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rpc := blockchain.Rpc{Rsk: rskRpc}
@@ -154,7 +155,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 		}
 		latestBlock := uint64(7000)
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		contracts := blockchain.RskContracts{Lbc: lbc}
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rpc := blockchain.Rpc{Rsk: rskRpc}
@@ -191,7 +192,7 @@ func TestPegoutRskDepositWatcher_Prepare(t *testing.T) {
 
 	t.Run("should handle error getting height if cacheStartBlock is not provided", func(t *testing.T) {
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		contracts := blockchain.RskContracts{Lbc: lbc}
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rpc := blockchain.Rpc{Rsk: rskRpc}
@@ -224,7 +225,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(make(chan time.Time))
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	providerMock := &mocks.ProviderMock{}
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rskRpc := &mocks.RootstockRpcServerMock{}
@@ -283,11 +284,11 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 // nolint:funlen
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.T) {
 	ticker := &mocks.TickerMock{}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	providerMock := &mocks.ProviderMock{}
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rskRpc := &mocks.RootstockRpcServerMock{}
@@ -404,11 +405,11 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T) {
 	mutexes := environment.NewApplicationMutexes()
 	ticker := &mocks.TickerMock{}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
+	lbc := &mocks.LiquidityBridgeContractMock{}
 	providerMock := &mocks.ProviderMock{}
 	contracts := blockchain.RskContracts{Lbc: lbc}
 	rskRpc := &mocks.RootstockRpcServerMock{}
@@ -554,7 +555,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		lbc.On("IsPegOutQuoteCompleted", testRetainedQuote.QuoteHash).Return(false, nil).Once()
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+		btcResult := blockchain.BitcoinTransactionResult{Hash: test.AnyHash, Fee: entities.NewWei(2500)}
+		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(btcResult, nil).Once()
 
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)

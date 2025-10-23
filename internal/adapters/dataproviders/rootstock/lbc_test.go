@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -739,6 +740,7 @@ func TestLiquidityBridgeContractImpl_GetBalance(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 	lbcMock := &mocks.LbcAdapterMock{}
 	signerMock := &mocks.TransactionSignerMock{}
@@ -760,9 +762,21 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true, modifiers...)
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(tx, nil).Once()
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewBigWei(big.NewInt(1234)),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
@@ -770,14 +784,25 @@ func TestLiquidityBridgeContractImpl_CallForUser(t *testing.T) {
 		lbcMock.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(nil, assert.AnError).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Empty(t, result.TransactionHash)
 	})
 	t.Run("Error handling (callForUser tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, modifiers...)
 		lbcMock.On("CallForUser", mock.Anything, parsedPeginQuote).Return(tx, nil).Once()
 		result, err := lbc.CallForUser(txConfig, peginQuote)
 		require.ErrorContains(t, err, "call for user error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(1234),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+		assert.Equal(t, expectedReceipt, result)
 	})
 	t.Run("Error handling (invalid quote)", func(t *testing.T) {
 		invalid := peginQuote
@@ -853,9 +878,23 @@ func TestLiquidityBridgeContractImpl_RegisterPegin(t *testing.T) {
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(tx, nil).Once()
+
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0), // default value, no modifier applied
+			GasPrice:          entities.NewWei(20000000000),
+		}
+
 		result, err := lbc.RegisterPegin(registerParams)
+
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -929,7 +968,19 @@ func TestLiquidityBridgeContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		// Should return populated receipt even on revert (for gas tracking)
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1025,7 +1076,21 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+			Logs:              []blockchain.TransactionLog{},
+		}
+
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1097,7 +1162,21 @@ func TestLiquidityBridgeContractImpl_RefundPegout(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := lbc.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+			Logs:              []blockchain.TransactionLog{},
+		}
+
+		assert.Equal(t, expectedReceipt, result)
 		lbcMock.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -1481,12 +1560,19 @@ func prepareTxMocks(
 
 	tx := geth.NewTx(legacyTx)
 
-	receipt := &geth.Receipt{}
-	receipt.TxHash = tx.Hash()
+	receipt := &geth.Receipt{
+		TxHash:            tx.Hash(),
+		BlockNumber:       big.NewInt(123),
+		BlockHash:         common.HexToHash("0x456"),
+		GasUsed:           21000,
+		CumulativeGasUsed: 50000,
+		EffectiveGasPrice: big.NewInt(20000000000),
+	}
 	if success == true {
 		receipt.Status = 1
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
+	mockClient.On("TransactionByHash", mock.Anything, mock.Anything).Return(tx, false, nil).Once()
 	signerMock.On("Sign", mock.Anything, mock.Anything).Return(tx, nil).Once()
 	signerMock.On("Address").Return(parsedAddress)
 	return tx
