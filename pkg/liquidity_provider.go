@@ -241,13 +241,13 @@ type ServerInfoDTO struct {
 type SummaryDataDTO struct {
 	TotalQuotesCount          int64    `json:"totalQuotesCount"`
 	AcceptedQuotesCount       int64    `json:"acceptedQuotesCount"`
+	TotalAcceptedQuotesAmount *big.Int `json:"totalAcceptedQuotesAmount"`
 	PaidQuotesCount           int64    `json:"paidQuotesCount"`
 	PaidQuotesAmount          *big.Int `json:"paidQuotesAmount"`
-	TotalAcceptedQuotedAmount *big.Int `json:"totalAcceptedQuotedAmount"`
-	TotalFeesCollected        *big.Int `json:"totalFeesCollected"`
 	RefundedQuotesCount       int64    `json:"refundedQuotesCount"`
-	TotalPenaltyAmount        *big.Int `json:"totalPenaltyAmount"`
-	LpEarnings                *big.Int `json:"lpEarnings"`
+	TotalRefundedQuotesAmount *big.Int `json:"totalRefundedQuotesAmount"`
+	PenalizationsCount        int64    `json:"penalizationsCount"`
+	TotalPenalizationsAmount  *big.Int `json:"totalPenalizationsAmount"`
 }
 
 type SummaryResultDTO struct {
@@ -259,13 +259,13 @@ func ToSummaryDataDTO(data reports.SummaryData) SummaryDataDTO {
 	return SummaryDataDTO{
 		TotalQuotesCount:          data.TotalQuotesCount,
 		AcceptedQuotesCount:       data.AcceptedQuotesCount,
+		TotalAcceptedQuotesAmount: data.TotalAcceptedQuotesAmount.AsBigInt(),
 		PaidQuotesCount:           data.PaidQuotesCount,
 		PaidQuotesAmount:          data.PaidQuotesAmount.AsBigInt(),
-		TotalAcceptedQuotedAmount: data.TotalAcceptedQuotedAmount.AsBigInt(),
-		TotalFeesCollected:        data.TotalFeesCollected.AsBigInt(),
 		RefundedQuotesCount:       data.RefundedQuotesCount,
-		TotalPenaltyAmount:        data.TotalPenaltyAmount.AsBigInt(),
-		LpEarnings:                data.LpEarnings.AsBigInt(),
+		TotalRefundedQuotesAmount: data.TotalRefundedQuotesAmount.AsBigInt(),
+		PenalizationsCount:        data.PenalizationsCount,
+		TotalPenalizationsAmount:  data.TotalPenalizationsAmount.AsBigInt(),
 	}
 }
 

@@ -507,24 +507,24 @@ func TestToSummaryDataDTO(t *testing.T) {
 	data := reports.SummaryData{
 		TotalQuotesCount:          10,
 		AcceptedQuotesCount:       8,
+		TotalAcceptedQuotesAmount: entities.NewWei(2500),
 		PaidQuotesCount:           5,
 		PaidQuotesAmount:          entities.NewWei(1500),
-		TotalAcceptedQuotedAmount: entities.NewWei(2500),
-		TotalFeesCollected:        entities.NewWei(300),
 		RefundedQuotesCount:       2,
-		TotalPenaltyAmount:        entities.NewWei(50),
-		LpEarnings:                entities.NewWei(250),
+		TotalRefundedQuotesAmount: entities.NewWei(800),
+		PenalizationsCount:        3,
+		TotalPenalizationsAmount:  entities.NewWei(50),
 	}
 	dto := pkg.ToSummaryDataDTO(data)
 	assert.Equal(t, data.TotalQuotesCount, dto.TotalQuotesCount)
 	assert.Equal(t, data.AcceptedQuotesCount, dto.AcceptedQuotesCount)
+	assert.Equal(t, 0, data.TotalAcceptedQuotesAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotesAmount))
 	assert.Equal(t, data.PaidQuotesCount, dto.PaidQuotesCount)
 	assert.Equal(t, 0, data.PaidQuotesAmount.AsBigInt().Cmp(dto.PaidQuotesAmount))
-	assert.Equal(t, 0, data.TotalAcceptedQuotedAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotedAmount))
-	assert.Equal(t, 0, data.TotalFeesCollected.AsBigInt().Cmp(dto.TotalFeesCollected))
 	assert.Equal(t, data.RefundedQuotesCount, dto.RefundedQuotesCount)
-	assert.Equal(t, 0, data.TotalPenaltyAmount.AsBigInt().Cmp(dto.TotalPenaltyAmount))
-	assert.Equal(t, 0, data.LpEarnings.AsBigInt().Cmp(dto.LpEarnings))
+	assert.Equal(t, 0, data.TotalRefundedQuotesAmount.AsBigInt().Cmp(dto.TotalRefundedQuotesAmount))
+	assert.Equal(t, data.PenalizationsCount, dto.PenalizationsCount)
+	assert.Equal(t, 0, data.TotalPenalizationsAmount.AsBigInt().Cmp(dto.TotalPenalizationsAmount))
 	test.AssertNonZeroValues(t, dto)
 }
 
@@ -532,24 +532,24 @@ func TestToSummaryResultDTO(t *testing.T) {
 	pegin := reports.SummaryData{
 		TotalQuotesCount:          3,
 		AcceptedQuotesCount:       2,
+		TotalAcceptedQuotesAmount: entities.NewWei(800),
 		PaidQuotesCount:           1,
 		PaidQuotesAmount:          entities.NewWei(500),
-		TotalAcceptedQuotedAmount: entities.NewWei(800),
-		TotalFeesCollected:        entities.NewWei(100),
-		RefundedQuotesCount:       0,
-		TotalPenaltyAmount:        entities.NewWei(0),
-		LpEarnings:                entities.NewWei(100),
+		RefundedQuotesCount:       1,
+		TotalRefundedQuotesAmount: entities.NewWei(300),
+		PenalizationsCount:        1,
+		TotalPenalizationsAmount:  entities.NewWei(15),
 	}
 	pegout := reports.SummaryData{
 		TotalQuotesCount:          4,
 		AcceptedQuotesCount:       3,
+		TotalAcceptedQuotesAmount: entities.NewWei(1200),
 		PaidQuotesCount:           2,
 		PaidQuotesAmount:          entities.NewWei(900),
-		TotalAcceptedQuotedAmount: entities.NewWei(1200),
-		TotalFeesCollected:        entities.NewWei(150),
 		RefundedQuotesCount:       1,
-		TotalPenaltyAmount:        entities.NewWei(20),
-		LpEarnings:                entities.NewWei(130),
+		TotalRefundedQuotesAmount: entities.NewWei(400),
+		PenalizationsCount:        1,
+		TotalPenalizationsAmount:  entities.NewWei(20),
 	}
 	result := reports.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
 	dto := pkg.ToSummaryResultDTO(result)

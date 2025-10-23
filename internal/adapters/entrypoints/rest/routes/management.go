@@ -58,9 +58,13 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
 		},
 		{
-			Path:    "/reports/summaries",
-			Method:  http.MethodGet,
-			Handler: handlers.NewGetReportSummariesHandler(useCaseRegistry.SummariesUseCase()),
+			Path:   "/reports/summaries",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportSummariesHandler(
+				handlers.SingleFlightGroup,
+				handlers.SummariesReportSingleFlightKey,
+				useCaseRegistry.SummariesUseCase(),
+			),
 		},
 		{
 			Path:    "/configuration",
