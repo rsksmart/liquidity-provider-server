@@ -27,4 +27,7 @@ build/
 !sample-config.env
 /**/*.env
 /**/.env*
-.cursorrules
+
+/coverage/
+
+/.cursor/

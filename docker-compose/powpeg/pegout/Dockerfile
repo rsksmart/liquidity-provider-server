@@ -6,8 +6,8 @@ RUN apt-get update -y && \
 
 WORKDIR /code/powpeg
 
-ARG POWPEG_RELEASE="LOVELL"
-ARG POWPEG_VERSION="7.1.0.0"
+ARG POWPEG_RELEASE="REED"
+ARG POWPEG_VERSION="8.0.0.1"
 
 RUN gitrev="${POWPEG_RELEASE}-${POWPEG_VERSION}" && \
     git init && \

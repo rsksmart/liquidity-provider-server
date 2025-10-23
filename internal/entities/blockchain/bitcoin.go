@@ -2,13 +2,14 @@ package blockchain
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
 type BtcAddressType string
@@ -117,7 +118,7 @@ type BitcoinWallet interface {
 	entities.Closeable
 	EstimateTxFees(toAddress string, value *entities.Wei) (BtcFeeEstimation, error)
 	GetBalance() (*entities.Wei, error)
-	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error)
+	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	ImportAddress(address string) error
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
 	Address() string
@@ -206,4 +207,9 @@ type MerkleBranch struct {
 type BtcFeeEstimation struct {
 	Value   *entities.Wei
 	FeeRate *utils.BigFloat
+}
+
+type BitcoinTransactionResult struct {
+	Hash string
+	Fee  *entities.Wei
 }

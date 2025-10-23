@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"regexp"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -171,6 +172,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	} else if err != nil {
 		return nil, err
 	}
+	result.FillZeroValues()
 	logDbInteraction(Read, result)
 	return &result, nil
 }
@@ -282,8 +284,62 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
 	}
+	for i := range result {
+		result[i].FillZeroValues()
+	}
 	logDbInteraction(Read, result)
 	return result, nil
+}
+
+func (repo *pegoutMongoRepository) GetQuotesByState(ctx context.Context, states ...quote.PegoutState) ([]quote.PegoutQuote, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	retainedQuotes, err := repo.GetRetainedQuoteByState(ctx, states...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(retainedQuotes) == 0 {
+		result := make([]quote.PegoutQuote, 0)
+		logDbInteraction(Read, result)
+		return result, nil
+	}
+
+	quoteHashes := make([]string, len(retainedQuotes))
+	for i, rq := range retainedQuotes {
+		quoteHashes[i] = rq.QuoteHash
+	}
+
+	storedQuotes, err := repo.fetchQuotesByHashes(dbCtx, quoteHashes)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]quote.PegoutQuote, len(storedQuotes))
+	for i, stored := range storedQuotes {
+		result[i] = stored.PegoutQuote
+	}
+
+	logDbInteraction(Read, len(result))
+	return result, nil
+}
+
+func (repo *pegoutMongoRepository) fetchQuotesByHashes(ctx context.Context, quoteHashes []string) ([]StoredPegoutQuote, error) {
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+	filter := bson.D{{Key: "hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var storedQuotes []StoredPegoutQuote
+	if err = cursor.All(ctx, &storedQuotes); err != nil {
+		return nil, err
+	}
+
+	return storedQuotes, nil
 }
 
 func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []string) (uint, error) {
@@ -476,6 +532,10 @@ func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quot
 		return nil, err
 	}
 
+	for i := range retainedQuotes {
+		retainedQuotes[i].FillZeroValues()
+	}
+
 	return retainedQuotes, nil
 }
 
@@ -498,6 +558,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Conte
 	}
 	if err = rows.All(ctx, &result); err != nil {
 		return nil, err
+	}
+	for i := range result {
+		result[i].FillZeroValues()
 	}
 	logDbInteraction(Read, result)
 	return result, nil
@@ -523,6 +586,77 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 	if err = docs.All(ctx, &result); err != nil {
 		return nil, err
 	}
+	for i := range result {
+		result[i].FillZeroValues()
+	}
 	logDbInteraction(Read, result)
+	return result, nil
+}
+
+func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PegoutState, startDate, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(PegoutQuoteCollection)
+
+	// Single aggregation pipeline that:
+	// 1. Filters by date (most selective filter)
+	// 2. Joins with retained quotes
+	// 3. Filters by state
+	pipeline := mongo.Pipeline{
+		// Stage 1: Filter by date (most selective)
+		{{Key: "$match", Value: bson.M{
+			"agreement_timestamp": bson.M{
+				"$gte": startDate.Unix(),
+				"$lte": endDate.Unix(),
+			},
+		}}},
+		// Stage 2: Lookup retained quotes
+		{{Key: "$lookup", Value: bson.M{
+			"from":         RetainedPegoutQuoteCollection,
+			"localField":   "hash",
+			"foreignField": "quote_hash",
+			"as":           "retained",
+		}}},
+		// Stage 3: Unwind retained array (should have 0 or 1 element)
+		{{Key: "$unwind", Value: bson.M{
+			"path":                       "$retained",
+			"preserveNullAndEmptyArrays": false, // Only keep quotes with retained data
+		}}},
+		// Stage 4: Filter by state
+		{{Key: "$match", Value: bson.M{
+			"retained.state": bson.M{"$in": states},
+		}}},
+	}
+
+	cursor, err := collection.Aggregate(dbCtx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(dbCtx)
+
+	result := make([]quote.PegoutQuoteWithRetained, 0)
+	for cursor.Next(dbCtx) {
+		var doc struct {
+			StoredPegoutQuote `bson:",inline"`
+			Retained          quote.RetainedPegoutQuote `bson:"retained"`
+		}
+
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+
+		doc.Retained.FillZeroValues()
+		result = append(result, quote.PegoutQuoteWithRetained{
+			Quote:         doc.PegoutQuote,
+			RetainedQuote: doc.Retained,
+		})
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	logDbInteraction(Read, len(result))
 	return result, nil
 }
