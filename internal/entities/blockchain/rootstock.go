@@ -17,6 +17,10 @@ const (
 	RskChainHeightErrorTemplate = "error getting Rootstock chain height: %v"
 )
 
+const (
+	RskZeroAddress = "0x0000000000000000000000000000000000000000"
+)
+
 var (
 	rskAddressRegex       = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")

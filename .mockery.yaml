@@ -44,6 +44,8 @@ packages:
       SetGeneralConfigUseCase:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
+      RecommendedPegoutUseCase:
+      RecommendedPeginUseCase:
       GetRevenueReportUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
