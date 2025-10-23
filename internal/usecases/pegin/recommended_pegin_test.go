@@ -31,7 +31,7 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lbc.On("GetAddress").Return(lbcAddress)
 	lbc.On("HashPeginQuote", mock.Anything).Return("0x0102030405", nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
