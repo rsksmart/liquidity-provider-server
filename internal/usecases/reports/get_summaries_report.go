@@ -21,11 +21,11 @@ type SummaryResult struct {
 
 type SummaryData struct {
 	TotalQuotesCount          int64         `json:"totalQuotesCount"`
-	AcceptedQuotesCount       int64         `json:"acceptedQuotesCount"`
+	AcceptedQuotesCount       int64         `json:"acceptedQuotesCount"` // value + gas fees
 	TotalAcceptedQuotesAmount *entities.Wei `json:"totalAcceptedQuotesAmount"`
-	PaidQuotesCount           int64         `json:"paidQuotesCount"`
+	PaidQuotesCount           int64         `json:"paidQuotesCount"` // value + gas fees
 	PaidQuotesAmount          *entities.Wei `json:"paidQuotesAmount"`
-	RefundedQuotesCount       int64         `json:"refundedQuotesCount"`
+	RefundedQuotesCount       int64         `json:"refundedQuotesCount"` // value + gas fees + call fee
 	TotalRefundedQuotesAmount *entities.Wei `json:"totalRefundedQuotesAmount"`
 	PenalizationsCount        int64         `json:"penalizationsCount"`
 	TotalPenalizationsAmount  *entities.Wei `json:"totalPenalizationsAmount"`
@@ -95,7 +95,6 @@ func getAllPeginStates() []quote.PeginState {
 func getPeginPaidStates() map[quote.PeginState]bool {
 	return map[quote.PeginState]bool{
 		quote.PeginStateCallForUserSucceeded:   true,
-		quote.PeginStateCallForUserFailed:      true,
 		quote.PeginStateRegisterPegInSucceeded: true,
 		quote.PeginStateRegisterPegInFailed:    true,
 	}
@@ -123,16 +122,20 @@ func processPeginQuotes(quotesWithRetained []quote.PeginQuoteWithRetained, paidS
 		if quoteWithRetained.RetainedQuote.QuoteHash != "" {
 			data.AcceptedQuotesCount++
 			data.TotalAcceptedQuotesAmount.Add(data.TotalAcceptedQuotesAmount, quoteWithRetained.Quote.Value)
+			data.TotalAcceptedQuotesAmount.Add(data.TotalAcceptedQuotesAmount, quoteWithRetained.Quote.GasFee)
 			acceptedHashes = append(acceptedHashes, quoteWithRetained.RetainedQuote.QuoteHash)
 
 			if paidStates[quoteWithRetained.RetainedQuote.State] {
 				data.PaidQuotesCount++
 				data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteWithRetained.Quote.Value)
+				data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteWithRetained.Quote.GasFee)
 			}
 
 			if refundedStates[quoteWithRetained.RetainedQuote.State] {
 				data.RefundedQuotesCount++
 				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.Value)
+				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.GasFee)
+				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.CallFee)
 			}
 		}
 	}
@@ -181,7 +184,6 @@ func getAllPegoutStates() []quote.PegoutState {
 func getPegoutPaidStates() map[quote.PegoutState]bool {
 	return map[quote.PegoutState]bool{
 		quote.PegoutStateSendPegoutSucceeded:   true,
-		quote.PegoutStateSendPegoutFailed:      true,
 		quote.PegoutStateRefundPegOutSucceeded: true,
 		quote.PegoutStateRefundPegOutFailed:    true,
 		quote.PegoutStateBridgeTxSucceeded:     true,
@@ -215,16 +217,20 @@ func processPegoutQuotes(quotesWithRetained []quote.PegoutQuoteWithRetained, pai
 		if quoteWithRetained.RetainedQuote.QuoteHash != "" {
 			data.AcceptedQuotesCount++
 			data.TotalAcceptedQuotesAmount.Add(data.TotalAcceptedQuotesAmount, quoteWithRetained.Quote.Value)
+			data.TotalAcceptedQuotesAmount.Add(data.TotalAcceptedQuotesAmount, quoteWithRetained.Quote.GasFee)
 			acceptedHashes = append(acceptedHashes, quoteWithRetained.RetainedQuote.QuoteHash)
 
 			if paidStates[quoteWithRetained.RetainedQuote.State] {
 				data.PaidQuotesCount++
 				data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteWithRetained.Quote.Value)
+				data.PaidQuotesAmount.Add(data.PaidQuotesAmount, quoteWithRetained.Quote.GasFee)
 			}
 
 			if refundedStates[quoteWithRetained.RetainedQuote.State] {
 				data.RefundedQuotesCount++
 				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.Value)
+				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.GasFee)
+				data.TotalRefundedQuotesAmount.Add(data.TotalRefundedQuotesAmount, quoteWithRetained.Quote.CallFee)
 			}
 		}
 	}
