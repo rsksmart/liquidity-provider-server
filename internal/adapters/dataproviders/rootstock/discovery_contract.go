@@ -73,7 +73,6 @@ func (discovery *discoveryContractImpl) SetProviderStatus(id uint64, newStatus b
 
 func (discovery *discoveryContractImpl) GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error) {
 	var providerType liquidity_provider.ProviderType
-	const lbcProviderNotRegisteredError = "ProviderNotRegistered"
 
 	if !common.IsHexAddress(address) {
 		return liquidity_provider.RegisteredLiquidityProvider{}, blockchain.InvalidAddressError
@@ -200,7 +199,16 @@ func (discovery *discoveryContractImpl) IsOperational(providerType liquidity_pro
 
 	return rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
 		func() (bool, error) {
-			return discovery.contract.IsOperational(opts, parsedProviderType, parsedAddress)
+			result, revert := discovery.contract.IsOperational(opts, parsedProviderType, parsedAddress)
+			parsedRevert, parseErr := ParseRevertReason(discovery.abis.Flyover, revert)
+			if parseErr != nil && parsedRevert == nil {
+				return false, fmt.Errorf("error parsing IsOperational result: %w", err)
+			} else if parsedRevert != nil && strings.EqualFold(lbcProviderNotRegisteredError, parsedRevert.Name) {
+				return false, nil
+			} else if parsedRevert != nil {
+				return false, fmt.Errorf("IsOperational reverted with: %s", parsedRevert.Name)
+			}
+			return result, revert
 		})
 }
 
