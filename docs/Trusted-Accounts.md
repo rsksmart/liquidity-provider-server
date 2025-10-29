@@ -2,7 +2,6 @@
 
 ## 🧠 Summary
 The **Liquidity Provider Trusted Accounts** feature extends the existing **Liquidity Provider Server (LPS)** and **FlyoverSDK** to allow Liquidity Providers (LPs) to configure a set of trusted Rootstock accounts that can bypass certain validation checks — such as the **reCAPTCHA** verification — during **PegIn** or **PegOut** operations.
-The account paying for the operation doesn’t need to be the same as the whitelisted account, but a valid signature of the quote hash from the trusted account must be provided.
 
 This functionality is part of the **Flyover Protocol**, aimed at enabling automated integrations for partners and liquidity providers who operate frequently.
 
@@ -17,6 +16,7 @@ This feature adds functionality to two existing components:
 
 ### Design Notes
 - Backward compatible with existing FlyoverSDK versions `>= v1.7.0` and LPS versions `>= v2.3.0`.
+- The account paying for the operation doesn’t need to be the same as the whitelisted account, but a valid signature of the quote hash from the trusted account must be provided.
 
 ---
 
