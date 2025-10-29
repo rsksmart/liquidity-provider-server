@@ -163,14 +163,14 @@ func (useCase *RecommendedPeginUseCase) validateRecommendedValue(
 
 	if err = config.ValidateAmount(entities.NewBigWei(result)); err != nil {
 		err = fmt.Errorf("recommended amount %s is out of range: %w", entities.NewBigWei(result).String(), err)
-		return usecases.WrapUseCaseError(usecases.RecommendedPegoutId, err)
+		return usecases.WrapUseCaseError(usecases.RecommendedPeginId, err)
 	}
 
 	if err = useCase.peginProvider.HasPeginLiquidity(ctx, entities.NewBigWei(result)); err != nil {
-		return usecases.WrapUseCaseError(usecases.RecommendedPegoutId, usecases.NoLiquidityError)
+		return usecases.WrapUseCaseError(usecases.RecommendedPeginId, usecases.NoLiquidityError)
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.RecommendedPegoutId, useCase.contracts.Bridge, entities.NewBigWei(result)); err != nil {
+	if err = usecases.ValidateMinLockValue(usecases.RecommendedPeginId, useCase.contracts.Bridge, entities.NewBigWei(result)); err != nil {
 		err = fmt.Errorf("recommended amount %s is below the minimum lock value: %w", entities.NewBigWei(result).String(), err)
 		return err
 	}
