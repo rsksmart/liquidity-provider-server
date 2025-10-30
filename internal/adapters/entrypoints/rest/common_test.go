@@ -99,7 +99,9 @@ func TestDecodeRequestError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var body rest.ErrorResponse
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Contains(t, body.Message, test.AnyString)
+	assert.Equal(t, "Error decoding request", body.Message)
+	assert.Contains(t, body.Details, "error")
+	assert.Contains(t, body.Details["error"], test.AnyString)
 	assert.True(t, body.Recoverable)
 }
 
