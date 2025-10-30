@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"strconv"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -174,7 +175,7 @@ func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *ent
 	if minLockTxValue, err = bridge.GetMinimumLockTxValue(); err != nil {
 		return WrapUseCaseError(useCase, err)
 	}
-	if value.Cmp(minLockTxValue) < 0 {
+	if value.Cmp(minLockTxValue) <= 0 {
 		errorArgs["minimum"] = minLockTxValue.String()
 		errorArgs["value"] = value.String()
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
