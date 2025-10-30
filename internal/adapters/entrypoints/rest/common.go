@@ -59,6 +59,9 @@ func ConfirmationsMapValidator(fl validator.FieldLevel) bool {
 	if !ok {
 		return false
 	}
+	if len(confirmations) == 0 {
+		return false
+	}
 	for key := range confirmations {
 		bigInt, valid := new(big.Int).SetString(key, 10)
 		if !valid || bigInt.Sign() <= 0 {
@@ -202,6 +205,7 @@ func DecodeRequest[T any](w http.ResponseWriter, req *http.Request, body *T) err
 	return nil
 }
 
+// nolint: cyclop
 func getValidationMessage(field validator.FieldError) string {
 	switch field.Tag() {
 	case "required":
@@ -220,6 +224,8 @@ func getValidationMessage(field validator.FieldError) string {
 		return "must be a positive integer"
 	case "not_blank":
 		return "cannot be blank"
+	case "confirmations_map":
+		return "must not be empty"
 	default:
 		return "validation failed: " + field.Tag()
 	}

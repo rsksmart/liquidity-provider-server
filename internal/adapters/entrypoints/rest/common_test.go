@@ -393,7 +393,7 @@ func TestConfirmationsMapValidator(t *testing.T) {
 		{
 			name:        "empty map",
 			input:       map[string]uint16{},
-			wantIsValid: true,
+			wantIsValid: false,
 		},
 	}
 
