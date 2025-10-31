@@ -72,7 +72,7 @@ func TestSetPeginConfigHandler(t *testing.T) {
 		handler(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Validation error")
-		assert.Contains(t, w.Body.String(), "requested amount below bridge")
+		assert.Contains(t, w.Body.String(), "requested amount should be greater than bridge")
 	})
 
 	t.Run("should return bad request for negative wei value", func(t *testing.T) {

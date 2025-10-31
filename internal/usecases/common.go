@@ -83,7 +83,7 @@ const (
 
 var (
 	NonRecoverableError             = errors.New("non recoverable")
-	TxBelowMinimumError             = errors.New("requested amount below bridge's min transaction value")
+	TxBelowMinimumError             = errors.New("requested amount should be greater than bridge's min transaction value")
 	RskAddressNotSupportedError     = errors.New("rsk address not supported")
 	QuoteNotFoundError              = errors.New("quote not found")
 	QuoteNotAcceptedError           = errors.New("quote not accepted")
