@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -509,7 +510,12 @@ func TestAddTrustedAccountHandler_DecimalValueRejection(t *testing.T) {
 			var errorResponse rest.ErrorResponse
 			err = json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 			require.NoError(t, err, "Should be able to unmarshal error response")
-			assert.Contains(t, errorResponse.Message, tc.errorSubstring, "Error message should contain expected substring")
+
+			assert.Equal(t, "Error decoding request", errorResponse.Message, "Message should be user-friendly")
+			assert.NotEmpty(t, errorResponse.Details, "Details field should not be empty")
+
+			detailsStr := fmt.Sprintf("%v", errorResponse.Details)
+			assert.Contains(t, detailsStr, tc.errorSubstring, "Details should contain technical error")
 
 			repo.AssertNotCalled(t, "AddTrustedAccount")
 			signer.AssertNotCalled(t, "SignBytes")

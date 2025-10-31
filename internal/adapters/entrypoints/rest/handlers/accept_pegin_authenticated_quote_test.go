@@ -82,7 +82,9 @@ func TestAcceptPeginAuthenticatedQuoteHandlerValidationErrors(t *testing.T) {
 		err := json.NewDecoder(recorder.Body).Decode(&errorResponse)
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
-		assert.Contains(t, errorResponse["message"], "Error decoding request")
+		assert.Equal(t, "Error decoding request", errorResponse["message"])
+		assert.Contains(t, errorResponse, "details")
+		assert.NotEmpty(t, errorResponse["details"])
 	})
 
 	t.Run("should handle request validation failure - missing signature", func(t *testing.T) {

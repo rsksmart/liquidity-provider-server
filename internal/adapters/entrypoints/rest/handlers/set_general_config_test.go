@@ -1,16 +1,18 @@
 package handlers_test
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
-	"github.com/rsksmart/liquidity-provider-server/test/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
+//nolint:funlen
 func TestSetGeneralConfigHandler(t *testing.T) {
 	t.Run("should return success response if there are no errors", func(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
@@ -45,6 +47,30 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if btcConfirmations is empty map", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {}, "rskConfirmations": {"10": 20}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "must not be empty")
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if rskConfirmations is empty map", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "must not be empty")
 		useCase.AssertNotCalled(t, "Run")
 	})
 	t.Run("should return server internal error if the request validation fails", func(t *testing.T) {
