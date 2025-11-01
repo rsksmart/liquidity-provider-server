@@ -210,6 +210,28 @@ jobs:
           rm ${TEMP_FILE}
           cp ${TRANSFORMED_FILE} ${BASE_DST}/advanced-operations.md
 
+          #####################################
+          #  Trusted accounts                 #
+          #####################################
+          TEMP_FILE="trusted-accounts.md"
+          tail -n +2 ${BASE_SRC}/docs/Trusted-Accounts.md > ${TEMP_FILE}
+          TRANSFORMED_FILE="transformed/trusted-accounts.md"
+          echo "---" > ${TRANSFORMED_FILE}
+          echo "sidebar_label: Trusted Accounts feature" >> ${TRANSFORMED_FILE}
+          echo "sidebar_position: 240" >> ${TRANSFORMED_FILE}
+          echo "title: Flyover SDK - Trusted Accounts" >> ${TRANSFORMED_FILE}
+          echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg, automation]" >> ${TRANSFORMED_FILE}
+          echo "description: Trusted accounts allowed to perform automated PegIn and PegOut operations." >> ${TRANSFORMED_FILE}
+          echo "---" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          echo ":::info[Note]" >> ${TRANSFORMED_FILE}
+          echo "If you wish to suggest changes on this document, please open a PR on the [Liquidity Provider Server Repository](https://github.com/rsksmart/liquidity-provider-server.git)" >> ${TRANSFORMED_FILE}
+          echo ":::" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
+          rm ${TEMP_FILE}
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/trusted-accounts.md
+
       # Step 3: Commit and Push Changes to Devportal Repository
       - name: Commit and Push Changes
         env:
