@@ -72,10 +72,10 @@ func TestPeginMongoRepository_InsertQuote(t *testing.T) {
 		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(quoteCollection)
 		db.EXPECT().Collection(mongo.PeginCreationDataCollection).Return(creationDataCollection)
 		quoteCollection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginQuote) bool {
-			return q.Hash == test.AnyString && reflect.TypeOf(quote.PeginQuote{}).NumField() == test.CountNonZeroValues(q.PeginQuote)
+			return q.Hash == test.AnyString && reflect.TypeFor[quote.PeginQuote]().NumField() == test.CountNonZeroValues(q.PeginQuote)
 		})).Return(nil, nil).Once()
 		creationDataCollection.EXPECT().InsertOne(mock.Anything, mock.MatchedBy(func(q mongo.StoredPeginCreationData) bool {
-			return q.Hash == test.AnyString && reflect.TypeOf(quote.PeginCreationData{}).NumField() == test.CountNonZeroValues(q.PeginCreationData)
+			return q.Hash == test.AnyString && reflect.TypeFor[quote.PeginCreationData]().NumField() == test.CountNonZeroValues(q.PeginCreationData)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
