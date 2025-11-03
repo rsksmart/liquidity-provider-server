@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"strconv"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -82,7 +83,7 @@ const (
 
 var (
 	NonRecoverableError             = errors.New("non recoverable")
-	TxBelowMinimumError             = errors.New("requested amount below bridge's min transaction value")
+	TxBelowMinimumError             = errors.New("requested amount should be greater than bridge's min transaction value")
 	RskAddressNotSupportedError     = errors.New("rsk address not supported")
 	QuoteNotFoundError              = errors.New("quote not found")
 	QuoteNotAcceptedError           = errors.New("quote not accepted")
@@ -174,7 +175,7 @@ func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *ent
 	if minLockTxValue, err = bridge.GetMinimumLockTxValue(); err != nil {
 		return WrapUseCaseError(useCase, err)
 	}
-	if value.Cmp(minLockTxValue) < 0 {
+	if value.Cmp(minLockTxValue) <= 0 {
 		errorArgs["minimum"] = minLockTxValue.String()
 		errorArgs["value"] = value.String()
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)

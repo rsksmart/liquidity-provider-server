@@ -3,11 +3,12 @@ package usecases_test
 import (
 	"context"
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -108,16 +109,20 @@ func TestValidateMinLockValue(t *testing.T) {
 	bridge := &bridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.SatoshiToWei(oneBtcInSatoshi), nil)
 
+	// Value must be strictly greater
 	err := u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi))
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"1000000000000000000\"}", err.Error())
 
+	// Value greater than minimum should succeed
 	err = u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi+1))
 	require.NoError(t, err)
 
+	// Value less than minimum should fail
 	value := new(entities.Wei).Sub(entities.SatoshiToWei(oneBtcInSatoshi), entities.NewWei(1))
 	err = u.ValidateMinLockValue(useCase, bridge, value)
 	require.Error(t, err)
-	assert.Equal(t, "anyUseCase: requested amount below bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
 }
 
 func TestSignConfiguration(t *testing.T) {
