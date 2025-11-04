@@ -456,6 +456,21 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 	return result, nil
 }
 
+// GetQuotesWithRetainedByStateAndDate retrieves pegin quotes filtered by state and date range,
+// optionally joined with their retained data.
+//
+// IMPORTANT: This method may return quotes WITHOUT retained data (non-accepted quotes).
+// The aggregation pipeline includes quotes that have no matching RetainedPeginQuote
+// record. For these quotes, the RetainedQuote field will be a zero-valued struct:
+//   - QuoteHash: "" (empty string)
+//   - DepositAddress: ""
+//   - State: ""
+//   - All numeric fields: 0
+//   - All Wei pointers: set to NewWei(0) by FillZeroValues()
+//
+// The states parameter filters by RetainedQuote state when retained data exists, or
+// includes quotes without retained data regardless of the provided states.
+//
 // TODO: add pagination to this method
 func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PeginState, startDate, endDate time.Time) ([]quote.PeginQuoteWithRetained, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)

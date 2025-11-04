@@ -593,6 +593,20 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 	return result, nil
 }
 
+// GetQuotesWithRetainedByStateAndDate retrieves pegout quotes filtered by state and date range,
+// optionally joined with their retained data.
+//
+// IMPORTANT: This method may return quotes WITHOUT retained data (non-accepted quotes).
+// The aggregation pipeline includes quotes that have no matching RetainedPegoutQuote
+// record. For these quotes, the RetainedQuote field will be a zero-valued struct:
+//   - QuoteHash: "" (empty string)
+//   - DepositAddress: ""
+//   - State: ""
+//   - All numeric fields: 0
+//   - All Wei pointers: set to NewWei(0)
+//
+// The states parameter filters by RetainedQuote state when retained data exists, or
+// includes quotes without retained data regardless of the provided states.
 func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []quote.PegoutState, startDate, endDate time.Time) ([]quote.PegoutQuoteWithRetained, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
