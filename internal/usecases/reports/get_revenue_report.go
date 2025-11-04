@@ -152,7 +152,22 @@ func (useCase *GetRevenueReportUseCase) getPeginQuotes(
 	endDate time.Time,
 ) ([]quote.PeginQuoteWithRetained, error) {
 	peginStates := []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}
-	return useCase.peginQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, peginStates, startDate, endDate)
+	quotes, err := useCase.peginQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, peginStates, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out quotes without retained data (non-accepted quotes).
+	// The repository's aggregation pipeline may include quotes without retained data
+	// due to its design for other use cases. Revenue report only processes completed
+	// transactions that have valid retained quote data.
+	result := make([]quote.PeginQuoteWithRetained, 0, len(quotes))
+	for _, q := range quotes {
+		if q.RetainedQuote.QuoteHash != "" {
+			result = append(result, q)
+		}
+	}
+	return result, nil
 }
 
 func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
@@ -161,7 +176,22 @@ func (useCase *GetRevenueReportUseCase) getPegoutQuotes(
 	endDate time.Time,
 ) ([]quote.PegoutQuoteWithRetained, error) {
 	pegoutStates := []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}
-	return useCase.pegoutQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, pegoutStates, startDate, endDate)
+	quotes, err := useCase.pegoutQuoteRepository.GetQuotesWithRetainedByStateAndDate(ctx, pegoutStates, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out quotes without retained data (non-accepted quotes).
+	// The repository's aggregation pipeline may include quotes without retained data
+	// due to its design for other use cases. Revenue report only processes completed
+	// transactions that have valid retained quote data.
+	result := make([]quote.PegoutQuoteWithRetained, 0, len(quotes))
+	for _, q := range quotes {
+		if q.RetainedQuote.QuoteHash != "" {
+			result = append(result, q)
+		}
+	}
+	return result, nil
 }
 
 func (useCase *GetRevenueReportUseCase) getPenalizations(
