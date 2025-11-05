@@ -718,3 +718,151 @@ func TestGetRevenueReportUseCase_Run_MultipleQuotesWithComplexScenario(t *testin
 	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent, "TotalGasSpent mismatch")
 	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations, "TotalPenalizations mismatch")
 }
+
+// nolint:funlen
+func TestGetRevenueReportUseCase_Run_ExcludesQuotesWithoutRetainedData(t *testing.T) {
+	ctx := context.Background()
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)
+
+	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
+		{
+			Quote: quote.PeginQuote{
+				CallFee: entities.NewWei(1000),
+				GasFee:  entities.NewWei(350000),
+			},
+			RetainedQuote: quote.RetainedPeginQuote{
+				QuoteHash:             "valid-pegin-hash",
+				CallForUserGasUsed:    21000,
+				CallForUserGasPrice:   entities.NewWei(5),
+				RegisterPeginGasUsed:  50000,
+				RegisterPeginGasPrice: entities.NewWei(4),
+			},
+		},
+		{
+			Quote: quote.PeginQuote{
+				CallFee: entities.NewWei(2000),
+				GasFee:  entities.NewWei(500000),
+			},
+			RetainedQuote: quote.RetainedPeginQuote{
+				QuoteHash: "",
+			},
+		},
+	}
+
+	pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
+		{
+			Quote: quote.PegoutQuote{
+				CallFee: entities.NewWei(1500),
+				GasFee:  entities.NewWei(300000),
+			},
+			RetainedQuote: quote.RetainedPegoutQuote{
+				QuoteHash:            "valid-pegout-hash",
+				RefundPegoutGasUsed:  40000,
+				RefundPegoutGasPrice: entities.NewWei(4),
+				BridgeRefundGasUsed:  30000,
+				BridgeRefundGasPrice: entities.NewWei(3),
+				SendPegoutBtcFee:     entities.NewWei(1000),
+			},
+		},
+		{
+			Quote: quote.PegoutQuote{
+				CallFee: entities.NewWei(2500),
+				GasFee:  entities.NewWei(600000),
+			},
+			RetainedQuote: quote.RetainedPegoutQuote{
+				QuoteHash: "",
+			},
+		},
+	}
+
+	// Expected calculations:
+	// Pegin gas spent = (21000*5 + 50000*4) = 105000 + 200000 = 305000
+	// Pegout gas spent = (40000*4 + 30000*3 + 1000) = 160000 + 90000 + 1000 = 251000
+	// Total gas spent = 305000 + 251000 = 556000
+	expectedTotalQuoteCallFees := entities.NewWei(2500)
+	expectedTotalGasFeesCollected := entities.NewWei(650000)
+	expectedTotalGasSpent := entities.NewWei(556000)
+	expectedTotalPenalizations := entities.NewWei(0)
+
+	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
+	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
+	penalizationRepo := &mocks.PenalizedEventRepositoryMock{}
+
+	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
+		Return(peginQuotesWithRetained, nil).Once()
+
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
+		Return(pegoutQuotesWithRetained, nil).Once()
+
+	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{"valid-pegin-hash", "valid-pegout-hash"}).
+		Return([]penalization.PenalizedEvent{}, nil).Once()
+
+	useCase := reports.NewGetRevenueReportUseCase(peginQuoteRepo, pegoutQuoteRepo, penalizationRepo)
+
+	result, err := useCase.Run(ctx, startDate, endDate)
+
+	require.NoError(t, err)
+	peginQuoteRepo.AssertExpectations(t)
+	pegoutQuoteRepo.AssertExpectations(t)
+	penalizationRepo.AssertExpectations(t)
+
+	assert.Equal(t, expectedTotalQuoteCallFees, result.TotalQuoteCallFees)
+	assert.Equal(t, expectedTotalGasFeesCollected, result.TotalGasFeesCollected)
+	assert.Equal(t, expectedTotalGasSpent, result.TotalGasSpent)
+	assert.Equal(t, expectedTotalPenalizations, result.TotalPenalizations)
+}
+
+func TestGetRevenueReportUseCase_Run_AllQuotesWithoutRetainedData(t *testing.T) {
+	ctx := context.Background()
+	startDate := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2024, 5, 31, 23, 59, 59, 0, time.UTC)
+
+	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
+		{
+			Quote: quote.PeginQuote{
+				CallFee: entities.NewWei(500),
+				GasFee:  entities.NewWei(200000),
+			},
+			RetainedQuote: quote.RetainedPeginQuote{
+				QuoteHash: "",
+			},
+		},
+		{
+			Quote: quote.PeginQuote{
+				CallFee: entities.NewWei(700),
+				GasFee:  entities.NewWei(300000),
+			},
+			RetainedQuote: quote.RetainedPeginQuote{
+				QuoteHash: "",
+			},
+		},
+	}
+
+	peginQuoteRepo := &mocks.PeginQuoteRepositoryMock{}
+	pegoutQuoteRepo := &mocks.PegoutQuoteRepositoryMock{}
+	penalizationRepo := &mocks.PenalizedEventRepositoryMock{}
+
+	peginQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PeginState{quote.PeginStateRegisterPegInSucceeded}, startDate, endDate).
+		Return(peginQuotesWithRetained, nil).Once()
+
+	pegoutQuoteRepo.On("GetQuotesWithRetainedByStateAndDate", ctx, []quote.PegoutState{quote.PegoutStateRefundPegOutSucceeded, quote.PegoutStateBridgeTxSucceeded, quote.PegoutStateBtcReleased}, startDate, endDate).
+		Return([]quote.PegoutQuoteWithRetained{}, nil).Once()
+
+	penalizationRepo.On("GetPenalizationsByQuoteHashes", ctx, []string{}).
+		Return([]penalization.PenalizedEvent{}, nil).Once()
+
+	useCase := reports.NewGetRevenueReportUseCase(peginQuoteRepo, pegoutQuoteRepo, penalizationRepo)
+
+	result, err := useCase.Run(ctx, startDate, endDate)
+
+	require.NoError(t, err)
+	peginQuoteRepo.AssertExpectations(t)
+	pegoutQuoteRepo.AssertExpectations(t)
+	penalizationRepo.AssertExpectations(t)
+
+	assert.Equal(t, entities.NewWei(0), result.TotalQuoteCallFees)
+	assert.Equal(t, entities.NewWei(0), result.TotalGasFeesCollected)
+	assert.Equal(t, entities.NewWei(0), result.TotalGasSpent)
+	assert.Equal(t, entities.NewWei(0), result.TotalPenalizations)
+}
