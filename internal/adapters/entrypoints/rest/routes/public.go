@@ -1,10 +1,11 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
-	"net/http"
 )
 
 type PublicEndpoint struct {
@@ -46,6 +47,13 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 		},
 		{
 			Endpoint: Endpoint{
+				Path:    "/pegin/acceptAuthenticatedQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPeginAuthenticatedQuoteHandler(useCaseRegistry.GetAcceptPeginQuoteUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
 				Path:    "/pegout/getQuotes",
 				Method:  http.MethodPost,
 				Handler: handlers.NewGetPegoutQuoteHandler(useCaseRegistry.GetPegoutQuoteUseCase()),
@@ -58,6 +66,14 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewAcceptPegoutQuoteHandler(useCaseRegistry.GetAcceptPegoutQuoteUseCase()),
 			},
 			RequiresCaptcha: true,
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegout/acceptAuthenticatedQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPegoutAuthenticatedQuoteHandler(useCaseRegistry.GetAcceptPegoutQuoteUseCase()),
+			},
+			RequiresCaptcha: false,
 		},
 		{
 			Endpoint: Endpoint{
@@ -99,6 +115,20 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Path:    "/version",
 				Method:  http.MethodGet,
 				Handler: handlers.NewVersionInfoHandler(useCaseRegistry.GetServerInfoUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegout/recommended",
+				Method:  http.MethodGet,
+				Handler: handlers.NewRecommendedPegoutHandler(useCaseRegistry.RecommendedPegoutUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/recommended",
+				Method:  http.MethodGet,
+				Handler: handlers.NewRecommendedPeginHandler(useCaseRegistry.RecommendedPeginUseCase()),
 			},
 		},
 		{

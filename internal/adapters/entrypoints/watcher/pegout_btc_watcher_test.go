@@ -3,6 +3,10 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -16,9 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
@@ -102,8 +103,19 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Return(nil)
 	mutex.On("Unlock").Return()
-	lbc := &mocks.LbcMock{}
-	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+	lbc := &mocks.LiquidityBridgeContractMock{}
+	refundPegoutReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                "0x456",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}
+	lbc.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
 	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{Lbc: lbc}, eventBus, rpc, mutex)
 	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
 	resetMocks := func() {
@@ -270,7 +282,7 @@ func TestPegoutBtcTransferWatcher_Prepare(t *testing.T) {
 func TestPegoutBtcTransferWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPegoutBtcTransferWatcher(nil, nil, blockchain.Rpc{}, eventBus, ticker)
 	})
 }

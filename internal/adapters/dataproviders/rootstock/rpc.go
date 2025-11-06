@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"math/big"
-	"strings"
-	"time"
 )
 
 // newAccountGasCost fixed gas amount to add to the estimation if the destination address is a new account
@@ -98,8 +99,6 @@ func (rpc *rskjRpcServer) GetHeight(ctx context.Context) (uint64, error) {
 }
 
 func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string) (blockchain.TransactionReceipt, error) {
-	var from common.Address
-
 	_, err := hex.DecodeString(strings.TrimPrefix(hash, "0x"))
 	if err != nil {
 		return blockchain.TransactionReceipt{}, errors.New("invalid transaction hash")
@@ -121,27 +120,7 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 	if err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
-
-	gasUsed := new(big.Int)
-	gasUsed.SetUint64(receipt.GasUsed)
-	cumulativeGasUsed := new(big.Int)
-	cumulativeGasUsed.SetUint64(receipt.CumulativeGasUsed)
-	from, err = types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
-	if err != nil {
-		if from, err = types.Sender(types.HomesteadSigner{}, tx); err != nil {
-			return blockchain.TransactionReceipt{}, err
-		}
-	}
-	return blockchain.TransactionReceipt{
-		TransactionHash:   receipt.TxHash.String(),
-		BlockHash:         receipt.BlockHash.String(),
-		BlockNumber:       receipt.BlockNumber.Uint64(),
-		From:              from.String(),
-		To:                tx.To().String(),
-		CumulativeGasUsed: cumulativeGasUsed,
-		GasUsed:           gasUsed,
-		Value:             entities.NewBigWei(tx.Value()),
-	}, nil
+	return ParseReceipt(tx, receipt)
 }
 
 func (rpc *rskjRpcServer) isNewAccount(ctx context.Context, address common.Address) (bool, error) {
@@ -190,6 +169,22 @@ func (rpc *rskjRpcServer) GetBlockByHash(ctx context.Context, hash string) (bloc
 		return blockchain.BlockInfo{}, err
 	}
 
+	return blockchain.BlockInfo{
+		Hash:      result.Hash().String(),
+		Number:    result.NumberU64(),
+		Timestamp: time.Unix(int64(result.Time()), 0),
+		Nonce:     result.Nonce(),
+	}, nil
+}
+
+func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (blockchain.BlockInfo, error) {
+	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (*types.Block, error) {
+			return rpc.client.BlockByNumber(ctx, blockNumber)
+		})
+	if err != nil {
+		return blockchain.BlockInfo{}, err
+	}
 	return blockchain.BlockInfo{
 		Hash:      result.Hash().String(),
 		Number:    result.NumberU64(),

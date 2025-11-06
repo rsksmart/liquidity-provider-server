@@ -3,6 +3,9 @@ package pegout_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -14,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
@@ -23,8 +25,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 		PegoutQuote: quote.PegoutQuote{
 			Value:            entities.NewWei(100),
 			CallFee:          entities.NewWei(10),
-			PenaltyFee:       5,
-			ProductFeeAmount: 50,
+			PenaltyFee:       entities.NewWei(5),
+			ProductFeeAmount: entities.NewWei(50),
 			GasFee:           entities.NewWei(30),
 		},
 	},
@@ -33,8 +35,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 		PegoutQuote: quote.PegoutQuote{
 			Value:            entities.NewWei(77),
 			CallFee:          entities.NewWei(32),
-			PenaltyFee:       5,
-			ProductFeeAmount: 12,
+			PenaltyFee:       entities.NewWei(5),
+			ProductFeeAmount: entities.NewWei(12),
 			GasFee:           entities.NewWei(55),
 		},
 	},
@@ -43,8 +45,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 		PegoutQuote: quote.PegoutQuote{
 			Value:            entities.NewWei(123),
 			CallFee:          entities.NewWei(8),
-			PenaltyFee:       1,
-			ProductFeeAmount: 40,
+			PenaltyFee:       entities.NewWei(1),
+			ProductFeeAmount: entities.NewWei(40),
 			GasFee:           entities.NewWei(3),
 		},
 	},
@@ -53,8 +55,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 		PegoutQuote: quote.PegoutQuote{
 			Value:            entities.NewWei(1000),
 			CallFee:          entities.NewWei(11),
-			PenaltyFee:       7,
-			ProductFeeAmount: 46,
+			PenaltyFee:       entities.NewWei(7),
+			ProductFeeAmount: entities.NewWei(46),
 			GasFee:           entities.NewWei(210),
 		},
 	},
@@ -63,8 +65,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 		PegoutQuote: quote.PegoutQuote{
 			Value:            entities.NewWei(200),
 			CallFee:          entities.NewWei(20),
-			PenaltyFee:       15,
-			ProductFeeAmount: 35,
+			PenaltyFee:       entities.NewWei(15),
+			ProductFeeAmount: entities.NewWei(35),
 			GasFee:           entities.NewWei(40),
 		},
 	},
@@ -100,11 +102,22 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	wallet := &mocks.RskWalletMock{}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+	sendRbtcReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                test.AnyAddress,
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(558),
+		GasPrice:          entities.NewWei(pegout.BridgeConversionGasPrice),
+	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(558)) == 0 &&
 			*config.GasLimit == pegout.BridgeConversionGasLimit &&
 			config.GasPrice.Cmp(entities.NewWei(pegout.BridgeConversionGasPrice)) == 0
-	}), test.AnyAddress).Return(test.AnyString, nil).Once()
+	}), test.AnyAddress).Return(sendRbtcReceipt, nil).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
@@ -115,7 +128,10 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(func(quotes []quote.RetainedPegoutQuote) bool {
 		for _, q := range quotes {
-			if !(q.State == quote.PegoutStateBridgeTxSucceeded && q.BridgeRefundTxHash == test.AnyString) {
+			if !(q.State == quote.PegoutStateBridgeTxSucceeded &&
+				q.BridgeRefundTxHash == test.AnyHash &&
+				q.BridgeRefundGasUsed == uint64(21000) &&
+				q.BridgeRefundGasPrice != nil && q.BridgeRefundGasPrice.Cmp(entities.NewWei(pegout.BridgeConversionGasPrice)) == 0) {
 				return false
 			}
 		}
@@ -249,7 +265,8 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	wallet := &mocks.RskWalletMock{}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(test.AnyString, assert.AnError).Once()
+	emptyReceipt := blockchain.TransactionReceipt{}
+	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(emptyReceipt, assert.AnError).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
@@ -260,7 +277,10 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(func(quotes []quote.RetainedPegoutQuote) bool {
 		for _, q := range quotes {
-			if !(q.State == quote.PegoutStateBridgeTxFailed && q.BridgeRefundTxHash == test.AnyString) {
+			if !(q.State == quote.PegoutStateBridgeTxFailed &&
+				q.BridgeRefundTxHash == "" &&
+				q.BridgeRefundGasUsed == uint64(0) &&
+				q.BridgeRefundGasPrice == nil) {
 				return false
 			}
 		}
@@ -289,7 +309,18 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	wallet := &mocks.RskWalletMock{}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(test.AnyString, nil).Once()
+	successReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x123",
+		To:                test.AnyAddress,
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(pegout.BridgeConversionGasPrice),
+	}
+	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(successReceipt, nil).Once()
 	mutex := &mocks.MutexMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()

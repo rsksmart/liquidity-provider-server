@@ -36,7 +36,7 @@ echo "Transferring 10 RBTC to $LP2..."
 TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LP2\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
 echo "Result: $TX_HASH"
 
-LBC_ADDR_LINE=$(docker compose run --rm lbc-deployer bash deploy-lbc.sh)
+LBC_ADDR_LINE=$(docker compose run --rm lbc-deployer)
 echo "LBC_ADDR_LINE: $LBC_ADDR_LINE"
 docker exec btc01 bitcoin-cli -rpcuser=test -rpcpassword=test -rpcport=5555 -rpcconnect=127.0.0.1 addnode btc02:18444 add
 

@@ -43,7 +43,7 @@ func TestNewAssetReportWatcher(t *testing.T) {
 
 		tickerField, found := watcherType.FieldByName("ticker")
 		require.True(t, found, "ticker field should exist")
-		assert.Equal(t, "watcher.Ticker", tickerField.Type.String())
+		assert.Equal(t, "utils.Ticker", tickerField.Type.String())
 
 		watcherStopChannelField, found := watcherType.FieldByName("watcherStopChannel")
 		require.True(t, found, "watcherStopChannel field should exist")

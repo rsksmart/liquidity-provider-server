@@ -3,11 +3,12 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint) (*mongo.Client, error) {
@@ -36,10 +37,29 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	_, err := db.Collection(DepositEventsCollection).Indexes().CreateOne(
+	indexes := []struct {
+		collection string
+		field      string
+	}{
+		{collection: DepositEventsCollection, field: "tx_hash"},
+		{collection: TrustedAccountCollection, field: "address"},
+		{collection: BatchPegOutEventsCollection, field: "transaction_hash"},
+	}
+	for _, idx := range indexes {
+		if err := createUniqueIndex(ctx, db, idx.collection, idx.field); err != nil {
+			return fmt.Errorf("error creating unique index on %s.%s: %w", idx.collection, idx.field, err)
+		}
+		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
+	}
+
+	return nil
+}
+
+func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName, field string) error {
+	_, err := db.Collection(collectionName).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
-			Keys:    bson.D{{Key: "tx_hash", Value: 1}},
+			Keys:    bson.D{{Key: field, Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)

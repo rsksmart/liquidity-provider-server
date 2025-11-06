@@ -5,12 +5,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"sync"
 )
+
+type DepositParser = func(receipt blockchain.TransactionReceipt) (blockchain.ParsedLog[quote.PegoutDeposit], error)
 
 type SendPegoutUseCase struct {
 	btcWallet       blockchain.BitcoinWallet
@@ -19,6 +24,7 @@ type SendPegoutUseCase struct {
 	eventBus        entities.EventBus
 	contracts       blockchain.RskContracts
 	btcWalletMutex  sync.Locker
+	depositParser   DepositParser
 }
 
 func NewSendPegoutUseCase(
@@ -28,6 +34,7 @@ func NewSendPegoutUseCase(
 	eventBus entities.EventBus,
 	contracts blockchain.RskContracts,
 	btcWalletMutex sync.Locker,
+	depositParser DepositParser,
 ) *SendPegoutUseCase {
 	return &SendPegoutUseCase{
 		btcWallet:       btcWallet,
@@ -36,6 +43,7 @@ func NewSendPegoutUseCase(
 		eventBus:        eventBus,
 		contracts:       contracts,
 		btcWalletMutex:  btcWalletMutex,
+		depositParser:   depositParser,
 	}
 }
 
@@ -125,12 +133,12 @@ func (useCase *SendPegoutUseCase) validateQuote(
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if chainHeight-receipt.BlockNumber < uint64(pegoutQuote.DepositConfirmations) {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoEnoughConfirmationsError, true)
-	} else if receipt.Value.Cmp(pegoutQuote.Total()) < 0 {
+	} else if err = useCase.validateDepositEvent(receipt, &retainedQuote, pegoutQuote); err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
-		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.InsufficientAmountError, false)
+		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	} else if block, err = useCase.rpc.Rsk.GetBlockByHash(ctx, receipt.BlockHash); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
-	} else if pegoutQuote.ExpireTime().Before(block.Timestamp) {
+	} else if pegoutQuote.ExpireTime().Before(block.Timestamp) || uint64(pegoutQuote.ExpireBlock) <= block.Number {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 
@@ -150,7 +158,6 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 ) (quote.RetainedPegoutQuote, error) {
 	var err error
 	var newState quote.PegoutState
-	var txHash string
 
 	quoteHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
 	if err != nil {
@@ -158,7 +165,8 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
-	if txHash, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
+	var txResult blockchain.BitcoinTransactionResult
+	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
 	} else {
 		newState = quote.PegoutStateSendPegoutSucceeded
@@ -166,7 +174,10 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, retainedQuote.QuoteHash)
 
-	retainedQuote.LpBtcTxHash = txHash
+	retainedQuote.LpBtcTxHash = txResult.Hash
+	if txResult.Fee != nil {
+		retainedQuote.SendPegoutBtcFee = txResult.Fee
+	}
 	retainedQuote.State = newState
 	useCase.eventBus.Publish(quote.PegoutBtcSentToUserEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),
@@ -203,6 +214,25 @@ func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, ret
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
 	} else if retainedQuote.UserRskTxHash == "" {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
+	}
+	return nil
+}
+
+func (useCase *SendPegoutUseCase) validateDepositEvent(
+	receipt blockchain.TransactionReceipt,
+	retainedQuote *quote.RetainedPegoutQuote,
+	pegoutQuote *quote.PegoutQuote,
+) error {
+	depositEvent, err := useCase.depositParser(receipt)
+	if err != nil {
+		return err
+	} else if !strings.EqualFold(depositEvent.RawLog.Address, pegoutQuote.LbcAddress) {
+		return errors.New("invalid LBC address")
+	} else if !utils.CompareIgnore0x(depositEvent.Log.QuoteHash, retainedQuote.QuoteHash) {
+		return errors.New("deposit belongs to other quote")
+	} else if depositEvent.Log.Amount.Cmp(pegoutQuote.Total()) < 0 {
+		retainedQuote.UserRskTxHash = receipt.TransactionHash
+		return usecases.InsufficientAmountError
 	}
 	return nil
 }

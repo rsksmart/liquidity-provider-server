@@ -1,21 +1,26 @@
 package pkg
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
+	"strings"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	reports "github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 )
 
 type ProviderDetail struct {
 	// Deprecated: Fee is deprecated, use FixedFee and FeePercentage instead
-	Fee                   uint64  `json:"fee" required:""`
-	FixedFee              uint64  `json:"fixedFee"  required:""`
-	FeePercentage         float64 `json:"feePercentage"  required:""`
-	MinTransactionValue   uint64  `json:"minTransactionValue"  required:""`
-	MaxTransactionValue   uint64  `json:"maxTransactionValue"  required:""`
-	RequiredConfirmations uint16  `json:"requiredConfirmations"  required:""`
+	Fee                   *big.Int `json:"fee" required:""`
+	FixedFee              *big.Int `json:"fixedFee"  required:""`
+	FeePercentage         float64  `json:"feePercentage"  required:""`
+	MinTransactionValue   *big.Int `json:"minTransactionValue"  required:""`
+	MaxTransactionValue   *big.Int `json:"maxTransactionValue"  required:""`
+	RequiredConfirmations uint16   `json:"requiredConfirmations"  required:""`
 }
 
 type ProviderDetailResponse struct {
@@ -69,7 +74,13 @@ type PegoutConfigurationDTO struct {
 }
 
 type GeneralConfigurationRequest struct {
-	Configuration *liquidity_provider.GeneralConfiguration `json:"configuration" validate:"required"`
+	Configuration GeneralConfigurationDTO `json:"configuration" validate:"required"`
+}
+
+type GeneralConfigurationDTO struct {
+	RskConfirmations     map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations     map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck bool              `json:"publicLiquidityCheck" validate:""`
 }
 
 type LoginRequest struct {
@@ -84,6 +95,139 @@ type CredentialsUpdateRequest struct {
 	NewPassword string `json:"newPassword" validate:"required"`
 }
 
+// DateRangeRequest provides common date range functionality with validation
+type DateRangeRequest struct {
+	StartDate string `json:"startDate" validate:"required"`
+	EndDate   string `json:"endDate" validate:"required"`
+}
+
+type GetReportsByPeriodRequest struct {
+	DateRangeRequest
+}
+
+// parseDateTime parses a date string in either YYYY-MM-DD or ISO 8601 UTC format
+// Returns the parsed time, a boolean indicating if it's a date-only format, and any error
+func parseDateTime(dateStr string) (parsedTime time.Time, isDateOnly bool, err error) {
+	// Try date-only format first (YYYY-MM-DD)
+	if t, parseErr := time.Parse(time.DateOnly, dateStr); parseErr == nil {
+		return t, true, nil
+	}
+
+	// Try ISO 8601 UTC format - must end with 'Z' to ensure UTC timezone
+	if strings.HasSuffix(dateStr, "Z") {
+		if t, parseErr := time.Parse(time.RFC3339Nano, dateStr); parseErr == nil {
+			return t.UTC(), false, nil
+		}
+	}
+
+	return time.Time{}, false, errors.New("invalid date format: must be YYYY-MM-DD or ISO 8601 UTC format (ending with Z)")
+}
+
+func (r *DateRangeRequest) ValidateDateRange() error {
+	startDate, _, err := parseDateTime(r.StartDate)
+	if err != nil {
+		return errors.New("startDate " + err.Error())
+	}
+
+	endDate, _, err := parseDateTime(r.EndDate)
+	if err != nil {
+		return errors.New("endDate " + err.Error())
+	}
+
+	// Allow same-day queries and require endDate to be >= startDate
+	if endDate.Before(startDate) {
+		return errors.New("endDate must be on or after startDate")
+	}
+
+	return nil
+}
+
+// ValidateGetReportsByPeriodRequest validates the request using the base date range validation
+func (r *GetReportsByPeriodRequest) ValidateGetReportsByPeriodRequest() error {
+	return r.ValidateDateRange()
+}
+
+// GetTimestamps converts date strings to time.Time objects with proper timezone handling
+func (r *DateRangeRequest) GetTimestamps() (startTime, endTime time.Time, err error) {
+	startTime, _, err = parseDateTime(r.StartDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	endTime, isEndDateOnly, err := parseDateTime(r.EndDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	// Apply defaults for date-only formats
+	// startTime is already 00:00:00 for date-only formats from parseDateTime
+
+	if isEndDateOnly {
+		// For date-only end, use 23:59:59.999 UTC
+		endTime = time.Date(
+			endTime.Year(),
+			endTime.Month(),
+			endTime.Day(),
+			23, 59, 59, 999999999,
+			time.UTC,
+		)
+	}
+
+	return startTime, endTime, nil
+}
+
+type GetRevenueReportResponse struct {
+	TotalQuoteCallFees    *big.Int `json:"totalQuoteCallFees" validate:"required"`
+	TotalPenalizations    *big.Int `json:"totalPenalizations" validate:"required"`
+	TotalGasFeesCollected *big.Int `json:"totalGasFeesCollected" validate:"required"`
+	TotalGasSpent         *big.Int `json:"totalGasSpent" validate:"required"`
+}
+
+// BTC Asset Report structures
+type BtcAssetLocationDTO struct {
+	BtcWallet  *big.Int `json:"btcWallet" example:"50000000" description:"BTC in the LP's Bitcoin wallet" validate:"required"`
+	Federation *big.Int `json:"federation" example:"5000000" description:"BTC in the federation (rebalancing or waiting for refund)" validate:"required"`
+	RskWallet  *big.Int `json:"rskWallet" example:"6500000" description:"BTC represented as RBTC in the RSK wallet (waiting for rebalancing)" validate:"required"`
+	Lbc        *big.Int `json:"lbc" example:"5300000" description:"BTC represented as RBTC locked in the Liquidity Bridge Contract" validate:"required"`
+}
+
+type BtcAssetAllocationDTO struct {
+	ReservedForUsers *big.Int `json:"reservedForUsers" example:"4500000" description:"BTC reserved for users (accepted pegout quotes)" validate:"required"`
+	WaitingForRefund *big.Int `json:"waitingForRefund" example:"19800000" description:"BTC waiting to be refunded to the LP" validate:"required"`
+	Available        *big.Int `json:"available" example:"43200000" description:"BTC available for new pegout quotes" validate:"required"`
+}
+
+type BtcAssetReportDTO struct {
+	Total      *big.Int              `json:"total" example:"67500000" description:"Total BTC assets under LP control" validate:"required"`
+	Location   BtcAssetLocationDTO   `json:"location" description:"BTC distribution across different locations" validate:"required"`
+	Allocation BtcAssetAllocationDTO `json:"allocation" description:"BTC allocation by usage/purpose" validate:"required"`
+}
+
+// RBTC Asset Report structures
+type RbtcAssetLocationDTO struct {
+	RskWallet  *big.Int `json:"rskWallet" example:"10000000000000000000" description:"RBTC in the LP's RSK wallet" validate:"required"`
+	Lbc        *big.Int `json:"lbc" example:"5000000000000000000" description:"RBTC locked in the Liquidity Bridge Contract" validate:"required"`
+	Federation *big.Int `json:"federation" example:"2000000000000000000" description:"RBTC in the federation (waiting for refund)" validate:"required"`
+}
+
+type RbtcAssetAllocationDTO struct {
+	ReservedForUsers *big.Int `json:"reservedForUsers" example:"3000000000000000000" description:"RBTC reserved for users (accepted pegin quotes)" validate:"required"`
+	WaitingForRefund *big.Int `json:"waitingForRefund" example:"2000000000000000000" description:"RBTC waiting to be refunded to the LP" validate:"required"`
+	Available        *big.Int `json:"available" example:"12000000000000000000" description:"RBTC available for new pegin quotes" validate:"required"`
+}
+
+type RbtcAssetReportDTO struct {
+	Total      *big.Int               `json:"total" example:"17000000000000000000" description:"Total RBTC assets under LP control" validate:"required"`
+	Location   RbtcAssetLocationDTO   `json:"location" description:"RBTC distribution across different locations" validate:"required"`
+	Allocation RbtcAssetAllocationDTO `json:"allocation" description:"RBTC allocation by usage/purpose" validate:"required"`
+}
+
+// Combined Assets Report Response
+type GetAssetsReportResponse struct {
+	BtcAssetReport  BtcAssetReportDTO  `json:"btcAssetReport" description:"Detailed BTC asset report" validate:"required"`
+	RbtcAssetReport RbtcAssetReportDTO `json:"rbtcAssetReport" description:"Detailed RBTC asset report" validate:"required"`
+}
+
 type AvailableLiquidityDTO struct {
 	PeginLiquidityAmount  *big.Int `json:"peginLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegIn operations in wei"  required:""`
 	PegoutLiquidityAmount *big.Int `json:"pegoutLiquidityAmount" example:"5000000000000000000" description:"Available liquidity for PegOut operations in wei" required:""`
@@ -92,6 +236,118 @@ type AvailableLiquidityDTO struct {
 type ServerInfoDTO struct {
 	Version  string `json:"version" example:"v1.0.0" description:"Server version tag"  required:""`
 	Revision string `json:"revision" example:"b7bf393a2b1cedde8ee15b00780f44e6e5d2ba9d" description:"Version commit hash"  required:""`
+}
+
+type SummaryDataDTO struct {
+	TotalQuotesCount          int64    `json:"totalQuotesCount"`
+	AcceptedQuotesCount       int64    `json:"acceptedQuotesCount"`
+	TotalAcceptedQuotesAmount *big.Int `json:"totalAcceptedQuotesAmount"`
+	PaidQuotesCount           int64    `json:"paidQuotesCount"`
+	PaidQuotesAmount          *big.Int `json:"paidQuotesAmount"`
+	RefundedQuotesCount       int64    `json:"refundedQuotesCount"`
+	TotalRefundedQuotesAmount *big.Int `json:"totalRefundedQuotesAmount"`
+	PenalizationsCount        int64    `json:"penalizationsCount"`
+	TotalPenalizationsAmount  *big.Int `json:"totalPenalizationsAmount"`
+}
+
+type SummaryResultDTO struct {
+	PeginSummary  SummaryDataDTO `json:"peginSummary"`
+	PegoutSummary SummaryDataDTO `json:"pegoutSummary"`
+}
+
+func ToSummaryDataDTO(data reports.SummaryData) SummaryDataDTO {
+	return SummaryDataDTO{
+		TotalQuotesCount:          data.TotalQuotesCount,
+		AcceptedQuotesCount:       data.AcceptedQuotesCount,
+		TotalAcceptedQuotesAmount: data.TotalAcceptedQuotesAmount.AsBigInt(),
+		PaidQuotesCount:           data.PaidQuotesCount,
+		PaidQuotesAmount:          data.PaidQuotesAmount.AsBigInt(),
+		RefundedQuotesCount:       data.RefundedQuotesCount,
+		TotalRefundedQuotesAmount: data.TotalRefundedQuotesAmount.AsBigInt(),
+		PenalizationsCount:        data.PenalizationsCount,
+		TotalPenalizationsAmount:  data.TotalPenalizationsAmount.AsBigInt(),
+	}
+}
+
+func ToSummaryResultDTO(result reports.SummaryResult) SummaryResultDTO {
+	return SummaryResultDTO{
+		PeginSummary:  ToSummaryDataDTO(result.PeginSummary),
+		PegoutSummary: ToSummaryDataDTO(result.PegoutSummary),
+	}
+}
+
+func ToBtcAssetLocationDTO(location reports.BtcAssetLocation) BtcAssetLocationDTO {
+	return BtcAssetLocationDTO{
+		BtcWallet:  location.BtcWallet.AsBigInt(),
+		Federation: location.Federation.AsBigInt(),
+		RskWallet:  location.RskWallet.AsBigInt(),
+		Lbc:        location.Lbc.AsBigInt(),
+	}
+}
+
+func ToBtcAssetAllocationDTO(allocation reports.BtcAssetAllocation) BtcAssetAllocationDTO {
+	return BtcAssetAllocationDTO{
+		ReservedForUsers: allocation.ReservedForUsers.AsBigInt(),
+		WaitingForRefund: allocation.WaitingForRefund.AsBigInt(),
+		Available:        allocation.Available.AsBigInt(),
+	}
+}
+
+func ToBtcAssetReportDTO(report reports.BtcAssetReport) BtcAssetReportDTO {
+	return BtcAssetReportDTO{
+		Total:      report.Total.AsBigInt(),
+		Location:   ToBtcAssetLocationDTO(report.Location),
+		Allocation: ToBtcAssetAllocationDTO(report.Allocation),
+	}
+}
+
+func ToRbtcAssetLocationDTO(location reports.RbtcAssetLocation) RbtcAssetLocationDTO {
+	return RbtcAssetLocationDTO{
+		RskWallet:  location.RskWallet.AsBigInt(),
+		Lbc:        location.Lbc.AsBigInt(),
+		Federation: location.Federation.AsBigInt(),
+	}
+}
+
+func ToRbtcAssetAllocationDTO(allocation reports.RbtcAssetAllocation) RbtcAssetAllocationDTO {
+	return RbtcAssetAllocationDTO{
+		ReservedForUsers: allocation.ReservedForUsers.AsBigInt(),
+		WaitingForRefund: allocation.WaitingForRefund.AsBigInt(),
+		Available:        allocation.Available.AsBigInt(),
+	}
+}
+
+func ToRbtcAssetReportDTO(report reports.RbtcAssetReport) RbtcAssetReportDTO {
+	return RbtcAssetReportDTO{
+		Total:      report.Total.AsBigInt(),
+		Location:   ToRbtcAssetLocationDTO(report.Location),
+		Allocation: ToRbtcAssetAllocationDTO(report.Allocation),
+	}
+}
+
+func ToGetAssetsReportResponse(result reports.GetAssetsReportResult) GetAssetsReportResponse {
+	return GetAssetsReportResponse{
+		BtcAssetReport:  ToBtcAssetReportDTO(result.BtcAssetReport),
+		RbtcAssetReport: ToRbtcAssetReportDTO(result.RbtcAssetReport),
+	}
+}
+
+type TrustedAccountDTO struct {
+	Address        string   `json:"address" example:"0x1234567890abcdef" description:"Trusted account address" required:""`
+	Name           string   `json:"name" example:"Example Trusted Account" description:"Trusted account name" required:""`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" example:"5000000000000000000" description:"Bitcoin locking capacity in wei" required:""`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" example:"5000000000000000000" description:"RBTC locking capacity in wei" required:""`
+}
+
+type TrustedAccountRequest struct {
+	Address        string   `json:"address" validate:"required,eth_addr"`
+	Name           string   `json:"name" validate:"required,max=100,min=1,not_blank"`
+	BtcLockingCap  *big.Int `json:"btcLockingCap" validate:"required,positive_integer_bigint"`
+	RbtcLockingCap *big.Int `json:"rbtcLockingCap" validate:"required,positive_integer_bigint"`
+}
+
+type TrustedAccountsResponse struct {
+	Accounts []TrustedAccountDTO `json:"accounts"`
 }
 
 func ToAvailableLiquidityDTO(entity liquidity_provider.AvailableLiquidity) AvailableLiquidityDTO {
@@ -183,4 +439,42 @@ func ToServerInfoDTO(entity liquidity_provider.ServerInfo) ServerInfoDTO {
 		Version:  entity.Version,
 		Revision: entity.Revision,
 	}
+}
+
+func ToTrustedAccountDTO(entity liquidity_provider.TrustedAccountDetails) TrustedAccountDTO {
+	return TrustedAccountDTO{
+		Address:        entity.Address,
+		Name:           entity.Name,
+		BtcLockingCap:  entity.BtcLockingCap.AsBigInt(),
+		RbtcLockingCap: entity.RbtcLockingCap.AsBigInt(),
+	}
+}
+
+func ToTrustedAccountsDTO(signedEntities []entities.Signed[liquidity_provider.TrustedAccountDetails]) []TrustedAccountDTO {
+	result := make([]TrustedAccountDTO, len(signedEntities))
+	for i, signedEntity := range signedEntities {
+		result[i] = ToTrustedAccountDTO(signedEntity.Value)
+	}
+	return result
+}
+
+func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provider.GeneralConfiguration, error) {
+	bigInt := new(big.Int)
+	for key := range dto.RskConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize RSK confirmations key %s", key)
+		}
+	}
+	for key := range dto.BtcConfirmations {
+		_, ok := bigInt.SetString(key, 10)
+		if !ok {
+			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize BTC confirmations key %s", key)
+		}
+	}
+	return liquidity_provider.GeneralConfiguration{
+		RskConfirmations:     dto.RskConfirmations,
+		BtcConfirmations:     dto.BtcConfirmations,
+		PublicLiquidityCheck: dto.PublicLiquidityCheck,
+	}, nil
 }

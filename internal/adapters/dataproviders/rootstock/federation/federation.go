@@ -9,21 +9,17 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 const flyoverPrefix byte = 0x20
 
-func GetFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) ([]byte, error) {
+func GetFedRedeemScript(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params) ([]byte, error) {
 	var buf *bytes.Buffer
 	var err error
 
-	// All Federations activated AFTER Iris will be ERP, therefore we build redeem script.
-	if fedInfo.ActiveFedBlockHeight > fedInfo.IrisActivationHeight {
-		buf, err = getFedRedeemScriptAfterIrisActivation(fedInfo, btcParams)
-	} else {
-		buf, err = getFedRedeemScriptBeforeIrisActivation(fedInfo, btcParams)
-	}
+	buf, err = getFedRedeemScript(fedInfo, btcParams)
 
 	if err != nil {
 		return nil, err
@@ -31,41 +27,20 @@ func GetFedRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Pa
 	return buf.Bytes(), nil
 }
 
-func getFedRedeemScriptAfterIrisActivation(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
-	buf, err := GetRedeemScriptBuf(fedInfo, true)
-	if err != nil {
-		return nil, err
-	}
-
-	err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	return buf, nil
-}
-
-func getFedRedeemScriptBeforeIrisActivation(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
+func getFedRedeemScript(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
 	buf, err := GetErpRedeemScriptBuf(fedInfo, btcParams)
 	if err != nil {
 		return nil, err
 	}
 
 	err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
-	if err != nil { // ok, it could be that ERP is not yet activated, falling back to redeem Script
-		buf, err = GetRedeemScriptBuf(fedInfo, true)
-		if err != nil {
-			return nil, err
-		}
-
-		err = ValidateRedeemScript(fedInfo, btcParams, buf.Bytes())
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 	return buf, nil
 }
 
-func GetRedeemScriptBuf(fedInfo blockchain.FederationInfo, addMultiSig bool) (*bytes.Buffer, error) {
+func GetRedeemScriptBuf(fedInfo rootstock.FederationInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
 	err := addStdNToMScriptPart(fedInfo, sb)
@@ -85,7 +60,7 @@ func GetRedeemScriptBuf(fedInfo blockchain.FederationInfo, addMultiSig bool) (*b
 	return &buf, nil
 }
 
-func addStdNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.ScriptBuilder) error {
+func addStdNToMScriptPart(fedInfo rootstock.FederationInfo, builder *txscript.ScriptBuilder) error {
 	builder.AddOp(getOpCodeFromInt(int(fedInfo.FedThreshold)))
 
 	for _, pubKey := range fedInfo.PubKeys {
@@ -100,8 +75,18 @@ func addStdNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.S
 	return nil
 }
 
-func ValidateRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params, script []byte) error {
-	addr, err := btcutil.NewAddressScriptHash(script, &btcParams)
+func ValidateRedeemScript(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params, script []byte) error {
+	var federationScript []byte
+	var err error
+	if fedInfo.UseSegwit {
+		if federationScript, err = bitcoin.ScriptToP2shP2wsh(script); err != nil {
+			return err
+		}
+	} else {
+		federationScript = script
+	}
+
+	addr, err := btcutil.NewAddressScriptHash(federationScript, &btcParams)
 	if err != nil {
 		return err
 	}
@@ -117,13 +102,13 @@ func ValidateRedeemScript(fedInfo blockchain.FederationInfo, btcParams chaincfg.
 	return nil
 }
 
-func GetErpRedeemScriptBuf(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
+func GetErpRedeemScriptBuf(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params) (*bytes.Buffer, error) {
 	erpRedeemScriptBuf, err := p2ms(fedInfo, false)
 	if err != nil {
 		return nil, err
 	}
 
-	redeemScriptBuf, err := GetRedeemScriptBuf(fedInfo, false)
+	redeemScriptBuf, err := GetRedeemScriptBuf(fedInfo, true)
 	if err != nil {
 		return nil, err
 	}
@@ -137,23 +122,23 @@ func GetErpRedeemScriptBuf(fedInfo blockchain.FederationInfo, btcParams chaincfg
 	erpRedeemScriptBuffer.Write(scrA)
 	erpRedeemScriptBuffer.Write(redeemScriptBuf.Bytes())
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_ELSE)
-	erpRedeemScriptBuffer.WriteByte(0x02)
 
 	csv, err := hex.DecodeString(getCsvValueFromNetwork(btcParams))
 	if err != nil {
 		return nil, err
 	}
+	erpRedeemScriptBuffer.WriteByte(byte(len(csv)))
 	erpRedeemScriptBuffer.Write(csv)
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKSEQUENCEVERIFY)
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_DROP)
 	erpRedeemScriptBuffer.Write(erpRedeemScriptBuf.Bytes())
-	erpRedeemScriptBuffer.WriteByte(txscript.OP_ENDIF)
 	erpRedeemScriptBuffer.WriteByte(txscript.OP_CHECKMULTISIG)
+	erpRedeemScriptBuffer.WriteByte(txscript.OP_ENDIF)
 
 	return &erpRedeemScriptBuffer, nil
 }
 
-func p2ms(fedInfo blockchain.FederationInfo, addMultiSig bool) (*bytes.Buffer, error) {
+func p2ms(fedInfo rootstock.FederationInfo, addMultiSig bool) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	sb := txscript.NewScriptBuilder()
 	err := addErpNToMScriptPart(fedInfo, sb)
@@ -174,7 +159,7 @@ func p2ms(fedInfo blockchain.FederationInfo, addMultiSig bool) (*bytes.Buffer, e
 	return &buf, nil
 }
 
-func addErpNToMScriptPart(fedInfo blockchain.FederationInfo, builder *txscript.ScriptBuilder) error {
+func addErpNToMScriptPart(fedInfo rootstock.FederationInfo, builder *txscript.ScriptBuilder) error {
 	size := len(fedInfo.ErpKeys)
 	minimum := size/2 + 1
 	builder.AddOp(getOpCodeFromInt(minimum))
@@ -247,15 +232,15 @@ func getOpCodeFromInt(val int) byte {
 func getCsvValueFromNetwork(btcParams chaincfg.Params) string {
 	switch btcParams.Name {
 	case chaincfg.MainNetParams.Name:
-		return "CD50"
+		return "50CD00"
 	case chaincfg.TestNet3Params.Name:
-		return "CD50"
+		return "50CD00"
 	default:
-		return "01F4"
+		return "F401"
 	}
 }
 
-func GetDerivationValueHash(args blockchain.FlyoverDerivationArgs) []byte {
+func GetDerivationValueHash(args rootstock.FlyoverDerivationArgs) []byte {
 	var buf bytes.Buffer
 	buf.Write(args.QuoteHash)
 	buf.Write(args.UserBtcRefundAddress)
@@ -267,26 +252,33 @@ func GetDerivationValueHash(args blockchain.FlyoverDerivationArgs) []byte {
 	return derivationValueHash
 }
 
-func CalculateFlyoverDerivationAddress(fedInfo blockchain.FederationInfo, btcParams chaincfg.Params, fedRedeemScript, derivationValue []byte) (blockchain.FlyoverDerivation, error) {
+func CalculateFlyoverDerivationAddress(fedInfo rootstock.FederationInfo, btcParams chaincfg.Params, fedRedeemScript, derivationValue []byte) (rootstock.FlyoverDerivation, error) {
 	var err error
 	var addressScriptHash *btcutil.AddressScriptHash
 
 	if len(fedRedeemScript) == 0 {
 		if fedRedeemScript, err = GetFedRedeemScript(fedInfo, btcParams); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error generating fed redeem script: %w", err)
+			return rootstock.FlyoverDerivation{}, fmt.Errorf("error generating fed redeem script: %w", err)
 		}
 	} else {
 		if err = ValidateRedeemScript(fedInfo, btcParams, fedRedeemScript); err != nil {
-			return blockchain.FlyoverDerivation{}, fmt.Errorf("error validating fed redeem script: %w", err)
+			return rootstock.FlyoverDerivation{}, fmt.Errorf("error validating fed redeem script: %w", err)
 		}
 	}
 
 	flyoverScript := GetFlyoverRedeemScript(derivationValue, fedRedeemScript)
-	if addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, &btcParams); err != nil {
-		return blockchain.FlyoverDerivation{}, err
+
+	if fedInfo.UseSegwit {
+		addressScriptHash, err = bitcoin.ScriptToAddressP2shP2wsh(flyoverScript, &btcParams)
+	} else {
+		addressScriptHash, err = btcutil.NewAddressScriptHash(flyoverScript, &btcParams)
 	}
 
-	return blockchain.FlyoverDerivation{
+	if err != nil {
+		return rootstock.FlyoverDerivation{}, err
+	}
+
+	return rootstock.FlyoverDerivation{
 		Address:      addressScriptHash.EncodeAddress(),
 		RedeemScript: hex.EncodeToString(flyoverScript),
 	}, nil

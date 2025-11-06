@@ -47,9 +47,12 @@ fi
 
 echo "LPS_STAGE: $LPS_STAGE; ENV_FILE: $ENV_FILE; LPS_UID: $LPS_UID"
 
-# Force Management API to be enabled
 if [ -f "$ENV_FILE" ]; then
+  # Force Management API to be enabled
   "${SED_INPLACE[@]}" 's/^ENABLE_MANAGEMENT_API=.*/ENABLE_MANAGEMENT_API=true/' "$ENV_FILE"
+  # Don't use extra sources on local env
+  "${SED_INPLACE[@]}" 's/^RSK_EXTRA_SOURCES=.*/RSK_EXTRA_SOURCES=/' "$ENV_FILE"
+  "${SED_INPLACE[@]}" 's/^BTC_EXTRA_SOURCES=.*/BTC_EXTRA_SOURCES=/' "$ENV_FILE"
 fi
 
 SCRIPT_CMD=$1
@@ -152,7 +155,7 @@ curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content
   && curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "importpubkey", "params": ["0232858a5faa413101831afe7a880da9a8ac4de6bd5e25b4358d762ba450b03c22", "", false], "id":"importpubkey"}' \
   && curl -s "http://127.0.0.1:5555/wallet/rsk-wallet" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "importaddress", "params": ["n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6", "", false], "id":"importaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "walletpassphrase", "params": ["test-password", 30000], "id":"walletpassphrase"}' \
-  && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 5, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
+  && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "sendtoaddress", "params": { "amount": 500, "fee_rate": 25, "address": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6" }, "id":"sendtoaddress"}' \
   && curl -s "http://127.0.0.1:5555/wallet/main" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "getnewaddress", "params": ["main"], "id":"getnewaddress"}' \
     | jq .result | xargs -I ADDRESS curl -s "http://127.0.0.1:5555" --user "$BTC_USERNAME:$BTC_PASSWORD" -H "Content-Type: application/json" -d '{"jsonrpc": "1.0", "method": "generatetoaddress", "params": [1, "ADDRESS"], "id":"generatetoaddress"}'
 
@@ -161,7 +164,7 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ "$PROVIDER_TX_COUNT" = "0x0" ]; then
     echo "Transferring funds to $LIQUIDITY_PROVIDER_RSK_ADDR..."
 
-    TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x8AC7230489E80000\"}],\"id\":1}" | jq -r ".result")
+    TX_HASH=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$LIQUIDITY_PROVIDER_RSK_ADDR\", \"value\": \"0x3635C9ADC5DEA00000\"}],\"id\":1}" | jq -r ".result")
     echo "Result: $TX_HASH"
     sleep 10
   else
@@ -171,10 +174,10 @@ if [ "$LPS_STAGE" = "regtest" ]; then
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
 
-    (grep GITHUB_TOKEN | head -n 1 | tr -d '\r' | awk '{gsub("GITHUB_TOKEN=",""); print}' > gh_token.txt) < $ENV_FILE
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml run --rm lbc-deployer bash deploy-lbc.sh | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    export LBC_ADDR="${LBC_ADDR_LINE#"LBC_ADDR="}"
+    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
+    LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
+    export LBC_ADDR
   fi
 fi
 
@@ -187,7 +190,6 @@ echo "LBC deployed at $LBC_ADDR"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 # start LPS
-
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
 
@@ -197,7 +199,8 @@ do
   sleep 5
   curl -s "http://localhost:8080/health" \
     && echo "LPS is up and running" \
-    && FAIL=false
+    && FAIL=false \
+    || echo "LPS is not up yet"
   if [ "$FAIL" = false ]; then
     break
   fi
@@ -349,5 +352,37 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
   echo "$RESPONSE_BODY"
   exit 1
 fi
+
+echo "Creating trusted account for regtest"
+CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:8080/management/trusted-accounts' \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: */*' \
+  -H 'Connection: keep-alive' \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Referer: http://localhost:8080/management' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  --data "{
+      \"address\": \"$TRUSTED_ACCOUNT_ADDRESS\",
+      \"name\": \"Boletaz\",
+      \"btcLockingCap\": 3000000000000000000,
+      \"rbtcLockingCap\": 3000000000000000000
+  }")
+
+HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
+RESPONSE_BODY=$(echo "$CURL_OUTPUT" | sed '$d')
+
+if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+  echo "Error creating trusted account"
+  echo "HTTP Status: $HTTP_STATUS"
+  echo "Response Body:"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+echo "Trusted account created successfully!"
+echo "Address: $TRUSTED_ACCOUNT_ADDRESS"
 
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.metrics.yml up -d prometheus loki alloy grafana mailhog

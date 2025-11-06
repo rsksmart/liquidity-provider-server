@@ -22,9 +22,7 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Update env file
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cd docker-compose/local/ && ./gh-action-env.sh $GITHUB_TOKEN
+        run: cd docker-compose/local/ && ./gh-action-env.sh
 
       - name: Building LPS environment...
         run: cd docker-compose/local/ && LPS_STAGE=regtest ./lps-env.sh up

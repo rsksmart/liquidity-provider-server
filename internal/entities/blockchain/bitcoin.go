@@ -2,11 +2,24 @@ package blockchain
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+)
+
+type BtcAddressType string
+
+const (
+	BtcAddressTypeP2PKH  BtcAddressType = "p2pkh"
+	BtcAddressTypeP2SH   BtcAddressType = "p2sh"
+	BtcAddressTypeP2WPKH BtcAddressType = "p2wpkh"
+	BtcAddressTypeP2WSH  BtcAddressType = "p2wsh"
+	BtcAddressTypeP2TR   BtcAddressType = "p2tr"
 )
 
 var (
@@ -36,8 +49,19 @@ const (
 )
 
 const (
-	BitcoinMainnetP2PKHZeroAddress = "1111111111111111111114oLvT2"
-	BitcoinTestnetP2PKHZeroAddress = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+	BitcoinMainnetP2PKHZeroAddress  = "1111111111111111111114oLvT2"
+	BitcoinTestnetP2PKHZeroAddress  = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
+	BitcoinMainnetP2SHZeroAddress   = "31h1vYVSYuKP6AhS86fbRdMw9XHieotbST"
+	BitcoinTestnetP2SHZeroAddress   = "2MsFDzHRUAMpjHxKyoEHU3aMCMsVtMqs1PV"
+	BitcoinMainnetP2WPKHZeroAddress = "bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9e75rs"
+	BitcoinTestnetP2WPKHZeroAddress = "tb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr"
+	BitcoinRegtestP2WPKHZeroAddress = "bcrt1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdku202"
+	BitcoinMainnetP2WSHZeroAddress  = "bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqthqst8"
+	BitcoinTestnetP2WSHZeroAddress  = "tb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqulkl3g"
+	BitcoinRegtestP2WSHZeroAddress  = "bcrt1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3xueyj"
+	BitcoinMainnetP2TRZeroAddress   = "bc1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqqenm"
+	BitcoinTestnetP2TRZeroAddress   = "tb1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkgkkf5"
+	BitcoinRegtestP2TRZeroAddress   = "bcrt1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqm3usuw"
 )
 
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
@@ -94,7 +118,7 @@ type BitcoinWallet interface {
 	entities.Closeable
 	EstimateTxFees(toAddress string, value *entities.Wei) (BtcFeeEstimation, error)
 	GetBalance() (*entities.Wei, error)
-	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error)
+	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	ImportAddress(address string) error
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
 	Address() string
@@ -111,8 +135,10 @@ type BitcoinNetwork interface {
 	BuildMerkleBranch(txHash string) (MerkleBranch, error)
 	GetTransactionBlockInfo(txHash string) (BitcoinBlockInformation, error)
 	// GetCoinbaseInformation returns the coinbase transaction information of the block that includes txHash
-	GetCoinbaseInformation(txHash string) (BtcCoinbaseTransactionInformation, error)
+	GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error)
 	NetworkName() string
+	GetBlockchainInfo() (BitcoinBlockchainInfo, error)
+	GetZeroAddress(addressType BtcAddressType) (string, error)
 }
 
 type BitcoinTransactionInformation struct {
@@ -120,6 +146,13 @@ type BitcoinTransactionInformation struct {
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
 	HasWitness    bool
+}
+
+type BitcoinBlockchainInfo struct {
+	NetworkName      string
+	ValidatedBlocks  *big.Int
+	ValidatedHeaders *big.Int
+	BestBlockHash    string
 }
 
 func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entities.Wei {
@@ -142,6 +175,24 @@ func (tx *BitcoinTransactionInformation) UTXOsToAddress(address string) []*entit
 	return utxos
 }
 
+func BtcAddressTypeFromString(value string) (BtcAddressType, error) {
+	value = strings.ToLower(value)
+	switch value {
+	case string(BtcAddressTypeP2PKH):
+		return BtcAddressTypeP2PKH, nil
+	case string(BtcAddressTypeP2SH):
+		return BtcAddressTypeP2SH, nil
+	case string(BtcAddressTypeP2WPKH):
+		return BtcAddressTypeP2WPKH, nil
+	case string(BtcAddressTypeP2WSH):
+		return BtcAddressTypeP2WSH, nil
+	case string(BtcAddressTypeP2TR):
+		return BtcAddressTypeP2TR, nil
+	default:
+		return "", BtcAddressNotSupportedError
+	}
+}
+
 type BitcoinBlockInformation struct {
 	Hash   [32]byte
 	Height *big.Int
@@ -156,4 +207,9 @@ type MerkleBranch struct {
 type BtcFeeEstimation struct {
 	Value   *entities.Wei
 	FeeRate *utils.BigFloat
+}
+
+type BitcoinTransactionResult struct {
+	Hash string
+	Fee  *entities.Wei
 }

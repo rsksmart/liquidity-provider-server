@@ -3,7 +3,7 @@ package monitoring
 import (
 	"context"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	log "github.com/sirupsen/logrus"
 )
@@ -16,14 +16,14 @@ type GetAssetReportUseCase interface {
 type AssetReportWatcher struct {
 	appMetrics            *Metrics
 	getAssetReportUseCase GetAssetReportUseCase
-	ticker                watcher.Ticker
+	ticker                utils.Ticker
 	watcherStopChannel    chan struct{}
 }
 
 func NewAssetReportWatcher(
 	appMetrics *Metrics,
 	getAssetReportUseCase GetAssetReportUseCase,
-	ticker watcher.Ticker,
+	ticker utils.Ticker,
 ) *AssetReportWatcher {
 	watcherStopChannel := make(chan struct{}, 1)
 	return &AssetReportWatcher{

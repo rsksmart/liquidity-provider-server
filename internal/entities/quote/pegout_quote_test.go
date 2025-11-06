@@ -1,14 +1,15 @@
 package quote_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 type LpMock struct {
@@ -27,7 +28,7 @@ func TestPegoutQuote_Total(t *testing.T) {
 			Value: quote.PegoutQuote{
 				Value:            entities.NewWei(400000000000000000),
 				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: 200000000000000000,
+				ProductFeeAmount: entities.NewWei(200000000000000000),
 			},
 			Result: entities.NewWei(700000000000000000),
 		},
@@ -35,7 +36,7 @@ func TestPegoutQuote_Total(t *testing.T) {
 			Value: quote.PegoutQuote{
 				CallFee:          entities.NewWei(300000000000000000),
 				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: 200000000000000000,
+				ProductFeeAmount: entities.NewWei(200000000000000000),
 			},
 			Result: entities.NewWei(600000000000000000),
 		},
@@ -51,7 +52,7 @@ func TestPegoutQuote_Total(t *testing.T) {
 			Value: quote.PegoutQuote{
 				CallFee:          entities.NewWei(300000000000000000),
 				Value:            entities.NewWei(400000000000000000),
-				ProductFeeAmount: 200000000000000000,
+				ProductFeeAmount: entities.NewWei(200000000000000000),
 			},
 			Result: entities.NewWei(900000000000000000),
 		},
@@ -77,7 +78,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				RskRefundAddress:      test.AnyAddress,
 				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
-				PenaltyFee:            1,
+				PenaltyFee:            entities.NewWei(1),
 				Nonce:                 1,
 				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
@@ -89,7 +90,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				ExpireDate:            uint32(now - 61),
 				ExpireBlock:           1,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      200000000000000000,
+				ProductFeeAmount:      entities.NewWei(200000000000000000),
 			},
 			Result: true,
 		},
@@ -101,7 +102,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				RskRefundAddress:      test.AnyAddress,
 				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
-				PenaltyFee:            1,
+				PenaltyFee:            entities.NewWei(1),
 				Nonce:                 1,
 				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
@@ -113,7 +114,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				ExpireDate:            uint32(now + 60),
 				ExpireBlock:           1,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      200000000000000000,
+				ProductFeeAmount:      entities.NewWei(200000000000000000),
 			},
 			Result: false,
 		},
@@ -136,7 +137,7 @@ func TestGetCreationBlock(t *testing.T) {
 				RskRefundAddress:      test.AnyAddress,
 				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
-				PenaltyFee:            1,
+				PenaltyFee:            entities.NewWei(1),
 				Nonce:                 1,
 				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
@@ -148,7 +149,7 @@ func TestGetCreationBlock(t *testing.T) {
 				ExpireDate:            1,
 				ExpireBlock:           40,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      200000000000000000,
+				ProductFeeAmount:      entities.NewWei(200000000000000000),
 			},
 			Result: 0,
 		},
@@ -160,7 +161,7 @@ func TestGetCreationBlock(t *testing.T) {
 				RskRefundAddress:      test.AnyAddress,
 				LpBtcAddress:          test.AnyAddress,
 				CallFee:               entities.NewWei(300000000000000000),
-				PenaltyFee:            1,
+				PenaltyFee:            entities.NewWei(1),
 				Nonce:                 1,
 				DepositAddress:        test.AnyAddress,
 				Value:                 entities.NewWei(0),
@@ -172,7 +173,7 @@ func TestGetCreationBlock(t *testing.T) {
 				ExpireDate:            1,
 				ExpireBlock:           380,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      200000000000000000,
+				ProductFeeAmount:      entities.NewWei(200000000000000000),
 			},
 			Result: 340,
 		},
@@ -190,7 +191,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 		Value:            entities.NewWei(200000000000000000),
 		CallFee:          entities.NewWei(100000000000000000),
 		GasFee:           entities.NewWei(100000000000000000),
-		ProductFeeAmount: 100000000000000000,
+		ProductFeeAmount: entities.NewWei(100000000000000000),
 	}
 	cases := test.Table[quote.PegoutDeposit, bool]{
 		{
@@ -240,5 +241,108 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 	}
 	test.RunTable(t, cases, func(value quote.PegoutDeposit) bool {
 		return value.IsValidForQuote(pegoutQuote)
+	})
+}
+
+//nolint:funlen
+func TestRetainedPegoutQuote_FillZeroValues(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    quote.RetainedPegoutQuote
+		expected quote.RetainedPegoutQuote
+	}{
+		{
+			name: "should set all nil gas-related Wei fields to zero",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x123",
+				BridgeRefundGasPrice: nil,
+				RefundPegoutGasPrice: nil,
+				SendPegoutBtcFee:     nil,
+				BridgeRefundGasUsed:  100,
+				RefundPegoutGasUsed:  200,
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x123",
+				BridgeRefundGasPrice: entities.NewWei(0),
+				RefundPegoutGasPrice: entities.NewWei(0),
+				SendPegoutBtcFee:     entities.NewWei(0),
+				BridgeRefundGasUsed:  100,
+				RefundPegoutGasUsed:  200,
+			},
+		},
+		{
+			name: "should not modify existing non-nil gas-related values",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x456",
+				BridgeRefundGasPrice: entities.NewWei(1000),
+				RefundPegoutGasPrice: entities.NewWei(2000),
+				SendPegoutBtcFee:     entities.NewWei(3000),
+				BridgeRefundGasUsed:  150,
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x456",
+				BridgeRefundGasPrice: entities.NewWei(1000),
+				RefundPegoutGasPrice: entities.NewWei(2000),
+				SendPegoutBtcFee:     entities.NewWei(3000),
+				BridgeRefundGasUsed:  150,
+			},
+		},
+		{
+			name: "should handle mixed nil and non-nil values",
+			input: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x789",
+				BridgeRefundGasPrice: entities.NewWei(500),
+				RefundPegoutGasPrice: nil,
+				SendPegoutBtcFee:     entities.NewWei(1500),
+				BtcReleaseTxHash:     "0xbtc123",
+				OwnerAccountAddress:  "0xowner",
+			},
+			expected: quote.RetainedPegoutQuote{
+				QuoteHash:            "0x789",
+				BridgeRefundGasPrice: entities.NewWei(500),
+				RefundPegoutGasPrice: entities.NewWei(0),
+				SendPegoutBtcFee:     entities.NewWei(1500),
+				BtcReleaseTxHash:     "0xbtc123",
+				OwnerAccountAddress:  "0xowner",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualQuote := tc.input
+			actualQuote.FillZeroValues()
+
+			assert.Equal(t, tc.expected.QuoteHash, actualQuote.QuoteHash)
+			assert.Equal(t, tc.expected.BridgeRefundGasPrice, actualQuote.BridgeRefundGasPrice)
+			assert.Equal(t, tc.expected.RefundPegoutGasPrice, actualQuote.RefundPegoutGasPrice)
+			assert.Equal(t, tc.expected.SendPegoutBtcFee, actualQuote.SendPegoutBtcFee)
+			assert.Equal(t, tc.expected.BridgeRefundGasUsed, actualQuote.BridgeRefundGasUsed)
+			assert.Equal(t, tc.expected.RefundPegoutGasUsed, actualQuote.RefundPegoutGasUsed)
+			assert.Equal(t, tc.expected.BtcReleaseTxHash, actualQuote.BtcReleaseTxHash)
+			assert.Equal(t, tc.expected.OwnerAccountAddress, actualQuote.OwnerAccountAddress)
+		})
+	}
+
+	t.Run("should be idempotent", func(t *testing.T) {
+		originalQuote := quote.RetainedPegoutQuote{
+			QuoteHash:            "0xdef",
+			BridgeRefundGasPrice: nil,
+			RefundPegoutGasPrice: nil,
+			SendPegoutBtcFee:     nil,
+		}
+
+		originalQuote.FillZeroValues()
+		firstCallResult := originalQuote
+
+		originalQuote.FillZeroValues()
+		secondCallResult := originalQuote
+
+		assert.Equal(t, firstCallResult.BridgeRefundGasPrice, secondCallResult.BridgeRefundGasPrice)
+		assert.Equal(t, firstCallResult.RefundPegoutGasPrice, secondCallResult.RefundPegoutGasPrice)
+		assert.Equal(t, firstCallResult.SendPegoutBtcFee, secondCallResult.SendPegoutBtcFee)
+		assert.NotNil(t, secondCallResult.BridgeRefundGasPrice)
+		assert.NotNil(t, secondCallResult.RefundPegoutGasPrice)
+		assert.NotNil(t, secondCallResult.SendPegoutBtcFee)
 	})
 }

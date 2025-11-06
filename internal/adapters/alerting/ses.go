@@ -40,6 +40,6 @@ func (sender *SesAlertSender) SendAlert(ctx context.Context, subject, body strin
 		return err
 	}
 	log.Info("Alert sent")
-	log.Debugf("Alert sent with ID: %s\n", *result.MessageId)
+	log.Debugf("Alert sent with ID: %s", *result.MessageId)
 	return nil
 }

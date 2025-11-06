@@ -17,6 +17,9 @@ const (
 	pegoutBridgeWatcherInterval      = 5 * time.Minute
 	liquidityCheckInterval           = 10 * time.Minute
 	penalizationCheckInterval        = 10 * time.Minute
+	bitcoinEclipseCheckInterval      = 5 * time.Minute
+	rskEclipseCheckInterval          = 15 * time.Second
+	btcReleaseCheckInterval          = 3 * time.Minute
 	assetMetricsUpdateInterval       = 1 * time.Minute
 )
 

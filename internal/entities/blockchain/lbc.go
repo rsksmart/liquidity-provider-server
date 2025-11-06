@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -91,14 +93,14 @@ type LiquidityBridgeContract interface {
 	AddPegoutCollateral(amount *entities.Wei) error
 	WithdrawCollateral() error
 	GetBalance(address string) (*entities.Wei, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
+	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	IsOperationalPegin(address string) (bool, error)
 	IsOperationalPegout(address string) (bool, error)
 	RegisterProvider(txConfig TransactionConfig, params ProviderRegistrationParams) (int64, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	GetPeginPunishmentEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]liquidity_provider.PunishmentEvent, error)
+	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	UpdateProvider(name, url string) (string, error)
 	RefundUserPegOut(quoteHash string) (string, error)
