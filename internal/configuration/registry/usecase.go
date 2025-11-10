@@ -80,7 +80,6 @@ type UseCaseRegistry struct {
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase       *pegin.RecommendedPeginUseCase
-	getAssetReportUseCase         *reports.GetAssetReportUseCase
 }
 
 // NewUseCaseRegistry
@@ -353,16 +352,6 @@ func NewUseCaseRegistry(
 			env.Rsk.FeeCollectorAddress,
 			utils.Scale,
 		),
-		getAssetReportUseCase: reports.NewGetAssetReportUseCase(
-			btcRegistry.MonitoringWallet,
-			messaging.Rpc,
-			liquidityProvider,
-			liquidityProvider,
-			liquidityProvider,
-			databaseRegistry.PeginRepository,
-			databaseRegistry.PegoutRepository,
-			rskRegistry.Contracts,
-		),
 	}
 }
 
@@ -528,8 +517,4 @@ func (registry *UseCaseRegistry) RecommendedPegoutUseCase() *pegout.RecommendedP
 
 func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase {
 	return registry.recommendedPeginUseCase
-}
-
-func (registry *UseCaseRegistry) GetAssetReportUseCase() *reports.GetAssetReportUseCase {
-	return registry.getAssetReportUseCase
 }

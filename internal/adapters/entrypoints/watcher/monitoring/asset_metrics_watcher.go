@@ -10,7 +10,7 @@ import (
 
 // GetAssetReportUseCase defines the interface for getting asset reports
 type GetAssetReportUseCase interface {
-	Run(ctx context.Context) (reports.GetAssetReportResult, error)
+	Run(ctx context.Context) (reports.GetAssetsReportResult, error)
 }
 
 type AssetReportWatcher struct {

@@ -130,7 +130,7 @@ func NewWatcherRegistry(
 		),
 		AssetReportWatcher: monitoring.NewAssetReportWatcher(
 			appMetrics,
-			useCaseRegistry.GetAssetReportUseCase(),
+			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
 		),
 	}

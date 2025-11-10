@@ -54,19 +54,33 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return &appMetrics
 }
 
-func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetReportResult) {
-	// RBTC metrics
-	m.AssetsMetrics.WithLabelValues("rbtc", "locked_lbc").Set(weiToBtcFloat64(report.RbtcLockedLbc))
-	m.AssetsMetrics.WithLabelValues("rbtc", "locked_for_users").Set(weiToBtcFloat64(report.RbtcLockedForUsers))
-	m.AssetsMetrics.WithLabelValues("rbtc", "waiting_refund").Set(weiToBtcFloat64(report.RbtcWaitingRefund))
-	m.AssetsMetrics.WithLabelValues("rbtc", "liquidity").Set(weiToBtcFloat64(report.RbtcLiquidity))
-	m.AssetsMetrics.WithLabelValues("rbtc", "wallet_balance").Set(weiToBtcFloat64(report.RbtcWalletBalance))
+func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {
+	// RBTC metrics - Total
+	m.AssetsMetrics.WithLabelValues("rbtc", "total").Set(weiToBtcFloat64(report.RbtcAssetReport.Total))
 
-	// BTC metrics
-	m.AssetsMetrics.WithLabelValues("btc", "locked_for_users").Set(weiToBtcFloat64(report.BtcLockedForUsers))
-	m.AssetsMetrics.WithLabelValues("btc", "liquidity").Set(weiToBtcFloat64(report.BtcLiquidity))
-	m.AssetsMetrics.WithLabelValues("btc", "wallet_balance").Set(weiToBtcFloat64(report.BtcWalletBalance))
-	m.AssetsMetrics.WithLabelValues("btc", "rebalancing").Set(weiToBtcFloat64(report.BtcRebalancing))
+	// RBTC Location metrics
+	m.AssetsMetrics.WithLabelValues("rbtc", "location_rsk_wallet").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.RskWallet))
+	m.AssetsMetrics.WithLabelValues("rbtc", "location_lbc").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.Lbc))
+	m.AssetsMetrics.WithLabelValues("rbtc", "location_federation").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.Federation))
+
+	// RBTC Allocation metrics
+	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_reserved_for_users").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.ReservedForUsers))
+	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_waiting_refund").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.WaitingForRefund))
+	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_available").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.Available))
+
+	// BTC metrics - Total
+	m.AssetsMetrics.WithLabelValues("btc", "total").Set(weiToBtcFloat64(report.BtcAssetReport.Total))
+
+	// BTC Location metrics
+	m.AssetsMetrics.WithLabelValues("btc", "location_btc_wallet").Set(weiToBtcFloat64(report.BtcAssetReport.Location.BtcWallet))
+	m.AssetsMetrics.WithLabelValues("btc", "location_federation").Set(weiToBtcFloat64(report.BtcAssetReport.Location.Federation))
+	m.AssetsMetrics.WithLabelValues("btc", "location_rsk_wallet").Set(weiToBtcFloat64(report.BtcAssetReport.Location.RskWallet))
+	m.AssetsMetrics.WithLabelValues("btc", "location_lbc").Set(weiToBtcFloat64(report.BtcAssetReport.Location.Lbc))
+
+	// BTC Allocation metrics
+	m.AssetsMetrics.WithLabelValues("btc", "allocation_reserved_for_users").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.ReservedForUsers))
+	m.AssetsMetrics.WithLabelValues("btc", "allocation_waiting_refund").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.WaitingForRefund))
+	m.AssetsMetrics.WithLabelValues("btc", "allocation_available").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.Available))
 }
 
 func weiToBtcFloat64(weiValue *entities.Wei) float64 {
