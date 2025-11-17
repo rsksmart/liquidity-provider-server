@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"sync"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"

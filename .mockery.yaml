@@ -88,3 +88,9 @@ packages:
     interfaces:
       EclipseCheckUseCase:
       UpdateBtcReleaseUseCase:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
+    interfaces:
+      GetAssetReportUseCase:
+  github.com/prometheus/client_golang/prometheus:
+    interfaces:
+      Registerer:
