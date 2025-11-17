@@ -1,6 +1,10 @@
 package rootstock_test
 
 import (
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -11,9 +15,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 // nolint:funlen
@@ -91,6 +92,7 @@ func TestParseReceipt(t *testing.T) {
 			CumulativeGasUsed: big.NewInt(143691),
 			GasUsed:           big.NewInt(143691),
 			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(26065600),
 			Logs: []blockchain.TransactionLog{
 				{
 					Address: lbcAddress,

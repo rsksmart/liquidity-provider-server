@@ -101,6 +101,7 @@ func TestPeginContractImpl_GetBalance(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestPeginContractImpl_CallForUser(t *testing.T) {
 	contractBinding := &mocks.PeginContractAdapterMock{}
 	signerMock := &mocks.TransactionSignerMock{}
@@ -123,9 +124,20 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, true, modifiers...)
 		contractBinding.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(tx, nil).Once()
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewBigWei(big.NewInt(1234)),
+			GasPrice:          entities.NewWei(20000000000),
+		}
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, expectedReceipt, result)
 		contractBinding.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
@@ -133,14 +145,25 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 		contractBinding.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(nil, assert.AnError).Once()
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Empty(t, result.TransactionHash)
 	})
 	t.Run("Error handling (callForUser tx reverted)", func(t *testing.T) {
 		tx := prepareTxMocks(mockClient, signerMock, false, modifiers...)
 		contractBinding.On("CallForUser", mock.Anything, parsedPeginQuote).Return(tx, nil).Once()
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.ErrorContains(t, err, "call for user error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(1234),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+		assert.Equal(t, expectedReceipt, result)
 	})
 	t.Run("Error handling (invalid quote)", func(t *testing.T) {
 		invalid := peginQuote
@@ -290,9 +313,20 @@ func TestPeginContractImpl_RegisterPegin(t *testing.T) {
 			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
 			registerParams.PartialMerkleTree, registerParams.BlockHeight,
 		).Return(tx, nil).Once()
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0), // default value, no modifier applied
+			GasPrice:          entities.NewWei(20000000000),
+		}
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
+		assert.Equal(t, expectedReceipt, result)
 		contractBinding.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})
@@ -367,7 +401,19 @@ func TestPeginContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		).Return(tx, nil).Once()
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
-		assert.Equal(t, tx.Hash().String(), result)
+		// Should return populated receipt even on revert (for gas tracking)
+		expectedReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   tx.Hash().String(),
+			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+			BlockNumber:       123,
+			From:              parsedAddress.String(),
+			To:                parsedAddress.String(),
+			CumulativeGasUsed: big.NewInt(50000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(20000000000),
+		}
+		assert.Equal(t, expectedReceipt, result)
 		contractBinding.AssertExpectations(t)
 		callerMock.AssertExpectations(t)
 	})

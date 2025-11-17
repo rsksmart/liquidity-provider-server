@@ -3,7 +3,10 @@ package liquidity_provider_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -12,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPenalizationAlertUseCase_Run(t *testing.T) {
@@ -52,7 +54,7 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		sender.On(
 			"SendAlert",
 			test.AnyCtx,
-			"Pegin Punishment",
+			alerts.AlertSubjectPenalization,
 			fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", events[i].Penalty.ToRbtc(), events[i].QuoteHash),
 			[]string{recipient},
 		).Return(nil).Once()

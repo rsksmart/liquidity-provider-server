@@ -3,6 +3,9 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -19,8 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestNewPegoutRskDepositWatcher(t *testing.T) {
@@ -283,7 +284,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 // nolint:funlen
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.T) {
 	ticker := &mocks.TickerMock{}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
@@ -406,7 +407,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T) {
 	mutexes := environment.NewApplicationMutexes()
 	ticker := &mocks.TickerMock{}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
@@ -556,7 +557,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		pegoutContract.EXPECT().IsPegOutQuoteCompleted(testRetainedQuote.QuoteHash).Return(false, nil).Once()
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
-		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+		btcResult := blockchain.BitcoinTransactionResult{Hash: test.AnyHash, Fee: entities.NewWei(2500)}
+		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(btcResult, nil).Once()
 
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)

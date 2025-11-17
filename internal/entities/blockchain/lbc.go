@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"math/big"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -81,8 +82,8 @@ type PeginContract interface {
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
+	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	DaoFeePercentage() (uint64, error)
 }
 
@@ -92,7 +93,7 @@ type PegoutContract interface {
 	RefundUserPegOut(quoteHash string) (string, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	DaoFeePercentage() (uint64, error)
 }
 

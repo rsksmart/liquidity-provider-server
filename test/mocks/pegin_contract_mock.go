@@ -25,22 +25,22 @@ func (_m *PeginContractMock) EXPECT() *PeginContractMock_Expecter {
 }
 
 // CallForUser provides a mock function with given fields: txConfig, peginQuote
-func (_m *PeginContractMock) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (string, error) {
+func (_m *PeginContractMock) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
 	ret := _m.Called(txConfig, peginQuote)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CallForUser")
 	}
 
-	var r0 string
+	var r0 blockchain.TransactionReceipt
 	var r1 error
-	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, quote.PeginQuote) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, quote.PeginQuote) (blockchain.TransactionReceipt, error)); ok {
 		return rf(txConfig, peginQuote)
 	}
-	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, quote.PeginQuote) string); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, quote.PeginQuote) blockchain.TransactionReceipt); ok {
 		r0 = rf(txConfig, peginQuote)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(blockchain.TransactionReceipt)
 	}
 
 	if rf, ok := ret.Get(1).(func(blockchain.TransactionConfig, quote.PeginQuote) error); ok {
@@ -71,12 +71,12 @@ func (_c *PeginContractMock_CallForUser_Call) Run(run func(txConfig blockchain.T
 	return _c
 }
 
-func (_c *PeginContractMock_CallForUser_Call) Return(_a0 string, _a1 error) *PeginContractMock_CallForUser_Call {
+func (_c *PeginContractMock_CallForUser_Call) Return(_a0 blockchain.TransactionReceipt, _a1 error) *PeginContractMock_CallForUser_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PeginContractMock_CallForUser_Call) RunAndReturn(run func(blockchain.TransactionConfig, quote.PeginQuote) (string, error)) *PeginContractMock_CallForUser_Call {
+func (_c *PeginContractMock_CallForUser_Call) RunAndReturn(run func(blockchain.TransactionConfig, quote.PeginQuote) (blockchain.TransactionReceipt, error)) *PeginContractMock_CallForUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -296,22 +296,22 @@ func (_c *PeginContractMock_HashPeginQuote_Call) RunAndReturn(run func(quote.Peg
 }
 
 // RegisterPegin provides a mock function with given fields: params
-func (_m *PeginContractMock) RegisterPegin(params blockchain.RegisterPeginParams) (string, error) {
+func (_m *PeginContractMock) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error) {
 	ret := _m.Called(params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterPegin")
 	}
 
-	var r0 string
+	var r0 blockchain.TransactionReceipt
 	var r1 error
-	if rf, ok := ret.Get(0).(func(blockchain.RegisterPeginParams) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error)); ok {
 		return rf(params)
 	}
-	if rf, ok := ret.Get(0).(func(blockchain.RegisterPeginParams) string); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.RegisterPeginParams) blockchain.TransactionReceipt); ok {
 		r0 = rf(params)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(blockchain.TransactionReceipt)
 	}
 
 	if rf, ok := ret.Get(1).(func(blockchain.RegisterPeginParams) error); ok {
@@ -341,12 +341,12 @@ func (_c *PeginContractMock_RegisterPegin_Call) Run(run func(params blockchain.R
 	return _c
 }
 
-func (_c *PeginContractMock_RegisterPegin_Call) Return(_a0 string, _a1 error) *PeginContractMock_RegisterPegin_Call {
+func (_c *PeginContractMock_RegisterPegin_Call) Return(_a0 blockchain.TransactionReceipt, _a1 error) *PeginContractMock_RegisterPegin_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PeginContractMock_RegisterPegin_Call) RunAndReturn(run func(blockchain.RegisterPeginParams) (string, error)) *PeginContractMock_RegisterPegin_Call {
+func (_c *PeginContractMock_RegisterPegin_Call) RunAndReturn(run func(blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error)) *PeginContractMock_RegisterPegin_Call {
 	_c.Call.Return(run)
 	return _c
 }

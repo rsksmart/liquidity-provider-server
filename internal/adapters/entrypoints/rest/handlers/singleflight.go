@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"fmt"
-	"golang.org/x/sync/singleflight"
 	"net/http"
+
+	"golang.org/x/sync/singleflight"
 )
 
 const (
-	PegInReportSingleFlightKey  = "pegin-report-singleflight"
-	PegOutReportSingleFlightKey = "pegout-report-singleflight"
+	PegInReportSingleFlightKey     = "pegin-report-singleflight"
+	PegOutReportSingleFlightKey    = "pegout-report-singleflight"
+	RevenueReportSingleFlightKey   = "revenue-report-singleflight"
+	SummariesReportSingleFlightKey = "summaries-report-singleflight"
 )
 
 var SingleFlightGroup = new(singleflight.Group)

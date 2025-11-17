@@ -3,6 +3,9 @@ package pegin_test
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -13,8 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 var btcRawTxMock = []byte{50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60}
@@ -30,6 +31,7 @@ var (
 	cfuTx           = "cfu tx hash"
 )
 
+// nolint:funlen
 func TestRegisterPeginUseCase_Run(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -43,15 +45,28 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInSucceeded
 	expectedRetainedQuote.RegisterPeginTxHash = registerPeginTx
+	expectedRetainedQuote.RegisterPeginGasUsed = uint64(50000)
+	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(2000000000)
 
 	peginContract := new(mocks.PeginContractMock)
+	registerPeginReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   registerPeginTx,
+		BlockHash:         "0xregisterblock123",
+		BlockNumber:       uint64(2000),
+		From:              testPeginQuote.LpRskAddress,
+		To:                testPeginQuote.LbcAddress,
+		CumulativeGasUsed: big.NewInt(50000),
+		GasUsed:           big.NewInt(50000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(2000000000),
+	}
 	peginContract.On("RegisterPegin", blockchain.RegisterPeginParams{
 		QuoteSignature:        []byte{1, 2, 3, 31, 27},
 		BitcoinRawTransaction: btcRawTxMock,
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, nil).Once()
+	}).Return(registerPeginReceipt, nil).Once()
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.MatchedBy(func(q quote.RetainedPeginQuote) bool {
@@ -247,6 +262,7 @@ func TestRegisterPeginUseCase_Run_QuoteNotFound(t *testing.T) {
 	mutex.AssertNotCalled(t, "Unlock")
 }
 
+//nolint:funlen
 func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -260,15 +276,28 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	expectedRetainedQuote := retainedPeginQuote
 	expectedRetainedQuote.State = quote.PeginStateRegisterPegInFailed
 	expectedRetainedQuote.RegisterPeginTxHash = registerPeginTx
+	expectedRetainedQuote.RegisterPeginGasUsed = uint64(50000)
+	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(2000000000)
 
 	peginContract := new(mocks.PeginContractMock)
+	registerPeginReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   registerPeginTx,
+		BlockHash:         "0xregisterblock123",
+		BlockNumber:       uint64(2000),
+		From:              testPeginQuote.LpRskAddress,
+		To:                testPeginQuote.LbcAddress,
+		CumulativeGasUsed: big.NewInt(50000),
+		GasUsed:           big.NewInt(50000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(2000000000),
+	}
 	peginContract.On("RegisterPegin", blockchain.RegisterPeginParams{
 		QuoteSignature:        []byte{1, 2, 3, 31, 27},
 		BitcoinRawTransaction: btcRawTxMock,
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, assert.AnError).Once()
+	}).Return(registerPeginReceipt, assert.AnError).Once()
 
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPeginQuote.QuoteHash).Return(&testPeginQuote, nil).Once()
@@ -391,13 +420,14 @@ func registerPeginNotEnoughConfirmationsSetups(retainedPeginQuote quote.Retained
 					PartialMerkleTree:     pmtMock,
 					BlockHeight:           btcBlockInfoMock.Height,
 					Quote:                 testPeginQuote,
-				}).Return(registerPeginTx, fmt.Errorf("some wrapper: %w", blockchain.WaitingForBridgeError)).Once()
+				}).Return(blockchain.TransactionReceipt{}, fmt.Errorf("some wrapper: %w", blockchain.WaitingForBridgeError)).Once()
 			},
 			err: blockchain.WaitingForBridgeError,
 		},
 	}
 }
 
+//nolint:funlen
 func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
 		QuoteHash:         "101b1c",
@@ -429,13 +459,24 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 	mutex.On("Unlock").Return()
 
 	peginContract := new(mocks.PeginContractMock)
+	registerPeginReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   registerPeginTx,
+		BlockHash:         "0xregisterblock123",
+		BlockNumber:       uint64(2000),
+		From:              testPeginQuote.LpRskAddress,
+		To:                testPeginQuote.LbcAddress,
+		CumulativeGasUsed: big.NewInt(50000),
+		GasUsed:           big.NewInt(50000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(2000000000),
+	}
 	peginContract.On("RegisterPegin", blockchain.RegisterPeginParams{
 		QuoteSignature:        []byte{1, 2, 3, 31, 27},
 		BitcoinRawTransaction: btcRawTxMock,
 		PartialMerkleTree:     pmtMock,
 		BlockHeight:           btcBlockInfoMock.Height,
 		Quote:                 testPeginQuote,
-	}).Return(registerPeginTx, nil)
+	}).Return(registerPeginReceipt, nil)
 
 	for _, setup := range setups {
 		quoteRepository := new(mocks.PeginQuoteRepositoryMock)
@@ -478,12 +519,16 @@ func registerPeginUpdateErrorSetups(t *testing.T, registerPeginTx string, retain
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
 				expected.RegisterPeginTxHash = registerPeginTx
+				expected.RegisterPeginGasUsed = uint64(50000)
+				expected.RegisterPeginGasPrice = entities.NewWei(2000000000)
 				return assert.Equal(t, expected, q)
 			})).Return(assert.AnError).Once()
 			eventBus.On("Publish", mock.MatchedBy(func(event quote.RegisterPeginCompletedEvent) bool {
 				expected := retainedPeginQuote
 				expected.State = quote.PeginStateRegisterPegInSucceeded
 				expected.RegisterPeginTxHash = registerPeginTx
+				expected.RegisterPeginGasUsed = uint64(50000)
+				expected.RegisterPeginGasPrice = entities.NewWei(2000000000)
 				require.NoError(t, event.Error)
 				return assert.Equal(t, expected, event.RetainedQuote) &&
 					assert.Equal(t, quote.RegisterPeginCompletedEventId, event.Event.Id())

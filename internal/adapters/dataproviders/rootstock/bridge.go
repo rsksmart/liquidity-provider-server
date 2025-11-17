@@ -24,7 +24,6 @@ const registerCoinbaseTxGasLimit = 100000
 type rskBridgeImpl struct {
 	address               string
 	requiredConfirmations uint64
-	irisActivationHeight  int64
 	erpKeys               []string
 	contract              RskBridgeAdapter
 	client                RpcClientBinding
@@ -32,13 +31,14 @@ type rskBridgeImpl struct {
 	retryParams           RetryParams
 	signer                TransactionSigner
 	miningTimeout         time.Duration
+	useSegwitFederation   bool
 }
 
 type RskBridgeConfig struct {
 	Address               string
 	RequiredConfirmations uint64
-	IrisActivationHeight  int64
 	ErpKeys               []string
+	UseSegwitFederation   bool
 }
 
 func NewRskBridgeImpl(
@@ -53,7 +53,6 @@ func NewRskBridgeImpl(
 	return &rskBridgeImpl{
 		address:               config.Address,
 		requiredConfirmations: config.RequiredConfirmations,
-		irisActivationHeight:  config.IrisActivationHeight,
 		erpKeys:               config.ErpKeys,
 		contract:              contract,
 		client:                client.client,
@@ -61,6 +60,7 @@ func NewRskBridgeImpl(
 		retryParams:           retryParams,
 		signer:                signer,
 		miningTimeout:         miningTimeout,
+		useSegwitFederation:   config.UseSegwitFederation,
 	}
 }
 
@@ -166,8 +166,8 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, er
 		PubKeys:              pubKeys,
 		FedAddress:           fedAddress,
 		ActiveFedBlockHeight: activeFedBlockHeight.Int64(),
-		IrisActivationHeight: bridge.irisActivationHeight,
 		ErpKeys:              bridge.erpKeys,
+		UseSegwit:            bridge.useSegwitFederation,
 	}, nil
 }
 

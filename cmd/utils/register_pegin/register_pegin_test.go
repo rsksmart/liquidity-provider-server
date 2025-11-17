@@ -3,6 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"flag"
+	"math/big"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -13,10 +18,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
-	"math/big"
-	"os"
-	"testing"
-	"time"
 )
 
 // nolint:funlen
@@ -27,6 +28,17 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		pmt         = []byte{0x04, 0x05, 0x06}
 		blockHeight = big.NewInt(577)
 	)
+	expectedReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   resultHash,
+		BlockHash:         "0x456789",
+		BlockNumber:       123,
+		From:              "0xfrom",
+		To:                "0xto",
+		CumulativeGasUsed: big.NewInt(50000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(1000),
+		GasPrice:          entities.NewWei(20000000000),
+	}
 	parsedInput := ParsedRegisterPegInInput{
 		Quote: quote.PeginQuote{
 			FedBtcAddress:      test.AnyAddress,
@@ -67,11 +79,11 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		peginContract.On("RegisterPegin", blockchain.RegisterPeginParams{
 			QuoteSignature: parsedInput.Signature, BitcoinRawTransaction: rawTx,
 			PartialMerkleTree: pmt, BlockHeight: blockHeight, Quote: parsedInput.Quote,
-		}).Return(resultHash, nil).Once()
+		}).Return(expectedReceipt, nil).Once()
 
 		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.NoError(t, err)
-		assert.Equal(t, resultHash, result)
+		assert.Equal(t, expectedReceipt, result)
 		rpc.AssertExpectations(t)
 		peginContract.AssertExpectations(t)
 	})
@@ -83,7 +95,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
 		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -96,7 +108,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 
 		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
 		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -111,7 +123,7 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
 		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
@@ -122,11 +134,11 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()
-		peginContract.On("RegisterPegin", mock.Anything).Return("", assert.AnError).Once()
+		peginContract.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
 
 		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
 		peginContract.AssertExpectations(t)
 	})

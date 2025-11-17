@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 var (
@@ -44,7 +46,7 @@ type EclipseCheckUseCase struct {
 	externalBtcSources []blockchain.BitcoinNetwork
 	externalRskSources []blockchain.RootstockRpcServer
 	eventBus           entities.EventBus
-	alertSender        entities.AlertSender
+	alertSender        alerts.AlertSender
 	alertRecipient     string
 	eclipsedBlock      blockIds
 	eclipsedBlockMutex sync.Locker
@@ -56,7 +58,7 @@ func NewEclipseCheckUseCase(
 	externalBtcSources []blockchain.BitcoinNetwork,
 	externalRskSources []blockchain.RootstockRpcServer,
 	eventBus entities.EventBus,
-	alertSender entities.AlertSender,
+	alertSender alerts.AlertSender,
 	alertRecipient string,
 	eclipsedBlockMutex sync.Locker,
 ) *EclipseCheckUseCase {

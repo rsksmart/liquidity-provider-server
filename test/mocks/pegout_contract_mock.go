@@ -298,22 +298,22 @@ func (_c *PegoutContractMock_IsPegOutQuoteCompleted_Call) RunAndReturn(run func(
 }
 
 // RefundPegout provides a mock function with given fields: txConfig, params
-func (_m *PegoutContractMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
+func (_m *PegoutContractMock) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
 	ret := _m.Called(txConfig, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RefundPegout")
 	}
 
-	var r0 string
+	var r0 blockchain.TransactionReceipt
 	var r1 error
-	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error)); ok {
 		return rf(txConfig, params)
 	}
-	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) string); ok {
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) blockchain.TransactionReceipt); ok {
 		r0 = rf(txConfig, params)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(blockchain.TransactionReceipt)
 	}
 
 	if rf, ok := ret.Get(1).(func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) error); ok {
@@ -344,12 +344,12 @@ func (_c *PegoutContractMock_RefundPegout_Call) Run(run func(txConfig blockchain
 	return _c
 }
 
-func (_c *PegoutContractMock_RefundPegout_Call) Return(_a0 string, _a1 error) *PegoutContractMock_RefundPegout_Call {
+func (_c *PegoutContractMock_RefundPegout_Call) Return(_a0 blockchain.TransactionReceipt, _a1 error) *PegoutContractMock_RefundPegout_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PegoutContractMock_RefundPegout_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) (string, error)) *PegoutContractMock_RefundPegout_Call {
+func (_c *PegoutContractMock_RefundPegout_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error)) *PegoutContractMock_RefundPegout_Call {
 	_c.Call.Return(run)
 	return _c
 }

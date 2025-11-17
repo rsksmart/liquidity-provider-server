@@ -2,9 +2,10 @@ package alerting
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	sesTypes "github.com/aws/aws-sdk-go-v2/service/ses/types"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,7 +18,7 @@ type SesAlertSender struct {
 	from      string
 }
 
-func NewSesAlertSender(sesClient sesClient, from string) entities.AlertSender {
+func NewSesAlertSender(sesClient sesClient, from string) alerts.AlertSender {
 	return &SesAlertSender{sesClient: sesClient, from: from}
 }
 

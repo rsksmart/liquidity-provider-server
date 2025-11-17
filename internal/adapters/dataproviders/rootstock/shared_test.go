@@ -71,12 +71,19 @@ func prepareTxMocks(
 
 	tx := geth.NewTx(legacyTx)
 
-	receipt := &geth.Receipt{}
-	receipt.TxHash = tx.Hash()
+	receipt := &geth.Receipt{
+		TxHash:            tx.Hash(),
+		BlockNumber:       big.NewInt(123),
+		BlockHash:         common.HexToHash("0x456"),
+		GasUsed:           21000,
+		CumulativeGasUsed: 50000,
+		EffectiveGasPrice: big.NewInt(20000000000),
+	}
 	if success == true {
 		receipt.Status = 1
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
+	mockClient.On("TransactionByHash", mock.Anything, mock.Anything).Return(tx, false, nil).Once()
 	signerMock.On("Sign", mock.Anything, mock.Anything).Return(tx, nil).Once()
 	signerMock.On("Address").Return(parsedAddress)
 	return tx
