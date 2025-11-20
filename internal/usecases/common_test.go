@@ -457,3 +457,29 @@ func TestValidateConfirmations(t *testing.T) {
 		require.ErrorIs(t, err, u.NonPositiveConfirmationKeyError)
 	})
 }
+
+func TestCheckPauseState(t *testing.T) {
+	pausedA := new(mocks.PausableMock)
+	pausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Reason: "paused A", Since: 5}, nil)
+	notPausedA := new(mocks.PausableMock)
+	notPausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+	notPausedB := new(mocks.PausableMock)
+	notPausedB.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+
+	t.Run("should return nil when no contract is paused", func(t *testing.T) {
+		err := u.CheckPauseState(notPausedA, notPausedB)
+		require.NoError(t, err)
+	})
+	t.Run("should handle error getting pause state", func(t *testing.T) {
+		pausedAWithError := new(mocks.PausableMock)
+		pausedAWithError.EXPECT().PausedStatus().Return(blockchain.PauseStatus{}, assert.AnError)
+		err := u.CheckPauseState(pausedAWithError, notPausedB)
+		require.Error(t, err)
+	})
+	t.Run("should return pause details if at least one contract is paused", func(t *testing.T) {
+		err := u.CheckPauseState(notPausedA, pausedA, notPausedB)
+		require.ErrorIs(t, err, blockchain.ContractPausedError)
+		require.Contains(t, err.Error(), "paused A")
+		require.Contains(t, err.Error(), "5")
+	})
+}

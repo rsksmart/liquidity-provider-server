@@ -18,18 +18,21 @@ func NewAddCollateralUseCase(contracts blockchain.RskContracts, lp liquidity_pro
 
 func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, error) {
 	var err error
+	if err = usecases.CheckPauseState(useCase.contracts.CollateralManagement); err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.AddPegoutCollateralId, err)
+	}
 	minCollateral, err := useCase.contracts.CollateralManagement.GetMinimumCollateral()
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
+		return nil, usecases.WrapUseCaseError(usecases.AddPegoutCollateralId, err)
 	}
 	collateral, err := useCase.contracts.CollateralManagement.GetPegoutCollateral(useCase.lp.RskAddress())
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
+		return nil, usecases.WrapUseCaseError(usecases.AddPegoutCollateralId, err)
 	}
 	result := new(entities.Wei)
 	result.Add(collateral, amount)
 	if minCollateral.Cmp(result) > 0 {
-		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, usecases.InsufficientAmountError)
+		return nil, usecases.WrapUseCaseError(usecases.AddPegoutCollateralId, usecases.InsufficientAmountError)
 	}
 	err = useCase.contracts.CollateralManagement.AddPegoutCollateral(amount)
 	if err != nil {

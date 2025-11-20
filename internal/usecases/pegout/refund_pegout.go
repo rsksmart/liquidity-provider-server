@@ -46,6 +46,10 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	var pegoutQuote *quote.PegoutQuote
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	}
+
 	if retainedQuote.State != quote.PegoutStateSendPegoutSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
 	}

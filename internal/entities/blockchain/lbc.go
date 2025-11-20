@@ -78,7 +78,18 @@ func NewProviderRegistrationParams(
 	}
 }
 
+type PauseStatus struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}
+
+type Pausable interface {
+	PausedStatus() (PauseStatus, error)
+}
+
 type PeginContract interface {
+	Pausable
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
@@ -88,6 +99,7 @@ type PeginContract interface {
 }
 
 type PegoutContract interface {
+	Pausable
 	GetAddress() string
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
 	RefundUserPegOut(quoteHash string) (string, error)
@@ -98,6 +110,7 @@ type PegoutContract interface {
 }
 
 type DiscoveryContract interface {
+	Pausable
 	GetAddress() string
 	SetProviderStatus(id uint64, newStatus bool) error
 	UpdateProvider(name, url string) (string, error)
@@ -108,6 +121,7 @@ type DiscoveryContract interface {
 }
 
 type CollateralManagementContract interface {
+	Pausable
 	GetAddress() string
 	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
 	ProviderResign() error

@@ -31,6 +31,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 	rsk.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(4600), nil)
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	pegoutContract.On("DaoFeePercentage").Return(uint64(100), nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)

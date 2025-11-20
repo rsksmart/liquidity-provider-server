@@ -52,14 +52,16 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 	var pegoutQuote *quote.PegoutQuote
 	var receipt blockchain.TransactionReceipt
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	}
+
 	if err = useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
 		return err
 	}
 
-	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
-	} else if pegoutQuote == nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
+	if pegoutQuote, err = useCase.getQuote(ctx, retainedQuote); err != nil {
+		return err
 	}
 
 	if receipt, err = useCase.validateQuote(ctx, retainedQuote, pegoutQuote); err != nil {
@@ -87,6 +89,17 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 		return usecases.WrapUseCaseErrorArgs(usecases.SendPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return nil
+}
+
+func (useCase *SendPegoutUseCase) getQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
+	var pegoutQuote *quote.PegoutQuote
+	var err error
+	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	} else if pegoutQuote == nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
+	}
+	return pegoutQuote, nil
 }
 
 func (useCase *SendPegoutUseCase) publishErrorEvent(

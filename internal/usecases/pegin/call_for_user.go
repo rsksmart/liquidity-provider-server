@@ -47,6 +47,10 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.
 	var creationData quote.PeginCreationData
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, err, true)
+	}
+
 	if retainedQuote.State != quote.PeginStateWaitingForDepositConfirmations {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, err, true)
 	}

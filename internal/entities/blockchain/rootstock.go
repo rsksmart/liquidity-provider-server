@@ -25,6 +25,7 @@ var (
 	rskAddressRegex       = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
+	ContractPausedError   = errors.New("contract is paused")
 )
 
 type RskContracts struct {

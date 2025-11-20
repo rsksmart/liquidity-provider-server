@@ -31,6 +31,31 @@ var (
 	cfuTx           = "cfu tx hash"
 )
 
+func TestRegisterPeginUseCase_Run_Paused(t *testing.T) {
+	retainedPeginQuote := quote.RetainedPeginQuote{
+		QuoteHash:         "101b1c",
+		DepositAddress:    test.AnyAddress,
+		Signature:         "0102031f1b",
+		RequiredLiquidity: entities.NewWei(1500),
+		State:             quote.PeginStateCallForUserSucceeded,
+		UserBtcTxHash:     userBtcTx,
+		CallForUserTxHash: cfuTx,
+	}
+	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	bridge := new(mocks.BridgeMock)
+	btc := new(mocks.BtcRpcMock)
+	mutex := new(mocks.MutexMock)
+	eventBus := new(mocks.EventBusMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, mutex)
+	err := useCase.Run(context.Background(), retainedPeginQuote)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 // nolint:funlen
 func TestRegisterPeginUseCase_Run(t *testing.T) {
 	retainedPeginQuote := quote.RetainedPeginQuote{
@@ -49,6 +74,7 @@ func TestRegisterPeginUseCase_Run(t *testing.T) {
 	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(2000000000)
 
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	registerPeginReceipt := blockchain.TransactionReceipt{
 		TransactionHash:   registerPeginTx,
 		BlockHash:         "0xregisterblock123",
@@ -122,6 +148,7 @@ func TestRegisterPeginUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 
 	for _, setup := range setups {
 		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 		quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 		btc := new(mocks.BtcRpcMock)
 		eventBus := new(mocks.EventBusMock)
@@ -238,6 +265,7 @@ func TestRegisterPeginUseCase_Run_QuoteNotFound(t *testing.T) {
 	})).Return().Once()
 
 	peginContract := &mocks.PeginContractMock{}
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	bridge := new(mocks.BridgeMock)
 	btc := new(mocks.BtcRpcMock)
 	mutex := new(mocks.MutexMock)
@@ -280,6 +308,7 @@ func TestRegisterPeginUseCase_Run_RegisterPeginFailed(t *testing.T) {
 	expectedRetainedQuote.RegisterPeginGasPrice = entities.NewWei(2000000000)
 
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	registerPeginReceipt := blockchain.TransactionReceipt{
 		TransactionHash:   registerPeginTx,
 		BlockHash:         "0xregisterblock123",
@@ -354,6 +383,7 @@ func TestRegisterPeginUseCase_Run_NotEnoughConfirmations(t *testing.T) {
 	for _, testCase := range setups {
 		t.Run(testCase.description, func(t *testing.T) {
 			peginContract := new(mocks.PeginContractMock)
+			peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 			quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 			eventBus := new(mocks.EventBusMock)
 			btc := new(mocks.BtcRpcMock)
@@ -459,6 +489,7 @@ func TestRegisterPeginUseCase_Run_UpdateError(t *testing.T) {
 	mutex.On("Unlock").Return()
 
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	registerPeginReceipt := blockchain.TransactionReceipt{
 		TransactionHash:   registerPeginTx,
 		BlockHash:         "0xregisterblock123",

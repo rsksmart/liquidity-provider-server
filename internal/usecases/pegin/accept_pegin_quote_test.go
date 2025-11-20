@@ -110,8 +110,10 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	mutex.On("Lock").Return().On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 
@@ -158,7 +160,9 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("GetSigner").Return(signerMock)
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 
 	t.Run("happy path", func(t *testing.T) {
 		requiredLiquidity := entities.NewWei(9280000)
@@ -311,8 +315,10 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
@@ -333,6 +339,25 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 	assert.Equal(t, acceptPeginSignature, result.Signature)
 }
 
+func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
+	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	bridge := new(mocks.BridgeMock)
+	btc := new(mocks.BtcRpcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
@@ -343,8 +368,10 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
@@ -376,8 +403,10 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
@@ -418,8 +447,10 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	mutex.On("Unlock").Return()
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50), nil)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
@@ -450,8 +481,10 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		lp := new(mocks.ProviderMock)
 		rsk := new(mocks.RootstockRpcServerMock)
 		caseHash := acceptPeginQuoteHash
+		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		setup(&caseHash, quoteRepository, bridge, btc, lp, rsk)
-		contracts := blockchain.RskContracts{Bridge: bridge}
+		contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), caseHash, "")

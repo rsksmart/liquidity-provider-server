@@ -79,6 +79,21 @@ var btcTxInfoMock = blockchain.BitcoinTransactionInformation{
 
 var btcRawTxMock = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
 
+func TestRefundPegoutUseCase_Run_Paused(t *testing.T) {
+	btc := new(mocks.BtcRpcMock)
+	rpc := blockchain.Rpc{Btc: btc}
+	mutex := new(mocks.MutexMock)
+	bridge := new(mocks.BridgeMock)
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	eventBus := new(mocks.EventBusMock)
+	useCase := pegout.NewRefundPegoutUseCase(quoteRepository, contracts, eventBus, rpc, mutex)
+	err := useCase.Run(context.Background(), retainedQuote)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 func TestRefundPegoutUseCase_Run(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	refundPegoutReceipt := blockchain.TransactionReceipt{
@@ -108,6 +123,7 @@ func TestRefundPegoutUseCase_Run(t *testing.T) {
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutQuoteCompletedEvent) bool {
 		expected := retainedQuote
@@ -146,6 +162,7 @@ func TestRefundPegoutUseCase_Run_UpdateError(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, mock.Anything).Return(updateError).Once()
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	refundPegoutReceipt2 := blockchain.TransactionReceipt{
 		TransactionHash:   refundPegoutTxHash,
 		BlockHash:         "0xblock123",
@@ -233,6 +250,7 @@ func TestRefundPegoutUseCase_Run_NotPublishRecoverableError(t *testing.T) {
 		mutex.On("Unlock").Return()
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutContract := new(mocks.PegoutContractMock)
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		btc := new(mocks.BtcRpcMock)
 		setup(quoteRepository, pegoutContract, btc)
 		contracts := blockchain.RskContracts{PegOut: pegoutContract}
@@ -273,6 +291,7 @@ func TestRefundPegoutUseCase_Run_PublishUnrecoverableError(t *testing.T) {
 	for _, setup := range unrecoverableSetups {
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutContract := new(mocks.PegoutContractMock)
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		btc := new(mocks.BtcRpcMock)
 		caseQuote := retainedQuote
 		setup(&caseQuote, quoteRepository, pegoutContract, btc)
@@ -311,6 +330,7 @@ func TestRefundPegoutUseCase_Run_NoConfirmations(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuote.QuoteHash).Return(&pegoutQuote, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	eventBus := new(mocks.EventBusMock)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedQuote.LpBtcTxHash).Return(unconfirmedBlockInfo, nil).Once()
@@ -336,6 +356,7 @@ func TestRefundPegoutUseCase_Run_WrongState(t *testing.T) {
 	wrongStateQuote.State = quote.PegoutStateSendPegoutFailed
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	eventBus := new(mocks.EventBusMock)
 	btc := new(mocks.BtcRpcMock)
 	mutex := new(mocks.MutexMock)

@@ -70,10 +70,14 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var daoTxAmounts usecases.DaoAmounts
 	var peginQuote quote.PeginQuote
 	var creationData quote.PeginCreationData
-	var fedAddress, hash string
+	var fedAddress string
 	var errorArgs usecases.ErrorArgs
 	var err error
 	var estimatedCallGas *entities.Wei
+
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
 
 	peginConfiguration := useCase.peginLp.PeginConfiguration(ctx)
 	if errorArgs, err = useCase.validateRequest(peginConfiguration, request); err != nil {
@@ -112,6 +116,17 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	if err = usecases.ValidateMinLockValue(usecases.GetPeginQuoteId, useCase.contracts.Bridge, peginQuote.Value); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
+
+	return useCase.storeResult(ctx, peginQuote, creationData)
+}
+
+func (useCase *GetQuoteUseCase) storeResult(
+	ctx context.Context,
+	peginQuote quote.PeginQuote,
+	creationData quote.PeginCreationData,
+) (GetPeginQuoteResult, error) {
+	var hash string
+	var err error
 
 	if hash, err = useCase.contracts.PegIn.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)

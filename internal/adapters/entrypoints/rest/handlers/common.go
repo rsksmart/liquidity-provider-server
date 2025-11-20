@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -52,6 +53,9 @@ func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, liquidity_provider.TamperedTrustedAccountError):
 		jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+	case errors.Is(err, blockchain.ContractPausedError):
+		jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
 	default:
 		jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

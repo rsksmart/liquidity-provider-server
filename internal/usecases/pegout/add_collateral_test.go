@@ -14,6 +14,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAddCollateralUseCase_Run_Paused(t *testing.T) {
+	collateral := new(mocks.CollateralManagementContractMock)
+	lp := new(mocks.ProviderMock)
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
+	useCase := pegout.NewAddCollateralUseCase(contracts, lp)
+	result, err := useCase.Run(entities.NewWei(1))
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 func TestAddCollateralUseCase_Run(t *testing.T) {
 	collateral := new(mocks.CollateralManagementContractMock)
 	lp := new(mocks.ProviderMock)
@@ -22,6 +33,7 @@ func TestAddCollateralUseCase_Run(t *testing.T) {
 	collateral.On("AddPegoutCollateral", value).Return(nil)
 	collateral.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 	collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(100), nil)
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 	result, err := useCase.Run(value)
@@ -38,6 +50,7 @@ func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
 	lp.On("RskAddress").Return("rskAddress")
 	collateral.On("GetMinimumCollateral").Return(entities.NewWei(2000), nil)
 	collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(100), nil)
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 	result, err := useCase.Run(value)
@@ -76,6 +89,7 @@ func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 		collateral := new(mocks.CollateralManagementContractMock)
 		c.Value(collateral)
 		contracts := blockchain.RskContracts{CollateralManagement: collateral}
+		collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		useCase := pegout.NewAddCollateralUseCase(contracts, lp)
 		result, err := useCase.Run(entities.NewWei(100))
 		collateral.AssertExpectations(t)
