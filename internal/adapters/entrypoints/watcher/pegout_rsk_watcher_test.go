@@ -403,7 +403,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 	})
 }
 
-// nolint:funlen,cyclop
+// nolint:funlen,cyclop,maintidx
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T) {
 	mutexes := environment.NewApplicationMutexes()
 	ticker := &mocks.TickerMock{}
