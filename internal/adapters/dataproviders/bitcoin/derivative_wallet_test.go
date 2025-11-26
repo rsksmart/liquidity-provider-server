@@ -4,6 +4,12 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"math/big"
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -20,11 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"os"
-	"path/filepath"
-	"slices"
-	"testing"
 )
 
 const (
@@ -185,6 +186,7 @@ func testImportPubKeyAndRescan(t *testing.T, rskAccount *account.RskAccount, add
 	client.AssertExpectations(t)
 }
 
+// nolint:funlen
 func TestDerivativeWallet(t *testing.T) {
 	existingAddressInfo := new(btcjson.GetAddressInfoResult)
 	nonExistingAddressInfo := new(btcjson.GetAddressInfoResult)
@@ -226,6 +228,21 @@ func TestDerivativeWallet(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testSendWithOpReturn(t, rskAccount, existingAddressInfo) })
 		t.Run("Error handling on btc tx sending", func(t *testing.T) {
 			cases := derivativeWalletSendWithOpReturnErrorSetups(rskAccount)
+			for _, testCase := range cases {
+				client := &mocks.ClientAdapterMock{}
+				client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
+				client.On("GetAddressInfo", btcAddress).Return(existingAddressInfo, nil).Once()
+				t.Run(testCase.description, func(t *testing.T) {
+					testCase.setup(t, client)
+				})
+			}
+		})
+	})
+
+	t.Run("CreateUnfundedTransactionWithOpReturn", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) { testCreateUnfundedTransactionWithOpReturn(t, rskAccount, existingAddressInfo) })
+		t.Run("Error handling", func(t *testing.T) {
+			cases := derivativeWalletCreateUnfundedTxErrorSetups(rskAccount)
 			for _, testCase := range cases {
 				client := &mocks.ClientAdapterMock{}
 				client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
@@ -700,6 +717,82 @@ func derivativeWalletEstimateTxFeesErrorSetups(rskAccount *account.RskAccount) [
 				result, err := wallet.EstimateTxFees(testnetAddress, entities.NewWei(1))
 				require.Error(t, err)
 				assert.Empty(t, result)
+				client.AssertExpectations(t)
+			},
+		},
+	}
+}
+
+func testCreateUnfundedTransactionWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	client := &mocks.ClientAdapterMock{}
+	value := entities.NewWei(600000000000000000)
+	satoshis, _ := value.ToSatoshi().Float64()
+	opReturnContent := []byte{0xf1, 0xf2, 0xf3, 0xf4, 0x00}
+	address, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
+	require.NoError(t, err)
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
+	client.On("CreateRawTransaction",
+		([]btcjson.TransactionInput)(nil),
+		mock.MatchedBy(func(outputs map[btcutil.Address]btcutil.Amount) bool {
+			for k, v := range outputs {
+				require.Equal(t, address, k)
+				require.Equal(t, btcutil.Amount(satoshis), v)
+			}
+			return len(outputs) == 1
+		}),
+		(*int64)(nil),
+	).Return(&wire.MsgTx{
+		Version:  0,
+		TxIn:     nil,
+		TxOut:    []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)}},
+		LockTime: 0,
+	}, nil).Once()
+	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+	require.NoError(t, err)
+	result, err := wallet.CreateUnfundedTransactionWithOpReturn(testnetAddress, value, opReturnContent)
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+
+	require.NotEmpty(t, result)
+	client.AssertExpectations(t)
+}
+
+func derivativeWalletCreateUnfundedTxErrorSetups(rskAccount *account.RskAccount) []struct {
+	description string
+	setup       func(t *testing.T, client *mocks.ClientAdapterMock)
+} {
+	return []struct {
+		description string
+		setup       func(t *testing.T, client *mocks.ClientAdapterMock)
+	}{
+		{
+			description: "invalid address",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				// Decoding the address happens before any other calls
+				// Unset GetWalletInfo since it won't be called twice
+				client.EXPECT().GetWalletInfo().Unset()
+				client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.CreateUnfundedTransactionWithOpReturn("invalid-address", entities.NewWei(1), []byte{0x01})
+				require.ErrorContains(t, err, "decoded address is of unknown format")
+				require.Nil(t, result)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error on CreateRawTransaction",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				// Unset previous expectation since we need different behavior
+				client.EXPECT().GetWalletInfo().Unset()
+				client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.CreateUnfundedTransactionWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0x01})
+				require.Error(t, err)
+				require.Nil(t, result)
 				client.AssertExpectations(t)
 			},
 		},

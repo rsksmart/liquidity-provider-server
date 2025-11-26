@@ -26,6 +26,14 @@ func (m *BtcWalletMock) SendWithOpReturn(address string, value *entities.Wei, op
 	return args.String(0), args.Error(1)
 }
 
+func (m *BtcWalletMock) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {
+	args := m.Called(address, value, opReturnContent)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
 func (m *BtcWalletMock) ImportAddress(address string) error {
 	args := m.Called(address)
 	return args.Error(0)

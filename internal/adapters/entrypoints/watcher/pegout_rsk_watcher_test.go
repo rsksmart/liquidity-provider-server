@@ -3,6 +3,9 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -19,8 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestNewPegoutRskDepositWatcher(t *testing.T) {
@@ -465,6 +466,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutContract.ExpectedCalls = []*mock.Call{}
 		pegoutRepository.Calls = []mock.Call{}
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
+		btcWallet.Calls = []mock.Call{}
+		btcWallet.ExpectedCalls = []*mock.Call{}
 
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
 		receipt := &blockchain.TransactionReceipt{
@@ -475,6 +478,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(10), mock.MatchedBy(matchUinPtr(20))).Return([]quote.PegoutDeposit{}, nil).Once()
+		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Maybe()
+		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Maybe()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 
 		assert.Eventually(t, func() bool {
@@ -497,6 +502,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutContract.ExpectedCalls = []*mock.Call{}
 		pegoutRepository.Calls = []mock.Call{}
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
+		btcWallet.Calls = []mock.Call{}
+		btcWallet.ExpectedCalls = []*mock.Call{}
 
 		receipt := &blockchain.TransactionReceipt{
 			BlockNumber: 10,
@@ -509,6 +516,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(20), mock.MatchedBy(matchUinPtr(21))).Return([]quote.PegoutDeposit{}, nil).Once()
+		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Maybe()
+		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Maybe()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 
 		assert.Eventually(t, func() bool {
@@ -555,6 +564,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		pegoutContract.EXPECT().IsPegOutQuoteCompleted(testRetainedQuote.QuoteHash).Return(false, nil).Once()
+		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Once()
+		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Once()
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
 		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
 

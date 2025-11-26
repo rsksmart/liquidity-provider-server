@@ -3,6 +3,11 @@ package rootstock_test
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -16,10 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (
@@ -487,5 +488,54 @@ func TestPegoutContractImpl_GetDepositEvents(t *testing.T) {
 		assert.Nil(t, result)
 		contractBinding.AssertExpectations(t)
 		iteratorMock.AssertExpectations(t)
+	})
+}
+
+func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
+	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
+	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
+	btcTx := []byte{0x01, 0x00, 0x00, 0x00}
+	contractBinding := &mocks.PegoutContractAdapterMock{}
+	signerMock := &mocks.TransactionSignerMock{}
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
+
+	t.Run("Success", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		expectedQuote := bindings.QuotesPegOutQuote{}
+		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(expectedQuote, nil).Once()
+		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
+		require.NoError(t, err)
+		contractBinding.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
+	})
+
+	t.Run("Should handle contract validation error", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, assert.AnError).Once()
+		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
+		require.Error(t, err)
+		contractBinding.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
+	})
+
+	t.Run("Should handle invalid quote hash format", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		err := pegoutContract.ValidatePegout("not-a-hex-string", btcTx)
+		require.Error(t, err)
+		signerMock.AssertExpectations(t)
+	})
+
+	t.Run("Should reject quote hash with 0x prefix", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		err := pegoutContract.ValidatePegout("0x762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a", btcTx)
+		require.Error(t, err)
+		signerMock.AssertExpectations(t)
+	})
+
+	t.Run("Should return error when quote hash is not 32 bytes long", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		err := pegoutContract.ValidatePegout("0104050302", btcTx)
+		require.ErrorContains(t, err, "quote hash must be 32 bytes long")
+		signerMock.AssertExpectations(t)
 	})
 }

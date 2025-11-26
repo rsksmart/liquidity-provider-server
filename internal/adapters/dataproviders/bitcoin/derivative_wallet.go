@@ -1,9 +1,11 @@
 package bitcoin
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
@@ -231,6 +233,34 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return "", err
 	}
 	return txHash.String(), nil
+}
+
+func (wallet *DerivativeWallet) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {
+	decodedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
+	if err != nil {
+		return nil, err
+	}
+
+	satoshis, _ := value.ToSatoshi().Float64()
+	output := map[btcutil.Address]btcutil.Amount{decodedAddress: btcutil.Amount(satoshis)}
+	rawTx, err := wallet.conn.client.CreateRawTransaction(nil, output, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	opReturnScript, err := txscript.NullDataScript(opReturnContent)
+	if err != nil {
+		return nil, err
+	}
+	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+
+	var buf bytes.Buffer
+	err = rawTx.Serialize(&buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (wallet *DerivativeWallet) ImportAddress(address string) error {

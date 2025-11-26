@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"strings"
-	"sync"
 )
 
 type DepositParser = func(receipt blockchain.TransactionReceipt) (blockchain.ParsedLog[quote.PegoutDeposit], error)
@@ -165,6 +166,11 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
+	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
+		retainedQuote.UserRskTxHash = receipt.TransactionHash
+		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
+	}
+
 	if txHash, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
 	} else {
@@ -183,6 +189,27 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		Error:         err,
 	})
 	return retainedQuote, err
+}
+
+func (useCase *SendPegoutUseCase) validatePegoutTransaction(
+	retainedQuote quote.RetainedPegoutQuote,
+	pegoutQuote *quote.PegoutQuote,
+	quoteHashBytes []byte,
+) error {
+	rawTx, err := useCase.btcWallet.CreateUnfundedTransactionWithOpReturn(
+		pegoutQuote.DepositAddress,
+		pegoutQuote.Value,
+		quoteHashBytes,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create unfunded transaction: %w", err)
+	}
+
+	if err = useCase.contracts.PegOut.ValidatePegout(retainedQuote.QuoteHash, rawTx); err != nil {
+		return fmt.Errorf("transaction validation failed: %w", err)
+	}
+
+	return nil
 }
 
 func (useCase *SendPegoutUseCase) validateBalance(

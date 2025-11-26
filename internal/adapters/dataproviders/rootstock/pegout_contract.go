@@ -5,6 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -14,9 +18,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"strings"
-	"time"
 )
 
 type pegoutContractImpl struct {
@@ -71,6 +72,23 @@ func (pegoutContract *pegoutContractImpl) IsPegOutQuoteCompleted(quoteHash strin
 		return false, err
 	}
 	return result, nil
+}
+
+func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx []byte) error {
+	var quoteHashBytes [32]byte
+	// Set From address to the LP provider address so msg.sender validation passes
+	opts := &bind.CallOpts{
+		From: pegoutContract.signer.Address(),
+	}
+	hashBytesSlice, err := hex.DecodeString(quoteHash)
+	if err != nil {
+		return err
+	} else if len(hashBytesSlice) != 32 {
+		return errors.New("quote hash must be 32 bytes long")
+	}
+	copy(quoteHashBytes[:], hashBytesSlice)
+	_, err = pegoutContract.contract.ValidatePegout(opts, quoteHashBytes, btcTx)
+	return err
 }
 
 func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {

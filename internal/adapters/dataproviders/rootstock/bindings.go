@@ -53,6 +53,7 @@ type PegoutBinding interface {
 	IsQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error)
 	RefundUserPegOut(opts *bind.TransactOpts, quoteHash [32]byte) (*types.Transaction, error)
 	GetFeePercentage(opts *bind.CallOpts) (*big.Int, error)
+	ValidatePegout(opts *bind.CallOpts, quoteHash [32]byte, btcTx []byte) (bindings.QuotesPegOutQuote, error)
 }
 
 type PegoutContractAdapter interface {
