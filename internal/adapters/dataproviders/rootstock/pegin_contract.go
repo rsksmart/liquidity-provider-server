@@ -101,10 +101,10 @@ func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuo
 	return hex.EncodeToString(results[:]), nil
 }
 
-func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (string, error) {
+func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
 	parsedQuote, err := parsePeginQuote(peginQuote)
 	if err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 
 	opts := &bind.TransactOpts{
@@ -114,25 +114,55 @@ func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.Transact
 		Signer:   peginContract.signer.Sign,
 	}
 
+	var tx *geth.Transaction
 	receipt, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(peginContract.client, peginContract.miningTimeout, "CallForUser", func() (*geth.Transaction, error) {
-				return peginContract.contract.CallForUser(opts, parsedQuote)
+				var txErr error
+				tx, txErr = peginContract.contract.CallForUser(opts, parsedQuote)
+				return tx, txErr
 			})
 		})
 
 	if err != nil {
-		return "", fmt.Errorf("call for user error: %w", err)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("call for user error: %w", err)
 	} else if receipt == nil {
-		return "", errors.New("call for user error: incomplete receipt")
-	} else if receipt.Status == 0 {
-		txHash := receipt.TxHash.String()
-		return txHash, fmt.Errorf("call for user error: transaction reverted (%s)", txHash)
+		return blockchain.TransactionReceipt{}, errors.New("call for user error: incomplete receipt")
 	}
-	return receipt.TxHash.String(), nil
+
+	// Fetch the transaction to get the "To" address and the Value
+	toAddress := ""
+	txValue := entities.NewWei(0)
+	if tx != nil {
+		if tx.To() != nil {
+			toAddress = tx.To().String()
+		}
+		txValue = entities.NewBigWei(tx.Value())
+	}
+
+	transactionReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   receipt.TxHash.String(),
+		BlockHash:         receipt.BlockHash.String(),
+		BlockNumber:       receipt.BlockNumber.Uint64(),
+		From:              peginContract.signer.Address().String(),
+		To:                toAddress,
+		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
+		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
+		Value:             txValue,
+		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
+	}
+
+	// Return populated receipt even on revert, but with error
+	if receipt.Status == 0 {
+		return transactionReceipt, fmt.Errorf("call for user error: transaction reverted (%s)", receipt.TxHash.String())
+	}
+
+	return transactionReceipt, nil
 }
 
-func (peginContract *peginContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (string, error) {
+// TODO: ignore cyclop and funlen added during the merge of the LBC split, the function should be refactored separately
+// nolint:cyclop,funlen
+func (peginContract *peginContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error) {
 	const (
 		functionName          = "registerPegIn"
 		waitingForBridgeError = "NotEnoughConfirmations"
@@ -141,7 +171,7 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	var err error
 	var parsedQuote bindings.QuotesPegInQuote
 	if parsedQuote, err = parsePeginQuote(params.Quote); err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 	log.Infof("Executing RegisterPegIn with params: %s\n", params.String())
 	revert := peginContract.contract.Caller().Call(
@@ -155,13 +185,13 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 
 	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
 	if err != nil && parsedRevert == nil {
-		return "", fmt.Errorf("error parsing registerPegIn result: %w", err)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing registerPegIn result: %w", err)
 	} else if parsedRevert != nil && strings.EqualFold(waitingForBridgeError, parsedRevert.Name) {
 		log.Debugln("RegisterPegin: bridge failed to validate BTC transaction. retrying on next confirmation.")
 		// allow retrying in case the bridge didn't acknowledge all required confirmations have occurred
-		return "", blockchain.WaitingForBridgeError
+		return blockchain.TransactionReceipt{}, blockchain.WaitingForBridgeError
 	} else if parsedRevert != nil {
-		return "", fmt.Errorf("registerPegIn reverted with: %s", parsedRevert.Name)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("registerPegIn reverted with: %s", parsedRevert.Name)
 	}
 
 	opts := &bind.TransactOpts{
@@ -170,20 +200,44 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 		GasLimit: registerPeginGasLimit,
 	}
 
+	var tx *geth.Transaction
 	receipt, err := awaitTx(peginContract.client, peginContract.miningTimeout, "RegisterPegIn", func() (*geth.Transaction, error) {
-		return peginContract.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
+		var txErr error
+		tx, txErr = peginContract.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
 			params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
+		return tx, txErr
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("register pegin error: %w", err)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("register pegin error: %w", err)
 	} else if receipt == nil {
-		return "", errors.New("register pegin error: incomplete receipt")
-	} else if receipt.Status == 0 {
-		txHash := receipt.TxHash.String()
-		return txHash, fmt.Errorf("register pegin error: transaction reverted (%s)", txHash)
+		return blockchain.TransactionReceipt{}, errors.New("register pegin error: incomplete receipt")
 	}
-	return receipt.TxHash.String(), nil
+	// Fetch the transaction to get the "To" address and Value
+	toAddress := ""
+	txValue := entities.NewWei(0)
+	if tx != nil {
+		if tx.To() != nil {
+			toAddress = tx.To().String()
+		}
+		txValue = entities.NewBigWei(tx.Value())
+	}
+	transactionReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   receipt.TxHash.String(),
+		BlockHash:         receipt.BlockHash.String(),
+		BlockNumber:       receipt.BlockNumber.Uint64(),
+		From:              peginContract.signer.Address().String(),
+		To:                toAddress,
+		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
+		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
+		Value:             txValue,
+		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
+	}
+	if receipt.Status == 0 {
+		return transactionReceipt, fmt.Errorf("register pegin error: transaction reverted (%s)", receipt.TxHash.String())
+	}
+
+	return transactionReceipt, nil
 }
 
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types

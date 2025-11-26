@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
 	"strconv"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -75,11 +77,13 @@ const (
 	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
+	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
+	RecommendedPeginId         UseCaseId = "RecommendedPegin"
 )
 
 var (
 	NonRecoverableError             = errors.New("non recoverable")
-	TxBelowMinimumError             = errors.New("requested amount below bridge's min transaction value")
+	TxBelowMinimumError             = errors.New("requested amount should be greater than bridge's min transaction value")
 	RskAddressNotSupportedError     = errors.New("rsk address not supported")
 	QuoteNotFoundError              = errors.New("quote not found")
 	QuoteNotAcceptedError           = errors.New("quote not accepted")
@@ -96,6 +100,13 @@ var (
 	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
 	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
+
+type RecommendedOperationResult struct {
+	RecommendedQuoteValue *entities.Wei
+	EstimatedCallFee      *entities.Wei
+	EstimatedGasFee       *entities.Wei
+	EstimatedProductFee   *entities.Wei
+}
 
 type ErrorArgs map[string]string
 
@@ -144,7 +155,7 @@ func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer,
 	}
 
 	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(100))
+	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(utils.Scale))
 	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
 	if err != nil {
 		return DaoAmounts{}, err
@@ -163,7 +174,7 @@ func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *ent
 	if minLockTxValue, err = bridge.GetMinimumLockTxValue(); err != nil {
 		return WrapUseCaseError(useCase, err)
 	}
-	if value.Cmp(minLockTxValue) < 0 {
+	if value.Cmp(minLockTxValue) <= 0 {
 		errorArgs["minimum"] = minLockTxValue.String()
 		errorArgs["value"] = value.String()
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)

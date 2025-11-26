@@ -4,16 +4,21 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"math/big"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 const (
 	RskChainHeightErrorTemplate = "error getting Rootstock chain height: %v"
+)
+
+const (
+	RskZeroAddress = "0x0000000000000000000000000000000000000000"
 )
 
 var (
@@ -52,6 +57,7 @@ type TransactionReceipt struct {
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
 	Value             *entities.Wei
+	GasPrice          *entities.Wei
 	Logs              []TransactionLog
 }
 
@@ -98,6 +104,6 @@ type RootstockRpcServer interface {
 }
 
 type RootstockWallet interface {
-	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (string, error)
+	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context) (*entities.Wei, error)
 }

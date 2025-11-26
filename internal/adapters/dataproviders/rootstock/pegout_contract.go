@@ -151,7 +151,9 @@ func (pegoutContract *pegoutContractImpl) RefundUserPegOut(quoteHash string) (st
 	return receipt.TxHash.String(), nil
 }
 
-func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (string, error) {
+// TODO: ignore cyclop and funlen added during the merge of the LBC split, the function should be refactored separately
+// nolint:cyclop,funlen
+func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
 	var res []any
 	var err error
 	const (
@@ -172,12 +174,12 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 	)
 	parsedRevert, err := ParseRevertReason(pegoutContract.abis.PegOut, revert)
 	if err != nil && parsedRevert == nil {
-		return "", fmt.Errorf("error parsing refundPegout result: %w", err)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing refundPegout result: %w", err)
 	} else if parsedRevert != nil && (strings.EqualFold(notEnoughConfirmationsError, parsedRevert.Name) || strings.EqualFold(unableToGetConfirmations, parsedRevert.Name)) {
 		log.Debugln("RefundPegout: bridge failed to validate BTC transaction. retrying on next confirmation.")
-		return "", blockchain.WaitingForBridgeError
+		return blockchain.TransactionReceipt{}, blockchain.WaitingForBridgeError
 	} else if parsedRevert != nil {
-		return "", fmt.Errorf("refundPegout reverted with: %s", parsedRevert.Name)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("refundPegout reverted with: %s", parsedRevert.Name)
 	}
 
 	opts := &bind.TransactOpts{
@@ -186,20 +188,45 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 		GasLimit: *txConfig.GasLimit,
 	}
 
+	var tx *geth.Transaction
 	receipt, err := awaitTx(pegoutContract.client, pegoutContract.miningTimeout, "RefundPegOut", func() (*geth.Transaction, error) {
-		return pegoutContract.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
+		var txErr error
+		tx, txErr = pegoutContract.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
 			params.BtcBlockHeaderHash, params.MerkleBranchPath, params.MerkleBranchHashes)
+		return tx, txErr
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("refund pegout error: %w", err)
+		return blockchain.TransactionReceipt{}, fmt.Errorf("refund pegout error: %w", err)
 	} else if receipt == nil {
-		return "", errors.New("refund pegout error: incomplete receipt")
-	} else if receipt.Status == 0 {
-		txHash := receipt.TxHash.String()
-		return txHash, fmt.Errorf("refund pegout error: transaction reverted (%s)", txHash)
+		return blockchain.TransactionReceipt{}, errors.New("refund pegout error: incomplete receipt")
 	}
-	return receipt.TxHash.String(), nil
+	toAddress := ""
+	txValue := entities.NewWei(0)
+	if tx != nil {
+		if tx.To() != nil {
+			toAddress = tx.To().String()
+		}
+		txValue = entities.NewBigWei(tx.Value())
+	}
+	transactionReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   receipt.TxHash.String(),
+		BlockHash:         receipt.BlockHash.String(),
+		BlockNumber:       receipt.BlockNumber.Uint64(),
+		From:              pegoutContract.signer.Address().String(),
+		To:                toAddress,
+		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
+		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
+		Value:             txValue,
+		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
+		Logs:              convertReceiptLogs(receipt),
+	}
+	// Return populated receipt even on revert, but with error
+	if receipt.Status == 0 {
+		return transactionReceipt, fmt.Errorf("refund pegout error: transaction reverted (%s)", receipt.TxHash.String())
+	}
+
+	return transactionReceipt, nil
 }
 
 func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error) {

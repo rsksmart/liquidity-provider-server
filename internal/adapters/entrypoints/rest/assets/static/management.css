@@ -79,6 +79,11 @@
     overflow-x: auto;
 }
 
+#trustedAccountsContainer {
+    max-height: 205px;
+    overflow-y: auto;
+}
+
 #trustedAccountsTable button {
     white-space: nowrap;
 }

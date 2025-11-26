@@ -303,7 +303,8 @@ func TestWatchOnlyWallet_SendWithOpReturn(t *testing.T) {
 	require.NoError(t, err)
 	result, err := wallet.SendWithOpReturn("address", nil, nil)
 	require.ErrorContains(t, err, "cannot send from a watch-only wallet")
-	require.Empty(t, result)
+	require.Empty(t, result.Hash)
+	require.Nil(t, result.Fee)
 }
 
 func TestWatchOnlyWallet_CreateUnfundedTransactionWithOpReturn(t *testing.T) {

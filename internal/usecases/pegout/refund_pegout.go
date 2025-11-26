@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"sync"
 )
 
 const (
@@ -130,10 +131,10 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	params blockchain.RefundPegoutParams,
 ) (quote.RetainedPegoutQuote, error) {
 	var newState quote.PegoutState
-	var refundPegoutTxHash string
 	var err, updateError error
 
-	if refundPegoutTxHash, err = useCase.contracts.PegOut.RefundPegout(txConfig, params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	receipt, err := useCase.contracts.PegOut.RefundPegout(txConfig, params)
+	if errors.Is(err, blockchain.WaitingForBridgeError) {
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PegoutStateRefundPegOutFailed
@@ -142,7 +143,11 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	}
 
 	retainedQuote.State = newState
-	retainedQuote.RefundPegoutTxHash = refundPegoutTxHash
+	if receipt.TransactionHash != "" {
+		retainedQuote.RefundPegoutTxHash = receipt.TransactionHash
+		retainedQuote.RefundPegoutGasUsed = receipt.GasUsed.Uint64()
+		retainedQuote.RefundPegoutGasPrice = receipt.GasPrice
+	}
 	useCase.eventBus.Publish(quote.PegoutQuoteCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 		RetainedQuote: retainedQuote,

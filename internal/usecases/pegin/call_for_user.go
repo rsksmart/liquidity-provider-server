@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/big"
-	"sync"
 )
 
 type CallForUserUseCase struct {
@@ -140,17 +141,22 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	creationData quote.PeginCreationData,
 ) (quote.RetainedPeginQuote, error) {
 	var quoteState quote.PeginState
-	var callForUserTx string
+	var receipt blockchain.TransactionReceipt
 	var err error
 
 	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.contracts.PegIn.CallForUser(config, *peginQuote); err != nil {
+	if receipt, err = useCase.contracts.PegIn.CallForUser(config, *peginQuote); err != nil {
 		quoteState = quote.PeginStateCallForUserFailed
 	} else {
 		quoteState = quote.PeginStateCallForUserSucceeded
 	}
 
-	retainedQuote.CallForUserTxHash = callForUserTx
+	if receipt.TransactionHash != "" {
+		retainedQuote.CallForUserTxHash = receipt.TransactionHash
+		retainedQuote.CallForUserGasUsed = receipt.GasUsed.Uint64()
+		retainedQuote.CallForUserGasPrice = receipt.GasPrice
+	}
+
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),

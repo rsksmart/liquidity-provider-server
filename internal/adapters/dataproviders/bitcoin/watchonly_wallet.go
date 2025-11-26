@@ -62,8 +62,8 @@ func (wallet *WatchOnlyWallet) GetBalance() (*entities.Wei, error) {
 	return nil, errors.New("cannot get balance of a watch-only wallet since it may be tracking address from multiple wallets")
 }
 
-func (wallet *WatchOnlyWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error) {
-	return "", errors.New("cannot send from a watch-only wallet")
+func (wallet *WatchOnlyWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
+	return blockchain.BitcoinTransactionResult{}, errors.New("cannot send from a watch-only wallet")
 }
 
 func (wallet *WatchOnlyWallet) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {

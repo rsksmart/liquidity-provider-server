@@ -3,6 +3,8 @@ package registry
 import (
 	"sync"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -76,6 +78,8 @@ type UseCaseRegistry struct {
 	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
+	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
+	recommendedPeginUseCase       *pegin.RecommendedPeginUseCase
 }
 
 // NewUseCaseRegistry
@@ -278,6 +282,7 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
+			rskRegistry.Contracts,
 		),
 		getTransactionsReportUseCase: reports.NewGetTransactionsUseCase(
 			databaseRegistry.PeginRepository,
@@ -331,6 +336,21 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			databaseRegistry.BatchPegOutRepository,
 			messaging.EventBus,
+		),
+		recommendedPegoutUseCase: pegout.NewRecommendedPegoutUseCase(
+			liquidityProvider,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			btcRegistry.PaymentWallet,
+			utils.Scale,
+			env.Rsk.FeeCollectorAddress,
+		),
+		recommendedPeginUseCase: pegin.NewRecommendedPeginUseCase(
+			liquidityProvider,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			env.Rsk.FeeCollectorAddress,
+			utils.Scale,
 		),
 	}
 }
@@ -489,4 +509,12 @@ func (registry *UseCaseRegistry) AddTrustedAccountUseCase() *liquidity_provider.
 
 func (registry *UseCaseRegistry) DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase {
 	return registry.deleteTrustedAccountUseCase
+}
+
+func (registry *UseCaseRegistry) RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase {
+	return registry.recommendedPegoutUseCase
+}
+
+func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase {
+	return registry.recommendedPeginUseCase
 }

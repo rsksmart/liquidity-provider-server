@@ -2,17 +2,19 @@ package registry
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
 type Messaging struct {
 	Rpc         blockchain.Rpc
 	EventBus    entities.EventBus
-	AlertSender entities.AlertSender
+	AlertSender alerts.AlertSender
 	RskExtraRpc []blockchain.RootstockRpcServer
 	BtcExtraRpc []blockchain.BitcoinNetwork
 }

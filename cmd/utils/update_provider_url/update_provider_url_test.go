@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/term"
-	"testing"
 )
 
 func TestNewUpdateProviderArgs(t *testing.T) {

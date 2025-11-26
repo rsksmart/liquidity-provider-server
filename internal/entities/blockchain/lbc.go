@@ -82,8 +82,8 @@ type PeginContract interface {
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (string, error)
-	RegisterPegin(params RegisterPeginParams) (string, error)
+	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
+	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	DaoFeePercentage() (uint64, error)
 }
 
@@ -93,7 +93,7 @@ type PegoutContract interface {
 	RefundUserPegOut(quoteHash string) (string, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
-	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (string, error)
+	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	ValidatePegout(quoteHash string, btcTx []byte) error
 	DaoFeePercentage() (uint64, error)
 }
