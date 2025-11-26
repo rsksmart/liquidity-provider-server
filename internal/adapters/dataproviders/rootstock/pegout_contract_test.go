@@ -513,3 +513,29 @@ func TestPegoutContractImpl_GetDepositEvents(t *testing.T) {
 		iteratorMock.AssertExpectations(t)
 	})
 }
+
+func TestPegoutContractImpl_PausedStatus(t *testing.T) {
+	contractBinding := &mocks.PegoutContractAdapterMock{}
+	contract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	t.Run("should return pause status result", func(t *testing.T) {
+		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
+			IsPaused bool
+			Reason   string
+			Since    uint64
+		}{IsPaused: true, Reason: "test", Since: 123}, nil).Once()
+		result, err := contract.PausedStatus()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
+	})
+	t.Run("should handle error checking pause status", func(t *testing.T) {
+		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
+			IsPaused bool
+			Reason   string
+			Since    uint64
+		}{}, assert.AnError).Once()
+		result, err := contract.PausedStatus()
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	contractBinding.AssertExpectations(t)
+}
