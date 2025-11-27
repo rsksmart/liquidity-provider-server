@@ -17,7 +17,8 @@ tools: download
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
-	go install github.com/vektra/mockery/v2@v2.53.0  	# ensures mockery version 2.53.0 is installed
+	go install github.com/ethereum/go-ethereum/cmd/abigen@eb00f1694c9265f6909c19995a535eef246dcf1e # v1.14.13
+	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
 
 download:
 	go mod download
@@ -87,3 +88,6 @@ monitoring:
 		-p $(MONITOR_PORT):$(MONITOR_PORT) \
 		-e MONITOR_PORT=$(MONITOR_PORT) \
 		monitoring
+
+bindings:
+	./scripts/create-bindings.sh $(IMAGE) && echo "Bindings generated successfully"

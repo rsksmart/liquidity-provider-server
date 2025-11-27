@@ -107,7 +107,7 @@ func (useCase *RecommendedPegoutUseCase) getScaledCallFeePercentage(
 
 func (useCase *RecommendedPegoutUseCase) getScaledProductFeePercentage() (*big.Int, error) {
 	// should be already scaled in the contract
-	uintProductFee, err := useCase.contracts.FeeCollector.DaoFeePercentage()
+	uintProductFee, err := useCase.contracts.PegOut.DaoFeePercentage()
 	if err != nil {
 		return nil, err
 	}

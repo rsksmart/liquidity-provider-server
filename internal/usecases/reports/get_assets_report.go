@@ -167,7 +167,7 @@ func (useCase *GetAssetsReportUseCase) calculateRbtcAssetReport(ctx context.Cont
 	rbtcInRskWallet := entities.NewWei(0).Sub(rbtcWalletBalance, btcWaitingForRebalancing)
 
 	// Initial balance + the cases when registerPegin succeded and the LBC balance for the LP was increased
-	rbtcLockedInLbc, err := useCase.contracts.Lbc.GetBalance(useCase.lp.RskAddress())
+	rbtcLockedInLbc, err := useCase.contracts.PegIn.GetBalance(useCase.lp.RskAddress())
 	if err != nil {
 		return RbtcAssetReport{}, err
 	}

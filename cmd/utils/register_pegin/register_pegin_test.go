@@ -72,75 +72,75 @@ func TestExecuteRegisterPegIn(t *testing.T) {
 	}
 	t.Run("should execute RegisterPegIn successfully", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()
-		lbc.On("RegisterPegin", blockchain.RegisterPeginParams{
+		peginContract.On("RegisterPegin", blockchain.RegisterPeginParams{
 			QuoteSignature: parsedInput.Signature, BitcoinRawTransaction: rawTx,
 			PartialMerkleTree: pmt, BlockHeight: blockHeight, Quote: parsedInput.Quote,
 		}).Return(expectedReceipt, nil).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.NoError(t, err)
 		assert.Equal(t, expectedReceipt, result)
 		rpc.AssertExpectations(t)
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	t.Run("should return error if GetPartialMerkleTree fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return([]byte{}, assert.AnError).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
 		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
-		lbc.AssertNotCalled(t, "RegisterPegin")
+		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
 
 	t.Run("should return error if GetRawTransaction fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return([]byte{}, assert.AnError).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
 		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
-		lbc.AssertNotCalled(t, "RegisterPegin")
+		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
 
 	t.Run("should return error if GetTransactionBlockInfo fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 
 		require.Error(t, err)
 		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
-		lbc.AssertNotCalled(t, "RegisterPegin")
+		peginContract.AssertNotCalled(t, "RegisterPegin")
 	})
 
 	t.Run("should return error if RegisterPegin fails", func(t *testing.T) {
 		rpc := new(mocks.BtcRpcMock)
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		rpc.On("GetPartialMerkleTree", parsedInput.BtcTxHash).Return(pmt, nil).Once()
 		rpc.On("GetRawTransaction", parsedInput.BtcTxHash).Return(rawTx, nil).Once()
 		rpc.On("GetTransactionBlockInfo", parsedInput.BtcTxHash).Return(blockInfo, nil).Once()
-		lbc.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
+		peginContract.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
 
-		result, err := ExecuteRegisterPegIn(rpc, lbc, parsedInput)
+		result, err := ExecuteRegisterPegIn(rpc, peginContract, parsedInput)
 		require.Error(t, err)
 		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		rpc.AssertExpectations(t)
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 }
 
@@ -163,7 +163,7 @@ func TestRegisterPegInScriptInput_ToEnv(t *testing.T) {
 		assert.Equal(t, "btcPassword", env.Btc.Password)
 		// we assert the rsk defaults to ensure the method called its parent method
 		assert.Equal(t, uint64(33), env.Rsk.ChainId)
-		assert.Equal(t, "0x8901a2bbf639bfd21a97004ba4d7ae2bd00b8da8", env.Rsk.LbcAddress)
+		assert.Equal(t, "0x8901a2bbf639bfd21a97004ba4d7ae2bd00b8da8", env.Rsk.PeginContractAddress)
 		assert.Equal(t, "0x0000000000000000000000000000000001000006", env.Rsk.BridgeAddress)
 		assert.Equal(t, 0, env.Rsk.AccountNumber)
 	})

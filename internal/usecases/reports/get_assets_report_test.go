@@ -345,10 +345,10 @@ func TestGetAssetsReportUseCase_Run_BtcAssetReport_Success(t *testing.T) {
 			pegoutProvider := &mocks.ProviderMock{}
 			peginRepository := &mocks.PeginQuoteRepositoryMock{}
 			pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-			lbcContract := &mocks.LiquidityBridgeContractMock{}
+			peginContract := &mocks.PeginContractMock{}
 
 			contracts := blockchain.RskContracts{
-				Lbc: lbcContract,
+				PegIn: peginContract,
 			}
 
 			btcWallet.On("GetBalance").Return(tc.btcWalletBalance, nil).Once()
@@ -399,7 +399,7 @@ func TestGetAssetsReportUseCase_Run_BtcAssetReport_Success(t *testing.T) {
 			// Setup mock expectations for RBTC-related calls (minimal setup to make them pass)
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(0), nil).Once()
 			lp.On("RskAddress").Return("test-rsk-address").Twice() // Called twice: once for RSK balance, once for LBC balance
-			lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(0), nil).Once()
+			peginContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(0), nil).Once()
 			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 				Return([]quote.PeginQuote{}, nil).Once()
 			peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
@@ -447,7 +447,7 @@ func TestGetAssetsReportUseCase_Run_BtcAssetReport_Success(t *testing.T) {
 			lp.AssertExpectations(t)
 			peginRepository.AssertExpectations(t)
 			pegoutRepository.AssertExpectations(t)
-			lbcContract.AssertExpectations(t)
+			peginContract.AssertExpectations(t)
 		})
 	}
 }
@@ -556,9 +556,9 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			pegoutProvider := &mocks.ProviderMock{}
 			peginRepository := &mocks.PeginQuoteRepositoryMock{}
 			pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-			lbcContract := &mocks.LiquidityBridgeContractMock{}
+			peginContract := &mocks.PeginContractMock{}
 			contracts := blockchain.RskContracts{
-				Lbc: lbcContract,
+				PegIn: peginContract,
 			}
 
 			// Setup mock expectations for BTC-related calls (minimal setup to make them pass)
@@ -593,7 +593,7 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			// Setup mock expectations for RBTC-related calls
 			rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(tc.rbtcWalletBalance, nil).Once()
 			lp.On("RskAddress").Return("test-rsk-address").Twice() // Called twice: once for RSK balance, once for LBC balance
-			lbcContract.On("GetBalance", "test-rsk-address").Return(tc.rbtcLockedInLbc, nil).Once()
+			peginContract.On("GetBalance", "test-rsk-address").Return(tc.rbtcLockedInLbc, nil).Once()
 
 			// Setup mock expectations for pegin quotes by different states
 			callSucceededQuotes := []quote.RetainedPeginQuote{}
@@ -653,7 +653,7 @@ func TestGetAssetsReportUseCase_Run_RbtcAssetReport_Success(t *testing.T) {
 			lp.AssertExpectations(t)
 			peginRepository.AssertExpectations(t)
 			pegoutRepository.AssertExpectations(t)
-			lbcContract.AssertExpectations(t)
+			peginContract.AssertExpectations(t)
 		})
 	}
 }
@@ -687,8 +687,8 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		pegoutQuotes := []quote.RetainedPegoutQuote{
 			{QuoteHash: "pegout_1", RequiredLiquidity: pegoutQuote1Amount, State: quote.PegoutStateWaitingForDeposit},
@@ -702,7 +702,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		btcWallet.On("GetBalance").Return(initialBtcWalletBalance, nil).Once()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(initialRbtcWalletBalance, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -734,7 +734,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lp.AssertExpectations(t)
 		peginRepository.AssertExpectations(t)
 		pegoutRepository.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	// Scenario 2: Quotes progress - LP sends BTC (pegout), LP calls for user (pegin)
@@ -746,8 +746,8 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		// Scenario 2: User deposits completed, assets moved but not yet fully cycled
 		// - pegout_1: User deposited RBTC, LP refunded (RefundPegOutSucceeded) - LP now has RBTC in wallet
@@ -786,7 +786,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		btcWallet.On("GetBalance").Return(initialBtcWalletBalance, nil).Once()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(currentRbtcWalletBalance, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -818,7 +818,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lp.AssertExpectations(t)
 		peginRepository.AssertExpectations(t)
 		pegoutRepository.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	// Scenario 3: Final state - quotes completed and refunded
@@ -830,8 +830,8 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		// Scenario 3: All quotes completed and refunded
 		// - pegout_1: LP sent BTC, user deposited RBTC to LBC, LP refunded (RefundPegOutSucceeded)
@@ -858,7 +858,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		btcWallet.On("GetBalance").Return(initialBtcWalletBalance, nil).Once()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(finalRbtcWalletBalance, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(initialRbtcLbcBalance, nil).Once()
 
 		// Pegout repository mocks
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -897,7 +897,7 @@ func TestGetAssetsReportUseCase_Run_AssetConservation_ThroughQuoteLifecycle(t *t
 		lp.AssertExpectations(t)
 		peginRepository.AssertExpectations(t)
 		pegoutRepository.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 }
 
@@ -915,8 +915,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(nil, assert.AnError).Once()
 
@@ -936,8 +936,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -960,8 +960,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -986,8 +986,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1014,8 +1014,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1044,8 +1044,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1076,8 +1076,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1112,8 +1112,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1128,7 +1128,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(nil, assert.AnError).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(nil, assert.AnError).Once()
 
 		useCase := reports.NewGetAssetsReportUseCase(btcWallet, blockchain.Rpc{Rsk: rskRpc}, lp, peginProvider, pegoutProvider, peginRepository, pegoutRepository, contracts)
 		result, err := useCase.Run(ctx)
@@ -1139,7 +1139,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutRepository.AssertExpectations(t)
 		rskRpc.AssertExpectations(t)
 		lp.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	t.Run("Error_PeginRepository_CallForUserSucceeded_Fails", func(t *testing.T) {
@@ -1150,8 +1150,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1166,7 +1166,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 			Return(nil, assert.AnError).Once()
 
@@ -1179,7 +1179,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutRepository.AssertExpectations(t)
 		rskRpc.AssertExpectations(t)
 		lp.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 		peginRepository.AssertExpectations(t)
 	})
 
@@ -1191,8 +1191,8 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutProvider := &mocks.ProviderMock{}
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-		lbcContract := &mocks.LiquidityBridgeContractMock{}
-		contracts := blockchain.RskContracts{Lbc: lbcContract}
+		peginContract := &mocks.PeginContractMock{}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 
 		btcWallet.On("GetBalance").Return(entities.NewWei(100000000), nil).Once()
 		pegoutRepository.On("GetQuotesByState", ctx, quote.PegoutStateBridgeTxSucceeded).
@@ -1207,7 +1207,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 			Return([]quote.PegoutQuote{}, nil).Once()
 		lp.On("RskAddress").Return("test-rsk-address").Twice()
 		rskRpc.On("GetBalance", ctx, "test-rsk-address").Return(entities.NewWei(200000000), nil).Once()
-		lbcContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
+		peginContract.On("GetBalance", "test-rsk-address").Return(entities.NewWei(50000000), nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateCallForUserSucceeded).
 			Return([]quote.PeginQuote{}, nil).Once()
 		peginRepository.On("GetQuotesByState", ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).
@@ -1222,7 +1222,7 @@ func TestGetAssetsReportUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutRepository.AssertExpectations(t)
 		rskRpc.AssertExpectations(t)
 		lp.AssertExpectations(t)
-		lbcContract.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 		peginRepository.AssertExpectations(t)
 	})
 }

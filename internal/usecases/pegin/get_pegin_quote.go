@@ -113,7 +113,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if hash, err = useCase.contracts.Lbc.HashPeginQuote(peginQuote); err != nil {
+	if hash, err = useCase.contracts.PegIn.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	createdQuote := quote.CreatedPeginQuote{Quote: peginQuote, CreationData: creationData, Hash: hash}
@@ -164,7 +164,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      fedAddress,
-		LbcAddress:         useCase.contracts.Lbc.GetAddress(),
+		LbcAddress:         useCase.contracts.PegIn.GetAddress(),
 		LpRskAddress:       useCase.lp.RskAddress(),
 		BtcRefundAddress:   btcRefundAddress,
 		RskRefundAddress:   request.rskRefundAddress,
@@ -196,7 +196,7 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	var daoFeePercentage uint64
 	var err error
 
-	if daoFeePercentage, err = useCase.contracts.FeeCollector.DaoFeePercentage(); err != nil {
+	if daoFeePercentage, err = useCase.contracts.PegIn.DaoFeePercentage(); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {

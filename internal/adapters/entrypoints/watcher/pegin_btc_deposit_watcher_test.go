@@ -166,9 +166,9 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LiquidityBridgeContractMock{}
-	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
-	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{
+	peginContract := &mocks.PeginContractMock{}
+	peginContract.EXPECT().GetBalance(mock.Anything).Return(entities.NewWei(1000), nil)
+	peginContract.On("CallForUser", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{
 		TransactionHash:   test.AnyHash,
 		BlockHash:         "0xblock123",
 		BlockNumber:       uint64(1000),
@@ -179,6 +179,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		Value:             entities.NewWei(0),
 		GasPrice:          entities.NewWei(1000000000),
 	}, nil)
+
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
 	peginProvider := &mocks.ProviderMock{}
@@ -187,7 +188,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
 	expireUseCase := pegin.NewExpiredPeginQuoteUseCase(peginRepository)
 	updateUseCase := w.NewUpdatePeginDepositUseCase(peginRepository)
-	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{Lbc: lbc, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
+	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
 	useCases := watcher.NewPeginDepositAddressWatcherUseCases(cfuUseCase, getUseCase, updateUseCase, expireUseCase)
 	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
 

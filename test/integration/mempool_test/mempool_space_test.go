@@ -1,4 +1,4 @@
-package integration_test
+package mempool_test
 
 import (
 	"encoding/hex"
@@ -24,7 +24,7 @@ const (
 )
 
 const (
-	testFilePath = "../mocks/"
+	testFilePath = "../../mocks/"
 )
 
 const (

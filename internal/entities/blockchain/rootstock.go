@@ -28,9 +28,11 @@ var (
 )
 
 type RskContracts struct {
-	Bridge       rootstock.Bridge
-	Lbc          LiquidityBridgeContract
-	FeeCollector FeeCollector
+	Bridge               rootstock.Bridge
+	PegIn                PeginContract
+	PegOut               PegoutContract
+	CollateralManagement CollateralManagementContract
+	Discovery            DiscoveryContract
 }
 
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
