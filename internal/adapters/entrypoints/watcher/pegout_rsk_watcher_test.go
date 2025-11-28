@@ -478,8 +478,6 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(10), mock.MatchedBy(matchUinPtr(20))).Return([]quote.PegoutDeposit{}, nil).Once()
-		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Maybe()
-		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Maybe()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 
 		assert.Eventually(t, func() bool {
@@ -516,8 +514,6 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(20), mock.MatchedBy(matchUinPtr(21))).Return([]quote.PegoutDeposit{}, nil).Once()
-		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Maybe()
-		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Maybe()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 
 		assert.Eventually(t, func() bool {
