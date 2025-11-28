@@ -167,7 +167,13 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 
 	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
-		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
+		// Check if it's a non-recoverable error:
+		// - "(non-recoverable)" marker from CreateUnfundedTransactionWithOpReturn (bad input)
+		// - "reverted with:" from parsed contract reverts
+		errorStr := err.Error()
+		isNonRecoverable := strings.Contains(errorStr, "(non-recoverable)") ||
+			strings.Contains(errorStr, "reverted with:")
+		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, !isNonRecoverable)
 	}
 
 	var txResult blockchain.BitcoinTransactionResult
@@ -205,10 +211,15 @@ func (useCase *SendPegoutUseCase) validatePegoutTransaction(
 		quoteHashBytes,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create unfunded transaction: %w", err)
+		// CreateUnfundedTransactionWithOpReturn errors are typically bad input (invalid address, etc.)
+		// These are non-recoverable, so we mark them explicitly
+		return fmt.Errorf("failed to create unfunded transaction (non-recoverable): %w", err)
 	}
 
 	if err = useCase.contracts.PegOut.ValidatePegout(retainedQuote.QuoteHash, rawTx); err != nil {
+		// ValidatePegout errors are handled in pegout_contract.go to distinguish:
+		// - Contract reverts (marked with "reverted with:") → non-recoverable
+		// - RPC/network errors (marked with "error validating pegout:") → recoverable
 		return fmt.Errorf("transaction validation failed: %w", err)
 	}
 

@@ -515,6 +515,7 @@ func TestPegoutContractImpl_GetDepositEvents(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
@@ -533,11 +534,28 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		signerMock.AssertExpectations(t)
 	})
 
-	t.Run("Should handle contract validation error", func(t *testing.T) {
+	t.Run("Should handle parseable contract revert (non-recoverable)", func(t *testing.T) {
 		signerMock.On("Address").Return(parsedAddress).Once()
-		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, assert.AnError).Once()
+		// Contract revert with parseable error data (MalformedTransaction error selector: 0x7201f86d)
+		contractRevertError := NewRskRpcError("execution reverted", "0x7201f86d")
+		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, contractRevertError).Once()
 		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
 		require.Error(t, err)
+		require.ErrorContains(t, err, "reverted with:")
+		require.ErrorContains(t, err, "MalformedTransaction")
+		contractBinding.AssertExpectations(t)
+		signerMock.AssertExpectations(t)
+	})
+
+	t.Run("Should handle unparseable error (potentially recoverable)", func(t *testing.T) {
+		signerMock.On("Address").Return(parsedAddress).Once()
+		// Network/RPC error that can't be parsed (no error data) - potentially recoverable
+		networkError := assert.AnError
+		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, networkError).Once()
+		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "error validating pegout:")
+		require.NotContains(t, err.Error(), "reverted with:")
 		contractBinding.AssertExpectations(t)
 		signerMock.AssertExpectations(t)
 	})
