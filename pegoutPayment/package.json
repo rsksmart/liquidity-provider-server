@@ -1,0 +1,14 @@
+{
+  "name": "pegout-payment",
+  "version": "1.0.0",
+  "description": "Helper script to pay for pegout quotes in the local LPS environment",
+  "main": "index.js",
+  "scripts": {
+    "pay": "node index.js"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "bs58check": "^3.0.1"
+  }
+}
+
