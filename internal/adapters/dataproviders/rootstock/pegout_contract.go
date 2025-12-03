@@ -91,7 +91,7 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 	if err != nil {
 		// Try to parse the revert reason to distinguish contract validation errors from network/RPC errors
 		parsedRevert, parseErr := ParseRevertReason(pegoutContract.abis.PegOut, err)
-		if parseErr != nil && parsedRevert == nil {
+		if parseErr != nil {
 			// Failed to parse - could be network/RPC error (potentially recoverable)
 			return fmt.Errorf("error validating pegout: %w", err)
 		} else if parsedRevert != nil {
