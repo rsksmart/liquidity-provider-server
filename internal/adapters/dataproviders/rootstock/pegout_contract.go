@@ -99,7 +99,7 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 			return fmt.Errorf("validatePegout reverted with: %s", parsedRevert.Name)
 		}
 	}
-	return err
+	return nil
 }
 
 func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {
