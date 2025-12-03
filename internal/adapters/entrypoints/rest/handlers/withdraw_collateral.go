@@ -2,18 +2,22 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"net/http"
 )
+
+type WithdrawCollateralUseCase interface {
+	Run() error
+}
 
 // NewWithdrawCollateralHandler
 // @Title Withdraw PegIn Collateral
 // @Description Withdraw PegIn collateral of a resigned LP
 // @Route /providers/withdrawCollateral [post]
 // @Success 204 object
-func NewWithdrawCollateralHandler(useCase *liquidity_provider.WithdrawCollateralUseCase) http.HandlerFunc {
+func NewWithdrawCollateralHandler(useCase WithdrawCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()
 		if errors.Is(err, usecases.ProviderNotResignedError) {

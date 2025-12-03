@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -9,8 +12,11 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
+
+type GetPeginQuoteUseCase interface {
+	Run(ctx context.Context, request pegin.QuoteRequest) (pegin.GetPeginQuoteResult, error)
+}
 
 // NewGetPeginQuoteHandler
 // @Title Pegin GetQuote
@@ -18,7 +24,7 @@ import (
 // @Param PeginQuoteRequest  body pkg.PeginQuoteRequest true "Interface with parameters for computing possible quotes for the service"
 // @Success 200 array pkg.GetPeginQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegin/getQuote [post]
-func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
+func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		var result pegin.GetPeginQuoteResult
