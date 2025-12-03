@@ -94,6 +94,7 @@ type PegoutContract interface {
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
 	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
+	ValidatePegout(quoteHash string, btcTx []byte) error
 	DaoFeePercentage() (uint64, error)
 }
 

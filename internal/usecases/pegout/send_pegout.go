@@ -165,6 +165,17 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
+	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
+		retainedQuote.UserRskTxHash = receipt.TransactionHash
+		// Check if it's a non-recoverable error:
+		// - "(non-recoverable)" marker from CreateUnfundedTransactionWithOpReturn (bad input)
+		// - "reverted with:" from parsed contract reverts
+		errorStr := err.Error()
+		isNonRecoverable := strings.Contains(errorStr, "(non-recoverable)") ||
+			strings.Contains(errorStr, "reverted with:")
+		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, !isNonRecoverable)
+	}
+
 	var txResult blockchain.BitcoinTransactionResult
 	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
@@ -187,6 +198,32 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		Error:         err,
 	})
 	return retainedQuote, err
+}
+
+func (useCase *SendPegoutUseCase) validatePegoutTransaction(
+	retainedQuote quote.RetainedPegoutQuote,
+	pegoutQuote *quote.PegoutQuote,
+	quoteHashBytes []byte,
+) error {
+	rawTx, err := useCase.btcWallet.CreateUnfundedTransactionWithOpReturn(
+		pegoutQuote.DepositAddress,
+		pegoutQuote.Value,
+		quoteHashBytes,
+	)
+	if err != nil {
+		// CreateUnfundedTransactionWithOpReturn errors are typically bad input (invalid address, etc.)
+		// These are non-recoverable, so we mark them explicitly
+		return fmt.Errorf("failed to create unfunded transaction (non-recoverable): %w", err)
+	}
+
+	if err = useCase.contracts.PegOut.ValidatePegout(retainedQuote.QuoteHash, rawTx); err != nil {
+		// ValidatePegout errors are handled in pegout_contract.go to distinguish:
+		// - Contract reverts (marked with "reverted with:") → non-recoverable
+		// - RPC/network errors (marked with "error validating pegout:") → recoverable
+		return fmt.Errorf("transaction validation failed: %w", err)
+	}
+
+	return nil
 }
 
 func (useCase *SendPegoutUseCase) validateBalance(

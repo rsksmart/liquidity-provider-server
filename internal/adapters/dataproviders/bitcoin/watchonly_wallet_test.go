@@ -306,3 +306,13 @@ func TestWatchOnlyWallet_SendWithOpReturn(t *testing.T) {
 	require.Empty(t, result.Hash)
 	require.Nil(t, result.Fee)
 }
+
+func TestWatchOnlyWallet_CreateUnfundedTransactionWithOpReturn(t *testing.T) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+	wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+	require.NoError(t, err)
+	result, err := wallet.CreateUnfundedTransactionWithOpReturn("address", nil, nil)
+	require.ErrorContains(t, err, "cannot create transactions from a watch-only wallet")
+	require.Nil(t, result)
+}
