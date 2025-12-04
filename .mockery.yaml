@@ -65,6 +65,7 @@ packages:
       ResignUseCase:
       GetRevenueReportUseCase:
       GetSummariesReportUseCase:
+      GetTrustedAccountsUseCase:
       ServerInfoUseCase:
       WithdrawCollateralUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
