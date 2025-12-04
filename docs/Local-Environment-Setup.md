@@ -619,7 +619,7 @@ curl -X POST 'http://localhost:8080/pegout/getQuotes' \
 -d '{
     "to": "n2NxBRs6aDvuL3qZ3e6vDxWst6wGCyLpHK",
     "rskRefundAddress": "0x45400C53eBd0853Cd26b21C3d479f0eedc46bc44",
-    "valueToTransfer": 600000000000000000
+    "valueToTransfer": 6000000000000000000
 }' | jq
 ```
 
@@ -708,29 +708,9 @@ npm install
 
 **Configure the payment:**
 
-Open `pegoutPayment/index.js` and paste your quote data from the `getQuotes` response into the `QUOTE` object:
-
-```javascript
-const QUOTE = {
-    "lbcAddress": "0x03f23ae1917722d5a27a2ea0bcc98725a2a2a49a",
-    "liquidityProviderRskAddress": "0x9d93929a9099be4355fc2389fbf253982f9df47c",
-    "btcRefundAddress": "n2NxBRs6aDvuL3qZ3e6vDxWst6wGCyLpHK",
-    "rskRefundAddress": "0x45400C53eBd0853Cd26b21C3d479f0eedc46bc44",
-    "lpBtcAddr": "n1jGDaxCW6jemLZyd9wmDHddseZwEMV9C6",
-    "callFee": "2180000000000000",
-    "penaltyFee": "1000000000000000",
-    "nonce": "3504134078398023607",  // IMPORTANT: Must be string
-    "depositAddr": "n2NxBRs6aDvuL3qZ3e6vDxWst6wGCyLpHK",
-    "value": "600000000000000000",
-    // ... other fields from your quote
-};
-
-const SIGNATURE = "your_signature_from_acceptQuote";
-```
-
-**Important:** 
-- Large numbers (nonce, value, fees) must be quoted as strings to avoid JavaScript precision loss.
-- Update `PAYMENT_ADDRESS` in the script to your MetaMask address (the one you funded earlier with RBTC).
+1. Paste the response from `getQuotes` into `pegoutPayment/quote.json` (you can paste numbers directly - the script handles precision automatically)
+2. Edit `pegoutPayment/index.js` and paste the signature from `acceptQuote` into the `SIGNATURE` constant
+3. Also edit the `PAYMENT_ADDRESS` to your MetaMask address or the address we funded earlier with RBTC
 
 **Run the payment:**
 
@@ -792,6 +772,6 @@ You've successfully created, accepted, paid for, and completed a pegout! You sho
 
 ---
 
-**Tutorial Version**: 1.0  
-**Last Updated**: November 26, 2025  
+**Tutorial Version**: 1.0
+**Last Updated**: November 26, 2025
 **Applicable Branch**: QA-Test
