@@ -1,22 +1,26 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
+
+type LoginUseCase interface {
+	Run(ctx context.Context, credentials lp.Credentials) error
+}
 
 // NewManagementLoginHandler
 // @Title Management Login
 // @Description Authenticate to start a Management API session
 // @Success 200 object
 // @Route /management/login [post]
-func NewManagementLoginHandler(env environment.ManagementEnv, useCase *liquidity_provider.LoginUseCase) http.HandlerFunc {
+func NewManagementLoginHandler(useCase LoginUseCase, sessionManager SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorMsg = "session creation error"
 		var err error
@@ -40,27 +44,15 @@ func NewManagementLoginHandler(env environment.ManagementEnv, useCase *liquidity
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return
 		}
-		if err = closeManagementSession(req, w, env); err != nil {
+
+		if err = sessionManager.CloseSession(req, w); err != nil {
 			return
 		}
 
-		cookieStore, err := cookies.GetSessionCookieStore(env)
-		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(errorMsg, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if err = sessionManager.CreateSession(req, w); err != nil {
 			return
 		}
-		err = cookies.CreateManagementSession(&cookies.CreateSessionArgs{
-			Store:   cookieStore,
-			Env:     env,
-			Request: req,
-			Writer:  w,
-		})
-		if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(errorMsg, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
-			return
-		}
+
 		rest.JsonResponse(w, http.StatusOK)
 	}
 }

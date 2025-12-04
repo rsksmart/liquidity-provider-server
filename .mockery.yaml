@@ -44,6 +44,7 @@ packages:
       GetAssetsReportUseCase:
       GetAvailableLiquidityUseCase:
       GetConfigUseCase:
+      GetManagementUiDataUseCase:
       HealthUseCase:
       GetPeginCollateralUseCase:
       GetPeginQuoteUseCase:
@@ -51,6 +52,9 @@ packages:
       GetPegoutQuoteUseCase:
       GetProvidersUseCase:
       GetUserDepositsUseCase:
+      LoginUseCase:
+      SessionManager:
+      SetCredentialsUseCase:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:

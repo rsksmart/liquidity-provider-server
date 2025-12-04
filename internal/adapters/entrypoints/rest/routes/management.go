@@ -21,6 +21,7 @@ var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
+	sessionManager := handlers.NewCookieSessionManager(env.Management)
 	return []Endpoint{
 		{
 			Path:    "/pegin/collateral",
@@ -126,17 +127,17 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		{
 			Path:    LoginPath,
 			Method:  http.MethodPost,
-			Handler: handlers.NewManagementLoginHandler(env.Management, useCaseRegistry.LoginUseCase()),
+			Handler: handlers.NewManagementLoginHandler(useCaseRegistry.LoginUseCase(), sessionManager),
 		},
 		{
 			Path:    "/management/logout",
 			Method:  http.MethodPost,
-			Handler: handlers.NewManagementLogoutHandler(env.Management),
+			Handler: handlers.NewManagementLogoutHandler(sessionManager),
 		},
 		{
 			Path:    "/management/credentials",
 			Method:  http.MethodPost,
-			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
+			Handler: handlers.NewSetCredentialsHandler(useCaseRegistry.SetCredentialsUseCase(), sessionManager),
 		},
 		{
 			Path:    UiPath,
