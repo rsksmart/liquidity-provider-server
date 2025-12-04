@@ -81,6 +81,7 @@ type GeneralConfigurationDTO struct {
 	RskConfirmations     map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
 	BtcConfirmations     map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
 	PublicLiquidityCheck bool              `json:"publicLiquidityCheck" validate:""`
+	MaxLiquidity         string            `json:"maxLiquidity" validate:"required,numeric,positive_string"`
 }
 
 type LoginRequest struct {
@@ -472,7 +473,12 @@ func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provide
 			return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize BTC confirmations key %s", key)
 		}
 	}
+	maxLiquidity, ok := new(big.Int).SetString(dto.MaxLiquidity, 10)
+	if !ok {
+		return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize max liquidity %s", dto.MaxLiquidity)
+	}
 	return liquidity_provider.GeneralConfiguration{
+		MaxLiquidity:         entities.NewBigWei(maxLiquidity),
 		RskConfirmations:     dto.RskConfirmations,
 		BtcConfirmations:     dto.BtcConfirmations,
 		PublicLiquidityCheck: dto.PublicLiquidityCheck,

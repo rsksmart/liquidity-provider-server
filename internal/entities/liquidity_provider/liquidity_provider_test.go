@@ -91,8 +91,9 @@ func TestValidateConfiguration(t *testing.T) {
 				"20": 10,
 			},
 			PublicLiquidityCheck: true,
+			MaxLiquidity:         entities.NewWei(1000000),
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)
@@ -127,6 +128,7 @@ func TestValidateConfiguration(t *testing.T) {
 		require.Equal(t, mockConfig.RskConfirmations, result.Value.RskConfirmations)
 		require.Equal(t, mockConfig.BtcConfirmations, result.Value.BtcConfirmations)
 		require.Equal(t, mockConfig.PublicLiquidityCheck, result.Value.PublicLiquidityCheck)
+		require.Equal(t, mockConfig.MaxLiquidity, result.Value.MaxLiquidity)
 		require.Equal(t, hashHex, result.Hash)
 		require.Equal(t, signatureHex, result.Signature)
 
@@ -184,8 +186,9 @@ func TestValidateConfiguration(t *testing.T) {
 				"20": 10,
 			},
 			PublicLiquidityCheck: true,
+			MaxLiquidity:         entities.NewWei(1000000),
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)

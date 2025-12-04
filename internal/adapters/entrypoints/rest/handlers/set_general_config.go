@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -36,7 +37,11 @@ func NewSetGeneralConfigHandler(useCase SetGeneralConfigUseCase) http.HandlerFun
 		}
 
 		err = useCase.Run(req.Context(), config)
-		if err != nil {
+		if errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
+			jsonErr := rest.NewErrorResponseWithDetails("Invalid configuration", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return

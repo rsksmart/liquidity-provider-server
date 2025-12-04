@@ -630,15 +630,10 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 func TestFromGeneralConfigurationDTO(t *testing.T) {
 	t.Run("converts valid configuration", func(t *testing.T) {
 		dto := pkg.GeneralConfigurationDTO{
-			RskConfirmations: map[string]uint16{
-				"1000000000000000000": 5,
-				"2000000000000000000": 10,
-			},
-			BtcConfirmations: map[string]uint16{
-				"3000000000000000000": 15,
-				"4000000000000000000": 20,
-			},
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
+			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
 			PublicLiquidityCheck: true,
+			MaxLiquidity:         "12345678901234567890",
 		}
 
 		config, err := pkg.FromGeneralConfigurationDTO(dto)
@@ -647,28 +642,35 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
 		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
 		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
+		assert.Equal(t, "12345678901234567890", config.MaxLiquidity.String())
 		test.AssertNonZeroValues(t, dto)
+	})
+
+	t.Run("returns error on invalid max liquidity", func(t *testing.T) {
+		values := []string{"notanumber", "123.456"}
+		for _, val := range values {
+			invalidDto := pkg.GeneralConfigurationDTO{
+				RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
+				BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
+				PublicLiquidityCheck: true,
+				MaxLiquidity:         val,
+			}
+
+			config, err := pkg.FromGeneralConfigurationDTO(invalidDto)
+			assert.Empty(t, config)
+			require.ErrorContains(t, err, "cannot deserialize max liquidity "+val)
+		}
 	})
 
 	t.Run("returns error on invalid numeric keys", func(t *testing.T) {
 		invalidBtc := pkg.GeneralConfigurationDTO{
-			RskConfirmations: map[string]uint16{
-				"1000000000000000000": 5,
-			},
-			BtcConfirmations: map[string]uint16{
-				"3000000000000000000": 15,
-				"notanumber":          20,
-			},
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
+			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "notanumber": 20},
 			PublicLiquidityCheck: true,
 		}
 		invalidRsk := pkg.GeneralConfigurationDTO{
-			RskConfirmations: map[string]uint16{
-				"1000000000000000000": 5,
-				"invalid":             10,
-			},
-			BtcConfirmations: map[string]uint16{
-				"3000000000000000000": 15,
-			},
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "invalid": 10},
+			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
 			PublicLiquidityCheck: false,
 		}
 
