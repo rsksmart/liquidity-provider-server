@@ -42,7 +42,23 @@ packages:
     interfaces:
       ResignUseCase:
       AcceptQuoteUseCase:
+      AddPeginCollateralUseCase:
+      AddPegoutCollateralUseCase:
+      ChangeStatusUseCase:
       GetAssetsReportUseCase:
+      GetAvailableLiquidityUseCase:
+      GetConfigUseCase:
+      GetManagementUiDataUseCase:
+      HealthUseCase:
+      GetPeginCollateralUseCase:
+      GetPeginQuoteUseCase:
+      GetPegoutCollateralUseCase:
+      GetPegoutQuoteUseCase:
+      GetProvidersUseCase:
+      GetUserDepositsUseCase:
+      LoginUseCase:
+      SessionManager:
+      SetCredentialsUseCase:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:
@@ -52,6 +68,9 @@ packages:
       RecommendedPeginUseCase:
       GetRevenueReportUseCase:
       GetSummariesReportUseCase:
+      GetTrustedAccountsUseCase:
+      ServerInfoUseCase:
+      WithdrawCollateralUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:

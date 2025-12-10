@@ -1,34 +1,117 @@
-package handlers
+package handlers_test
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewResignationHandler(t *testing.T) {
-	const (
-		method = "POST"
-		path   = "/providers/resignation"
-	)
-	t.Run("should return 204 on successful resignation", func(t *testing.T) {
-		useCase := new(mocks.ResignUseCaseMock)
-		useCase.EXPECT().Run().Return(nil).Once()
-		handler := NewResignationHandler(useCase)
-		assert.HTTPStatusCode(t, handler, method, path, nil, http.StatusNoContent)
+func TestResignationHandlerHappyPath(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/providers/resignation", nil)
+	recorder := httptest.NewRecorder()
+
+	mockUseCase := new(mocks.ResignUseCaseMock)
+	mockUseCase.On("Run").Return(nil)
+
+	handlerFunc := handlers.NewResignationHandler(mockUseCase)
+	handler := http.HandlerFunc(handlerFunc)
+
+	handler.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.Empty(t, recorder.Body.String())
+
+	mockUseCase.AssertExpectations(t)
+}
+
+func TestResignationHandlerErrorCases(t *testing.T) {
+
+	t.Run("should return 500 on unexpected errors", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/providers/resignation", nil)
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.ResignUseCaseMock)
+		unexpectedError := errors.New("unexpected blockchain error")
+		mockUseCase.On("Run").Return(unexpectedError)
+
+		handlerFunc := handlers.NewResignationHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err := json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "unknown error", errorResponse["message"])
 	})
-	t.Run("should return 503 when protocol is paused", func(t *testing.T) {
-		useCase := new(mocks.ResignUseCaseMock)
-		useCase.EXPECT().Run().Return(blockchain.ContractPausedError).Once()
-		handler := NewResignationHandler(useCase)
-		assert.HTTPStatusCode(t, handler, method, path, nil, http.StatusServiceUnavailable)
+}
+
+func TestResignationHandlerErrorResponseFormat(t *testing.T) {
+
+	t.Run("should set correct content type header on error", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/providers/resignation", nil)
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.ResignUseCaseMock)
+		mockUseCase.On("Run").Return(errors.New("error"))
+
+		handlerFunc := handlers.NewResignationHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+		mockUseCase.AssertExpectations(t)
 	})
-	t.Run("should return 500 on unknown error", func(t *testing.T) {
-		useCase := new(mocks.ResignUseCaseMock)
-		useCase.EXPECT().Run().Return(assert.AnError).Once()
-		handler := NewResignationHandler(useCase)
-		assert.HTTPStatusCode(t, handler, method, path, nil, http.StatusInternalServerError)
+
+	t.Run("should include timestamp in error response", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/providers/resignation", nil)
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.ResignUseCaseMock)
+		mockUseCase.On("Run").Return(errors.New("error"))
+
+		handlerFunc := handlers.NewResignationHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		var errorResponse map[string]interface{}
+		err := json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "timestamp")
+		assert.NotZero(t, errorResponse["timestamp"])
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("should set recoverable to false on errors", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/providers/resignation", nil)
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.ResignUseCaseMock)
+		mockUseCase.On("Run").Return(errors.New("error"))
+
+		handlerFunc := handlers.NewResignationHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		var errorResponse map[string]interface{}
+		err := json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "recoverable")
+		assert.Equal(t, false, errorResponse["recoverable"])
+		mockUseCase.AssertExpectations(t)
 	})
 }

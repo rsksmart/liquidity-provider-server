@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -9,8 +12,11 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
+
+type GetPegoutQuoteUseCase interface {
+	Run(ctx context.Context, request pegout.QuoteRequest) (pegout.GetPegoutQuoteResult, error)
+}
 
 // NewGetPegoutQuoteHandler
 // @Title Pegout GetQuote
@@ -18,7 +24,7 @@ import (
 // @Param PegoutQuoteRequest body pkg.PegoutQuoteRequest true "Interface with parameters for computing possible quotes for the service"
 // @Success 200 array pkg.GetPegoutQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegout/getQuotes [post]
-func NewGetPegoutQuoteHandler(useCase *pegout.GetQuoteUseCase) http.HandlerFunc {
+func NewGetPegoutQuoteHandler(useCase GetPegoutQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		var result pegout.GetPegoutQuoteResult

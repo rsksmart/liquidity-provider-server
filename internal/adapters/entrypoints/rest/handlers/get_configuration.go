@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -9,12 +10,16 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
+type GetConfigUseCase interface {
+	Run(ctx context.Context) uc_lp.FullConfiguration
+}
+
 // NewGetConfigurationHandler
 // @Title Get configurations
 // @Description Get all the configurations for the liquidity provider. Included in the management API.
 // @Success 200 object
 // @Route /configuration [get]
-func NewGetConfigurationHandler(useCase *uc_lp.GetConfigUseCase) http.HandlerFunc {
+func NewGetConfigurationHandler(useCase GetConfigUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		result := useCase.Run(req.Context())
 		response := struct {
