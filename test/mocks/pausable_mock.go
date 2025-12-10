@@ -20,6 +20,51 @@ func (_m *PausableMock) EXPECT() *PausableMock_Expecter {
 	return &PausableMock_Expecter{mock: &_m.Mock}
 }
 
+// GetAddress provides a mock function with no fields
+func (_m *PausableMock) GetAddress() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// PausableMock_GetAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAddress'
+type PausableMock_GetAddress_Call struct {
+	*mock.Call
+}
+
+// GetAddress is a helper method to define mock.On call
+func (_e *PausableMock_Expecter) GetAddress() *PausableMock_GetAddress_Call {
+	return &PausableMock_GetAddress_Call{Call: _e.mock.On("GetAddress")}
+}
+
+func (_c *PausableMock_GetAddress_Call) Run(run func()) *PausableMock_GetAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PausableMock_GetAddress_Call) Return(_a0 string) *PausableMock_GetAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PausableMock_GetAddress_Call) RunAndReturn(run func() string) *PausableMock_GetAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PausedStatus provides a mock function with no fields
 func (_m *PausableMock) PausedStatus() (blockchain.PauseStatus, error) {
 	ret := _m.Called()

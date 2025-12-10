@@ -85,6 +85,7 @@ type PauseStatus struct {
 }
 
 type Pausable interface {
+	GetAddress() string
 	PausedStatus() (PauseStatus, error)
 }
 

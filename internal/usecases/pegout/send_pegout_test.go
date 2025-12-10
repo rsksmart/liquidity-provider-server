@@ -846,6 +846,7 @@ func TestSendPegoutUseCase_Run_ValidationFailure(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	rpc := blockchain.Rpc{Rsk: rsk}
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	pegoutContract.EXPECT().IsPegOutQuoteCompleted(sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 	// Mock validation failure - simulate a parsed contract revert
 	pegoutContract.On("ValidatePegout", sendPegoutRetainedQuote.QuoteHash, unfundedTx).Return(errors.New("validatePegout reverted with: InvalidDestination")).Once()
@@ -872,7 +873,6 @@ func TestSendPegoutUseCase_Run_UnfundedTxCreationError(t *testing.T) {
 
 	// Mock unfunded transaction creation error
 	btcWallet.On("CreateUnfundedTransactionWithOpReturn", sendPegoutRetainedQuote.DepositAddress, sendPegoutTestQuote.Value, quoteHash).Return([]byte(nil), errors.New("failed to create transaction")).Once()
-
 	rsk := new(mocks.RootstockRpcServerMock)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.PegoutBtcSentToUserEvent) bool {
@@ -914,6 +914,7 @@ func TestSendPegoutUseCase_Run_UnfundedTxCreationError(t *testing.T) {
 	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updatedQuote).Return(nil).Once()
 	rpc := blockchain.Rpc{Rsk: rsk}
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	pegoutContract.EXPECT().IsPegOutQuoteCompleted(sendPegoutRetainedQuote.QuoteHash).Return(false, nil).Once()
 
 	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{PegOut: pegoutContract}, mutex, rootstock.ParseDepositEvent)

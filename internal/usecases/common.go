@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 	"strconv"
 
@@ -339,6 +340,7 @@ func checkPauseState(contract blockchain.Pausable) error {
 	if !pausedStatus.IsPaused {
 		return nil
 	}
+	log.Warnf("Contract %s is paused. Reason: %s since block %d", contract.GetAddress(), pausedStatus.Reason, pausedStatus.Since)
 
 	return fmt.Errorf(
 		"%w. Reason %s at %d",
