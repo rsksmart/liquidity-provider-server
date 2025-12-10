@@ -461,6 +461,7 @@ func TestValidateConfirmations(t *testing.T) {
 func TestCheckPauseState(t *testing.T) {
 	pausedA := new(mocks.PausableMock)
 	pausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Reason: "paused A", Since: 5}, nil)
+	pausedA.EXPECT().GetAddress().Return("test-contract")
 	notPausedA := new(mocks.PausableMock)
 	notPausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 	notPausedB := new(mocks.PausableMock)

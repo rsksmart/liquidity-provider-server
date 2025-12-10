@@ -37,6 +37,7 @@ func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	peginContract := new(mocks.PeginContractMock)
 	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	peginContract.EXPECT().GetAddress().Return("test-contract")
 	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, quoteRepository, lp, lp, "feeCollectorAddress")

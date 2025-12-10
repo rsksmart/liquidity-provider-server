@@ -21,6 +21,7 @@ func TestRegistrationUseCase_Run_Paused(t *testing.T) {
 		collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		discovery := new(mocks.DiscoveryContractMock)
 		discovery.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+		discovery.EXPECT().GetAddress().Return("test-contract")
 		provider := &mocks.ProviderMock{}
 		contracts := blockchain.RskContracts{Discovery: discovery, CollateralManagement: collateral}
 		useCase := liquidity_provider.NewRegistrationUseCase(contracts, provider)
@@ -32,6 +33,7 @@ func TestRegistrationUseCase_Run_Paused(t *testing.T) {
 	t.Run("should return error if collateral management is paused", func(t *testing.T) {
 		collateral := new(mocks.CollateralManagementContractMock)
 		collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+		collateral.EXPECT().GetAddress().Return("test-contract")
 		discovery := new(mocks.DiscoveryContractMock)
 		discovery.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		provider := &mocks.ProviderMock{}

@@ -86,6 +86,7 @@ func TestRefundPegoutUseCase_Run_Paused(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	eventBus := new(mocks.EventBusMock)

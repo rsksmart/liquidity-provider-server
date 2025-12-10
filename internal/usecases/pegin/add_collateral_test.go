@@ -18,6 +18,7 @@ func TestAddCollateralUseCase_Run_Paused(t *testing.T) {
 	collateral := new(mocks.CollateralManagementContractMock)
 	lp := new(mocks.ProviderMock)
 	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	collateral.EXPECT().GetAddress().Return("test-contract")
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegin.NewAddCollateralUseCase(contracts, lp)
 	result, err := useCase.Run(entities.NewWei(1))

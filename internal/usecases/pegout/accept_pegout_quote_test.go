@@ -38,6 +38,7 @@ func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	mutex := new(mocks.MutexMock)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 
 	contracts := blockchain.RskContracts{Bridge: bridge, PegOut: pegoutContract}
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)

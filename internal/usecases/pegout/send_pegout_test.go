@@ -70,6 +70,7 @@ func TestSendPegoutUseCase_Run_Paused(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 	rpc := blockchain.Rpc{Rsk: rsk}
 	useCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, blockchain.RskContracts{PegOut: pegoutContract}, mutex, rootstock.ParseDepositEvent)
 	err := useCase.Run(context.Background(), sendPegoutRetainedQuote)

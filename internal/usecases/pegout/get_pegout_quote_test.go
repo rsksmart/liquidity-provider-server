@@ -25,6 +25,7 @@ func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	btc := new(mocks.BtcRpcMock)

@@ -33,6 +33,7 @@ func TestResignUseCase_Run_Paused(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	collateral := new(mocks.CollateralManagementContractMock)
 	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	collateral.EXPECT().GetAddress().Return("test-contract")
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := liquidity_provider.NewResignUseCase(contracts, provider)
 	err := useCase.Run()
