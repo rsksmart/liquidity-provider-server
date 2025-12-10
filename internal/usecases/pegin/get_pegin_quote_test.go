@@ -28,6 +28,24 @@ var (
 	testnetNetworkName      = "testnet3"
 )
 
+func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
+	request := pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{}, entities.NewWei(1), getPeginTestUserAddress)
+	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	bridge := new(mocks.BridgeMock)
+	btc := new(mocks.BtcRpcMock)
+	lp := new(mocks.ProviderMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	peginContract.EXPECT().GetAddress().Return("test-contract")
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, quoteRepository, lp, lp, "feeCollectorAddress")
+	result, err := useCase.Run(context.Background(), request)
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 // nolint:funlen,cyclop
 func TestGetQuoteUseCase_Run(t *testing.T) {
 	quoteHash := "0x9876543210"
@@ -59,6 +77,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil).Once()
 	peginContract.On("GetAddress").Return(lbcAddress)
 	peginContract.On("HashPeginQuote", quoteMatchFunction).Return(quoteHash, nil).Once()
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginQuoteRepository.On("InsertQuote", test.AnyCtx, mock.MatchedBy(func(createdPeginQuote quote.CreatedPeginQuote) bool {
 		test.AssertMaxZeroValues(t, createdPeginQuote.Quote, 2)
@@ -96,6 +115,7 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	bridge := new(mocks.BridgeMock)
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	cases := validateRequestTestCases()
 	for _, testCase := range cases {
@@ -119,6 +139,7 @@ func TestGetQuoteUseCase_Run_ValidateFedAddress(t *testing.T) {
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	peginContract := new(mocks.PeginContractMock)
 	peginContract.On("DaoFeePercentage").Return(uint64(0), nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return("bcrt1qtmm4qallkmnd2vl5y3w3an3uvq6w5v2ahqvfqm0mfxny8cnsdrashv8fsr", nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
@@ -178,6 +199,7 @@ func TestGetQuoteUseCase_Run_BridgeMinimum(t *testing.T) {
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 
 	peginContract.On("GetAddress").Return(lbcAddress).Once()
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	btc.On("NetworkName").Return(testnetNetworkName).Once()
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(2000), nil).Once()
 	lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration()).Once()
@@ -215,6 +237,7 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		rsk := new(mocks.RootstockRpcServerMock)
 		bridge := new(mocks.BridgeMock)
 		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 		peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 		lp := new(mocks.ProviderMock)
 		btc := new(mocks.BtcRpcMock)
@@ -380,6 +403,7 @@ func TestGetQuoteUseCase_Run_RefundAddress(t *testing.T) {
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil).Twice()
 	peginContract.On("GetAddress").Return(lbcAddress)
 	peginContract.On("HashPeginQuote", mock.Anything).Return(quoteHash, nil).Twice()
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Twice()
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything).Return(nil).Twice()
 	lp := new(mocks.ProviderMock)

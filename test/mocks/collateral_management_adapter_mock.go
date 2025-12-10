@@ -429,6 +429,90 @@ func (_c *CollateralManagementAdapterMock_GetPegOutCollateral_Call) RunAndReturn
 	return _c
 }
 
+// PauseStatus provides a mock function with given fields: opts
+func (_m *CollateralManagementAdapterMock) PauseStatus(opts *bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	ret := _m.Called(opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PauseStatus")
+	}
+
+	var r0 struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	}, error)); ok {
+		return rf(opts)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts) struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	}); ok {
+		r0 = rf(opts)
+	} else {
+		r0 = ret.Get(0).(struct {
+			IsPaused bool
+			Reason   string
+			Since    uint64
+		})
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
+		r1 = rf(opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CollateralManagementAdapterMock_PauseStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PauseStatus'
+type CollateralManagementAdapterMock_PauseStatus_Call struct {
+	*mock.Call
+}
+
+// PauseStatus is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+func (_e *CollateralManagementAdapterMock_Expecter) PauseStatus(opts interface{}) *CollateralManagementAdapterMock_PauseStatus_Call {
+	return &CollateralManagementAdapterMock_PauseStatus_Call{Call: _e.mock.On("PauseStatus", opts)}
+}
+
+func (_c *CollateralManagementAdapterMock_PauseStatus_Call) Run(run func(opts *bind.CallOpts)) *CollateralManagementAdapterMock_PauseStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts))
+	})
+	return _c
+}
+
+func (_c *CollateralManagementAdapterMock_PauseStatus_Call) Return(_a0 struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, _a1 error) *CollateralManagementAdapterMock_PauseStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *CollateralManagementAdapterMock_PauseStatus_Call) RunAndReturn(run func(*bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error)) *CollateralManagementAdapterMock_PauseStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PenalizedEventIteratorAdapter provides a mock function with given fields: rawIterator
 func (_m *CollateralManagementAdapterMock) PenalizedEventIteratorAdapter(rawIterator *bindings.ICollateralManagementPenalizedIterator) rootstock.EventIteratorAdapter[bindings.ICollateralManagementPenalized] {
 	ret := _m.Called(rawIterator)

@@ -40,6 +40,8 @@ packages:
       DefaultCredentialsProvider:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
     interfaces:
+      ResignUseCase:
+      AcceptQuoteUseCase:
       GetAssetsReportUseCase:
       PeginStatusUseCase:
       PegoutStatusUseCase:
@@ -64,6 +66,7 @@ packages:
         PegConfiguration:
   github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain:
     interfaces:
+      Pausable:
       BitcoinWallet:
       RootstockRpcServer:
       PeginContract:

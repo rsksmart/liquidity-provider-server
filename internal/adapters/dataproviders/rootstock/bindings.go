@@ -46,7 +46,16 @@ type RskBridgeBinding interface {
 	FilterBatchPegoutCreated(opts *bind.FilterOpts, btcTxHash [][32]byte) (*bindings.RskBridgeBatchPegoutCreatedIterator, error)
 }
 
+type PausableBinding interface {
+	PauseStatus(opts *bind.CallOpts) (struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	}, error)
+}
+
 type PegoutBinding interface {
+	PausableBinding
 	HashPegOutQuote(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error)
 	RefundPegOut(opts *bind.TransactOpts, quoteHash [32]byte, btcTx []byte, btcBlockHeaderHash [32]byte, partialMerkleTree *big.Int, merkleBranchHashes [][32]byte) (*types.Transaction, error)
 	FilterPegOutDeposit(opts *bind.FilterOpts, quoteHash [][32]byte, sender []common.Address, timestamp []*big.Int) (*bindings.IPegOutPegOutDepositIterator, error)
@@ -63,6 +72,7 @@ type PegoutContractAdapter interface {
 }
 
 type PeginBinding interface {
+	PausableBinding
 	HashPegInQuote(opts *bind.CallOpts, quote bindings.QuotesPegInQuote) ([32]byte, error)
 	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
 	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote) (*types.Transaction, error)
@@ -76,6 +86,7 @@ type PeginContractAdapter interface {
 }
 
 type DiscoveryBinding interface {
+	PausableBinding
 	IsOperational(opts *bind.CallOpts, providerType uint8, addr common.Address) (bool, error)
 	GetProviders(opts *bind.CallOpts) ([]bindings.FlyoverLiquidityProvider, error)
 	GetProvider(opts *bind.CallOpts, providerAddress common.Address) (bindings.FlyoverLiquidityProvider, error)
@@ -86,6 +97,7 @@ type DiscoveryBinding interface {
 }
 
 type CollateralManagementBinding interface {
+	PausableBinding
 	FilterPenalized(opts *bind.FilterOpts, liquidityProvider []common.Address, punisher []common.Address, quoteHash [][32]byte) (*bindings.ICollateralManagementPenalizedIterator, error)
 	Resign(opts *bind.TransactOpts) (*types.Transaction, error)
 	GetPegInCollateral(opts *bind.CallOpts, addr common.Address) (*big.Int, error)

@@ -14,11 +14,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAddCollateralUseCase_Run_Paused(t *testing.T) {
+	collateral := new(mocks.CollateralManagementContractMock)
+	lp := new(mocks.ProviderMock)
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	collateral.EXPECT().GetAddress().Return("test-contract")
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
+	useCase := pegin.NewAddCollateralUseCase(contracts, lp)
+	result, err := useCase.Run(entities.NewWei(1))
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 func TestAddCollateralUseCase_Run(t *testing.T) {
 	collateral := new(mocks.CollateralManagementContractMock)
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	collateral.On("AddCollateral", value).Return(nil)
 	collateral.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 	collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(100), nil)
@@ -36,6 +49,7 @@ func TestAddCollateralUseCase_Run_NotEnough(t *testing.T) {
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
+	collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	collateral.On("GetMinimumCollateral").Return(entities.NewWei(2000), nil)
 	collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(100), nil)
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
@@ -54,17 +68,20 @@ func TestAddCollateralUseCase_Run_ErrorHandling(t *testing.T) {
 	cases := test.Table[func(collateral *mocks.CollateralManagementContractMock), error]{
 		{
 			Value: func(collateral *mocks.CollateralManagementContractMock) {
+				collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 				collateral.On("GetMinimumCollateral").Return(nil, assert.AnError)
 			},
 		},
 		{
 			Value: func(collateral *mocks.CollateralManagementContractMock) {
+				collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 				collateral.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 				collateral.On("GetCollateral", mock.Anything).Return(nil, assert.AnError)
 			},
 		},
 		{
 			Value: func(collateral *mocks.CollateralManagementContractMock) {
+				collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 				collateral.On("GetMinimumCollateral").Return(entities.NewWei(100), nil)
 				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(100), nil)
 				collateral.On("AddCollateral", mock.Anything).Return(assert.AnError)

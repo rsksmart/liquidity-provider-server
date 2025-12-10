@@ -33,6 +33,7 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
 	peginContract.On("GetAddress").Return(lbcAddress)
 	peginContract.On("HashPeginQuote", mock.Anything).Return("0x0102030405", nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginQuoteRepository.EXPECT().InsertQuote(mock.Anything, mock.Anything).Return(nil)
 	lp := new(mocks.ProviderMock)

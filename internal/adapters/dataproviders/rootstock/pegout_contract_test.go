@@ -515,6 +515,32 @@ func TestPegoutContractImpl_GetDepositEvents(t *testing.T) {
 	})
 }
 
+func TestPegoutContractImpl_PausedStatus(t *testing.T) {
+	contractBinding := &mocks.PegoutContractAdapterMock{}
+	contract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	t.Run("should return pause status result", func(t *testing.T) {
+		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
+			IsPaused bool
+			Reason   string
+			Since    uint64
+		}{IsPaused: true, Reason: "test", Since: 123}, nil).Once()
+		result, err := contract.PausedStatus()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
+	})
+	t.Run("should handle error checking pause status", func(t *testing.T) {
+		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
+			IsPaused bool
+			Reason   string
+			Since    uint64
+		}{}, assert.AnError).Once()
+		result, err := contract.PausedStatus()
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	contractBinding.AssertExpectations(t)
+}
+
 // nolint:funlen
 func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"

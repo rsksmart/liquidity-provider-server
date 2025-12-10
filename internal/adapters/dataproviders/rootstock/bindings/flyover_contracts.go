@@ -2064,7 +2064,7 @@ func (_IBridge *IBridgeTransactorSession) Receive() (*types.Transaction, error) 
 
 // ICollateralManagementMetaData contains all meta data concerning the ICollateralManagement contract.
 var ICollateralManagementMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"AlreadyResigned\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotResigned\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NothingToWithdraw\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"resignationBlockNum\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resignDelayInBlocks\",\"type\":\"uint256\"}],\"name\":\"ResignationDelayNotMet\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawalFailed\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegInCollateralAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutCollateralAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"collateralType\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"RewardsWithdrawn\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"addPegInCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"addPegInCollateralTo\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addPegOutCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"addPegOutCollateralTo\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegInCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegOutCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPenalties\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayInBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getResignationBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getRewards\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isCollateralSufficient\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isRegistered\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"slashPegInCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"slashPegOutCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawRewards\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"AlreadyResigned\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotResigned\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NothingToWithdraw\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"resignationBlockNum\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resignDelayInBlocks\",\"type\":\"uint256\"}],\"name\":\"ResignationDelayNotMet\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawalFailed\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegInCollateralAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutCollateralAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"liquidityProvider\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"collateralType\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"penalty\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"Penalized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"Resigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"RewardsWithdrawn\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WithdrawCollateral\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"addPegInCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"addPegInCollateralTo\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addPegOutCollateral\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"addPegOutCollateralTo\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegInCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getPegOutCollateral\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPenalties\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResignDelayInBlocks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getResignationBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRewardPercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getRewards\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isCollateralSufficient\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isRegistered\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"slashPegInCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"punisher\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"slashPegOutCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawCollateral\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawRewards\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // ICollateralManagementABI is the input ABI used to generate the binding from.
@@ -2523,6 +2523,56 @@ func (_ICollateralManagement *ICollateralManagementCallerSession) IsRegistered(p
 	return _ICollateralManagement.Contract.IsRegistered(&_ICollateralManagement.CallOpts, providerType, addr)
 }
 
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_ICollateralManagement *ICollateralManagementCaller) PauseStatus(opts *bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	var out []interface{}
+	err := _ICollateralManagement.contract.Call(opts, &out, "pauseStatus")
+
+	outstruct := new(struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.IsPaused = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.Reason = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Since = *abi.ConvertType(out[2], new(uint64)).(*uint64)
+
+	return *outstruct, err
+
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_ICollateralManagement *ICollateralManagementSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _ICollateralManagement.Contract.PauseStatus(&_ICollateralManagement.CallOpts)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_ICollateralManagement *ICollateralManagementCallerSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _ICollateralManagement.Contract.PauseStatus(&_ICollateralManagement.CallOpts)
+}
+
 // AddPegInCollateral is a paid mutator transaction binding the contract method 0xde567d6d.
 //
 // Solidity: function addPegInCollateral() payable returns()
@@ -2607,6 +2657,27 @@ func (_ICollateralManagement *ICollateralManagementTransactorSession) AddPegOutC
 	return _ICollateralManagement.Contract.AddPegOutCollateralTo(&_ICollateralManagement.TransactOpts, addr)
 }
 
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_ICollateralManagement *ICollateralManagementTransactor) Pause(opts *bind.TransactOpts, reason string) (*types.Transaction, error) {
+	return _ICollateralManagement.contract.Transact(opts, "pause", reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_ICollateralManagement *ICollateralManagementSession) Pause(reason string) (*types.Transaction, error) {
+	return _ICollateralManagement.Contract.Pause(&_ICollateralManagement.TransactOpts, reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_ICollateralManagement *ICollateralManagementTransactorSession) Pause(reason string) (*types.Transaction, error) {
+	return _ICollateralManagement.Contract.Pause(&_ICollateralManagement.TransactOpts, reason)
+}
+
 // Resign is a paid mutator transaction binding the contract method 0x69652fcf.
 //
 // Solidity: function resign() returns()
@@ -2668,6 +2739,27 @@ func (_ICollateralManagement *ICollateralManagementSession) SlashPegOutCollatera
 // Solidity: function slashPegOutCollateral(address punisher, (uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote, bytes32 quoteHash) returns()
 func (_ICollateralManagement *ICollateralManagementTransactorSession) SlashPegOutCollateral(punisher common.Address, quote QuotesPegOutQuote, quoteHash [32]byte) (*types.Transaction, error) {
 	return _ICollateralManagement.Contract.SlashPegOutCollateral(&_ICollateralManagement.TransactOpts, punisher, quote, quoteHash)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_ICollateralManagement *ICollateralManagementTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ICollateralManagement.contract.Transact(opts, "unpause")
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_ICollateralManagement *ICollateralManagementSession) Unpause() (*types.Transaction, error) {
+	return _ICollateralManagement.Contract.Unpause(&_ICollateralManagement.TransactOpts)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_ICollateralManagement *ICollateralManagementTransactorSession) Unpause() (*types.Transaction, error) {
+	return _ICollateralManagement.Contract.Unpause(&_ICollateralManagement.TransactOpts)
 }
 
 // WithdrawCollateral is a paid mutator transaction binding the contract method 0x59c153be.
@@ -3879,7 +3971,7 @@ func (_IDaoContributor *IDaoContributorCallerSession) GetFeePercentage() (*big.I
 
 // IFlyoverDiscoveryMetaData contains all meta data concerning the IFlyoverDiscovery contract.
 var IFlyoverDiscoveryMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"AlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"InsufficientCollateral\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"InvalidProviderData\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"}],\"name\":\"InvalidProviderType\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotAuthorized\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotEOA\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"ProviderStatusSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"ProviderUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"}],\"name\":\"getProvider\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"internalType\":\"structFlyover.LiquidityProvider\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"internalType\":\"structFlyover.LiquidityProvider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"providerId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"setProviderStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"updateProvider\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"AlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"InsufficientCollateral\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"InvalidProviderData\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"}],\"name\":\"InvalidProviderType\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotAuthorized\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"NotEOA\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"ProviderStatusSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"ProviderUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Register\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"}],\"name\":\"getProvider\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"internalType\":\"structFlyover.LiquidityProvider\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProviders\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"providerAddress\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"internalType\":\"structFlyover.LiquidityProvider[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getProvidersId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"isOperational\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"},{\"internalType\":\"enumFlyover.ProviderType\",\"name\":\"providerType\",\"type\":\"uint8\"}],\"name\":\"register\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"providerId\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"status\",\"type\":\"bool\"}],\"name\":\"setProviderStatus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"apiBaseUrl\",\"type\":\"string\"}],\"name\":\"updateProvider\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // IFlyoverDiscoveryABI is the input ABI used to generate the binding from.
@@ -4090,6 +4182,37 @@ func (_IFlyoverDiscovery *IFlyoverDiscoveryCallerSession) GetProviders() ([]Flyo
 	return _IFlyoverDiscovery.Contract.GetProviders(&_IFlyoverDiscovery.CallOpts)
 }
 
+// GetProvidersId is a free data retrieval call binding the contract method 0x122dab09.
+//
+// Solidity: function getProvidersId() view returns(uint256)
+func (_IFlyoverDiscovery *IFlyoverDiscoveryCaller) GetProvidersId(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _IFlyoverDiscovery.contract.Call(opts, &out, "getProvidersId")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetProvidersId is a free data retrieval call binding the contract method 0x122dab09.
+//
+// Solidity: function getProvidersId() view returns(uint256)
+func (_IFlyoverDiscovery *IFlyoverDiscoverySession) GetProvidersId() (*big.Int, error) {
+	return _IFlyoverDiscovery.Contract.GetProvidersId(&_IFlyoverDiscovery.CallOpts)
+}
+
+// GetProvidersId is a free data retrieval call binding the contract method 0x122dab09.
+//
+// Solidity: function getProvidersId() view returns(uint256)
+func (_IFlyoverDiscovery *IFlyoverDiscoveryCallerSession) GetProvidersId() (*big.Int, error) {
+	return _IFlyoverDiscovery.Contract.GetProvidersId(&_IFlyoverDiscovery.CallOpts)
+}
+
 // IsOperational is a free data retrieval call binding the contract method 0xbf50daf0.
 //
 // Solidity: function isOperational(uint8 providerType, address addr) view returns(bool)
@@ -4119,6 +4242,77 @@ func (_IFlyoverDiscovery *IFlyoverDiscoverySession) IsOperational(providerType u
 // Solidity: function isOperational(uint8 providerType, address addr) view returns(bool)
 func (_IFlyoverDiscovery *IFlyoverDiscoveryCallerSession) IsOperational(providerType uint8, addr common.Address) (bool, error) {
 	return _IFlyoverDiscovery.Contract.IsOperational(&_IFlyoverDiscovery.CallOpts, providerType, addr)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IFlyoverDiscovery *IFlyoverDiscoveryCaller) PauseStatus(opts *bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	var out []interface{}
+	err := _IFlyoverDiscovery.contract.Call(opts, &out, "pauseStatus")
+
+	outstruct := new(struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.IsPaused = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.Reason = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Since = *abi.ConvertType(out[2], new(uint64)).(*uint64)
+
+	return *outstruct, err
+
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IFlyoverDiscovery *IFlyoverDiscoverySession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IFlyoverDiscovery.Contract.PauseStatus(&_IFlyoverDiscovery.CallOpts)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IFlyoverDiscovery *IFlyoverDiscoveryCallerSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IFlyoverDiscovery.Contract.PauseStatus(&_IFlyoverDiscovery.CallOpts)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoveryTransactor) Pause(opts *bind.TransactOpts, reason string) (*types.Transaction, error) {
+	return _IFlyoverDiscovery.contract.Transact(opts, "pause", reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoverySession) Pause(reason string) (*types.Transaction, error) {
+	return _IFlyoverDiscovery.Contract.Pause(&_IFlyoverDiscovery.TransactOpts, reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoveryTransactorSession) Pause(reason string) (*types.Transaction, error) {
+	return _IFlyoverDiscovery.Contract.Pause(&_IFlyoverDiscovery.TransactOpts, reason)
 }
 
 // Register is a paid mutator transaction binding the contract method 0x4487ce11.
@@ -4161,6 +4355,27 @@ func (_IFlyoverDiscovery *IFlyoverDiscoverySession) SetProviderStatus(providerId
 // Solidity: function setProviderStatus(uint256 providerId, bool status) returns()
 func (_IFlyoverDiscovery *IFlyoverDiscoveryTransactorSession) SetProviderStatus(providerId *big.Int, status bool) (*types.Transaction, error) {
 	return _IFlyoverDiscovery.Contract.SetProviderStatus(&_IFlyoverDiscovery.TransactOpts, providerId, status)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoveryTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IFlyoverDiscovery.contract.Transact(opts, "unpause")
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoverySession) Unpause() (*types.Transaction, error) {
+	return _IFlyoverDiscovery.Contract.Unpause(&_IFlyoverDiscovery.TransactOpts)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IFlyoverDiscovery *IFlyoverDiscoveryTransactorSession) Unpause() (*types.Transaction, error) {
+	return _IFlyoverDiscovery.Contract.Unpause(&_IFlyoverDiscovery.TransactOpts)
 }
 
 // UpdateProvider is a paid mutator transaction binding the contract method 0x0220f41d.
@@ -4838,9 +5053,252 @@ func (_ILegacyLiquidityBridgeContract *ILegacyLiquidityBridgeContractTransactorS
 	return _ILegacyLiquidityBridgeContract.Contract.Register(&_ILegacyLiquidityBridgeContract.TransactOpts, name, apiBaseUrl, status, providerType)
 }
 
+// IPausableMetaData contains all meta data concerning the IPausable contract.
+var IPausableMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+}
+
+// IPausableABI is the input ABI used to generate the binding from.
+// Deprecated: Use IPausableMetaData.ABI instead.
+var IPausableABI = IPausableMetaData.ABI
+
+// IPausable is an auto generated Go binding around an Ethereum contract.
+type IPausable struct {
+	IPausableCaller     // Read-only binding to the contract
+	IPausableTransactor // Write-only binding to the contract
+	IPausableFilterer   // Log filterer for contract events
+}
+
+// IPausableCaller is an auto generated read-only Go binding around an Ethereum contract.
+type IPausableCaller struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// IPausableTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type IPausableTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// IPausableFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type IPausableFilterer struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// IPausableSession is an auto generated Go binding around an Ethereum contract,
+// with pre-set call and transact options.
+type IPausableSession struct {
+	Contract     *IPausable        // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts     // Call options to use throughout this session
+	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
+}
+
+// IPausableCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// with pre-set call options.
+type IPausableCallerSession struct {
+	Contract *IPausableCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts    // Call options to use throughout this session
+}
+
+// IPausableTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// with pre-set transact options.
+type IPausableTransactorSession struct {
+	Contract     *IPausableTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
+}
+
+// IPausableRaw is an auto generated low-level Go binding around an Ethereum contract.
+type IPausableRaw struct {
+	Contract *IPausable // Generic contract binding to access the raw methods on
+}
+
+// IPausableCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type IPausableCallerRaw struct {
+	Contract *IPausableCaller // Generic read-only contract binding to access the raw methods on
+}
+
+// IPausableTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type IPausableTransactorRaw struct {
+	Contract *IPausableTransactor // Generic write-only contract binding to access the raw methods on
+}
+
+// NewIPausable creates a new instance of IPausable, bound to a specific deployed contract.
+func NewIPausable(address common.Address, backend bind.ContractBackend) (*IPausable, error) {
+	contract, err := bindIPausable(address, backend, backend, backend)
+	if err != nil {
+		return nil, err
+	}
+	return &IPausable{IPausableCaller: IPausableCaller{contract: contract}, IPausableTransactor: IPausableTransactor{contract: contract}, IPausableFilterer: IPausableFilterer{contract: contract}}, nil
+}
+
+// NewIPausableCaller creates a new read-only instance of IPausable, bound to a specific deployed contract.
+func NewIPausableCaller(address common.Address, caller bind.ContractCaller) (*IPausableCaller, error) {
+	contract, err := bindIPausable(address, caller, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &IPausableCaller{contract: contract}, nil
+}
+
+// NewIPausableTransactor creates a new write-only instance of IPausable, bound to a specific deployed contract.
+func NewIPausableTransactor(address common.Address, transactor bind.ContractTransactor) (*IPausableTransactor, error) {
+	contract, err := bindIPausable(address, nil, transactor, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &IPausableTransactor{contract: contract}, nil
+}
+
+// NewIPausableFilterer creates a new log filterer instance of IPausable, bound to a specific deployed contract.
+func NewIPausableFilterer(address common.Address, filterer bind.ContractFilterer) (*IPausableFilterer, error) {
+	contract, err := bindIPausable(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &IPausableFilterer{contract: contract}, nil
+}
+
+// bindIPausable binds a generic wrapper to an already deployed contract.
+func bindIPausable(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := IPausableMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_IPausable *IPausableRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _IPausable.Contract.IPausableCaller.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_IPausable *IPausableRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPausable.Contract.IPausableTransactor.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_IPausable *IPausableRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _IPausable.Contract.IPausableTransactor.contract.Transact(opts, method, params...)
+}
+
+// Call invokes the (constant) contract method with params as input values and
+// sets the output to result. The result type might be a single field for simple
+// returns, a slice of interfaces for anonymous returns and a struct for named
+// returns.
+func (_IPausable *IPausableCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _IPausable.Contract.contract.Call(opts, result, method, params...)
+}
+
+// Transfer initiates a plain transaction to move funds to the contract, calling
+// its default method if one is available.
+func (_IPausable *IPausableTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPausable.Contract.contract.Transfer(opts)
+}
+
+// Transact invokes the (paid) contract method with params as input values.
+func (_IPausable *IPausableTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _IPausable.Contract.contract.Transact(opts, method, params...)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPausable *IPausableCaller) PauseStatus(opts *bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	var out []interface{}
+	err := _IPausable.contract.Call(opts, &out, "pauseStatus")
+
+	outstruct := new(struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.IsPaused = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.Reason = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Since = *abi.ConvertType(out[2], new(uint64)).(*uint64)
+
+	return *outstruct, err
+
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPausable *IPausableSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IPausable.Contract.PauseStatus(&_IPausable.CallOpts)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPausable *IPausableCallerSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IPausable.Contract.PauseStatus(&_IPausable.CallOpts)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPausable *IPausableTransactor) Pause(opts *bind.TransactOpts, reason string) (*types.Transaction, error) {
+	return _IPausable.contract.Transact(opts, "pause", reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPausable *IPausableSession) Pause(reason string) (*types.Transaction, error) {
+	return _IPausable.Contract.Pause(&_IPausable.TransactOpts, reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPausable *IPausableTransactorSession) Pause(reason string) (*types.Transaction, error) {
+	return _IPausable.Contract.Pause(&_IPausable.TransactOpts, reason)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPausable *IPausableTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPausable.contract.Transact(opts, "unpause")
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPausable *IPausableSession) Unpause() (*types.Transaction, error) {
+	return _IPausable.Contract.Unpause(&_IPausable.TransactOpts)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPausable *IPausableTransactorSession) Unpause() (*types.Transaction, error) {
+	return _IPausable.Contract.Unpause(&_IPausable.TransactOpts)
+}
+
 // IPegInMetaData contains all meta data concerning the IPegIn contract.
 var IPegInMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"AmountUnderMinimum\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"gasLeft\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasRequired\",\"type\":\"uint256\"}],\"name\":\"InsufficientGas\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"refundAddress\",\"type\":\"bytes\"}],\"name\":\"InvalidRefundAddress\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotEnoughConfirmations\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyProcessed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"UnexpectedBridgeError\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"transferredAmount\",\"type\":\"uint256\"}],\"name\":\"PegInRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentContribution\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeeCollector\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeePercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getQuoteStatus\",\"outputs\":[{\"internalType\":\"enumIPegIn.PegInStates\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegInQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"}],\"name\":\"validatePegInDepositAddress\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"AmountUnderMinimum\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"gasLeft\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasRequired\",\"type\":\"uint256\"}],\"name\":\"InsufficientGas\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"refundAddress\",\"type\":\"bytes\"}],\"name\":\"InvalidRefundAddress\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotEnoughConfirmations\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyProcessed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"UnexpectedBridgeError\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceDecrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"BalanceIncrease\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"BridgeCapExceeded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"gasLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"name\":\"CallForUser\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"transferredAmount\",\"type\":\"uint256\"}],\"name\":\"PegInRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"dest\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"name\":\"Refund\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"callForUser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentContribution\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeeCollector\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeePercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinPegIn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"getQuoteStatus\",\"outputs\":[{\"internalType\":\"enumIPegIn.PegInStates\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegInQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRawTransaction\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"partialMerkleTree\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"}],\"name\":\"registerPegIn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"}],\"name\":\"validatePegInDepositAddress\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // IPegInABI is the input ABI used to generate the binding from.
@@ -5206,6 +5664,56 @@ func (_IPegIn *IPegInCallerSession) HashPegInQuote(quote QuotesPegInQuote) ([32]
 	return _IPegIn.Contract.HashPegInQuote(&_IPegIn.CallOpts, quote)
 }
 
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPegIn *IPegInCaller) PauseStatus(opts *bind.CallOpts) (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	var out []interface{}
+	err := _IPegIn.contract.Call(opts, &out, "pauseStatus")
+
+	outstruct := new(struct {
+		IsPaused bool
+		Reason   string
+		Since    uint64
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.IsPaused = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.Reason = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Since = *abi.ConvertType(out[2], new(uint64)).(*uint64)
+
+	return *outstruct, err
+
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPegIn *IPegInSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IPegIn.Contract.PauseStatus(&_IPegIn.CallOpts)
+}
+
+// PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
+//
+// Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
+func (_IPegIn *IPegInCallerSession) PauseStatus() (struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}, error) {
+	return _IPegIn.Contract.PauseStatus(&_IPegIn.CallOpts)
+}
+
 // ValidatePegInDepositAddress is a free data retrieval call binding the contract method 0xe9accea2.
 //
 // Solidity: function validatePegInDepositAddress((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, bytes depositAddress) view returns(bool)
@@ -5279,6 +5787,27 @@ func (_IPegIn *IPegInTransactorSession) Deposit() (*types.Transaction, error) {
 	return _IPegIn.Contract.Deposit(&_IPegIn.TransactOpts)
 }
 
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPegIn *IPegInTransactor) Pause(opts *bind.TransactOpts, reason string) (*types.Transaction, error) {
+	return _IPegIn.contract.Transact(opts, "pause", reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPegIn *IPegInSession) Pause(reason string) (*types.Transaction, error) {
+	return _IPegIn.Contract.Pause(&_IPegIn.TransactOpts, reason)
+}
+
+// Pause is a paid mutator transaction binding the contract method 0x6da66355.
+//
+// Solidity: function pause(string reason) returns()
+func (_IPegIn *IPegInTransactorSession) Pause(reason string) (*types.Transaction, error) {
+	return _IPegIn.Contract.Pause(&_IPegIn.TransactOpts, reason)
+}
+
 // RegisterPegIn is a paid mutator transaction binding the contract method 0x3823c753.
 //
 // Solidity: function registerPegIn((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
@@ -5298,6 +5827,27 @@ func (_IPegIn *IPegInSession) RegisterPegIn(quote QuotesPegInQuote, signature []
 // Solidity: function registerPegIn((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, bytes signature, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256)
 func (_IPegIn *IPegInTransactorSession) RegisterPegIn(quote QuotesPegInQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error) {
 	return _IPegIn.Contract.RegisterPegIn(&_IPegIn.TransactOpts, quote, signature, btcRawTransaction, partialMerkleTree, height)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPegIn *IPegInTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPegIn.contract.Transact(opts, "unpause")
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPegIn *IPegInSession) Unpause() (*types.Transaction, error) {
+	return _IPegIn.Contract.Unpause(&_IPegIn.TransactOpts)
+}
+
+// Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
+//
+// Solidity: function unpause() returns()
+func (_IPegIn *IPegInTransactorSession) Unpause() (*types.Transaction, error) {
+	return _IPegIn.Contract.Unpause(&_IPegIn.TransactOpts)
 }
 
 // Withdraw is a paid mutator transaction binding the contract method 0x2e1a7d4d.
@@ -10325,10 +10875,11 @@ func (_IPegOut *IPegOutFilterer) ParseUnpaused(log types.Log) (*IPegOutUnpaused,
 	event.Raw = log
 	return event, nil
 }
+
 // QuotesMetaData contains all meta data concerning the Quotes contract.
 var QuotesMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"AmountTooLow\",\"type\":\"error\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"transferredAmount\",\"type\":\"uint256\"}],\"name\":\"checkAgreedAmount\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodePegOutQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodeQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
-	Bin: "0x610b2c610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe730000000000000000000000000000000000000000301460806040526004361061004b5760003560e01c80632770727a14610050578063e5648b9a14610065578063fb19b88b1461008e575b600080fd5b61006361005e36600461034a565b6100a1565b005b61007861007336600461038e565b61012a565b6040516100859190610410565b60405180910390f35b61007861009c36600461042a565b610175565b6000608083013560608401356100bc8535604087013561047b565b6100c6919061047b565b6100d0919061047b565b905060006100e061271083610494565b9050826100ed82846104b6565b111561012457826100fe82846104b6565b604051631cc6243f60e01b81526004810192909252602482015260440160405180910390fd5b50505050565b606061013d61013883610633565b610199565b61014e61014984610633565b6101e4565b60405160200161015f9291906107d6565b6040516020818303038152906040529050919050565b606061018861018383610804565b61023f565b61014e61019484610804565b61028a565b60608160a001518260c001518360e001518461022001518561012001518661024001518760000151886020015189610100015160405160200161015f9998979695949392919061097a565b60608161026001518261016001518361014001518460400151856101800151866101a00151876101c00151886101e001518961020001518a606001518b6080015160405160200161015f9b9a999897969594939291906109f9565b60608160a001518260c001518361022001518460e001518561024001518660000151876020015188610100015189610200015160405160200161015f99989796959493929190610a72565b60608160400151826101200151836101400151846101c00151856101e00151866101600151876101800151886101a0015189606001518a6080015160405160200161015f9a99989796959493929190998a5263ffffffff98891660208b015296881660408a015261ffff95861660608a015293909416608088015290851660a0870152841660c0860152921660e08401526101008301919091526101208201526101400190565b6000610280828403121561034457600080fd5b50919050565b6000806040838503121561035d57600080fd5b82356001600160401b0381111561037357600080fd5b61037f85828601610331565b95602094909401359450505050565b6000602082840312156103a057600080fd5b81356001600160401b038111156103b657600080fd5b6103c284828501610331565b949350505050565b6000815180845260005b818110156103f0576020818501810151868301820152016103d4565b506000602082860101526020601f19601f83011685010191505092915050565b60208152600061042360208301846103ca565b9392505050565b60006020828403121561043c57600080fd5b81356001600160401b0381111561045257600080fd5b8201610260818503121561042357600080fd5b634e487b7160e01b600052601160045260246000fd5b8082018082111561048e5761048e610465565b92915050565b6000826104b157634e487b7160e01b600052601260045260246000fd5b500490565b8181038181111561048e5761048e610465565b634e487b7160e01b600052604160045260246000fd5b60405161028081016001600160401b0381118282101715610502576105026104c9565b60405290565b60405161026081016001600160401b0381118282101715610502576105026104c9565b80356001600160601b03198116811461054357600080fd5b919050565b80356001600160a01b038116811461054357600080fd5b8035600781900b811461054357600080fd5b803563ffffffff8116811461054357600080fd5b803561ffff8116811461054357600080fd5b8035801515811461054357600080fd5b600082601f8301126105b857600080fd5b81356001600160401b03808211156105d2576105d26104c9565b604051601f8301601f19908116603f011681019082821181831017156105fa576105fa6104c9565b8160405283815286602085880101111561061357600080fd5b836020870160208301376000602085830101528094505050505092915050565b6000610280823603121561064657600080fd5b61064e6104df565b823581526020830135602082015260408301356040820152606083013560608201526080830135608082015261068660a0840161052b565b60a082015261069760c08401610548565b60c08201526106a860e08401610548565b60e08201526101006106bb818501610548565b908201526101206106cd848201610548565b908201526101406106df84820161055f565b908201526101606106f1848201610571565b90820152610180610703848201610571565b908201526101a0610715848201610571565b908201526101c0610727848201610571565b908201526101e0610739848201610585565b9082015261020061074b848201610597565b90820152610220838101356001600160401b038082111561076b57600080fd5b610777368388016105a7565b8385015261024092508286013591508082111561079357600080fd5b61079f368388016105a7565b838501526102609250828601359150808211156107bb57600080fd5b506107c8368287016105a7565b918301919091525092915050565b6040815260006107e960408301856103ca565b82810360208401526107fb81856103ca565b95945050505050565b6000610260823603121561081757600080fd5b61081f610508565b823581526020830135602082015260408301356040820152606083013560608201526080830135608082015261085760a08401610548565b60a082015261086860c08401610548565b60c082015261087960e08401610548565b60e082015261010061088c81850161055f565b9082015261012061089e848201610571565b908201526101406108b0848201610571565b908201526101606108c2848201610571565b908201526101806108d4848201610571565b908201526101a06108e6848201610571565b908201526101c06108f8848201610585565b908201526101e061090a848201610585565b90820152610200838101356001600160401b038082111561092a57600080fd5b610936368388016105a7565b8385015261022092508286013591508082111561095257600080fd5b61095e368388016105a7565b838501526102409250828601359150808211156107bb57600080fd5b6001600160601b03198a1681526001600160a01b0389811660208301528881166040830152610120606083018190526000916109b88483018b6103ca565b9150808916608085015283820360a08501526109d482896103ca565b60c085019790975260e084019590955250509116610100909101529695505050505050565b6000610160808352610a0d8184018f6103ca565b63ffffffff9d8e16602085015260079c909c0b604084015250506060810198909852958916608088015293881660a08701529190961660c085015261ffff90951660e08401529315156101008301526101208201939093526101400191909152919050565b6001600160a01b038a81168252898116602083015261012060408301819052600091610aa08483018c6103ca565b908a16606085015283810360808501529050610abc81896103ca565b90508660a08401528560c08401528460070b60e0840152828103610100840152610ae681856103ca565b9c9b50505050505050505050505056fea26469706673582212206b918946ed9107ffd1f4f22d1afe315ae833a25486c0ccc8d06428588be7d2a364736f6c63430008190033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"AmountTooLow\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SAT_TO_WEI_CONVERSION\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"transferredAmount\",\"type\":\"uint256\"}],\"name\":\"checkAgreedAmount\",\"outputs\":[],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodePegOutQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"bytes20\",\"name\":\"fedBtcAddress\",\"type\":\"bytes20\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"gasLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"timeForDeposit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"callTime\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bool\",\"name\":\"callOnRegister\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegInQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"encodeQuote\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	Bin: "0x610b6b610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600436106100565760003560e01c80632770727a1461005b578063b5ecfc0614610070578063e5648b9a1461008f578063fb19b88b146100af575b600080fd5b61006e610069366004610389565b6100c2565b005b61007c6402540be40081565b6040519081526020015b60405180910390f35b6100a261009d3660046103cd565b610169565b604051610086919061044f565b6100a26100bd366004610469565b6101b4565b6000608083013560608401356100dd853560408701356104ba565b6100e791906104ba565b6100f191906104ba565b90506402540be4008111801561011457506101116402540be400826104d3565b15155b15610135576101286402540be400826104d3565b61013290826104f5565b90505b8181111561016457604051631cc6243f60e01b8152600481018390526024810182905260440160405180910390fd5b505050565b606061017c61017783610672565b6101d8565b61018d61018884610672565b610223565b60405160200161019e929190610815565b6040516020818303038152906040529050919050565b60606101c76101c283610843565b61027e565b61018d6101d384610843565b6102c9565b60608160a001518260c001518360e001518461022001518561012001518661024001518760000151886020015189610100015160405160200161019e999897969594939291906109b9565b60608161026001518261016001518361014001518460400151856101800151866101a00151876101c00151886101e001518961020001518a606001518b6080015160405160200161019e9b9a99989796959493929190610a38565b60608160a001518260c001518361022001518460e001518561024001518660000151876020015188610100015189610200015160405160200161019e99989796959493929190610ab1565b60608160400151826101200151836101400151846101c00151856101e00151866101600151876101800151886101a0015189606001518a6080015160405160200161019e9a99989796959493929190998a5263ffffffff98891660208b015296881660408a015261ffff95861660608a015293909416608088015290851660a0870152841660c0860152921660e08401526101008301919091526101208201526101400190565b6000610280828403121561038357600080fd5b50919050565b6000806040838503121561039c57600080fd5b82356001600160401b038111156103b257600080fd5b6103be85828601610370565b95602094909401359450505050565b6000602082840312156103df57600080fd5b81356001600160401b038111156103f557600080fd5b61040184828501610370565b949350505050565b6000815180845260005b8181101561042f57602081850181015186830182015201610413565b506000602082860101526020601f19601f83011685010191505092915050565b6020815260006104626020830184610409565b9392505050565b60006020828403121561047b57600080fd5b81356001600160401b0381111561049157600080fd5b8201610260818503121561046257600080fd5b634e487b7160e01b600052601160045260246000fd5b808201808211156104cd576104cd6104a4565b92915050565b6000826104f057634e487b7160e01b600052601260045260246000fd5b500690565b818103818111156104cd576104cd6104a4565b634e487b7160e01b600052604160045260246000fd5b60405161028081016001600160401b038111828210171561054157610541610508565b60405290565b60405161026081016001600160401b038111828210171561054157610541610508565b80356001600160601b03198116811461058257600080fd5b919050565b80356001600160a01b038116811461058257600080fd5b8035600781900b811461058257600080fd5b803563ffffffff8116811461058257600080fd5b803561ffff8116811461058257600080fd5b8035801515811461058257600080fd5b600082601f8301126105f757600080fd5b81356001600160401b038082111561061157610611610508565b604051601f8301601f19908116603f0116810190828211818310171561063957610639610508565b8160405283815286602085880101111561065257600080fd5b836020870160208301376000602085830101528094505050505092915050565b6000610280823603121561068557600080fd5b61068d61051e565b82358152602083013560208201526040830135604082015260608301356060820152608083013560808201526106c560a0840161056a565b60a08201526106d660c08401610587565b60c08201526106e760e08401610587565b60e08201526101006106fa818501610587565b9082015261012061070c848201610587565b9082015261014061071e84820161059e565b908201526101606107308482016105b0565b908201526101806107428482016105b0565b908201526101a06107548482016105b0565b908201526101c06107668482016105b0565b908201526101e06107788482016105c4565b9082015261020061078a8482016105d6565b90820152610220838101356001600160401b03808211156107aa57600080fd5b6107b6368388016105e6565b838501526102409250828601359150808211156107d257600080fd5b6107de368388016105e6565b838501526102609250828601359150808211156107fa57600080fd5b50610807368287016105e6565b918301919091525092915050565b6040815260006108286040830185610409565b828103602084015261083a8185610409565b95945050505050565b6000610260823603121561085657600080fd5b61085e610547565b823581526020830135602082015260408301356040820152606083013560608201526080830135608082015261089660a08401610587565b60a08201526108a760c08401610587565b60c08201526108b860e08401610587565b60e08201526101006108cb81850161059e565b908201526101206108dd8482016105b0565b908201526101406108ef8482016105b0565b908201526101606109018482016105b0565b908201526101806109138482016105b0565b908201526101a06109258482016105b0565b908201526101c06109378482016105c4565b908201526101e06109498482016105c4565b90820152610200838101356001600160401b038082111561096957600080fd5b610975368388016105e6565b8385015261022092508286013591508082111561099157600080fd5b61099d368388016105e6565b838501526102409250828601359150808211156107fa57600080fd5b6001600160601b03198a1681526001600160a01b0389811660208301528881166040830152610120606083018190526000916109f78483018b610409565b9150808916608085015283820360a0850152610a138289610409565b60c085019790975260e084019590955250509116610100909101529695505050505050565b6000610160808352610a4c8184018f610409565b63ffffffff9d8e16602085015260079c909c0b604084015250506060810198909852958916608088015293881660a08701529190961660c085015261ffff90951660e08401529315156101008301526101208201939093526101400191909152919050565b6001600160a01b038a81168252898116602083015261012060408301819052600091610adf8483018c610409565b908a16606085015283810360808501529050610afb8189610409565b90508660a08401528560c08401528460070b60e0840152828103610100840152610b258185610409565b9c9b50505050505050505050505056fea2646970667358221220d371425e1658aa040aab0f9c9c1eb8b813bd8d2efc626397fda96c7787d0cafd64736f6c63430008190033",
 }
 
 // QuotesABI is the input ABI used to generate the binding from.
@@ -10498,6 +11049,37 @@ func (_Quotes *QuotesTransactorRaw) Transact(opts *bind.TransactOpts, method str
 	return _Quotes.Contract.contract.Transact(opts, method, params...)
 }
 
+// SATTOWEICONVERSION is a free data retrieval call binding the contract method 0xb5ecfc06.
+//
+// Solidity: function SAT_TO_WEI_CONVERSION() view returns(uint256)
+func (_Quotes *QuotesCaller) SATTOWEICONVERSION(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _Quotes.contract.Call(opts, &out, "SAT_TO_WEI_CONVERSION")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// SATTOWEICONVERSION is a free data retrieval call binding the contract method 0xb5ecfc06.
+//
+// Solidity: function SAT_TO_WEI_CONVERSION() view returns(uint256)
+func (_Quotes *QuotesSession) SATTOWEICONVERSION() (*big.Int, error) {
+	return _Quotes.Contract.SATTOWEICONVERSION(&_Quotes.CallOpts)
+}
+
+// SATTOWEICONVERSION is a free data retrieval call binding the contract method 0xb5ecfc06.
+//
+// Solidity: function SAT_TO_WEI_CONVERSION() view returns(uint256)
+func (_Quotes *QuotesCallerSession) SATTOWEICONVERSION() (*big.Int, error) {
+	return _Quotes.Contract.SATTOWEICONVERSION(&_Quotes.CallOpts)
+}
+
 // CheckAgreedAmount is a free data retrieval call binding the contract method 0x62e2e937.
 //
 // Solidity: function checkAgreedAmount((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote, uint256 transferredAmount) pure returns()
@@ -10591,8 +11173,8 @@ func (_Quotes *QuotesCallerSession) EncodeQuote(quote QuotesPegInQuote) ([]byte,
 
 // SignatureValidatorMetaData contains all meta data concerning the SignatureValidator contract.
 var SignatureValidatorMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expectedAddress\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"usedHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"IncorrectSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"verify\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
-	Bin: "0x6102a7610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600436106100355760003560e01c80631a86b5501461003a575b600080fd5b61004d610048366004610167565b610061565b604051901515815260200160405180910390f35b602081810151604080840151606085015182518084018452601c81527b0ca2ba3432b932bab69029b4b3b732b21026b2b9b9b0b3b29d05199960211b818701529251600095929391861a9286916100bc9184918b910161023f565b60408051601f1981840301815282825280516020918201206000845290830180835281905260ff861691830191909152606082018790526080820186905291506001600160a01b038a169060019060a0016020604051602081039080840390855afa15801561012f573d6000803e3d6000fd5b505050602060405103516001600160a01b031614955050505050509392505050565b634e487b7160e01b600052604160045260246000fd5b60008060006060848603121561017c57600080fd5b83356001600160a01b038116811461019357600080fd5b92506020840135915060408401356001600160401b03808211156101b657600080fd5b818601915086601f8301126101ca57600080fd5b8135818111156101dc576101dc610151565b604051601f8201601f19908116603f0116810190838211818310171561020457610204610151565b8160405282815289602084870101111561021d57600080fd5b8260208601602083013760006020848301015280955050505050509250925092565b6000835160005b818110156102605760208187018101518583015201610246565b50919091019182525060200191905056fea2646970667358221220aa28be7fb4c916241e4be09ce37be2e061b3ad7002abda8fe0eaee1d9430d8b564736f6c63430008190033",
+	ABI: "[{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expectedAddress\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"usedHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"IncorrectSignature\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"verify\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	Bin: "0x6104d6610039600b82828239805160001a607314602c57634e487b7160e01b600052600060045260246000fd5b30600052607381538281f3fe73000000000000000000000000000000000000000030146080604052600436106100355760003560e01c80631a86b5501461003a575b600080fd5b61004d610048366004610323565b610061565b604051901515815260200160405180910390f35b60006001600160a01b03841661008a5760405163d92e233d60e01b815260040160405180910390fd5b81516041146100bb5783838360405163f6c6db7160e01b81526004016100b29392919061041f565b60405180910390fd5b602082810151604080850151606086015182518084018452601c81527b0ca2ba3432b932bab69029b4b3b732b21026b2b9b9b0b3b29d05199960211b81870152925193949193600091821a93926101169184918b9101610468565b60408051601f19818403018152919052805160209091012090506001600160a01b0389166101468285888861015d565b6001600160a01b0316149998505050505050505050565b60008060008061016f8888888861018b565b92509250925061017f8282610250565b50909695505050505050565b600080806fa2a8918ca85bafe22016d0b997e4df60600160ff1b038411156101bc5750600091506003905082610246565b604080516000808252602082018084528a905260ff891692820192909252606081018790526080810186905260019060a0016020604051602081039080840390855afa158015610210573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b03811661023c57506000925060019150829050610246565b9250600091508190505b9450945094915050565b60008260038111156102645761026461048a565b0361026d575050565b60018260038111156102815761028161048a565b0361029f5760405163f645eedf60e01b815260040160405180910390fd5b60028260038111156102b3576102b361048a565b036102d45760405163fce698f760e01b8152600481018290526024016100b2565b60038260038111156102e8576102e861048a565b03610309576040516335e2f38360e21b8152600481018290526024016100b2565b5050565b634e487b7160e01b600052604160045260246000fd5b60008060006060848603121561033857600080fd5b83356001600160a01b038116811461034f57600080fd5b92506020840135915060408401356001600160401b038082111561037257600080fd5b818601915086601f83011261038657600080fd5b8135818111156103985761039861030d565b604051601f8201601f19908116603f011681019083821181831017156103c0576103c061030d565b816040528281528960208487010111156103d957600080fd5b8260208601602083013760006020848301015280955050505050509250925092565b60005b838110156104165781810151838201526020016103fe565b50506000910152565b60018060a01b038416815282602082015260606040820152600082518060608401526104528160808501602087016103fb565b601f01601f191691909101608001949350505050565b6000835161047a8184602088016103fb565b9190910191825250602001919050565b634e487b7160e01b600052602160045260246000fdfea26469706673582212200e81c3b1425d5e915042ade5caac950f005f23701cb076cf6a7c467db2355f1564736f6c63430008190033",
 }
 
 // SignatureValidatorABI is the input ABI used to generate the binding from.

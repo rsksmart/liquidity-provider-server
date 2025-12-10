@@ -74,6 +74,10 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var creationData quote.PegoutCreationData
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
 	gasFeeDao := new(entities.Wei)
 	configuration := useCase.pegoutLp.PegoutConfiguration(ctx)
 	if errorArgs, err = useCase.validateRequest(configuration, request); err != nil {
