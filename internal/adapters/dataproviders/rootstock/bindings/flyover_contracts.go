@@ -6967,7 +6967,7 @@ func (_IPegIn *IPegInFilterer) ParseWithdrawal(log types.Log) (*IPegInWithdrawal
 
 // IPegOutMetaData contains all meta data concerning the IPegOut contract.
 var IPegOutMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"expected\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"actual\",\"type\":\"bytes\"}],\"name\":\"InvalidDestination\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"expected\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"actual\",\"type\":\"bytes32\"}],\"name\":\"InvalidQuoteHash\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"outputScript\",\"type\":\"bytes\"}],\"name\":\"MalformedTransaction\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"required\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"current\",\"type\":\"int256\"}],\"name\":\"NotEnoughConfirmations\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyCompleted\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"name\":\"QuoteExpiredByBlocks\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"}],\"name\":\"QuoteExpiredByTime\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteNotExpired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"UnableToGetConfirmations\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"change\",\"type\":\"uint256\"}],\"name\":\"PegOutChangePaid\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"PegOutRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"PegOutUserRefunded\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"depositPegOut\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentContribution\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeeCollector\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeePercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegOutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"isQuoteCompleted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"merkleBranchPath\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"refundUserPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"name\":\"AccessControlBadConfirmation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"neededRole\",\"type\":\"bytes32\"}],\"name\":\"AccessControlUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"heightOrHash\",\"type\":\"bytes32\"}],\"name\":\"EmptyBlockHeader\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"EnforcedPause\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ExpectedPause\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"FeeCollectorUnset\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"IncorrectContract\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expectedAddress\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"usedHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"IncorrectSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"InsufficientAmount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"expected\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"actual\",\"type\":\"bytes\"}],\"name\":\"InvalidDestination\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"expected\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"actual\",\"type\":\"bytes32\"}],\"name\":\"InvalidQuoteHash\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"expected\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"actual\",\"type\":\"address\"}],\"name\":\"InvalidSender\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"outputScript\",\"type\":\"bytes\"}],\"name\":\"MalformedTransaction\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"wanted\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"actual\",\"type\":\"uint256\"}],\"name\":\"NoBalance\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"NoContract\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NoFees\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"required\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"current\",\"type\":\"int256\"}],\"name\":\"NotEnoughConfirmations\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"reason\",\"type\":\"bytes\"}],\"name\":\"PaymentFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"PaymentNotAllowed\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"ProviderNotRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyCompleted\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteAlreadyRegistered\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"}],\"name\":\"QuoteExpiredByBlocks\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"}],\"name\":\"QuoteExpiredByTime\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteNotExpired\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"QuoteNotFound\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ReentrancyGuardReentrantCall\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"errorCode\",\"type\":\"int256\"}],\"name\":\"UnableToGetConfirmations\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"oldTime\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"newTime\",\"type\":\"uint256\"}],\"name\":\"BtcBlockTimeSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAddress\",\"type\":\"address\"}],\"name\":\"CollateralManagementSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"feeCollector\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"feePercentage\",\"type\":\"uint256\"}],\"name\":\"ContributionsConfigured\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"contributor\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"DaoContribution\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"claimer\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"DaoFeesClaimed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"oldThreshold\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"newThreshold\",\"type\":\"uint256\"}],\"name\":\"DustThresholdSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"by\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"EmergencyPaused\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"by\",\"type\":\"address\"}],\"name\":\"EmergencyUnpaused\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"Paused\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"change\",\"type\":\"uint256\"}],\"name\":\"PegOutChangePaid\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"PegOutDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"PegOutRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"userAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"PegOutUserRefunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"Unpaused\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"VERSION\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"btcBlockTime\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"claimContribution\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"addresspayable\",\"name\":\"feeCollector\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"feePercentage\",\"type\":\"uint256\"}],\"name\":\"configureContributions\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"depositPegOut\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"dustThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentContribution\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeeCollector\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getFeePercentage\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"name\":\"hashPegOutQuote\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"addresspayable\",\"name\":\"bridge\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"dustThreshold_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"collateralManagement\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"mainnet\",\"type\":\"bool\"},{\"internalType\":\"uint256\",\"name\":\"btcBlockTime_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"daoFeePercentage\",\"type\":\"uint256\"},{\"internalType\":\"addresspayable\",\"name\":\"daoFeeCollector\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"isQuoteCompleted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"}],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseStatus\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"isPaused\",\"type\":\"bool\"},{\"internalType\":\"string\",\"name\":\"reason\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"since\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"},{\"internalType\":\"bytes32\",\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"merkleBranchPath\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\"}],\"name\":\"refundPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"}],\"name\":\"refundUserPegOut\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"callerConfirmation\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"blockTime\",\"type\":\"uint256\"}],\"name\":\"setBtcBlockTime\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"collateralManagement\",\"type\":\"address\"}],\"name\":\"setCollateralManagement\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"threshold\",\"type\":\"uint256\"}],\"name\":\"setDustThreshold\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"quoteHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"btcTx\",\"type\":\"bytes\"}],\"name\":\"validatePegout\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"callFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"penaltyFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"productFeeAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gasFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"lbcAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"lpRskAddress\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rskRefundAddress\",\"type\":\"address\"},{\"internalType\":\"int64\",\"name\":\"nonce\",\"type\":\"int64\"},{\"internalType\":\"uint32\",\"name\":\"agreementTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"depositDateLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"transferTime\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireDate\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"expireBlock\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"depositConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"uint16\",\"name\":\"transferConfirmations\",\"type\":\"uint16\"},{\"internalType\":\"bytes\",\"name\":\"depositAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"btcRefundAddress\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"lpBtcAddress\",\"type\":\"bytes\"}],\"internalType\":\"structQuotes.PegOutQuote\",\"name\":\"quote\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
 }
 
 // IPegOutABI is the input ABI used to generate the binding from.
@@ -7116,6 +7116,130 @@ func (_IPegOut *IPegOutTransactorRaw) Transact(opts *bind.TransactOpts, method s
 	return _IPegOut.Contract.contract.Transact(opts, method, params...)
 }
 
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_IPegOut *IPegOutCaller) DEFAULTADMINROLE(opts *bind.CallOpts) ([32]byte, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "DEFAULT_ADMIN_ROLE")
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_IPegOut *IPegOutSession) DEFAULTADMINROLE() ([32]byte, error) {
+	return _IPegOut.Contract.DEFAULTADMINROLE(&_IPegOut.CallOpts)
+}
+
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_IPegOut *IPegOutCallerSession) DEFAULTADMINROLE() ([32]byte, error) {
+	return _IPegOut.Contract.DEFAULTADMINROLE(&_IPegOut.CallOpts)
+}
+
+// VERSION is a free data retrieval call binding the contract method 0xffa1ad74.
+//
+// Solidity: function VERSION() view returns(string)
+func (_IPegOut *IPegOutCaller) VERSION(opts *bind.CallOpts) (string, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "VERSION")
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
+}
+
+// VERSION is a free data retrieval call binding the contract method 0xffa1ad74.
+//
+// Solidity: function VERSION() view returns(string)
+func (_IPegOut *IPegOutSession) VERSION() (string, error) {
+	return _IPegOut.Contract.VERSION(&_IPegOut.CallOpts)
+}
+
+// VERSION is a free data retrieval call binding the contract method 0xffa1ad74.
+//
+// Solidity: function VERSION() view returns(string)
+func (_IPegOut *IPegOutCallerSession) VERSION() (string, error) {
+	return _IPegOut.Contract.VERSION(&_IPegOut.CallOpts)
+}
+
+// BtcBlockTime is a free data retrieval call binding the contract method 0x23982937.
+//
+// Solidity: function btcBlockTime() view returns(uint256)
+func (_IPegOut *IPegOutCaller) BtcBlockTime(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "btcBlockTime")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// BtcBlockTime is a free data retrieval call binding the contract method 0x23982937.
+//
+// Solidity: function btcBlockTime() view returns(uint256)
+func (_IPegOut *IPegOutSession) BtcBlockTime() (*big.Int, error) {
+	return _IPegOut.Contract.BtcBlockTime(&_IPegOut.CallOpts)
+}
+
+// BtcBlockTime is a free data retrieval call binding the contract method 0x23982937.
+//
+// Solidity: function btcBlockTime() view returns(uint256)
+func (_IPegOut *IPegOutCallerSession) BtcBlockTime() (*big.Int, error) {
+	return _IPegOut.Contract.BtcBlockTime(&_IPegOut.CallOpts)
+}
+
+// DustThreshold is a free data retrieval call binding the contract method 0xe8462e8f.
+//
+// Solidity: function dustThreshold() view returns(uint256)
+func (_IPegOut *IPegOutCaller) DustThreshold(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "dustThreshold")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// DustThreshold is a free data retrieval call binding the contract method 0xe8462e8f.
+//
+// Solidity: function dustThreshold() view returns(uint256)
+func (_IPegOut *IPegOutSession) DustThreshold() (*big.Int, error) {
+	return _IPegOut.Contract.DustThreshold(&_IPegOut.CallOpts)
+}
+
+// DustThreshold is a free data retrieval call binding the contract method 0xe8462e8f.
+//
+// Solidity: function dustThreshold() view returns(uint256)
+func (_IPegOut *IPegOutCallerSession) DustThreshold() (*big.Int, error) {
+	return _IPegOut.Contract.DustThreshold(&_IPegOut.CallOpts)
+}
+
 // GetCurrentContribution is a free data retrieval call binding the contract method 0xb8623d53.
 //
 // Solidity: function getCurrentContribution() view returns(uint256)
@@ -7209,6 +7333,68 @@ func (_IPegOut *IPegOutCallerSession) GetFeePercentage() (*big.Int, error) {
 	return _IPegOut.Contract.GetFeePercentage(&_IPegOut.CallOpts)
 }
 
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_IPegOut *IPegOutCaller) GetRoleAdmin(opts *bind.CallOpts, role [32]byte) ([32]byte, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "getRoleAdmin", role)
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_IPegOut *IPegOutSession) GetRoleAdmin(role [32]byte) ([32]byte, error) {
+	return _IPegOut.Contract.GetRoleAdmin(&_IPegOut.CallOpts, role)
+}
+
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_IPegOut *IPegOutCallerSession) GetRoleAdmin(role [32]byte) ([32]byte, error) {
+	return _IPegOut.Contract.GetRoleAdmin(&_IPegOut.CallOpts, role)
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_IPegOut *IPegOutCaller) HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "hasRole", role, account)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_IPegOut *IPegOutSession) HasRole(role [32]byte, account common.Address) (bool, error) {
+	return _IPegOut.Contract.HasRole(&_IPegOut.CallOpts, role, account)
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_IPegOut *IPegOutCallerSession) HasRole(role [32]byte, account common.Address) (bool, error) {
+	return _IPegOut.Contract.HasRole(&_IPegOut.CallOpts, role, account)
+}
+
 // HashPegOutQuote is a free data retrieval call binding the contract method 0x6408f6fe.
 //
 // Solidity: function hashPegOutQuote((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) view returns(bytes32)
@@ -7271,6 +7457,37 @@ func (_IPegOut *IPegOutCallerSession) IsQuoteCompleted(quoteHash [32]byte) (bool
 	return _IPegOut.Contract.IsQuoteCompleted(&_IPegOut.CallOpts, quoteHash)
 }
 
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_IPegOut *IPegOutCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "owner")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_IPegOut *IPegOutSession) Owner() (common.Address, error) {
+	return _IPegOut.Contract.Owner(&_IPegOut.CallOpts)
+}
+
+// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
+//
+// Solidity: function owner() view returns(address)
+func (_IPegOut *IPegOutCallerSession) Owner() (common.Address, error) {
+	return _IPegOut.Contract.Owner(&_IPegOut.CallOpts)
+}
+
 // PauseStatus is a free data retrieval call binding the contract method 0x466916ca.
 //
 // Solidity: function pauseStatus() view returns(bool isPaused, string reason, uint64 since)
@@ -7321,6 +7538,141 @@ func (_IPegOut *IPegOutCallerSession) PauseStatus() (struct {
 	return _IPegOut.Contract.PauseStatus(&_IPegOut.CallOpts)
 }
 
+// Paused is a free data retrieval call binding the contract method 0x5c975abb.
+//
+// Solidity: function paused() view returns(bool)
+func (_IPegOut *IPegOutCaller) Paused(opts *bind.CallOpts) (bool, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "paused")
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// Paused is a free data retrieval call binding the contract method 0x5c975abb.
+//
+// Solidity: function paused() view returns(bool)
+func (_IPegOut *IPegOutSession) Paused() (bool, error) {
+	return _IPegOut.Contract.Paused(&_IPegOut.CallOpts)
+}
+
+// Paused is a free data retrieval call binding the contract method 0x5c975abb.
+//
+// Solidity: function paused() view returns(bool)
+func (_IPegOut *IPegOutCallerSession) Paused() (bool, error) {
+	return _IPegOut.Contract.Paused(&_IPegOut.CallOpts)
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_IPegOut *IPegOutCaller) SupportsInterface(opts *bind.CallOpts, interfaceId [4]byte) (bool, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "supportsInterface", interfaceId)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_IPegOut *IPegOutSession) SupportsInterface(interfaceId [4]byte) (bool, error) {
+	return _IPegOut.Contract.SupportsInterface(&_IPegOut.CallOpts, interfaceId)
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_IPegOut *IPegOutCallerSession) SupportsInterface(interfaceId [4]byte) (bool, error) {
+	return _IPegOut.Contract.SupportsInterface(&_IPegOut.CallOpts, interfaceId)
+}
+
+// ValidatePegout is a free data retrieval call binding the contract method 0x7846150c.
+//
+// Solidity: function validatePegout(bytes32 quoteHash, bytes btcTx) view returns((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote)
+func (_IPegOut *IPegOutCaller) ValidatePegout(opts *bind.CallOpts, quoteHash [32]byte, btcTx []byte) (QuotesPegOutQuote, error) {
+	var out []interface{}
+	err := _IPegOut.contract.Call(opts, &out, "validatePegout", quoteHash, btcTx)
+
+	if err != nil {
+		return *new(QuotesPegOutQuote), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(QuotesPegOutQuote)).(*QuotesPegOutQuote)
+
+	return out0, err
+
+}
+
+// ValidatePegout is a free data retrieval call binding the contract method 0x7846150c.
+//
+// Solidity: function validatePegout(bytes32 quoteHash, bytes btcTx) view returns((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote)
+func (_IPegOut *IPegOutSession) ValidatePegout(quoteHash [32]byte, btcTx []byte) (QuotesPegOutQuote, error) {
+	return _IPegOut.Contract.ValidatePegout(&_IPegOut.CallOpts, quoteHash, btcTx)
+}
+
+// ValidatePegout is a free data retrieval call binding the contract method 0x7846150c.
+//
+// Solidity: function validatePegout(bytes32 quoteHash, bytes btcTx) view returns((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote)
+func (_IPegOut *IPegOutCallerSession) ValidatePegout(quoteHash [32]byte, btcTx []byte) (QuotesPegOutQuote, error) {
+	return _IPegOut.Contract.ValidatePegout(&_IPegOut.CallOpts, quoteHash, btcTx)
+}
+
+// ClaimContribution is a paid mutator transaction binding the contract method 0x0114a690.
+//
+// Solidity: function claimContribution() returns()
+func (_IPegOut *IPegOutTransactor) ClaimContribution(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "claimContribution")
+}
+
+// ClaimContribution is a paid mutator transaction binding the contract method 0x0114a690.
+//
+// Solidity: function claimContribution() returns()
+func (_IPegOut *IPegOutSession) ClaimContribution() (*types.Transaction, error) {
+	return _IPegOut.Contract.ClaimContribution(&_IPegOut.TransactOpts)
+}
+
+// ClaimContribution is a paid mutator transaction binding the contract method 0x0114a690.
+//
+// Solidity: function claimContribution() returns()
+func (_IPegOut *IPegOutTransactorSession) ClaimContribution() (*types.Transaction, error) {
+	return _IPegOut.Contract.ClaimContribution(&_IPegOut.TransactOpts)
+}
+
+// ConfigureContributions is a paid mutator transaction binding the contract method 0x10c2f1c5.
+//
+// Solidity: function configureContributions(address feeCollector, uint256 feePercentage) returns()
+func (_IPegOut *IPegOutTransactor) ConfigureContributions(opts *bind.TransactOpts, feeCollector common.Address, feePercentage *big.Int) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "configureContributions", feeCollector, feePercentage)
+}
+
+// ConfigureContributions is a paid mutator transaction binding the contract method 0x10c2f1c5.
+//
+// Solidity: function configureContributions(address feeCollector, uint256 feePercentage) returns()
+func (_IPegOut *IPegOutSession) ConfigureContributions(feeCollector common.Address, feePercentage *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.ConfigureContributions(&_IPegOut.TransactOpts, feeCollector, feePercentage)
+}
+
+// ConfigureContributions is a paid mutator transaction binding the contract method 0x10c2f1c5.
+//
+// Solidity: function configureContributions(address feeCollector, uint256 feePercentage) returns()
+func (_IPegOut *IPegOutTransactorSession) ConfigureContributions(feeCollector common.Address, feePercentage *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.ConfigureContributions(&_IPegOut.TransactOpts, feeCollector, feePercentage)
+}
+
 // DepositPegOut is a paid mutator transaction binding the contract method 0x083bc4b2.
 //
 // Solidity: function depositPegOut((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote, bytes signature) payable returns()
@@ -7340,6 +7692,48 @@ func (_IPegOut *IPegOutSession) DepositPegOut(quote QuotesPegOutQuote, signature
 // Solidity: function depositPegOut((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote, bytes signature) payable returns()
 func (_IPegOut *IPegOutTransactorSession) DepositPegOut(quote QuotesPegOutQuote, signature []byte) (*types.Transaction, error) {
 	return _IPegOut.Contract.DepositPegOut(&_IPegOut.TransactOpts, quote, signature)
+}
+
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
+//
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutTransactor) GrantRole(opts *bind.TransactOpts, role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "grantRole", role, account)
+}
+
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
+//
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutSession) GrantRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.GrantRole(&_IPegOut.TransactOpts, role, account)
+}
+
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
+//
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutTransactorSession) GrantRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.GrantRole(&_IPegOut.TransactOpts, role, account)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0xd4b31024.
+//
+// Solidity: function initialize(address owner, address bridge, uint256 dustThreshold_, address collateralManagement, bool mainnet, uint256 btcBlockTime_, uint256 daoFeePercentage, address daoFeeCollector) returns()
+func (_IPegOut *IPegOutTransactor) Initialize(opts *bind.TransactOpts, owner common.Address, bridge common.Address, dustThreshold_ *big.Int, collateralManagement common.Address, mainnet bool, btcBlockTime_ *big.Int, daoFeePercentage *big.Int, daoFeeCollector common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "initialize", owner, bridge, dustThreshold_, collateralManagement, mainnet, btcBlockTime_, daoFeePercentage, daoFeeCollector)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0xd4b31024.
+//
+// Solidity: function initialize(address owner, address bridge, uint256 dustThreshold_, address collateralManagement, bool mainnet, uint256 btcBlockTime_, uint256 daoFeePercentage, address daoFeeCollector) returns()
+func (_IPegOut *IPegOutSession) Initialize(owner common.Address, bridge common.Address, dustThreshold_ *big.Int, collateralManagement common.Address, mainnet bool, btcBlockTime_ *big.Int, daoFeePercentage *big.Int, daoFeeCollector common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.Initialize(&_IPegOut.TransactOpts, owner, bridge, dustThreshold_, collateralManagement, mainnet, btcBlockTime_, daoFeePercentage, daoFeeCollector)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0xd4b31024.
+//
+// Solidity: function initialize(address owner, address bridge, uint256 dustThreshold_, address collateralManagement, bool mainnet, uint256 btcBlockTime_, uint256 daoFeePercentage, address daoFeeCollector) returns()
+func (_IPegOut *IPegOutTransactorSession) Initialize(owner common.Address, bridge common.Address, dustThreshold_ *big.Int, collateralManagement common.Address, mainnet bool, btcBlockTime_ *big.Int, daoFeePercentage *big.Int, daoFeeCollector common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.Initialize(&_IPegOut.TransactOpts, owner, bridge, dustThreshold_, collateralManagement, mainnet, btcBlockTime_, daoFeePercentage, daoFeeCollector)
 }
 
 // Pause is a paid mutator transaction binding the contract method 0x6da66355.
@@ -7405,6 +7799,153 @@ func (_IPegOut *IPegOutTransactorSession) RefundUserPegOut(quoteHash [32]byte) (
 	return _IPegOut.Contract.RefundUserPegOut(&_IPegOut.TransactOpts, quoteHash)
 }
 
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
+//
+// Solidity: function renounceOwnership() returns()
+func (_IPegOut *IPegOutTransactor) RenounceOwnership(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "renounceOwnership")
+}
+
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
+//
+// Solidity: function renounceOwnership() returns()
+func (_IPegOut *IPegOutSession) RenounceOwnership() (*types.Transaction, error) {
+	return _IPegOut.Contract.RenounceOwnership(&_IPegOut.TransactOpts)
+}
+
+// RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
+//
+// Solidity: function renounceOwnership() returns()
+func (_IPegOut *IPegOutTransactorSession) RenounceOwnership() (*types.Transaction, error) {
+	return _IPegOut.Contract.RenounceOwnership(&_IPegOut.TransactOpts)
+}
+
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_IPegOut *IPegOutTransactor) RenounceRole(opts *bind.TransactOpts, role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "renounceRole", role, callerConfirmation)
+}
+
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_IPegOut *IPegOutSession) RenounceRole(role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.RenounceRole(&_IPegOut.TransactOpts, role, callerConfirmation)
+}
+
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_IPegOut *IPegOutTransactorSession) RenounceRole(role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.RenounceRole(&_IPegOut.TransactOpts, role, callerConfirmation)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutTransactor) RevokeRole(opts *bind.TransactOpts, role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "revokeRole", role, account)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutSession) RevokeRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.RevokeRole(&_IPegOut.TransactOpts, role, account)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_IPegOut *IPegOutTransactorSession) RevokeRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.RevokeRole(&_IPegOut.TransactOpts, role, account)
+}
+
+// SetBtcBlockTime is a paid mutator transaction binding the contract method 0x3492426f.
+//
+// Solidity: function setBtcBlockTime(uint256 blockTime) returns()
+func (_IPegOut *IPegOutTransactor) SetBtcBlockTime(opts *bind.TransactOpts, blockTime *big.Int) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "setBtcBlockTime", blockTime)
+}
+
+// SetBtcBlockTime is a paid mutator transaction binding the contract method 0x3492426f.
+//
+// Solidity: function setBtcBlockTime(uint256 blockTime) returns()
+func (_IPegOut *IPegOutSession) SetBtcBlockTime(blockTime *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetBtcBlockTime(&_IPegOut.TransactOpts, blockTime)
+}
+
+// SetBtcBlockTime is a paid mutator transaction binding the contract method 0x3492426f.
+//
+// Solidity: function setBtcBlockTime(uint256 blockTime) returns()
+func (_IPegOut *IPegOutTransactorSession) SetBtcBlockTime(blockTime *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetBtcBlockTime(&_IPegOut.TransactOpts, blockTime)
+}
+
+// SetCollateralManagement is a paid mutator transaction binding the contract method 0x05dfbf62.
+//
+// Solidity: function setCollateralManagement(address collateralManagement) returns()
+func (_IPegOut *IPegOutTransactor) SetCollateralManagement(opts *bind.TransactOpts, collateralManagement common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "setCollateralManagement", collateralManagement)
+}
+
+// SetCollateralManagement is a paid mutator transaction binding the contract method 0x05dfbf62.
+//
+// Solidity: function setCollateralManagement(address collateralManagement) returns()
+func (_IPegOut *IPegOutSession) SetCollateralManagement(collateralManagement common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetCollateralManagement(&_IPegOut.TransactOpts, collateralManagement)
+}
+
+// SetCollateralManagement is a paid mutator transaction binding the contract method 0x05dfbf62.
+//
+// Solidity: function setCollateralManagement(address collateralManagement) returns()
+func (_IPegOut *IPegOutTransactorSession) SetCollateralManagement(collateralManagement common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetCollateralManagement(&_IPegOut.TransactOpts, collateralManagement)
+}
+
+// SetDustThreshold is a paid mutator transaction binding the contract method 0xad7e55ba.
+//
+// Solidity: function setDustThreshold(uint256 threshold) returns()
+func (_IPegOut *IPegOutTransactor) SetDustThreshold(opts *bind.TransactOpts, threshold *big.Int) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "setDustThreshold", threshold)
+}
+
+// SetDustThreshold is a paid mutator transaction binding the contract method 0xad7e55ba.
+//
+// Solidity: function setDustThreshold(uint256 threshold) returns()
+func (_IPegOut *IPegOutSession) SetDustThreshold(threshold *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetDustThreshold(&_IPegOut.TransactOpts, threshold)
+}
+
+// SetDustThreshold is a paid mutator transaction binding the contract method 0xad7e55ba.
+//
+// Solidity: function setDustThreshold(uint256 threshold) returns()
+func (_IPegOut *IPegOutTransactorSession) SetDustThreshold(threshold *big.Int) (*types.Transaction, error) {
+	return _IPegOut.Contract.SetDustThreshold(&_IPegOut.TransactOpts, threshold)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_IPegOut *IPegOutTransactor) TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*types.Transaction, error) {
+	return _IPegOut.contract.Transact(opts, "transferOwnership", newOwner)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_IPegOut *IPegOutSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.TransferOwnership(&_IPegOut.TransactOpts, newOwner)
+}
+
+// TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.
+//
+// Solidity: function transferOwnership(address newOwner) returns()
+func (_IPegOut *IPegOutTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
+	return _IPegOut.Contract.TransferOwnership(&_IPegOut.TransactOpts, newOwner)
+}
+
 // Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
 //
 // Solidity: function unpause() returns()
@@ -7424,6 +7965,1664 @@ func (_IPegOut *IPegOutSession) Unpause() (*types.Transaction, error) {
 // Solidity: function unpause() returns()
 func (_IPegOut *IPegOutTransactorSession) Unpause() (*types.Transaction, error) {
 	return _IPegOut.Contract.Unpause(&_IPegOut.TransactOpts)
+}
+
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_IPegOut *IPegOutTransactor) Receive(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _IPegOut.contract.RawTransact(opts, nil) // calldata is disallowed for receive function
+}
+
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_IPegOut *IPegOutSession) Receive() (*types.Transaction, error) {
+	return _IPegOut.Contract.Receive(&_IPegOut.TransactOpts)
+}
+
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_IPegOut *IPegOutTransactorSession) Receive() (*types.Transaction, error) {
+	return _IPegOut.Contract.Receive(&_IPegOut.TransactOpts)
+}
+
+// IPegOutBtcBlockTimeSetIterator is returned from FilterBtcBlockTimeSet and is used to iterate over the raw logs and unpacked data for BtcBlockTimeSet events raised by the IPegOut contract.
+type IPegOutBtcBlockTimeSetIterator struct {
+	Event *IPegOutBtcBlockTimeSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutBtcBlockTimeSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutBtcBlockTimeSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutBtcBlockTimeSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutBtcBlockTimeSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutBtcBlockTimeSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutBtcBlockTimeSet represents a BtcBlockTimeSet event raised by the IPegOut contract.
+type IPegOutBtcBlockTimeSet struct {
+	OldTime *big.Int
+	NewTime *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterBtcBlockTimeSet is a free log retrieval operation binding the contract event 0x644c2a75d9785c3196efad342f8ea14846206549e770ae1eb99d24675a1bb8e0.
+//
+// Solidity: event BtcBlockTimeSet(uint256 indexed oldTime, uint256 indexed newTime)
+func (_IPegOut *IPegOutFilterer) FilterBtcBlockTimeSet(opts *bind.FilterOpts, oldTime []*big.Int, newTime []*big.Int) (*IPegOutBtcBlockTimeSetIterator, error) {
+
+	var oldTimeRule []interface{}
+	for _, oldTimeItem := range oldTime {
+		oldTimeRule = append(oldTimeRule, oldTimeItem)
+	}
+	var newTimeRule []interface{}
+	for _, newTimeItem := range newTime {
+		newTimeRule = append(newTimeRule, newTimeItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "BtcBlockTimeSet", oldTimeRule, newTimeRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutBtcBlockTimeSetIterator{contract: _IPegOut.contract, event: "BtcBlockTimeSet", logs: logs, sub: sub}, nil
+}
+
+// WatchBtcBlockTimeSet is a free log subscription operation binding the contract event 0x644c2a75d9785c3196efad342f8ea14846206549e770ae1eb99d24675a1bb8e0.
+//
+// Solidity: event BtcBlockTimeSet(uint256 indexed oldTime, uint256 indexed newTime)
+func (_IPegOut *IPegOutFilterer) WatchBtcBlockTimeSet(opts *bind.WatchOpts, sink chan<- *IPegOutBtcBlockTimeSet, oldTime []*big.Int, newTime []*big.Int) (event.Subscription, error) {
+
+	var oldTimeRule []interface{}
+	for _, oldTimeItem := range oldTime {
+		oldTimeRule = append(oldTimeRule, oldTimeItem)
+	}
+	var newTimeRule []interface{}
+	for _, newTimeItem := range newTime {
+		newTimeRule = append(newTimeRule, newTimeItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "BtcBlockTimeSet", oldTimeRule, newTimeRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutBtcBlockTimeSet)
+				if err := _IPegOut.contract.UnpackLog(event, "BtcBlockTimeSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseBtcBlockTimeSet is a log parse operation binding the contract event 0x644c2a75d9785c3196efad342f8ea14846206549e770ae1eb99d24675a1bb8e0.
+//
+// Solidity: event BtcBlockTimeSet(uint256 indexed oldTime, uint256 indexed newTime)
+func (_IPegOut *IPegOutFilterer) ParseBtcBlockTimeSet(log types.Log) (*IPegOutBtcBlockTimeSet, error) {
+	event := new(IPegOutBtcBlockTimeSet)
+	if err := _IPegOut.contract.UnpackLog(event, "BtcBlockTimeSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutCollateralManagementSetIterator is returned from FilterCollateralManagementSet and is used to iterate over the raw logs and unpacked data for CollateralManagementSet events raised by the IPegOut contract.
+type IPegOutCollateralManagementSetIterator struct {
+	Event *IPegOutCollateralManagementSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutCollateralManagementSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutCollateralManagementSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutCollateralManagementSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutCollateralManagementSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutCollateralManagementSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutCollateralManagementSet represents a CollateralManagementSet event raised by the IPegOut contract.
+type IPegOutCollateralManagementSet struct {
+	OldAddress common.Address
+	NewAddress common.Address
+	Raw        types.Log // Blockchain specific contextual infos
+}
+
+// FilterCollateralManagementSet is a free log retrieval operation binding the contract event 0x95aab800aba1612fbcd4ca8b23b6fb7e7a3b24792b0132fcddfbe48891ed13d0.
+//
+// Solidity: event CollateralManagementSet(address indexed oldAddress, address indexed newAddress)
+func (_IPegOut *IPegOutFilterer) FilterCollateralManagementSet(opts *bind.FilterOpts, oldAddress []common.Address, newAddress []common.Address) (*IPegOutCollateralManagementSetIterator, error) {
+
+	var oldAddressRule []interface{}
+	for _, oldAddressItem := range oldAddress {
+		oldAddressRule = append(oldAddressRule, oldAddressItem)
+	}
+	var newAddressRule []interface{}
+	for _, newAddressItem := range newAddress {
+		newAddressRule = append(newAddressRule, newAddressItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "CollateralManagementSet", oldAddressRule, newAddressRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutCollateralManagementSetIterator{contract: _IPegOut.contract, event: "CollateralManagementSet", logs: logs, sub: sub}, nil
+}
+
+// WatchCollateralManagementSet is a free log subscription operation binding the contract event 0x95aab800aba1612fbcd4ca8b23b6fb7e7a3b24792b0132fcddfbe48891ed13d0.
+//
+// Solidity: event CollateralManagementSet(address indexed oldAddress, address indexed newAddress)
+func (_IPegOut *IPegOutFilterer) WatchCollateralManagementSet(opts *bind.WatchOpts, sink chan<- *IPegOutCollateralManagementSet, oldAddress []common.Address, newAddress []common.Address) (event.Subscription, error) {
+
+	var oldAddressRule []interface{}
+	for _, oldAddressItem := range oldAddress {
+		oldAddressRule = append(oldAddressRule, oldAddressItem)
+	}
+	var newAddressRule []interface{}
+	for _, newAddressItem := range newAddress {
+		newAddressRule = append(newAddressRule, newAddressItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "CollateralManagementSet", oldAddressRule, newAddressRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutCollateralManagementSet)
+				if err := _IPegOut.contract.UnpackLog(event, "CollateralManagementSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseCollateralManagementSet is a log parse operation binding the contract event 0x95aab800aba1612fbcd4ca8b23b6fb7e7a3b24792b0132fcddfbe48891ed13d0.
+//
+// Solidity: event CollateralManagementSet(address indexed oldAddress, address indexed newAddress)
+func (_IPegOut *IPegOutFilterer) ParseCollateralManagementSet(log types.Log) (*IPegOutCollateralManagementSet, error) {
+	event := new(IPegOutCollateralManagementSet)
+	if err := _IPegOut.contract.UnpackLog(event, "CollateralManagementSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutContributionsConfiguredIterator is returned from FilterContributionsConfigured and is used to iterate over the raw logs and unpacked data for ContributionsConfigured events raised by the IPegOut contract.
+type IPegOutContributionsConfiguredIterator struct {
+	Event *IPegOutContributionsConfigured // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutContributionsConfiguredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutContributionsConfigured)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutContributionsConfigured)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutContributionsConfiguredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutContributionsConfiguredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutContributionsConfigured represents a ContributionsConfigured event raised by the IPegOut contract.
+type IPegOutContributionsConfigured struct {
+	FeeCollector  common.Address
+	FeePercentage *big.Int
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterContributionsConfigured is a free log retrieval operation binding the contract event 0xf86fbded534f84710d18920a93885d142d4b5e3687e2d3e4a58b8a17c70f8a4c.
+//
+// Solidity: event ContributionsConfigured(address indexed feeCollector, uint256 indexed feePercentage)
+func (_IPegOut *IPegOutFilterer) FilterContributionsConfigured(opts *bind.FilterOpts, feeCollector []common.Address, feePercentage []*big.Int) (*IPegOutContributionsConfiguredIterator, error) {
+
+	var feeCollectorRule []interface{}
+	for _, feeCollectorItem := range feeCollector {
+		feeCollectorRule = append(feeCollectorRule, feeCollectorItem)
+	}
+	var feePercentageRule []interface{}
+	for _, feePercentageItem := range feePercentage {
+		feePercentageRule = append(feePercentageRule, feePercentageItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "ContributionsConfigured", feeCollectorRule, feePercentageRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutContributionsConfiguredIterator{contract: _IPegOut.contract, event: "ContributionsConfigured", logs: logs, sub: sub}, nil
+}
+
+// WatchContributionsConfigured is a free log subscription operation binding the contract event 0xf86fbded534f84710d18920a93885d142d4b5e3687e2d3e4a58b8a17c70f8a4c.
+//
+// Solidity: event ContributionsConfigured(address indexed feeCollector, uint256 indexed feePercentage)
+func (_IPegOut *IPegOutFilterer) WatchContributionsConfigured(opts *bind.WatchOpts, sink chan<- *IPegOutContributionsConfigured, feeCollector []common.Address, feePercentage []*big.Int) (event.Subscription, error) {
+
+	var feeCollectorRule []interface{}
+	for _, feeCollectorItem := range feeCollector {
+		feeCollectorRule = append(feeCollectorRule, feeCollectorItem)
+	}
+	var feePercentageRule []interface{}
+	for _, feePercentageItem := range feePercentage {
+		feePercentageRule = append(feePercentageRule, feePercentageItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "ContributionsConfigured", feeCollectorRule, feePercentageRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutContributionsConfigured)
+				if err := _IPegOut.contract.UnpackLog(event, "ContributionsConfigured", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseContributionsConfigured is a log parse operation binding the contract event 0xf86fbded534f84710d18920a93885d142d4b5e3687e2d3e4a58b8a17c70f8a4c.
+//
+// Solidity: event ContributionsConfigured(address indexed feeCollector, uint256 indexed feePercentage)
+func (_IPegOut *IPegOutFilterer) ParseContributionsConfigured(log types.Log) (*IPegOutContributionsConfigured, error) {
+	event := new(IPegOutContributionsConfigured)
+	if err := _IPegOut.contract.UnpackLog(event, "ContributionsConfigured", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutDaoContributionIterator is returned from FilterDaoContribution and is used to iterate over the raw logs and unpacked data for DaoContribution events raised by the IPegOut contract.
+type IPegOutDaoContributionIterator struct {
+	Event *IPegOutDaoContribution // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutDaoContributionIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutDaoContribution)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutDaoContribution)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutDaoContributionIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutDaoContributionIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutDaoContribution represents a DaoContribution event raised by the IPegOut contract.
+type IPegOutDaoContribution struct {
+	Contributor common.Address
+	Amount      *big.Int
+	Raw         types.Log // Blockchain specific contextual infos
+}
+
+// FilterDaoContribution is a free log retrieval operation binding the contract event 0x0bea2810a9b120f7c61cad402d6fb7224d38f3b20102000398102d9e68f32503.
+//
+// Solidity: event DaoContribution(address indexed contributor, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) FilterDaoContribution(opts *bind.FilterOpts, contributor []common.Address, amount []*big.Int) (*IPegOutDaoContributionIterator, error) {
+
+	var contributorRule []interface{}
+	for _, contributorItem := range contributor {
+		contributorRule = append(contributorRule, contributorItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "DaoContribution", contributorRule, amountRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutDaoContributionIterator{contract: _IPegOut.contract, event: "DaoContribution", logs: logs, sub: sub}, nil
+}
+
+// WatchDaoContribution is a free log subscription operation binding the contract event 0x0bea2810a9b120f7c61cad402d6fb7224d38f3b20102000398102d9e68f32503.
+//
+// Solidity: event DaoContribution(address indexed contributor, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) WatchDaoContribution(opts *bind.WatchOpts, sink chan<- *IPegOutDaoContribution, contributor []common.Address, amount []*big.Int) (event.Subscription, error) {
+
+	var contributorRule []interface{}
+	for _, contributorItem := range contributor {
+		contributorRule = append(contributorRule, contributorItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "DaoContribution", contributorRule, amountRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutDaoContribution)
+				if err := _IPegOut.contract.UnpackLog(event, "DaoContribution", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDaoContribution is a log parse operation binding the contract event 0x0bea2810a9b120f7c61cad402d6fb7224d38f3b20102000398102d9e68f32503.
+//
+// Solidity: event DaoContribution(address indexed contributor, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) ParseDaoContribution(log types.Log) (*IPegOutDaoContribution, error) {
+	event := new(IPegOutDaoContribution)
+	if err := _IPegOut.contract.UnpackLog(event, "DaoContribution", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutDaoFeesClaimedIterator is returned from FilterDaoFeesClaimed and is used to iterate over the raw logs and unpacked data for DaoFeesClaimed events raised by the IPegOut contract.
+type IPegOutDaoFeesClaimedIterator struct {
+	Event *IPegOutDaoFeesClaimed // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutDaoFeesClaimedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutDaoFeesClaimed)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutDaoFeesClaimed)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutDaoFeesClaimedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutDaoFeesClaimedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutDaoFeesClaimed represents a DaoFeesClaimed event raised by the IPegOut contract.
+type IPegOutDaoFeesClaimed struct {
+	Claimer  common.Address
+	Receiver common.Address
+	Amount   *big.Int
+	Raw      types.Log // Blockchain specific contextual infos
+}
+
+// FilterDaoFeesClaimed is a free log retrieval operation binding the contract event 0x6efd2761705c3e459833b29e5f0b7c2e9ff5ed7e85e2c03b57a1963e6ca2f2ff.
+//
+// Solidity: event DaoFeesClaimed(address indexed claimer, address indexed receiver, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) FilterDaoFeesClaimed(opts *bind.FilterOpts, claimer []common.Address, receiver []common.Address, amount []*big.Int) (*IPegOutDaoFeesClaimedIterator, error) {
+
+	var claimerRule []interface{}
+	for _, claimerItem := range claimer {
+		claimerRule = append(claimerRule, claimerItem)
+	}
+	var receiverRule []interface{}
+	for _, receiverItem := range receiver {
+		receiverRule = append(receiverRule, receiverItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "DaoFeesClaimed", claimerRule, receiverRule, amountRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutDaoFeesClaimedIterator{contract: _IPegOut.contract, event: "DaoFeesClaimed", logs: logs, sub: sub}, nil
+}
+
+// WatchDaoFeesClaimed is a free log subscription operation binding the contract event 0x6efd2761705c3e459833b29e5f0b7c2e9ff5ed7e85e2c03b57a1963e6ca2f2ff.
+//
+// Solidity: event DaoFeesClaimed(address indexed claimer, address indexed receiver, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) WatchDaoFeesClaimed(opts *bind.WatchOpts, sink chan<- *IPegOutDaoFeesClaimed, claimer []common.Address, receiver []common.Address, amount []*big.Int) (event.Subscription, error) {
+
+	var claimerRule []interface{}
+	for _, claimerItem := range claimer {
+		claimerRule = append(claimerRule, claimerItem)
+	}
+	var receiverRule []interface{}
+	for _, receiverItem := range receiver {
+		receiverRule = append(receiverRule, receiverItem)
+	}
+	var amountRule []interface{}
+	for _, amountItem := range amount {
+		amountRule = append(amountRule, amountItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "DaoFeesClaimed", claimerRule, receiverRule, amountRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutDaoFeesClaimed)
+				if err := _IPegOut.contract.UnpackLog(event, "DaoFeesClaimed", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDaoFeesClaimed is a log parse operation binding the contract event 0x6efd2761705c3e459833b29e5f0b7c2e9ff5ed7e85e2c03b57a1963e6ca2f2ff.
+//
+// Solidity: event DaoFeesClaimed(address indexed claimer, address indexed receiver, uint256 indexed amount)
+func (_IPegOut *IPegOutFilterer) ParseDaoFeesClaimed(log types.Log) (*IPegOutDaoFeesClaimed, error) {
+	event := new(IPegOutDaoFeesClaimed)
+	if err := _IPegOut.contract.UnpackLog(event, "DaoFeesClaimed", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutDustThresholdSetIterator is returned from FilterDustThresholdSet and is used to iterate over the raw logs and unpacked data for DustThresholdSet events raised by the IPegOut contract.
+type IPegOutDustThresholdSetIterator struct {
+	Event *IPegOutDustThresholdSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutDustThresholdSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutDustThresholdSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutDustThresholdSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutDustThresholdSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutDustThresholdSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutDustThresholdSet represents a DustThresholdSet event raised by the IPegOut contract.
+type IPegOutDustThresholdSet struct {
+	OldThreshold *big.Int
+	NewThreshold *big.Int
+	Raw          types.Log // Blockchain specific contextual infos
+}
+
+// FilterDustThresholdSet is a free log retrieval operation binding the contract event 0x7c3840c706b556b72613551196289967782829a05b71bfd3f030ec84a97d060a.
+//
+// Solidity: event DustThresholdSet(uint256 indexed oldThreshold, uint256 indexed newThreshold)
+func (_IPegOut *IPegOutFilterer) FilterDustThresholdSet(opts *bind.FilterOpts, oldThreshold []*big.Int, newThreshold []*big.Int) (*IPegOutDustThresholdSetIterator, error) {
+
+	var oldThresholdRule []interface{}
+	for _, oldThresholdItem := range oldThreshold {
+		oldThresholdRule = append(oldThresholdRule, oldThresholdItem)
+	}
+	var newThresholdRule []interface{}
+	for _, newThresholdItem := range newThreshold {
+		newThresholdRule = append(newThresholdRule, newThresholdItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "DustThresholdSet", oldThresholdRule, newThresholdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutDustThresholdSetIterator{contract: _IPegOut.contract, event: "DustThresholdSet", logs: logs, sub: sub}, nil
+}
+
+// WatchDustThresholdSet is a free log subscription operation binding the contract event 0x7c3840c706b556b72613551196289967782829a05b71bfd3f030ec84a97d060a.
+//
+// Solidity: event DustThresholdSet(uint256 indexed oldThreshold, uint256 indexed newThreshold)
+func (_IPegOut *IPegOutFilterer) WatchDustThresholdSet(opts *bind.WatchOpts, sink chan<- *IPegOutDustThresholdSet, oldThreshold []*big.Int, newThreshold []*big.Int) (event.Subscription, error) {
+
+	var oldThresholdRule []interface{}
+	for _, oldThresholdItem := range oldThreshold {
+		oldThresholdRule = append(oldThresholdRule, oldThresholdItem)
+	}
+	var newThresholdRule []interface{}
+	for _, newThresholdItem := range newThreshold {
+		newThresholdRule = append(newThresholdRule, newThresholdItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "DustThresholdSet", oldThresholdRule, newThresholdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutDustThresholdSet)
+				if err := _IPegOut.contract.UnpackLog(event, "DustThresholdSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseDustThresholdSet is a log parse operation binding the contract event 0x7c3840c706b556b72613551196289967782829a05b71bfd3f030ec84a97d060a.
+//
+// Solidity: event DustThresholdSet(uint256 indexed oldThreshold, uint256 indexed newThreshold)
+func (_IPegOut *IPegOutFilterer) ParseDustThresholdSet(log types.Log) (*IPegOutDustThresholdSet, error) {
+	event := new(IPegOutDustThresholdSet)
+	if err := _IPegOut.contract.UnpackLog(event, "DustThresholdSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutEmergencyPausedIterator is returned from FilterEmergencyPaused and is used to iterate over the raw logs and unpacked data for EmergencyPaused events raised by the IPegOut contract.
+type IPegOutEmergencyPausedIterator struct {
+	Event *IPegOutEmergencyPaused // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutEmergencyPausedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutEmergencyPaused)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutEmergencyPaused)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutEmergencyPausedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutEmergencyPausedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutEmergencyPaused represents a EmergencyPaused event raised by the IPegOut contract.
+type IPegOutEmergencyPaused struct {
+	By     common.Address
+	Reason string
+	Raw    types.Log // Blockchain specific contextual infos
+}
+
+// FilterEmergencyPaused is a free log retrieval operation binding the contract event 0x375c0abd968f4602b557f6ac9a48ffc89820233aa9becc5d7ff1176fd09eafff.
+//
+// Solidity: event EmergencyPaused(address indexed by, string reason)
+func (_IPegOut *IPegOutFilterer) FilterEmergencyPaused(opts *bind.FilterOpts, by []common.Address) (*IPegOutEmergencyPausedIterator, error) {
+
+	var byRule []interface{}
+	for _, byItem := range by {
+		byRule = append(byRule, byItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "EmergencyPaused", byRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutEmergencyPausedIterator{contract: _IPegOut.contract, event: "EmergencyPaused", logs: logs, sub: sub}, nil
+}
+
+// WatchEmergencyPaused is a free log subscription operation binding the contract event 0x375c0abd968f4602b557f6ac9a48ffc89820233aa9becc5d7ff1176fd09eafff.
+//
+// Solidity: event EmergencyPaused(address indexed by, string reason)
+func (_IPegOut *IPegOutFilterer) WatchEmergencyPaused(opts *bind.WatchOpts, sink chan<- *IPegOutEmergencyPaused, by []common.Address) (event.Subscription, error) {
+
+	var byRule []interface{}
+	for _, byItem := range by {
+		byRule = append(byRule, byItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "EmergencyPaused", byRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutEmergencyPaused)
+				if err := _IPegOut.contract.UnpackLog(event, "EmergencyPaused", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseEmergencyPaused is a log parse operation binding the contract event 0x375c0abd968f4602b557f6ac9a48ffc89820233aa9becc5d7ff1176fd09eafff.
+//
+// Solidity: event EmergencyPaused(address indexed by, string reason)
+func (_IPegOut *IPegOutFilterer) ParseEmergencyPaused(log types.Log) (*IPegOutEmergencyPaused, error) {
+	event := new(IPegOutEmergencyPaused)
+	if err := _IPegOut.contract.UnpackLog(event, "EmergencyPaused", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutEmergencyUnpausedIterator is returned from FilterEmergencyUnpaused and is used to iterate over the raw logs and unpacked data for EmergencyUnpaused events raised by the IPegOut contract.
+type IPegOutEmergencyUnpausedIterator struct {
+	Event *IPegOutEmergencyUnpaused // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutEmergencyUnpausedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutEmergencyUnpaused)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutEmergencyUnpaused)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutEmergencyUnpausedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutEmergencyUnpausedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutEmergencyUnpaused represents a EmergencyUnpaused event raised by the IPegOut contract.
+type IPegOutEmergencyUnpaused struct {
+	By  common.Address
+	Raw types.Log // Blockchain specific contextual infos
+}
+
+// FilterEmergencyUnpaused is a free log retrieval operation binding the contract event 0xf5cbf596165cc457b2cd92e8d8450827ee314968160a5696402d75766fc52caf.
+//
+// Solidity: event EmergencyUnpaused(address indexed by)
+func (_IPegOut *IPegOutFilterer) FilterEmergencyUnpaused(opts *bind.FilterOpts, by []common.Address) (*IPegOutEmergencyUnpausedIterator, error) {
+
+	var byRule []interface{}
+	for _, byItem := range by {
+		byRule = append(byRule, byItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "EmergencyUnpaused", byRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutEmergencyUnpausedIterator{contract: _IPegOut.contract, event: "EmergencyUnpaused", logs: logs, sub: sub}, nil
+}
+
+// WatchEmergencyUnpaused is a free log subscription operation binding the contract event 0xf5cbf596165cc457b2cd92e8d8450827ee314968160a5696402d75766fc52caf.
+//
+// Solidity: event EmergencyUnpaused(address indexed by)
+func (_IPegOut *IPegOutFilterer) WatchEmergencyUnpaused(opts *bind.WatchOpts, sink chan<- *IPegOutEmergencyUnpaused, by []common.Address) (event.Subscription, error) {
+
+	var byRule []interface{}
+	for _, byItem := range by {
+		byRule = append(byRule, byItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "EmergencyUnpaused", byRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutEmergencyUnpaused)
+				if err := _IPegOut.contract.UnpackLog(event, "EmergencyUnpaused", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseEmergencyUnpaused is a log parse operation binding the contract event 0xf5cbf596165cc457b2cd92e8d8450827ee314968160a5696402d75766fc52caf.
+//
+// Solidity: event EmergencyUnpaused(address indexed by)
+func (_IPegOut *IPegOutFilterer) ParseEmergencyUnpaused(log types.Log) (*IPegOutEmergencyUnpaused, error) {
+	event := new(IPegOutEmergencyUnpaused)
+	if err := _IPegOut.contract.UnpackLog(event, "EmergencyUnpaused", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutInitializedIterator is returned from FilterInitialized and is used to iterate over the raw logs and unpacked data for Initialized events raised by the IPegOut contract.
+type IPegOutInitializedIterator struct {
+	Event *IPegOutInitialized // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutInitializedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutInitialized)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutInitialized)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutInitializedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutInitializedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutInitialized represents a Initialized event raised by the IPegOut contract.
+type IPegOutInitialized struct {
+	Version uint64
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterInitialized is a free log retrieval operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_IPegOut *IPegOutFilterer) FilterInitialized(opts *bind.FilterOpts) (*IPegOutInitializedIterator, error) {
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutInitializedIterator{contract: _IPegOut.contract, event: "Initialized", logs: logs, sub: sub}, nil
+}
+
+// WatchInitialized is a free log subscription operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_IPegOut *IPegOutFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *IPegOutInitialized) (event.Subscription, error) {
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutInitialized)
+				if err := _IPegOut.contract.UnpackLog(event, "Initialized", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseInitialized is a log parse operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_IPegOut *IPegOutFilterer) ParseInitialized(log types.Log) (*IPegOutInitialized, error) {
+	event := new(IPegOutInitialized)
+	if err := _IPegOut.contract.UnpackLog(event, "Initialized", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the IPegOut contract.
+type IPegOutOwnershipTransferredIterator struct {
+	Event *IPegOutOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutOwnershipTransferred represents a OwnershipTransferred event raised by the IPegOut contract.
+type IPegOutOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_IPegOut *IPegOutFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*IPegOutOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutOwnershipTransferredIterator{contract: _IPegOut.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_IPegOut *IPegOutFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *IPegOutOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutOwnershipTransferred)
+				if err := _IPegOut.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseOwnershipTransferred is a log parse operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+func (_IPegOut *IPegOutFilterer) ParseOwnershipTransferred(log types.Log) (*IPegOutOwnershipTransferred, error) {
+	event := new(IPegOutOwnershipTransferred)
+	if err := _IPegOut.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutPausedIterator is returned from FilterPaused and is used to iterate over the raw logs and unpacked data for Paused events raised by the IPegOut contract.
+type IPegOutPausedIterator struct {
+	Event *IPegOutPaused // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutPausedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutPaused)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutPaused)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutPausedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutPausedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutPaused represents a Paused event raised by the IPegOut contract.
+type IPegOutPaused struct {
+	Account common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterPaused is a free log retrieval operation binding the contract event 0x62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258.
+//
+// Solidity: event Paused(address account)
+func (_IPegOut *IPegOutFilterer) FilterPaused(opts *bind.FilterOpts) (*IPegOutPausedIterator, error) {
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "Paused")
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutPausedIterator{contract: _IPegOut.contract, event: "Paused", logs: logs, sub: sub}, nil
+}
+
+// WatchPaused is a free log subscription operation binding the contract event 0x62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258.
+//
+// Solidity: event Paused(address account)
+func (_IPegOut *IPegOutFilterer) WatchPaused(opts *bind.WatchOpts, sink chan<- *IPegOutPaused) (event.Subscription, error) {
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "Paused")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutPaused)
+				if err := _IPegOut.contract.UnpackLog(event, "Paused", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePaused is a log parse operation binding the contract event 0x62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258.
+//
+// Solidity: event Paused(address account)
+func (_IPegOut *IPegOutFilterer) ParsePaused(log types.Log) (*IPegOutPaused, error) {
+	event := new(IPegOutPaused)
+	if err := _IPegOut.contract.UnpackLog(event, "Paused", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
 }
 
 // IPegOutPegOutChangePaidIterator is returned from FilterPegOutChangePaid and is used to iterate over the raw logs and unpacked data for PegOutChangePaid events raised by the IPegOut contract.
@@ -8051,6 +10250,626 @@ func (_IPegOut *IPegOutFilterer) WatchPegOutUserRefunded(opts *bind.WatchOpts, s
 func (_IPegOut *IPegOutFilterer) ParsePegOutUserRefunded(log types.Log) (*IPegOutPegOutUserRefunded, error) {
 	event := new(IPegOutPegOutUserRefunded)
 	if err := _IPegOut.contract.UnpackLog(event, "PegOutUserRefunded", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutRoleAdminChangedIterator is returned from FilterRoleAdminChanged and is used to iterate over the raw logs and unpacked data for RoleAdminChanged events raised by the IPegOut contract.
+type IPegOutRoleAdminChangedIterator struct {
+	Event *IPegOutRoleAdminChanged // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutRoleAdminChangedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutRoleAdminChanged)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutRoleAdminChanged)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutRoleAdminChangedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutRoleAdminChangedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutRoleAdminChanged represents a RoleAdminChanged event raised by the IPegOut contract.
+type IPegOutRoleAdminChanged struct {
+	Role              [32]byte
+	PreviousAdminRole [32]byte
+	NewAdminRole      [32]byte
+	Raw               types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleAdminChanged is a free log retrieval operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_IPegOut *IPegOutFilterer) FilterRoleAdminChanged(opts *bind.FilterOpts, role [][32]byte, previousAdminRole [][32]byte, newAdminRole [][32]byte) (*IPegOutRoleAdminChangedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var previousAdminRoleRule []interface{}
+	for _, previousAdminRoleItem := range previousAdminRole {
+		previousAdminRoleRule = append(previousAdminRoleRule, previousAdminRoleItem)
+	}
+	var newAdminRoleRule []interface{}
+	for _, newAdminRoleItem := range newAdminRole {
+		newAdminRoleRule = append(newAdminRoleRule, newAdminRoleItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "RoleAdminChanged", roleRule, previousAdminRoleRule, newAdminRoleRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutRoleAdminChangedIterator{contract: _IPegOut.contract, event: "RoleAdminChanged", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleAdminChanged is a free log subscription operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_IPegOut *IPegOutFilterer) WatchRoleAdminChanged(opts *bind.WatchOpts, sink chan<- *IPegOutRoleAdminChanged, role [][32]byte, previousAdminRole [][32]byte, newAdminRole [][32]byte) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var previousAdminRoleRule []interface{}
+	for _, previousAdminRoleItem := range previousAdminRole {
+		previousAdminRoleRule = append(previousAdminRoleRule, previousAdminRoleItem)
+	}
+	var newAdminRoleRule []interface{}
+	for _, newAdminRoleItem := range newAdminRole {
+		newAdminRoleRule = append(newAdminRoleRule, newAdminRoleItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "RoleAdminChanged", roleRule, previousAdminRoleRule, newAdminRoleRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutRoleAdminChanged)
+				if err := _IPegOut.contract.UnpackLog(event, "RoleAdminChanged", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleAdminChanged is a log parse operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_IPegOut *IPegOutFilterer) ParseRoleAdminChanged(log types.Log) (*IPegOutRoleAdminChanged, error) {
+	event := new(IPegOutRoleAdminChanged)
+	if err := _IPegOut.contract.UnpackLog(event, "RoleAdminChanged", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutRoleGrantedIterator is returned from FilterRoleGranted and is used to iterate over the raw logs and unpacked data for RoleGranted events raised by the IPegOut contract.
+type IPegOutRoleGrantedIterator struct {
+	Event *IPegOutRoleGranted // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutRoleGrantedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutRoleGranted)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutRoleGranted)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutRoleGrantedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutRoleGrantedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutRoleGranted represents a RoleGranted event raised by the IPegOut contract.
+type IPegOutRoleGranted struct {
+	Role    [32]byte
+	Account common.Address
+	Sender  common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleGranted is a free log retrieval operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) FilterRoleGranted(opts *bind.FilterOpts, role [][32]byte, account []common.Address, sender []common.Address) (*IPegOutRoleGrantedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "RoleGranted", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutRoleGrantedIterator{contract: _IPegOut.contract, event: "RoleGranted", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleGranted is a free log subscription operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) WatchRoleGranted(opts *bind.WatchOpts, sink chan<- *IPegOutRoleGranted, role [][32]byte, account []common.Address, sender []common.Address) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "RoleGranted", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutRoleGranted)
+				if err := _IPegOut.contract.UnpackLog(event, "RoleGranted", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleGranted is a log parse operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) ParseRoleGranted(log types.Log) (*IPegOutRoleGranted, error) {
+	event := new(IPegOutRoleGranted)
+	if err := _IPegOut.contract.UnpackLog(event, "RoleGranted", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutRoleRevokedIterator is returned from FilterRoleRevoked and is used to iterate over the raw logs and unpacked data for RoleRevoked events raised by the IPegOut contract.
+type IPegOutRoleRevokedIterator struct {
+	Event *IPegOutRoleRevoked // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutRoleRevokedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutRoleRevoked)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutRoleRevoked)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutRoleRevokedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutRoleRevokedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutRoleRevoked represents a RoleRevoked event raised by the IPegOut contract.
+type IPegOutRoleRevoked struct {
+	Role    [32]byte
+	Account common.Address
+	Sender  common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleRevoked is a free log retrieval operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) FilterRoleRevoked(opts *bind.FilterOpts, role [][32]byte, account []common.Address, sender []common.Address) (*IPegOutRoleRevokedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "RoleRevoked", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutRoleRevokedIterator{contract: _IPegOut.contract, event: "RoleRevoked", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleRevoked is a free log subscription operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) WatchRoleRevoked(opts *bind.WatchOpts, sink chan<- *IPegOutRoleRevoked, role [][32]byte, account []common.Address, sender []common.Address) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "RoleRevoked", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutRoleRevoked)
+				if err := _IPegOut.contract.UnpackLog(event, "RoleRevoked", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleRevoked is a log parse operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_IPegOut *IPegOutFilterer) ParseRoleRevoked(log types.Log) (*IPegOutRoleRevoked, error) {
+	event := new(IPegOutRoleRevoked)
+	if err := _IPegOut.contract.UnpackLog(event, "RoleRevoked", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// IPegOutUnpausedIterator is returned from FilterUnpaused and is used to iterate over the raw logs and unpacked data for Unpaused events raised by the IPegOut contract.
+type IPegOutUnpausedIterator struct {
+	Event *IPegOutUnpaused // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *IPegOutUnpausedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(IPegOutUnpaused)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(IPegOutUnpaused)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *IPegOutUnpausedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *IPegOutUnpausedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// IPegOutUnpaused represents a Unpaused event raised by the IPegOut contract.
+type IPegOutUnpaused struct {
+	Account common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterUnpaused is a free log retrieval operation binding the contract event 0x5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa.
+//
+// Solidity: event Unpaused(address account)
+func (_IPegOut *IPegOutFilterer) FilterUnpaused(opts *bind.FilterOpts) (*IPegOutUnpausedIterator, error) {
+
+	logs, sub, err := _IPegOut.contract.FilterLogs(opts, "Unpaused")
+	if err != nil {
+		return nil, err
+	}
+	return &IPegOutUnpausedIterator{contract: _IPegOut.contract, event: "Unpaused", logs: logs, sub: sub}, nil
+}
+
+// WatchUnpaused is a free log subscription operation binding the contract event 0x5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa.
+//
+// Solidity: event Unpaused(address account)
+func (_IPegOut *IPegOutFilterer) WatchUnpaused(opts *bind.WatchOpts, sink chan<- *IPegOutUnpaused) (event.Subscription, error) {
+
+	logs, sub, err := _IPegOut.contract.WatchLogs(opts, "Unpaused")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(IPegOutUnpaused)
+				if err := _IPegOut.contract.UnpackLog(event, "Unpaused", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseUnpaused is a log parse operation binding the contract event 0x5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa.
+//
+// Solidity: event Unpaused(address account)
+func (_IPegOut *IPegOutFilterer) ParseUnpaused(log types.Log) (*IPegOutUnpaused, error) {
+	event := new(IPegOutUnpaused)
+	if err := _IPegOut.contract.UnpackLog(event, "Unpaused", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

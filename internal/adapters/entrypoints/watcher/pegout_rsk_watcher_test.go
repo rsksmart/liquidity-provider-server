@@ -403,7 +403,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 	})
 }
 
-// nolint:funlen,cyclop
+// nolint:funlen,cyclop,maintidx
 func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T) {
 	mutexes := environment.NewApplicationMutexes()
 	ticker := &mocks.TickerMock{}
@@ -466,6 +466,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutContract.ExpectedCalls = []*mock.Call{}
 		pegoutRepository.Calls = []mock.Call{}
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
+		btcWallet.Calls = []mock.Call{}
+		btcWallet.ExpectedCalls = []*mock.Call{}
 
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
 		receipt := &blockchain.TransactionReceipt{
@@ -499,6 +501,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutContract.ExpectedCalls = []*mock.Call{}
 		pegoutRepository.Calls = []mock.Call{}
 		pegoutRepository.ExpectedCalls = []*mock.Call{}
+		btcWallet.Calls = []mock.Call{}
+		btcWallet.ExpectedCalls = []*mock.Call{}
 
 		receipt := &blockchain.TransactionReceipt{
 			BlockNumber: 10,
@@ -557,6 +561,8 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		pegoutContract.EXPECT().IsPegOutQuoteCompleted(testRetainedQuote.QuoteHash).Return(false, nil).Once()
+		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Once()
+		pegoutContract.EXPECT().ValidatePegout(mock.Anything, mock.Anything).Return(nil).Once()
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
 		btcResult := blockchain.BitcoinTransactionResult{Hash: test.AnyHash, Fee: entities.NewWei(2500)}
 		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(btcResult, nil).Once()
