@@ -2,13 +2,17 @@ package handlers
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
+
+type AddPegoutCollateralUseCase interface {
+	Run(amount *entities.Wei) (*entities.Wei, error)
+}
 
 // NewAddPegoutCollateralHandler
 // @Title Add PegOut Collateral
@@ -16,7 +20,7 @@ import (
 // @Param AddCollateralRequest body pkg.AddCollateralRequest true "Add Collateral Request"
 // @Success 200 object pkg.AddCollateralResponse
 // @Route /pegout/addCollateral [post]
-func NewAddPegoutCollateralHandler(useCase *pegout.AddCollateralUseCase) http.HandlerFunc {
+func NewAddPegoutCollateralHandler(useCase AddPegoutCollateralUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := pkg.AddCollateralRequest{}

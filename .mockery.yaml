@@ -38,7 +38,23 @@ packages:
       DefaultCredentialsProvider:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
     interfaces:
+      AddPeginCollateralUseCase:
+      AddPegoutCollateralUseCase:
+      ChangeStatusUseCase:
       GetAssetsReportUseCase:
+      GetAvailableLiquidityUseCase:
+      GetConfigUseCase:
+      GetManagementUiDataUseCase:
+      HealthUseCase:
+      GetPeginCollateralUseCase:
+      GetPeginQuoteUseCase:
+      GetPegoutCollateralUseCase:
+      GetPegoutQuoteUseCase:
+      GetProvidersUseCase:
+      GetUserDepositsUseCase:
+      LoginUseCase:
+      SessionManager:
+      SetCredentialsUseCase:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:
@@ -46,8 +62,12 @@ packages:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
       RecommendedPeginUseCase:
+      ResignUseCase:
       GetRevenueReportUseCase:
       GetSummariesReportUseCase:
+      GetTrustedAccountsUseCase:
+      ServerInfoUseCase:
+      WithdrawCollateralUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:
