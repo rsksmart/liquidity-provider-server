@@ -50,10 +50,10 @@ type RskEnv struct {
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
 	// Only if secret source is aws & wallet is native
-	EncryptedJsonSecret         string `env:"KEY_SECRET"`
-	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
+	WalletSecret   string `env:"WALLET_SECRET"`
+	PasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	WalletFile       string   `env:"WALLET_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 }

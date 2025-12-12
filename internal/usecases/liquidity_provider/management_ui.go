@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
@@ -21,6 +22,7 @@ type GetManagementUiDataUseCase struct {
 	peginLp                     liquidity_provider.PeginLiquidityProvider
 	pegoutLp                    liquidity_provider.PegoutLiquidityProvider
 	contracts                   blockchain.RskContracts
+	coldWallet                  cold_wallet.ColdWallet
 	baseUrl                     string
 }
 
@@ -30,6 +32,7 @@ func NewGetManagementUiDataUseCase(
 	peginLp liquidity_provider.PeginLiquidityProvider,
 	pegoutLp liquidity_provider.PegoutLiquidityProvider,
 	contracts blockchain.RskContracts,
+	coldWallet cold_wallet.ColdWallet,
 	baseUrl string,
 ) *GetManagementUiDataUseCase {
 	return &GetManagementUiDataUseCase{
@@ -38,6 +41,7 @@ func NewGetManagementUiDataUseCase(
 		peginLp:                     peginLp,
 		pegoutLp:                    pegoutLp,
 		contracts:                   contracts,
+		coldWallet:                  coldWallet,
 		baseUrl:                     baseUrl,
 	}
 }
@@ -53,7 +57,11 @@ type ManagementTemplateData struct {
 	BtcAddress     string
 	RskAddress     string
 	ProviderData   liquidity_provider.RegisteredLiquidityProvider
-	Configuration  FullConfiguration
+	ColdWallet     struct {
+		BtcAddress string
+		RskAddress string
+	}
+	Configuration FullConfiguration
 }
 
 func (useCase *GetManagementUiDataUseCase) Run(ctx context.Context, loggedIn bool) (*ManagementTemplate, error) {
@@ -97,6 +105,13 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 			BtcAddress:     useCase.lp.BtcAddress(),
 			RskAddress:     rskAddress,
 			ProviderData:   providerInfo,
+			ColdWallet: struct {
+				BtcAddress string
+				RskAddress string
+			}{
+				BtcAddress: useCase.coldWallet.GetBtcAddress(),
+				RskAddress: useCase.coldWallet.GetRskAddress(),
+			},
 			Configuration: FullConfiguration{
 				General: generalConfiguration,
 				Pegin:   peginConfiguration,

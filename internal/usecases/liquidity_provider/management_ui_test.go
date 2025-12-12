@@ -21,8 +21,9 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		coldWallet := &mocks.ColdWalletMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, nil).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, coldWallet, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementLoginTemplate, result.Name)
@@ -40,8 +41,9 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		coldWallet := &mocks.ColdWalletMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(storedCredentials, nil).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, coldWallet, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementLoginTemplate, result.Name)
@@ -63,6 +65,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		coldWallet := &mocks.ColdWalletMock{}
 		fullConfig := liquidity_provider.FullConfiguration{
 			General: lp.DefaultGeneralConfiguration(),
 			Pegin:   lp.DefaultPeginConfiguration(),
@@ -82,7 +85,9 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
 		lpMock.On("BtcAddress").Return(btcAddress).Once()
 		lpMock.On("RskAddress").Return(rskAddress).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
+		coldWallet.EXPECT().GetRskAddress().Return(test.AnyRskAddress)
+		coldWallet.EXPECT().GetBtcAddress().Return(test.AnyBtcAddress)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, coldWallet, testUrl)
 		result, err := useCase.Run(context.Background(), true)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementUiTemplate, result.Name)
@@ -92,22 +97,27 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		assert.Equal(t, lpInfo, result.Data.ProviderData)
 		assert.Equal(t, btcAddress, result.Data.BtcAddress)
 		assert.Equal(t, rskAddress, result.Data.RskAddress)
+		assert.Equal(t, test.AnyRskAddress, result.Data.ColdWallet.RskAddress)
+		assert.Equal(t, test.AnyBtcAddress, result.Data.ColdWallet.BtcAddress)
 		lpRepository.AssertExpectations(t)
 		lpMock.AssertExpectations(t)
 		discovery.AssertExpectations(t)
+		coldWallet.AssertExpectations(t)
 	})
 	t.Run("Return error when repository fails", func(t *testing.T) {
 		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, assert.AnError).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
+		coldWallet := &mocks.ColdWalletMock{}
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, coldWallet, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
 	t.Run("Return error when provider doesn't exists", func(t *testing.T) {
 		discovery := &mocks.DiscoveryContractMock{}
+		coldWallet := &mocks.ColdWalletMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		fullConfig := liquidity_provider.FullConfiguration{
@@ -120,7 +130,7 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		lpMock.On("PeginConfiguration", test.AnyCtx).Return(fullConfig.Pegin).Once()
 		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
 		lpMock.On("RskAddress").Return("nonExistingAddress").Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, coldWallet, testUrl)
 		result, err := useCase.Run(context.Background(), true)
 		require.Error(t, err)
 		assert.Empty(t, result)

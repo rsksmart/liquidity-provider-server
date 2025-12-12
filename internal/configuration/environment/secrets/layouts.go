@@ -2,16 +2,31 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 )
+
+type walletSecretLayout struct {
+	HotWallet  json.RawMessage `json:"hotWallet"`
+	ColdWallet struct {
+		Type          string          `json:"type"`
+		Configuration json.RawMessage `json:"configuration"`
+	} `json:"coldWallet"`
+}
 
 type SecretLoader interface {
 	LoadDerivativeSecrets(ctx context.Context) (DerivativeWalletSecrets, error)
 	LoadFireBlocksSecrets(ctx context.Context) (FireBlocksWalletSecrets, error)
 }
 
+type ColdWalletConfiguration struct {
+	Type          string
+	Configuration json.RawMessage
+}
+
 type DerivativeWalletSecrets struct {
+	ColdWalletConfiguration
 	EncryptedJson         string
 	EncryptedJsonPassword string
 }

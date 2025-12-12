@@ -125,14 +125,14 @@ The option to select from the following can be set through the value of the `SEC
 
 In this option, the LPS will get the required secrets from the environment (this might include the path to existing files in the filesystem). This option is not recommended to be used in production environments as it was developed only for testing purposes. The environment variables that need to be set if this option is used are the following:
 
-- `KEYSTORE_FILE`
+- `WALLET_FILE`
 - `KEYSTORE_PWD`
 
 ### AWS Secrets Manager
 
 In this option, the LPS will get the secrets from AWS Secrets Manager service, which means that the LPS will need to be provided with the AWS keys in any of the ways that the AWS client allows (through a file in home directory, environment variables, etc). In this case, the LPS should receive the name of the secrets to use through the environment variables (listed below). This is the recommended option for production environments.
 
-- `KEY_SECRET`
+- `WALLET_SECRET`
 - `PASSWORD_SECRET`
 
 :::danger[Troubleshooting]

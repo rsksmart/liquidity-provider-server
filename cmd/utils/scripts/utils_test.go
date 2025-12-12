@@ -23,7 +23,7 @@ func TestGetWallet(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
+				WalletFile:       keystorePath,
 				KeystorePassword: "test",
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
@@ -56,7 +56,7 @@ func TestCreatePeginContract(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
+				WalletFile:       keystorePath,
 				KeystorePassword: "test",
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
@@ -77,7 +77,7 @@ func TestCreatePegoutContract(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
+				WalletFile:       keystorePath,
 				KeystorePassword: "test",
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
@@ -98,7 +98,7 @@ func TestCreateDiscoveryContract(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
+				WalletFile:       keystorePath,
 				KeystorePassword: "test",
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
