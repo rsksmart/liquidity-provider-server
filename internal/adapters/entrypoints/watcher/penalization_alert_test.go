@@ -2,6 +2,9 @@ package watcher_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
@@ -12,8 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestNewPenalizationAlertWatcher(t *testing.T) {
@@ -30,7 +31,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
 			blockchain.RskContracts{Lbc: lbc},
@@ -54,7 +55,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
+		lbc := &mocks.LiquidityBridgeContractMock{}
 		lbc.On("GetPenalizedEvents", mock.Anything, mock.Anything, mock.Anything).Return([]penalization.PenalizedEvent{}, nil)
 		useCase := liquidity_provider.NewPenalizationAlertUseCase(
 			blockchain.RskContracts{Lbc: lbc},

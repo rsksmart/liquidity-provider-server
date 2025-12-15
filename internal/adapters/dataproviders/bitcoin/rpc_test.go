@@ -653,3 +653,57 @@ func TestBitcoindRpc_GetBlockchainInfo(t *testing.T) {
 		client.AssertExpectations(t)
 	})
 }
+
+func TestBitcoindRpc_GetZeroAddress(t *testing.T) {
+	t.Run("should return zero address in mainnet", func(t *testing.T) {
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
+		cases := test.Table[blockchain.BtcAddressType, string]{
+			{Value: blockchain.BtcAddressTypeP2PKH, Result: blockchain.BitcoinMainnetP2PKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2SH, Result: blockchain.BitcoinMainnetP2SHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WPKH, Result: blockchain.BitcoinMainnetP2WPKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WSH, Result: blockchain.BitcoinMainnetP2WSHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2TR, Result: blockchain.BitcoinMainnetP2TRZeroAddress},
+		}
+		test.RunTable(t, cases, func(addressType blockchain.BtcAddressType) string {
+			result, err := rpc.GetZeroAddress(addressType)
+			require.NoError(t, err)
+			return result
+		})
+	})
+	t.Run("should return zero address in testnet", func(t *testing.T) {
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.TestNet3Params, &mocks.ClientAdapterMock{}))
+		cases := test.Table[blockchain.BtcAddressType, string]{
+			{Value: blockchain.BtcAddressTypeP2PKH, Result: blockchain.BitcoinTestnetP2PKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2SH, Result: blockchain.BitcoinTestnetP2SHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WPKH, Result: blockchain.BitcoinTestnetP2WPKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WSH, Result: blockchain.BitcoinTestnetP2WSHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2TR, Result: blockchain.BitcoinTestnetP2TRZeroAddress},
+		}
+		test.RunTable(t, cases, func(addressType blockchain.BtcAddressType) string {
+			result, err := rpc.GetZeroAddress(addressType)
+			require.NoError(t, err)
+			return result
+		})
+	})
+	t.Run("should return zero address in regtest", func(t *testing.T) {
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.RegressionNetParams, &mocks.ClientAdapterMock{}))
+		cases := test.Table[blockchain.BtcAddressType, string]{
+			{Value: blockchain.BtcAddressTypeP2PKH, Result: blockchain.BitcoinTestnetP2PKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2SH, Result: blockchain.BitcoinTestnetP2SHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WPKH, Result: blockchain.BitcoinRegtestP2WPKHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2WSH, Result: blockchain.BitcoinRegtestP2WSHZeroAddress},
+			{Value: blockchain.BtcAddressTypeP2TR, Result: blockchain.BitcoinRegtestP2TRZeroAddress},
+		}
+		test.RunTable(t, cases, func(addressType blockchain.BtcAddressType) string {
+			result, err := rpc.GetZeroAddress(addressType)
+			require.NoError(t, err)
+			return result
+		})
+	})
+	t.Run("should return error if network not supported", func(t *testing.T) {
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.SigNetParams, &mocks.ClientAdapterMock{}))
+		result, err := rpc.GetZeroAddress(blockchain.BtcAddressTypeP2PKH)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+}

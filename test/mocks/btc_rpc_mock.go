@@ -78,3 +78,8 @@ func (m *BtcRpcMock) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, erro
 	}
 	return (args.Get(0)).(blockchain.BitcoinBlockchainInfo), args.Error(1)
 }
+
+func (m *BtcRpcMock) GetZeroAddress(addressType blockchain.BtcAddressType) (string, error) {
+	args := m.Called(addressType)
+	return args.String(0), args.Error(1)
+}

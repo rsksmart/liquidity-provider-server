@@ -507,24 +507,24 @@ func TestToSummaryDataDTO(t *testing.T) {
 	data := reports.SummaryData{
 		TotalQuotesCount:          10,
 		AcceptedQuotesCount:       8,
+		TotalAcceptedQuotesAmount: entities.NewWei(2500),
 		PaidQuotesCount:           5,
 		PaidQuotesAmount:          entities.NewWei(1500),
-		TotalAcceptedQuotedAmount: entities.NewWei(2500),
-		TotalFeesCollected:        entities.NewWei(300),
 		RefundedQuotesCount:       2,
-		TotalPenaltyAmount:        entities.NewWei(50),
-		LpEarnings:                entities.NewWei(250),
+		TotalRefundedQuotesAmount: entities.NewWei(800),
+		PenalizationsCount:        3,
+		TotalPenalizationsAmount:  entities.NewWei(50),
 	}
 	dto := pkg.ToSummaryDataDTO(data)
 	assert.Equal(t, data.TotalQuotesCount, dto.TotalQuotesCount)
 	assert.Equal(t, data.AcceptedQuotesCount, dto.AcceptedQuotesCount)
+	assert.Equal(t, 0, data.TotalAcceptedQuotesAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotesAmount))
 	assert.Equal(t, data.PaidQuotesCount, dto.PaidQuotesCount)
 	assert.Equal(t, 0, data.PaidQuotesAmount.AsBigInt().Cmp(dto.PaidQuotesAmount))
-	assert.Equal(t, 0, data.TotalAcceptedQuotedAmount.AsBigInt().Cmp(dto.TotalAcceptedQuotedAmount))
-	assert.Equal(t, 0, data.TotalFeesCollected.AsBigInt().Cmp(dto.TotalFeesCollected))
 	assert.Equal(t, data.RefundedQuotesCount, dto.RefundedQuotesCount)
-	assert.Equal(t, 0, data.TotalPenaltyAmount.AsBigInt().Cmp(dto.TotalPenaltyAmount))
-	assert.Equal(t, 0, data.LpEarnings.AsBigInt().Cmp(dto.LpEarnings))
+	assert.Equal(t, 0, data.TotalRefundedQuotesAmount.AsBigInt().Cmp(dto.TotalRefundedQuotesAmount))
+	assert.Equal(t, data.PenalizationsCount, dto.PenalizationsCount)
+	assert.Equal(t, 0, data.TotalPenalizationsAmount.AsBigInt().Cmp(dto.TotalPenalizationsAmount))
 	test.AssertNonZeroValues(t, dto)
 }
 
@@ -532,24 +532,24 @@ func TestToSummaryResultDTO(t *testing.T) {
 	pegin := reports.SummaryData{
 		TotalQuotesCount:          3,
 		AcceptedQuotesCount:       2,
+		TotalAcceptedQuotesAmount: entities.NewWei(800),
 		PaidQuotesCount:           1,
 		PaidQuotesAmount:          entities.NewWei(500),
-		TotalAcceptedQuotedAmount: entities.NewWei(800),
-		TotalFeesCollected:        entities.NewWei(100),
-		RefundedQuotesCount:       0,
-		TotalPenaltyAmount:        entities.NewWei(0),
-		LpEarnings:                entities.NewWei(100),
+		RefundedQuotesCount:       1,
+		TotalRefundedQuotesAmount: entities.NewWei(300),
+		PenalizationsCount:        1,
+		TotalPenalizationsAmount:  entities.NewWei(15),
 	}
 	pegout := reports.SummaryData{
 		TotalQuotesCount:          4,
 		AcceptedQuotesCount:       3,
+		TotalAcceptedQuotesAmount: entities.NewWei(1200),
 		PaidQuotesCount:           2,
 		PaidQuotesAmount:          entities.NewWei(900),
-		TotalAcceptedQuotedAmount: entities.NewWei(1200),
-		TotalFeesCollected:        entities.NewWei(150),
 		RefundedQuotesCount:       1,
-		TotalPenaltyAmount:        entities.NewWei(20),
-		LpEarnings:                entities.NewWei(130),
+		TotalRefundedQuotesAmount: entities.NewWei(400),
+		PenalizationsCount:        1,
+		TotalPenalizationsAmount:  entities.NewWei(20),
 	}
 	result := reports.SummaryResult{PeginSummary: pegin, PegoutSummary: pegout}
 	dto := pkg.ToSummaryResultDTO(result)
@@ -680,4 +680,262 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Empty(t, config)
 		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
 	})
+}
+
+func TestToBtcAssetLocationDTO(t *testing.T) {
+	location := reports.BtcAssetLocation{
+		BtcWallet:  entities.NewWei(100000000),
+		Federation: entities.NewWei(200000000),
+		RskWallet:  entities.NewWei(300000000),
+		Lbc:        entities.NewWei(50000000),
+	}
+
+	dto := pkg.ToBtcAssetLocationDTO(location)
+
+	assert.Equal(t, "100000000", dto.BtcWallet.String())
+	assert.Equal(t, "200000000", dto.Federation.String())
+	assert.Equal(t, "300000000", dto.RskWallet.String())
+	assert.Equal(t, "50000000", dto.Lbc.String())
+}
+
+func TestToBtcAssetAllocationDTO(t *testing.T) {
+	allocation := reports.BtcAssetAllocation{
+		ReservedForUsers: entities.NewWei(150000000),
+		WaitingForRefund: entities.NewWei(75000000),
+		Available:        entities.NewWei(425000000),
+	}
+
+	dto := pkg.ToBtcAssetAllocationDTO(allocation)
+
+	assert.Equal(t, "150000000", dto.ReservedForUsers.String())
+	assert.Equal(t, "75000000", dto.WaitingForRefund.String())
+	assert.Equal(t, "425000000", dto.Available.String())
+}
+
+func TestToBtcAssetReportDTO(t *testing.T) {
+	report := reports.BtcAssetReport{
+		Total: entities.NewWei(650000000),
+		Location: reports.BtcAssetLocation{
+			BtcWallet:  entities.NewWei(100000000),
+			Federation: entities.NewWei(200000000),
+			RskWallet:  entities.NewWei(300000000),
+			Lbc:        entities.NewWei(50000000),
+		},
+		Allocation: reports.BtcAssetAllocation{
+			ReservedForUsers: entities.NewWei(150000000),
+			WaitingForRefund: entities.NewWei(75000000),
+			Available:        entities.NewWei(425000000),
+		},
+	}
+
+	dto := pkg.ToBtcAssetReportDTO(report)
+
+	assert.Equal(t, "650000000", dto.Total.String())
+	assert.Equal(t, "100000000", dto.Location.BtcWallet.String())
+	assert.Equal(t, "200000000", dto.Location.Federation.String())
+	assert.Equal(t, "300000000", dto.Location.RskWallet.String())
+	assert.Equal(t, "50000000", dto.Location.Lbc.String())
+	assert.Equal(t, "150000000", dto.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "75000000", dto.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "425000000", dto.Allocation.Available.String())
+}
+
+func TestToRbtcAssetLocationDTO(t *testing.T) {
+	location := reports.RbtcAssetLocation{
+		RskWallet:  entities.NewWei(500000000000000000),
+		Lbc:        entities.NewWei(250000000000000000),
+		Federation: entities.NewWei(100000000000000000),
+	}
+
+	dto := pkg.ToRbtcAssetLocationDTO(location)
+
+	assert.Equal(t, "500000000000000000", dto.RskWallet.String())
+	assert.Equal(t, "250000000000000000", dto.Lbc.String())
+	assert.Equal(t, "100000000000000000", dto.Federation.String())
+}
+
+func TestToRbtcAssetAllocationDTO(t *testing.T) {
+	allocation := reports.RbtcAssetAllocation{
+		ReservedForUsers: entities.NewWei(300000000000000000),
+		WaitingForRefund: entities.NewWei(150000000000000000),
+		Available:        entities.NewWei(400000000000000000),
+	}
+
+	dto := pkg.ToRbtcAssetAllocationDTO(allocation)
+
+	assert.Equal(t, "300000000000000000", dto.ReservedForUsers.String())
+	assert.Equal(t, "150000000000000000", dto.WaitingForRefund.String())
+	assert.Equal(t, "400000000000000000", dto.Available.String())
+}
+
+func TestToRbtcAssetReportDTO(t *testing.T) {
+	report := reports.RbtcAssetReport{
+		Total: entities.NewWei(850000000000000000),
+		Location: reports.RbtcAssetLocation{
+			RskWallet:  entities.NewWei(500000000000000000),
+			Lbc:        entities.NewWei(250000000000000000),
+			Federation: entities.NewWei(100000000000000000),
+		},
+		Allocation: reports.RbtcAssetAllocation{
+			ReservedForUsers: entities.NewWei(300000000000000000),
+			WaitingForRefund: entities.NewWei(150000000000000000),
+			Available:        entities.NewWei(400000000000000000),
+		},
+	}
+
+	dto := pkg.ToRbtcAssetReportDTO(report)
+
+	assert.Equal(t, "850000000000000000", dto.Total.String())
+	assert.Equal(t, "500000000000000000", dto.Location.RskWallet.String())
+	assert.Equal(t, "250000000000000000", dto.Location.Lbc.String())
+	assert.Equal(t, "100000000000000000", dto.Location.Federation.String())
+	assert.Equal(t, "300000000000000000", dto.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "150000000000000000", dto.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "400000000000000000", dto.Allocation.Available.String())
+}
+
+func TestToGetAssetsReportResponse(t *testing.T) {
+	result := reports.GetAssetsReportResult{
+		BtcAssetReport: reports.BtcAssetReport{
+			Total: entities.NewWei(650000000),
+			Location: reports.BtcAssetLocation{
+				BtcWallet:  entities.NewWei(100000000),
+				Federation: entities.NewWei(200000000),
+				RskWallet:  entities.NewWei(300000000),
+				Lbc:        entities.NewWei(50000000),
+			},
+			Allocation: reports.BtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(150000000),
+				WaitingForRefund: entities.NewWei(75000000),
+				Available:        entities.NewWei(425000000),
+			},
+		},
+		RbtcAssetReport: reports.RbtcAssetReport{
+			Total: entities.NewWei(850000000000000000),
+			Location: reports.RbtcAssetLocation{
+				RskWallet:  entities.NewWei(500000000000000000),
+				Lbc:        entities.NewWei(250000000000000000),
+				Federation: entities.NewWei(100000000000000000),
+			},
+			Allocation: reports.RbtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(300000000000000000),
+				WaitingForRefund: entities.NewWei(150000000000000000),
+				Available:        entities.NewWei(400000000000000000),
+			},
+		},
+	}
+
+	response := pkg.ToGetAssetsReportResponse(result)
+
+	assert.Equal(t, "650000000", response.BtcAssetReport.Total.String())
+	assert.Equal(t, "100000000", response.BtcAssetReport.Location.BtcWallet.String())
+	assert.Equal(t, "200000000", response.BtcAssetReport.Location.Federation.String())
+	assert.Equal(t, "300000000", response.BtcAssetReport.Location.RskWallet.String())
+	assert.Equal(t, "50000000", response.BtcAssetReport.Location.Lbc.String())
+	assert.Equal(t, "150000000", response.BtcAssetReport.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "75000000", response.BtcAssetReport.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "425000000", response.BtcAssetReport.Allocation.Available.String())
+	assert.Equal(t, "850000000000000000", response.RbtcAssetReport.Total.String())
+	assert.Equal(t, "500000000000000000", response.RbtcAssetReport.Location.RskWallet.String())
+	assert.Equal(t, "250000000000000000", response.RbtcAssetReport.Location.Lbc.String())
+	assert.Equal(t, "100000000000000000", response.RbtcAssetReport.Location.Federation.String())
+	assert.Equal(t, "300000000000000000", response.RbtcAssetReport.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "150000000000000000", response.RbtcAssetReport.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "400000000000000000", response.RbtcAssetReport.Allocation.Available.String())
+}
+
+func TestToGetAssetsReportResponse_WithLargeValues(t *testing.T) {
+	btcTotal := new(big.Int)
+	btcTotal.SetString("21000000000000000000", 10)
+	rbtcTotal := new(big.Int)
+	rbtcTotal.SetString("999999999999999999999999", 10)
+
+	result := reports.GetAssetsReportResult{
+		BtcAssetReport: reports.BtcAssetReport{
+			Total: entities.NewBigWei(btcTotal),
+			Location: reports.BtcAssetLocation{
+				BtcWallet:  entities.NewBigWei(btcTotal),
+				Federation: entities.NewWei(0),
+				RskWallet:  entities.NewWei(0),
+				Lbc:        entities.NewWei(0),
+			},
+			Allocation: reports.BtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(0),
+				WaitingForRefund: entities.NewWei(0),
+				Available:        entities.NewBigWei(btcTotal),
+			},
+		},
+		RbtcAssetReport: reports.RbtcAssetReport{
+			Total: entities.NewBigWei(rbtcTotal),
+			Location: reports.RbtcAssetLocation{
+				RskWallet:  entities.NewBigWei(rbtcTotal),
+				Lbc:        entities.NewWei(0),
+				Federation: entities.NewWei(0),
+			},
+			Allocation: reports.RbtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(0),
+				WaitingForRefund: entities.NewWei(0),
+				Available:        entities.NewBigWei(rbtcTotal),
+			},
+		},
+	}
+
+	response := pkg.ToGetAssetsReportResponse(result)
+
+	assert.Equal(t, "21000000000000000000", response.BtcAssetReport.Total.String())
+	assert.Equal(t, "21000000000000000000", response.BtcAssetReport.Location.BtcWallet.String())
+	assert.Equal(t, "21000000000000000000", response.BtcAssetReport.Allocation.Available.String())
+	assert.Equal(t, "999999999999999999999999", response.RbtcAssetReport.Total.String())
+	assert.Equal(t, "999999999999999999999999", response.RbtcAssetReport.Location.RskWallet.String())
+	assert.Equal(t, "999999999999999999999999", response.RbtcAssetReport.Allocation.Available.String())
+}
+
+func TestToGetAssetsReportResponse_WithZeroValues(t *testing.T) {
+	result := reports.GetAssetsReportResult{
+		BtcAssetReport: reports.BtcAssetReport{
+			Total: entities.NewWei(0),
+			Location: reports.BtcAssetLocation{
+				BtcWallet:  entities.NewWei(0),
+				Federation: entities.NewWei(0),
+				RskWallet:  entities.NewWei(0),
+				Lbc:        entities.NewWei(0),
+			},
+			Allocation: reports.BtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(0),
+				WaitingForRefund: entities.NewWei(0),
+				Available:        entities.NewWei(0),
+			},
+		},
+		RbtcAssetReport: reports.RbtcAssetReport{
+			Total: entities.NewWei(0),
+			Location: reports.RbtcAssetLocation{
+				RskWallet:  entities.NewWei(0),
+				Lbc:        entities.NewWei(0),
+				Federation: entities.NewWei(0),
+			},
+			Allocation: reports.RbtcAssetAllocation{
+				ReservedForUsers: entities.NewWei(0),
+				WaitingForRefund: entities.NewWei(0),
+				Available:        entities.NewWei(0),
+			},
+		},
+	}
+
+	response := pkg.ToGetAssetsReportResponse(result)
+
+	assert.Equal(t, "0", response.BtcAssetReport.Total.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Location.BtcWallet.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Location.Federation.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Location.RskWallet.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Location.Lbc.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "0", response.BtcAssetReport.Allocation.Available.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Total.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Location.RskWallet.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Location.Lbc.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Location.Federation.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Allocation.ReservedForUsers.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Allocation.WaitingForRefund.String())
+	assert.Equal(t, "0", response.RbtcAssetReport.Allocation.Available.String())
 }

@@ -116,5 +116,19 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Handler: handlers.NewVersionInfoHandler(useCaseRegistry.GetServerInfoUseCase()),
 			},
 		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegout/recommended",
+				Method:  http.MethodGet,
+				Handler: handlers.NewRecommendedPegoutHandler(useCaseRegistry.RecommendedPegoutUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/recommended",
+				Method:  http.MethodGet,
+				Handler: handlers.NewRecommendedPeginHandler(useCaseRegistry.RecommendedPeginUseCase()),
+			},
+		},
 	}
 }

@@ -35,10 +35,12 @@ type PeginQuoteRepository interface {
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
+	GetQuotesByState(ctx context.Context, states ...PeginState) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
 	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
+	GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []PeginState, startDate, endDate time.Time) ([]PeginQuoteWithRetained, error)
 }
 
 type PeginQuoteWithRetained struct {
@@ -119,15 +121,30 @@ func (quote *PeginQuote) Total() *entities.Wei {
 }
 
 type RetainedPeginQuote struct {
-	QuoteHash           string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress      string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature           string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity   *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State               PeginState    `json:"state" bson:"state" validate:"required"`
-	UserBtcTxHash       string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
-	CallForUserTxHash   string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
-	RegisterPeginTxHash string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
-	OwnerAccountAddress string        `json:"ownerAccountAddress" bson:"owner_account_address"`
+	QuoteHash             string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress        string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature             string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity     *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State                 PeginState    `json:"state" bson:"state" validate:"required"`
+	UserBtcTxHash         string        `json:"userBtcTxHash" bson:"user_btc_tx_hash"`
+	CallForUserTxHash     string        `json:"callForUserTxHash" bson:"call_for_user_tx_hash"`
+	RegisterPeginTxHash   string        `json:"registerPeginTxHash" bson:"register_pegin_tx_hash"`
+	CallForUserGasUsed    uint64        `json:"callForUserGasUsed" bson:"call_for_user_gas_used"`
+	CallForUserGasPrice   *entities.Wei `json:"callForUserGasPrice" bson:"call_for_user_gas_price"`
+	RegisterPeginGasUsed  uint64        `json:"registerPeginGasUsed" bson:"register_pegin_gas_used"`
+	RegisterPeginGasPrice *entities.Wei `json:"registerPeginGasPrice" bson:"register_pegin_gas_price"`
+	OwnerAccountAddress   string        `json:"ownerAccountAddress" bson:"owner_account_address"`
+}
+
+// FillZeroValues ensures that gas-related Wei fields have zero values instead of nil
+// for older database records that don't have these fields populated.
+func (quote *RetainedPeginQuote) FillZeroValues() {
+	if quote.CallForUserGasPrice == nil {
+		quote.CallForUserGasPrice = entities.NewWei(0)
+	}
+	if quote.RegisterPeginGasPrice == nil {
+		quote.RegisterPeginGasPrice = entities.NewWei(0)
+	}
 }
 
 type WatchedPeginQuote struct {
