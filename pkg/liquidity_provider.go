@@ -177,18 +177,55 @@ func (r *DateRangeRequest) GetTimestamps() (startTime, endTime time.Time, err er
 }
 
 type GetRevenueReportResponse struct {
-	TotalQuoteCallFees *big.Int `json:"totalQuoteCallFees" validate:"required"`
-	TotalPenalizations *big.Int `json:"totalPenalizations" validate:"required"`
-	TotalProfit        *big.Int `json:"totalProfit" validate:"required"`
+	TotalQuoteCallFees    *big.Int `json:"totalQuoteCallFees" validate:"required"`
+	TotalPenalizations    *big.Int `json:"totalPenalizations" validate:"required"`
+	TotalGasFeesCollected *big.Int `json:"totalGasFeesCollected" validate:"required"`
+	TotalGasSpent         *big.Int `json:"totalGasSpent" validate:"required"`
 }
 
-type GetAssetsReportDTO struct {
-	BtcBalance    *big.Int `json:"btcBalance" example:"1000000000" description:"Current balance on the bitcoin wallet" validate:"required"`
-	RbtcBalance   *big.Int `json:"rbtcBalance" example:"1000000000" description:"Current balance on the RBTC wallet" validate:"required"`
-	BtcLocked     *big.Int `json:"btcLocked" example:"1000000000" description:"Amount of BTC locked by quotes" validate:"required"`
-	RbtcLocked    *big.Int `json:"rbtcLocked" example:"1000000000" description:"Amount of RBTC locked by quotes" validate:"required"`
-	BtcLiquidity  *big.Int `json:"btcLiquidity" example:"1000000000" description:"Amount of BTC liquidity available for new quotes" validate:"required"`
-	RbtcLiquidity *big.Int `json:"rbtcLiquidity" example:"1000000000" description:"Amount of RBTC liquidity available for new quotes" validate:"required"`
+// BTC Asset Report structures
+type BtcAssetLocationDTO struct {
+	BtcWallet  *big.Int `json:"btcWallet" example:"50000000" description:"BTC in the LP's Bitcoin wallet" validate:"required"`
+	Federation *big.Int `json:"federation" example:"5000000" description:"BTC in the federation (rebalancing or waiting for refund)" validate:"required"`
+	RskWallet  *big.Int `json:"rskWallet" example:"6500000" description:"BTC represented as RBTC in the RSK wallet (waiting for rebalancing)" validate:"required"`
+	Lbc        *big.Int `json:"lbc" example:"5300000" description:"BTC represented as RBTC locked in the Liquidity Bridge Contract" validate:"required"`
+}
+
+type BtcAssetAllocationDTO struct {
+	ReservedForUsers *big.Int `json:"reservedForUsers" example:"4500000" description:"BTC reserved for users (accepted pegout quotes)" validate:"required"`
+	WaitingForRefund *big.Int `json:"waitingForRefund" example:"19800000" description:"BTC waiting to be refunded to the LP" validate:"required"`
+	Available        *big.Int `json:"available" example:"43200000" description:"BTC available for new pegout quotes" validate:"required"`
+}
+
+type BtcAssetReportDTO struct {
+	Total      *big.Int              `json:"total" example:"67500000" description:"Total BTC assets under LP control" validate:"required"`
+	Location   BtcAssetLocationDTO   `json:"location" description:"BTC distribution across different locations" validate:"required"`
+	Allocation BtcAssetAllocationDTO `json:"allocation" description:"BTC allocation by usage/purpose" validate:"required"`
+}
+
+// RBTC Asset Report structures
+type RbtcAssetLocationDTO struct {
+	RskWallet  *big.Int `json:"rskWallet" example:"10000000000000000000" description:"RBTC in the LP's RSK wallet" validate:"required"`
+	Lbc        *big.Int `json:"lbc" example:"5000000000000000000" description:"RBTC locked in the Liquidity Bridge Contract" validate:"required"`
+	Federation *big.Int `json:"federation" example:"2000000000000000000" description:"RBTC in the federation (waiting for refund)" validate:"required"`
+}
+
+type RbtcAssetAllocationDTO struct {
+	ReservedForUsers *big.Int `json:"reservedForUsers" example:"3000000000000000000" description:"RBTC reserved for users (accepted pegin quotes)" validate:"required"`
+	WaitingForRefund *big.Int `json:"waitingForRefund" example:"2000000000000000000" description:"RBTC waiting to be refunded to the LP" validate:"required"`
+	Available        *big.Int `json:"available" example:"12000000000000000000" description:"RBTC available for new pegin quotes" validate:"required"`
+}
+
+type RbtcAssetReportDTO struct {
+	Total      *big.Int               `json:"total" example:"17000000000000000000" description:"Total RBTC assets under LP control" validate:"required"`
+	Location   RbtcAssetLocationDTO   `json:"location" description:"RBTC distribution across different locations" validate:"required"`
+	Allocation RbtcAssetAllocationDTO `json:"allocation" description:"RBTC allocation by usage/purpose" validate:"required"`
+}
+
+// Combined Assets Report Response
+type GetAssetsReportResponse struct {
+	BtcAssetReport  BtcAssetReportDTO  `json:"btcAssetReport" description:"Detailed BTC asset report" validate:"required"`
+	RbtcAssetReport RbtcAssetReportDTO `json:"rbtcAssetReport" description:"Detailed RBTC asset report" validate:"required"`
 }
 
 type AvailableLiquidityDTO struct {
@@ -204,13 +241,13 @@ type ServerInfoDTO struct {
 type SummaryDataDTO struct {
 	TotalQuotesCount          int64    `json:"totalQuotesCount"`
 	AcceptedQuotesCount       int64    `json:"acceptedQuotesCount"`
+	TotalAcceptedQuotesAmount *big.Int `json:"totalAcceptedQuotesAmount"`
 	PaidQuotesCount           int64    `json:"paidQuotesCount"`
 	PaidQuotesAmount          *big.Int `json:"paidQuotesAmount"`
-	TotalAcceptedQuotedAmount *big.Int `json:"totalAcceptedQuotedAmount"`
-	TotalFeesCollected        *big.Int `json:"totalFeesCollected"`
 	RefundedQuotesCount       int64    `json:"refundedQuotesCount"`
-	TotalPenaltyAmount        *big.Int `json:"totalPenaltyAmount"`
-	LpEarnings                *big.Int `json:"lpEarnings"`
+	TotalRefundedQuotesAmount *big.Int `json:"totalRefundedQuotesAmount"`
+	PenalizationsCount        int64    `json:"penalizationsCount"`
+	TotalPenalizationsAmount  *big.Int `json:"totalPenalizationsAmount"`
 }
 
 type SummaryResultDTO struct {
@@ -222,13 +259,13 @@ func ToSummaryDataDTO(data reports.SummaryData) SummaryDataDTO {
 	return SummaryDataDTO{
 		TotalQuotesCount:          data.TotalQuotesCount,
 		AcceptedQuotesCount:       data.AcceptedQuotesCount,
+		TotalAcceptedQuotesAmount: data.TotalAcceptedQuotesAmount.AsBigInt(),
 		PaidQuotesCount:           data.PaidQuotesCount,
 		PaidQuotesAmount:          data.PaidQuotesAmount.AsBigInt(),
-		TotalAcceptedQuotedAmount: data.TotalAcceptedQuotedAmount.AsBigInt(),
-		TotalFeesCollected:        data.TotalFeesCollected.AsBigInt(),
 		RefundedQuotesCount:       data.RefundedQuotesCount,
-		TotalPenaltyAmount:        data.TotalPenaltyAmount.AsBigInt(),
-		LpEarnings:                data.LpEarnings.AsBigInt(),
+		TotalRefundedQuotesAmount: data.TotalRefundedQuotesAmount.AsBigInt(),
+		PenalizationsCount:        data.PenalizationsCount,
+		TotalPenalizationsAmount:  data.TotalPenalizationsAmount.AsBigInt(),
 	}
 }
 
@@ -236,6 +273,62 @@ func ToSummaryResultDTO(result reports.SummaryResult) SummaryResultDTO {
 	return SummaryResultDTO{
 		PeginSummary:  ToSummaryDataDTO(result.PeginSummary),
 		PegoutSummary: ToSummaryDataDTO(result.PegoutSummary),
+	}
+}
+
+func ToBtcAssetLocationDTO(location reports.BtcAssetLocation) BtcAssetLocationDTO {
+	return BtcAssetLocationDTO{
+		BtcWallet:  location.BtcWallet.AsBigInt(),
+		Federation: location.Federation.AsBigInt(),
+		RskWallet:  location.RskWallet.AsBigInt(),
+		Lbc:        location.Lbc.AsBigInt(),
+	}
+}
+
+func ToBtcAssetAllocationDTO(allocation reports.BtcAssetAllocation) BtcAssetAllocationDTO {
+	return BtcAssetAllocationDTO{
+		ReservedForUsers: allocation.ReservedForUsers.AsBigInt(),
+		WaitingForRefund: allocation.WaitingForRefund.AsBigInt(),
+		Available:        allocation.Available.AsBigInt(),
+	}
+}
+
+func ToBtcAssetReportDTO(report reports.BtcAssetReport) BtcAssetReportDTO {
+	return BtcAssetReportDTO{
+		Total:      report.Total.AsBigInt(),
+		Location:   ToBtcAssetLocationDTO(report.Location),
+		Allocation: ToBtcAssetAllocationDTO(report.Allocation),
+	}
+}
+
+func ToRbtcAssetLocationDTO(location reports.RbtcAssetLocation) RbtcAssetLocationDTO {
+	return RbtcAssetLocationDTO{
+		RskWallet:  location.RskWallet.AsBigInt(),
+		Lbc:        location.Lbc.AsBigInt(),
+		Federation: location.Federation.AsBigInt(),
+	}
+}
+
+func ToRbtcAssetAllocationDTO(allocation reports.RbtcAssetAllocation) RbtcAssetAllocationDTO {
+	return RbtcAssetAllocationDTO{
+		ReservedForUsers: allocation.ReservedForUsers.AsBigInt(),
+		WaitingForRefund: allocation.WaitingForRefund.AsBigInt(),
+		Available:        allocation.Available.AsBigInt(),
+	}
+}
+
+func ToRbtcAssetReportDTO(report reports.RbtcAssetReport) RbtcAssetReportDTO {
+	return RbtcAssetReportDTO{
+		Total:      report.Total.AsBigInt(),
+		Location:   ToRbtcAssetLocationDTO(report.Location),
+		Allocation: ToRbtcAssetAllocationDTO(report.Allocation),
+	}
+}
+
+func ToGetAssetsReportResponse(result reports.GetAssetsReportResult) GetAssetsReportResponse {
+	return GetAssetsReportResponse{
+		BtcAssetReport:  ToBtcAssetReportDTO(result.BtcAssetReport),
+		RbtcAssetReport: ToRbtcAssetReportDTO(result.RbtcAssetReport),
 	}
 }
 

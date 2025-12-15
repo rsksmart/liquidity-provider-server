@@ -2,6 +2,9 @@ package pegout_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -11,12 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestInitPegoutDepositCacheUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	rsk := new(mocks.RootstockRpcServerMock)
 	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 	height := uint64(10)
@@ -52,20 +53,20 @@ func TestInitPegoutDepositCacheUseCase_Run(t *testing.T) {
 }
 
 func TestInitPegoutDepositCacheUseCase_Run_ErrorHandling(t *testing.T) {
-	cases := test.Table[func(lbc *mocks.LbcMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock), error]{
+	cases := test.Table[func(lbc *mocks.LiquidityBridgeContractMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock), error]{
 		{
-			Value: func(lbc *mocks.LbcMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
 				rpc.On("GetHeight", context.Background()).Return(uint64(0), assert.AnError)
 			},
 		},
 		{
-			Value: func(lbc *mocks.LbcMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
 				rpc.On("GetHeight", context.Background()).Return(uint64(10), nil)
 				lbc.On("GetDepositEvents", context.Background(), mock.Anything, mock.Anything).Return(nil, assert.AnError)
 			},
 		},
 		{
-			Value: func(lbc *mocks.LbcMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
+			Value: func(lbc *mocks.LiquidityBridgeContractMock, quoteRepository *mocks.PegoutQuoteRepositoryMock, rpc *mocks.RootstockRpcServerMock) {
 				rpc.On("GetHeight", context.Background()).Return(uint64(10), nil)
 				lbc.On("GetDepositEvents", context.Background(), uint64(5), mock.Anything).Return([]quote.PegoutDeposit{}, nil)
 				quoteRepository.On("UpsertPegoutDeposits", context.Background(), mock.Anything).Return(assert.AnError)
@@ -74,7 +75,7 @@ func TestInitPegoutDepositCacheUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		lbc := new(mocks.LbcMock)
+		lbc := new(mocks.LiquidityBridgeContractMock)
 		quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		rsk := new(mocks.RootstockRpcServerMock)
 		c.Value(lbc, quoteRepository, rsk)

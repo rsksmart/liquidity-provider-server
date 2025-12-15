@@ -25,7 +25,7 @@ var peginConfigMock = entities.Signed[lp.PeginConfiguration]{
 		FixedFee:       entities.NewWei(4),
 		FeePercentage:  utils.NewBigFloat64(4.5),
 		MaxValue:       entities.NewWei(5),
-		MinValue:       entities.NewWei(1),
+		MinValue:       entities.NewWei(2),
 	},
 	Signature: "010203",
 	Hash:      "040506",
@@ -88,15 +88,40 @@ func TestSetPeginConfigUseCase_Run_ValidateBridgeMin(t *testing.T) {
 	walletMock := &mocks.RskWalletMock{}
 	hashMock := &mocks.HashMock{}
 
-	bridge := &mocks.BridgeMock{}
-	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(10), nil)
-	contracts := blockchain.RskContracts{Bridge: bridge}
+	t.Run("fails when minValue is less than bridge minimum", func(t *testing.T) {
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(10), nil)
+		contracts := blockchain.RskContracts{Bridge: bridge}
 
-	useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+		useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
 
-	err := useCase.Run(context.Background(), peginConfigMock.Value)
-	require.ErrorIs(t, err, usecases.TxBelowMinimumError)
-	bridge.AssertExpectations(t)
+		err := useCase.Run(context.Background(), peginConfigMock.Value)
+		require.ErrorIs(t, err, usecases.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
+
+	t.Run("fails when minValue equals bridge minimum", func(t *testing.T) {
+		// Create a config with MinValue = 1
+		configWithMinValue1 := lp.PeginConfiguration{
+			TimeForDeposit: 1,
+			CallTime:       2,
+			PenaltyFee:     entities.NewWei(3),
+			FixedFee:       entities.NewWei(4),
+			FeePercentage:  utils.NewBigFloat64(4.5),
+			MaxValue:       entities.NewWei(5),
+			MinValue:       entities.NewWei(1),
+		}
+
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
+		contracts := blockchain.RskContracts{Bridge: bridge}
+
+		useCase := liquidity_provider.NewSetPeginConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+
+		err := useCase.Run(context.Background(), configWithMinValue1)
+		require.ErrorIs(t, err, usecases.TxBelowMinimumError)
+		bridge.AssertExpectations(t)
+	})
 }
 
 func TestSetPeginConfigUseCase_Run_ValidatePositiveWei(t *testing.T) {
@@ -136,7 +161,7 @@ func TestSetPeginConfigUseCase_Run_ZeroFixedFee(t *testing.T) {
 		FixedFee:       entities.NewWei(0),
 		FeePercentage:  utils.NewBigFloat64(4.5),
 		MaxValue:       entities.NewWei(5),
-		MinValue:       entities.NewWei(1),
+		MinValue:       entities.NewWei(2),
 	}
 
 	bridge := &mocks.BridgeMock{}

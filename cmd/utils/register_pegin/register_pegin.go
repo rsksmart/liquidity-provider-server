@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
@@ -16,7 +18,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"golang.org/x/term"
-	"os"
 )
 
 type RegisterPegInScriptInput struct {
@@ -93,11 +94,18 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error accessing the Liquidity Bridge Contract", err)
 	}
 
-	txHash, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), lbc, parsedInput)
+	receipt, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), lbc, parsedInput)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error executing register PegIn", err)
 	}
-	fmt.Println("Register PegIn executed successfully. Transaction hash: ", txHash)
+	fmt.Println("Register PegIn executed successfully!")
+	fmt.Printf("Transaction Hash: %s\n", receipt.TransactionHash)
+	fmt.Printf("Block Number: %d\n", receipt.BlockNumber)
+	fmt.Printf("Gas Used: %s\n", receipt.GasUsed.String())
+	fmt.Printf("Gas Price: %s wei\n", receipt.GasPrice.String())
+	fmt.Printf("From: %s\n", receipt.From)
+	fmt.Printf("To: %s\n", receipt.To)
+	fmt.Printf("Value: %s wei\n", receipt.Value.String())
 }
 
 func ReadRegisterPegInScriptInput(scriptInput *RegisterPegInScriptInput) {
@@ -145,19 +153,19 @@ func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
 	lbc blockchain.LiquidityBridgeContract,
 	parsedInput ParsedRegisterPegInInput,
-) (string, error) {
+) (blockchain.TransactionReceipt, error) {
 	var pmt, rawTx []byte
 	var err error
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 	if rawTx, err = btcRpc.GetRawTransaction(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 	blockInfo, err := btcRpc.GetTransactionBlockInfo(parsedInput.BtcTxHash)
 	if err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 
 	return lbc.RegisterPegin(blockchain.RegisterPeginParams{

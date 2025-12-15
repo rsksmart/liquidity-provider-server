@@ -1,17 +1,18 @@
 package pegout_test
 
 import (
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestGetCollateralUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
@@ -25,7 +26,7 @@ func TestGetCollateralUseCase_Run(t *testing.T) {
 }
 
 func TestGetCollateralUseCase_Run_Error(t *testing.T) {
-	lbc := new(mocks.LbcMock)
+	lbc := new(mocks.LiquidityBridgeContractMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return("rskAddress")
 	lbc.On("GetPegoutCollateral", "rskAddress").Return(entities.NewWei(0), assert.AnError)

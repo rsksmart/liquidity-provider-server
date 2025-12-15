@@ -3,10 +3,12 @@ package usecases_test
 import (
 	"context"
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"math"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -61,21 +63,21 @@ func TestCalculateDaoAmounts(t *testing.T) {
 			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
 		},
 		{
-			Value: testArgs{entities.NewWei(500000000000000000), 50},
+			Value: testArgs{entities.NewWei(500000000000000000), 0.5 * utils.Scale},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(250000000000000000),
 			},
 		},
 		{
-			Value: testArgs{entities.NewWei(6000000000000000000), 1},
+			Value: testArgs{entities.NewWei(6000000000000000000), 0.01 * utils.Scale},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(60000000000000000),
 			},
 		},
 		{
-			Value: testArgs{entities.NewWei(7700000000000000000), 17},
+			Value: testArgs{entities.NewWei(7700000000000000000), uint64(math.Round(0.17 * float64(utils.Scale)))},
 			Result: u.DaoAmounts{
 				DaoGasAmount: entities.NewWei(500000000000000),
 				DaoFeeAmount: entities.NewWei(1309000000000000000),
@@ -107,16 +109,20 @@ func TestValidateMinLockValue(t *testing.T) {
 	bridge := &bridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.SatoshiToWei(oneBtcInSatoshi), nil)
 
+	// Value must be strictly greater
 	err := u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi))
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"1000000000000000000\"}", err.Error())
 
+	// Value greater than minimum should succeed
 	err = u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi+1))
 	require.NoError(t, err)
 
+	// Value less than minimum should fail
 	value := new(entities.Wei).Sub(entities.SatoshiToWei(oneBtcInSatoshi), entities.NewWei(1))
 	err = u.ValidateMinLockValue(useCase, bridge, value)
 	require.Error(t, err)
-	assert.Equal(t, "anyUseCase: requested amount below bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
 }
 
 func TestSignConfiguration(t *testing.T) {
