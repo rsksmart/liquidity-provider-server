@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"net/http"
-
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"net/http"
 )
 
 type ResignUseCase interface {
@@ -18,7 +19,11 @@ type ResignUseCase interface {
 func NewResignationHandler(useCase ResignUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		err := useCase.Run()
-		if err != nil {
+		if errors.Is(err, blockchain.ContractPausedError) {
+			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
+			return
+		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 			return

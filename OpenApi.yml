@@ -1030,6 +1030,14 @@ paths:
         "204":
           description: ""
       summary: Update Trusted Account
+  /metrics:
+    get:
+      description: ' Returns a predefined set of metrics to be consumed by a monitoring
+        system.'
+      responses:
+        "200":
+          description: ""
+      summary: Metrics
   /pegin/acceptAuthenticatedQuote:
     post:
       description: ' Accepts Quote with trusted account signature'

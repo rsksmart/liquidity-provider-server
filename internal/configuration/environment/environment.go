@@ -39,7 +39,10 @@ type MongoEnv struct {
 type RskEnv struct {
 	Endpoint                    string   `env:"RSK_ENDPOINT" validate:"required"`
 	ChainId                     uint64   `env:"CHAIN_ID" validate:"required"`
-	LbcAddress                  string   `env:"LBC_ADDR" validate:"required"`
+	PeginContractAddress        string   `env:"PEGIN_CONTRACT_ADDRESS" validate:"required"`
+	PegoutContractAddress       string   `env:"PEGOUT_CONTRACT_ADDRESS" validate:"required"`
+	CollateralManagementAddress string   `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
+	DiscoveryAddress            string   `env:"DISCOVERY_ADDRESS" validate:"required"`
 	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
 	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
 	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
@@ -138,11 +141,24 @@ func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
 }
 
 type ProviderEnv struct {
-	AlertSenderEmail    string                          `env:"ALERT_SENDER_EMAIL"  validate:"required"`
-	AlertRecipientEmail string                          `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
-	Name                string                          `env:"PROVIDER_NAME"  validate:"required"`
-	ApiBaseUrl          string                          `env:"BASE_URL"  validate:"required"`
-	ProviderType        liquidity_provider.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+	AlertSenderEmail    string `env:"ALERT_SENDER_EMAIL"  validate:"required"`
+	AlertRecipientEmail string `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
+	Name                string `env:"PROVIDER_NAME"  validate:"required"`
+	ApiBaseUrl          string `env:"BASE_URL"  validate:"required"`
+	ProviderTypeName    string `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+}
+
+func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
+	switch env.ProviderTypeName {
+	case "pegin":
+		return liquidity_provider.PeginProvider
+	case "pegout":
+		return liquidity_provider.PegoutProvider
+	case "both":
+		return liquidity_provider.FullProvider
+	default:
+		return -1
+	}
 }
 
 // PeginEnv This structure was kept just in case, right now all the parameters are manipulated through management API

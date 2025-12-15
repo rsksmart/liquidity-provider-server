@@ -26,14 +26,14 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(20000), nil)
 	rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(100), nil)
-	feeCollector := new(mocks.FeeCollectorMock)
-	feeCollector.On("DaoFeePercentage").Return(uint64(100), nil)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.On("DaoFeePercentage").Return(uint64(100), nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil)
-	lbc := new(mocks.LiquidityBridgeContractMock)
-	lbc.On("GetAddress").Return(lbcAddress)
-	lbc.On("HashPeginQuote", mock.Anything).Return("0x0102030405", nil)
+	peginContract.On("GetAddress").Return(lbcAddress)
+	peginContract.On("HashPeginQuote", mock.Anything).Return("0x0102030405", nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	peginQuoteRepository.EXPECT().InsertQuote(mock.Anything, mock.Anything).Return(nil)
 	lp := new(mocks.ProviderMock)
@@ -46,7 +46,7 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	lp.On("BtcAddress").Return(test.AnyBtcAddress)
 	btc := new(mocks.BtcRpcMock)
 	btc.On("NetworkName").Return(testnetNetworkName)
-	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+	contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
 	getQuoteUseCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp, "feeCollectorAddress")
 	createdQuote, err := getQuoteUseCase.Run(context.Background(), request)
@@ -108,14 +108,14 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 
 func TestRecommendedPeginUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, errorSetup := range recommendedPeginErrorSetups() {
-		feeCollector := new(mocks.FeeCollectorMock)
+		peginContract := new(mocks.PeginContractMock)
 		rsk := new(mocks.RootstockRpcServerMock)
 		btc := new(mocks.BtcRpcMock)
 		lp := new(mocks.ProviderMock)
 		lp.On("PeginConfiguration", mock.Anything).Return(getPeginConfiguration())
-		contracts := blockchain.RskContracts{FeeCollector: feeCollector}
+		contracts := blockchain.RskContracts{PegIn: peginContract}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-		errorSetup(feeCollector, rsk)
+		errorSetup(peginContract, rsk)
 		useCase := pegin.NewRecommendedPeginUseCase(lp, contracts, rpc, test.AnyRskAddress, utils.Scale)
 		result, err := useCase.Run(context.Background(), entities.NewWei(1), test.AnyRskAddress, []byte{1, 2, 3})
 		assert.Empty(t, result)
@@ -123,22 +123,22 @@ func TestRecommendedPeginUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 }
 
-func recommendedPeginErrorSetups() []func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock) {
-	return []func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock){
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
+func recommendedPeginErrorSetups() []func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock) {
+	return []func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock){
+		func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock) {
+			peginContract.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock) {
+			peginContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock) {
+			peginContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil).Once()
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(peginContract *mocks.PeginContractMock, rsk *mocks.RootstockRpcServerMock) {
+			peginContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil).Twice()
 			rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil).Once()
 		},

@@ -50,13 +50,13 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 		)
 
 		result, err = useCase.Run(req.Context(), peginRequest)
-		if errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
-			errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
-			errors.Is(err, usecases.RskAddressNotSupportedError) ||
-			errors.Is(err, usecases.TxBelowMinimumError) ||
-			errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
+		if isGetPeginQuoteBadRequest(err) {
 			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		} else if errors.Is(err, blockchain.ContractPausedError) {
+			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
 			return
 		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
@@ -70,4 +70,12 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 		}} // to keep compatibility with legacy API
 		rest.JsonResponseWithBody(w, http.StatusOK, &responseBody)
 	}
+}
+
+func isGetPeginQuoteBadRequest(err error) bool {
+	return errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
+		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
+		errors.Is(err, usecases.RskAddressNotSupportedError) ||
+		errors.Is(err, usecases.TxBelowMinimumError) ||
+		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
 }

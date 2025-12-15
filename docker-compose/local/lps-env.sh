@@ -106,6 +106,9 @@ LPS_HOME="${LPS_HOME:-./volumes/lps}"
 MONGO_HOME="${MONGO_HOME:-./volumes/mongo}"
 LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 
+# Set LOG_FILE environment variable for LPS to write logs to file
+export LOG_FILE="/home/lps/logs/lps.log"
+
 [ -d "$BTCD_HOME" ] || mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME"
 [ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
 [ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME"
@@ -113,8 +116,9 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 [ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME"
 [ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
 [ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
+[ -d "./volumes/loki" ] || mkdir -p "./volumes/loki" && chmod 777 "./volumes/loki"
 
-echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'"
+echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'; LOKI_HOME: './volumes/loki'"
 
 # start bitcoind and RSKJ dependant services
 docker compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
@@ -380,3 +384,5 @@ fi
 
 echo "Trusted account created successfully!"
 echo "Address: $TRUSTED_ACCOUNT_ADDRESS"
+
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.metrics.yml up -d prometheus loki alloy grafana mailhog

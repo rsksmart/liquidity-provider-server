@@ -3,12 +3,12 @@ package handlers_test
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +40,7 @@ func TestWithdrawCollateralHandlerErrorCases(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.WithdrawCollateralUseCaseMock)
-		mockUseCase.On("Run").Return(usecases.ProviderNotResignedError)
+		mockUseCase.On("Run").Return(liquidity_provider.ProviderNotResignedError)
 
 		handlerFunc := handlers.NewWithdrawCollateralHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
@@ -89,7 +89,7 @@ func TestWithdrawCollateralHandlerErrorResponseFormat(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.WithdrawCollateralUseCaseMock)
-		mockUseCase.On("Run").Return(usecases.ProviderNotResignedError)
+		mockUseCase.On("Run").Return(liquidity_provider.ProviderNotResignedError)
 
 		handlerFunc := handlers.NewWithdrawCollateralHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
@@ -105,7 +105,7 @@ func TestWithdrawCollateralHandlerErrorResponseFormat(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.WithdrawCollateralUseCaseMock)
-		mockUseCase.On("Run").Return(usecases.ProviderNotResignedError)
+		mockUseCase.On("Run").Return(liquidity_provider.ProviderNotResignedError)
 
 		handlerFunc := handlers.NewWithdrawCollateralHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)
@@ -125,7 +125,7 @@ func TestWithdrawCollateralHandlerErrorResponseFormat(t *testing.T) {
 		recorder := httptest.NewRecorder()
 
 		mockUseCase := new(mocks.WithdrawCollateralUseCaseMock)
-		mockUseCase.On("Run").Return(usecases.ProviderNotResignedError)
+		mockUseCase.On("Run").Return(liquidity_provider.ProviderNotResignedError)
 
 		handlerFunc := handlers.NewWithdrawCollateralHandler(mockUseCase)
 		handler := http.HandlerFunc(handlerFunc)

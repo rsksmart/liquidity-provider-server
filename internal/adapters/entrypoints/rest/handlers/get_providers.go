@@ -35,7 +35,7 @@ func NewGetProvidersHandler(useCase GetProvidersUseCase) http.HandlerFunc {
 					Name:         provider.Name,
 					ApiBaseUrl:   provider.ApiBaseUrl,
 					Status:       provider.Status,
-					ProviderType: string(provider.ProviderType),
+					ProviderType: provider.ProviderType.Name(),
 				},
 			)
 		}

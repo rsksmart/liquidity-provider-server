@@ -30,13 +30,13 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 	rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
 	rsk.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(4600), nil)
-	feeCollector := new(mocks.FeeCollectorMock)
-	feeCollector.On("DaoFeePercentage").Return(uint64(100), nil)
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	pegoutContract.On("DaoFeePercentage").Return(uint64(100), nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
-	lbc := new(mocks.LiquidityBridgeContractMock)
-	lbc.On("GetAddress").Return(rskAddress)
-	lbc.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
+	pegoutContract.On("GetAddress").Return(rskAddress)
+	pegoutContract.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutQuoteRepository.EXPECT().InsertQuote(mock.Anything, mock.Anything).Return(nil)
 	lp := new(mocks.ProviderMock)
@@ -53,7 +53,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 	btc := new(mocks.BtcRpcMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 
-	contracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: bridge}
+	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
 	getQuoteUseCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, test.AnyRskAddress)
 	createdQuote, err := getQuoteUseCase.Run(context.Background(), request)
@@ -119,15 +119,15 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 
 func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, errorSetup := range recommendedPegoutErrorSetups() {
-		feeCollector := new(mocks.FeeCollectorMock)
+		pegoutContract := new(mocks.PegoutContractMock)
 		rsk := new(mocks.RootstockRpcServerMock)
 		btc := new(mocks.BtcRpcMock)
 		btcWallet := new(mocks.BitcoinWalletMock)
 		lp := new(mocks.ProviderMock)
 		lp.On("PegoutConfiguration", mock.Anything).Return(getPegoutConfiguration())
-		contracts := blockchain.RskContracts{FeeCollector: feeCollector}
+		contracts := blockchain.RskContracts{PegOut: pegoutContract}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-		errorSetup(feeCollector, rsk, btc, btcWallet, lp)
+		errorSetup(pegoutContract, rsk, btc, btcWallet, lp)
 		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
 		result, err := useCase.Run(context.Background(), entities.NewWei(1), blockchain.BtcAddressTypeP2PKH)
 		assert.Empty(t, result)
@@ -135,28 +135,28 @@ func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 }
 
-func recommendedPegoutErrorSetups() []func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-	return []func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
+func recommendedPegoutErrorSetups() []func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+	return []func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
+		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+			pegoutContract.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
 			rsk.EXPECT().GasPrice(mock.Anything).Return(nil, assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
 			rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
 			btc.On("GetZeroAddress", mock.Anything).Return("", assert.AnError)
 		},
-		func(feeCollector *mocks.FeeCollectorMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			feeCollector.On("DaoFeePercentage").Return(uint64(10), nil)
+		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
 			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
 			rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
 			btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil)

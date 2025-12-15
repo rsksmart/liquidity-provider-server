@@ -14,15 +14,17 @@ packages:
       sesClient:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock:
     interfaces:
-      LbcBinding:
       RskBridgeBinding:
       TransactionSigner:
       RpcClientBinding:
-      LbcCallerBinding:
-      LbcAdapter:
       RskBridgeAdapter:
       EventIteratorAdapter:
       RskSignerWallet:
+      PeginContractAdapter:
+      PegoutContractAdapter:
+      CollateralManagementAdapter:
+      DiscoveryBinding:
+      ContractCallerBinding:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo:
     interfaces:
       DbClientBinding:
@@ -38,6 +40,8 @@ packages:
       DefaultCredentialsProvider:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers:
     interfaces:
+      ResignUseCase:
+      AcceptQuoteUseCase:
       AddPeginCollateralUseCase:
       AddPegoutCollateralUseCase:
       ChangeStatusUseCase:
@@ -62,7 +66,6 @@ packages:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
       RecommendedPeginUseCase:
-      ResignUseCase:
       GetRevenueReportUseCase:
       GetSummariesReportUseCase:
       GetTrustedAccountsUseCase:
@@ -82,9 +85,13 @@ packages:
         PegConfiguration:
   github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain:
     interfaces:
+      Pausable:
       BitcoinWallet:
       RootstockRpcServer:
-      LiquidityBridgeContract:
+      PeginContract:
+      PegoutContract:
+      DiscoveryContract:
+      CollateralManagementContract:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
       BatchPegOutRepository:
@@ -108,3 +115,9 @@ packages:
     interfaces:
       EclipseCheckUseCase:
       UpdateBtcReleaseUseCase:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
+    interfaces:
+      GetAssetReportUseCase:
+  github.com/prometheus/client_golang/prometheus:
+    interfaces:
+      Registerer:

@@ -57,6 +57,10 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	var creationData quote.PeginCreationData
 	var trustedAccount liquidity_provider.TrustedAccountDetails
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	}
+
 	if peginQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	} else if peginQuote == nil {
@@ -88,9 +92,6 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 
 	if retainedQuote, err = useCase.buildRetainedQuote(ctx, quoteHash, peginQuote, trustedAccount.Address); err != nil {
 		return quote.AcceptedQuote{}, err
-	}
-	if err = entities.ValidateStruct(retainedQuote); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 	if err = useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -250,12 +251,16 @@ func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quote
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 
-	return &quote.RetainedPeginQuote{
+	retainedQuote := &quote.RetainedPeginQuote{
 		QuoteHash:           quoteHash,
 		DepositAddress:      derivation.Address,
 		Signature:           quoteSignature,
 		RequiredLiquidity:   requiredLiquidity,
 		State:               quote.PeginStateWaitingForDeposit,
 		OwnerAccountAddress: owner,
-	}, nil
+	}
+	if err = entities.ValidateStruct(retainedQuote); err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	}
+	return retainedQuote, nil
 }

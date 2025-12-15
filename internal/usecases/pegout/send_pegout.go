@@ -52,14 +52,16 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 	var pegoutQuote *quote.PegoutQuote
 	var receipt blockchain.TransactionReceipt
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	}
+
 	if err = useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
 		return err
 	}
 
-	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
-	} else if pegoutQuote == nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
+	if pegoutQuote, err = useCase.getQuote(ctx, retainedQuote); err != nil {
+		return err
 	}
 
 	if receipt, err = useCase.validateQuote(ctx, retainedQuote, pegoutQuote); err != nil {
@@ -87,6 +89,17 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 		return usecases.WrapUseCaseErrorArgs(usecases.SendPegoutId, err, usecases.ErrorArg("quoteHash", retainedQuote.QuoteHash))
 	}
 	return nil
+}
+
+func (useCase *SendPegoutUseCase) getQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
+	var pegoutQuote *quote.PegoutQuote
+	var err error
+	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	} else if pegoutQuote == nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
+	}
+	return pegoutQuote, nil
 }
 
 func (useCase *SendPegoutUseCase) publishErrorEvent(
@@ -142,7 +155,7 @@ func (useCase *SendPegoutUseCase) validateQuote(
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.ExpiredQuoteError, false)
 	}
 
-	if completed, err = useCase.contracts.Lbc.IsPegOutQuoteCompleted(retainedQuote.QuoteHash); err != nil {
+	if completed, err = useCase.contracts.PegOut.IsPegOutQuoteCompleted(retainedQuote.QuoteHash); err != nil {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	} else if completed {
 		return blockchain.TransactionReceipt{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, fmt.Errorf("quote %s was already completed", retainedQuote.QuoteHash), false)
@@ -163,6 +176,17 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 	if err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
+	}
+
+	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
+		retainedQuote.UserRskTxHash = receipt.TransactionHash
+		// Check if it's a non-recoverable error:
+		// - "(non-recoverable)" marker from CreateUnfundedTransactionWithOpReturn (bad input)
+		// - "reverted with:" from parsed contract reverts
+		errorStr := err.Error()
+		isNonRecoverable := strings.Contains(errorStr, "(non-recoverable)") ||
+			strings.Contains(errorStr, "reverted with:")
+		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, !isNonRecoverable)
 	}
 
 	var txResult blockchain.BitcoinTransactionResult
@@ -187,6 +211,32 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 		Error:         err,
 	})
 	return retainedQuote, err
+}
+
+func (useCase *SendPegoutUseCase) validatePegoutTransaction(
+	retainedQuote quote.RetainedPegoutQuote,
+	pegoutQuote *quote.PegoutQuote,
+	quoteHashBytes []byte,
+) error {
+	rawTx, err := useCase.btcWallet.CreateUnfundedTransactionWithOpReturn(
+		pegoutQuote.DepositAddress,
+		pegoutQuote.Value,
+		quoteHashBytes,
+	)
+	if err != nil {
+		// CreateUnfundedTransactionWithOpReturn errors are typically bad input (invalid address, etc.)
+		// These are non-recoverable, so we mark them explicitly
+		return fmt.Errorf("failed to create unfunded transaction (non-recoverable): %w", err)
+	}
+
+	if err = useCase.contracts.PegOut.ValidatePegout(retainedQuote.QuoteHash, rawTx); err != nil {
+		// ValidatePegout errors are handled in pegout_contract.go to distinguish:
+		// - Contract reverts (marked with "reverted with:") → non-recoverable
+		// - RPC/network errors (marked with "error validating pegout:") → recoverable
+		return fmt.Errorf("transaction validation failed: %w", err)
+	}
+
+	return nil
 }
 
 func (useCase *SendPegoutUseCase) validateBalance(

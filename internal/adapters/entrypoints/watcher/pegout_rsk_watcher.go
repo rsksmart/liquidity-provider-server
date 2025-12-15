@@ -194,7 +194,7 @@ func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromB
 	var err error
 	var deposits []quote.PegoutDeposit
 
-	deposits, err = watcher.contracts.Lbc.GetDepositEvents(ctx, fromBlock, &toBlock)
+	deposits, err = watcher.contracts.PegOut.GetDepositEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		log.Error(pegoutRskWatcherLog(blockchain.GetPegoutDepositsErrorTemplate, fromBlock, toBlock))
 		return

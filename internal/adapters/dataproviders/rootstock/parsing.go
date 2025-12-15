@@ -75,8 +75,11 @@ func convertReceiptLogs(receipt *geth.Receipt) []blockchain.TransactionLog {
 // ParseDepositEvent parses a PegOutDeposit event from a transaction receipt.
 // It assumes the following event signature:event PegOutDeposit(bytes32 indexed quoteHash, address indexed sender, uint256 amount, uint256 timestamp);
 func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.ParsedLog[quote.PegoutDeposit], error) {
-	const eventName = "PegOutDeposit"
-	abi, err := bindings.LiquidityBridgeContractMetaData.GetAbi()
+	const (
+		eventName   = "PegOutDeposit"
+		eventTopics = 4
+	)
+	abi, err := bindings.IPegOutMetaData.GetAbi()
 	if err != nil {
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
 	}
@@ -88,18 +91,21 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 	}
 
 	log := receipt.Logs[index]
-	event := new(bindings.LiquidityBridgeContractPegOutDeposit)
-	if err = abi.UnpackIntoInterface(event, eventName, log.Data); err != nil {
-		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
+	if len(log.Topics) != eventTopics {
+		return blockchain.ParsedLog[quote.PegoutDeposit]{}, errors.New("invalid number of topics for PegOutDeposit event")
 	}
 
-	if len(log.Topics) != 3 {
-		return blockchain.ParsedLog[quote.PegoutDeposit]{}, errors.New("invalid number of topics for PegOutDeposit event")
+	event := new(bindings.IPegOutPegOutDeposit)
+	if err = abi.UnpackIntoInterface(event, eventName, log.Data); err != nil {
+		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
 	}
 
 	// indexed args
 	event.QuoteHash = common.BytesToHash(log.Topics[1][:])
 	event.Sender = common.BytesToAddress(log.Topics[2][:])
+	timestamp := new(big.Int)
+	timestamp.SetBytes(log.Topics[3][:])
+	event.Timestamp = timestamp
 
 	return blockchain.ParsedLog[quote.PegoutDeposit]{
 		Log: quote.PegoutDeposit{

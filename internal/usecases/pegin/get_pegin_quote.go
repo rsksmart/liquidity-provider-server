@@ -70,10 +70,14 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var daoTxAmounts usecases.DaoAmounts
 	var peginQuote quote.PeginQuote
 	var creationData quote.PeginCreationData
-	var fedAddress, hash string
+	var fedAddress string
 	var errorArgs usecases.ErrorArgs
 	var err error
 	var estimatedCallGas *entities.Wei
+
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
+	}
 
 	peginConfiguration := useCase.peginLp.PeginConfiguration(ctx)
 	if errorArgs, err = useCase.validateRequest(peginConfiguration, request); err != nil {
@@ -113,7 +117,18 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, err
 	}
 
-	if hash, err = useCase.contracts.Lbc.HashPeginQuote(peginQuote); err != nil {
+	return useCase.storeResult(ctx, peginQuote, creationData)
+}
+
+func (useCase *GetQuoteUseCase) storeResult(
+	ctx context.Context,
+	peginQuote quote.PeginQuote,
+	creationData quote.PeginCreationData,
+) (GetPeginQuoteResult, error) {
+	var hash string
+	var err error
+
+	if hash, err = useCase.contracts.PegIn.HashPeginQuote(peginQuote); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	createdQuote := quote.CreatedPeginQuote{Quote: peginQuote, CreationData: creationData, Hash: hash}
@@ -164,7 +179,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 
 	peginQuote := quote.PeginQuote{
 		FedBtcAddress:      fedAddress,
-		LbcAddress:         useCase.contracts.Lbc.GetAddress(),
+		LbcAddress:         useCase.contracts.PegIn.GetAddress(),
 		LpRskAddress:       useCase.lp.RskAddress(),
 		BtcRefundAddress:   btcRefundAddress,
 		RskRefundAddress:   request.rskRefundAddress,
@@ -196,7 +211,7 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	var daoFeePercentage uint64
 	var err error
 
-	if daoFeePercentage, err = useCase.contracts.FeeCollector.DaoFeePercentage(); err != nil {
+	if daoFeePercentage, err = useCase.contracts.PegIn.DaoFeePercentage(); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {

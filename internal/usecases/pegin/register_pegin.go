@@ -41,6 +41,10 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 	var peginQuote *quote.PeginQuote
 	var params blockchain.RegisterPeginParams
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	}
+
 	if retainedQuote.State != quote.PeginStateCallForUserSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
 	}
@@ -131,7 +135,7 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 	var newState quote.PeginState
 	var err error
 
-	if receipt, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if receipt, err = useCase.contracts.PegIn.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed

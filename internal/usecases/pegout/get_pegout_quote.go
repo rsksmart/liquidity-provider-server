@@ -74,6 +74,10 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	var creationData quote.PegoutCreationData
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return GetPegoutQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
 	gasFeeDao := new(entities.Wei)
 	configuration := useCase.pegoutLp.PegoutConfiguration(ctx)
 	if errorArgs, err = useCase.validateRequest(configuration, request); err != nil {
@@ -153,7 +157,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 	confirmationsForUserTx := generalConfiguration.RskConfirmations.ForValue(request.valueToTransfer)
 	confirmationsForLpTx := generalConfiguration.BtcConfirmations.ForValue(request.valueToTransfer)
 	pegoutQuote := quote.PegoutQuote{
-		LbcAddress:            useCase.contracts.Lbc.GetAddress(),
+		LbcAddress:            useCase.contracts.PegOut.GetAddress(),
 		LpRskAddress:          useCase.lp.RskAddress(),
 		BtcRefundAddress:      request.to,
 		RskRefundAddress:      request.rskRefundAddress,
@@ -184,7 +188,7 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 	var daoTxAmounts usecases.DaoAmounts
 	var daoFeePercentage uint64
 	var err error
-	if daoFeePercentage, err = useCase.contracts.FeeCollector.DaoFeePercentage(); err != nil {
+	if daoFeePercentage, err = useCase.contracts.PegOut.DaoFeePercentage(); err != nil {
 		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
@@ -196,7 +200,7 @@ func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request Quo
 func (useCase *GetQuoteUseCase) persistQuote(ctx context.Context, pegoutQuote quote.PegoutQuote, creationData quote.PegoutCreationData) (string, error) {
 	var hash string
 	var err error
-	if hash, err = useCase.contracts.Lbc.HashPegoutQuote(pegoutQuote); err != nil {
+	if hash, err = useCase.contracts.PegOut.HashPegoutQuote(pegoutQuote); err != nil {
 		return "", usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 

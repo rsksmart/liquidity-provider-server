@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 )
@@ -128,6 +129,13 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Path:    "/pegin/recommended",
 				Method:  http.MethodGet,
 				Handler: handlers.NewRecommendedPeginHandler(useCaseRegistry.RecommendedPeginUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/metrics",
+				Method:  http.MethodGet,
+				Handler: promhttp.Handler(),
 			},
 		},
 	}
