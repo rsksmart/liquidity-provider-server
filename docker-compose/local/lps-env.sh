@@ -280,7 +280,12 @@ curl -sfS -b cookie_jar.txt 'http://localhost:8080/configuration' \
               "8000000000000000000": 40
           },
           "publicLiquidityCheck": true,
-          "maxLiquidity": "10000000000000000000"
+          "maxLiquidity": "10000000000000000000",
+          "excessTolerance": {
+            "isFixed": false,
+            "percentageValue": 15,
+            "fixedValue": "0"
+          }
       }
   }' || { echo "Error in configuring general regtest configuration"; exit 1; }
 

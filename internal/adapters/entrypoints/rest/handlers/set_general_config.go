@@ -37,7 +37,7 @@ func NewSetGeneralConfigHandler(useCase SetGeneralConfigUseCase) http.HandlerFun
 		}
 
 		err = useCase.Run(req.Context(), config)
-		if errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
+		if errors.Is(err, liquidity_provider.AmountOutOfRangeError) || errors.Is(err, liquidity_provider.InvalidConfigurationError) {
 			jsonErr := rest.NewErrorResponseWithDetails("Invalid configuration", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return

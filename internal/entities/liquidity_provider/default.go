@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	DefaultMaxLiquidity = 1000000000000000000
+	DefaultMaxLiquidity                   = 1000000000000000000
+	DefaultExcessToleranceIsFixed         = false
+	DefaultExcessTolerancePercentageValue = 20
+	DefaultExcessToleranceFixedValue      = 100000000000000000
 )
 
 const (
@@ -83,5 +86,10 @@ func DefaultGeneralConfiguration() GeneralConfiguration {
 		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
 		PublicLiquidityCheck: false,
 		MaxLiquidity:         entities.NewWei(DefaultMaxLiquidity),
+		ExcessTolerance: ExcessTolerance{
+			IsFixed:         DefaultExcessToleranceIsFixed,
+			PercentageValue: utils.NewBigFloat64(DefaultExcessTolerancePercentageValue),
+			FixedValue:      entities.NewWei(DefaultExcessToleranceFixedValue),
+		},
 	}
 }
