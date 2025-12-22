@@ -90,10 +90,11 @@ func TestValidateConfiguration(t *testing.T) {
 				"10": 5,
 				"20": 10,
 			},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         entities.NewWei(1000000),
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              entities.NewWei(1000000),
+			ReimbursementWindowBlocks: 100,
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000,"reimbursementWindowBlocks":100}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)
@@ -185,10 +186,11 @@ func TestValidateConfiguration(t *testing.T) {
 				"10": 5,
 				"20": 10,
 			},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         entities.NewWei(1000000),
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              entities.NewWei(1000000),
+			ReimbursementWindowBlocks: 100,
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000,"reimbursementWindowBlocks":100}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)

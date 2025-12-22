@@ -630,10 +630,11 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 func TestFromGeneralConfigurationDTO(t *testing.T) {
 	t.Run("converts valid configuration", func(t *testing.T) {
 		dto := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         "12345678901234567890",
+			RskConfirmations:          map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
+			BtcConfirmations:          map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              "12345678901234567890",
+			ReimbursementWindowBlocks: 100,
 		}
 
 		config, err := pkg.FromGeneralConfigurationDTO(dto)
@@ -643,6 +644,7 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
 		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
 		assert.Equal(t, "12345678901234567890", config.MaxLiquidity.String())
+		assert.Equal(t, uint64(100), config.ReimbursementWindowBlocks)
 		test.AssertNonZeroValues(t, dto)
 	})
 
@@ -650,10 +652,11 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		values := []string{"notanumber", "123.456"}
 		for _, val := range values {
 			invalidDto := pkg.GeneralConfigurationDTO{
-				RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-				BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
-				PublicLiquidityCheck: true,
-				MaxLiquidity:         val,
+				RskConfirmations:          map[string]uint16{"1000000000000000000": 5},
+				BtcConfirmations:          map[string]uint16{"3000000000000000000": 15},
+				PublicLiquidityCheck:      true,
+				MaxLiquidity:              val,
+				ReimbursementWindowBlocks: 100,
 			}
 
 			config, err := pkg.FromGeneralConfigurationDTO(invalidDto)

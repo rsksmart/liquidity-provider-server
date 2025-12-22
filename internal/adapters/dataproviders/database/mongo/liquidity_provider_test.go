@@ -60,8 +60,9 @@ var generalTestConfig = &entities.Signed[liquidity_provider.GeneralConfiguration
 			"5": 6,
 			"7": 8,
 		},
-		PublicLiquidityCheck: false,
-		MaxLiquidity:         entities.NewWei(123),
+		PublicLiquidityCheck:      false,
+		MaxLiquidity:              entities.NewWei(123),
+		ReimbursementWindowBlocks: 100,
 	},
 	Signature: "general signature",
 	Hash:      "general hash",
@@ -152,7 +153,7 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("general")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("general configuration read successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: {Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123} Signature:general signature Hash:general hash}"
+		const expectedLog = "READ interaction with db: {Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123 ReimbursementWindowBlocks:100} Signature:general signature Hash:general hash}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
@@ -276,7 +277,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 	configName := mongo.ConfigurationName("general")
 	filter := bson.D{primitive.E{Key: "name", Value: configName}}
 	t.Run("general configuration upserted successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {Signed:{Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123} Signature:general signature Hash:general hash} Name:general}"
+		const expectedLog = "INSERT interaction with db: {Signed:{Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123 ReimbursementWindowBlocks:100} Signature:general signature Hash:general hash} Name:general}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.GeneralConfiguration]{

@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	DefaultMaxLiquidity = 1000000000000000000
+	DefaultMaxLiquidity              = 1000000000000000000
+	DefaultReimbursementWindowBlocks = 100
 )
 
 const (
@@ -79,9 +80,10 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
-		RskConfirmations:     DefaultRskConfirmationsPerAmount(),
-		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
-		PublicLiquidityCheck: false,
-		MaxLiquidity:         entities.NewWei(DefaultMaxLiquidity),
+		RskConfirmations:          DefaultRskConfirmationsPerAmount(),
+		BtcConfirmations:          DefaultBtcConfirmationsPerAmount(),
+		PublicLiquidityCheck:      false,
+		MaxLiquidity:              entities.NewWei(DefaultMaxLiquidity),
+		ReimbursementWindowBlocks: DefaultReimbursementWindowBlocks,
 	}
 }

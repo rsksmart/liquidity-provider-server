@@ -42,6 +42,9 @@ func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidit
 	if err := useCase.validateMaxLiquidity(ctx, config.MaxLiquidity); err != nil {
 		return err
 	}
+	if err := usecases.ValidateReimbursementWindowBlocks(usecases.SetGeneralConfigId, config.ReimbursementWindowBlocks); err != nil {
+		return err
+	}
 
 	signedConfig, err := usecases.SignConfiguration(usecases.SetGeneralConfigId, useCase.signer, useCase.hashFunc, config)
 	if err != nil {

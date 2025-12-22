@@ -667,11 +667,12 @@ func getGeneralConfigurationMock() *entities.Signed[liquidity_provider.GeneralCo
 				"8000000000000000000": 40,
 				"9000000000000000001": 45,
 			},
-			PublicLiquidityCheck: false,
-			MaxLiquidity:         entities.NewWei(100000000000000000),
+			PublicLiquidityCheck:      false,
+			MaxLiquidity:              entities.NewWei(100000000000000000),
+			ReimbursementWindowBlocks: 100,
 		},
-		Signature: "034a913d067f54f3c096d569f7913836f7d451a81f3fb6cbfbe0177758a1c22603173d0c26c0a3507310fad61bd7275e5b326eb7f3ccfb56d8b13bbab8d8a32100",
-		Hash:      "89b4fbdf620883d99d77324428f5375e2baf4b05c10d12f2a6ee81a5ea0cc956",
+		Signature: "05ba05f9fd2214a4dbcd4f67895c2e4f72ac883dfff7e6f4939c95f939e4f7c13f2f0c22c832824e0fa0004e66a412f945320fa26bcd85fd6d033d036e0b1b5901",
+		Hash:      "5fae8a107cb2c2403b56508879da82ef06bfb7dacc28a39faf459fb1433a51b1",
 	}
 }
 func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfiguration] {

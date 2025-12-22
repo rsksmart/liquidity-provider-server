@@ -71,9 +71,10 @@ func TestDefaultBtcConfirmationsPerAmount_Max(t *testing.T) {
 func TestDefaultGeneralConfiguration(t *testing.T) {
 	config := liquidity_provider.DefaultGeneralConfiguration()
 	assert.Equal(t, liquidity_provider.GeneralConfiguration{
-		RskConfirmations:     liquidity_provider.DefaultRskConfirmationsPerAmount(),
-		BtcConfirmations:     liquidity_provider.DefaultBtcConfirmationsPerAmount(),
-		PublicLiquidityCheck: false,
-		MaxLiquidity:         entities.NewWei(1000000000000000000),
+		RskConfirmations:          liquidity_provider.DefaultRskConfirmationsPerAmount(),
+		BtcConfirmations:          liquidity_provider.DefaultBtcConfirmationsPerAmount(),
+		PublicLiquidityCheck:      false,
+		MaxLiquidity:              entities.NewWei(1000000000000000000),
+		ReimbursementWindowBlocks: liquidity_provider.DefaultReimbursementWindowBlocks,
 	}, config)
 }
