@@ -33,9 +33,13 @@ const fetchData = async (url, elementId, csrfToken) => {
     }
 };
 
-const populateProviderData = (providerData, rskAddress, btcAddress) => {
+const populateProviderData = (providerData, rskAddress, btcAddress, coldWallet) => {
     setTextContent('providerRskAddress', rskAddress);
     setTextContent('providerBtcAddress', btcAddress);
+    setTextContent('coldWalletRskLabel', `Cold Wallet RSK ${coldWallet.Label}`);
+    setTextContent('coldWalletRskAddress', coldWallet.RskAddress);
+    setTextContent('coldWalletBtcLabel', `Cold Wallet BTC ${coldWallet.Label}`);
+    setTextContent('coldWalletBtcAddress', coldWallet.BtcAddress);
     setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
 };
 
@@ -948,6 +952,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const providerData = data.ProviderData;
     const rskAddress = data.RskAddress;
     const btcAddress = data.BtcAddress;
+    const coldWallet = data.ColdWallet;
 
     document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton', csrfToken));
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
@@ -978,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
     populateConfigSection('generalConfig', configurations.general);
     populateConfigSection('peginConfig', configurations.pegin);
     populateConfigSection('pegoutConfig', configurations.pegout);
-    populateProviderData(providerData, rskAddress, btcAddress);
+    populateProviderData(providerData, rskAddress, btcAddress, coldWallet);
 
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
