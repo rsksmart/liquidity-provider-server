@@ -321,9 +321,3 @@ func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.C
 	return nil
 }
 
-func ValidateReimbursementWindowBlocks(useCase UseCaseId, blocks uint64) error {
-	if blocks == 0 {
-		return WrapUseCaseError(useCase, NonPositiveReimbursementWindowError)
-	}
-	return nil
-}

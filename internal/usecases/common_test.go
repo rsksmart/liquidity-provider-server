@@ -458,16 +458,3 @@ func TestValidateConfirmations(t *testing.T) {
 	})
 }
 
-func TestValidateReimbursementWindowBlocks(t *testing.T) {
-	var useCase u.UseCaseId = "validateReimbursementWindow"
-
-	t.Run("should return nil for positive blocks value", func(t *testing.T) {
-		err := u.ValidateReimbursementWindowBlocks(useCase, 100)
-		require.NoError(t, err)
-	})
-
-	t.Run("should fail for zero blocks value", func(t *testing.T) {
-		err := u.ValidateReimbursementWindowBlocks(useCase, 0)
-		require.ErrorIs(t, err, u.NonPositiveReimbursementWindowError)
-	})
-}
