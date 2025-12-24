@@ -37,3 +37,7 @@ func (w *StaticColdWallet) GetBtcAddress() string {
 func (w *StaticColdWallet) GetRskAddress() string {
 	return w.rskAddress
 }
+
+func (w *StaticColdWallet) GetLabel() string {
+	return "Address"
+}
