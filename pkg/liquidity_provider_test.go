@@ -682,6 +682,36 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Empty(t, config)
 		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
 	})
+
+	t.Run("handles maxLiquidity with 18-digit precision correctly", func(t *testing.T) {
+		// 1 RBTC = 1000000000000000000 wei (18 zeros)
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
+			BtcConfirmations:     map[string]uint16{"1000000000000000000": 10},
+			PublicLiquidityCheck: true,
+			MaxLiquidity:         "1000000000000000000",
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
+
+		require.NoError(t, err)
+		assert.Equal(t, "1000000000000000000", config.MaxLiquidity.String())
+	})
+
+	t.Run("handles very large maxLiquidity values", func(t *testing.T) {
+		// 100 RBTC = 100 * 10^18 wei
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
+			BtcConfirmations:     map[string]uint16{"1000000000000000000": 10},
+			PublicLiquidityCheck: false,
+			MaxLiquidity:         "100000000000000000000",
+		}
+
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
+
+		require.NoError(t, err)
+		assert.Equal(t, "100000000000000000000", config.MaxLiquidity.String())
+	})
 }
 
 func TestToBtcAssetLocationDTO(t *testing.T) {

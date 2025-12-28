@@ -97,6 +97,33 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		useCase.AssertNotCalled(t, "Run")
 	})
+	t.Run("should return bad request if maxLiquidity has decimal places", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		// Backend expects wei values (integers), so decimal values should fail
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000.5"}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return success with maxLiquidity having 18 digits precision", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		// 1 RBTC in wei (18 decimal places) - valid large integer
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000000000000000000"}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusNoContent, w.Code)
+		useCase.AssertExpectations(t)
+	})
 	t.Run("should return server internal error if the use case fails", func(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(assert.AnError)
