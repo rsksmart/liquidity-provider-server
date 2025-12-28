@@ -635,9 +635,7 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 			PublicLiquidityCheck: true,
 			MaxLiquidity:         "12345678901234567890",
 		}
-
 		config, err := pkg.FromGeneralConfigurationDTO(dto)
-
 		require.NoError(t, err)
 		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
 		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
@@ -645,72 +643,44 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Equal(t, "12345678901234567890", config.MaxLiquidity.String())
 		test.AssertNonZeroValues(t, dto)
 	})
-
 	t.Run("returns error on invalid max liquidity", func(t *testing.T) {
-		values := []string{"notanumber", "123.456"}
-		for _, val := range values {
-			invalidDto := pkg.GeneralConfigurationDTO{
-				RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-				BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
-				PublicLiquidityCheck: true,
-				MaxLiquidity:         val,
+		for _, val := range []string{"notanumber", "123.456"} {
+			dto := pkg.GeneralConfigurationDTO{
+				RskConfirmations: map[string]uint16{"1000000000000000000": 5},
+				BtcConfirmations: map[string]uint16{"3000000000000000000": 15},
+				MaxLiquidity:     val,
 			}
-
-			config, err := pkg.FromGeneralConfigurationDTO(invalidDto)
+			config, err := pkg.FromGeneralConfigurationDTO(dto)
 			assert.Empty(t, config)
 			require.ErrorContains(t, err, "cannot deserialize max liquidity "+val)
 		}
 	})
-
 	t.Run("returns error on invalid numeric keys", func(t *testing.T) {
-		invalidBtc := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "notanumber": 20},
-			PublicLiquidityCheck: true,
+		cases := []struct {
+			rsk, btc map[string]uint16
+			errMsg   string
+		}{
+			{map[string]uint16{"1000000000000000000": 5}, map[string]uint16{"notanumber": 20}, "BTC confirmations key notanumber"},
+			{map[string]uint16{"invalid": 10}, map[string]uint16{"3000000000000000000": 15}, "RSK confirmations key invalid"},
 		}
-		invalidRsk := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "invalid": 10},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
-			PublicLiquidityCheck: false,
+		for _, tc := range cases {
+			dto := pkg.GeneralConfigurationDTO{RskConfirmations: tc.rsk, BtcConfirmations: tc.btc}
+			config, err := pkg.FromGeneralConfigurationDTO(dto)
+			assert.Empty(t, config)
+			require.ErrorContains(t, err, "cannot deserialize "+tc.errMsg)
 		}
-
-		config, err := pkg.FromGeneralConfigurationDTO(invalidBtc)
-		assert.Empty(t, config)
-		require.ErrorContains(t, err, "cannot deserialize BTC confirmations key notanumber")
-
-		config, err = pkg.FromGeneralConfigurationDTO(invalidRsk)
-		assert.Empty(t, config)
-		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
 	})
-
-	t.Run("handles maxLiquidity with 18-digit precision correctly", func(t *testing.T) {
-		// 1 RBTC = 1000000000000000000 wei (18 zeros)
-		dto := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-			BtcConfirmations:     map[string]uint16{"1000000000000000000": 10},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         "1000000000000000000",
+	t.Run("handles various maxLiquidity values", func(t *testing.T) {
+		for _, maxLiq := range []string{"1000000000000000000", "100000000000000000000"} {
+			dto := pkg.GeneralConfigurationDTO{
+				RskConfirmations: map[string]uint16{"1000000000000000000": 5},
+				BtcConfirmations: map[string]uint16{"1000000000000000000": 10},
+				MaxLiquidity:     maxLiq,
+			}
+			config, err := pkg.FromGeneralConfigurationDTO(dto)
+			require.NoError(t, err)
+			assert.Equal(t, maxLiq, config.MaxLiquidity.String())
 		}
-
-		config, err := pkg.FromGeneralConfigurationDTO(dto)
-
-		require.NoError(t, err)
-		assert.Equal(t, "1000000000000000000", config.MaxLiquidity.String())
-	})
-
-	t.Run("handles very large maxLiquidity values", func(t *testing.T) {
-		// 100 RBTC = 100 * 10^18 wei
-		dto := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-			BtcConfirmations:     map[string]uint16{"1000000000000000000": 10},
-			PublicLiquidityCheck: false,
-			MaxLiquidity:         "100000000000000000000",
-		}
-
-		config, err := pkg.FromGeneralConfigurationDTO(dto)
-
-		require.NoError(t, err)
-		assert.Equal(t, "100000000000000000000", config.MaxLiquidity.String())
 	})
 }
 
