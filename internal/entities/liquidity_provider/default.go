@@ -79,9 +79,11 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
-		RskConfirmations:     DefaultRskConfirmationsPerAmount(),
-		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
-		PublicLiquidityCheck: false,
-		MaxLiquidity:         entities.NewWei(DefaultMaxLiquidity),
+		RskConfirmations:          DefaultRskConfirmationsPerAmount(),
+		BtcConfirmations:          DefaultBtcConfirmationsPerAmount(),
+		PublicLiquidityCheck:      false,
+		MaxLiquidity:              entities.NewWei(DefaultMaxLiquidity),
+		ExcessToleranceFixed:      entities.NewWei(0),
+		ExcessTolerancePercentage: utils.NewBigFloat64(0),
 	}
 }

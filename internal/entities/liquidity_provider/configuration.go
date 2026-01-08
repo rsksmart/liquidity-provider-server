@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"slices"
 
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 var (
@@ -64,10 +65,12 @@ func (config PegoutConfiguration) GetFeePercentage() *utils.BigFloat {
 }
 
 type GeneralConfiguration struct {
-	RskConfirmations     ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
-	BtcConfirmations     ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
-	PublicLiquidityCheck bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
-	MaxLiquidity         *entities.Wei          `json:"maxLiquidity" bson:"max_liquidity" validate:""`
+	RskConfirmations          ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
+	BtcConfirmations          ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
+	PublicLiquidityCheck      bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
+	MaxLiquidity              *entities.Wei          `json:"maxLiquidity" bson:"max_liquidity" validate:""`
+	ExcessToleranceFixed      *entities.Wei          `json:"excessToleranceFixed" bson:"excess_tolerance_fixed" validate:""`
+	ExcessTolerancePercentage *utils.BigFloat        `json:"excessTolerancePercentage" bson:"excess_tolerance_percentage" validate:""`
 }
 
 type HashedCredentials struct {
