@@ -630,10 +630,12 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 func TestFromGeneralConfigurationDTO(t *testing.T) {
 	t.Run("converts valid configuration", func(t *testing.T) {
 		dto := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         "12345678901234567890",
+			RskConfirmations:          map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
+			BtcConfirmations:          map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              "12345678901234567890",
+			ExcessToleranceFixed:      "1000000000000000000",
+			ExcessTolerancePercentage: 5.5,
 		}
 		config, err := pkg.FromGeneralConfigurationDTO(dto)
 		require.NoError(t, err)
@@ -641,6 +643,9 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
 		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
 		assert.Equal(t, "12345678901234567890", config.MaxLiquidity.String())
+		assert.Equal(t, "1000000000000000000", config.ExcessToleranceFixed.String())
+		percentage, _ := config.ExcessTolerancePercentage.Native().Float64()
+		assert.InDelta(t, 5.5, percentage, 0.0001)
 		test.AssertNonZeroValues(t, dto)
 	})
 	t.Run("returns error on invalid max liquidity", func(t *testing.T) {
