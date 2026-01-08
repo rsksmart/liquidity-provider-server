@@ -10,7 +10,10 @@ import {
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
     isToggableFeeKey,
-    formatCap
+    formatCap,
+    isExcessToleranceFixedKey,
+    validateExcessToleranceFixed,
+    validateExcessTolerancePercentage
 } from './configUtils.js';
 
 const generalChanged = { value: false };
@@ -45,7 +48,12 @@ const populateProviderData = (providerData, rskAddress, btcAddress, coldWallet) 
     setTextContent('isOperational', providerData.status ? "Operational" : "Not Operational");
 };
 
-const createInput = (section, key, value) => {
+const createInput = (section, key, value, config) => {
+    // Skip excessTolerancePercentage - handled together with excessToleranceFixed
+    if (key === 'excessTolerancePercentage') {
+        return;
+    }
+
     const div = document.createElement('div');
     div.classList.add('mb-3');
 
@@ -63,6 +71,10 @@ const createInput = (section, key, value) => {
 
     if (typeof value === 'boolean') {
         createCheckboxInput(inputContainer, section, key, value);
+    } else if (isExcessToleranceFixedKey(key)) {
+        // Handle excess tolerance with combined fixed/percentage toggle
+        const percentageValue = config?.excessTolerancePercentage ?? 0;
+        createExcessToleranceInput(inputContainer, label, section, value, percentageValue);
     } else if (isToggableFeeKey(key)) {
         createToggableFeeInput(inputContainer, label, section, key, value);
     } else if (isFeeKey(key)) {
@@ -136,6 +148,86 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     label.appendChild(questionIcon);
 };
 
+const createExcessToleranceInput = (inputContainer, label, section, fixedValue, percentageValue) => {
+    // Toggle: ON = Fixed mode, OFF = Percentage mode
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.classList.add('form-check-input');
+    toggle.style.marginRight = '10px';
+    toggle.dataset.key = 'excessTolerance_isFixed';
+    toggle.setAttribute('data-testid', `config-${section.id.replace('Config','')}-excessTolerance-toggle`);
+
+    const toggleLabel = document.createElement('span');
+    toggleLabel.classList.add('toggle-label');
+    toggleLabel.style.marginRight = '10px';
+    toggleLabel.style.fontSize = '0.85em';
+    toggleLabel.style.color = '#666';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.style.width = '40%';
+    input.classList.add('form-control');
+    input.dataset.key = 'excessTolerance_value';
+    input.setAttribute('data-testid', `config-${section.id.replace('Config','')}-excessTolerance-input`);
+
+    // Store original values for reference
+    input.dataset.originalFixedValue = fixedValue;
+    input.dataset.originalPercentageValue = percentageValue;
+
+    // Determine initial mode based on which value is non-zero
+    const fixedNum = parseFloat(fixedValue) || 0;
+    const percentageNum = parseFloat(percentageValue) || 0;
+
+    if (fixedNum > 0) {
+        // Fixed mode
+        toggle.checked = true;
+        toggleLabel.textContent = 'Fixed';
+        input.value = weiToEther(fixedValue);
+        input.placeholder = 'Enter amount in rBTC';
+    } else if (percentageNum > 0) {
+        // Percentage mode
+        toggle.checked = false;
+        toggleLabel.textContent = 'Percentage';
+        input.value = percentageValue;
+        input.placeholder = 'Enter percentage (0-100)';
+    } else {
+        // Default to percentage mode when both are 0
+        toggle.checked = false;
+        toggleLabel.textContent = 'Percentage';
+        input.value = '0';
+        input.placeholder = 'Enter percentage (0-100)';
+    }
+
+    toggle.addEventListener('change', () => {
+        if (toggle.checked) {
+            // Fixed mode
+            toggleLabel.textContent = 'Fixed';
+            input.placeholder = 'Enter amount in rBTC';
+            // Convert current value if possible, otherwise clear
+            const currentVal = parseFloat(input.value);
+            if (!isNaN(currentVal) && currentVal > 0) {
+                input.value = '';
+            } else {
+                input.value = '0';
+            }
+        } else {
+            // Percentage mode
+            toggleLabel.textContent = 'Percentage';
+            input.placeholder = 'Enter percentage (0-100)';
+            input.value = '0';
+        }
+        setChanged(section.id);
+    });
+
+    input.addEventListener('input', () => setChanged(section.id));
+
+    inputContainer.appendChild(toggle);
+    inputContainer.appendChild(toggleLabel);
+    inputContainer.appendChild(input);
+    const questionIcon = createQuestionIcon(getTooltipText('excessTolerance'));
+    label.appendChild(questionIcon);
+};
+
 const createFeeInput = (inputContainer, label, section, key, value) => {
     const input = document.createElement('input');
     input.type = 'text';
@@ -196,7 +288,8 @@ const createQuestionIcon = (tooltipText) => {
 
 const getDisplayLabel = (key) => {
     const labels = {
-        maxLiquidity: 'Maximum Liquidity'
+        maxLiquidity: 'Maximum Liquidity',
+        excessToleranceFixed: 'Excess Tolerance'
     };
     return labels[key] || key;
 };
@@ -213,7 +306,8 @@ const getTooltipText = (key) => {
         bridgeTransactionMin: 'The amount of rBTC that needs to be gathered in peg out refunds before executing a native peg out.',
         fixedFee: 'A fixed fee charged for transactions.',
         feePercentage: 'A percentage fee charged based on the transaction amount.',
-        maxLiquidity: 'The maximum liquidity (in rBTC) the provider is willing to offer. Must be a positive value with up to 18 decimal places.'
+        maxLiquidity: 'The maximum liquidity (in rBTC) the provider is willing to offer. Must be a positive value with up to 18 decimal places.',
+        excessTolerance: 'The excess tolerance for transactions. Toggle ON for a fixed amount (in rBTC), OFF for a percentage (0-100%).'
     };
     return tooltips[key] || 'No description available';
 };
@@ -333,7 +427,7 @@ const populateConfigSection = (sectionId, config) => {
         if (key === 'rskConfirmations' || key === 'btcConfirmations') {
             createConfirmationConfig(section, key, value);
         } else {
-            createInput(section, key, value);
+            createInput(section, key, value, config);
         }
     });
 };
@@ -483,6 +577,11 @@ function getRegularConfig(sectionId) {
         const key = input.dataset.key;
         let value;
 
+        // Skip excess tolerance value - handled separately
+        if (key === 'excessTolerance_value') {
+            return;
+        }
+
         if (input.disabled) {
             if (isfeePercentageKey(key)) {
                 value = 0;
@@ -541,8 +640,45 @@ function getRegularConfig(sectionId) {
 
     checkboxes.forEach(input => {
         const key = input.dataset.key;
-        if (!key.endsWith('_enabled')) config[key] = input.checked;
+        if (!key.endsWith('_enabled') && key !== 'excessTolerance_isFixed') {
+            config[key] = input.checked;
+        }
     });
+
+    // Handle excess tolerance separately
+    const excessToleranceToggle = document.querySelector(`#${sectionId} input[data-key="excessTolerance_isFixed"]`);
+    const excessToleranceInput = document.querySelector(`#${sectionId} input[data-key="excessTolerance_value"]`);
+    
+    if (excessToleranceToggle && excessToleranceInput) {
+        const isFixed = excessToleranceToggle.checked;
+        const rawValue = excessToleranceInput.value.trim();
+
+        if (isFixed) {
+            // Fixed mode - validate as non-negative number and convert to wei
+            const validation = validateExcessToleranceFixed(rawValue);
+            if (!validation.isValid) {
+                showErrorToast(`"${sectionId}": ${validation.error}`);
+                throw new Error(validation.error);
+            }
+            try {
+                config.excessToleranceFixed = rawValue === '' || rawValue === '0' ? '0' : etherToWei(rawValue).toString();
+                config.excessTolerancePercentage = 0;
+            } catch (error) {
+                showErrorToast(`"${sectionId}": Invalid input "${rawValue}" for excess tolerance fixed. Please enter a valid number.`);
+                throw error;
+            }
+        } else {
+            // Percentage mode - validate as 0-100 percentage
+            const validation = validateExcessTolerancePercentage(rawValue);
+            if (!validation.isValid) {
+                showErrorToast(`"${sectionId}": ${validation.error}`);
+                throw new Error(validation.error);
+            }
+            const percentageValue = parseFloat(rawValue) || 0;
+            config.excessToleranceFixed = '0';
+            config.excessTolerancePercentage = percentageValue;
+        }
+    }
 
     return config;
 }
