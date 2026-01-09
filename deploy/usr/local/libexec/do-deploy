@@ -1,0 +1,3 @@
+# deploy script
+/home/ubuntu/flyover-deploy/liquidity-provider-server && docker system prune -f && git fetch --all &&  latestTag=$(git describe --tags "$(git rev-list --tags --max-count=1)")
+&& git checkout $latestTag && docker-compose -f docker-compose.yml -f loki-mainnet.yml --env-file .env.mainnet up -d --build lps
