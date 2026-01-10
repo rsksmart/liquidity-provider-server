@@ -92,10 +92,10 @@ func TestPegoutMongoRepository_InsertQuote(t *testing.T) {
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(quoteCollection)
 		db.EXPECT().Collection(mongo.PegoutCreationDataCollection).Return(creationDataCollection)
 		quoteCollection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q mongo.StoredPegoutQuote) bool {
-			return q.Hash == test.AnyString && reflect.TypeOf(quote.PegoutQuote{}).NumField() == test.CountNonZeroValues(q.PegoutQuote)
+			return q.Hash == test.AnyString && reflect.TypeFor[quote.PegoutQuote]().NumField() == test.CountNonZeroValues(q.PegoutQuote)
 		})).Return(nil, nil).Once()
 		creationDataCollection.EXPECT().InsertOne(mock.Anything, mock.MatchedBy(func(q mongo.StoredPegoutCreationData) bool {
-			return q.Hash == test.AnyString && reflect.TypeOf(quote.PegoutCreationData{}).NumField() == test.CountNonZeroValues(q.PegoutCreationData)
+			return q.Hash == test.AnyString && reflect.TypeFor[quote.PegoutCreationData]().NumField() == test.CountNonZeroValues(q.PegoutCreationData)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
@@ -276,7 +276,7 @@ func TestPegoutMongoRepository_InsertRetainedQuote(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {QuoteHash:27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f DepositAddress:mkE1WWdiu5VgjfugomDk8GxV6JdEEEJR9s Signature:5c9eab91c753355f87c19d09ea88b2fd02773981e513bc2821fed5ceba0d452a0a3d21e2252cb35348ce5c6803117e3abb62837beb8f5866a375ce66587d004b1c RequiredLiquidity:55 State:WaitingForDepositConfirmations UserRskTxHash:0x6b2e1e4daf8cf00c5c3534b72cdeec3526e8a38f70c11e44888b6e4ae1ee7d38 LpBtcTxHash:6ac3779dc33ad52f3409cbb909bcd458745995496a2a3954406206f6e5d4cb0e RefundPegoutTxHash:0x8e773a2826e73f8e5792304379a7e46dff38f17089c6d344335e03537b31c2bc BridgeRefundTxHash:0x4f3f6f0664a732e4c907971e75c1e3fd8671461dcb53f566660432fc47255d8b BridgeRefundGasUsed:21000 BridgeRefundGasPrice:20000000000 RefundPegoutGasUsed:22000 RefundPegoutGasPrice:25000000000 SendPegoutBtcFee:15000 BtcReleaseTxHash:0xd8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb OwnerAccountAddress:0x233845a26a4dA08E16218e7B401501D048670674}"
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q quote.RetainedPegoutQuote) bool {
-			return q.QuoteHash == testRetainedPegoutQuote.QuoteHash && reflect.TypeOf(quote.RetainedPegoutQuote{}).NumField() == test.CountNonZeroValues(q)
+			return q.QuoteHash == testRetainedPegoutQuote.QuoteHash && reflect.TypeFor[quote.RetainedPegoutQuote]().NumField() == test.CountNonZeroValues(q)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
