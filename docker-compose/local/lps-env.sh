@@ -233,9 +233,9 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 
     # Save current branch and checkout the deployment script branch
     ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    echo "Switching to FLY-2116/add-deployment-scripts-for-lbc-split branch for deployment..."
-    git fetch origin FLY-2116/add-deployment-scripts-for-lbc-split 2>/dev/null || true
-    git checkout FLY-2116/add-deployment-scripts-for-lbc-split 2>/dev/null || git checkout -b FLY-2116/add-deployment-scripts-for-lbc-split origin/FLY-2116/add-deployment-scripts-for-lbc-split
+    echo "Switching to QA-Test branch for deployment..."
+    git fetch origin QA-Test 2>/dev/null || true
+    git checkout QA-Test 2>/dev/null || git checkout -b QA-Test origin/QA-Test
 
     echo "Running Foundry deployment script..."
     DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
@@ -258,10 +258,10 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     popd > /dev/null
 
     # Parse the deployment output to get addresses
-    COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'CollateralManagement Proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'FlyoverDiscovery Proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegIn Proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegOut Proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
+    COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'CollateralManagement proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
+    DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'FlyoverDiscovery proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
+    PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegInContract proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
+    PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegOutContract proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
 
     if [ -z "$COLLATERAL_PROXY" ] || [ -z "$DISCOVERY_PROXY" ] || [ -z "$PEGIN_PROXY" ] || [ -z "$PEGOUT_PROXY" ]; then
       echo "ERROR: Failed to parse contract addresses from deployment output"
