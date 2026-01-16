@@ -9,18 +9,38 @@ export COMMIT_TAG
 
 # Detect OS
 OS_TYPE="$(uname)"
+ARCH_TYPE="$(uname -m)"
+
+case "$ARCH_TYPE" in
+  arm64|aarch64) LPS_DOCKER_ARCH_DEFAULT="arm64" ;;
+  x86_64|amd64) LPS_DOCKER_ARCH_DEFAULT="amd64" ;;
+  *)
+    echo "Unsupported architecture: $ARCH_TYPE"
+    exit 1
+    ;;
+esac
 
 if [[ "$OS_TYPE" == "Darwin" ]]; then
     # macOS
     echo "Running on macOS"
     SED_INPLACE=("sed" "-i" "")
+    LPS_DOCKERFILE_DEFAULT="docker-compose/lps/Dockerfile.prebuilt"
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     # Assume Ubuntu or other Linux
     echo "Running on Linux"
     SED_INPLACE=("sed" "-i")
+    LPS_DOCKERFILE_DEFAULT="docker-compose/lps/Dockerfile"
 else
     echo "Unsupported OS: $OS_TYPE"
     exit 1
+fi
+
+if [ -z "${LPS_DOCKERFILE}" ]; then
+  export LPS_DOCKERFILE="$LPS_DOCKERFILE_DEFAULT"
+fi
+
+if [ -z "${LPS_DOCKER_ARCH}" ]; then
+  export LPS_DOCKER_ARCH="$LPS_DOCKER_ARCH_DEFAULT"
 fi
 
 if [ -z "${LPS_STAGE}" ]; then
@@ -238,6 +258,7 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     git checkout QA-Test 2>/dev/null || git checkout -b QA-Test origin/QA-Test
 
     echo "Running Foundry deployment script..."
+    export DEV_SIGNER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY"
     DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
       --rpc-url http://127.0.0.1:4444 \
       --private-key "$DEPLOYER_PRIVATE_KEY" \
@@ -257,11 +278,11 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
     popd > /dev/null
 
-    # Parse the deployment output to get addresses
-    COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'CollateralManagement proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'FlyoverDiscovery proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegInContract proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
-    PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -oP 'PegOutContract proxy:\s*\K0x[a-fA-F0-9]+' | head -1)
+    # Parse the deployment output to get addresses (portable grep)
+    COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'CollateralManagement proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'FlyoverDiscovery proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegInContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegOutContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
 
     if [ -z "$COLLATERAL_PROXY" ] || [ -z "$DISCOVERY_PROXY" ] || [ -z "$PEGIN_PROXY" ] || [ -z "$PEGOUT_PROXY" ]; then
       echo "ERROR: Failed to parse contract addresses from deployment output"
@@ -317,6 +338,39 @@ echo "  COLLATERAL_MANAGEMENT_ADDRESS: $COLLATERAL_MANAGEMENT_ADDRESS"
 echo "  DISCOVERY_ADDRESS: $DISCOVERY_ADDRESS"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
+
+if [ "$LPS_DOCKERFILE" = "docker-compose/lps/Dockerfile.prebuilt" ]; then
+  # Build LPS binary locally (cross-compile) to avoid Go segfault in Docker on Mac
+  echo "Building LPS binary locally (cross-compile for linux/${LPS_DOCKER_ARCH})..."
+  pushd ../../ > /dev/null
+  COMMIT_HASH_VALUE=$(git rev-parse HEAD)
+  COMMIT_TAG_VALUE=$(git describe --exact-match --tags 2>/dev/null || echo "")
+  mkdir -p build
+  GOOS=linux GOARCH="${LPS_DOCKER_ARCH}" CGO_ENABLED=0 go build -mod=mod -a -trimpath \
+    -ldflags="-s -w -X 'main.BuildVersion=${COMMIT_HASH_VALUE}' -X 'main.BuildTime=$(date)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildVersion=${COMMIT_TAG_VALUE}' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildRevision=${COMMIT_HASH_VALUE}'" \
+    -o ./build/liquidity-provider-server ./cmd/application/main.go
+
+  if [ ! -f "./build/liquidity-provider-server" ]; then
+    echo "ERROR: Binary build failed!"
+    exit 1
+  fi
+
+  # Verify it's a Linux binary for the requested architecture
+  if [ "$LPS_DOCKER_ARCH" = "arm64" ]; then
+    if ! file ./build/liquidity-provider-server | grep -q "ELF.*aarch64"; then
+      echo "WARNING: Binary might not be correct Linux/arm64 format"
+      file ./build/liquidity-provider-server
+    fi
+  elif [ "$LPS_DOCKER_ARCH" = "amd64" ]; then
+    if ! file ./build/liquidity-provider-server | grep -q "ELF.*x86-64"; then
+      echo "WARNING: Binary might not be correct Linux/amd64 format"
+      file ./build/liquidity-provider-server
+    fi
+  fi
+
+  popd > /dev/null
+fi
+
 # start LPS
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
