@@ -10,7 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"golang.org/x/term"
 )
 
@@ -23,7 +23,7 @@ type ResignUtilsInput struct {
 func main() {
 	const errorCode = 2
 	scripts.SetUsageMessage(
-		"This script is used to resign from the Liquidity Provider system and withdraw collateral from the Collateral Management contract.",
+		"This script is used to resign from the Liquidity Provider system and withdraw collateral from the Liquidity Bridge Contract.",
 	)
 	defer scripts.EnableSecureBuffers()()
 
@@ -40,21 +40,21 @@ func main() {
 	}
 
 	ctx := context.Background()
-	collateralContract, err := scripts.CreateCollateralManagementContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
-		scripts.ExitWithError(errorCode, "Error accessing Collateral Management contract", err)
+		scripts.ExitWithError(errorCode, "Error accessing Liquidity Bridge Contract", err)
 	}
 
 	if scriptInput.Resign {
-		if err = ExecuteResign(collateralContract); err != nil {
+		if err = ExecuteResign(lbc); err != nil {
 			scripts.ExitWithError(errorCode, "Error executing resign", err)
 		}
 		fmt.Println("Resign executed successfully.")
 		return
 	}
 
-	if err = ExecuteWithdrawCollateral(collateralContract); err != nil {
-		if errors.Is(err, liquidity_provider.ProviderNotResignedError) {
+	if err = ExecuteWithdrawCollateral(lbc); err != nil {
+		if errors.Is(err, usecases.ProviderNotResignedError) {
 			scripts.ExitWithError(errorCode, "Withdraw collateral rejected", err)
 		}
 		scripts.ExitWithError(errorCode, "Error executing withdraw collateral", err)
@@ -70,9 +70,6 @@ func ReadResignUtilsInput(scriptInput *ResignUtilsInput) {
 
 func ParseResignUtilsInput(parseFunc scripts.ParseFunc, input *ResignUtilsInput) error {
 	parseFunc()
-	if err := scripts.ApplyDefaultEnvFile(&input.BaseInput); err != nil {
-		return fmt.Errorf("error loading default env file: %w", err)
-	}
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	if err := validate.Struct(input); err != nil {
 		return fmt.Errorf("invalid input: %w", err)
