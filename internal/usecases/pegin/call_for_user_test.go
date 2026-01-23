@@ -19,6 +19,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCallForUserUseCase_Run_Paused(t *testing.T) {
+	retainedPeginQuote := quote.RetainedPeginQuote{
+		QuoteHash:         "101b1c",
+		DepositAddress:    test.AnyAddress,
+		Signature:         "signature",
+		RequiredLiquidity: entities.NewWei(1500),
+		State:             quote.PeginStateWaitingForDepositConfirmations,
+		UserBtcTxHash:     "0x121a1b",
+	}
+	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	bridge := new(mocks.BridgeMock)
+	btc := new(mocks.BtcRpcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	peginContract.EXPECT().GetAddress().Return("test-contract")
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	useCase := pegin.NewCallForUserUseCase(contracts, quoteRepository, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, eventBus, mutex)
+	err := useCase.Run(context.Background(), retainedPeginQuote)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 // nolint:funlen
 func TestCallForUserUseCase_Run(t *testing.T) {
 	callForUserTxHash := "0x1a1b1c"
@@ -43,6 +68,7 @@ func TestCallForUserUseCase_Run(t *testing.T) {
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return(lpRskAddress).Once()
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	peginContract.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(50000), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(0), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
 	callForUserReceipt := blockchain.TransactionReceipt{
@@ -121,6 +147,7 @@ func TestCallForUserUseCase_Run_AddExtraAmountDuringCall(t *testing.T) {
 	lp.On("RskAddress").Return(lpRskAddress).Twice()
 	peginContract := new(mocks.PeginContractMock)
 	peginContract.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(600), nil).Once()
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(29400), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
 	callForUserReceipt := blockchain.TransactionReceipt{
 		TransactionHash:   callForUserTxHash,
@@ -188,6 +215,7 @@ func TestCallForUserUseCase_Run_DontPublishRecoverableErrors(t *testing.T) {
 		lp := new(mocks.ProviderMock)
 		lp.On("RskAddress").Return("lp rsk address")
 		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		btc := new(mocks.BtcRpcMock)
 		eventBus := new(mocks.EventBusMock)
 		rsk := new(mocks.RootstockRpcServerMock)
@@ -319,6 +347,7 @@ func TestCallForUserUseCase_Run_NoConfirmations(t *testing.T) {
 
 	lp := new(mocks.ProviderMock)
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
@@ -357,6 +386,7 @@ func TestCallForUserUseCase_Run_NoConfirmations(t *testing.T) {
 
 func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	btc := new(mocks.BtcRpcMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
@@ -417,6 +447,7 @@ func TestCallForUserUseCase_Run_ExpiredQuote(t *testing.T) {
 
 func TestCallForUserUseCase_Run_QuoteNotFound(t *testing.T) {
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	btc := new(mocks.BtcRpcMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
@@ -472,6 +503,7 @@ func TestCallForUserUseCase_Run_InsufficientAmount(t *testing.T) {
 
 	lp := new(mocks.ProviderMock)
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	btc := new(mocks.BtcRpcMock)
 	btc.On("GetTransactionInfo", retainedPeginQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
 		Hash:          retainedPeginQuote.UserBtcTxHash,
@@ -535,6 +567,7 @@ func TestCallForUserUseCase_Run_NoLiquidity(t *testing.T) {
 	lp.On("RskAddress").Return(lpRskAddress).Twice()
 
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	peginContract.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(500), nil).Once()
 
 	btc := new(mocks.BtcRpcMock)
@@ -603,6 +636,7 @@ func TestCallForUserUseCase_Run_CallForUserFail(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 	peginContract.On("GetBalance", testPeginQuote.LpRskAddress).Return(entities.NewWei(600), nil).Once()
 	txConfig := blockchain.NewTransactionConfig(entities.NewWei(29400), uint64(testPeginQuote.GasLimit+pegin.CallForUserExtraGas), nil)
 	callForUserReceipt := blockchain.TransactionReceipt{
@@ -671,6 +705,7 @@ func TestCallForUserUseCase_Run_InvalidUTXOs(t *testing.T) {
 
 	lp := new(mocks.ProviderMock)
 	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1000), nil).Once()

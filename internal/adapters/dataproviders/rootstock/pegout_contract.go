@@ -306,6 +306,29 @@ func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, 
 	return result, nil
 }
 
+func (pegoutContract *pegoutContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
+	opts := new(bind.CallOpts)
+	result, err := rskRetry(
+		pegoutContract.retryParams.Retries,
+		pegoutContract.retryParams.Sleep,
+		func() (bindings.PauseStatusOutput, error) {
+			callData, dataErr := pegoutContract.binding.TryPackPauseStatus()
+			if dataErr != nil {
+				return bindings.PauseStatusOutput{}, dataErr
+			}
+			return bind.Call(pegoutContract.contract, opts, callData, pegoutContract.binding.UnpackPauseStatus)
+		},
+	)
+	if err != nil {
+		return blockchain.PauseStatus{}, err
+	}
+	return blockchain.PauseStatus{
+		IsPaused: result.IsPaused,
+		Reason:   result.Reason,
+		Since:    result.Since,
+	}, nil
+}
+
 // parsePegoutQuote parses a quote.PegoutQuote into a bindings.QuotesPegOutQuote. All BTC address fields support all address types.
 func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote, error) {
 	var parsedQuote bindings.QuotesPegOutQuote

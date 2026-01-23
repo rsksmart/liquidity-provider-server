@@ -479,6 +479,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(10), mock.MatchedBy(matchUinPtr(20))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
@@ -515,7 +516,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 			Return(*receipt, nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(20), mock.MatchedBy(matchUinPtr(21))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
-
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			return assert.True(t, ok) && assert.NotEmpty(t, q)
@@ -565,7 +566,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		btcWallet.On("GetBalance").Return(entities.NewWei(10000), nil).Once()
 		btcResult := blockchain.BitcoinTransactionResult{Hash: test.AnyHash, Fee: entities.NewWei(2500)}
 		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(btcResult, nil).Once()
-
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 		assert.Eventually(t, func() bool {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			return assert.True(t, ok) && assert.NotEmpty(t, q)

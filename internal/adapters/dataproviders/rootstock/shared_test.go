@@ -237,6 +237,32 @@ func mustPackPegoutQuote(t *testing.T, q pegoutBindings.QuotesPegOutQuote) []byt
 	return encoded
 }
 
+type generalPauseStatus struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}
+
+func mustPackPauseStatus(t *testing.T, status generalPauseStatus) []byte {
+	t.Helper()
+	uintType, uintErr := abi.NewType("uint64", "", nil)
+	boolType, boolErr := abi.NewType("bool", "", nil)
+	stringType, stringErr := abi.NewType("string", "", nil)
+	if uintErr != nil || boolErr != nil || stringErr != nil {
+		t.Fatal("error creating types for pause status packing")
+	}
+	args := abi.Arguments{
+		{Type: boolType},
+		{Type: stringType},
+		{Type: uintType},
+	}
+	encoded, err := args.Pack(status.IsPaused, status.Reason, status.Since)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encoded
+}
+
 func createBoundContractMock() boundContractMock {
 	callerMock := new(mocks.ContractCallerMock)
 	transactorMock := new(mocks.ContractTransactorMock)

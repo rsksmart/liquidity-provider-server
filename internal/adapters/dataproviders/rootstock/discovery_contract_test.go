@@ -517,3 +517,30 @@ func TestDiscoveryContractImpl_IsOperational(t *testing.T) {
 		})
 	})
 }
+
+func TestDiscoveryContractImpl_PausedStatus(t *testing.T) {
+	contractMock := createBoundContractMock()
+	discoveryBinding := bindings.NewFlyoverDiscovery()
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	t.Run("should return pause status result", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(discoveryBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
+		result, err := discovery.PausedStatus()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
+	})
+	t.Run("should handle error checking pause status", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(discoveryBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := discovery.PausedStatus()
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	contractMock.caller.AssertExpectations(t)
+}

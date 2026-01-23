@@ -472,3 +472,30 @@ func TestPeginContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 		assert.Empty(t, result)
 	})
 }
+
+func TestPeginContractImpl_PausedStatus(t *testing.T) {
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
+	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	t.Run("should return pause status result", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
+		result, err := contract.PausedStatus()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
+	})
+	t.Run("should handle error checking pause status", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := contract.PausedStatus()
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	contractMock.caller.AssertExpectations(t)
+}

@@ -19,6 +19,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
+	rsk := new(mocks.RootstockRpcServerMock)
+	lp := new(mocks.ProviderMock)
+	bridge := new(mocks.BridgeMock)
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
+	pegoutContract.EXPECT().GetAddress().Return("test-contract")
+	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	btc := new(mocks.BtcRpcMock)
+	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
+	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
+	useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, test.AnyRskAddress)
+	request := pegout.NewQuoteRequest(test.AnyBtcAddress, entities.NewWei(1000000000000000000), test.AnyRskAddress)
+	result, err := useCase.Run(context.Background(), request)
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, blockchain.ContractPausedError)
+}
+
 // nolint:funlen
 func TestGetQuoteUseCase_Run(t *testing.T) {
 	const (
@@ -33,6 +52,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.On("DaoFeePercentage").Return(uint64(0), nil)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	bridge := new(mocks.BridgeMock)
 	pegoutContract.On("GetAddress").Return(lbcAddress)
 	pegoutContract.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
@@ -95,6 +115,7 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	bridge := new(mocks.BridgeMock)
 	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	feeCollectorAddress := "feeCollectorAddress"
@@ -171,6 +192,7 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		lp := new(mocks.ProviderMock)
 		bridge := new(mocks.BridgeMock)
 		pegoutContract := new(mocks.PegoutContractMock)
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 		btcWallet := new(mocks.BitcoinWalletMock)
 		testCase.Value(rsk, bridge, pegoutContract, lp, btcWallet, pegoutQuoteRepository)

@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -439,4 +440,31 @@ func TestLiquidityBridgeContractImpl_GetPunishmentEvents(t *testing.T) {
 		assert.Nil(t, result)
 		contractMock.filterer.AssertExpectations(t)
 	})
+}
+
+func TestCollateralManagementContractImpl_PausedStatus(t *testing.T) {
+	contractMock := createBoundContractMock()
+	collateralBinding := bindings.NewCollateralManagementContract()
+	contract := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyRskAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	t.Run("should return pause status result", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(collateralBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
+		result, err := contract.PausedStatus()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
+	})
+	t.Run("should handle error checking pause status", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(collateralBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := contract.PausedStatus()
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	contractMock.caller.AssertExpectations(t)
 }

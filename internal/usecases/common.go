@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 	"strconv"
 
@@ -318,4 +319,33 @@ func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.C
 		}
 	}
 	return nil
+}
+
+func CheckPauseState(contracts ...blockchain.Pausable) error {
+	var err error
+	for _, contract := range contracts {
+		if err = checkPauseState(contract); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkPauseState(contract blockchain.Pausable) error {
+	pausedStatus, err := contract.PausedStatus()
+	if err != nil {
+		return err
+	}
+
+	if !pausedStatus.IsPaused {
+		return nil
+	}
+	log.Warnf("Contract %s is paused. Reason: %s since block %d", contract.GetAddress(), pausedStatus.Reason, pausedStatus.Since)
+
+	return fmt.Errorf(
+		"%w. Reason %s at %d",
+		blockchain.ContractPausedError,
+		pausedStatus.Reason,
+		pausedStatus.Since,
+	)
 }

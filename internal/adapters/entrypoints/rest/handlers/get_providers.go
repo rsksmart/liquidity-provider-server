@@ -1,18 +1,23 @@
 package handlers
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"net/http"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
+
+type GetProvidersUseCase interface {
+	Run() ([]liquidity_provider.RegisteredLiquidityProvider, error)
+}
 
 // NewGetProvidersHandler
 // @Title Get Providers
 // @Description Returns a list of providers.
 // @Success 200 array pkg.LiquidityProvider
 // @Route /getProviders [get]
-func NewGetProvidersHandler(useCase *liquidity_provider.GetProvidersUseCase) http.HandlerFunc {
+func NewGetProvidersHandler(useCase GetProvidersUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		providers, err := useCase.Run()
 		if err != nil {

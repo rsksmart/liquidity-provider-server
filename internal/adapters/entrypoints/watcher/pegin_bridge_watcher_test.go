@@ -162,6 +162,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 		Value:             entities.NewWei(0),
 		GasPrice:          entities.NewWei(1000000000),
 	}, nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}

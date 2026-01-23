@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -55,7 +56,7 @@ func TestAcceptPeginQuoteHandlerHappyPath(t *testing.T) {
 	mockUseCase.AssertExpectations(t)
 }
 
-// nolint:funlen
+// nolint:funlen,maintidx
 func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
@@ -308,6 +309,32 @@ func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
 		assert.Equal(t, "unknown error", errorResponse["message"])
+	})
+	t.Run("should return 503 if contract is paused", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		reqBody := pkg.AcceptQuoteRequest{QuoteHash: quoteHash}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		mockUseCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(quote.AcceptedQuote{}, blockchain.ContractPausedError)
+
+		handlerFunc := handlers.NewAcceptPeginQuoteHandler(mockUseCase)
+		handlerFunc(recorder, request)
+
+		assert.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Equal(t, "protocol is paused", errorResponse["message"])
 	})
 
 }

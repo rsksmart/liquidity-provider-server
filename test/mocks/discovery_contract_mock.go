@@ -237,6 +237,61 @@ func (_c *DiscoveryContractMock_IsOperational_Call) RunAndReturn(run func(liquid
 	return _c
 }
 
+// PausedStatus provides a mock function with no fields
+func (_m *DiscoveryContractMock) PausedStatus() (blockchain.PauseStatus, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PausedStatus")
+	}
+
+	var r0 blockchain.PauseStatus
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (blockchain.PauseStatus, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() blockchain.PauseStatus); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(blockchain.PauseStatus)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DiscoveryContractMock_PausedStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PausedStatus'
+type DiscoveryContractMock_PausedStatus_Call struct {
+	*mock.Call
+}
+
+// PausedStatus is a helper method to define mock.On call
+func (_e *DiscoveryContractMock_Expecter) PausedStatus() *DiscoveryContractMock_PausedStatus_Call {
+	return &DiscoveryContractMock_PausedStatus_Call{Call: _e.mock.On("PausedStatus")}
+}
+
+func (_c *DiscoveryContractMock_PausedStatus_Call) Run(run func()) *DiscoveryContractMock_PausedStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *DiscoveryContractMock_PausedStatus_Call) Return(_a0 blockchain.PauseStatus, _a1 error) *DiscoveryContractMock_PausedStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *DiscoveryContractMock_PausedStatus_Call) RunAndReturn(run func() (blockchain.PauseStatus, error)) *DiscoveryContractMock_PausedStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterProvider provides a mock function with given fields: txConfig, params
 func (_m *DiscoveryContractMock) RegisterProvider(txConfig blockchain.TransactionConfig, params blockchain.ProviderRegistrationParams) (int64, error) {
 	ret := _m.Called(txConfig, params)

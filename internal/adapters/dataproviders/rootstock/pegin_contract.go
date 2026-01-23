@@ -252,6 +252,29 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	return transactionReceipt, nil
 }
 
+func (peginContract *peginContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
+	opts := new(bind.CallOpts)
+	result, err := rskRetry(
+		peginContract.retryParams.Retries,
+		peginContract.retryParams.Sleep,
+		func() (bindings.PauseStatusOutput, error) {
+			callData, dataErr := peginContract.binding.TryPackPauseStatus()
+			if dataErr != nil {
+				return bindings.PauseStatusOutput{}, dataErr
+			}
+			return bind.Call(peginContract.contract, opts, callData, peginContract.binding.UnpackPauseStatus)
+		},
+	)
+	if err != nil {
+		return blockchain.PauseStatus{}, err
+	}
+	return blockchain.PauseStatus{
+		IsPaused: result.IsPaused,
+		Reason:   result.Reason,
+		Since:    result.Since,
+	}, nil
+}
+
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types
 // except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, error) {
