@@ -27,8 +27,9 @@ In the legacy setup, all functionality (collateral management, pegin, pegout, di
 
 ## Prerequisites
 
-- Access to the Rootstock RPC endpoint for the target network.
-- Wallet secrets configured via the same mechanisms used by the LPS (`--secret-src env|aws`).
+- Access to the Rootstock RPC endpoint for the target network
+- Wallet secrets configured via the same mechanisms used by the LPS (`--secret-src env|aws`)
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed (for `cast` commands used in testing)
 
 ## Build the utilities
 
@@ -216,15 +217,27 @@ To test legacy contract migration on regtest, start the environment which will d
    # Password: test
    ```
 
-7. **Wait for resignation delay** (check contract for delay in blocks, typically 100-200 blocks on testnet, instant on regtest)
+7. **Wait for resignation delay** - Mine blocks to skip the delay on regtest:
+   ```bash
+   # Check the resignation delay
+   DELAY=$(cast to-dec $(cast call $LBC_ADDR "getResignDelayBlocks()" --rpc-url http://localhost:4444))
+   echo "Resignation delay: $DELAY blocks"
+   
+   # Mine the required number of blocks
+   for i in $(seq 1 $DELAY); do
+     cast rpc evm_mine --rpc-url http://localhost:4444 > /dev/null
+   done
+   
+   echo "Mined $DELAY blocks"
+   ```
 
-8. **Test withdraw collateral**:
+8. **Withdraw collateral**:
    ```bash
    ./utils/resign_utils --withdraw-collateral
    # Password: test
    ```
 
-9. **Test withdraw liquidity** (if you added any PegIn balance):
+9. **Withdraw liquidity** (if you added any PegIn balance):
    ```bash
    ./utils/withdraw --all
    ```
