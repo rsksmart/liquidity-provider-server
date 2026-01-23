@@ -3,10 +3,10 @@ package rootstock
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"math/big"
@@ -17,20 +17,22 @@ import (
 type discoveryContractImpl struct {
 	client        RpcClientBinding
 	address       string
-	contract      DiscoveryBinding
+	contract      *bind.BoundContract
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
 	abis          *FlyoverABIs
+	binding       *bindings.FlyoverDiscovery
 }
 
 func NewDiscoveryContractImpl(
 	client *RskClient,
 	address string,
-	contract DiscoveryBinding,
+	contract *bind.BoundContract,
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	binding *bindings.FlyoverDiscovery,
 	abis *FlyoverABIs,
 ) blockchain.DiscoveryContract {
 	return &discoveryContractImpl{
@@ -40,6 +42,7 @@ func NewDiscoveryContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
+		binding:       binding,
 		abis:          abis,
 	}
 }
@@ -59,7 +62,11 @@ func (discovery *discoveryContractImpl) SetProviderStatus(id uint64, newStatus b
 	receipt, err := rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(discovery.client, discovery.miningTimeout, "SetProviderStatus", func() (*geth.Transaction, error) {
-				return discovery.contract.SetProviderStatus(opts, parsedId, newStatus)
+				callData, dataErr := discovery.binding.TryPackSetProviderStatus(parsedId, newStatus)
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Transact(discovery.contract, opts, callData)
 			})
 		})
 
@@ -79,7 +86,11 @@ func (discovery *discoveryContractImpl) GetProvider(address string) (liquidity_p
 	}
 
 	opts := &bind.CallOpts{}
-	provider, revert := discovery.contract.GetProvider(opts, common.HexToAddress(address))
+	callData, dataErr := discovery.binding.TryPackGetProvider(common.HexToAddress(address))
+	if dataErr != nil {
+		return liquidity_provider.RegisteredLiquidityProvider{}, dataErr
+	}
+	provider, revert := bind.Call(discovery.contract, opts, callData, discovery.binding.UnpackGetProvider)
 	parsedRevert, err := ParseRevertReason(discovery.abis.Flyover, revert)
 	if err != nil && parsedRevert == nil {
 		return liquidity_provider.RegisteredLiquidityProvider{}, fmt.Errorf("error parsing getProvider result: %w", err)
@@ -110,7 +121,11 @@ func (discovery *discoveryContractImpl) GetProviders() ([]liquidity_provider.Reg
 	opts := &bind.CallOpts{}
 	providers, err := rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
 		func() ([]bindings.FlyoverLiquidityProvider, error) {
-			return discovery.contract.GetProviders(opts)
+			callData, dataErr := discovery.binding.TryPackGetProviders()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(discovery.contract, opts, callData, discovery.binding.UnpackGetProviders)
 		})
 	if err != nil {
 		return nil, err
@@ -136,7 +151,11 @@ func (discovery *discoveryContractImpl) GetProviders() ([]liquidity_provider.Reg
 func (discovery *discoveryContractImpl) UpdateProvider(name, url string) (string, error) {
 	opts := &bind.TransactOpts{From: discovery.signer.Address(), Signer: discovery.signer.Sign}
 	receipt, err := awaitTx(discovery.client, discovery.miningTimeout, "UpdateProvider", func() (*geth.Transaction, error) {
-		return discovery.contract.UpdateProvider(opts, name, url)
+		callData, dataErr := discovery.binding.TryPackUpdateProvider(name, url)
+		if dataErr != nil {
+			return nil, dataErr
+		}
+		return bind.Transact(discovery.contract, opts, callData)
 	})
 
 	if err != nil {
@@ -166,7 +185,11 @@ func (discovery *discoveryContractImpl) RegisterProvider(txConfig blockchain.Tra
 	receipt, err := rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(discovery.client, discovery.miningTimeout, "Register", func() (*geth.Transaction, error) {
-				return discovery.contract.Register(opts, params.Name, params.ApiBaseUrl, params.Status, parsedProviderType)
+				callData, dataErr := discovery.binding.TryPackRegister(params.Name, params.ApiBaseUrl, params.Status, parsedProviderType)
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Transact(discovery.contract, opts, callData)
 			})
 		})
 
@@ -176,7 +199,7 @@ func (discovery *discoveryContractImpl) RegisterProvider(txConfig blockchain.Tra
 		return 0, errors.New("error registering provider: incomplete receipt")
 	}
 
-	registerEvent, err := discovery.contract.ParseRegister(*receipt.Logs[0])
+	registerEvent, err := discovery.binding.UnpackRegisterEvent(receipt.Logs[0])
 	if err != nil {
 		return 0, fmt.Errorf("error parsing register event: %w", err)
 	}
@@ -199,7 +222,11 @@ func (discovery *discoveryContractImpl) IsOperational(providerType liquidity_pro
 
 	return rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
 		func() (bool, error) {
-			result, revert := discovery.contract.IsOperational(opts, parsedProviderType, parsedAddress)
+			callData, dataErr := discovery.binding.TryPackIsOperational(parsedProviderType, parsedAddress)
+			if dataErr != nil {
+				return false, dataErr
+			}
+			result, revert := bind.Call(discovery.contract, opts, callData, discovery.binding.UnpackIsOperational)
 			parsedRevert, parseErr := ParseRevertReason(discovery.abis.Flyover, revert)
 			if parseErr != nil && parsedRevert == nil {
 				return false, fmt.Errorf("error parsing IsOperational result: %w", err)

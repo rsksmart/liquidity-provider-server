@@ -5,15 +5,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"math/big"
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -23,20 +23,22 @@ import (
 type pegoutContractImpl struct {
 	client        RpcClientBinding
 	address       string
-	contract      PegoutContractAdapter
+	contract      *bind.BoundContract
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
+	binding       *bindings.PegoutContract
 	abis          *FlyoverABIs
 }
 
 func NewPegoutContractImpl(
 	client *RskClient,
 	address string,
-	contract PegoutContractAdapter,
+	contract *bind.BoundContract,
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	binding *bindings.PegoutContract,
 	abis *FlyoverABIs,
 ) blockchain.PegoutContract {
 	return &pegoutContractImpl{
@@ -46,6 +48,7 @@ func NewPegoutContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
+		binding:       binding,
 		abis:          abis,
 	}
 }
@@ -66,7 +69,11 @@ func (pegoutContract *pegoutContractImpl) IsPegOutQuoteCompleted(quoteHash strin
 	copy(quoteHashBytes[:], hashBytesSlice)
 	result, err := rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
 		func() (bool, error) {
-			return pegoutContract.contract.IsQuoteCompleted(opts, quoteHashBytes)
+			callData, dataErr := pegoutContract.binding.TryPackIsQuoteCompleted(quoteHashBytes)
+			if dataErr != nil {
+				return false, dataErr
+			}
+			return bind.Call(pegoutContract.contract, opts, callData, pegoutContract.binding.UnpackIsQuoteCompleted)
 		})
 	if err != nil {
 		return false, err
@@ -87,7 +94,11 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 		return errors.New("quote hash must be 32 bytes long")
 	}
 	copy(quoteHashBytes[:], hashBytesSlice)
-	_, err = pegoutContract.contract.ValidatePegout(opts, quoteHashBytes, btcTx)
+	callData, dataErr := pegoutContract.binding.TryPackValidatePegout(quoteHashBytes, btcTx)
+	if dataErr != nil {
+		return dataErr
+	}
+	_, err = bind.Call(pegoutContract.contract, opts, callData, pegoutContract.binding.UnpackValidatePegout)
 	if err != nil {
 		// Try to parse the revert reason to distinguish contract validation errors from network/RPC errors
 		parsedRevert, parseErr := ParseRevertReason(pegoutContract.abis.PegOut, err)
@@ -106,7 +117,11 @@ func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {
 	opts := bind.CallOpts{}
 	amount, err := rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return pegoutContract.contract.GetFeePercentage(&opts)
+			callData, dataErr := pegoutContract.binding.TryPackGetFeePercentage()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(pegoutContract.contract, &opts, callData, pegoutContract.binding.UnpackGetFeePercentage)
 		})
 	if err != nil {
 		return 0, err
@@ -125,7 +140,11 @@ func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.Pego
 
 	results, err = rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
 		func() ([32]byte, error) {
-			return pegoutContract.contract.HashPegOutQuote(&opts, parsedQuote)
+			callData, dataErr := pegoutContract.binding.TryPackHashPegOutQuote(parsedQuote)
+			if dataErr != nil {
+				return [32]byte{}, dataErr
+			}
+			return bind.Call(pegoutContract.contract, &opts, callData, pegoutContract.binding.UnpackHashPegOutQuote)
 		})
 	if err != nil {
 		return "", err
@@ -147,8 +166,13 @@ func (pegoutContract *pegoutContractImpl) RefundUserPegOut(quoteHash string) (st
 		From:   pegoutContract.signer.Address(),
 		Signer: pegoutContract.signer.Sign,
 	}
+
+	callData, dataErr := pegoutContract.binding.TryPackRefundUserPegOut(common.BytesToHash(hashBytesSlice))
+	if dataErr != nil {
+		return "", dataErr
+	}
 	receipt, err := awaitTx(pegoutContract.client, pegoutContract.miningTimeout, "RefundUserPegOut", func() (*geth.Transaction, error) {
-		return pegoutContract.contract.RefundUserPegOut(opts, common.HexToHash(quoteHash))
+		return bind.Transact(pegoutContract.contract, opts, callData)
 	})
 
 	if err != nil {
@@ -165,24 +189,24 @@ func (pegoutContract *pegoutContractImpl) RefundUserPegOut(quoteHash string) (st
 // TODO: ignore cyclop and funlen added during the merge of the LBC split, the function should be refactored separately
 // nolint:cyclop,funlen
 func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.TransactionConfig, params blockchain.RefundPegoutParams) (blockchain.TransactionReceipt, error) {
-	var res []any
 	var err error
 	const (
-		functionName                = "refundPegOut"
 		notEnoughConfirmationsError = "NotEnoughConfirmations"
 		unableToGetConfirmations    = "UnableToGetConfirmations"
 	)
 
 	log.Infof("Executing RefundPegOut with params: %s", params.String())
-	revert := pegoutContract.contract.Caller().Call(
-		&bind.CallOpts{From: pegoutContract.signer.Address()},
-		&res, functionName,
+	callData, dataErr := pegoutContract.binding.TryPackRefundPegOut(
 		params.QuoteHash,
 		params.BtcRawTx,
 		params.BtcBlockHeaderHash,
 		params.MerkleBranchPath,
 		params.MerkleBranchHashes,
 	)
+	if dataErr != nil {
+		return blockchain.TransactionReceipt{}, dataErr
+	}
+	_, revert := pegoutContract.contract.CallRaw(&bind.CallOpts{From: pegoutContract.signer.Address()}, callData)
 	parsedRevert, err := ParseRevertReason(pegoutContract.abis.PegOut, revert)
 	if err != nil && parsedRevert == nil {
 		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing refundPegout result: %w", err)
@@ -202,8 +226,7 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 	var tx *geth.Transaction
 	receipt, err := awaitTx(pegoutContract.client, pegoutContract.miningTimeout, "RefundPegOut", func() (*geth.Transaction, error) {
 		var txErr error
-		tx, txErr = pegoutContract.contract.RefundPegOut(opts, params.QuoteHash, params.BtcRawTx,
-			params.BtcBlockHeaderHash, params.MerkleBranchPath, params.MerkleBranchHashes)
+		tx, txErr = bind.Transact(pegoutContract.contract, opts, callData)
 		return tx, txErr
 	})
 
@@ -241,29 +264,32 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 }
 
 func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error) {
-	var lbcEvent *bindings.IPegOutPegOutDeposit
+	var lbcEvent *bindings.PegoutContractPegOutDeposit
 	result := make([]quote.PegoutDeposit, 0)
 
-	rawIterator, err := pegoutContract.contract.FilterPegOutDeposit(&bind.FilterOpts{
-		Start:   fromBlock,
-		End:     toBlock,
-		Context: ctx,
-	}, nil, nil, nil)
-	// The adapter is to be able to mock the iterator in tests
-	iterator := pegoutContract.contract.DepositEventIteratorAdapter(rawIterator)
+	iterator, err := bind.FilterEvents(
+		pegoutContract.contract,
+		&bind.FilterOpts{
+			Start:   fromBlock,
+			End:     toBlock,
+			Context: ctx,
+		},
+		pegoutContract.binding.UnpackPegOutDepositEvent,
+	)
+
 	defer func() {
-		if rawIterator != nil {
+		if iterator != nil {
 			if iteratorError := iterator.Close(); iteratorError != nil {
 				log.Error("Error closing PegOutDeposit event iterator: ", err)
 			}
 		}
 	}()
-	if err != nil || rawIterator == nil {
+	if err != nil || iterator == nil {
 		return nil, err
 	}
 
 	for iterator.Next() {
-		lbcEvent = iterator.Event()
+		lbcEvent = iterator.Value()
 		result = append(result, quote.PegoutDeposit{
 			TxHash:      lbcEvent.Raw.TxHash.String(),
 			QuoteHash:   hex.EncodeToString(lbcEvent.QuoteHash[:]),

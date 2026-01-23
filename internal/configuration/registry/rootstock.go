@@ -1,9 +1,14 @@
 package registry
 
 import (
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	bridgeBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/bridge"
+	collateralBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
+	discoveryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
+	peginBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	pegoutBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -16,16 +21,26 @@ type Rootstock struct {
 }
 
 type rskContractBindings struct {
-	bridge               *bindings.RskBridge
-	peginContract        *bindings.IPegIn
-	pegoutContract       *bindings.IPegOut
-	collateralManagement *bindings.ICollateralManagement
-	discovery            *bindings.IFlyoverDiscovery
+	bridge               *bridgeBinding.RskBridge
+	peginContract        *peginBinding.PeginContract
+	pegoutContract       *pegoutBinding.PegoutContract
+	collateralManagement *collateralBinding.CollateralManagementContract
+	discovery            *discoveryBinding.FlyoverDiscovery
+}
+
+type rskBoundContracts struct {
+	bridge               *bind.BoundContract
+	peginContract        *bind.BoundContract
+	pegoutContract       *bind.BoundContract
+	collateralManagement *bind.BoundContract
+	discovery            *bind.BoundContract
 }
 
 // nolint:funlen
 func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory, timeouts environment.ApplicationTimeouts) (*Rootstock, error) {
-	contractBindings, err := createContractBindings(env, client)
+	contractBindings := createContractBindings()
+
+	boundContracts, err := createBoundContracts(env, contractBindings, client)
 	if err != nil {
 		return nil, err
 	}
@@ -50,37 +65,41 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 					ErpKeys:               env.Rsk.ErpKeys,
 					UseSegwitFederation:   env.Rsk.UseSegwitFederation,
 				},
-				rootstock.NewRskBridgeAdapter(contractBindings.bridge),
+				boundContracts.bridge,
 				client,
 				btcParams,
 				rootstock.DefaultRetryParams,
 				wallet,
+				contractBindings.bridge,
 				timeouts.MiningWait.Seconds(),
 			),
 			PegIn: rootstock.NewPeginContractImpl(
 				client,
 				env.Rsk.PeginContractAddress,
-				rootstock.NewPeginContractAdapter(contractBindings.peginContract),
+				boundContracts.peginContract,
 				wallet,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
+				contractBindings.peginContract,
 				abis,
 			),
 			PegOut: rootstock.NewPegoutContractImpl(
 				client,
 				env.Rsk.PegoutContractAddress,
-				rootstock.NewPegoutContractAdapter(contractBindings.pegoutContract),
+				boundContracts.pegoutContract,
 				wallet,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
+				contractBindings.pegoutContract,
 				abis,
 			),
 			CollateralManagement: rootstock.NewCollateralManagementContractImpl(
 				client,
 				wallet.Address().String(),
 				env.Rsk.CollateralManagementAddress,
-				rootstock.NewCollateralManagementAdapter(contractBindings.collateralManagement),
+				boundContracts.collateralManagement,
 				wallet,
+				contractBindings.collateralManagement,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
 				abis,
@@ -88,10 +107,11 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 			Discovery: rootstock.NewDiscoveryContractImpl(
 				client,
 				env.Rsk.DiscoveryAddress,
-				contractBindings.discovery,
+				boundContracts.discovery,
 				wallet,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
+				contractBindings.discovery,
 				abis,
 			),
 		},
@@ -100,8 +120,11 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 	}, nil
 }
 
-// nolint:cyclop
-func createContractBindings(env environment.Environment, client *rootstock.RskClient) (rskContractBindings, error) {
+func createBoundContracts(
+	env environment.Environment,
+	bindings rskContractBindings,
+	client *rootstock.RskClient,
+) (rskBoundContracts, error) {
 	var (
 		err                         error
 		bridgeAddress               common.Address
@@ -110,50 +133,46 @@ func createContractBindings(env environment.Environment, client *rootstock.RskCl
 		collateralManagementAddress common.Address
 		discoveryAddress            common.Address
 	)
-
 	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
-		return rskContractBindings{}, err
+		return rskBoundContracts{}, err
+	}
+	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
+		return rskBoundContracts{}, err
 	}
 	if err = rootstock.ParseAddress(&pegoutContractAddress, env.Rsk.PegoutContractAddress); err != nil {
-		return rskContractBindings{}, err
+		return rskBoundContracts{}, err
 	}
 	if err = rootstock.ParseAddress(&collateralManagementAddress, env.Rsk.CollateralManagementAddress); err != nil {
-		return rskContractBindings{}, err
+		return rskBoundContracts{}, err
 	}
 	if err = rootstock.ParseAddress(&discoveryAddress, env.Rsk.DiscoveryAddress); err != nil {
-		return rskContractBindings{}, err
+		return rskBoundContracts{}, err
 	}
 	if err = rootstock.ParseAddress(&bridgeAddress, env.Rsk.BridgeAddress); err != nil {
-		return rskContractBindings{}, err
+		return rskBoundContracts{}, err
 	}
 
-	bridge, err := bindings.NewRskBridge(bridgeAddress, client.Rpc())
-	if err != nil {
-		return rskContractBindings{}, err
-	}
+	peginContract := bindings.peginContract.Instance(client.Rpc(), peginContractAddress)
+	pegoutContract := bindings.pegoutContract.Instance(client.Rpc(), pegoutContractAddress)
+	collateralManagement := bindings.collateralManagement.Instance(client.Rpc(), collateralManagementAddress)
+	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
+	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 
-	peginContract, err := bindings.NewIPegIn(peginContractAddress, client.Rpc())
-	if err != nil {
-		return rskContractBindings{}, err
-	}
-	pegoutContract, err := bindings.NewIPegOut(pegoutContractAddress, client.Rpc())
-	if err != nil {
-		return rskContractBindings{}, err
-	}
-	collateralManagement, err := bindings.NewICollateralManagement(collateralManagementAddress, client.Rpc())
-	if err != nil {
-		return rskContractBindings{}, err
-	}
-	discovery, err := bindings.NewIFlyoverDiscovery(discoveryAddress, client.Rpc())
-	if err != nil {
-		return rskContractBindings{}, err
-	}
-
-	return rskContractBindings{
+	return rskBoundContracts{
 		bridge:               bridge,
 		peginContract:        peginContract,
 		pegoutContract:       pegoutContract,
 		collateralManagement: collateralManagement,
 		discovery:            discovery,
 	}, nil
+}
+
+func createContractBindings() rskContractBindings {
+	return rskContractBindings{
+		bridge:               bridgeBinding.NewRskBridge(),
+		peginContract:        peginBinding.NewPeginContract(),
+		pegoutContract:       pegoutBinding.NewPegoutContract(),
+		collateralManagement: collateralBinding.NewCollateralManagementContract(),
+		discovery:            discoveryBinding.NewFlyoverDiscovery(),
+	}
 }

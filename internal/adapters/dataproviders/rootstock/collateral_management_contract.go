@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -23,9 +23,10 @@ type collateralManagementContractImpl struct {
 	client          RpcClientBinding
 	providerAddress string
 	contractAddress string
-	contract        CollateralManagementAdapter
+	contract        *bind.BoundContract
 	signer          TransactionSigner
 	abis            *FlyoverABIs
+	binding         *bindings.CollateralManagementContract
 	retryParams     RetryParams
 	miningTimeout   time.Duration
 }
@@ -34,8 +35,9 @@ func NewCollateralManagementContractImpl(
 	client *RskClient,
 	providerAddress string,
 	contractAddress string,
-	contract CollateralManagementAdapter,
+	contract *bind.BoundContract,
 	signer TransactionSigner,
+	binding *bindings.CollateralManagementContract,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
 	abis *FlyoverABIs,
@@ -46,6 +48,7 @@ func NewCollateralManagementContractImpl(
 		providerAddress: providerAddress,
 		contract:        contract,
 		signer:          signer,
+		binding:         binding,
 		retryParams:     retryParams,
 		miningTimeout:   miningTimeout,
 		abis:            abis,
@@ -64,7 +67,11 @@ func (collateral *collateralManagementContractImpl) ProviderResign() error {
 	receipt, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(collateral.client, collateral.miningTimeout, "Resign", func() (*geth.Transaction, error) {
-				return collateral.contract.Resign(opts)
+				callData, dataErr := collateral.binding.TryPackResign()
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Transact(collateral.contract, opts, callData)
 			})
 		})
 
@@ -85,7 +92,11 @@ func (collateral *collateralManagementContractImpl) GetCollateral(address string
 	}
 	result, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return collateral.contract.GetPegInCollateral(opts, parsedAddress)
+			callData, dataErr := collateral.binding.TryPackGetPegInCollateral(parsedAddress)
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(collateral.contract, opts, callData, collateral.binding.UnpackGetPegInCollateral)
 		})
 	if err != nil {
 		return nil, err
@@ -102,7 +113,11 @@ func (collateral *collateralManagementContractImpl) GetPegoutCollateral(address 
 	}
 	result, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return collateral.contract.GetPegOutCollateral(opts, parsedAddress)
+			callData, dataErr := collateral.binding.TryPackGetPegOutCollateral(parsedAddress)
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(collateral.contract, opts, callData, collateral.binding.UnpackGetPegOutCollateral)
 		})
 	if err != nil {
 		return nil, err
@@ -115,7 +130,11 @@ func (collateral *collateralManagementContractImpl) GetMinimumCollateral() (*ent
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return collateral.contract.GetMinCollateral(opts)
+			callData, dataErr := collateral.binding.TryPackGetMinCollateral()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(collateral.contract, opts, callData, collateral.binding.UnpackGetMinCollateral)
 		})
 	if err != nil {
 		return nil, err
@@ -133,7 +152,11 @@ func (collateral *collateralManagementContractImpl) AddCollateral(amount *entiti
 	receipt, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(collateral.client, collateral.miningTimeout, "AddCollateral", func() (*geth.Transaction, error) {
-				return collateral.contract.AddPegInCollateral(opts)
+				callData, dataErr := collateral.binding.TryPackAddPegInCollateral()
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Transact(collateral.contract, opts, callData)
 			})
 		})
 
@@ -155,7 +178,11 @@ func (collateral *collateralManagementContractImpl) AddPegoutCollateral(amount *
 	receipt, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(collateral.client, collateral.miningTimeout, "AddPegoutCollateral", func() (*geth.Transaction, error) {
-				return collateral.contract.AddPegOutCollateral(opts)
+				callData, dataErr := collateral.binding.TryPackAddPegOutCollateral()
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Transact(collateral.contract, opts, callData)
 			})
 		})
 
@@ -168,22 +195,12 @@ func (collateral *collateralManagementContractImpl) AddPegoutCollateral(amount *
 }
 
 func (collateral *collateralManagementContractImpl) WithdrawCollateral() error {
-	const (
-		functionName                   = "withdrawCollateral"
-		notResignedError               = "NotResigned"
-		resignationDelayNotPassedError = "ResignationDelayNotMet"
-	)
-	var res []any
-	var err error
-
-	revert := collateral.contract.Caller().Call(&bind.CallOpts{From: collateral.signer.Address()}, &res, functionName)
-	parsedRevert, err := ParseRevertReason(collateral.abis.CollateralManagement, revert)
-	if err != nil && parsedRevert == nil {
-		return fmt.Errorf("error parsing withdrawCollateral result: %w", err)
-	} else if parsedRevert != nil && (strings.EqualFold(notResignedError, parsedRevert.Name) || strings.EqualFold(resignationDelayNotPassedError, parsedRevert.Name)) {
-		return liquidity_provider.ProviderNotResignedError
-	} else if parsedRevert != nil {
-		return fmt.Errorf("withdrawCollateral reverted with: %s", parsedRevert.Name)
+	callData, dataErr := collateral.binding.TryPackWithdrawCollateral()
+	if dataErr != nil {
+		return dataErr
+	}
+	if err := collateral.validateWithdrawCollateral(callData); err != nil {
+		return err
 	}
 
 	opts := &bind.TransactOpts{
@@ -194,7 +211,7 @@ func (collateral *collateralManagementContractImpl) WithdrawCollateral() error {
 	receipt, err := rskRetry(collateral.retryParams.Retries, collateral.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(collateral.client, collateral.miningTimeout, "WithdrawCollateral", func() (*geth.Transaction, error) {
-				return collateral.contract.WithdrawCollateral(opts)
+				return bind.Transact(collateral.contract, opts, callData)
 			})
 		})
 
@@ -206,29 +223,56 @@ func (collateral *collateralManagementContractImpl) WithdrawCollateral() error {
 	return nil
 }
 
+func (collateral *collateralManagementContractImpl) validateWithdrawCollateral(callData []byte) error {
+	const (
+		notResignedError               = "NotResigned"
+		resignationDelayNotPassedError = "ResignationDelayNotMet"
+	)
+	_, revert := collateral.contract.CallRaw(&bind.CallOpts{From: collateral.signer.Address()}, callData)
+	parsedRevert, err := ParseRevertReason(collateral.abis.CollateralManagement, revert)
+	if err != nil && parsedRevert == nil {
+		return fmt.Errorf("error parsing withdrawCollateral result: %w", err)
+	} else if parsedRevert != nil && (strings.EqualFold(notResignedError, parsedRevert.Name) || strings.EqualFold(resignationDelayNotPassedError, parsedRevert.Name)) {
+		return liquidity_provider.ProviderNotResignedError
+	} else if parsedRevert != nil {
+		return fmt.Errorf("withdrawCollateral reverted with: %s", parsedRevert.Name)
+	}
+	return nil
+}
+
 func (collateral *collateralManagementContractImpl) GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error) {
-	var lbcEvent *bindings.ICollateralManagementPenalized
+	var lbcEvent *bindings.CollateralManagementContractPenalized
 	result := make([]penalization.PenalizedEvent, 0)
 
-	rawIterator, err := collateral.contract.FilterPenalized(&bind.FilterOpts{
-		Start:   fromBlock,
-		End:     toBlock,
-		Context: ctx,
-	}, []common.Address{common.HexToAddress(collateral.providerAddress)}, nil, nil)
-	iterator := collateral.contract.PenalizedEventIteratorAdapter(rawIterator)
+	var liquidityProviderRule []any
+	var punisherRule []any
+	var quoteHashRule []any
+	liquidityProviderRule = append(liquidityProviderRule, common.HexToAddress(collateral.providerAddress))
+
+	iterator, err := bind.FilterEvents(
+		collateral.contract,
+		&bind.FilterOpts{
+			Start:   fromBlock,
+			End:     toBlock,
+			Context: ctx,
+		},
+		collateral.binding.UnpackPenalizedEvent,
+		liquidityProviderRule, punisherRule, quoteHashRule,
+	)
+
 	defer func() {
-		if rawIterator != nil {
+		if iterator != nil {
 			if iteratorError := iterator.Close(); iteratorError != nil {
 				log.Error("Error closing Penalized event iterator: ", err)
 			}
 		}
 	}()
-	if err != nil || rawIterator == nil {
+	if err != nil || iterator == nil {
 		return nil, err
 	}
 
 	for iterator.Next() {
-		lbcEvent = iterator.Event()
+		lbcEvent = iterator.Value()
 		result = append(result, penalization.PenalizedEvent{
 			LiquidityProvider: lbcEvent.LiquidityProvider.String(),
 			Penalty:           entities.NewBigWei(lbcEvent.Penalty),

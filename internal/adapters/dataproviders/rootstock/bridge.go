@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/bridge"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/federation"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -19,17 +19,18 @@ import (
 	"time"
 )
 
-const registerCoinbaseTxGasLimit = 100000
+const RegisterCoinbaseTxGasLimit = 100000
 
 type rskBridgeImpl struct {
 	address               string
 	requiredConfirmations uint64
 	erpKeys               []string
-	contract              RskBridgeAdapter
+	contract              *bind.BoundContract
 	client                RpcClientBinding
 	btcParams             *chaincfg.Params
 	retryParams           RetryParams
 	signer                TransactionSigner
+	binding               *bindings.RskBridge
 	miningTimeout         time.Duration
 	useSegwitFederation   bool
 }
@@ -43,11 +44,12 @@ type RskBridgeConfig struct {
 
 func NewRskBridgeImpl(
 	config RskBridgeConfig,
-	contract RskBridgeAdapter,
+	contract *bind.BoundContract,
 	client *RskClient,
 	btcParams *chaincfg.Params,
 	retryParams RetryParams,
 	signer TransactionSigner,
+	binding *bindings.RskBridge,
 	miningTimeout time.Duration,
 ) rootstock.Bridge {
 	return &rskBridgeImpl{
@@ -59,6 +61,7 @@ func NewRskBridgeImpl(
 		btcParams:             btcParams,
 		retryParams:           retryParams,
 		signer:                signer,
+		binding:               binding,
 		miningTimeout:         miningTimeout,
 		useSegwitFederation:   config.UseSegwitFederation,
 	}
@@ -72,7 +75,11 @@ func (bridge *rskBridgeImpl) GetFedAddress() (string, error) {
 	opts := &bind.CallOpts{}
 	return rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (string, error) {
-			return bridge.contract.GetFederationAddress(opts)
+			callData, dataErr := bridge.binding.TryPackGetFederationAddress()
+			if dataErr != nil {
+				return "", dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetFederationAddress)
 		})
 }
 
@@ -80,7 +87,11 @@ func (bridge *rskBridgeImpl) GetMinimumLockTxValue() (*entities.Wei, error) {
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return bridge.contract.GetMinimumLockTxValue(opts)
+			callData, dataErr := bridge.binding.TryPackGetMinimumLockTxValue()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetMinimumLockTxValue)
 		})
 	if err != nil {
 		return nil, err
@@ -96,7 +107,11 @@ func (bridge *rskBridgeImpl) GetFlyoverDerivationAddress(args rootstock.FlyoverD
 	opts := &bind.CallOpts{}
 	fedRedeemScript, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() ([]byte, error) {
-			return bridge.contract.GetActivePowpegRedeemScript(opts)
+			callData, dataErr := bridge.binding.TryPackGetActivePowpegRedeemScript()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetActivePowpegRedeemScript)
 		})
 	if err != nil {
 		return rootstock.FlyoverDerivation{}, fmt.Errorf("error retreiving fed redeem script from bridge: %w", err)
@@ -111,34 +126,32 @@ func (bridge *rskBridgeImpl) GetRequiredTxConfirmations() uint64 {
 
 func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, error) {
 	var err error
-	var pubKey []byte
-	var pubKeys []string
-	var i, federationSize int64
-
+	var federationSize int64
 	opts := &bind.CallOpts{}
 	fedSize, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return bridge.contract.GetFederationSize(opts)
+			callData, dataErr := bridge.binding.TryPackGetFederationSize()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetFederationSize)
 		})
 	if err != nil {
 		return rootstock.FederationInfo{}, err
 	}
 	federationSize = fedSize.Int64()
-
-	for i = 0; i < federationSize; i++ {
-		pubKey, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
-			func() ([]byte, error) {
-				return bridge.contract.GetFederatorPublicKeyOfType(opts, big.NewInt(i), "btc")
-			})
-		if err != nil {
-			return rootstock.FederationInfo{}, fmt.Errorf("error fetching fed public key: %w", err)
-		}
-		pubKeys = append(pubKeys, hex.EncodeToString(pubKey))
+	pubKeys, err := bridge.fetchFederationPubKeys(federationSize)
+	if err != nil {
+		return rootstock.FederationInfo{}, err
 	}
 
 	fedThreshold, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return bridge.contract.GetFederationThreshold(opts)
+			callData, dataErr := bridge.binding.TryPackGetFederationThreshold()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetFederationThreshold)
 		})
 	if err != nil {
 		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation size: %w", err)
@@ -146,7 +159,11 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, er
 
 	fedAddress, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (string, error) {
-			return bridge.contract.GetFederationAddress(opts)
+			callData, dataErr := bridge.binding.TryPackGetFederationAddress()
+			if dataErr != nil {
+				return "", dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetFederationAddress)
 		})
 	if err != nil {
 		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation address: %w", err)
@@ -154,21 +171,43 @@ func (bridge *rskBridgeImpl) FetchFederationInfo() (rootstock.FederationInfo, er
 
 	activeFedBlockHeight, err := rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return bridge.contract.GetActiveFederationCreationBlockHeight(opts)
+			callData, dataErr := bridge.binding.TryPackGetActiveFederationCreationBlockHeight()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetActiveFederationCreationBlockHeight)
 		})
 	if err != nil {
 		return rootstock.FederationInfo{}, fmt.Errorf("error fetching federation height: %w", err)
 	}
 
 	return rootstock.FederationInfo{
-		FedThreshold:         fedThreshold.Int64(),
-		FedSize:              fedSize.Int64(),
-		PubKeys:              pubKeys,
-		FedAddress:           fedAddress,
-		ActiveFedBlockHeight: activeFedBlockHeight.Int64(),
-		ErpKeys:              bridge.erpKeys,
-		UseSegwit:            bridge.useSegwitFederation,
+		FedThreshold: fedThreshold.Int64(), FedSize: fedSize.Int64(), PubKeys: pubKeys, FedAddress: fedAddress,
+		ActiveFedBlockHeight: activeFedBlockHeight.Int64(), ErpKeys: bridge.erpKeys, UseSegwit: bridge.useSegwitFederation,
 	}, nil
+}
+
+func (bridge *rskBridgeImpl) fetchFederationPubKeys(federationSize int64) ([]string, error) {
+	var i int64
+	var pubKey []byte
+	var err error
+	var pubKeys []string
+	opts := &bind.CallOpts{}
+	for i = 0; i < federationSize; i++ {
+		pubKey, err = rskRetry(bridge.retryParams.Retries, bridge.retryParams.Sleep,
+			func() ([]byte, error) {
+				callData, dataErr := bridge.binding.TryPackGetFederatorPublicKeyOfType(big.NewInt(i), "btc")
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				return bind.Call(bridge.contract, opts, callData, bridge.binding.UnpackGetFederatorPublicKeyOfType)
+			})
+		if err != nil {
+			return []string{}, fmt.Errorf("error fetching fed public key: %w", err)
+		}
+		pubKeys = append(pubKeys, hex.EncodeToString(pubKey))
+	}
+	return pubKeys, nil
 }
 
 // RegisterBtcCoinbaseTransaction registers a new Bitcoin coinbase transaction in the bridge. Returns blockchain.WaitingForBridgeError
@@ -178,13 +217,17 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params rootstock.Btc
 	var alreadyRegistered bool
 	var bestChainHeight *big.Int
 
-	if bestChainHeight, err = bridge.contract.GetBtcBlockchainBestChainHeight(&bind.CallOpts{}); err != nil {
+	if bestChainHeight, err = bridge.getBtcBestHeight(); err != nil {
 		return "", fmt.Errorf("error validating if coinbase transaction was processed by the bridge: %w", err)
 	} else if bestChainHeight.Cmp(params.BlockHeight) < 0 {
 		return "", blockchain.WaitingForBridgeError
 	}
 
-	if alreadyRegistered, err = bridge.contract.HasBtcBlockCoinbaseTransactionInformation(&bind.CallOpts{}, params.BlockHash); alreadyRegistered {
+	callData, dataErr := bridge.binding.TryPackHasBtcBlockCoinbaseTransactionInformation(params.BlockHash)
+	if dataErr != nil {
+		return "", dataErr
+	}
+	if alreadyRegistered, err = bind.Call(bridge.contract, &bind.CallOpts{}, callData, bridge.binding.UnpackHasBtcBlockCoinbaseTransactionInformation); alreadyRegistered {
 		log.Info("Coinbase transaction already registered")
 		return "", nil
 	} else if err != nil {
@@ -195,12 +238,16 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params rootstock.Btc
 	opts := &bind.TransactOpts{
 		From:     bridge.signer.Address(),
 		Signer:   bridge.signer.Sign,
-		GasLimit: registerCoinbaseTxGasLimit,
+		GasLimit: RegisterCoinbaseTxGasLimit,
 	}
 
 	receipt, err := awaitTx(bridge.client, bridge.miningTimeout, "RegisterBtcCoinbaseTransaction", func() (*geth.Transaction, error) {
-		return bridge.contract.RegisterBtcCoinbaseTransaction(opts, params.BtcTxSerialized, params.BlockHash,
+		callData, dataErr = bridge.binding.TryPackRegisterBtcCoinbaseTransaction(params.BtcTxSerialized, params.BlockHash,
 			params.SerializedPmt, params.WitnessMerkleRoot, params.WitnessReservedValue)
+		if dataErr != nil {
+			return nil, dataErr
+		}
+		return bind.Transact(bridge.contract, opts, callData)
 	})
 
 	if err != nil {
@@ -214,33 +261,46 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params rootstock.Btc
 	return receipt.TxHash.String(), nil
 }
 
+func (bridge *rskBridgeImpl) getBtcBestHeight() (*big.Int, error) {
+	callData, dataErr := bridge.binding.TryPackGetBtcBlockchainBestChainHeight()
+	if dataErr != nil {
+		return nil, dataErr
+	}
+	return bind.Call(bridge.contract, &bind.CallOpts{}, callData, bridge.binding.UnpackGetBtcBlockchainBestChainHeight)
+}
+
 func (bridge *rskBridgeImpl) GetBatchPegOutCreatedEvent(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]rootstock.BatchPegOut, error) {
 	var event *bindings.RskBridgeBatchPegoutCreated
 	result := make([]rootstock.BatchPegOut, 0)
+	var btcTxHashRule []any
+	iterator, err := bind.FilterEvents(
+		bridge.contract,
+		&bind.FilterOpts{
+			Start:   fromBlock,
+			End:     toBlock,
+			Context: ctx,
+		},
+		bridge.binding.UnpackBatchPegoutCreatedEvent,
+		btcTxHashRule,
+	)
 
-	rawIterator, err := bridge.contract.FilterBatchPegoutCreated(&bind.FilterOpts{
-		Start:   fromBlock,
-		End:     toBlock,
-		Context: ctx,
-	}, nil)
-
-	iterator := bridge.contract.BatchPegOutCreatedIteratorAdapter(rawIterator)
 	defer func() {
-		if rawIterator != nil {
+		if iterator != nil {
 			if iteratorError := iterator.Close(); iteratorError != nil {
 				log.Error("Error closing BatchPegOutCreated event iterator: ", err)
 			}
 		}
 	}()
+
 	if err != nil {
 		return nil, err
-	} else if rawIterator == nil {
+	} else if iterator == nil {
 		return nil, fmt.Errorf("no BatchPegOutCreated events found in the range %d to %d", fromBlock, *toBlock)
 	}
 
 	var rskHashes []string
 	for iterator.Next() {
-		event = iterator.Event()
+		event = iterator.Value()
 		if rskHashes, err = parseReleaseRskHashes(event.ReleaseRskTxHashes); err != nil {
 			return nil, fmt.Errorf("error parsing release RSK hashes: %w", err)
 		}
@@ -248,7 +308,7 @@ func (bridge *rskBridgeImpl) GetBatchPegOutCreatedEvent(ctx context.Context, fro
 			TransactionHash:    event.Raw.TxHash.String(),
 			BlockHash:          event.Raw.BlockHash.String(),
 			BlockNumber:        event.Raw.BlockNumber,
-			BtcTxHash:          hex.EncodeToString(event.BtcTxHash[:]),
+			BtcTxHash:          hex.EncodeToString(event.BtcTx[:]),
 			ReleaseRskTxHashes: rskHashes,
 		})
 	}

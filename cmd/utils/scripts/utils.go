@@ -7,7 +7,9 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
+	peginBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
@@ -59,17 +61,16 @@ func CreatePeginContract(
 	if err != nil {
 		return nil, fmt.Errorf("error accessing to wallet: %w", err)
 	}
-	peginBinding, err := bindings.NewIPegIn(common.HexToAddress(env.Rsk.PeginContractAddress), rskClient.Rpc())
-	if err != nil {
-		return nil, err
-	}
+	binding := peginBindings.NewPeginContract()
+	peginBinding := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.PeginContractAddress))
 	return rootstock.NewPeginContractImpl(
 		rskClient,
 		env.Rsk.PeginContractAddress,
-		rootstock.NewPeginContractAdapter(peginBinding),
+		peginBinding,
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
+		binding,
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }
@@ -88,17 +89,16 @@ func CreatePegoutContract(
 	if err != nil {
 		return nil, fmt.Errorf("error accessing to wallet: %w", err)
 	}
-	pegoutContract, err := bindings.NewIPegOut(common.HexToAddress(env.Rsk.PegoutContractAddress), rskClient.Rpc())
-	if err != nil {
-		return nil, err
-	}
+	binding := pegoutBindings.NewPegoutContract()
+	pegoutContract := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.PegoutContractAddress))
 	return rootstock.NewPegoutContractImpl(
 		rskClient,
 		env.Rsk.PeginContractAddress,
-		rootstock.NewPegoutContractAdapter(pegoutContract),
+		pegoutContract,
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
+		binding,
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }
@@ -117,10 +117,8 @@ func CreateDiscoveryContract(
 	if err != nil {
 		return nil, fmt.Errorf("error accessing to wallet: %w", err)
 	}
-	discoveryContract, err := bindings.NewIFlyoverDiscovery(common.HexToAddress(env.Rsk.DiscoveryAddress), rskClient.Rpc())
-	if err != nil {
-		return nil, err
-	}
+	binding := discoveryBindings.NewFlyoverDiscovery()
+	discoveryContract := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.DiscoveryAddress))
 	return rootstock.NewDiscoveryContractImpl(
 		rskClient,
 		env.Rsk.PeginContractAddress,
@@ -128,6 +126,7 @@ func CreateDiscoveryContract(
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
+		binding,
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }
