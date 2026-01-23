@@ -351,7 +351,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		).Return(mustPackBool(t, false), nil).Once()
 		contractMock.transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), rootstock.RegisterCoinbaseTxGasLimit, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(assert.AnError).Once()
 		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
@@ -374,7 +374,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		).Return(mustPackBool(t, false), nil).Once()
 		contractMock.transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), rootstock.RegisterCoinbaseTxGasLimit, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(nil).Once()
 		prepareTxMocks(&contractMock, mockClient, signerMock, false)
 		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
@@ -399,7 +399,7 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 		).Return(mustPackBool(t, false), nil).Once()
 		contractMock.transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), rootstock.RegisterCoinbaseTxGasLimit, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(nil).Once()
 		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))

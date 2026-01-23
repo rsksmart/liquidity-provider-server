@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const RegisterCoinbaseTxGasLimit = 100000
+const registerCoinbaseTxGasLimit = 100000
 
 type rskBridgeImpl struct {
 	address               string
@@ -238,7 +238,7 @@ func (bridge *rskBridgeImpl) RegisterBtcCoinbaseTransaction(params rootstock.Btc
 	opts := &bind.TransactOpts{
 		From:     bridge.signer.Address(),
 		Signer:   bridge.signer.Sign,
-		GasLimit: RegisterCoinbaseTxGasLimit,
+		GasLimit: registerCoinbaseTxGasLimit,
 	}
 
 	receipt, err := awaitTx(bridge.client, bridge.miningTimeout, "RegisterBtcCoinbaseTransaction", func() (*geth.Transaction, error) {

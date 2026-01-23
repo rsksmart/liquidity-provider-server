@@ -136,9 +136,6 @@ func createBoundContracts(
 	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
-	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
 	if err = rootstock.ParseAddress(&pegoutContractAddress, env.Rsk.PegoutContractAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
