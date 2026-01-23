@@ -17,7 +17,7 @@ tools: download
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.64.8
-	go install github.com/ethereum/go-ethereum/cmd/abigen@b9f3a3d964ed3d31e710ec7dd66da9181477ecb2 # v1.16.7
+	go install github.com/ethereum/go-ethereum/cmd/abigen@abeb78c647e354ed922726a1d719ac7bc64a07e2 # v1.16.8
 	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
 
 download:
