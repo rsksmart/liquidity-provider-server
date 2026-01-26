@@ -2,7 +2,6 @@ package registry
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -31,7 +30,7 @@ func NewWatcherRegistry(
 	useCaseRegistry *UseCaseRegistry,
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
-	liquidityProvider *dataproviders.LocalLiquidityProvider,
+	lpRegistry *LiquidityProvider,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
@@ -71,7 +70,7 @@ func NewWatcherRegistry(
 				useCaseRegistry.updatePegoutDepositUseCase,
 				useCaseRegistry.initPegoutDepositCacheUseCase,
 			),
-			liquidityProvider,
+			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
 			rskRegistry.Contracts,
 			messaging.EventBus,

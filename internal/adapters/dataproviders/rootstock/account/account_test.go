@@ -1,6 +1,7 @@
 package account_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -36,11 +37,15 @@ func TestGetAccount(t *testing.T) {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	t.Run("Create new account", func(t *testing.T) {
 		testAccount, testError := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		})
 		_, noExistError := os.Stat(testDir)
@@ -85,17 +90,19 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 	testDir := filepath.Join(t.TempDir(), derivationKeystore)
 	keyFile, err := os.Open(keyPath)
 	require.NoError(t, err)
-
 	defer func(file *os.File) { closingErr := file.Close(); require.NoError(t, closingErr) }(keyFile)
-
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	t.Run("Create new account", func(t *testing.T) {
 		testAccount, testError := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
 			CreationArgs: account.CreationArgs{
 				KeyDir:        testDir,
 				AccountNum:    0,
-				EncryptedJson: string(keyBytes),
+				EncryptedJson: string(walletInfo.HotWallet),
 				Password:      test.KeyPassword,
 			},
 			BtcParams: &chaincfg.TestNet3Params,
@@ -111,7 +118,7 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 			CreationArgs: account.CreationArgs{
 				KeyDir:        testDir,
 				AccountNum:    0,
-				EncryptedJson: string(keyBytes),
+				EncryptedJson: string(walletInfo.HotWallet),
 				Password:      test.KeyPassword,
 			},
 			BtcParams: &chaincfg.TestNet3Params,
@@ -125,7 +132,7 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 			CreationArgs: account.CreationArgs{
 				KeyDir:        testDir,
 				AccountNum:    0,
-				EncryptedJson: string(keyBytes),
+				EncryptedJson: string(walletInfo.HotWallet),
 				Password:      test.KeyPassword,
 			},
 			BtcParams: &chaincfg.TestNet3Params,
@@ -146,19 +153,21 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%d", time.Now().UnixNano()))
 	keyFile, setupErr := os.Open(keyPath)
 	require.NoError(t, setupErr)
-
 	defer func(file *os.File) {
 		closingErr := file.Close()
 		require.NoError(t, closingErr)
 	}(keyFile)
-
 	keyBytes, setupErr := io.ReadAll(keyFile)
 	require.NoError(t, setupErr)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	t.Run("Invalid dir", func(t *testing.T) {
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        "/test",
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		})
 		assert.Nil(t, testAccount)
@@ -178,7 +187,7 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      "incorrect",
 		})
 		assert.Nil(t, testAccount)
@@ -189,14 +198,14 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 		_, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		})
 		require.NoError(t, err)
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    1,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		})
 		assert.Nil(t, testAccount)
@@ -216,11 +225,15 @@ func TestRskAccount(t *testing.T) {
 
 	keyBytes, setupErr := io.ReadAll(keyFile)
 	require.NoError(t, setupErr)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	testnetAccount, err := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
 		CreationArgs: account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		},
 		BtcParams: &chaincfg.TestNet3Params,
@@ -230,7 +243,7 @@ func TestRskAccount(t *testing.T) {
 		CreationArgs: account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
 		},
 		BtcParams: &chaincfg.MainNetParams,

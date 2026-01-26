@@ -27,9 +27,9 @@ These are the environment variables required by the liquidity provider server (L
 | `USE_SEGWIT_FEDERATION` | Wether to generate the federation address as a P2SH-P2WSH or not | true | NO |
 | `ACCOUNT_NUM` | The keystore account number to use. If not provided default value will be 0. | `0` | NO |
 | `DAO_FEE_COLLECTOR_ADDRESS` | Address of the DAO fee collector. | `0x86B6534687A176A476C16083a373fB9Fe4FAb449` | YES |
-| `KEY_SECRET` | Name of the secret of AWS secrets manager that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-KEY` | NO |
+| `WALLET_SECRET` | Name of the secret of AWS secrets manager that contains the encrypted json of the liquidity provider RSK account and the details of the cold wallet. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-KEY` | NO |
 | `PASSWORD_SECRET` | Name of the secret of AWS secrets manager that contains the password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-PASSWORD` | NO |
-| `KEYSTORE_FILE` | Name of the file that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `geth_keystore/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c` | NO |
+| `WALLET_FILE` | Name of the file that contains the encrypted json of the liquidity provider RSK account and the details of the cold wallet. Only required if `SECRET_SRC` is `env`. | `geth_keystore/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c` | NO |
 | `KEYSTORE_PWD` | The password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `<any password>` | NO |
 | `BTC_NETWORK` | Network to use when connecting to the Bitcoin node. | One of the following: `regtest`, `testnet`, `mainnet` | YES |
 | `BTC_USERNAME` | Username for the bitcoind rpc server. | `user` | YES |
