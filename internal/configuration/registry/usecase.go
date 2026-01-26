@@ -220,6 +220,8 @@ func NewUseCaseRegistry(
 		healthUseCase:              usecases.NewHealthUseCase(rskRegistry.Client, btcRegistry.RpcConnection, databaseRegistry.Connection),
 		setGeneralConfigUseCase: liquidity_provider.NewSetGeneralConfigUseCase(
 			databaseRegistry.LiquidityProviderRepository,
+			liquidityProvider,
+			liquidityProvider,
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),

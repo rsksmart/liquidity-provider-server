@@ -74,5 +74,6 @@ func TestDefaultGeneralConfiguration(t *testing.T) {
 		RskConfirmations:     liquidity_provider.DefaultRskConfirmationsPerAmount(),
 		BtcConfirmations:     liquidity_provider.DefaultBtcConfirmationsPerAmount(),
 		PublicLiquidityCheck: false,
+		MaxLiquidity:         entities.NewWei(1000000000000000000),
 	}, config)
 }

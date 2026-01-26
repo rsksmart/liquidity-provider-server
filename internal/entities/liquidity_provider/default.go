@@ -6,6 +6,10 @@ import (
 )
 
 const (
+	DefaultMaxLiquidity = 1000000000000000000
+)
+
+const (
 	PeginTimeForDeposit = 3600
 	PeginCallTime       = 7200
 	PeginPenaltyFee     = 10000000000000
@@ -78,5 +82,6 @@ func DefaultGeneralConfiguration() GeneralConfiguration {
 		RskConfirmations:     DefaultRskConfirmationsPerAmount(),
 		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
 		PublicLiquidityCheck: false,
+		MaxLiquidity:         entities.NewWei(DefaultMaxLiquidity),
 	}
 }

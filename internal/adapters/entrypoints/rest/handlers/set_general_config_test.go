@@ -19,7 +19,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000"}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -73,12 +73,36 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "must not be empty")
 		useCase.AssertNotCalled(t, "Run")
 	})
-	t.Run("should return server internal error if the request validation fails", func(t *testing.T) {
+	t.Run("should return bad request if maxLiquidity is negative", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "-1000"}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if maxLiquidity is not a number", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "nan"}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return server internal error if the use case fails", func(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(assert.AnError)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000"}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
