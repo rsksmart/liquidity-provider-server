@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
+
+	"math/big"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 var (
@@ -103,8 +105,13 @@ type HashedCredentials struct {
 	PasswordSalt   string `bson:"password_salt"`
 }
 
+type StateConfiguration struct {
+	LastBtcToColdWalletTransfer  *time.Time `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer *time.Time `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+}
+
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails | StateConfiguration
 }
 
 func validateRange(min, max, amount *entities.Wei) error {
