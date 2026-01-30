@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -79,7 +79,7 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 		eventName   = "PegOutDeposit"
 		eventTopics = 4
 	)
-	abi, err := bindings.IPegOutMetaData.GetAbi()
+	abi, err := bindings.PegoutContractMetaData.ParseABI()
 	if err != nil {
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
 	}
@@ -95,7 +95,7 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, errors.New("invalid number of topics for PegOutDeposit event")
 	}
 
-	event := new(bindings.IPegOutPegOutDeposit)
+	event := new(bindings.PegoutContractPegOutDeposit)
 	if err = abi.UnpackIntoInterface(event, eventName, log.Data); err != nil {
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
 	}

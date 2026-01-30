@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	pegin "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -83,33 +84,47 @@ func TestRskClient_Shutdown(t *testing.T) {
 // Since the function is private, it will be tested through HashPeginQuote
 func TestRskRetry(t *testing.T) {
 	const retries = 3
-	contractBinding := &mocks.PeginContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	peginBinding := pegin.NewPeginContract()
 	contract := rootstock.NewPeginContractImpl(
 		dummyClient,
 		test.AnyAddress,
-		contractBinding,
+		contractMock.contract,
 		nil,
 		rootstock.RetryParams{Retries: retries, Sleep: 1 * time.Second},
 		time.Duration(1),
+		peginBinding,
 		Abis,
 	)
 	t.Run("Error on every attempt", func(t *testing.T) {
-		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{}, assert.AnError).Times(retries)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Times(retries)
 		start := time.Now()
 		result, err := contract.HashPeginQuote(peginQuote)
 		end := time.Now()
 		assert.WithinRange(t, end, start, start.Add(3*time.Second).Add(500*time.Millisecond))
 		require.Error(t, err)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error first attempt", func(t *testing.T) {
-		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{}, assert.AnError).Once()
-		contractBinding.EXPECT().HashPegInQuote(mock.Anything, mock.Anything).Return([32]byte{1, 2, 3}, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, [32]byte{1, 2, 3}), nil).Once()
 		result, err := contract.HashPeginQuote(peginQuote)
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 }
 
@@ -117,7 +132,9 @@ func TestAwaitTxWithCtx(t *testing.T) {
 	t.Run("should return receipt if tx is successful", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, true)
+		contractMock := createBoundContractMock()
+		prepareTxMocks(&contractMock, clientMock, signerMock, true)
+		tx := geth.NewTx(&geth.LegacyTx{})
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction success tx (%s) executed successfully", tx.Hash()))()
 		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "success tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
@@ -129,7 +146,9 @@ func TestAwaitTxWithCtx(t *testing.T) {
 	t.Run("should return receipt if tx reverts", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, false)
+		contractMock := createBoundContractMock()
+		prepareTxMocks(&contractMock, clientMock, signerMock, false)
+		tx := geth.NewTx(&geth.LegacyTx{})
 		defer test.AssertLogContains(t, fmt.Sprintf("Transaction fail tx (%s) reverted", tx.Hash()))()
 		receipt, err := rootstock.AwaitTxWithCtx(clientMock, time.Duration(1), "fail tx", context.Background(), func() (*geth.Transaction, error) {
 			return tx, nil
@@ -138,10 +157,12 @@ func TestAwaitTxWithCtx(t *testing.T) {
 		assert.NotNil(t, receipt)
 		assert.Zero(t, receipt.Status)
 	})
-	t.Run("should return error if tx to be mined", func(t *testing.T) {
+	t.Run("should return error if tx fails to be mined", func(t *testing.T) {
 		clientMock := &mocks.RpcClientBindingMock{}
 		signerMock := &mocks.TransactionSignerMock{}
-		tx := prepareTxMocks(clientMock, signerMock, true)
+		contractMock := createBoundContractMock()
+		prepareTxMocks(&contractMock, clientMock, signerMock, true)
+		tx := geth.NewTx(&geth.LegacyTx{})
 		clientMock.ExpectedCalls = []*mock.Call{}
 		clientMock.On("TransactionReceipt", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

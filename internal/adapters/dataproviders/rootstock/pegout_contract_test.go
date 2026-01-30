@@ -3,16 +3,11 @@ package rootstock_test
 import (
 	"context"
 	"encoding/hex"
-	"math/big"
-	"strings"
-	"testing"
-	"time"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -21,12 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	penalizedIteratorString = "*bindings.ICollateralManagementPenalizedIterator"
-	depositIteratorString   = "*bindings.IPegOutPegOutDepositIterator"
-	invalidAddressTest      = "Invalid address"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
 )
 
 var pegoutQuote = quote.PegoutQuote{
@@ -73,10 +66,40 @@ var parsedPegoutQuote = bindings.QuotesPegOutQuote{
 	GasFee:                big.NewInt(888),
 }
 
-var deposits = []*bindings.IPegOutPegOutDeposit{
-	{Raw: geth.Log{TxHash: common.Hash{7}, BlockNumber: 10}, QuoteHash: [32]byte{1, 2, 3}, Sender: common.Address{1}, Amount: big.NewInt(555), Timestamp: big.NewInt(123456789)},
-	{Raw: geth.Log{TxHash: common.Hash{8}, BlockNumber: 11}, QuoteHash: [32]byte{4, 5, 6}, Sender: common.Address{2}, Amount: big.NewInt(666), Timestamp: big.NewInt(987654321)},
-	{Raw: geth.Log{TxHash: common.Hash{9}, BlockNumber: 12}, QuoteHash: [32]byte{7, 8, 9}, Sender: common.Address{3}, Amount: big.NewInt(777), Timestamp: big.NewInt(111222333)},
+var deposits = []geth.Log{
+	{
+		TxHash:      common.Hash{7},
+		BlockNumber: 10,
+		Topics: []common.Hash{
+			common.HexToHash("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"),
+			common.HexToHash("0x0102030000000000000000000000000000000000000000000000000000000000"),
+			common.HexToHash("0x0000000000000000000000000100000000000000000000000000000000000000"),
+			common.HexToHash("0x00000000000000000000000000000000000000000000000000000000075bcd15"),
+		},
+		Data: hexutil.MustDecode("0x000000000000000000000000000000000000000000000000000000000000022b"),
+	},
+	{
+		TxHash:      common.Hash{8},
+		BlockNumber: 11,
+		Topics: []common.Hash{
+			common.HexToHash("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"),
+			common.HexToHash("0x0405060000000000000000000000000000000000000000000000000000000000"),
+			common.HexToHash("0x0000000000000000000000000200000000000000000000000000000000000000"),
+			common.HexToHash("0x000000000000000000000000000000000000000000000000000000003ade68b1"),
+		},
+		Data: hexutil.MustDecode("0x000000000000000000000000000000000000000000000000000000000000029a"),
+	},
+	{
+		TxHash:      common.Hash{9},
+		BlockNumber: 12,
+		Topics: []common.Hash{
+			common.HexToHash("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"),
+			common.HexToHash("0x0708090000000000000000000000000000000000000000000000000000000000"),
+			common.HexToHash("0x0000000000000000000000000300000000000000000000000000000000000000"),
+			common.HexToHash("0x0000000000000000000000000000000000000000000000000000000006a11e3d"),
+		},
+		Data: hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000000000000000309"),
+	},
 }
 
 var parsedDeposits = []quote.PegoutDeposit{
@@ -110,40 +133,51 @@ func TestNewPegoutContractImpl(t *testing.T) {
 	contract := rootstock.NewPegoutContractImpl(
 		rootstock.NewRskClient(&mocks.RpcClientBindingMock{}),
 		test.AnyAddress,
-		&mocks.PegoutContractAdapterMock{},
+		createBoundContractMock().contract,
 		&mocks.TransactionSignerMock{},
 		rootstock.RetryParams{Retries: 1, Sleep: 1},
 		time.Duration(1),
+		bindings.NewPegoutContract(),
 		Abis,
 	)
 	test.AssertNonZeroValues(t, contract)
 }
 
 func TestPegoutContractImpl_GetAddress(t *testing.T) {
-	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, Abis)
 	assert.Equal(t, test.AnyAddress, pegoutContract.GetAddress())
 }
 
 func TestPegoutContractImpl_HashPegoutQuote(t *testing.T) {
-	contract := &mocks.PegoutContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
 	hash := [32]byte{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	pegoutContract := rootstock.NewPegoutContractImpl(
 		dummyClient,
 		test.AnyAddress,
-		contract,
+		contractMock.contract,
 		nil, rootstock.RetryParams{},
 		time.Duration(1),
+		pegoutBinding,
 		Abis,
 	)
 	t.Run("Success", func(t *testing.T) {
-		contract.EXPECT().HashPegOutQuote(mock.Anything, parsedPegoutQuote).Return(hash, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuote(parsedPegoutQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
 		result, err := pegoutContract.HashPegoutQuote(pegoutQuote)
 		require.NoError(t, err)
 		assert.Equal(t, hex.EncodeToString(hash[:]), result)
-		contract.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on HashPegoutQuote fail", func(t *testing.T) {
-		contract.EXPECT().HashPegOutQuote(mock.Anything, parsedPegoutQuote).Return([32]byte{}, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuote(parsedPegoutQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := pegoutContract.HashPegoutQuote(pegoutQuote)
 		require.Error(t, err)
 		assert.Empty(t, result)
@@ -151,8 +185,9 @@ func TestPegoutContractImpl_HashPegoutQuote(t *testing.T) {
 }
 
 func TestPegoutContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
-	contract := &mocks.PegoutContractAdapterMock{}
-	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contract, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 	t.Run("Incomplete quote", func(t *testing.T) {
 		testQuote := pegoutQuote
 		testQuote.LbcAddress = ""
@@ -207,17 +242,26 @@ func TestPegoutContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
 func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
-	contractBinding := &mocks.PegoutContractAdapterMock{}
-	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().IsQuoteCompleted(mock.Anything, parsedQuoteHash).Return(true, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackIsQuoteCompleted(parsedQuoteHash)),
+			mock.Anything,
+		).Return(mustPackBool(t, true), nil).Once()
 		result, err := pegoutContract.IsPegOutQuoteCompleted(quoteHash)
 		require.NoError(t, err)
 		assert.True(t, result)
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Should handle call error", func(t *testing.T) {
-		contractBinding.EXPECT().IsQuoteCompleted(mock.Anything, parsedQuoteHash).Return(false, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackIsQuoteCompleted(parsedQuoteHash)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := pegoutContract.IsPegOutQuoteCompleted(quoteHash)
 		require.Error(t, err)
 		assert.False(t, result)
@@ -235,17 +279,26 @@ func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 }
 
 func TestPegoutContractImpl_DaoFeePercentage(t *testing.T) {
-	contractBinding := &mocks.PegoutContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
 	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(big.NewInt(1), nil).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackGetFeePercentage()),
+			mock.Anything,
+		).Return(mustPackUint256(t, big.NewInt(1)), nil).Once()
+		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 		percentage, err := pegoutContract.DaoFeePercentage()
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), percentage)
 	})
 	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(nil, assert.AnError).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackGetFeePercentage()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 		percentage, err := pegoutContract.DaoFeePercentage()
 		require.Error(t, err)
 		require.Zero(t, percentage)
@@ -253,16 +306,18 @@ func TestPegoutContractImpl_DaoFeePercentage(t *testing.T) {
 }
 
 func TestPegoutContractImpl_RefundUserPegOut(t *testing.T) {
-	contractBinding := &mocks.PegoutContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
 	signer := &mocks.TransactionSignerMock{}
 	client := &mocks.RpcClientBindingMock{}
 	pegoutContract := rootstock.NewPegoutContractImpl(
 		rootstock.NewRskClient(client),
 		test.AnyAddress,
-		contractBinding,
+		contractMock.contract,
 		signer,
 		rootstock.RetryParams{},
 		time.Duration(1),
+		pegoutBinding,
 		Abis,
 	)
 
@@ -282,9 +337,14 @@ func TestPegoutContractImpl_RefundUserPegOut(t *testing.T) {
 
 	t.Run("should fail if transaction fails", func(t *testing.T) {
 		validHash := strings.Repeat("aa", 32)
-		tx := prepareTxMocks(client, signer, false)
-		contractBinding.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, assert.AnError).Once()
-
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), pegoutBinding.PackRefundUserPegOut(test.MustEncode32Bytes(validHash))),
+		).Return(assert.AnError).Once()
+		signer.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
+		prepareTxMocks(&contractMock, client, signer, true)
 		result, err := pegoutContract.RefundUserPegOut(validHash)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "refund user peg out error")
@@ -293,14 +353,15 @@ func TestPegoutContractImpl_RefundUserPegOut(t *testing.T) {
 
 	t.Run("should succeed", func(t *testing.T) {
 		validHash := strings.Repeat("aa", 32)
-		tx := prepareTxMocks(client, signer, true)
-		contractBinding.On("RefundUserPegOut", mock.Anything, mock.Anything).Return(tx, nil).Once()
-
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), pegoutBinding.PackRefundUserPegOut(test.MustEncode32Bytes(validHash))),
+		).Return(nil).Once()
+		prepareTxMocks(&contractMock, client, signer, true)
 		result, err := pegoutContract.RefundUserPegOut(validHash)
 		require.NoError(t, err)
-		assert.Equal(t, tx.Hash().String(), result)
-
-		contractBinding.AssertExpectations(t)
+		assert.Equal(t, "0x"+test.AnyHash, result)
+		contractMock.transactor.AssertExpectations(t)
 	})
 }
 
@@ -316,32 +377,33 @@ func TestPegoutContractImpl_RefundPegout(t *testing.T) {
 		MerkleBranchPath:   big.NewInt(5),
 		MerkleBranchHashes: [][32]byte{{3, 2, 1}, {6, 5, 4}, {9, 8, 7}},
 	}
-	txConfig := blockchain.TransactionConfig{Value: entities.NewWei(1234), GasLimit: &gasLimit}
-	matchOptsFunc := func(opts *bind.TransactOpts) bool {
-		return opts.From.String() == parsedAddress.String() && opts.GasLimit == gasLimit
-	}
+	txConfig := blockchain.TransactionConfig{Value: entities.NewWei(0), GasLimit: &gasLimit}
+	pegoutBinding := bindings.NewPegoutContract()
+	txData := pegoutBinding.PackRefundPegOut(
+		refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+		refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+	)
 	t.Run("Success", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 500, big.NewInt(0), txData),
 		).Return(nil).Once()
-		tx := prepareTxMocks(mockClient, signerMock, true)
-		contractBinding.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(tx, nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.NoError(t, err)
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0),
@@ -349,101 +411,96 @@ func TestPegoutContractImpl_RefundPegout(t *testing.T) {
 			Logs:              []blockchain.TransactionLog{},
 		}
 		assert.Equal(t, expectedReceipt, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (waiting for bridge, not enough confirmations)", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 		e := NewRskRpcError("transaction reverted", "0xd2506f8c00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000002")
-		contractBinding.EXPECT().Caller().Return(callerMock).Once()
-		callerMock.EXPECT().Call(mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(e).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, e).Once()
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		contractBinding.AssertNotCalled(t, "RefundPegOut")
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 	})
 	t.Run("Error handling (waiting for bridge, tx not seen yet)", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 		e := NewRskRpcError("transaction reverted", "0xd06e366affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-		contractBinding.EXPECT().Caller().Return(callerMock).Once()
-		callerMock.EXPECT().Call(mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(e).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, e).Once()
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		contractBinding.AssertNotCalled(t, "RefundPegOut")
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 	})
 	t.Run("Error handling (Call error)", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(assert.AnError).Once()
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.Error(t, err)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		contractBinding.AssertNotCalled(t, "RefundPegOut")
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 	})
 	t.Run("Error handling (Transaction send error)", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(nil).Once()
-		_ = prepareTxMocks(mockClient, signerMock, true)
-		contractBinding.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(nil, assert.AnError).Once()
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 500, big.NewInt(0), txData),
+		).Return(assert.AnError).Once()
+		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error")
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (Transaction reverted)", func(t *testing.T) {
-		contractBinding := &mocks.PegoutContractAdapterMock{}
-		callerMock := &mocks.ContractCallerBindingMock{}
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "refundPegOut",
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 500, big.NewInt(0), txData),
 		).Return(nil).Once()
-		tx := prepareTxMocks(mockClient, signerMock, false)
-		contractBinding.On("RefundPegOut", mock.MatchedBy(matchOptsFunc),
-			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
-			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
-		).Return(tx, nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, false)
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
 		require.ErrorContains(t, err, "refund pegout error: transaction reverted")
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0),
@@ -451,94 +508,60 @@ func TestPegoutContractImpl_RefundPegout(t *testing.T) {
 			Logs:              []blockchain.TransactionLog{},
 		}
 		assert.Equal(t, expectedReceipt, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 }
 
 func TestPegoutContractImpl_GetDepositEvents(t *testing.T) {
-	contractBinding := &mocks.PegoutContractAdapterMock{}
-	iteratorMock := &mocks.EventIteratorAdapterMock[bindings.IPegOutPegOutDeposit]{}
-	filterMatchFunc := func(from uint64, to uint64) func(opts *bind.FilterOpts) bool {
-		return func(opts *bind.FilterOpts) bool {
-			return from == opts.Start && to == *opts.End && opts.Context != nil
-		}
-	}
-	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 	t.Run("Success", func(t *testing.T) {
 		var from uint64 = 500
 		var to uint64 = 1000
-		contractBinding.EXPECT().FilterPegOutDeposit(mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil), []*big.Int(nil)).
-			Return(&bindings.IPegOutPegOutDepositIterator{}, nil).Once()
-		contractBinding.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
-			Return(iteratorMock)
-		iteratorMock.On("Next").Return(true).Times(len(deposits))
-		iteratorMock.On("Next").Return(false).Once()
-		for _, deposit := range deposits {
-			iteratorMock.On("Event").Return(deposit).Once()
-		}
-		iteratorMock.On("Error").Return(nil).Once()
-		iteratorMock.On("Close").Return(nil).Once()
+		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(deposits, nil).Once()
 		result, err := pegoutContract.GetDepositEvents(context.Background(), from, &to)
 		require.NoError(t, err)
 		assert.Equal(t, parsedDeposits, result)
-		contractBinding.AssertExpectations(t)
-		iteratorMock.AssertExpectations(t)
+		contractMock.filterer.AssertExpectations(t)
 	})
 	t.Run("Error handling when failed to get iterator", func(t *testing.T) {
 		var from uint64 = 600
 		var to uint64 = 1100
-		contractBinding.EXPECT().FilterPegOutDeposit(mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil), []*big.Int(nil)).
-			Return(nil, assert.AnError).Once()
-		contractBinding.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
-			Return(nil)
+		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(nil, assert.AnError).Once()
 		result, err := pegoutContract.GetDepositEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
-		contractBinding.AssertExpectations(t)
-	})
-	t.Run("Error handling on iterator error", func(t *testing.T) {
-		var from uint64 = 700
-		var to uint64 = 1200
-		contractBinding.EXPECT().FilterPegOutDeposit(mock.MatchedBy(filterMatchFunc(from, to)), [][32]uint8(nil), []common.Address(nil), []*big.Int(nil)).
-			Return(&bindings.IPegOutPegOutDepositIterator{}, nil).Once()
-		contractBinding.On("DepositEventIteratorAdapter", mock.AnythingOfType(depositIteratorString)).
-			Return(iteratorMock)
-		iteratorMock.On("Next").Return(false).Once()
-		iteratorMock.On("Error").Return(assert.AnError).Once()
-		iteratorMock.On("Close").Return(nil).Once()
-		result, err := pegoutContract.GetDepositEvents(context.Background(), from, &to)
-		require.Error(t, err)
-		assert.Nil(t, result)
-		contractBinding.AssertExpectations(t)
-		iteratorMock.AssertExpectations(t)
+		contractMock.filterer.AssertExpectations(t)
 	})
 }
 
 func TestPegoutContractImpl_PausedStatus(t *testing.T) {
-	contractBinding := &mocks.PegoutContractAdapterMock{}
-	contract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
+	contract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 	t.Run("should return pause status result", func(t *testing.T) {
-		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
-			IsPaused bool
-			Reason   string
-			Since    uint64
-		}{IsPaused: true, Reason: "test", Since: 123}, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
 		result, err := contract.PausedStatus()
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
 	})
 	t.Run("should handle error checking pause status", func(t *testing.T) {
-		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
-			IsPaused bool
-			Reason   string
-			Since    uint64
-		}{}, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := contract.PausedStatus()
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
-	contractBinding.AssertExpectations(t)
+	contractMock.caller.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -546,17 +569,42 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
 	btcTx := []byte{0x01, 0x00, 0x00, 0x00}
-	contractBinding := &mocks.PegoutContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
 	signerMock := &mocks.TransactionSignerMock{}
-	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
+	pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
 
 	t.Run("Success", func(t *testing.T) {
 		signerMock.On("Address").Return(parsedAddress).Once()
-		expectedQuote := bindings.QuotesPegOutQuote{}
-		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(expectedQuote, nil).Once()
+		expectedQuote := bindings.QuotesPegOutQuote{
+			CallFee:               big.NewInt(1),
+			PenaltyFee:            big.NewInt(1),
+			Value:                 big.NewInt(1),
+			ProductFeeAmount:      big.NewInt(1),
+			GasFee:                big.NewInt(1),
+			LbcAddress:            common.HexToAddress("10"),
+			LpRskAddress:          common.HexToAddress("10"),
+			RskRefundAddress:      common.HexToAddress("10"),
+			Nonce:                 1,
+			AgreementTimestamp:    2,
+			DepositDateLimit:      3,
+			TransferTime:          4,
+			ExpireDate:            5,
+			ExpireBlock:           6,
+			DepositConfirmations:  7,
+			TransferConfirmations: 8,
+			DepositAddress:        []byte{1},
+			BtcRefundAddress:      []byte{1},
+			LpBtcAddress:          []byte{1},
+		}
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackValidatePegout(parsedQuoteHash, btcTx)),
+			mock.Anything,
+		).Return(mustPackPegoutQuote(t, expectedQuote), nil).Once()
 		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
 		require.NoError(t, err)
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 		signerMock.AssertExpectations(t)
 	})
 
@@ -564,12 +612,16 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		signerMock.On("Address").Return(parsedAddress).Once()
 		// Contract revert with parseable error data (MalformedTransaction error selector: 0x7201f86d)
 		contractRevertError := NewRskRpcError("execution reverted", "0x7201f86d")
-		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, contractRevertError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackValidatePegout(parsedQuoteHash, btcTx)),
+			mock.Anything,
+		).Return(nil, contractRevertError).Once()
 		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "reverted with:")
 		require.ErrorContains(t, err, "MalformedTransaction")
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 		signerMock.AssertExpectations(t)
 	})
 
@@ -577,12 +629,16 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		signerMock.On("Address").Return(parsedAddress).Once()
 		// Network/RPC error that can't be parsed (no error data) - potentially recoverable
 		networkError := assert.AnError
-		contractBinding.EXPECT().ValidatePegout(mock.Anything, parsedQuoteHash, btcTx).Return(bindings.QuotesPegOutQuote{}, networkError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackValidatePegout(parsedQuoteHash, btcTx)),
+			mock.Anything,
+		).Return(nil, networkError).Once()
 		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "error validating pegout:")
 		require.NotContains(t, err.Error(), "reverted with:")
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 		signerMock.AssertExpectations(t)
 	})
 

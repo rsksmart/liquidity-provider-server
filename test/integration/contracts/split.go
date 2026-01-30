@@ -3,11 +3,14 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	collateralBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
+	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
+	peginBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test/integration"
@@ -19,11 +22,16 @@ import (
 	"time"
 )
 
+type Contract[binding any] struct {
+	contract *bind.BoundContract
+	binding  *binding
+}
+
 type SplitLbcExecutor struct {
-	pegin                *bindings.IPegIn
-	pegout               *bindings.IPegOut
-	discovery            *bindings.IFlyoverDiscovery
-	collateralManagement *bindings.ICollateralManagement
+	pegin                *Contract[peginBindings.PeginContract]
+	pegout               *Contract[pegoutBindings.PegoutContract]
+	discovery            *Contract[discoveryBindings.FlyoverDiscovery]
+	collateralManagement *Contract[collateralBindings.CollateralManagementContract]
 }
 
 type SplitAddresses struct {
@@ -34,24 +42,25 @@ type SplitAddresses struct {
 }
 
 func NewSplityLbcExecutor(addresses SplitAddresses, backend bind.ContractBackend) (*SplitLbcExecutor, error) {
-	var (
-		err                  error
-		pegin                *bindings.IPegIn
-		pegout               *bindings.IPegOut
-		discovery            *bindings.IFlyoverDiscovery
-		collateralManagement *bindings.ICollateralManagement
-	)
-	if pegin, err = bindings.NewIPegIn(common.HexToAddress(addresses.Pegin), backend); err != nil {
-		return nil, err
+	peginBinding := peginBindings.NewPeginContract()
+	pegoutBinding := pegoutBindings.NewPegoutContract()
+	discoveryBinding := discoveryBindings.NewFlyoverDiscovery()
+	collateralBinding := collateralBindings.NewCollateralManagementContract()
+	pegin := &Contract[peginBindings.PeginContract]{
+		contract: peginBinding.Instance(backend, common.HexToAddress(addresses.Pegin)),
+		binding:  peginBinding,
 	}
-	if pegout, err = bindings.NewIPegOut(common.HexToAddress(addresses.Pegout), backend); err != nil {
-		return nil, err
+	pegout := &Contract[pegoutBindings.PegoutContract]{
+		contract: pegoutBinding.Instance(backend, common.HexToAddress(addresses.Pegout)),
+		binding:  pegoutBinding,
 	}
-	if discovery, err = bindings.NewIFlyoverDiscovery(common.HexToAddress(addresses.Discovery), backend); err != nil {
-		return nil, err
+	discovery := &Contract[discoveryBindings.FlyoverDiscovery]{
+		contract: discoveryBinding.Instance(backend, common.HexToAddress(addresses.Discovery)),
+		binding:  discoveryBinding,
 	}
-	if collateralManagement, err = bindings.NewICollateralManagement(common.HexToAddress(addresses.CollateralManagement), backend); err != nil {
-		return nil, err
+	collateralManagement := &Contract[collateralBindings.CollateralManagementContract]{
+		contract: collateralBinding.Instance(backend, common.HexToAddress(addresses.CollateralManagement)),
+		binding:  collateralBinding,
 	}
 	return &SplitLbcExecutor{pegin: pegin, pegout: pegout, discovery: discovery, collateralManagement: collateralManagement}, nil
 }
@@ -73,9 +82,9 @@ func (e *SplitLbcExecutor) DepositPegout(s TestSuite, opts *bind.TransactOpts, p
 	signature, err := hex.DecodeString(hexSignature)
 	s.Raw().Require().NoError(err)
 
-	depositTx, err := e.pegout.DepositPegOut(opts, parsedQuote, signature)
+	depositTx, err := bind.Transact(e.pegout.contract, opts, e.pegout.binding.PackDepositPegOut(parsedQuote, signature))
 	s.Raw().Require().NoError(err)
-	receipt, err := bind.WaitMined(ctx, s.RskClient(), depositTx)
+	receipt, err := bind.WaitMined(ctx, s.RskClient(), depositTx.Hash())
 	s.Raw().Require().NoError(err)
 	log.Info("[Integration test] Hash of deposit tx ", depositTx.Hash().String())
 	return receipt, depositTx
@@ -83,16 +92,12 @@ func (e *SplitLbcExecutor) DepositPegout(s TestSuite, opts *bind.TransactOpts, p
 
 func (e *SplitLbcExecutor) GetRefundPegoutEvent(s TestSuite, timeout time.Duration, quoteHash string) RefundPegoutEvent {
 	var quoteHashByes [32]byte
-	eventChannel := make(chan *bindings.IPegOutPegOutRefunded)
+	eventChannel := make(chan *pegoutBindings.PegoutContractPegOutRefunded)
 	parsedHash, err := hex.DecodeString(quoteHash)
 	s.Raw().Require().NoError(err)
 	copy(quoteHashByes[:], parsedHash)
 
-	subscription, err := e.pegout.WatchPegOutRefunded(
-		nil,
-		eventChannel,
-		[][32]byte{quoteHashByes},
-	)
+	subscription, err := bind.WatchEvents(e.pegout.contract, &bind.WatchOpts{}, e.pegout.binding.UnpackPegOutRefundedEvent, eventChannel, []any{quoteHashByes})
 	s.Raw().Require().NoError(err)
 	defer subscription.Unsubscribe()
 
@@ -103,7 +108,7 @@ func (e *SplitLbcExecutor) GetRefundPegoutEvent(s TestSuite, timeout time.Durati
 	select {
 	case refund := <-eventChannel:
 		s.Raw().NotNil(refund, "refundPegOut failed")
-		return RefundPegoutEvent{QuoteHash: hex.EncodeToString(refund.QuoteHash[:]), RawEvent: refund.Raw}
+		return RefundPegoutEvent{QuoteHash: hex.EncodeToString(refund.QuoteHash[:]), RawEvent: *refund.Raw}
 	case err = <-subscription.Err():
 		s.Raw().Require().NoError(err)
 	case <-done:
@@ -115,14 +120,8 @@ func (e *SplitLbcExecutor) GetRefundPegoutEvent(s TestSuite, timeout time.Durati
 }
 
 func (e *SplitLbcExecutor) GetCallForUserEvent(s TestSuite, timeout time.Duration, userAddress, providerAddress string) CallForUserEvent {
-	eventChannel := make(chan *bindings.IPegInCallForUser)
-	subscription, err := e.pegin.WatchCallForUser(
-		nil,
-		eventChannel,
-		[]common.Address{common.HexToAddress(providerAddress)},
-		[]common.Address{common.HexToAddress(userAddress)},
-		nil,
-	)
+	eventChannel := make(chan *peginBindings.PeginContractCallForUser)
+	subscription, err := bind.WatchEvents(e.pegin.contract, &bind.WatchOpts{}, e.pegin.binding.UnpackCallForUserEvent, eventChannel, []any{common.HexToAddress(providerAddress)}, []any{common.HexToAddress(userAddress)})
 	s.Raw().Require().NoError(err)
 	defer subscription.Unsubscribe()
 
@@ -154,17 +153,12 @@ func (e *SplitLbcExecutor) GetCallForUserEvent(s TestSuite, timeout time.Duratio
 
 func (e *SplitLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout time.Duration, quoteHash string) PegInRegisteredEvent {
 	var quoteHashByes [32]byte
-	eventChannel := make(chan *bindings.IPegInPegInRegistered)
+	eventChannel := make(chan *peginBindings.PeginContractPegInRegistered)
 	parsedHash, err := hex.DecodeString(quoteHash)
 	s.Raw().Require().NoError(err)
 
 	copy(quoteHashByes[:], parsedHash)
-	subscription, err := e.pegin.WatchPegInRegistered(
-		nil,
-		eventChannel,
-		[][32]byte{quoteHashByes},
-		nil,
-	)
+	subscription, err := bind.WatchEvents(e.pegin.contract, &bind.WatchOpts{}, e.pegin.binding.UnpackPegInRegisteredEvent, eventChannel, []any{quoteHashByes})
 	s.Raw().Require().NoError(err)
 	defer subscription.Unsubscribe()
 
@@ -178,7 +172,7 @@ func (e *SplitLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout time.Dur
 		return PegInRegisteredEvent{
 			QuoteHash: hex.EncodeToString(event.QuoteHash[:]),
 			Amount:    entities.NewBigWei(event.TransferredAmount),
-			RawEvent:  event.Raw,
+			RawEvent:  *event.Raw,
 		}
 	case err = <-subscription.Err():
 		s.Raw().Require().NoError(err)
@@ -190,14 +184,14 @@ func (e *SplitLbcExecutor) GetPeginRegisteredEvent(s TestSuite, timeout time.Dur
 	return PegInRegisteredEvent{}
 }
 
-func (e *SplitLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuote pkg.PegoutQuoteDTO) bindings.QuotesPegOutQuote {
+func (e *SplitLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuote pkg.PegoutQuoteDTO) pegoutBindings.QuotesPegOutQuote {
 	lpBtcAddress, err := bitcoin.DecodeAddress(originalQuote.LpBTCAddr)
 	s.Require().NoError(err)
 	btcRefundAddress, err := bitcoin.DecodeAddress(originalQuote.BtcRefundAddr)
 	s.Require().NoError(err)
 	depositAddress, err := bitcoin.DecodeAddress(originalQuote.DepositAddr)
 	s.Require().NoError(err)
-	return bindings.QuotesPegOutQuote{
+	return pegoutBindings.QuotesPegOutQuote{
 		LbcAddress:            common.HexToAddress(originalQuote.LBCAddr),
 		LpRskAddress:          common.HexToAddress(originalQuote.LPRSKAddr),
 		BtcRefundAddress:      btcRefundAddress,
