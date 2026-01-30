@@ -35,7 +35,6 @@ func TestGetPublicEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
 	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
-	registryMock.EXPECT().TransferExcessToColdWalletUseCase().Return(&liquidity_provider.TransferExcessToColdWalletUseCase{})
 
 	endpoints := routes.GetPublicEndpoints(registryMock)
 	specBytes := test.ReadFile(t, "OpenApi.yml")

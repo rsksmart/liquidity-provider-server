@@ -212,6 +212,7 @@ func assertHasCsrfMiddleware(t *testing.T, router *mux.Router, endpoint routes.E
 	assert.NotEqual(t, -1, i, "response does not have CSRF cookie")
 }
 
+// nolint:funlen
 func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
 

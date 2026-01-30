@@ -227,6 +227,21 @@ func TestDerivativeWallet(t *testing.T) {
 		})
 	})
 
+	t.Run("Send", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) { testSend(t, rskAccount, existingAddressInfo) })
+		t.Run("Error handling on btc tx sending", func(t *testing.T) {
+			cases := derivativeWalletSendErrorSetups(rskAccount)
+			for _, testCase := range cases {
+				client := &mocks.ClientAdapterMock{}
+				client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
+				client.On("GetAddressInfo", btcAddress).Return(existingAddressInfo, nil).Once()
+				t.Run(testCase.description, func(t *testing.T) {
+					testCase.setup(t, client)
+				})
+			}
+		})
+	})
+
 	t.Run("SendWithOpReturn", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testSendWithOpReturn(t, rskAccount, existingAddressInfo) })
 		t.Run("Error handling on btc tx sending", func(t *testing.T) {
@@ -466,6 +481,192 @@ func testEstimateFeesExtra(t *testing.T, rskAccount *account.RskAccount, address
 	assert.Equal(t, entities.NewWei(600000000000000), fee.Value)
 	assert.Equal(t, utils.NewBigFloat64(0.00011), fee.FeeRate)
 	client.AssertExpectations(t)
+}
+
+func testSend(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	client := &mocks.ClientAdapterMock{}
+	value := entities.NewWei(600000000000000000)
+	satoshis, _ := value.ToSatoshi().Float64()
+	address, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
+	require.NoError(t, err)
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
+	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
+	client.On("CreateRawTransaction",
+		([]btcjson.TransactionInput)(nil),
+		mock.MatchedBy(func(outputs map[btcutil.Address]btcutil.Amount) bool {
+			for k, v := range outputs {
+				require.Equal(t, address, k)
+				require.Equal(t, btcutil.Amount(satoshis), v)
+			}
+			return len(outputs) == 1
+		}),
+		(*int64)(nil),
+	).Return(&wire.MsgTx{
+		Version:  0,
+		TxIn:     nil,
+		TxOut:    []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)}},
+		LockTime: 0,
+	}, nil).Once()
+	tx := &wire.MsgTx{
+		Version:  0,
+		TxIn:     nil,
+		TxOut:    []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)}},
+		LockTime: 0,
+	}
+	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 2}, nil).Once()
+	client.On("FundRawTransaction", tx, btcjson.FundRawTransactionOpts{
+		ChangeAddress:   btcjson.String(btcAddress),
+		ChangePosition:  btcjson.Int(1),
+		IncludeWatching: btcjson.Bool(true),
+		LockUnspents:    btcjson.Bool(true),
+		FeeRate:         btcjson.Float64(feeRate),
+		Replaceable:     btcjson.Bool(true),
+	}, (*bool)(nil)).Return(&btcjson.FundRawTransactionResult{Transaction: tx, Fee: 50, ChangePosition: 1}, nil).Once()
+	client.On("SendRawTransaction", tx, false).Return(chainhash.NewHashFromStr(testnetTestTxHash)).Once()
+	client.On("SignRawTransactionWithKey", tx, mock.MatchedBy(func(pks []string) bool {
+		return len(pks) == 1 && pks[0] != ""
+	})).Return(tx, true, nil).Once()
+	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+	require.NoError(t, err)
+	result, err := wallet.Send(testnetAddress, value)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.Hash)
+	assert.NotNil(t, result.Fee)
+	expectedFee := entities.SatoshiToWei(50)
+	assert.Equal(t, expectedFee, result.Fee)
+	client.AssertExpectations(t)
+}
+
+// nolint:funlen
+func derivativeWalletSendErrorSetups(rskAccount *account.RskAccount) []struct {
+	description string
+	setup       func(t *testing.T, client *mocks.ClientAdapterMock)
+} {
+	rawTx := &wire.MsgTx{TxOut: []*wire.TxOut{{Value: int64(50000000), PkScript: []byte(paymentScriptMock)}}}
+	return []struct {
+		description string
+		setup       func(t *testing.T, client *mocks.ClientAdapterMock)
+	}{
+		{
+			description: "error parsing address",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(test.AnyString, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error creating raw tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error estimating fees",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error estimating fees (RPC error)",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{
+					Errors: []string{assert.AnError.Error()},
+				}, nil).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error funding raw tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error signing tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 1}, nil).Once()
+				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(nil, false, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error signing tx (incomplete signatures)",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 1}, nil).Once()
+				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(rawTx, false, nil).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "error sending tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 1}, nil).Once()
+				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(rawTx, true, nil).Once()
+				client.On("SendRawTransaction", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.Send(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				assert.Empty(t, result.Hash)
+				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+	}
 }
 
 func testSendWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
