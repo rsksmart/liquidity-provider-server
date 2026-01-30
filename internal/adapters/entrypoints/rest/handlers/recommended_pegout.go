@@ -3,14 +3,15 @@ package handlers
 import (
 	"context"
 	"errors"
+	"math/big"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"math/big"
-	"net/http"
 )
 
 type RecommendedPegoutUseCase interface {
@@ -53,7 +54,6 @@ func NewRecommendedPegoutHandler(useCase RecommendedPegoutUseCase) http.HandlerF
 		result, err := useCase.Run(r.Context(), entities.NewBigWei(parsedAmount), parsedDestinationType)
 
 		if errors.Is(err, usecases.NoLiquidityError) ||
-			errors.Is(err, usecases.TxBelowMinimumError) ||
 			errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
 			jsonErr := rest.NewErrorResponse(err.Error(), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
