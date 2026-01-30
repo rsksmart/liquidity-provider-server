@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.23.8@sha256:e54daaadd35ebb90fc1404ecdc6eb7338ae13555f71a71856ad96976ae084e44 AS builder
+FROM --platform=linux/amd64 golang:1.24.11@sha256:28252a22a79f4995895749d69853d4c8f750167bd94113ae4da4a570ec5ce7b2
 
 ARG COMMIT_HASH
 ARG COMMIT_TAG
