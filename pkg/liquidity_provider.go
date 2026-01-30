@@ -78,11 +78,12 @@ type GeneralConfigurationRequest struct {
 }
 
 type GeneralConfigurationDTO struct {
-	RskConfirmations     map[string]uint16  `json:"rskConfirmations" validate:"required,confirmations_map"`
-	BtcConfirmations     map[string]uint16  `json:"btcConfirmations" validate:"required,confirmations_map"`
-	PublicLiquidityCheck bool               `json:"publicLiquidityCheck" validate:""`
-	MaxLiquidity         string             `json:"maxLiquidity" validate:"required,numeric,positive_string"`
-	ExcessTolerance      ExcessToleranceDTO `json:"excessTolerance" validate:"required"`
+	RskConfirmations          map[string]uint16  `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations          map[string]uint16  `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck      bool               `json:"publicLiquidityCheck" validate:""`
+	MaxLiquidity              string             `json:"maxLiquidity" validate:"required,numeric,positive_string"`
+	ReimbursementWindowBlocks uint64             `json:"reimbursementWindowBlocks" validate:"required,gt=0"`
+	ExcessTolerance           ExcessToleranceDTO `json:"excessTolerance" validate:"required"`
 }
 
 type ExcessToleranceDTO struct {
@@ -492,10 +493,12 @@ func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provide
 		return liquidity_provider.GeneralConfiguration{}, errors.New("excess tolerance percentage value is nil")
 	}
 	return liquidity_provider.GeneralConfiguration{
-		MaxLiquidity:         entities.NewBigWei(maxLiquidity),
-		RskConfirmations:     dto.RskConfirmations,
-		BtcConfirmations:     dto.BtcConfirmations,
-		PublicLiquidityCheck: dto.PublicLiquidityCheck,
+
+		MaxLiquidity:              entities.NewBigWei(maxLiquidity),
+		RskConfirmations:          dto.RskConfirmations,
+		BtcConfirmations:          dto.BtcConfirmations,
+		PublicLiquidityCheck:      dto.PublicLiquidityCheck,
+		ReimbursementWindowBlocks: dto.ReimbursementWindowBlocks,
 		ExcessTolerance: liquidity_provider.ExcessTolerance{
 			IsFixed:         dto.ExcessTolerance.IsFixed,
 			PercentageValue: utils.NewBigFloat64(*dto.ExcessTolerance.PercentageValue),

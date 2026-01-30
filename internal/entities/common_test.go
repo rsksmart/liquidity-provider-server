@@ -52,8 +52,9 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 			"100000000000000000":  3,
 			"2000000000000000000": 10,
 		},
-		PublicLiquidityCheck: true,
-		MaxLiquidity:         entities.NewUWei(10000000000000000000),
+		PublicLiquidityCheck:      true,
+		MaxLiquidity:              entities.NewUWei(10000000000000000000),
+		ReimbursementWindowBlocks: 100,
 		ExcessTolerance: liquidity_provider.ExcessTolerance{
 			IsFixed:         true,
 			PercentageValue: utils.NewBigFloat64(20),
@@ -67,7 +68,7 @@ func TestSigned_CheckIntegrity(t *testing.T) {
 	}{
 		{signed: entities.Signed[any]{Value: peginConfig, Hash: "5ab75cad18e0ad640908a3b70d6bf2e3cdca66bb53544e91833c942c4f5430af"}},
 		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "35a51729bb71bb891db62dd968f33ea2479ddb17143da32ca6bb55142a488052"}},
-		{signed: entities.Signed[any]{Value: generalConfig, Hash: "e39fa24d7358d9800f5d91d6f3cc3e8c761b7560cd7127932dfebbddbe90ac19"}},
+		{signed: entities.Signed[any]{Value: generalConfig, Hash: "f493c43630d85f37831ef6d5b618dcb15227859dd8393d56cd4c98a94d02a0aa"}},
 		{signed: entities.Signed[any]{Value: peginConfig, Hash: "f3daab424654d2eeb2b50dc00b3e453e24ca1c690d80015f5f54d5f1fefaf900"}, err: entities.IntegrityError},
 		{signed: entities.Signed[any]{Value: pegoutConfig, Hash: "3b3e7b075eb60b8c249f44a117f406c64992bafda1273f540277448abd14077e"}, err: entities.IntegrityError},
 		{signed: entities.Signed[any]{Value: generalConfig, Hash: "3fecc42296c21a63dff80885f972ea88caf5038e47f014b1c91bb9b80529b757"}, err: entities.IntegrityError},
