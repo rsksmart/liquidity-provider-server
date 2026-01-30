@@ -46,6 +46,10 @@ func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidit
 		return err
 	}
 
+	config.ExcessTolerance.Normalize()
+	if err := config.ExcessTolerance.Validate(); err != nil {
+		return usecases.WrapUseCaseError(usecases.SetGeneralConfigId, err)
+	}
 	signedConfig, err := usecases.SignConfiguration(usecases.SetGeneralConfigId, useCase.signer, useCase.hashFunc, config)
 	if err != nil {
 		return err

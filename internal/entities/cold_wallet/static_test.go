@@ -21,6 +21,7 @@ func TestStaticColdWallet_Init(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, test.AnyBtcAddress, wallet.GetBtcAddress())
 		require.Equal(t, test.AnyRskAddress, wallet.GetRskAddress())
+		require.Equal(t, "Address", wallet.GetLabel())
 	})
 	t.Run("Should fail to init with invalid rsk address", func(t *testing.T) {
 		btcRpc := &mocks.BtcRpcMock{}

@@ -60,6 +60,7 @@ type ManagementTemplateData struct {
 	ColdWallet     struct {
 		BtcAddress string
 		RskAddress string
+		Label      string
 	}
 	Configuration FullConfiguration
 }
@@ -108,9 +109,11 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 			ColdWallet: struct {
 				BtcAddress string
 				RskAddress string
+				Label      string
 			}{
 				BtcAddress: useCase.coldWallet.GetBtcAddress(),
 				RskAddress: useCase.coldWallet.GetRskAddress(),
+				Label:      useCase.coldWallet.GetLabel(),
 			},
 			Configuration: FullConfiguration{
 				General: generalConfiguration,

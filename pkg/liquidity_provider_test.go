@@ -627,27 +627,34 @@ func TestToTrustedAccountsDTO(t *testing.T) {
 	assert.Equal(t, "3000000000000000000", dtos[1].RbtcLockingCap.String())
 }
 
+// nolint:funlen
 func TestFromGeneralConfigurationDTO(t *testing.T) {
 	t.Run("converts valid configuration", func(t *testing.T) {
+		var excessTolerancePercentageValue float64 = 75
 		dto := pkg.GeneralConfigurationDTO{
 			RskConfirmations:          map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
 			BtcConfirmations:          map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
 			PublicLiquidityCheck:      true,
 			MaxLiquidity:              "12345678901234567890",
 			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: pkg.ExcessToleranceDTO{
+				IsFixed:         true,
+				PercentageValue: &excessTolerancePercentageValue,
+				FixedValue:      "1000",
+			},
 		}
-
 		config, err := pkg.FromGeneralConfigurationDTO(dto)
-
 		require.NoError(t, err)
 		assert.Equal(t, dto.RskConfirmations, map[string]uint16(config.RskConfirmations))
 		assert.Equal(t, dto.BtcConfirmations, map[string]uint16(config.BtcConfirmations))
 		assert.Equal(t, dto.PublicLiquidityCheck, config.PublicLiquidityCheck)
 		assert.Equal(t, "12345678901234567890", config.MaxLiquidity.String())
 		assert.Equal(t, uint64(100), config.ReimbursementWindowBlocks)
+		assert.Equal(t, "1000", config.ExcessTolerance.FixedValue.String())
+		assert.Equal(t, utils.NewBigFloat64(75), config.ExcessTolerance.PercentageValue)
+		assert.True(t, config.ExcessTolerance.IsFixed)
 		test.AssertNonZeroValues(t, dto)
 	})
-
 	t.Run("returns error on invalid max liquidity", func(t *testing.T) {
 		values := []string{"notanumber", "123.456"}
 		for _, val := range values {
@@ -658,32 +665,76 @@ func TestFromGeneralConfigurationDTO(t *testing.T) {
 				MaxLiquidity:              val,
 				ReimbursementWindowBlocks: 100,
 			}
-
 			config, err := pkg.FromGeneralConfigurationDTO(invalidDto)
 			assert.Empty(t, config)
 			require.ErrorContains(t, err, "cannot deserialize max liquidity "+val)
 		}
 	})
-
 	t.Run("returns error on invalid numeric keys", func(t *testing.T) {
-		invalidBtc := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "notanumber": 20},
+		cases := []struct {
+			rsk, btc map[string]uint16
+			errMsg   string
+		}{
+			{map[string]uint16{"1000000000000000000": 5}, map[string]uint16{"notanumber": 20}, "BTC confirmations key notanumber"},
+			{map[string]uint16{"invalid": 10}, map[string]uint16{"3000000000000000000": 15}, "RSK confirmations key invalid"},
+		}
+		for _, tc := range cases {
+			dto := pkg.GeneralConfigurationDTO{RskConfirmations: tc.rsk, BtcConfirmations: tc.btc}
+			config, err := pkg.FromGeneralConfigurationDTO(dto)
+			assert.Empty(t, config)
+			require.ErrorContains(t, err, "cannot deserialize "+tc.errMsg)
+		}
+	})
+	t.Run("handles various maxLiquidity values", func(t *testing.T) {
+		var excessTolerancePercentageValue float64 = 0
+		for _, maxLiq := range []string{"1000000000000000000", "100000000000000000000"} {
+			dto := pkg.GeneralConfigurationDTO{
+				RskConfirmations: map[string]uint16{"1000000000000000000": 5},
+				BtcConfirmations: map[string]uint16{"1000000000000000000": 10},
+				MaxLiquidity:     maxLiq,
+				ExcessTolerance: pkg.ExcessToleranceDTO{
+					IsFixed:         true,
+					PercentageValue: &excessTolerancePercentageValue,
+					FixedValue:      "1000",
+				},
+			}
+			config, err := pkg.FromGeneralConfigurationDTO(dto)
+			require.NoError(t, err)
+			assert.Equal(t, maxLiq, config.MaxLiquidity.String())
+		}
+	})
+	t.Run("returns error on invalid excess tolerance fixed value", func(t *testing.T) {
+		var excessTolerancePercentageValue float64 = 75
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
+			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
 			PublicLiquidityCheck: true,
+			MaxLiquidity:         "12345678901234567890",
+			ExcessTolerance: pkg.ExcessToleranceDTO{
+				IsFixed:         true,
+				PercentageValue: &excessTolerancePercentageValue,
+				FixedValue:      "nan",
+			},
 		}
-		invalidRsk := pkg.GeneralConfigurationDTO{
-			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "invalid": 10},
-			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15},
-			PublicLiquidityCheck: false,
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
+		assert.Empty(t, config)
+		require.ErrorContains(t, err, "cannot deserialize excess tolerance fixed value")
+	})
+	t.Run("returns error on invalid excess tolerance percentage value", func(t *testing.T) {
+		dto := pkg.GeneralConfigurationDTO{
+			RskConfirmations:     map[string]uint16{"1000000000000000000": 5, "2000000000000000000": 10},
+			BtcConfirmations:     map[string]uint16{"3000000000000000000": 15, "4000000000000000000": 20},
+			PublicLiquidityCheck: true,
+			MaxLiquidity:         "12345678901234567890",
+			ExcessTolerance: pkg.ExcessToleranceDTO{
+				IsFixed:         true,
+				PercentageValue: nil,
+				FixedValue:      "1000",
+			},
 		}
-
-		config, err := pkg.FromGeneralConfigurationDTO(invalidBtc)
+		config, err := pkg.FromGeneralConfigurationDTO(dto)
 		assert.Empty(t, config)
-		require.ErrorContains(t, err, "cannot deserialize BTC confirmations key notanumber")
-
-		config, err = pkg.FromGeneralConfigurationDTO(invalidRsk)
-		assert.Empty(t, config)
-		require.ErrorContains(t, err, "cannot deserialize RSK confirmations key invalid")
+		require.ErrorContains(t, err, "excess tolerance percentage value is nil")
 	})
 }
 

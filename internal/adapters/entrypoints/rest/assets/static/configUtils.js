@@ -24,7 +24,43 @@ function etherToWei(ether) {
 }
 
 function isFeeKey(key) {
-    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee'].includes(key);
+    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee', 'maxLiquidity'].includes(key);
+}
+
+function isMaxLiquidityKey(key) {
+    return key === 'maxLiquidity';
+}
+
+/**
+ * Validates a maxLiquidity value.
+ * @param {string|number} value - The value to validate (in RBTC)
+ * @returns {{isValid: boolean, error: string|null}} Validation result
+ */
+function validateMaxLiquidity(value) {
+    if (value === null || value === undefined || value === '') {
+        return { isValid: false, error: 'Max liquidity is required' };
+    }
+
+    const strValue = String(value).trim();
+    
+    // Check if it's a valid number
+    const num = parseFloat(strValue);
+    if (isNaN(num)) {
+        return { isValid: false, error: 'Max liquidity must be a valid number' };
+    }
+
+    // Check if positive
+    if (num <= 0) {
+        return { isValid: false, error: 'Max liquidity must be a positive number' };
+    }
+
+    // Check decimal places (maximum 18)
+    const decimalPart = strValue.split('.')[1];
+    if (decimalPart && decimalPart.length > 18) {
+        return { isValid: false, error: 'Max liquidity cannot have more than 18 decimal places' };
+    }
+
+    return { isValid: true, error: null };
 }
 
 function isfeePercentageKey(key) {
@@ -139,6 +175,8 @@ export {
     weiToEther,
     etherToWei,
     isFeeKey,
+    isMaxLiquidityKey,
+    validateMaxLiquidity,
     inferType,
     validateConfig,
     formatGeneralConfig,

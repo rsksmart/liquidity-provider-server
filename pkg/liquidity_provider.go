@@ -78,11 +78,18 @@ type GeneralConfigurationRequest struct {
 }
 
 type GeneralConfigurationDTO struct {
-	RskConfirmations          map[string]uint16 `json:"rskConfirmations" validate:"required,confirmations_map"`
-	BtcConfirmations          map[string]uint16 `json:"btcConfirmations" validate:"required,confirmations_map"`
-	PublicLiquidityCheck      bool              `json:"publicLiquidityCheck" validate:""`
-	MaxLiquidity              string            `json:"maxLiquidity" validate:"required,numeric,positive_string"`
-	ReimbursementWindowBlocks uint64            `json:"reimbursementWindowBlocks" validate:"required,gt=0"`
+	RskConfirmations          map[string]uint16  `json:"rskConfirmations" validate:"required,confirmations_map"`
+	BtcConfirmations          map[string]uint16  `json:"btcConfirmations" validate:"required,confirmations_map"`
+	PublicLiquidityCheck      bool               `json:"publicLiquidityCheck" validate:""`
+	MaxLiquidity              string             `json:"maxLiquidity" validate:"required,numeric,positive_string"`
+	ReimbursementWindowBlocks uint64             `json:"reimbursementWindowBlocks" validate:"required,gt=0"`
+	ExcessTolerance           ExcessToleranceDTO `json:"excessTolerance" validate:"required"`
+}
+
+type ExcessToleranceDTO struct {
+	IsFixed         bool     `json:"isFixed"`
+	PercentageValue *float64 `json:"percentageValue" validate:"required,numeric,gte=0,lte=100,max_decimal_places=2"`
+	FixedValue      string   `json:"fixedValue" validate:"required,numeric,excludes=-"`
 }
 
 type LoginRequest struct {
@@ -478,11 +485,24 @@ func FromGeneralConfigurationDTO(dto GeneralConfigurationDTO) (liquidity_provide
 	if !ok {
 		return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize max liquidity %s", dto.MaxLiquidity)
 	}
+	excessToleranceFixedValue, ok := new(big.Int).SetString(dto.ExcessTolerance.FixedValue, 10)
+	if !ok {
+		return liquidity_provider.GeneralConfiguration{}, fmt.Errorf("cannot deserialize excess tolerance fixed value %s", dto.ExcessTolerance.FixedValue)
+	}
+	if dto.ExcessTolerance.PercentageValue == nil {
+		return liquidity_provider.GeneralConfiguration{}, errors.New("excess tolerance percentage value is nil")
+	}
 	return liquidity_provider.GeneralConfiguration{
+
 		MaxLiquidity:              entities.NewBigWei(maxLiquidity),
 		RskConfirmations:          dto.RskConfirmations,
 		BtcConfirmations:          dto.BtcConfirmations,
 		PublicLiquidityCheck:      dto.PublicLiquidityCheck,
 		ReimbursementWindowBlocks: dto.ReimbursementWindowBlocks,
+		ExcessTolerance: liquidity_provider.ExcessTolerance{
+			IsFixed:         dto.ExcessTolerance.IsFixed,
+			PercentageValue: utils.NewBigFloat64(*dto.ExcessTolerance.PercentageValue),
+			FixedValue:      entities.NewBigWei(excessToleranceFixedValue),
+		},
 	}, nil
 }

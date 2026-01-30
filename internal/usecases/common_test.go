@@ -457,4 +457,3 @@ func TestValidateConfirmations(t *testing.T) {
 		require.ErrorIs(t, err, u.NonPositiveConfirmationKeyError)
 	})
 }
-

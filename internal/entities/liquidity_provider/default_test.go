@@ -76,5 +76,10 @@ func TestDefaultGeneralConfiguration(t *testing.T) {
 		PublicLiquidityCheck:      false,
 		MaxLiquidity:              entities.NewWei(1000000000000000000),
 		ReimbursementWindowBlocks: liquidity_provider.DefaultReimbursementWindowBlocks,
+		ExcessTolerance: liquidity_provider.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(20),
+			FixedValue:      entities.NewWei(100000000000000000),
+		},
 	}, config)
 }
