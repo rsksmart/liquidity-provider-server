@@ -107,6 +107,51 @@ func (_c *ColdWalletMock_GetRskAddress_Call) RunAndReturn(run func() string) *Co
 	return _c
 }
 
+// GetLabel provides a mock function with no fields
+func (_m *ColdWalletMock) GetLabel() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLabel")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// ColdWalletMock_GetLabel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLabel'
+type ColdWalletMock_GetLabel_Call struct {
+	*mock.Call
+}
+
+// GetLabel is a helper method to define mock.On call
+func (_e *ColdWalletMock_Expecter) GetLabel() *ColdWalletMock_GetLabel_Call {
+	return &ColdWalletMock_GetLabel_Call{Call: _e.mock.On("GetLabel")}
+}
+
+func (_c *ColdWalletMock_GetLabel_Call) Run(run func()) *ColdWalletMock_GetLabel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ColdWalletMock_GetLabel_Call) Return(_a0 string) *ColdWalletMock_GetLabel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ColdWalletMock_GetLabel_Call) RunAndReturn(run func() string) *ColdWalletMock_GetLabel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with no fields
 func (_m *ColdWalletMock) Init() error {
 	ret := _m.Called()

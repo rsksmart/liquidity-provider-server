@@ -10,4 +10,5 @@ type ColdWallet interface {
 	Init() error
 	GetBtcAddress() string
 	GetRskAddress() string
+	GetLabel() string
 }
