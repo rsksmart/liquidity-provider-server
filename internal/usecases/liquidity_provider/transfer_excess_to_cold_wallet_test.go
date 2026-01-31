@@ -10,11 +10,13 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,6 +104,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 		Fee:  btcFee,
 	}, nil)
 
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -115,6 +120,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -134,12 +140,21 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
 
+	// Assert BtcTransferredDueToThresholdEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.BtcTransferredDueToThresholdEvent) bool {
+		return assert.Equal(t, cold_wallet.BtcTransferredDueToThresholdEventId, event.Event.Id()) &&
+			assert.Equal(t, btcExcess.String(), event.Amount.String()) &&
+			assert.Equal(t, btcTxHash, event.TxHash) &&
+			assert.Equal(t, btcFee, event.Fee)
+	}))
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
 	pegoutProvider.AssertExpectations(t)
 	peginProvider.AssertExpectations(t)
 	btcWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -216,6 +231,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		"cold_rsk_address",
 	).Return(rskReceipt, nil)
 
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -229,6 +247,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -250,6 +269,14 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	assert.Equal(t, rbtcActualFee.String(), result.RskResult.Fee.String())
 	require.NoError(t, result.RskResult.Error)
 
+	// Assert RbtcTransferredDueToThresholdEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.RbtcTransferredDueToThresholdEvent) bool {
+		return assert.Equal(t, cold_wallet.RbtcTransferredDueToThresholdEventId, event.Event.Id()) &&
+			assert.Equal(t, rbtcAmountToTransfer.String(), event.Amount.String()) &&
+			assert.Equal(t, rskTxHash, event.TxHash) &&
+			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
+	}))
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -257,6 +284,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	peginProvider.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -346,6 +374,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		"cold_rsk_address",
 	).Return(rskReceipt, nil)
 
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Times(2)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -359,6 +390,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -388,6 +420,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	btcWallet.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -438,6 +471,8 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -451,6 +486,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -469,6 +505,8 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	assert.Nil(t, result.RskResult.Amount)
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -545,7 +583,11 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	}, nil)
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{
 		Hash: btcTxHash,
+		Fee:  btcFee,
 	}, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -560,6 +602,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -587,6 +630,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	pegoutProvider.AssertExpectations(t)
 	peginProvider.AssertExpectations(t)
 	btcWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -672,6 +716,9 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		"cold_rsk_address",
 	).Return(rskReceipt, nil)
 
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Times(2)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -685,6 +732,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -706,6 +754,22 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	assert.Equal(t, rbtcActualFee.String(), result.RskResult.Fee.String())
 	require.NoError(t, result.RskResult.Error)
 
+	// Verify BtcTransferredDueToTimeForcingEvent was published
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.BtcTransferredDueToTimeForcingEvent) bool {
+		return assert.Equal(t, cold_wallet.BtcTransferredDueToTimeForcingEventId, event.Event.Id()) &&
+			assert.Equal(t, btcExcess.String(), event.Amount.String()) &&
+			assert.Equal(t, btcTxHash, event.TxHash) &&
+			assert.Equal(t, btcFee, event.Fee)
+	}))
+
+	// Verify RbtcTransferredDueToTimeForcingEvent was published
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.RbtcTransferredDueToTimeForcingEvent) bool {
+		return assert.Equal(t, cold_wallet.RbtcTransferredDueToTimeForcingEventId, event.Event.Id()) &&
+			assert.Equal(t, rbtcAmountToTransfer.String(), event.Amount.String()) &&
+			assert.Equal(t, rskTxHash, event.TxHash) &&
+			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
+	}))
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -714,6 +778,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	btcWallet.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -764,6 +829,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -777,6 +844,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -795,6 +863,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	assert.Nil(t, result.RskResult.Amount)
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -878,6 +948,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	}, nil)
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{
 		Hash: btcTxHash,
+		Fee:  btcFee,
 	}, nil)
 
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
@@ -886,6 +957,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		GasUsed:         big.NewInt(int64(rbtcGasUsed)),
 		GasPrice:        rbtcGasPrice,
 	}, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Times(2)
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -900,6 +974,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -921,6 +996,22 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	assert.Equal(t, rbtcActualFee, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
 
+	// Assert BtcTransferredDueToTimeForcingEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.BtcTransferredDueToTimeForcingEvent) bool {
+		return assert.Equal(t, cold_wallet.BtcTransferredDueToTimeForcingEventId, event.Event.Id()) &&
+			assert.Equal(t, btcExcess.String(), event.Amount.String()) &&
+			assert.Equal(t, btcTxHash, event.TxHash) &&
+			assert.Equal(t, btcFee, event.Fee)
+	}))
+
+	// Assert RbtcTransferredDueToThresholdEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.RbtcTransferredDueToThresholdEvent) bool {
+		return assert.Equal(t, cold_wallet.RbtcTransferredDueToThresholdEventId, event.Event.Id()) &&
+			assert.Equal(t, rbtcAmountToTransfer.String(), event.Amount.String()) &&
+			assert.Equal(t, rbtcTxHash, event.TxHash) &&
+			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
+	}))
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -929,6 +1020,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	btcWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -1006,6 +1098,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	}, nil)
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{
 		Hash: btcTxHash,
+		Fee:  btcFee,
 	}, nil)
 
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
@@ -1014,6 +1107,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		GasUsed:         big.NewInt(int64(rbtcGasUsed)),
 		GasPrice:        rbtcGasPrice,
 	}, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Times(2)
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1028,6 +1124,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1049,6 +1146,22 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	assert.Equal(t, rbtcActualFee, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
 
+	// Assert RbtcTransferredDueToTimeForcingEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.RbtcTransferredDueToTimeForcingEvent) bool {
+		return assert.Equal(t, cold_wallet.RbtcTransferredDueToTimeForcingEventId, event.Event.Id()) &&
+			assert.Equal(t, rbtcAmountToTransfer.String(), event.Amount.String()) &&
+			assert.Equal(t, rbtcTxHash, event.TxHash) &&
+			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
+	}))
+
+	// Assert BtcTransferredDueToThresholdEvent was published with correct data
+	eventBus.AssertCalled(t, "Publish", mock.MatchedBy(func(event cold_wallet.BtcTransferredDueToThresholdEvent) bool {
+		return assert.Equal(t, cold_wallet.BtcTransferredDueToThresholdEventId, event.Event.Id()) &&
+			assert.Equal(t, btcExcess.String(), event.Amount.String()) &&
+			assert.Equal(t, btcTxHash, event.TxHash) &&
+			assert.Equal(t, btcFee, event.Fee)
+	}))
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1057,6 +1170,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	btcWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }
 
 func TestTransferExcessToColdWalletUseCase_Run_ColdWalletNotConfigured(t *testing.T) {
@@ -1074,6 +1188,8 @@ func TestTransferExcessToColdWalletUseCase_Run_ColdWalletNotConfigured(t *testin
 	}
 	rskWalletMutex := &sync.Mutex{}
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1087,6 +1203,7 @@ func TestTransferExcessToColdWalletUseCase_Run_ColdWalletNotConfigured(t *testin
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1094,6 +1211,8 @@ func TestTransferExcessToColdWalletUseCase_Run_ColdWalletNotConfigured(t *testin
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "cold wallet not configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 }
 
 func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *testing.T) {
@@ -1114,6 +1233,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 
 	coldWallet.On("GetBtcAddress").Return("")
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1127,6 +1248,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1134,6 +1256,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "cold wallet not configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 }
 
@@ -1156,6 +1280,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("")
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1169,6 +1295,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1176,6 +1303,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "cold wallet not configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 }
 
@@ -1208,6 +1337,8 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	}
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1221,6 +1352,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1228,6 +1360,8 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "max liquidity not configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 }
@@ -1273,6 +1407,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	}
 	lpRepository.On("GetStateConfiguration", ctx).Return(stateConfig, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1286,6 +1422,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1293,6 +1430,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "no transfer history configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1339,6 +1478,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	}
 	lpRepository.On("GetStateConfiguration", ctx).Return(stateConfig, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1352,6 +1493,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1359,6 +1501,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "no transfer history configured")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1399,6 +1543,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	expectedError := errors.New("database connection failed")
 	lpRepository.On("GetStateConfiguration", ctx).Return(nil, expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1412,6 +1558,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1419,6 +1566,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), "database connection failed")
+
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1485,6 +1634,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 		Value: btcFee,
 	}, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1498,6 +1649,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1519,6 +1671,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	assert.Nil(t, result.RskResult.Amount)
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1587,6 +1741,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1600,6 +1756,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1620,6 +1777,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
 	assert.Contains(t, result.RskResult.Message, "not economical")
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1674,6 +1833,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	expectedError := errors.New("btc wallet connection failed")
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return((*entities.Wei)(nil), expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1687,6 +1848,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1695,6 +1857,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), expectedError.Error())
 
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1750,6 +1913,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	expectedError := errors.New("rsk rpc connection failed")
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return((*entities.Wei)(nil), expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1763,6 +1928,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1770,6 +1936,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	require.Error(t, err)
 	require.Nil(t, result)
 	assert.Contains(t, err.Error(), expectedError.Error())
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1833,6 +2001,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	expectedError := errors.New("fee estimation service unavailable")
 	btcWallet.On("EstimateTxFees", "cold_btc_address", btcExcess).Return(blockchain.BtcFeeEstimation{}, expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1846,6 +2016,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1862,6 +2033,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	require.Error(t, result.BtcResult.Error)
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
 
+	eventBus.AssertNotCalled(t, "Publish")
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1930,6 +2102,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	expectedError := errors.New("insufficient funds in wallet")
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{}, expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1943,6 +2117,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1958,6 +2133,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	assert.Nil(t, result.BtcResult.Fee)
 	require.Error(t, result.BtcResult.Error)
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2019,6 +2196,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	expectedError := errors.New("rpc connection timeout")
 	rskRpcMock.On("GasPrice", ctx).Return((*entities.Wei)(nil), expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2032,6 +2211,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2050,6 +2230,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	assert.Nil(t, result.RskResult.Fee)
 	require.Error(t, result.RskResult.Error)
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2119,6 +2301,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	expectedError := errors.New("nonce too low")
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{}, expectedError)
 
+	eventBus := new(mocks.EventBusMock)
+
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2132,6 +2316,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2150,6 +2335,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	assert.Nil(t, result.RskResult.Fee)
 	require.Error(t, result.RskResult.Error)
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
+
+	eventBus.AssertNotCalled(t, "Publish")
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2226,12 +2413,16 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	}, nil)
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{
 		Hash: btcTxHash,
+		Fee:  btcFee,
 	}, nil)
 
 	// RSK transfer fails
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	expectedError := errors.New("transaction underpriced")
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{}, expectedError)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -2246,6 +2437,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 		testBtcMinTransferFeeMultiplier,
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
+		eventBus,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2277,4 +2469,5 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	btcWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
 }

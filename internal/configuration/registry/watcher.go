@@ -22,6 +22,8 @@ type WatcherRegistry struct {
 	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
 	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
 	AssetReportWatcher         *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
 }
 
 // nolint:funlen
@@ -131,6 +133,14 @@ func NewWatcherRegistry(
 			appMetrics,
 			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
+		),
+		TransferColdWalletWatcher: watcher.NewTransferColdWalletWatcher(
+			useCaseRegistry.TransferExcessToColdWalletUseCase(),
+			tickers.TransferColdWalletTicker,
+		),
+		ColdWalletMetricsWatcher: monitoring.NewColdWalletMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
 		),
 	}
 }

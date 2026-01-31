@@ -380,6 +380,7 @@ func NewUseCaseRegistry(
 			env.ColdWallet.BtcMinTransferFeeMultiplier,
 			env.ColdWallet.RbtcMinTransferFeeMultiplier,
 			env.ColdWallet.ForceTransferAfterSeconds,
+			messaging.EventBus,
 		),
 	}
 }
