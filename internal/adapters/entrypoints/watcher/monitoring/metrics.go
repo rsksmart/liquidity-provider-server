@@ -7,10 +7,12 @@ import (
 )
 
 type Metrics struct {
-	PeginQuotesMetric  *prometheus.CounterVec
-	PegoutQuotesMetric *prometheus.CounterVec
-	ServerInfoMetric   *prometheus.GaugeVec
-	AssetsMetrics      *prometheus.GaugeVec
+	PeginQuotesMetric          *prometheus.CounterVec
+	PegoutQuotesMetric         *prometheus.CounterVec
+	ServerInfoMetric           *prometheus.GaugeVec
+	AssetsMetrics              *prometheus.GaugeVec
+	ColdWalletTransfersMetric  *prometheus.CounterVec
+	ColdWalletLastAmountMetric *prometheus.GaugeVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -43,6 +45,20 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			},
 			[]string{"currency", "type"},
 		),
+		ColdWalletTransfersMetric: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "lps_cold_wallet_transfers",
+				Help: "Cold wallet transfers executed by reason",
+			},
+			[]string{"currency", "reason"},
+		),
+		ColdWalletLastAmountMetric: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "lps_cold_wallet_last_transfer_amount",
+				Help: "Amount transferred in last cold wallet transfer (in BTC/RBTC units)",
+			},
+			[]string{"currency"},
+		),
 	}
 
 	reg.MustRegister(
@@ -50,6 +66,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		appMetrics.PeginQuotesMetric,
 		appMetrics.ServerInfoMetric,
 		appMetrics.AssetsMetrics,
+		appMetrics.ColdWalletTransfersMetric,
+		appMetrics.ColdWalletLastAmountMetric,
 	)
 	return &appMetrics
 }

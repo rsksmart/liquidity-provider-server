@@ -187,6 +187,8 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+		mock.AnythingOfType("*prometheus.CounterVec"), // ColdWalletTransfersMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // ColdWalletLastAmountMetric
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)
