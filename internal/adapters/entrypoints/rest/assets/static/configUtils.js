@@ -42,7 +42,7 @@ function validateMaxLiquidity(value) {
     }
 
     const strValue = String(value).trim();
-    
+
     // Check if it's a valid number
     const num = parseFloat(strValue);
     if (isNaN(num)) {
@@ -81,7 +81,7 @@ function isExcessTolerancePercentageKey(key) {
 
 /**
  * Validates an excessToleranceFixed value.
- * @param {string|number} value - The value to validate (in wei as bigint string)
+ * @param {string|number} value - The value to validate
  * @returns {{isValid: boolean, error: string|null}} Validation result
  */
 function validateExcessToleranceFixed(value) {
@@ -90,7 +90,7 @@ function validateExcessToleranceFixed(value) {
     }
 
     const strValue = String(value).trim();
-    
+
     // Check if it's a valid number
     const num = parseFloat(strValue);
     if (isNaN(num)) {
@@ -206,7 +206,7 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
             body: JSON.stringify({ configuration: config })
         });
         if (!response.ok) {
-            const errorData = await response.json();            
+            const errorData = await response.json();
             if (errorData.details && typeof errorData.details === 'object') {
                 const detailMessages = Object.entries(errorData.details)
                     .map(([field, message]) => `${field}: ${message}`)
