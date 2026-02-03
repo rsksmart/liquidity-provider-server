@@ -11,7 +11,6 @@ This document describes the utility scripts that help Liquidity Providers migrat
 These utilities help Liquidity Providers migrate from the **legacy single LiquidityBridgeContract** by allowing them to:
 - Resign from the legacy contract
 - Withdraw collateral after resignation
-- Withdraw locked liquidity balances
 
 These utilities are specifically designed for the legacy contract and point all contract address fields to the same legacy contract address (since all functionality was in one contract).
 
@@ -48,8 +47,7 @@ Both scripts reuse the base input flags from `cmd/utils/scripts`:
 - `--secret-src` (required): `env` or `aws`
 - `--keystore-file`: required when `--secret-src=env`
 - `--keystore-secret` and `--password-secret`: required when `--secret-src=aws`
-- `--custom-pegin-address`, `--custom-collateral-address`, `--custom-pegout-address`, `--custom-discovery-address`: optional overrides
-
+--lbc-address`: optional override for custom LBC contract address
 ### Default regtest env file
 
 If you want to run the utilities with minimal flags (for example `./utils/resign_utils --resign`), you can provide defaults via an env file:
@@ -67,7 +65,7 @@ If you want to run the utilities with minimal flags (for example `./utils/resign
   --network testnet \
   --rsk-endpoint http://localhost:4444 \
   --secret-src env \
-  --keystore-file /path/to/keystore.json \
+  --keystore-file docker-compose/localstack/keystore.json \
   --resign
 ```
 
@@ -78,7 +76,7 @@ If you want to run the utilities with minimal flags (for example `./utils/resign
   --network testnet \
   --rsk-endpoint http://localhost:4444 \
   --secret-src env \
-  --keystore-file /path/to/keystore.json \
+  --keystore-file docker-compose/localstack/keystore.json \
   --withdraw-collateral
 ```
 
@@ -93,22 +91,10 @@ Note: `--withdraw-collateral` requires the resignation delay to have elapsed aft
   --network testnet \
   --rsk-endpoint http://localhost:4444 \
   --secret-src env \
-  --keystore-file /path/to/keystore.json \
-  --all
+  --keystore-file /path/to/keystore.json
 ```
 
-### Withdraw a specific amount
-
-```bash
-./utils/withdraw \
-  --network testnet \
-  --rsk-endpoint http://localhost:4444 \
-  --secret-src env \
-  --keystore-file /path/to/keystore.json \
-  --amount 1000000000000000000
-```
-
-The `--amount` value is expressed in wei.
+**Note**: This withdraws the entire collateral balance. There is no option to withdraw a partial amount.
 
 ## Testing Guide
 
@@ -152,7 +138,7 @@ Testing can be done on regtest (local) for development, or on testnet/mainnet fo
 
 6. **Withdraw liquidity**:
    ```bash
-   ./utils/withdraw --all \
+   ./utils/withdraw \
      --network testnet \
      --rsk-endpoint https://public-node.testnet.rsk.co \
      --secret-src env \
@@ -173,12 +159,12 @@ To test legacy contract migration on regtest, start the environment which will d
    This will:
    - Start the local RSK regtest node and Bitcoin node
    - Deploy the LEGACY LiquidityBridgeContract for migration testing
-   - **Automatically update** `.env.regtest` and `regtest-legacy.env` with the deployed contract address
+   - **Automatically update** `.env.regtest`with the deployed contract address
 
 2. **The migration utilities are ready to use** - no additional setup needed!
    ```bash
    cd ../..  # Back to repo root
-   # regtest-legacy.env is already configured with correct addresses
+   # .env.regtest is already configured with correct addresses
    ```
 
 3. **Register as a Liquidity Provider** (required before adding collateral):
@@ -207,13 +193,18 @@ To test legacy contract migration on regtest, start the environment which will d
 
 5. **Test resignation with the migration utilities**:
    ```bash
-   # The regtest-legacy.env file was automatically updated during deployment
-   export LPS_UTILS_ENV_FILE=regtest-legacy.env
+   # Use the regtest.env file with the deployed contract address
+   export LPS_UTILS_ENV_FILE=regtest.env
    ```
 
 6. **Run the resignation utility**:
    ```bash
-   ./utils/resign_utils --resign
+   ./utils/resign_utils \
+     --network regtest \
+     --rsk-endpoint http://localhost:4444 \
+     --secret-src env \
+     --keystore-file docker-compose/localstack/local-key.json \
+     --resign
    # Password: test
    ```
 
@@ -233,13 +224,23 @@ To test legacy contract migration on regtest, start the environment which will d
 
 8. **Withdraw collateral**:
    ```bash
-   ./utils/resign_utils --withdraw-collateral
+   ./utils/resign_utils \
+     --network regtest \
+     --rsk-endpoint http://localhost:4444 \
+     --secret-src env \
+     --keystore-file docker-compose/localstack/local-key.json \
+     --withdraw-collateral
    # Password: test
    ```
 
-9. **Withdraw liquidity** (if you added any PegIn balance):
+9. **Withdraw remaining collateral** (alternative to resign + withdraw):
    ```bash
-   ./utils/withdraw --all
+   ./utils/withdraw \
+     --network regtest \
+     --rsk-endpoint http://localhost:4444 \
+     --secret-src env \
+     --keystore-file docker-compose/localstack/local-key.json
+   # Password: test
    ```
 
 **Note**: The legacy contract is a single contract that contains all functionality (collateral management, pegin, pegout, discovery). These migration utilities are designed specifically for migrating FROM the legacy contract.
