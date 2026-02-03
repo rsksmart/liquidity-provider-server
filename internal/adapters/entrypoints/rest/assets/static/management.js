@@ -60,7 +60,7 @@ const createInput = (section, key, value, config) => {
     const label = document.createElement('label');
     label.classList.add('form-label');
     label.textContent = getDisplayLabel(key);
-    
+
     // Make Maximum Liquidity label bold
     if (isMaxLiquidityKey(key)) {
         label.style.fontWeight = 'bold';
@@ -149,19 +149,43 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
 };
 
 const createExcessToleranceInput = (inputContainer, label, section, fixedValue, percentageValue) => {
+    // Create a wrapper for the switch toggle
+    const switchWrapper = document.createElement('div');
+    switchWrapper.classList.add('form-check', 'form-switch', 'd-inline-block');
+    switchWrapper.style.marginRight = '15px';
+
     // Toggle: ON = Fixed mode, OFF = Percentage mode
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
     toggle.classList.add('form-check-input');
-    toggle.style.marginRight = '10px';
+    toggle.style.cursor = 'pointer';
+    toggle.id = `excessTolerance-switch-${section.id}`;
     toggle.dataset.key = 'excessTolerance_isFixed';
     toggle.setAttribute('data-testid', `config-${section.id.replace('Config','')}-excessTolerance-toggle`);
 
-    const toggleLabel = document.createElement('span');
-    toggleLabel.classList.add('toggle-label');
-    toggleLabel.style.marginRight = '10px';
-    toggleLabel.style.fontSize = '0.85em';
+    // Calculate minimum width based on the longer text option
+    const measureText = (text, fontSize) => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        context.font = `${fontSize} Arial, sans-serif`;
+        return context.measureText(text).width;
+    };
+    const fontSize = '0.85em';
+    const fixedWidth = measureText('Fixed', fontSize);
+    const percentageWidth = measureText('Percentage', fontSize);
+    const minLabelWidth = Math.max(fixedWidth, percentageWidth) + 10; // Add 10px padding
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.classList.add('form-check-label');
+    toggleLabel.htmlFor = toggle.id;
+    toggleLabel.style.marginLeft = '5px';
+    toggleLabel.style.fontSize = fontSize;
     toggleLabel.style.color = '#666';
+    toggleLabel.style.cursor = 'pointer';
+    toggleLabel.style.userSelect = 'none';
+    toggleLabel.style.minWidth = `${minLabelWidth}px`;
+    toggleLabel.style.display = 'inline-block';
+    toggleLabel.style.textAlign = 'left';
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -221,8 +245,12 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
 
     input.addEventListener('input', () => setChanged(section.id));
 
-    inputContainer.appendChild(toggle);
-    inputContainer.appendChild(toggleLabel);
+    // Assemble the switch
+    switchWrapper.appendChild(toggle);
+    switchWrapper.appendChild(toggleLabel);
+
+    // Add switch and input to container
+    inputContainer.appendChild(switchWrapper);
     inputContainer.appendChild(input);
     const questionIcon = createQuestionIcon(getTooltipText('excessTolerance'));
     label.appendChild(questionIcon);
@@ -648,7 +676,7 @@ function getRegularConfig(sectionId) {
     // Handle excess tolerance separately
     const excessToleranceToggle = document.querySelector(`#${sectionId} input[data-key="excessTolerance_isFixed"]`);
     const excessToleranceInput = document.querySelector(`#${sectionId} input[data-key="excessTolerance_value"]`);
-    
+
     if (excessToleranceToggle && excessToleranceInput) {
         const isFixed = excessToleranceToggle.checked;
         const rawValue = excessToleranceInput.value.trim();
