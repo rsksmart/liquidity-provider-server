@@ -198,6 +198,10 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
     input.dataset.originalFixedValue = fixedValue;
     input.dataset.originalPercentageValue = percentageValue;
 
+    // Store current working values (will be updated as user types)
+    input.dataset.currentFixedValue = weiToEther(fixedValue);
+    input.dataset.currentPercentageValue = percentageValue || '0';
+
     // Determine initial mode based on which value is non-zero
     const fixedNum = parseFloat(fixedValue) || 0;
     const percentageNum = parseFloat(percentageValue) || 0;
@@ -224,26 +228,28 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
 
     toggle.addEventListener('change', () => {
         if (toggle.checked) {
-            // Fixed mode
+            input.dataset.currentPercentageValue = input.value || '0';
+
             toggleLabel.textContent = 'Fixed';
             input.placeholder = 'Enter amount in rBTC';
-            // Convert current value if possible, otherwise clear
-            const currentVal = parseFloat(input.value);
-            if (!isNaN(currentVal) && currentVal > 0) {
-                input.value = '';
-            } else {
-                input.value = '0';
-            }
+            input.value = input.dataset.currentFixedValue || '';
         } else {
-            // Percentage mode
+            input.dataset.currentFixedValue = input.value || '';
             toggleLabel.textContent = 'Percentage';
             input.placeholder = 'Enter percentage (0-100)';
-            input.value = '0';
+            input.value = input.dataset.currentPercentageValue || '0';
         }
         setChanged(section.id);
     });
 
-    input.addEventListener('input', () => setChanged(section.id));
+        input.addEventListener('input', () => {
+        if (toggle.checked) {
+            input.dataset.currentFixedValue = input.value;
+        } else {
+            input.dataset.currentPercentageValue = input.value;
+        }
+        setChanged(section.id);
+    });
 
     // Assemble the switch
     switchWrapper.appendChild(toggle);
