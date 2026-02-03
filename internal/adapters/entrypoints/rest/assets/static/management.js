@@ -163,29 +163,15 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
     toggle.dataset.key = 'excessTolerance_isFixed';
     toggle.setAttribute('data-testid', `config-${section.id.replace('Config','')}-excessTolerance-toggle`);
 
-    // Calculate minimum width based on the longer text option
-    const measureText = (text, fontSize) => {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        context.font = `${fontSize} Arial, sans-serif`;
-        return context.measureText(text).width;
-    };
-    const fontSize = '0.85em';
-    const fixedWidth = measureText('Fixed', fontSize);
-    const percentageWidth = measureText('Percentage', fontSize);
-    const minLabelWidth = Math.max(fixedWidth, percentageWidth) + 10; // Add 10px padding
-
     const toggleLabel = document.createElement('label');
     toggleLabel.classList.add('form-check-label');
     toggleLabel.htmlFor = toggle.id;
     toggleLabel.style.marginLeft = '5px';
-    toggleLabel.style.fontSize = fontSize;
+    toggleLabel.style.fontSize = '0.85em';
     toggleLabel.style.color = '#666';
     toggleLabel.style.cursor = 'pointer';
     toggleLabel.style.userSelect = 'none';
-    toggleLabel.style.minWidth = `${minLabelWidth}px`;
-    toggleLabel.style.display = 'inline-block';
-    toggleLabel.style.textAlign = 'left';
+    toggleLabel.textContent = 'Fixed';
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -209,19 +195,16 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
     if (fixedNum > 0) {
         // Fixed mode
         toggle.checked = true;
-        toggleLabel.textContent = 'Fixed';
         input.value = weiToEther(fixedValue);
         input.placeholder = 'Enter amount in rBTC';
     } else if (percentageNum > 0) {
         // Percentage mode
         toggle.checked = false;
-        toggleLabel.textContent = 'Percentage';
         input.value = percentageValue;
         input.placeholder = 'Enter percentage (0-100)';
     } else {
         // Default to percentage mode when both are 0
         toggle.checked = false;
-        toggleLabel.textContent = 'Percentage';
         input.value = '0';
         input.placeholder = 'Enter percentage (0-100)';
     }
@@ -229,13 +212,10 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
     toggle.addEventListener('change', () => {
         if (toggle.checked) {
             input.dataset.currentPercentageValue = input.value || '0';
-
-            toggleLabel.textContent = 'Fixed';
             input.placeholder = 'Enter amount in rBTC';
             input.value = input.dataset.currentFixedValue || '';
         } else {
             input.dataset.currentFixedValue = input.value || '';
-            toggleLabel.textContent = 'Percentage';
             input.placeholder = 'Enter percentage (0-100)';
             input.value = input.dataset.currentPercentageValue || '0';
         }
