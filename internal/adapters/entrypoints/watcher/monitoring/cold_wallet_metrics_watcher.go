@@ -42,23 +42,23 @@ metricLoop:
 		select {
 		case event := <-rbtcThresholdChannel:
 			if typedEvent, ok := event.(cold_wallet.RbtcTransferredDueToThresholdEvent); ok {
-				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues("rbtc", "threshold").Inc()
-				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues("rbtc").Set(weiToBtcFloat64(typedEvent.Amount))
+				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues(MetricLabelRbtc, MetricLabelThreshold).Inc()
+				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues(MetricLabelRbtc).Set(typedEvent.Amount.ToRbtcFloat64())
 			}
 		case event := <-btcThresholdChannel:
 			if typedEvent, ok := event.(cold_wallet.BtcTransferredDueToThresholdEvent); ok {
-				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues("btc", "threshold").Inc()
-				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues("btc").Set(weiToBtcFloat64(typedEvent.Amount))
+				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues(MetricLabelBtc, MetricLabelThreshold).Inc()
+				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues(MetricLabelBtc).Set(typedEvent.Amount.ToRbtcFloat64())
 			}
 		case event := <-rbtcTimeForcingChannel:
 			if typedEvent, ok := event.(cold_wallet.RbtcTransferredDueToTimeForcingEvent); ok {
-				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues("rbtc", "time_forcing").Inc()
-				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues("rbtc").Set(weiToBtcFloat64(typedEvent.Amount))
+				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues(MetricLabelRbtc, MetricLabelTimeForcing).Inc()
+				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues(MetricLabelRbtc).Set(typedEvent.Amount.ToRbtcFloat64())
 			}
 		case event := <-btcTimeForcingChannel:
 			if typedEvent, ok := event.(cold_wallet.BtcTransferredDueToTimeForcingEvent); ok {
-				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues("btc", "time_forcing").Inc()
-				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues("btc").Set(weiToBtcFloat64(typedEvent.Amount))
+				watcher.appMetrics.ColdWalletTransfersMetric.WithLabelValues(MetricLabelBtc, MetricLabelTimeForcing).Inc()
+				watcher.appMetrics.ColdWalletLastAmountMetric.WithLabelValues(MetricLabelBtc).Set(typedEvent.Amount.ToRbtcFloat64())
 			}
 		case <-watcher.closeChannel:
 			close(watcher.closeChannel)

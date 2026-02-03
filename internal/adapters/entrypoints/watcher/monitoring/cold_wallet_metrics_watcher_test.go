@@ -89,11 +89,11 @@ func TestColdWalletMetricsWatcher_Start_RbtcThresholdEvents(t *testing.T) {
 		watcher := monitoring.NewColdWalletMetricsWatcher(appMetrics, eventBus)
 
 		// Verify counter starts at 0
-		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "threshold")
+		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelThreshold)
 		assert.Equal(t, 0, int(initialCounter))
 
 		// Verify gauge starts at 0
-		initialGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "rbtc")
+		initialGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelRbtc)
 		assert.InDelta(t, 0.0, initialGauge, 0.0001)
 
 		go func() {
@@ -118,20 +118,20 @@ func TestColdWalletMetricsWatcher_Start_RbtcThresholdEvents(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		// Verify counter was incremented twice
-		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "threshold")
+		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelThreshold)
 		assert.Equal(t, 2, int(finalCounter))
 
 		// Verify gauge has the last amount (2.5 RBTC)
-		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "rbtc")
+		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelRbtc)
 		assert.InDelta(t, 2.5, finalGauge, 0.0001)
 
 		// Verify the labels are correct
-		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, "rbtc", "threshold")
-		assert.Equal(t, "rbtc", counterLabels["currency"], "Currency label should be 'rbtc'")
-		assert.Equal(t, "threshold", counterLabels["reason"], "Reason label should be 'threshold'")
+		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelThreshold)
+		assert.Equal(t, monitoring.MetricLabelRbtc, counterLabels["currency"], "Currency label should be 'rbtc'")
+		assert.Equal(t, monitoring.MetricLabelThreshold, counterLabels["reason"], "Reason label should be 'threshold'")
 
-		gaugeLabels := getGaugeVecLabels(appMetrics.ColdWalletLastAmountMetric, "rbtc")
-		assert.Equal(t, "rbtc", gaugeLabels["currency"], "Currency label should be 'rbtc'")
+		gaugeLabels := getGaugeVecLabels(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelRbtc)
+		assert.Equal(t, monitoring.MetricLabelRbtc, gaugeLabels["currency"], "Currency label should be 'rbtc'")
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
@@ -152,10 +152,10 @@ func TestColdWalletMetricsWatcher_Start_BtcThresholdEvents(t *testing.T) {
 
 		watcher := monitoring.NewColdWalletMetricsWatcher(appMetrics, eventBus)
 
-		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "threshold")
+		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelThreshold)
 		assert.Equal(t, 0, int(initialCounter))
 
-		initialGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "btc")
+		initialGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelBtc)
 		assert.InDelta(t, 0.0, initialGauge, 0.0001)
 
 		go func() {
@@ -187,16 +187,16 @@ func TestColdWalletMetricsWatcher_Start_BtcThresholdEvents(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		// Verify counter was incremented 3 times
-		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "threshold")
+		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelThreshold)
 		assert.Equal(t, 3, int(finalCounter))
 
 		// Verify gauge has the last amount (3.0 BTC)
-		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "btc")
+		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelBtc)
 		assert.InDelta(t, 3.0, finalGauge, 0.0001)
 
-		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, "btc", "threshold")
-		assert.Equal(t, "btc", counterLabels["currency"])
-		assert.Equal(t, "threshold", counterLabels["reason"])
+		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelThreshold)
+		assert.Equal(t, monitoring.MetricLabelBtc, counterLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelThreshold, counterLabels["reason"])
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
@@ -217,7 +217,7 @@ func TestColdWalletMetricsWatcher_Start_RbtcTimeForcingEvents(t *testing.T) {
 
 		watcher := monitoring.NewColdWalletMetricsWatcher(appMetrics, eventBus)
 
-		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "time_forcing")
+		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelTimeForcing)
 		assert.Equal(t, 0, int(initialCounter))
 
 		go func() {
@@ -232,15 +232,15 @@ func TestColdWalletMetricsWatcher_Start_RbtcTimeForcingEvents(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 
-		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "time_forcing")
+		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelTimeForcing)
 		assert.Equal(t, 1, int(finalCounter))
 
-		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "rbtc")
+		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelRbtc)
 		assert.InDelta(t, 0.75, finalGauge, 0.0001)
 
-		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, "rbtc", "time_forcing")
-		assert.Equal(t, "rbtc", counterLabels["currency"])
-		assert.Equal(t, "time_forcing", counterLabels["reason"])
+		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelTimeForcing)
+		assert.Equal(t, monitoring.MetricLabelRbtc, counterLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelTimeForcing, counterLabels["reason"])
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
@@ -261,7 +261,7 @@ func TestColdWalletMetricsWatcher_Start_BtcTimeForcingEvents(t *testing.T) {
 
 		watcher := monitoring.NewColdWalletMetricsWatcher(appMetrics, eventBus)
 
-		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "time_forcing")
+		initialCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelTimeForcing)
 		assert.Equal(t, 0, int(initialCounter))
 
 		go func() {
@@ -284,15 +284,15 @@ func TestColdWalletMetricsWatcher_Start_BtcTimeForcingEvents(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 
-		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "time_forcing")
+		finalCounter := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelTimeForcing)
 		assert.Equal(t, 2, int(finalCounter))
 
-		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "btc")
+		finalGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelBtc)
 		assert.InDelta(t, 2.0, finalGauge, 0.0001)
 
-		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, "btc", "time_forcing")
-		assert.Equal(t, "btc", counterLabels["currency"])
-		assert.Equal(t, "time_forcing", counterLabels["reason"])
+		counterLabels := getCounterVecLabels(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelTimeForcing)
+		assert.Equal(t, monitoring.MetricLabelBtc, counterLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelTimeForcing, counterLabels["reason"])
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
@@ -320,10 +320,10 @@ func TestColdWalletMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		watcher := monitoring.NewColdWalletMetricsWatcher(appMetrics, eventBus)
 
 		// Verify all counters start at 0
-		initialRbtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "threshold")
-		initialBtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "threshold")
-		initialRbtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "time_forcing")
-		initialBtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "time_forcing")
+		initialRbtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelThreshold)
+		initialBtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelThreshold)
+		initialRbtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelTimeForcing)
+		initialBtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelTimeForcing)
 
 		assert.Equal(t, 0, int(initialRbtcThreshold))
 		assert.Equal(t, 0, int(initialBtcThreshold))
@@ -382,10 +382,10 @@ func TestColdWalletMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 
 		time.Sleep(20 * time.Millisecond)
 
-		finalRbtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "threshold")
-		finalBtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "threshold")
-		finalRbtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "rbtc", "time_forcing")
-		finalBtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, "btc", "time_forcing")
+		finalRbtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelThreshold)
+		finalBtcThreshold := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelThreshold)
+		finalRbtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelRbtc, monitoring.MetricLabelTimeForcing)
+		finalBtcTimeForcing := getCounterVecValue(appMetrics.ColdWalletTransfersMetric, monitoring.MetricLabelBtc, monitoring.MetricLabelTimeForcing)
 
 		// Verify counters that received events
 		assert.Equal(t, 3, int(finalRbtcThreshold))
@@ -396,8 +396,8 @@ func TestColdWalletMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		// Verify gauges have been updated (they track the last amount for each currency)
 		// Due to the async nature of event processing, we just verify they're non-zero
 		// and contain one of the expected values (either threshold or time_forcing amounts)
-		finalRbtcGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "rbtc")
-		finalBtcGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, "btc")
+		finalRbtcGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelRbtc)
+		finalBtcGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelBtc)
 
 		// RBTC gauge should be either 0.5 (last threshold) or 1.5 (time_forcing) depending on processing order
 		assert.True(t, finalRbtcGauge == 0.5 || finalRbtcGauge == 1.5, 

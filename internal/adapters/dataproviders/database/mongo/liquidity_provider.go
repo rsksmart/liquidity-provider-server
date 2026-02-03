@@ -105,7 +105,7 @@ func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credential
 func (repo *lpMongoRepository) GetStateConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
-	return getConfiguration[liquidity_provider.StateConfiguration](dbCtx, repo, stateConfigId, false)
+	return getConfigurationVerbose[liquidity_provider.StateConfiguration](dbCtx, repo, stateConfigId)
 }
 
 func (repo *lpMongoRepository) UpsertStateConfiguration(ctx context.Context, configuration entities.Signed[liquidity_provider.StateConfiguration]) error {
@@ -115,7 +115,7 @@ func (repo *lpMongoRepository) UpsertStateConfiguration(ctx context.Context, con
 		Signed: configuration,
 		Name:   stateConfigId,
 	}
-	return upsertConfiguration(dbCtx, repo, configToStore, false)
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
 }
 
 func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](

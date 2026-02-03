@@ -3,7 +3,6 @@ package liquidity_provider
 import (
 	"context"
 	"errors"
-	"math/big"
 	"sync"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
@@ -48,6 +48,13 @@ type TransferToColdWalletResult struct {
 	RskResult NetworkTransferResult
 }
 
+func NewTransferToColdWalletResult(btcResult, rskResult NetworkTransferResult) *TransferToColdWalletResult {
+	return &TransferToColdWalletResult{
+		BtcResult: btcResult,
+		RskResult: rskResult,
+	}
+}
+
 type excessCalculationResult struct {
 	BtcExcess        *entities.Wei
 	BtcIsTimeForced  bool
@@ -70,6 +77,7 @@ type TransferExcessToColdWalletUseCase struct {
 	btcWallet                    blockchain.BitcoinWallet
 	rskWallet                    blockchain.RootstockWallet
 	rpc                          blockchain.Rpc
+	btcWalletMutex               sync.Locker
 	rskWalletMutex               sync.Locker
 	btcMinTransferFeeMultiplier  uint64
 	rbtcMinTransferFeeMultiplier uint64
@@ -86,6 +94,7 @@ func NewTransferExcessToColdWalletUseCase(
 	btcWallet blockchain.BitcoinWallet,
 	rskWallet blockchain.RootstockWallet,
 	rpc blockchain.Rpc,
+	btcWalletMutex sync.Locker,
 	rskWalletMutex sync.Locker,
 	btcMinTransferFeeMultiplier uint64,
 	rbtcMinTransferFeeMultiplier uint64,
@@ -101,6 +110,7 @@ func NewTransferExcessToColdWalletUseCase(
 		btcWallet:                    btcWallet,
 		rskWallet:                    rskWallet,
 		rpc:                          rpc,
+		btcWalletMutex:               btcWalletMutex,
 		rskWalletMutex:               rskWalletMutex,
 		btcMinTransferFeeMultiplier:  btcMinTransferFeeMultiplier,
 		rbtcMinTransferFeeMultiplier: rbtcMinTransferFeeMultiplier,
@@ -110,12 +120,18 @@ func NewTransferExcessToColdWalletUseCase(
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) Run(ctx context.Context) (*TransferToColdWalletResult, error) {
+	useCase.btcWalletMutex.Lock()
+	defer useCase.btcWalletMutex.Unlock()
+
+	useCase.rskWalletMutex.Lock()
+	defer useCase.rskWalletMutex.Unlock()
+
 	generalConfig, stateConfig, err := useCase.getAndValidateConfiguration(ctx)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, err)
 	}
 
-	currentBtcLiquidity, currentRbtcLiquidity, err := useCase.getCurrentLiquidity(ctx)
+	currentLiquidity, err := useCase.getCurrentLiquidity(ctx)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, err)
 	}
@@ -123,26 +139,26 @@ func (useCase *TransferExcessToColdWalletUseCase) Run(ctx context.Context) (*Tra
 	excessResult, err := useCase.calculateExcessForBothNetworks(
 		generalConfig,
 		stateConfig,
-		currentBtcLiquidity,
-		currentRbtcLiquidity,
+		currentLiquidity.Btc,
+		currentLiquidity.Rbtc,
 	)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, err)
 	}
 
-	result := &TransferToColdWalletResult{}
-
-	result.BtcResult = useCase.executeBtcTransfer(excessResult.BtcExcess, excessResult.BtcIsTimeForced)
-	if result.BtcResult.Status == TransferStatusFailed {
-		return result, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, result.BtcResult.Error)
+	btcResult := useCase.handleBtcTransfer(excessResult.BtcExcess, excessResult.BtcIsTimeForced)
+	if btcResult.Status == TransferStatusFailed {
+		result := NewTransferToColdWalletResult(btcResult, NetworkTransferResult{})
+		return result, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, btcResult.Error)
 	}
 
-	result.RskResult = useCase.executeRskTransfer(ctx, excessResult.RbtcExcess, excessResult.RbtcIsTimeForced)
-	if result.RskResult.Status == TransferStatusFailed {
-		return result, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, result.RskResult.Error)
+	rskResult := useCase.handleRskTransfer(ctx, excessResult.RbtcExcess, excessResult.RbtcIsTimeForced)
+	if rskResult.Status == TransferStatusFailed {
+		result := NewTransferToColdWalletResult(btcResult, rskResult)
+		return result, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, rskResult.Error)
 	}
 
-	return result, nil
+	return NewTransferToColdWalletResult(btcResult, rskResult), nil
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) getAndValidateConfiguration(ctx context.Context) (*liquidity_provider.GeneralConfiguration, *liquidity_provider.StateConfiguration, error) {
@@ -162,13 +178,6 @@ func (useCase *TransferExcessToColdWalletUseCase) getAndValidateConfiguration(ct
 	stateConfig, err := useCase.getStateConfiguration(ctx)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	if stateConfig.LastBtcToColdWalletTransfer == nil {
-		return nil, nil, NoTransferHistoryConfiguredError
-	}
-	if stateConfig.LastRbtcToColdWalletTransfer == nil {
-		return nil, nil, NoTransferHistoryConfiguredError
 	}
 
 	return &generalConfig, stateConfig, nil
@@ -207,7 +216,25 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 	}, nil
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(excess *entities.Wei, isTimeForcingTransfer bool) NetworkTransferResult {
+func (useCase *TransferExcessToColdWalletUseCase) publishBtcTransferEvent(txResult *internalTxResult, isTimeForcingTransfer bool) {
+	if isTimeForcingTransfer {
+		useCase.eventBus.Publish(cold_wallet.BtcTransferredDueToTimeForcingEvent{
+			Event:  entities.NewBaseEvent(cold_wallet.BtcTransferredDueToTimeForcingEventId),
+			Amount: txResult.Amount,
+			TxHash: txResult.TxHash,
+			Fee:    txResult.Fee,
+		})
+	} else {
+		useCase.eventBus.Publish(cold_wallet.BtcTransferredDueToThresholdEvent{
+			Event:  entities.NewBaseEvent(cold_wallet.BtcTransferredDueToThresholdEventId),
+			Amount: txResult.Amount,
+			TxHash: txResult.TxHash,
+			Fee:    txResult.Fee,
+		})
+	}
+}
+
+func (useCase *TransferExcessToColdWalletUseCase) handleBtcTransfer(excess *entities.Wei, isTimeForcingTransfer bool) NetworkTransferResult {
 	if excess.Cmp(entities.NewWei(0)) <= 0 {
 		return NetworkTransferResult{
 			Status:  TransferStatusSkippedNoExcess,
@@ -215,24 +242,9 @@ func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(excess *ent
 		}
 	}
 
-	txResult, err := useCase.transferBtcExcess(excess)
+	txResult, err := useCase.executeBtcTransfer(excess)
 	if err == nil {
-		// Publish event based on transfer reason
-		if isTimeForcingTransfer {
-			useCase.eventBus.Publish(cold_wallet.BtcTransferredDueToTimeForcingEvent{
-				Event:  entities.NewBaseEvent(cold_wallet.BtcTransferredDueToTimeForcingEventId),
-				Amount: txResult.Amount,
-				TxHash: txResult.TxHash,
-				Fee:    txResult.Fee,
-			})
-		} else {
-			useCase.eventBus.Publish(cold_wallet.BtcTransferredDueToThresholdEvent{
-				Event:  entities.NewBaseEvent(cold_wallet.BtcTransferredDueToThresholdEventId),
-				Amount: txResult.Amount,
-				TxHash: txResult.TxHash,
-				Fee:    txResult.Fee,
-			})
-		}
+		useCase.publishBtcTransferEvent(txResult, isTimeForcingTransfer)
 
 		return NetworkTransferResult{
 			Status:  TransferStatusSuccess,
@@ -257,7 +269,25 @@ func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(excess *ent
 	}
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context.Context, excess *entities.Wei, isTimeForcingTransfer bool) NetworkTransferResult {
+func (useCase *TransferExcessToColdWalletUseCase) publishRskTransferEvent(txResult *internalTxResult, isTimeForcingTransfer bool) {
+	if isTimeForcingTransfer {
+		useCase.eventBus.Publish(cold_wallet.RbtcTransferredDueToTimeForcingEvent{
+			Event:  entities.NewBaseEvent(cold_wallet.RbtcTransferredDueToTimeForcingEventId),
+			Amount: txResult.Amount,
+			TxHash: txResult.TxHash,
+			Fee:    txResult.Fee,
+		})
+	} else {
+		useCase.eventBus.Publish(cold_wallet.RbtcTransferredDueToThresholdEvent{
+			Event:  entities.NewBaseEvent(cold_wallet.RbtcTransferredDueToThresholdEventId),
+			Amount: txResult.Amount,
+			TxHash: txResult.TxHash,
+			Fee:    txResult.Fee,
+		})
+	}
+}
+
+func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.Context, excess *entities.Wei, isTimeForcingTransfer bool) NetworkTransferResult {
 	if excess.Cmp(entities.NewWei(0)) <= 0 {
 		return NetworkTransferResult{
 			Status:  TransferStatusSkippedNoExcess,
@@ -265,24 +295,9 @@ func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context
 		}
 	}
 
-	txResult, err := useCase.transferRskExcess(ctx, excess)
+	txResult, err := useCase.executeRskTransfer(ctx, excess)
 	if err == nil {
-		// Publish event based on transfer reason
-		if isTimeForcingTransfer {
-			useCase.eventBus.Publish(cold_wallet.RbtcTransferredDueToTimeForcingEvent{
-				Event:  entities.NewBaseEvent(cold_wallet.RbtcTransferredDueToTimeForcingEventId),
-				Amount: txResult.Amount,
-				TxHash: txResult.TxHash,
-				Fee:    txResult.Fee,
-			})
-		} else {
-			useCase.eventBus.Publish(cold_wallet.RbtcTransferredDueToThresholdEvent{
-				Event:  entities.NewBaseEvent(cold_wallet.RbtcTransferredDueToThresholdEventId),
-				Amount: txResult.Amount,
-				TxHash: txResult.TxHash,
-				Fee:    txResult.Fee,
-			})
-		}
+		useCase.publishRskTransferEvent(txResult, isTimeForcingTransfer)
 
 		return NetworkTransferResult{
 			Status:  TransferStatusSuccess,
@@ -307,38 +322,39 @@ func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context
 	}
 }
 
+type currentLiquidityResult struct {
+	Btc  *entities.Wei
+	Rbtc *entities.Wei
+}
+
 func (useCase *TransferExcessToColdWalletUseCase) validateColdWallet() error {
-	if useCase.coldWallet == nil {
-		return NoColdWalletConfiguredError
-	}
-
 	btcAddress := useCase.coldWallet.GetBtcAddress()
-	if btcAddress == "" {
-		return NoColdWalletConfiguredError
-	}
-
 	rskAddress := useCase.coldWallet.GetRskAddress()
-	if rskAddress == "" {
+
+	if btcAddress == "" || rskAddress == "" {
 		return NoColdWalletConfiguredError
 	}
 
 	return nil
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) getCurrentLiquidity(ctx context.Context) (*entities.Wei, *entities.Wei, error) {
+func (useCase *TransferExcessToColdWalletUseCase) getCurrentLiquidity(ctx context.Context) (*currentLiquidityResult, error) {
 	// AvailablePegoutLiquidity returns BTC balance (from BTC wallet)
-	btcUsableLiquidity, err := useCase.pegoutProvider.AvailablePegoutLiquidity(ctx)
+	btcCurrentLiquidity, err := useCase.pegoutProvider.AvailablePegoutLiquidity(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// AvailablePeginLiquidity returns RBTC balance (from RSK wallet + PegIn contract)
-	rskUsableLiquidity, err := useCase.peginProvider.AvailablePeginLiquidity(ctx)
+	rskCurrentLiquidity, err := useCase.peginProvider.AvailablePeginLiquidity(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return btcUsableLiquidity, rskUsableLiquidity, nil
+	return &currentLiquidityResult{
+		Btc:  btcCurrentLiquidity,
+		Rbtc: rskCurrentLiquidity,
+	}, nil
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) calculateThreshold(
@@ -349,35 +365,22 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateThreshold(
 		return new(entities.Wei).Add(target, tolerance.FixedValue)
 	}
 
-	hundred := big.NewFloat(100)
-	one := big.NewFloat(1)
-	multiplier := new(big.Float).Add(
-		one,
-		new(big.Float).Quo(tolerance.PercentageValue.Native(), hundred),
-	)
-	targetFloat := new(big.Float).SetInt(target.AsBigInt())
-	thresholdFloat := new(big.Float).Mul(targetFloat, multiplier)
-	thresholdBigInt, _ := thresholdFloat.Int(nil)
+	thresholdBigInt := utils.ApplyPercentageIncrease(target.AsBigInt(), tolerance.PercentageValue.Native())
 	return entities.NewBigWei(thresholdBigInt)
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) calculateExcess(
 	target *entities.Wei,
 	currentLiquidity *entities.Wei,
-	threshold *entities.Wei,
+	compareValue *entities.Wei,
 ) *entities.Wei {
-	compareValue := target
-	if threshold != nil {
-		compareValue = threshold
-	}
-
 	if currentLiquidity.Cmp(compareValue) > 0 {
 		return new(entities.Wei).Sub(currentLiquidity, target)
 	}
 	return entities.NewWei(0)
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) transferBtcExcess(amount *entities.Wei) (*internalTxResult, error) {
+func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(amount *entities.Wei) (*internalTxResult, error) {
 	coldBtcAddress := useCase.coldWallet.GetBtcAddress()
 
 	feeEstimation, err := useCase.btcWallet.EstimateTxFees(coldBtcAddress, amount)
@@ -403,7 +406,7 @@ func (useCase *TransferExcessToColdWalletUseCase) transferBtcExcess(amount *enti
 	}, nil
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) transferRskExcess(ctx context.Context, amount *entities.Wei) (*internalTxResult, error) {
+func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context.Context, amount *entities.Wei) (*internalTxResult, error) {
 	coldRskAddress := useCase.coldWallet.GetRskAddress()
 
 	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
@@ -422,10 +425,6 @@ func (useCase *TransferExcessToColdWalletUseCase) transferRskExcess(ctx context.
 		return nil, TransferNotEconomicalError
 	}
 
-	// Lock wallet for transaction
-	useCase.rskWalletMutex.Lock()
-	defer useCase.rskWalletMutex.Unlock()
-
 	config := blockchain.NewTransactionConfig(amountToTransfer, SimpleTransferGasLimit, gasPrice)
 
 	receipt, err := useCase.rskWallet.SendRbtc(ctx, config, coldRskAddress)
@@ -443,14 +442,17 @@ func (useCase *TransferExcessToColdWalletUseCase) transferRskExcess(ctx context.
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) getStateConfiguration(ctx context.Context) (*liquidity_provider.StateConfiguration, error) {
-	signedConfig, err := useCase.lpRepository.GetStateConfiguration(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if signedConfig == nil {
+	stateConfig := useCase.generalProvider.StateConfiguration(ctx)
+
+	// Check if configuration is valid (empty/nil fields mean validation failed or not found)
+	if stateConfig.LastBtcToColdWalletTransfer == nil {
 		return nil, NoTransferHistoryConfiguredError
 	}
-	return &signedConfig.Value, nil
+	if stateConfig.LastRbtcToColdWalletTransfer == nil {
+		return nil, NoTransferHistoryConfiguredError
+	}
+
+	return &stateConfig, nil
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) calculateExcessWithTimeForcing(
@@ -466,17 +468,17 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessWithTimeForcing
 		return excess, false // Transfer due to threshold, not time forcing
 	}
 
-	// No excess above threshold, but check if we should force transfer due to time
 	if useCase.shouldForceTransferDueToTime(lastTransferTime) {
-		// Calculate excess without threshold (pass nil)
-		forcedExcess := useCase.calculateExcess(target, currentLiquidity, nil)
-		return forcedExcess, true // Transfer due to time forcing
+		// Calculate excess respecting target
+		forcedExcess := useCase.calculateExcess(target, currentLiquidity, target)
+		return forcedExcess, true
 	}
 
 	return entities.NewWei(0), false
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) shouldForceTransferDueToTime(lastTransferTime *time.Time) bool {
-	secondsSinceLastTransfer := time.Since(*lastTransferTime).Seconds()
-	return secondsSinceLastTransfer >= float64(useCase.forceTransferAfterSeconds)
+	timeSinceLastTransfer := time.Since(*lastTransferTime)
+	timeRequiredToForceTransfer := time.Duration(useCase.forceTransferAfterSeconds) * time.Second
+	return timeSinceLastTransfer >= timeRequiredToForceTransfer
 }

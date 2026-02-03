@@ -130,8 +130,8 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		watcher := monitoring.NewAssetReportWatcher(appMetrics, assetsReportUseCase, ticker)
 
 		// Verify initial metric values are zero
-		initialRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "total")
-		initialBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		initialRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		initialBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 0.0, initialRbtcTotal, 0.0001)
 		assert.InDelta(t, 0.0, initialBtcAvailable, 0.0001)
 
@@ -146,15 +146,15 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify metrics were updated with expected values
-		finalRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "total")
-		finalBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		finalRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		finalBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 9.5, finalRbtcTotal, 0.0001)
 		assert.InDelta(t, 4.5, finalBtcAvailable, 0.0001)
 
 		// Verify labels are correct
-		rbtcLabels := getAssetGaugeLabels(appMetrics.AssetsMetrics, "rbtc", "total")
-		assert.Equal(t, "rbtc", rbtcLabels["currency"])
-		assert.Equal(t, "total", rbtcLabels["type"])
+		rbtcLabels := getAssetGaugeLabels(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		assert.Equal(t, monitoring.MetricLabelRbtc, rbtcLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelTotal, rbtcLabels["type"])
 
 		// Properly shutdown and wait for completion
 		closeChannel := make(chan bool, 1)
@@ -182,8 +182,8 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		watcher := monitoring.NewAssetReportWatcher(appMetrics, assetsReportUseCase, ticker)
 
 		// Verify initial metric values are zero
-		initialRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "total")
-		initialBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		initialRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		initialBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 0.0, initialRbtcTotal, 0.0001)
 		assert.InDelta(t, 0.0, initialBtcAvailable, 0.0001)
 
@@ -198,8 +198,8 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify metrics remain unchanged (zero) due to error
-		finalRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "total")
-		finalBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		finalRbtcTotal := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		finalBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 0.0, finalRbtcTotal, 0.0001)
 		assert.InDelta(t, 0.0, finalBtcAvailable, 0.0001)
 
@@ -296,8 +296,8 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify first update
-		firstRbtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "allocation_available")
-		firstBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		firstRbtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationAvailable)
+		firstBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 3.0, firstRbtcAvailable, 0.0001)
 		assert.InDelta(t, 2.0, firstBtcAvailable, 0.0001)
 
@@ -306,8 +306,8 @@ func TestAssetReportWatcher_Start(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify second update (metrics should reflect new values)
-		secondRbtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "rbtc", "allocation_available")
-		secondBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, "btc", "allocation_available")
+		secondRbtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationAvailable)
+		secondBtcAvailable := getAssetGaugeValue(appMetrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable)
 		assert.InDelta(t, 4.0, secondRbtcAvailable, 0.0001)
 		assert.InDelta(t, 3.0, secondBtcAvailable, 0.0001)
 

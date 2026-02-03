@@ -254,9 +254,11 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			messaging.EventBus,
 		),
-		initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
-			databaseRegistry.LiquidityProviderRepository,
-		),
+	initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
+		databaseRegistry.LiquidityProviderRepository,
+		rskRegistry.Wallet,
+		signingHashFunction,
+	),
 		getManagementUiDataUseCase: liquidity_provider.NewGetManagementUiDataUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			lpRegistry.LiquidityProvider,
@@ -367,21 +369,22 @@ func NewUseCaseRegistry(
 			env.Rsk.FeeCollectorAddress,
 			utils.Scale,
 		),
-		transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(
-			lpRegistry.LiquidityProvider,
-			lpRegistry.LiquidityProvider,
-			lpRegistry.LiquidityProvider,
-			databaseRegistry.LiquidityProviderRepository,
-			lpRegistry.ColdWallet,
-			btcRegistry.PaymentWallet,
-			rskRegistry.Wallet,
-			messaging.Rpc,
-			mutexes.RskWalletMutex(),
-			env.ColdWallet.BtcMinTransferFeeMultiplier,
-			env.ColdWallet.RbtcMinTransferFeeMultiplier,
-			env.ColdWallet.ForceTransferAfterSeconds,
-			messaging.EventBus,
-		),
+	transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		lpRegistry.LiquidityProvider,
+		lpRegistry.LiquidityProvider,
+		lpRegistry.LiquidityProvider,
+		databaseRegistry.LiquidityProviderRepository,
+		lpRegistry.ColdWallet,
+		btcRegistry.PaymentWallet,
+		rskRegistry.Wallet,
+		messaging.Rpc,
+		mutexes.BtcWalletMutex(),
+		mutexes.RskWalletMutex(),
+		env.ColdWallet.BtcMinTransferFeeMultiplier,
+		env.ColdWallet.RbtcMinTransferFeeMultiplier,
+		env.ColdWallet.ForceTransferAfterSeconds,
+		messaging.EventBus,
+	),
 	}
 }
 

@@ -352,7 +352,6 @@ func TestLpMongoRepository_GetStateConfiguration(t *testing.T) {
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, filter).
 			Return(mongoDb.NewSingleResultFromDocument(testStateConfig, nil, nil)).Once()
-		defer test.AssertNoLog(t)()
 		result, err := repo.GetStateConfiguration(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, testStateConfig, result)
@@ -390,7 +389,6 @@ func TestLpMongoRepository_UpsertStateConfiguration(t *testing.T) {
 			Name:   configName,
 		}, options.Replace().SetUpsert(true)).
 			Return(nil, nil).Once()
-		defer test.AssertNoLog(t)()
 		err := repo.UpsertStateConfiguration(context.Background(), *testStateConfig)
 		require.NoError(t, err)
 	})

@@ -9,8 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const transferColdWalletTimeout = 60 * time.Second
-
 type TransferExcessToColdWalletUseCase interface {
 	Run(ctx context.Context) (*liquidity_provider.TransferToColdWalletResult, error)
 }
@@ -19,17 +17,20 @@ type TransferColdWalletWatcher struct {
 	transferUseCase    TransferExcessToColdWalletUseCase
 	watcherStopChannel chan bool
 	ticker             utils.Ticker
+	timeout            time.Duration
 }
 
 func NewTransferColdWalletWatcher(
 	transferUseCase TransferExcessToColdWalletUseCase,
 	ticker utils.Ticker,
+	timeout time.Duration,
 ) *TransferColdWalletWatcher {
 	watcherStopChannel := make(chan bool, 1)
 	return &TransferColdWalletWatcher{
 		transferUseCase:    transferUseCase,
 		watcherStopChannel: watcherStopChannel,
 		ticker:             ticker,
+		timeout:            timeout,
 	}
 }
 
@@ -42,7 +43,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			ctx, cancel := context.WithTimeout(context.Background(), transferColdWalletTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), watcher.timeout)
 			result, err := watcher.transferUseCase.Run(ctx)
 			if err != nil {
 				log.Error("TransferColdWalletWatcher: Error executing transfer to cold wallet: ", err)

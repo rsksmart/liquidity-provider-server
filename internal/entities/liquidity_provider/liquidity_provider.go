@@ -72,6 +72,7 @@ type LiquidityProvider interface {
 	BtcAddress() string
 	SignQuote(quoteHash string) (string, error)
 	GeneralConfiguration(ctx context.Context) GeneralConfiguration
+	StateConfiguration(ctx context.Context) StateConfiguration
 	GetSigner() entities.Signer
 }
 

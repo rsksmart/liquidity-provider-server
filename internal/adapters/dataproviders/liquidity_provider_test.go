@@ -715,3 +715,155 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 		Hash:      "40e2e3f42928a80814f19d897bb3da4119bff12e15cdb60125d9c2f82c590ea3",
 	}
 }
+
+//nolint:funlen
+func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
+	account := test.OpenWalletForTest(t, "state-configuration")
+	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+
+	t.Run("Return signed state configuration from db", func(t *testing.T) {
+		// Create properly signed config using the test wallet
+		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  &btcTime,
+			LastRbtcToColdWalletTransfer: &rbtcTime,
+		}
+
+		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+		result := lp.StateConfiguration(context.Background())
+
+		assert.Equal(t, stateConfigValue, result)
+		assert.NotNil(t, result.LastBtcToColdWalletTransfer)
+		assert.NotNil(t, result.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration when db doesn't have configuration", func(t *testing.T) {
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Custom state configuration not found. Using default configuration.")()
+
+		config := lp.StateConfiguration(context.Background())
+
+		// StateConfiguration has no defaults - returns empty struct
+		assert.Nil(t, config.LastBtcToColdWalletTransfer)
+		assert.Nil(t, config.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration on db read error", func(t *testing.T) {
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting state configuration, using default configuration. Error: database error")()
+		config := lp.StateConfiguration(context.Background())
+
+		assert.Nil(t, config.LastBtcToColdWalletTransfer)
+		assert.Nil(t, config.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration when db configuration is tampered", func(t *testing.T) {
+		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  &btcTime,
+			LastRbtcToColdWalletTransfer: &rbtcTime,
+		}
+
+		tamperedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Tamper with the data after signing
+		newTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		tamperedConfig.Value.LastBtcToColdWalletTransfer = &newTime
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&tamperedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Tampered state configuration. Using default configuration.")()
+		result := lp.StateConfiguration(context.Background())
+
+		assert.Nil(t, result.LastBtcToColdWalletTransfer)
+		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration when db configuration doesn't have valid signature", func(t *testing.T) {
+		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  &btcTime,
+			LastRbtcToColdWalletTransfer: &rbtcTime,
+		}
+
+		// Create config with correct hash but wrong signature
+		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+		// Use a different but valid signature format (from different wallet/data)
+		signedConfig.Signature = "94530cf2d078ce7e44b4ce1d63a0cf7a225f07d4414f4dcf132f097fd027c08c7252b012ffff6855400fbc96939662904b22ce0b7a010bcb0b7a2c7db9dc26b700"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Invalid state configuration signature. Using default configuration.")()
+
+		result := lp.StateConfiguration(context.Background())
+
+		assert.Nil(t, result.LastBtcToColdWalletTransfer)
+		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration when integrity check fails", func(t *testing.T) {
+		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  &btcTime,
+			LastRbtcToColdWalletTransfer: &rbtcTime,
+		}
+
+		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Change hash to make integrity check fail
+		integrityFailConfig.Hash = "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a9"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Tampered state configuration. Using default configuration.")()
+
+		result := lp.StateConfiguration(context.Background())
+
+		assert.Nil(t, result.LastBtcToColdWalletTransfer)
+		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return empty state configuration when there is an unexpected error", func(t *testing.T) {
+		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  &btcTime,
+			LastRbtcToColdWalletTransfer: &rbtcTime,
+		}
+
+		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Use invalid hash format that will fail hex decoding
+		integrityFailConfig.Hash = "an-invalid-hash"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		defer test.AssertLogContains(t, "Error getting state configuration, using default configuration. Error: encoding/hex: invalid byte: U+006E")()
+
+		result := lp.StateConfiguration(context.Background())
+
+		assert.Nil(t, result.LastBtcToColdWalletTransfer)
+		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+	})
+}

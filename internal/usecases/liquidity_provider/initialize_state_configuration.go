@@ -12,35 +12,58 @@ import (
 
 type InitializeStateConfigurationUseCase struct {
 	lpRepository liquidity_provider.LiquidityProviderRepository
+	signer       entities.Signer
+	hashFunc     entities.HashFunction
 }
 
 func NewInitializeStateConfigurationUseCase(
 	lpRepository liquidity_provider.LiquidityProviderRepository,
+	signer entities.Signer,
+	hashFunc entities.HashFunction,
 ) *InitializeStateConfigurationUseCase {
-	return &InitializeStateConfigurationUseCase{lpRepository: lpRepository}
+	return &InitializeStateConfigurationUseCase{
+		lpRepository: lpRepository,
+		signer:       signer,
+		hashFunc:     hashFunc,
+	}
 }
 
 func (useCase *InitializeStateConfigurationUseCase) Run(ctx context.Context) error {
-	stateConfig, err := useCase.lpRepository.GetStateConfiguration(ctx)
+	signedStateConfig, err := useCase.lpRepository.GetStateConfiguration(ctx)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.InitializeStateConfigurationId, err)
 	}
-	if stateConfig != nil {
-		log.Debug("State configuration already initialized")
+
+	var stateConfig liquidity_provider.StateConfiguration
+	if signedStateConfig != nil {
+		stateConfig = signedStateConfig.Value
+	}
+
+	modified := false
+	now := time.Now()
+
+	// BTC field
+	if stateConfig.LastBtcToColdWalletTransfer == nil {
+		log.Info("Initializing LastBtcToColdWalletTransfer with current timestamp")
+		stateConfig.LastBtcToColdWalletTransfer = &now
+		modified = true
+	}
+
+	// RBTC field
+	if stateConfig.LastRbtcToColdWalletTransfer == nil {
+		log.Info("Initializing LastRbtcToColdWalletTransfer with current timestamp")
+		stateConfig.LastRbtcToColdWalletTransfer = &now
+		modified = true
+	}
+
+	if !modified {
+		log.Debug("State configuration already fully initialized")
 		return nil
 	}
 
-	// If it doesn't exist, create it with current timestamps
-	log.Info("Initializing state configuration with current timestamps...")
-	now := time.Now()
-	newStateConfig := liquidity_provider.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
-	}
-
-	signedConfig := entities.Signed[liquidity_provider.StateConfiguration]{
-		Value:     newStateConfig,
-		Signature: "",
+	signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, useCase.signer, useCase.hashFunc, stateConfig)
+	if err != nil {
+		return err
 	}
 
 	if err := useCase.lpRepository.UpsertStateConfiguration(ctx, signedConfig); err != nil {

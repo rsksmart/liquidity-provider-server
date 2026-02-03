@@ -16,11 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testTransferTimeout = 60 * time.Second
+
 func TestNewTransferColdWalletWatcher(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	useCase := &mockTransferUseCase{}
 
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	test.AssertNonZeroValues(t, w)
 }
@@ -28,7 +30,7 @@ func TestNewTransferColdWalletWatcher(t *testing.T) {
 func TestTransferColdWalletWatcher_Prepare(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	useCase := &mockTransferUseCase{}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	err := w.Prepare(context.Background())
 
@@ -38,7 +40,7 @@ func TestTransferColdWalletWatcher_Prepare(t *testing.T) {
 func TestTransferColdWalletWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		useCase := &mockTransferUseCase{}
-		return watcher.NewTransferColdWalletWatcher(useCase, ticker)
+		return watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 	})
 }
 
@@ -50,7 +52,7 @@ func TestTransferColdWalletWatcher_Start_Error(t *testing.T) {
 
 	expectedError := errors.New("cold wallet not configured")
 	useCase := &mockTransferUseCase{err: expectedError}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 	
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -90,7 +92,7 @@ func TestTransferColdWalletWatcher_Start_BtcSuccess(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -130,7 +132,7 @@ func TestTransferColdWalletWatcher_Start_RskSuccess(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -167,7 +169,7 @@ func TestTransferColdWalletWatcher_Start_BothSkippedNoExcess(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -205,7 +207,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedNotEconomical(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -243,7 +245,7 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -283,7 +285,7 @@ func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -323,7 +325,7 @@ func TestTransferColdWalletWatcher_Start_RskFailed(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -366,7 +368,7 @@ func TestTransferColdWalletWatcher_Start_BothTransfersSuccess(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -407,7 +409,7 @@ func TestTransferColdWalletWatcher_Start_BothFailed(t *testing.T) {
 		},
 	}
 	useCase := &mockTransferUseCase{result: result}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -436,7 +438,7 @@ func TestTransferColdWalletWatcher_Start_NilResult(t *testing.T) {
 	ticker.EXPECT().Stop()
 
 	useCase := &mockTransferUseCase{result: nil}
-	w := watcher.NewTransferColdWalletWatcher(useCase, ticker)
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
