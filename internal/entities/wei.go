@@ -76,6 +76,12 @@ func (w *Wei) ToRbtc() *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(w.AsBigInt()), new(big.Float).SetInt(bTenPowEighteen))
 }
 
+func (w *Wei) ToRbtcFloat64() float64 {
+	asRbtc := w.ToRbtc()
+	asFloat, _ := asRbtc.Float64()
+	return asFloat
+}
+
 func (w *Wei) ToSatoshi() *big.Float {
 	remainder := new(big.Int)
 	quotient := new(big.Int)

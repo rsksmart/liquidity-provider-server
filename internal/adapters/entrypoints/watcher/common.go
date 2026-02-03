@@ -21,6 +21,7 @@ const (
 	rskEclipseCheckInterval          = 15 * time.Second
 	btcReleaseCheckInterval          = 3 * time.Minute
 	assetMetricsUpdateInterval       = 1 * time.Minute
+	transferColdWalletInterval       = 5 * time.Minute
 )
 
 type Watcher interface {
