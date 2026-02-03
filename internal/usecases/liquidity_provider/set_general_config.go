@@ -42,7 +42,14 @@ func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidit
 	if err := useCase.validateMaxLiquidity(ctx, config.MaxLiquidity); err != nil {
 		return err
 	}
+	if err := useCase.validateReimbursementWindowBlocks(config.ReimbursementWindowBlocks); err != nil {
+		return err
+	}
 
+	config.ExcessTolerance.Normalize()
+	if err := config.ExcessTolerance.Validate(); err != nil {
+		return usecases.WrapUseCaseError(usecases.SetGeneralConfigId, err)
+	}
 	signedConfig, err := usecases.SignConfiguration(usecases.SetGeneralConfigId, useCase.signer, useCase.hashFunc, config)
 	if err != nil {
 		return err
@@ -50,6 +57,13 @@ func (useCase *SetGeneralConfigUseCase) Run(ctx context.Context, config liquidit
 	err = useCase.lpRepository.UpsertGeneralConfiguration(ctx, signedConfig)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.SetGeneralConfigId, err)
+	}
+	return nil
+}
+
+func (useCase *SetGeneralConfigUseCase) validateReimbursementWindowBlocks(blocks uint64) error {
+	if blocks == 0 {
+		return usecases.WrapUseCaseError(usecases.SetGeneralConfigId, usecases.NonPositiveReimbursementWindowError)
 	}
 	return nil
 }

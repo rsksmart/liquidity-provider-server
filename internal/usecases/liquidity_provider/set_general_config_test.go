@@ -2,6 +2,8 @@ package liquidity_provider_test
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"math/big"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -18,10 +20,16 @@ import (
 func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations:     map[string]uint16{"5": 10},
-			BtcConfirmations:     map[string]uint16{"10": 20},
-			PublicLiquidityCheck: true,
-			MaxLiquidity:         entities.NewWei(100),
+			RskConfirmations:          map[string]uint16{"5": 10},
+			BtcConfirmations:          map[string]uint16{"10": 20},
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              entities.NewWei(100),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: lp.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(15),
+				FixedValue:      entities.NewWei(0),
+			},
 		},
 		Signature: "010203",
 		Hash:      "040506",
@@ -50,9 +58,15 @@ func TestSetGeneralConfigUseCase_Run(t *testing.T) {
 func TestSetGeneralConfigUseCase_Run_ErrorHandling(t *testing.T) {
 	config := entities.Signed[lp.GeneralConfiguration]{
 		Value: lp.GeneralConfiguration{
-			RskConfirmations: map[string]uint16{"5": 10},
-			BtcConfirmations: map[string]uint16{"10": 20},
-			MaxLiquidity:     entities.NewWei(100),
+			RskConfirmations:          map[string]uint16{"5": 10},
+			BtcConfirmations:          map[string]uint16{"10": 20},
+			MaxLiquidity:              entities.NewWei(100),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: lp.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(15),
+				FixedValue:      entities.NewWei(0),
+			},
 		},
 		Signature: "010203",
 		Hash:      "040506",
@@ -141,9 +155,15 @@ func TestSetGeneralConfigUseCase_Run_ValidateMaxLiquidity(t *testing.T) {
 		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
 
 		config := lp.GeneralConfiguration{
-			RskConfirmations: map[string]uint16{"5": 10},
-			BtcConfirmations: map[string]uint16{"10": 20},
-			MaxLiquidity:     entities.NewWei(-100),
+			RskConfirmations:          map[string]uint16{"5": 10},
+			BtcConfirmations:          map[string]uint16{"10": 20},
+			MaxLiquidity:              entities.NewWei(-100),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: lp.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(15),
+				FixedValue:      entities.NewWei(0),
+			},
 		}
 
 		err := useCase.Run(context.Background(), config)
@@ -160,13 +180,112 @@ func TestSetGeneralConfigUseCase_Run_ValidateMaxLiquidity(t *testing.T) {
 		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
 
 		config := lp.GeneralConfiguration{
-			RskConfirmations: map[string]uint16{"5": 10},
-			BtcConfirmations: map[string]uint16{"10": 20},
-			MaxLiquidity:     entities.NewWei(1),
+			RskConfirmations:          map[string]uint16{"5": 10},
+			BtcConfirmations:          map[string]uint16{"10": 20},
+			MaxLiquidity:              entities.NewWei(1),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: lp.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(15),
+				FixedValue:      entities.NewWei(0),
+			},
 		}
 
 		err := useCase.Run(context.Background(), config)
 		require.ErrorIs(t, err, lp.AmountOutOfRangeError)
 		require.ErrorContains(t, err, "maxLiquidity 1 is not enough to support one minimum pegin and pegout (3)")
+	})
+}
+
+func TestSetGeneralConfigUseCase_Run_ValidateReimbursementWindowBlocks(t *testing.T) {
+	t.Run("should fail if reimbursementWindowBlocks is zero", func(t *testing.T) {
+		walletMock := &mocks.RskWalletMock{}
+		hashMock := &mocks.HashMock{}
+
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		providerMock := &mocks.ProviderMock{}
+		providerMock.On("PeginConfiguration", mock.Anything).Return(peginConfigMock.Value)
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(pegoutConfigMock.Value)
+		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
+		config := lp.GeneralConfiguration{
+			RskConfirmations:          map[string]uint16{"5": 10},
+			BtcConfirmations:          map[string]uint16{"10": 20},
+			MaxLiquidity:              entities.NewWei(100),
+			ReimbursementWindowBlocks: 0,
+		}
+
+		err := useCase.Run(context.Background(), config)
+		require.ErrorIs(t, err, usecases.NonPositiveReimbursementWindowError)
+	})
+}
+
+// nolint:funlen
+func TestSetGeneralConfigUseCase_Run_ValidateExcessTolerance(t *testing.T) {
+	t.Run("should normalize excess tolerance", func(t *testing.T) {
+		config := entities.Signed[lp.GeneralConfiguration]{
+			Value: lp.GeneralConfiguration{
+				ReimbursementWindowBlocks: 1000,
+				RskConfirmations:          map[string]uint16{"5": 10}, BtcConfirmations: map[string]uint16{"10": 20},
+				PublicLiquidityCheck: true, MaxLiquidity: entities.NewWei(100),
+				ExcessTolerance: lp.ExcessTolerance{IsFixed: false, PercentageValue: utils.NewBigFloat64(15), FixedValue: entities.NewWei(10)},
+			},
+		}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		lpRepository.On("UpsertGeneralConfiguration", mock.Anything, mock.MatchedBy(func(c entities.Signed[lp.GeneralConfiguration]) bool {
+			return c.Value.ExcessTolerance.PercentageValue.Native().Cmp(big.NewFloat(15)) <= 0 &&
+				c.Value.ExcessTolerance.FixedValue.Cmp(entities.NewWei(0)) == 0
+		})).Return(nil)
+		walletMock := &mocks.RskWalletMock{}
+		walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
+		providerMock := &mocks.ProviderMock{}
+		providerMock.On("PeginConfiguration", mock.Anything).Return(peginConfigMock.Value)
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(pegoutConfigMock.Value)
+		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
+		err := useCase.Run(context.Background(), config.Value)
+		require.NoError(t, err)
+	})
+	t.Run("should return error if excess tolerance is fixed but fixed value is 0", func(t *testing.T) {
+		config := entities.Signed[lp.GeneralConfiguration]{
+			Value: lp.GeneralConfiguration{
+				ReimbursementWindowBlocks: 1000,
+				RskConfirmations:          map[string]uint16{"5": 10}, BtcConfirmations: map[string]uint16{"10": 20},
+				PublicLiquidityCheck: true, MaxLiquidity: entities.NewWei(100),
+				ExcessTolerance: lp.ExcessTolerance{IsFixed: true, PercentageValue: utils.NewBigFloat64(15), FixedValue: entities.NewWei(0)},
+			},
+		}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		walletMock := &mocks.RskWalletMock{}
+		walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
+		providerMock := &mocks.ProviderMock{}
+		providerMock.On("PeginConfiguration", mock.Anything).Return(peginConfigMock.Value)
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(pegoutConfigMock.Value)
+		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
+		err := useCase.Run(context.Background(), config.Value)
+		require.ErrorIs(t, err, lp.InvalidConfigurationError)
+	})
+	t.Run("should return error if excess tolerance is a percentage but percentage value is 0", func(t *testing.T) {
+		config := entities.Signed[lp.GeneralConfiguration]{
+			Value: lp.GeneralConfiguration{
+				ReimbursementWindowBlocks: 1000,
+				RskConfirmations:          map[string]uint16{"5": 10}, BtcConfirmations: map[string]uint16{"10": 20},
+				PublicLiquidityCheck: true, MaxLiquidity: entities.NewWei(100),
+				ExcessTolerance: lp.ExcessTolerance{IsFixed: false, PercentageValue: utils.NewBigFloat64(0), FixedValue: entities.NewWei(10)},
+			},
+		}
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		walletMock := &mocks.RskWalletMock{}
+		walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6})
+		providerMock := &mocks.ProviderMock{}
+		providerMock.On("PeginConfiguration", mock.Anything).Return(peginConfigMock.Value)
+		providerMock.On("PegoutConfiguration", mock.Anything).Return(pegoutConfigMock.Value)
+		useCase := liquidity_provider.NewSetGeneralConfigUseCase(lpRepository, providerMock, providerMock, walletMock, hashMock.Hash)
+		err := useCase.Run(context.Background(), config.Value)
+		require.ErrorIs(t, err, lp.InvalidConfigurationError)
 	})
 }

@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	AmountOutOfRangeError = errors.New("amount out of range")
+	AmountOutOfRangeError     = errors.New("amount out of range")
+	InvalidConfigurationError = errors.New("invalid configuration")
 )
 
 // ConfirmationsPerAmount the key represents the amount in wei serialized as a string, and the value represents the number of confirmations required for that amount.
@@ -69,8 +70,32 @@ type GeneralConfiguration struct {
 	BtcConfirmations          ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
 	PublicLiquidityCheck      bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
 	MaxLiquidity              *entities.Wei          `json:"maxLiquidity" bson:"max_liquidity" validate:""`
-	ExcessToleranceFixed      *entities.Wei          `json:"excessToleranceFixed" bson:"excess_tolerance_fixed" validate:""`
-	ExcessTolerancePercentage *utils.BigFloat        `json:"excessTolerancePercentage" bson:"excess_tolerance_percentage" validate:""`
+	ReimbursementWindowBlocks uint64                 `json:"reimbursementWindowBlocks" bson:"reimbursement_window_blocks" validate:""`
+	ExcessTolerance           ExcessTolerance        `json:"excessTolerance" bson:"excess_tolerance" validate:"required"`
+}
+
+type ExcessTolerance struct {
+	IsFixed         bool            `json:"isFixed" bson:"is_fixed"`
+	PercentageValue *utils.BigFloat `json:"percentageValue" bson:"percentage_value" validate:"required"`
+	FixedValue      *entities.Wei   `json:"fixedValue" bson:"fixed_value" validate:"required"`
+}
+
+func (et *ExcessTolerance) Normalize() {
+	if et.IsFixed {
+		et.PercentageValue = utils.NewBigFloat64(0)
+	} else {
+		et.FixedValue = entities.NewWei(0)
+	}
+}
+
+func (et *ExcessTolerance) Validate() error {
+	if et.IsFixed && et.FixedValue.Cmp(entities.NewWei(0)) <= 0 {
+		return fmt.Errorf("%w: if excess tolerance is fixed, fixed value must be greater than zero", InvalidConfigurationError)
+	}
+	if !et.IsFixed && et.PercentageValue.Native().Cmp(big.NewFloat(0)) <= 0 {
+		return fmt.Errorf("%w: if excess tolerance is percentage-based, percentage value must be greater than zero", InvalidConfigurationError)
+	}
+	return nil
 }
 
 type HashedCredentials struct {

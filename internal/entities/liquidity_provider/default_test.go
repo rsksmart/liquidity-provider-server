@@ -75,7 +75,11 @@ func TestDefaultGeneralConfiguration(t *testing.T) {
 		BtcConfirmations:          liquidity_provider.DefaultBtcConfirmationsPerAmount(),
 		PublicLiquidityCheck:      false,
 		MaxLiquidity:              entities.NewWei(1000000000000000000),
-		ExcessToleranceFixed:      entities.NewWei(0),
-		ExcessTolerancePercentage: utils.NewBigFloat64(0),
+		ReimbursementWindowBlocks: liquidity_provider.DefaultReimbursementWindowBlocks,
+		ExcessTolerance: liquidity_provider.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(20),
+			FixedValue:      entities.NewWei(100000000000000000),
+		},
 	}, config)
 }

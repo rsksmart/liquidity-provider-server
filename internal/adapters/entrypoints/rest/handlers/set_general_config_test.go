@@ -19,7 +19,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(nil)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "excessToleranceFixed": "0", "excessTolerancePercentage": 0}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 100, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 	t.Run("should return bad request if rskConfirmations is empty map", func(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {}}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {},  "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -77,7 +77,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "-1000"}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "-1000", "reimbursementWindowBlocks": 100, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -89,7 +89,90 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		useCase := new(mocks.SetGeneralConfigUseCaseMock)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "nan"}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "nan", "reimbursementWindowBlocks": 100, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if reimbursementWindowBlocks is zero", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 0}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if reimbursementWindowBlocks is missing", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if excess tolerance is not provided", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "reimbursementWindowBlocks": 10, "maxLiquidity": "1000"}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if excess tolerance fixed value is not provided", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true, "percentageValue":0}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if excess tolerance percentage value is not provided", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true,"fixedValue":"100"}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if excess tolerance percentage value is negative", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue": -1}}}`
+		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		useCase.AssertNotCalled(t, "Run")
+	})
+	t.Run("should return bad request if excess tolerance fixed value is negative", func(t *testing.T) {
+		useCase := new(mocks.SetGeneralConfigUseCaseMock)
+
+		handler := handlers.NewSetGeneralConfigHandler(useCase)
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true,"fixedValue":"-100", "percentageValue":1}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -102,7 +185,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
 		// Backend expects wei values (integers), so decimal values should fail
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000.5"}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000.5", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -116,7 +199,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
 		// 1 RBTC in wei (18 decimal places) - valid large integer
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000000000000000000", "excessToleranceFixed": "0", "excessTolerancePercentage": 0}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000000000000000000", "reimbursementWindowBlocks": 10, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -129,7 +212,7 @@ func TestSetGeneralConfigHandler(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(assert.AnError)
 
 		handler := handlers.NewSetGeneralConfigHandler(useCase)
-		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "excessToleranceFixed": "0", "excessTolerancePercentage": 0}}`
+		reqBody := `{"configuration": {"btcConfirmations": {"5": 10}, "rskConfirmations": {"10": 20}, "publicLiquidityCheck": true, "maxLiquidity": "1000", "reimbursementWindowBlocks": 100, "excessTolerance":{"isFixed":true,"fixedValue":"100", "percentageValue":0}}}`
 		req := httptest.NewRequest(http.MethodPost, "/configuration", strings.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
