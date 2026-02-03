@@ -37,7 +37,7 @@ func PositiveStringValidationRule(value string) bool {
 	return bigIntValue.Cmp(big.NewInt(0)) > 0
 }
 
-func NonNegativeStringValidationRule(value string) bool {
+func NonNegativeBigintValidationRule(value string) bool {
 	bigIntValue := new(big.Int)
 	_, ok := bigIntValue.SetString(value, 10)
 	if !ok {
@@ -46,8 +46,8 @@ func NonNegativeStringValidationRule(value string) bool {
 	return bigIntValue.Cmp(big.NewInt(0)) >= 0
 }
 
-func nonNegativeStringValidator(field validator.FieldLevel) bool {
-	return NonNegativeStringValidationRule(field.Field().String())
+func nonNegativeBigintValidator(field validator.FieldLevel) bool {
+	return NonNegativeBigintValidationRule(field.Field().String())
 }
 
 func decimalPlacesValidator(fl validator.FieldLevel) bool {
@@ -135,7 +135,7 @@ func registerValidator(tag string, fn validator.Func) error {
 func registerValidations() error {
 	validators := map[string]validator.Func{
 		"positive_string":         positiveStringValidator,
-		"non_negative_string":     nonNegativeStringValidator,
+		"non_negative_bigint":     nonNegativeBigintValidator,
 		"max_decimal_places":      decimalPlacesValidator,
 		"confirmations_map":       ConfirmationsMapValidator,
 		"positive_integer_bigint": positiveIntegerBigintValidator,
@@ -228,8 +228,8 @@ func getValidationMessage(field validator.FieldError) string {
 		return "must be numeric"
 	case "positive_string":
 		return "must be a positive number"
-	case "non_negative_string":
-		return "must be a non-negative number"
+	case "non_negative_bigint":
+		return "must be a non-negative integer"
 	case "gte":
 		return "must be greater than or equal to " + field.Param()
 	case "lte":
