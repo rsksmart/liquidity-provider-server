@@ -3,12 +3,13 @@ services:
   lps:
     build:
       context: ../../
-      dockerfile: ${LPS_DOCKERFILE:-docker-compose/lps/Dockerfile}
+      dockerfile: docker-compose/lps/Dockerfile
       args:
         UID: "${LPS_UID}"
         COMMIT_HASH: "${COMMIT_HASH}"
         COMMIT_TAG: "${COMMIT_TAG}"
         TARGETARCH: "${LPS_DOCKER_ARCH}"
+        USE_PREBUILT: "${LPS_USE_PREBUILT:-source}"
     image: lps:latest
     container_name: lps01
     environment:

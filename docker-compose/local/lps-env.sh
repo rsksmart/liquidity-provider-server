@@ -24,19 +24,19 @@ if [[ "$OS_TYPE" == "Darwin" ]]; then
     # macOS
     echo "Running on macOS"
     SED_INPLACE=("sed" "-i" "")
-    LPS_DOCKERFILE_DEFAULT="docker-compose/lps/Dockerfile.prebuilt"
+    LPS_USE_PREBUILT_DEFAULT="prebuilt"
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     # Assume Ubuntu or other Linux
     echo "Running on Linux"
     SED_INPLACE=("sed" "-i")
-    LPS_DOCKERFILE_DEFAULT="docker-compose/lps/Dockerfile"
+    LPS_USE_PREBUILT_DEFAULT="source"
 else
     echo "Unsupported OS: $OS_TYPE"
     exit 1
 fi
 
-if [ -z "${LPS_DOCKERFILE}" ]; then
-  export LPS_DOCKERFILE="$LPS_DOCKERFILE_DEFAULT"
+if [ -z "${LPS_USE_PREBUILT}" ]; then
+  export LPS_USE_PREBUILT="$LPS_USE_PREBUILT_DEFAULT"
 fi
 
 if [ -z "${LPS_DOCKER_ARCH}" ]; then
@@ -339,7 +339,7 @@ echo "  DISCOVERY_ADDRESS: $DISCOVERY_ADDRESS"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
 
-if [ "$LPS_DOCKERFILE" = "docker-compose/lps/Dockerfile.prebuilt" ]; then
+if [ "$LPS_USE_PREBUILT" = "prebuilt" ]; then
   # Build LPS binary locally (cross-compile) to avoid Go segfault in Docker on Mac
   echo "Building LPS binary locally (cross-compile for linux/${LPS_DOCKER_ARCH})..."
   pushd ../../ > /dev/null
