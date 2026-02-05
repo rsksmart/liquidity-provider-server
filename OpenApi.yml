@@ -78,6 +78,47 @@ components:
       - peginLiquidityAmount
       - pegoutLiquidityAmount
       type: object
+    BtcAssetAllocationDTO:
+      properties:
+        available:
+          description: BTC available for new pegout quotes
+          example: "43200000"
+        reservedForUsers:
+          description: BTC reserved for users (accepted pegout quotes)
+          example: "4500000"
+        waitingForRefund:
+          description: BTC waiting to be refunded to the LP
+          example: "19800000"
+      type: object
+    BtcAssetLocationDTO:
+      properties:
+        btcWallet:
+          description: BTC in the LP's Bitcoin wallet
+          example: "50000000"
+        federation:
+          description: BTC in the federation (rebalancing or waiting for refund)
+          example: "5000000"
+        lbc:
+          description: BTC represented as RBTC locked in the Liquidity Bridge Contract
+          example: "5300000"
+        rskWallet:
+          description: BTC represented as RBTC in the RSK wallet (waiting for rebalancing)
+          example: "6500000"
+      type: object
+    BtcAssetReportDTO:
+      properties:
+        allocation:
+          $ref: '#/components/schemas/BtcAssetAllocationDTO'
+          description: BTC allocation by usage/purpose
+          type: object
+        location:
+          $ref: '#/components/schemas/BtcAssetLocationDTO'
+          description: BTC distribution across different locations
+          type: object
+        total:
+          description: Total BTC assets under LP control
+          example: "67500000"
+      type: object
     ChangeStatusRequest:
       properties:
         status:
@@ -121,6 +162,17 @@ components:
       properties:
         configuration:
           $ref: '#/components/schemas/GeneralConfigurationDTO'
+          type: object
+      type: object
+    GetAssetsReportResponse:
+      properties:
+        btcAssetReport:
+          $ref: '#/components/schemas/BtcAssetReportDTO'
+          description: Detailed BTC asset report
+          type: object
+        rbtcAssetReport:
+          $ref: '#/components/schemas/RbtcAssetReportDTO'
+          description: Detailed RBTC asset report
           type: object
       type: object
     GetCollateralResponse:
@@ -322,7 +374,7 @@ components:
         gasFee:
           $ref: '#/components/schemas/'
           description: Fee to pay for the gas of every call done during the pegin
-            (call on behalf of the user and call to the dao fee collector)
+            (call on behalf of the user)
         gasLimit:
           description: The gas limit
           type: integer
@@ -346,9 +398,6 @@ components:
           $ref: '#/components/schemas/'
           description: The penalty fee that the LP pays if it fails to deliver the
             service
-        productFeeAmount:
-          $ref: '#/components/schemas/'
-          description: The DAO Fee amount
         rskRefundAddr:
           description: A User RSK refund address
           type: string
@@ -379,7 +428,6 @@ components:
       - confirmations
       - callOnRegister
       - gasFee
-      - productFeeAmount
       type: object
     PeginQuoteRequest:
       properties:
@@ -491,8 +539,7 @@ components:
         gasFee:
           $ref: '#/components/schemas/'
           description: Fee to pay for the gas of every call done during the pegout
-            (call on behalf of the user in Bitcoin network and call to the dao fee
-            collector in Rootstock)
+            (call on behalf of the user in Bitcoin network)
         lbcAddress:
           type: string
         liquidityProviderRskAddress:
@@ -503,9 +550,6 @@ components:
           type: integer
         penaltyFee:
           $ref: '#/components/schemas/'
-        productFeeAmount:
-          $ref: '#/components/schemas/'
-          description: The DAO fee amount
         rskRefundAddress:
           type: string
         transferConfirmations:
@@ -533,7 +577,6 @@ components:
       - expireDate
       - expireBlocks
       - gasFee
-      - productFeeAmount
       type: object
     PegoutQuoteRequest:
       properties:
@@ -612,6 +655,44 @@ components:
       - pegin
       - pegout
       type: object
+    RbtcAssetAllocationDTO:
+      properties:
+        available:
+          description: RBTC available for new pegin quotes
+          example: "12000000000000000000"
+        reservedForUsers:
+          description: RBTC reserved for users (accepted pegin quotes)
+          example: "3000000000000000000"
+        waitingForRefund:
+          description: RBTC waiting to be refunded to the LP
+          example: "2000000000000000000"
+      type: object
+    RbtcAssetLocationDTO:
+      properties:
+        federation:
+          description: RBTC in the federation (waiting for refund)
+          example: "2000000000000000000"
+        lbc:
+          description: RBTC locked in the Liquidity Bridge Contract
+          example: "5000000000000000000"
+        rskWallet:
+          description: RBTC in the LP's RSK wallet
+          example: "10000000000000000000"
+      type: object
+    RbtcAssetReportDTO:
+      properties:
+        allocation:
+          $ref: '#/components/schemas/RbtcAssetAllocationDTO'
+          description: RBTC allocation by usage/purpose
+          type: object
+        location:
+          $ref: '#/components/schemas/RbtcAssetLocationDTO'
+          description: RBTC distribution across different locations
+          type: object
+        total:
+          description: Total RBTC assets under LP control
+          example: "17000000000000000000"
+      type: object
     RecommendedOperationDTO:
       properties:
         estimatedCallFee:
@@ -622,10 +703,6 @@ components:
           description: Estimated gas fee if a quote is created with the recommended
             amount
           example: "100000"
-        estimatedProductFee:
-          description: Estimated product fee if a quote is created with the recommended
-            amount
-          example: "100000"
         recommendedQuoteValue:
           description: Recommended quote value for the input amount
           example: "100000"
@@ -633,7 +710,6 @@ components:
       - recommendedQuoteValue
       - estimatedCallFee
       - estimatedGasFee
-      - estimatedProductFee
       type: object
     RetainedPeginQuoteDTO:
       properties:
@@ -761,36 +837,6 @@ components:
         rsk:
           type: string
       type: object
-    SummaryDataDTO:
-      properties:
-        acceptedQuotesCount:
-          type: integer
-        lpEarnings:
-          $ref: '#/components/schemas/'
-        paidQuotesAmount:
-          $ref: '#/components/schemas/'
-        paidQuotesCount:
-          type: integer
-        refundedQuotesCount:
-          type: integer
-        totalAcceptedQuotedAmount:
-          $ref: '#/components/schemas/'
-        totalFeesCollected:
-          $ref: '#/components/schemas/'
-        totalPenaltyAmount:
-          $ref: '#/components/schemas/'
-        totalQuotesCount:
-          type: integer
-      type: object
-    SummaryResultDTO:
-      properties:
-        peginSummary:
-          $ref: '#/components/schemas/SummaryDataDTO'
-          type: object
-        pegoutSummary:
-          $ref: '#/components/schemas/SummaryDataDTO'
-          type: object
-      type: object
     TrustedAccountRequest:
       properties:
         address:
@@ -884,10 +930,6 @@ components:
           description: Estimated gas fee if a quote is created with the recommended
             amount
           example: "100000"
-        estimatedProductFee:
-          description: Estimated product fee if a quote is created with the recommended
-            amount
-          example: "100000"
         recommendedQuoteValue:
           description: Recommended quote value for the input amount
           example: "100000"
@@ -895,7 +937,6 @@ components:
       - recommendedQuoteValue
       - estimatedCallFee
       - estimatedGasFee
-      - estimatedProductFee
       type: object
     pkg.TrustedAccountRequest:
       properties:
@@ -1387,10 +1428,15 @@ paths:
       summary: Withdraw PegIn Collateral
   /reports/assets:
     get:
-      description: ' Get the asset information for the LPS.'
+      description: ' Get the asset information for the LPS including BTC and RBTC
+        balances, locations, and allocations.'
       responses:
         "200":
-          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAssetsReportResponse'
+          description: Detailed asset report with BTC and RBTC information
       summary: Get asset Reports
   /reports/pegin:
     get:
@@ -1478,32 +1524,33 @@ paths:
       summary: Get revenue Reports
   /reports/summaries:
     get:
-      description: ' Returns financial data for a given period'
+      description: ' Get the summary data for the specified period including total
+        quotes, accepted, paid, and refunded statistics.'
       parameters:
-      - description: Start date in YYYY-MM-DD format
+      - description: Start date for the report. Supports YYYY-MM-DD (expands to full
+          day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: startDate
         required: true
         schema:
-          description: Start date in YYYY-MM-DD format
+          description: Start date for the report. Supports YYYY-MM-DD (expands to
+            full day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
-      - description: End date in YYYY-MM-DD format
+      - description: End date for the report. Supports YYYY-MM-DD (expands to end
+          of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
         in: query
         name: endDate
         required: true
         schema:
-          description: End date in YYYY-MM-DD format
+          description: End date for the report. Supports YYYY-MM-DD (expands to end
+            of day) or ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)
           format: string
           type: string
       responses:
         "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SummaryResultDTO'
-          description: Financial data for the given period
-      summary: Summaries
+          description: ""
+      summary: Get summaries Reports
   /reports/transactions:
     get:
       description: ' Get a paginated list of individual transactions of a specific

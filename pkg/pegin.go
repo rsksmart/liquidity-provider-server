@@ -32,8 +32,7 @@ type PeginQuoteDTO struct {
 	LpCallTime         uint32   `json:"lpCallTime" required:"" description:"The time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations"`
 	Confirmations      uint16   `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
 	CallOnRegister     bool     `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
-	GasFee             *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegin (call on behalf of the user and call to the dao fee collector)"`
-	ProductFeeAmount   *big.Int `json:"productFeeAmount" required:"" description:"The DAO Fee amount"`
+	GasFee             *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegin (call on behalf of the user)"`
 }
 
 type RetainedPeginQuoteDTO struct {
@@ -99,7 +98,6 @@ func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 		Confirmations:      dto.Confirmations,
 		CallOnRegister:     dto.CallOnRegister,
 		GasFee:             entities.NewBigWei(dto.GasFee),
-		ProductFeeAmount:   entities.NewBigWei(dto.ProductFeeAmount),
 	}
 }
 
@@ -124,7 +122,6 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 		Confirmations:      entity.Confirmations,
 		CallOnRegister:     entity.CallOnRegister,
 		GasFee:             entity.GasFee.AsBigInt(),
-		ProductFeeAmount:   entity.ProductFeeAmount.AsBigInt(),
 	}
 }
 

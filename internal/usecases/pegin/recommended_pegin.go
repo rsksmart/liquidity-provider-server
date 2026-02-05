@@ -12,26 +12,23 @@ import (
 )
 
 type RecommendedPeginUseCase struct {
-	peginProvider       liquidity_provider.PeginLiquidityProvider
-	contracts           blockchain.RskContracts
-	rpc                 blockchain.Rpc
-	feeCollectorAddress string
-	scale               int64
+	peginProvider liquidity_provider.PeginLiquidityProvider
+	contracts     blockchain.RskContracts
+	rpc           blockchain.Rpc
+	scale         int64
 }
 
 func NewRecommendedPeginUseCase(
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
-	feeCollectorAddress string,
 	scale int64,
 ) *RecommendedPeginUseCase {
 	return &RecommendedPeginUseCase{
-		peginProvider:       peginProvider,
-		contracts:           contracts,
-		rpc:                 rpc,
-		feeCollectorAddress: feeCollectorAddress,
-		scale:               scale,
+		peginProvider: peginProvider,
+		contracts:     contracts,
+		rpc:           rpc,
+		scale:         scale,
 	}
 }
 
@@ -49,14 +46,10 @@ func (useCase *RecommendedPeginUseCase) Run(
 	}
 
 	// Percentage fees
-	scaledProductFee, err := useCase.getScaledProductFeePercentage()
-	if err != nil {
-		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPeginId, err)
-	}
 	scaledCallFeePercentage := useCase.getScaledCallFeePercentage(config)
 
 	// Fixed fees
-	gasFeeEstimation, err := useCase.getGasFee(ctx, destinationAddress, data, userBalance, scaledProductFee)
+	gasFeeEstimation, err := useCase.getGasFee(ctx, destinationAddress, data, userBalance)
 	if err != nil {
 		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPeginId, err)
 	}
@@ -64,8 +57,7 @@ func (useCase *RecommendedPeginUseCase) Run(
 
 	// Result calculation
 	totalPercentages := big.NewInt(0)
-	totalPercentages.Add(scaledProductFee, scaledCallFeePercentage)
-	totalPercentages.Add(totalPercentages, big.NewInt(useCase.scale))
+	totalPercentages.Add(big.NewInt(useCase.scale), scaledCallFeePercentage)
 
 	result.Sub(result, gasFeeEstimation)
 	result.Sub(result, fixedCallFeeEstimation)
@@ -81,9 +73,6 @@ func (useCase *RecommendedPeginUseCase) Run(
 		EstimatedGasFee:       entities.NewBigWei(gasFeeEstimation),
 		EstimatedCallFee: entities.NewBigWei(
 			useCase.estimateCallFee(result, fixedCallFeeEstimation, scaledCallFeePercentage),
-		),
-		EstimatedProductFee: entities.NewBigWei(
-			useCase.estimateProductFee(result, scaledProductFee),
 		),
 	}, nil
 }
@@ -103,36 +92,12 @@ func (useCase *RecommendedPeginUseCase) getScaledCallFeePercentage(
 	return scaledPercentageFee
 }
 
-func (useCase *RecommendedPeginUseCase) getScaledProductFeePercentage() (*big.Int, error) {
-	// should be already scaled in the contract
-	uintProductFee, err := useCase.contracts.PegIn.DaoFeePercentage()
-	if err != nil {
-		return nil, err
-	}
-	return new(big.Int).SetUint64(uintProductFee), nil
-}
-
 func (useCase *RecommendedPeginUseCase) getGasFee(
 	ctx context.Context,
 	destinationAddress string,
 	data []byte,
 	amount *entities.Wei,
-	scaledFeePercentage *big.Int,
 ) (*big.Int, error) {
-	daoFeeAmount := new(big.Int).Quo(
-		new(big.Int).Mul(amount.AsBigInt(), scaledFeePercentage),
-		big.NewInt(useCase.scale),
-	)
-	daoGasAmount, err := useCase.rpc.Rsk.EstimateGas(
-		ctx,
-		useCase.feeCollectorAddress,
-		entities.NewBigWei(daoFeeAmount),
-		make([]byte, 0),
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	estimatedCallGas, err := useCase.rpc.Rsk.EstimateGas(ctx, destinationAddress, amount, data)
 	if err != nil {
 		return nil, err
@@ -142,10 +107,9 @@ func (useCase *RecommendedPeginUseCase) getGasFee(
 	if err != nil {
 		return nil, err
 	}
-	daoGasFee := new(big.Int).Mul(daoGasAmount.AsBigInt(), gasPrice.AsBigInt())
 	callGasFee := new(big.Int).Mul(estimatedCallGas.AsBigInt(), gasPrice.AsBigInt())
 
-	return new(big.Int).Add(callGasFee, daoGasFee), nil
+	return callGasFee, nil
 }
 
 func (useCase *RecommendedPeginUseCase) getFixedCallFee(
@@ -188,15 +152,5 @@ func (useCase *RecommendedPeginUseCase) estimateCallFee(
 			new(big.Int).Mul(result, scaledCallFeePercentage),
 			big.NewInt(useCase.scale),
 		),
-	)
-}
-
-func (useCase *RecommendedPeginUseCase) estimateProductFee(
-	result *big.Int,
-	scaledProductFee *big.Int,
-) *big.Int {
-	return new(big.Int).Quo(
-		new(big.Int).Mul(result, scaledProductFee),
-		big.NewInt(useCase.scale),
 	)
 }

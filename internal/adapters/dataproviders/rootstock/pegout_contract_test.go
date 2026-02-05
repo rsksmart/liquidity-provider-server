@@ -48,7 +48,6 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                entities.NewWei(888),
-	ProductFeeAmount:      entities.NewWei(789),
 }
 
 var parsedPegoutQuote = bindings.QuotesPegOutQuote{
@@ -69,7 +68,6 @@ var parsedPegoutQuote = bindings.QuotesPegOutQuote{
 	TransferTime:          800,
 	ExpireDate:            700,
 	ExpireBlock:           600,
-	ProductFeeAmount:      big.NewInt(789),
 	GasFee:                big.NewInt(888),
 }
 
@@ -231,24 +229,6 @@ func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 		result, err := pegoutContract.IsPegOutQuoteCompleted("0104050302")
 		require.ErrorContains(t, err, "quote hash must be 32 bytes long")
 		assert.False(t, result)
-	})
-}
-
-func TestPegoutContractImpl_DaoFeePercentage(t *testing.T) {
-	contractBinding := &mocks.PegoutContractAdapterMock{}
-	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(big.NewInt(1), nil).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := pegoutContract.DaoFeePercentage()
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), percentage)
-	})
-	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(nil, assert.AnError).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := pegoutContract.DaoFeePercentage()
-		require.Error(t, err)
-		require.Zero(t, percentage)
 	})
 }
 

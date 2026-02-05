@@ -71,18 +71,6 @@ func (peginContract *peginContractImpl) GetBalance(address string) (*entities.We
 	return entities.NewBigWei(balance), nil
 }
 
-func (peginContract *peginContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return peginContract.contract.GetFeePercentage(&opts)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
-}
-
 func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuote) (string, error) {
 	var results [32]byte
 
@@ -298,7 +286,6 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
 	return parsedQuote, nil
