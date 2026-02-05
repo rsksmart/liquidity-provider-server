@@ -48,7 +48,6 @@ type RskEnv struct {
 	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
 	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
-	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
 	// Only if secret source is aws & wallet is native
 	EncryptedJsonSecret         string `env:"KEY_SECRET"`
 	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`

@@ -55,7 +55,6 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            now + 60,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(1000),
-	ProductFeeAmount:      entities.NewWei(500),
 }
 
 var btcBlockInfoMock = blockchain.BitcoinBlockInformation{

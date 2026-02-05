@@ -47,7 +47,6 @@ services:
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - DAO_FEE_COLLECTOR_ADDRESS
       - KEY_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK

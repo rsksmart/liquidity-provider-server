@@ -59,7 +59,6 @@ var sendPegoutTestQuote = quote.PegoutQuote{
 	ExpireDate:            now + 60,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(1000),
-	ProductFeeAmount:      entities.NewWei(500),
 }
 
 func TestSendPegoutUseCase_Run_Paused(t *testing.T) {

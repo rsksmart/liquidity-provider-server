@@ -58,7 +58,6 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			Confirmations:      10,
 			CallOnRegister:     true,
 			GasFee:             entities.NewWei(1),
-			ProductFeeAmount:   entities.NewWei(11),
 		},
 	}
 	assert.Equal(t,
@@ -66,5 +65,5 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			"BlockHeight: 1, Quote: {FedBtcAddress:any address LbcAddress:any address LpRskAddress:any address "+
 			"BtcRefundAddress:any address RskRefundAddress:any address LpBtcAddress:any address CallFee:3 PenaltyFee:4 "+
 			"ContractAddress:any address Data:any data GasLimit:5 Nonce:6 Value:2 AgreementTimestamp:7 TimeForDeposit:8 "+
-			"LpCallTime:9 Confirmations:10 CallOnRegister:true GasFee:1 ProductFeeAmount:11} }", params.String())
+			"LpCallTime:9 Confirmations:10 CallOnRegister:true GasFee:1} }", params.String())
 }

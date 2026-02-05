@@ -185,64 +185,6 @@ func (_c *PegoutContractAdapterMock_FilterPegOutDeposit_Call) RunAndReturn(run f
 	return _c
 }
 
-// GetFeePercentage provides a mock function with given fields: opts
-func (_m *PegoutContractAdapterMock) GetFeePercentage(opts *bind.CallOpts) (*big.Int, error) {
-	ret := _m.Called(opts)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetFeePercentage")
-	}
-
-	var r0 *big.Int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(*bind.CallOpts) (*big.Int, error)); ok {
-		return rf(opts)
-	}
-	if rf, ok := ret.Get(0).(func(*bind.CallOpts) *big.Int); ok {
-		r0 = rf(opts)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*big.Int)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(*bind.CallOpts) error); ok {
-		r1 = rf(opts)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PegoutContractAdapterMock_GetFeePercentage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFeePercentage'
-type PegoutContractAdapterMock_GetFeePercentage_Call struct {
-	*mock.Call
-}
-
-// GetFeePercentage is a helper method to define mock.On call
-//   - opts *bind.CallOpts
-func (_e *PegoutContractAdapterMock_Expecter) GetFeePercentage(opts interface{}) *PegoutContractAdapterMock_GetFeePercentage_Call {
-	return &PegoutContractAdapterMock_GetFeePercentage_Call{Call: _e.mock.On("GetFeePercentage", opts)}
-}
-
-func (_c *PegoutContractAdapterMock_GetFeePercentage_Call) Run(run func(opts *bind.CallOpts)) *PegoutContractAdapterMock_GetFeePercentage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*bind.CallOpts))
-	})
-	return _c
-}
-
-func (_c *PegoutContractAdapterMock_GetFeePercentage_Call) Return(_a0 *big.Int, _a1 error) *PegoutContractAdapterMock_GetFeePercentage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PegoutContractAdapterMock_GetFeePercentage_Call) RunAndReturn(run func(*bind.CallOpts) (*big.Int, error)) *PegoutContractAdapterMock_GetFeePercentage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // HashPegOutQuote provides a mock function with given fields: opts, quote
 func (_m *PegoutContractAdapterMock) HashPegOutQuote(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error) {
 	ret := _m.Called(opts, quote)

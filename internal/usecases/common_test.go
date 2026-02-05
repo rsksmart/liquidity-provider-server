@@ -1,9 +1,6 @@
 package usecases_test
 
 import (
-	"context"
-	"errors"
-	"math"
 	"math/big"
 	"strings"
 	"testing"
@@ -25,16 +22,6 @@ import (
 
 const id = "anyUseCase"
 
-type rpcMock struct {
-	mock.Mock
-	blockchain.RootstockRpcServer
-}
-
-func (m *rpcMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
-	args := m.Called(ctx, addr, value, data)
-	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
 type bridgeMock struct {
 	mock.Mock
 	rootstock.Bridge
@@ -43,64 +30,6 @@ type bridgeMock struct {
 func (m *bridgeMock) GetMinimumLockTxValue() (*entities.Wei, error) {
 	args := m.Called()
 	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
-func TestCalculateDaoAmounts(t *testing.T) {
-	type testArgs struct {
-		value      *entities.Wei
-		percentage uint64
-	}
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(500000000000000), nil)
-
-	ctx := context.Background()
-	feeCollectorAddress := "0x1234"
-
-	cases := test.Table[testArgs, u.DaoAmounts]{
-		{
-			Value:  testArgs{entities.NewWei(1000000000000000000), 0},
-			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
-		},
-		{
-			Value: testArgs{entities.NewWei(500000000000000000), 0.5 * utils.Scale},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(250000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(6000000000000000000), 0.01 * utils.Scale},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(60000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(7700000000000000000), uint64(math.Round(0.17 * float64(utils.Scale)))},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(1309000000000000000),
-			},
-		},
-	}
-
-	test.RunTable(t, cases, func(args testArgs) u.DaoAmounts {
-		amounts, err := u.CalculateDaoAmounts(ctx, &rpc, args.value, args.percentage, feeCollectorAddress)
-		require.NoError(t, err)
-		return amounts
-	})
-
-}
-
-func TestCalculateDaoAmounts_Fail(t *testing.T) {
-	ctx := context.Background()
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(0), errors.New("some error"))
-	result, err := u.CalculateDaoAmounts(ctx, &rpc, entities.NewUWei(500000000000000), 1, "0x1234")
-	require.Equal(t, u.DaoAmounts{}, result)
-	require.Error(t, err)
 }
 
 func TestValidateMinLockValue(t *testing.T) {

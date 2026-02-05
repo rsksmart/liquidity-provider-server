@@ -19,7 +19,6 @@ type GetQuoteUseCase struct {
 	peginQuoteRepository quote.PeginQuoteRepository
 	lp                   liquidity_provider.LiquidityProvider
 	peginLp              liquidity_provider.PeginLiquidityProvider
-	feeCollectorAddress  string
 }
 
 func NewGetQuoteUseCase(
@@ -28,7 +27,6 @@ func NewGetQuoteUseCase(
 	peginQuoteRepository quote.PeginQuoteRepository,
 	lp liquidity_provider.LiquidityProvider,
 	peginLp liquidity_provider.PeginLiquidityProvider,
-	feeCollectorAddress string,
 ) *GetQuoteUseCase {
 	return &GetQuoteUseCase{
 		rpc:                  rpc,
@@ -36,7 +34,6 @@ func NewGetQuoteUseCase(
 		peginQuoteRepository: peginQuoteRepository,
 		lp:                   lp,
 		peginLp:              peginLp,
-		feeCollectorAddress:  feeCollectorAddress,
 	}
 }
 
@@ -67,7 +64,6 @@ type GetPeginQuoteResult struct {
 }
 
 func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (GetPeginQuoteResult, error) {
-	var daoTxAmounts usecases.DaoAmounts
 	var peginQuote quote.PeginQuote
 	var creationData quote.PeginCreationData
 	var fedAddress string
@@ -89,10 +85,6 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
-	if daoTxAmounts, err = useCase.buildDaoAmounts(ctx, request); err != nil {
-		return GetPeginQuoteResult{}, err
-	}
-
 	if fedAddress, err = useCase.getFederationAddress(); err != nil {
 		return GetPeginQuoteResult{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
@@ -102,14 +94,12 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 	}
 
 	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
-	totalGas := new(entities.Wei).Add(estimatedCallGas, daoTxAmounts.DaoGasAmount)
 	fees := quote.Fees{
-		CallFee:          quote.CalculateCallFee(request.valueToTransfer, peginConfiguration),
-		GasFee:           new(entities.Wei).Mul(totalGas, creationData.GasPrice),
-		PenaltyFee:       peginConfiguration.PenaltyFee,
-		ProductFeeAmount: daoTxAmounts.DaoFeeAmount,
+		CallFee:    quote.CalculateCallFee(request.valueToTransfer, peginConfiguration),
+		GasFee:     new(entities.Wei).Mul(estimatedCallGas, creationData.GasPrice),
+		PenaltyFee: peginConfiguration.PenaltyFee,
 	}
-	if peginQuote, err = useCase.buildPeginQuote(generalConfiguration, peginConfiguration, request, fedAddress, totalGas, fees); err != nil {
+	if peginQuote, err = useCase.buildPeginQuote(generalConfiguration, peginConfiguration, request, fedAddress, estimatedCallGas, fees); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
 
@@ -197,27 +187,12 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 		Confirmations:      generalConfig.BtcConfirmations.ForValue(request.valueToTransfer),
 		CallOnRegister:     false,
 		GasFee:             fees.GasFee,
-		ProductFeeAmount:   fees.ProductFeeAmount,
 	}
 
 	if err = entities.ValidateStruct(peginQuote); err != nil {
 		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 	return peginQuote, nil
-}
-
-func (useCase *GetQuoteUseCase) buildDaoAmounts(ctx context.Context, request QuoteRequest) (usecases.DaoAmounts, error) {
-	var daoTxAmounts usecases.DaoAmounts
-	var daoFeePercentage uint64
-	var err error
-
-	if daoFeePercentage, err = useCase.contracts.PegIn.DaoFeePercentage(); err != nil {
-		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-	if daoTxAmounts, err = usecases.CalculateDaoAmounts(ctx, useCase.rpc.Rsk, request.valueToTransfer, daoFeePercentage, useCase.feeCollectorAddress); err != nil {
-		return usecases.DaoAmounts{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
-	}
-	return daoTxAmounts, nil
 }
 
 func (useCase *GetQuoteUseCase) getFederationAddress() (string, error) {

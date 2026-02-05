@@ -45,9 +45,6 @@ This fee covers the gas costs for all transactions performed by the Liquidity Pr
 * Call Fee:
 A fee paid to the Liquidity Provider who facilitates the transaction. This fee is configurable and can vary based on the LP's chosen settings.
 
-* Product Fee:
-This is a DAO fee that is collected by the protocol. It's calculated based on a percentage of the transaction value and is configured at the protocol level.
-
 ## Security
 See the [minimum security requirements](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#minimum-security-requirements).
 

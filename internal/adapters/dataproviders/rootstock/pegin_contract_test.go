@@ -39,7 +39,6 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
-	ProductFeeAmount:   entities.NewWei(500),
 }
 
 var parsedPeginQuote = bindings.QuotesPegInQuote{
@@ -61,7 +60,6 @@ var parsedPeginQuote = bindings.QuotesPegInQuote{
 	CallTime:                    40,
 	DepositConfirmations:        50,
 	CallOnRegister:              true,
-	ProductFeeAmount:            big.NewInt(500),
 	GasFee:                      big.NewInt(100),
 }
 
@@ -177,24 +175,6 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 func TestPeginContractImpl_GetAddress(t *testing.T) {
 	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
 	assert.Equal(t, test.AnyAddress, peginContract.GetAddress())
-}
-
-func TestPeginContractImpl_DaoFeePercentage(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
-	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(big.NewInt(1), nil).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), percentage)
-	})
-	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(nil, assert.AnError).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.Error(t, err)
-		require.Zero(t, percentage)
-	})
 }
 
 func TestPeginContractImpl_HashPeginQuote(t *testing.T) {

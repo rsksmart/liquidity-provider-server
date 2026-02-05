@@ -43,7 +43,6 @@ var testPegoutQuote = quote.PegoutQuote{
 	ExpireDate:            1641000000,
 	ExpireBlock:           1000000,
 	GasFee:                entities.NewWei(50),
-	ProductFeeAmount:      entities.NewWei(25),
 }
 
 var testRetainedPegoutQuote = quote.RetainedPegoutQuote{
@@ -138,7 +137,7 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	statusFieldCount := reflect.TypeOf(response.Status).NumField()
 	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
 
-	const expectedDetailFields = 19      // PegoutQuoteDTO has 19 fields
+	const expectedDetailFields = 18      // PegoutQuoteDTO has 18 fields
 	const expectedStatusFields = 9       // RetainedPegoutQuoteDTO has 9 fields
 	const expectedCreationDataFields = 4 // PegoutCreationDataDTO has 4 fields
 

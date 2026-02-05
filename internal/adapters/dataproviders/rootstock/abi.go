@@ -10,7 +10,6 @@ type FlyoverABIs struct {
 	PegOut               *abi.ABI
 	Discovery            *abi.ABI
 	CollateralManagement *abi.ABI
-	DaoContributor       *abi.ABI
 	Flyover              *abi.ABI
 }
 
@@ -31,10 +30,6 @@ func MustLoadFlyoverABIs() *FlyoverABIs {
 	if err != nil {
 		panic("could not load Collateral Management ABI: " + err.Error())
 	}
-	daoContributorAbi, err := bindings.IDaoContributorMetaData.GetAbi()
-	if err != nil {
-		panic("could not load DAO Contributor ABI: " + err.Error())
-	}
 	flyoverAbi, err := bindings.FlyoverMetaData.GetAbi()
 	if err != nil {
 		panic("could not load Flyover ABI: " + err.Error())
@@ -45,7 +40,6 @@ func MustLoadFlyoverABIs() *FlyoverABIs {
 		PegOut:               pegOutAbi,
 		Discovery:            discoveryAbi,
 		CollateralManagement: collateralManagementAbi,
-		DaoContributor:       daoContributorAbi,
 		Flyover:              flyoverAbi,
 	}
 }
