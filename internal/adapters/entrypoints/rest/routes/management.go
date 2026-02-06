@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	LoginPath  = "/management/login"
-	UiPath     = "/management"
-	StaticPath = "/static/{file}"
-	IconPath   = "/favicon.ico"
+	LoginPath          = "/management/login"
+	UiPath             = "/management"
+	ManualApprovalPath = "/management/manual-approval"
+	StaticPath         = "/static/{file}"
+	IconPath           = "/favicon.ico"
 )
 
-var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
+var AllowedPaths = [...]string{LoginPath, UiPath, ManualApprovalPath, StaticPath, IconPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
@@ -173,6 +174,31 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    "/management/trusted-accounts",
 			Method:  http.MethodDelete,
 			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.DeleteTrustedAccountUseCase()),
+		},
+		{
+			Path:    ManualApprovalPath,
+			Method:  http.MethodGet,
+			Handler: handlers.NewManualApprovalPageHandler(env.Management, store),
+		},
+		{
+			Path:    "/management/manual-approval/pending",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetPendingTransactionsHandler(),
+		},
+		{
+			Path:    "/management/manual-approval/history",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetHistoryHandler(),
+		},
+		{
+			Path:    "/management/manual-approval/approve",
+			Method:  http.MethodPost,
+			Handler: handlers.NewApproveTransactionsHandler(),
+		},
+		{
+			Path:    "/management/manual-approval/deny",
+			Method:  http.MethodPost,
+			Handler: handlers.NewDenyTransactionsHandler(),
 		},
 	}
 }
