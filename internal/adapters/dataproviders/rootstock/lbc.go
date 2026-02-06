@@ -330,6 +330,27 @@ func (lbc *liquidityBridgeContractImpl) WithdrawCollateral() error {
 	return nil
 }
 
+func (lbc *liquidityBridgeContractImpl) Withdraw(amount *entities.Wei) error {
+	opts := &bind.TransactOpts{
+		From:   lbc.signer.Address(),
+		Signer: lbc.signer.Sign,
+	}
+
+	receipt, err := rskRetry(lbc.retryParams.Retries, lbc.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(lbc.client, lbc.miningTimeout, "Withdraw", func() (*geth.Transaction, error) {
+				return lbc.contract.Withdraw(opts, amount.AsBigInt())
+			})
+		})
+
+	if err != nil {
+		return fmt.Errorf("withdraw error: %w", err)
+	} else if receipt == nil || receipt.Status == 0 {
+		return errors.New("withdraw error")
+	}
+	return nil
+}
+
 func (lbc *liquidityBridgeContractImpl) GetBalance(address string) (*entities.Wei, error) {
 	var parsedAddress common.Address
 	var err error
