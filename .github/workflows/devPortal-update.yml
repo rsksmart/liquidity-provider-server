@@ -189,6 +189,24 @@ jobs:
           cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/index.md
 
           #####################################
+          #  Financial Reports                #
+          #####################################
+          TEMP_FILE="temp_financial-reports.md"
+          tail -n +2 ${BASE_SRC}/docs/Financial-Reports.md > ${TEMP_FILE}
+          TRANSFORMED_FILE="transformed/financial-reports.md"
+          echo "---" > ${TRANSFORMED_FILE}
+          echo "sidebar_label: Financial Reports" >> ${TRANSFORMED_FILE}
+          echo "sidebar_position: 235" >> ${TRANSFORMED_FILE}
+          echo "title: Liquidity Provider Financial Reports" >> ${TRANSFORMED_FILE}
+          echo "tags: [rsk, rootstock, rif, flyover, integrate, integration guide, rbtc, powpeg, reports, api, financial]" >> ${TRANSFORMED_FILE}
+          echo "description: Comprehensive financial reporting endpoints for liquidity providers to monitor operations, track profitability, and analyze capital allocation across pegin and pegout transactions." >> ${TRANSFORMED_FILE}
+          echo "---" >> ${TRANSFORMED_FILE}
+          echo "" >> ${TRANSFORMED_FILE}
+          cat ${TEMP_FILE} >> ${TRANSFORMED_FILE}
+          rm ${TEMP_FILE}
+          cp ${TRANSFORMED_FILE} ${BASE_DST}/LP/financial-reports.md
+
+          #####################################
           #  Advanced Operations              #
           #####################################
           TEMP_FILE="temp_advanced-operations.md"

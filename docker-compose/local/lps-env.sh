@@ -3,32 +3,57 @@
 set -e
 
 COMMIT_HASH=$(git rev-parse HEAD)
-COMMIT_TAG=$(git describe --exact-match --tags || echo "")
+COMMIT_TAG=$(git describe --exact-match --tags 2>/dev/null || echo "")
 export COMMIT_HASH
 export COMMIT_TAG
 
 # Detect OS
 OS_TYPE="$(uname)"
+ARCH_TYPE="$(uname -m)"
+
+case "$ARCH_TYPE" in
+  arm64|aarch64) LPS_DOCKER_ARCH_DEFAULT="arm64" ;;
+  x86_64|amd64) LPS_DOCKER_ARCH_DEFAULT="amd64" ;;
+  *)
+    echo "Unsupported architecture: $ARCH_TYPE"
+    exit 1
+    ;;
+esac
 
 if [[ "$OS_TYPE" == "Darwin" ]]; then
     # macOS
     echo "Running on macOS"
     SED_INPLACE=("sed" "-i" "")
+    LPS_USE_PREBUILT_DEFAULT="prebuilt"
 elif [[ "$OS_TYPE" == "Linux" ]]; then
     # Assume Ubuntu or other Linux
     echo "Running on Linux"
     SED_INPLACE=("sed" "-i")
+    LPS_USE_PREBUILT_DEFAULT="source"
 else
     echo "Unsupported OS: $OS_TYPE"
     exit 1
+fi
+
+if [ -z "${LPS_USE_PREBUILT}" ]; then
+  export LPS_USE_PREBUILT="$LPS_USE_PREBUILT_DEFAULT"
+fi
+
+if [ -z "${LPS_DOCKER_ARCH}" ]; then
+  export LPS_DOCKER_ARCH="$LPS_DOCKER_ARCH_DEFAULT"
 fi
 
 if [ -z "${LPS_STAGE}" ]; then
   echo "LPS_STAGE is not set. Exit 1"
   exit 1
 elif [ "$LPS_STAGE" = "regtest" ]; then
-  cp ../../sample-config.env .env.regtest
   ENV_FILE=".env.regtest"
+  if [ ! -f "$ENV_FILE" ]; then
+    echo "Creating $ENV_FILE from sample-config.env..."
+    cp ../../sample-config.env "$ENV_FILE"
+  else
+    echo "Using existing $ENV_FILE"
+  fi
 elif [ "$LPS_STAGE" = "testnet" ]; then
   ENV_FILE=".env.testnet"
 else
@@ -67,7 +92,7 @@ elif [ "$SCRIPT_CMD" = "down" ]; then
   exit 0
 elif [ "$SCRIPT_CMD" = "build" ]; then
   echo "Building LPS env..."
-  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml -f docker-compose.lps.yml build
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build
   exit 0
 elif [ "$SCRIPT_CMD" = "stop" ]; then
   echo "Stopping LPS env..."
@@ -109,14 +134,15 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 # Set LOG_FILE environment variable for LPS to write logs to file
 export LOG_FILE="/home/lps/logs/lps.log"
 
-[ -d "$BTCD_HOME" ] || mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME"
-[ -d "$RSKJ_HOME" ] || mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME"
-[ -d "$POWPEG_PEGIN_HOME" ] || mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME"
-[ -d "$POWPEG_PEGOUT_HOME" ] || mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod -R 777 "$POWPEG_PEGOUT_HOME"
-[ -d "$LPS_HOME" ] || mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME"
-[ -d "$MONGO_HOME" ] || mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME"
-[ -d "$LOCALSTACK_HOME" ] || mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME"
-[ -d "./volumes/loki" ] || mkdir -p "./volumes/loki" && chmod 777 "./volumes/loki"
+# Fixed directory creation with proper operator precedence
+[ -d "$BTCD_HOME" ] || (mkdir -p "$BTCD_HOME" && chown "$LPS_UID" "$BTCD_HOME")
+[ -d "$RSKJ_HOME" ] || (mkdir -p "$RSKJ_HOME/db" && mkdir -p "$RSKJ_HOME/logs" && chown -R "$LPS_UID" "$RSKJ_HOME")
+[ -d "$POWPEG_PEGIN_HOME" ] || (mkdir -p "$POWPEG_PEGIN_HOME/db" && mkdir -p "$POWPEG_PEGIN_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGIN_HOME" && chmod -R 777 "$POWPEG_PEGIN_HOME")
+[ -d "$POWPEG_PEGOUT_HOME" ] || (mkdir -p "$POWPEG_PEGOUT_HOME/db" && mkdir -p "$POWPEG_PEGOUT_HOME/logs" && chown -R "$LPS_UID" "$POWPEG_PEGOUT_HOME" && chmod -R 777 "$POWPEG_PEGOUT_HOME")
+[ -d "$LPS_HOME" ] || (mkdir -p "$LPS_HOME/logs" && chmod -R 777 "$LPS_HOME")
+[ -d "$MONGO_HOME" ] || (mkdir -p "$MONGO_HOME/db" && chown -R "$LPS_UID" "$MONGO_HOME")
+[ -d "$LOCALSTACK_HOME" ] || (mkdir -p "$LOCALSTACK_HOME/db" && mkdir -p "$LOCALSTACK_HOME/logs" && chown -R "$LPS_UID" "$LOCALSTACK_HOME")
+[ -d "./volumes/loki" ] || (mkdir -p "./volumes/loki" && chmod 777 "./volumes/loki")
 
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'; LOKI_HOME: './volumes/loki'"
 
@@ -171,24 +197,180 @@ if [ "$LPS_STAGE" = "regtest" ]; then
     echo "No need to fund the '$LIQUIDITY_PROVIDER_RSK_ADDR' provider. Nonce: $PROVIDER_TX_COUNT"
   fi
 
-  if [ -z "${LBC_ADDR}" ]; then
-    echo "LBC_ADDR is not set. Deploying LBC contract..."
+  # Path to liquidity-bridge-contract repo for Foundry deployment
+  LBC_REPO_PATH="${LBC_REPO_PATH:-$HOME/liquidity-bridge-contract}"
+  # Private key for local deployment (default Hardhat/Foundry test key)
+  DEPLOYER_PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
+  DEPLOYER_ADDRESS="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
-    # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
-    export LBC_ADDR
+  # Check if contracts are already deployed by checking for code at the addresses
+  echo "Checking if Flyover contracts are deployed..."
+  CONTRACTS_MISSING=false
+
+  for CONTRACT_VAR in PEGIN_CONTRACT_ADDRESS PEGOUT_CONTRACT_ADDRESS COLLATERAL_MANAGEMENT_ADDRESS DISCOVERY_ADDRESS; do
+    CONTRACT_ADDR=$(eval echo "\$$CONTRACT_VAR")
+    if [ -z "$CONTRACT_ADDR" ] || [ "$CONTRACT_ADDR" = "0x0000000000000000000000000000000000000000" ]; then
+      echo "  $CONTRACT_VAR is not set or is zero address"
+      CONTRACTS_MISSING=true
+      continue
+    fi
+
+    CODE=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" \
+      -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\": [\"$CONTRACT_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
+
+    if [ "$CODE" = "0x" ] || [ -z "$CODE" ]; then
+      echo "  $CONTRACT_VAR ($CONTRACT_ADDR) has no code deployed"
+      CONTRACTS_MISSING=true
+    else
+      echo "  ✓ $CONTRACT_VAR ($CONTRACT_ADDR) is deployed"
+    fi
+  done
+
+  if [ "$CONTRACTS_MISSING" = true ]; then
+    echo ""
+    echo "Some contracts are missing. Deploying Flyover contracts using Foundry..."
+
+    if [ ! -d "$LBC_REPO_PATH" ]; then
+      echo "ERROR: liquidity-bridge-contract repo not found at $LBC_REPO_PATH"
+      echo "Please clone the repo or set LBC_REPO_PATH environment variable"
+      exit 1
+    fi
+
+    # Fund the deployer account from RSK cow account
+    echo "Funding deployer account $DEPLOYER_ADDRESS..."
+    DEPLOYER_BALANCE=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" \
+      -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBalance\",\"params\": [\"$DEPLOYER_ADDRESS\",\"latest\"],\"id\":1}" | jq -r ".result")
+
+    if [ "$DEPLOYER_BALANCE" = "0x0" ]; then
+      echo "Transferring funds to deployer..."
+      curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" \
+        -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_sendTransaction\",\"params\": [{\"from\": \"0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826\", \"to\": \"$DEPLOYER_ADDRESS\", \"value\": \"0x3635C9ADC5DEA00000\"}],\"id\":1}"
+      sleep 10
+    fi
+
+    # Deploy contracts using Foundry
+    pushd "$LBC_REPO_PATH" > /dev/null
+
+    # Save current branch and checkout the deployment script branch
+    ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    echo "Switching to QA-Test branch for deployment..."
+    git fetch origin QA-Test 2>/dev/null || true
+    git checkout QA-Test 2>/dev/null || git checkout -b QA-Test origin/QA-Test
+
+    echo "Running Foundry deployment script..."
+    export DEV_SIGNER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY"
+    DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
+      --rpc-url http://127.0.0.1:4444 \
+      --private-key "$DEPLOYER_PRIVATE_KEY" \
+      --broadcast \
+      --legacy \
+      --slow 2>&1) || {
+        echo "Foundry deployment failed:"
+        echo "$DEPLOY_OUTPUT"
+        git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+        popd > /dev/null
+        exit 1
+      }
+
+    echo "$DEPLOY_OUTPUT"
+
+    # Switch back to original branch
+    git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+    popd > /dev/null
+
+    # Parse the deployment output to get addresses (portable grep)
+    COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'CollateralManagement proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'FlyoverDiscovery proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegInContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+    PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegOutContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+
+    if [ -z "$COLLATERAL_PROXY" ] || [ -z "$DISCOVERY_PROXY" ] || [ -z "$PEGIN_PROXY" ] || [ -z "$PEGOUT_PROXY" ]; then
+      echo "ERROR: Failed to parse contract addresses from deployment output"
+      echo "Please check the deployment output above and update .env.regtest manually"
+      exit 1
+    fi
+
+    echo ""
+    echo "Deployed contract addresses:"
+    echo "  CollateralManagement: $COLLATERAL_PROXY"
+    echo "  FlyoverDiscovery: $DISCOVERY_PROXY"
+    echo "  PegIn: $PEGIN_PROXY"
+    echo "  PegOut: $PEGOUT_PROXY"
+
+    # Update .env.regtest with new addresses
+    echo ""
+    echo "Updating $ENV_FILE with deployed addresses..."
+    "${SED_INPLACE[@]}" "s/^PEGIN_CONTRACT_ADDRESS=.*/PEGIN_CONTRACT_ADDRESS=$PEGIN_PROXY/" "$ENV_FILE"
+    "${SED_INPLACE[@]}" "s/^PEGOUT_CONTRACT_ADDRESS=.*/PEGOUT_CONTRACT_ADDRESS=$PEGOUT_PROXY/" "$ENV_FILE"
+    "${SED_INPLACE[@]}" "s/^COLLATERAL_MANAGEMENT_ADDRESS=.*/COLLATERAL_MANAGEMENT_ADDRESS=$COLLATERAL_PROXY/" "$ENV_FILE"
+    "${SED_INPLACE[@]}" "s/^DISCOVERY_ADDRESS=.*/DISCOVERY_ADDRESS=$DISCOVERY_PROXY/" "$ENV_FILE"
+
+    # Re-source the env file to get updated addresses
+    # shellcheck disable=SC1090
+    . ./"$ENV_FILE"
+
+    echo "Contract addresses updated in $ENV_FILE"
+
+    # Verify deployment
+    echo ""
+    echo "Verifying deployed contracts..."
+    for CONTRACT_VAR in PEGIN_CONTRACT_ADDRESS PEGOUT_CONTRACT_ADDRESS COLLATERAL_MANAGEMENT_ADDRESS DISCOVERY_ADDRESS; do
+      CONTRACT_ADDR=$(eval echo "\$$CONTRACT_VAR")
+      CODE=$(curl -s -X POST "http://127.0.0.1:4444" -H "Content-Type: application/json" \
+        -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\": [\"$CONTRACT_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
+
+      if [ "$CODE" = "0x" ] || [ -z "$CODE" ]; then
+        echo "  ✗ $CONTRACT_VAR ($CONTRACT_ADDR) - NO CODE (deployment may have failed)"
+      else
+        echo "  ✓ $CONTRACT_VAR ($CONTRACT_ADDR) - verified"
+      fi
+    done
+  else
+    echo "All Flyover contracts are already deployed!"
   fi
 fi
 
-if [ -z "${LBC_ADDR}" ]; then
-  docker compose down
-  echo "LBC_ADDR is not set up. Exit"
-  exit 1
-fi
-echo "LBC deployed at $LBC_ADDR"
+echo ""
+echo "Flyover contracts configuration:"
+echo "  PEGIN_CONTRACT_ADDRESS: $PEGIN_CONTRACT_ADDRESS"
+echo "  PEGOUT_CONTRACT_ADDRESS: $PEGOUT_CONTRACT_ADDRESS"
+echo "  COLLATERAL_MANAGEMENT_ADDRESS: $COLLATERAL_MANAGEMENT_ADDRESS"
+echo "  DISCOVERY_ADDRESS: $DISCOVERY_ADDRESS"
 
 docker compose --env-file "$ENV_FILE" up -d powpeg-pegin powpeg-pegout
+
+if [ "$LPS_USE_PREBUILT" = "prebuilt" ]; then
+  # Build LPS binary locally (cross-compile) to avoid Go segfault in Docker on Mac
+  echo "Building LPS binary locally (cross-compile for linux/${LPS_DOCKER_ARCH})..."
+  pushd ../../ > /dev/null
+  COMMIT_HASH_VALUE=$(git rev-parse HEAD)
+  COMMIT_TAG_VALUE=$(git describe --exact-match --tags 2>/dev/null || echo "")
+  mkdir -p build
+  GOOS=linux GOARCH="${LPS_DOCKER_ARCH}" CGO_ENABLED=0 go build -mod=mod -a -trimpath \
+    -ldflags="-s -w -X 'main.BuildVersion=${COMMIT_HASH_VALUE}' -X 'main.BuildTime=$(date)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildVersion=${COMMIT_TAG_VALUE}' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildRevision=${COMMIT_HASH_VALUE}'" \
+    -o ./build/liquidity-provider-server ./cmd/application/main.go
+
+  if [ ! -f "./build/liquidity-provider-server" ]; then
+    echo "ERROR: Binary build failed!"
+    exit 1
+  fi
+
+  # Verify it's a Linux binary for the requested architecture
+  if [ "$LPS_DOCKER_ARCH" = "arm64" ]; then
+    if ! file ./build/liquidity-provider-server | grep -q "ELF.*aarch64"; then
+      echo "WARNING: Binary might not be correct Linux/arm64 format"
+      file ./build/liquidity-provider-server
+    fi
+  elif [ "$LPS_DOCKER_ARCH" = "amd64" ]; then
+    if ! file ./build/liquidity-provider-server | grep -q "ELF.*x86-64"; then
+      echo "WARNING: Binary might not be correct Linux/amd64 format"
+      file ./build/liquidity-provider-server
+    fi
+  fi
+
+  popd > /dev/null
+fi
+
 # start LPS
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
@@ -374,7 +556,13 @@ CURL_OUTPUT=$(curl -s -w '\n%{http_code}' -b cookie_jar.txt 'http://localhost:80
 HTTP_STATUS=$(echo "$CURL_OUTPUT" | tail -n1)
 RESPONSE_BODY=$(echo "$CURL_OUTPUT" | sed '$d')
 
-if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+  echo "✓ Trusted account created successfully!"
+  echo "  Address: $TRUSTED_ACCOUNT_ADDRESS"
+elif echo "$RESPONSE_BODY" | grep -q "already exists"; then
+  echo "✓ Trusted account already exists (OK)"
+  echo "  Address: $TRUSTED_ACCOUNT_ADDRESS"
+else
   echo "Error creating trusted account"
   echo "HTTP Status: $HTTP_STATUS"
   echo "Response Body:"
@@ -382,7 +570,13 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
   exit 1
 fi
 
-echo "Trusted account created successfully!"
-echo "Address: $TRUSTED_ACCOUNT_ADDRESS"
-
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.metrics.yml up -d prometheus loki alloy grafana mailhog
+
+echo ""
+echo "============================================"
+echo "✓ LPS environment is ready!"
+echo "  LPS API:    http://localhost:8080"
+echo "  Health:     http://localhost:8080/health"
+echo "  Management: http://localhost:8080/management"
+echo "  Grafana:    http://localhost:3000"
+echo "============================================"
