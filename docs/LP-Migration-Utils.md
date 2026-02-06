@@ -10,7 +10,7 @@ This document describes the utility scripts that help Liquidity Providers migrat
 
 These utilities help Liquidity Providers migrate from the **legacy single LiquidityBridgeContract** by allowing them to:
 - Resign from the legacy contract
-- Withdraw collateral after resignation
+- Withdraw funds used for pegins
 
 These utilities are specifically designed for the legacy contract and point all contract address fields to the same legacy contract address (since all functionality was in one contract).
 
@@ -52,7 +52,7 @@ If you want to run the utilities with minimal flags (for example `./utils/resign
 
 ## Resign utility
 
-### Resign
+Resign from the legacy Liquidity Bridge Contract:
 
 ```bash
 ./utils/resign_utils \
@@ -63,32 +63,37 @@ If you want to run the utilities with minimal flags (for example `./utils/resign
   --resign
 ```
 
-### Withdraw collateral
-
-```bash
-./utils/resign_utils \
-  --network testnet \
-  --rsk-endpoint http://localhost:4444 \
-  --secret-src env \
-  --keystore-file docker-compose/localstack/keystore.json \
-  --withdraw-collateral
-```
-
-Note: `--withdraw-collateral` requires the resignation delay to have elapsed after calling `--resign`.
-
 ## Withdraw utility
 
-### Withdraw full balance
+The withdraw utility allows you to withdraw funds used for pegins from the Liquidity Bridge Contract. This utility supports both full and partial withdrawals.
+
+### Withdraw all funds
+
+To withdraw all available funds:
 
 ```bash
 ./utils/withdraw \
   --network testnet \
   --rsk-endpoint http://localhost:4444 \
   --secret-src env \
-  --keystore-file /path/to/keystore.json
+  --keystore-file /path/to/keystore.json \
+  --all
 ```
 
-**Note**: This withdraws the entire collateral balance. There is no option to withdraw a partial amount.
+### Withdraw specific amount
+
+To withdraw a specific amount (in wei):
+
+```bash
+./utils/withdraw \
+  --network testnet \
+  --rsk-endpoint http://localhost:4444 \
+  --secret-src env \
+  --keystore-file /path/to/keystore.json \
+  --amount 1000000000000000000
+```
+
+**Note**: You must provide either `--all` or `--amount` flag. The `--amount` value should be specified in wei (1 RBTC = 10^18 wei).
 
 ## Testing Guide
 
@@ -119,24 +124,24 @@ Testing can be done on regtest (local) for development, or on testnet/mainnet fo
    # Password: <your-password>
    ```
 
-4. **Wait for resignation delay** (check contract for delay in blocks)
-
-5. **Withdraw collateral**:
-   ```bash
-   ./utils/resign_utils --withdraw-collateral \
-     --network testnet \
-     --rsk-endpoint https://public-node.testnet.rsk.co \
-     --secret-src env \
-     --keystore-file /path/to/keystore.json
-   ```
-
-6. **Withdraw liquidity**:
+4. **Withdraw liquidity** (all funds):
    ```bash
    ./utils/withdraw \
      --network testnet \
      --rsk-endpoint https://public-node.testnet.rsk.co \
      --secret-src env \
-     --keystore-file /path/to/keystore.json
+     --keystore-file /path/to/keystore.json \
+     --all
+   ```
+   
+   Or to withdraw a specific amount:
+   ```bash
+   ./utils/withdraw \
+     --network testnet \
+     --rsk-endpoint https://public-node.testnet.rsk.co \
+     --secret-src env \
+     --keystore-file /path/to/keystore.json \
+     --amount 1000000000000000000
    ```
 
 ### Testing on Regtest
@@ -202,38 +207,27 @@ To test legacy contract migration on regtest, start the environment which will d
    # Password: test
    ```
 
-7. **Wait for resignation delay** - Mine blocks to skip the delay on regtest:
-   ```bash
-   # Check the resignation delay
-   DELAY=$(cast to-dec $(cast call $LBC_ADDR "getResignDelayBlocks()" --rpc-url http://localhost:4444))
-   echo "Resignation delay: $DELAY blocks"
+7. **Withdraw funds used for pegins**:
    
-   # Mine the required number of blocks
-   for i in $(seq 1 $DELAY); do
-     cast rpc evm_mine --rpc-url http://localhost:4444 > /dev/null
-   done
-   
-   echo "Mined $DELAY blocks"
-   ```
-
-8. **Withdraw collateral**:
-   ```bash
-   ./utils/resign_utils \
-     --network regtest \
-     --rsk-endpoint http://localhost:4444 \
-     --secret-src env \
-     --keystore-file docker-compose/localstack/local-key.json \
-     --withdraw-collateral
-   # Password: test
-   ```
-
-9. **Withdraw remaining collateral** (alternative to resign + withdraw):
+   Withdraw all funds:
    ```bash
    ./utils/withdraw \
      --network regtest \
      --rsk-endpoint http://localhost:4444 \
      --secret-src env \
-     --keystore-file docker-compose/localstack/local-key.json
+     --keystore-file docker-compose/localstack/local-key.json \
+     --all
+   # Password: test
+   ```
+   
+   Or withdraw a specific amount (in wei):
+   ```bash
+   ./utils/withdraw \
+     --network regtest \
+     --rsk-endpoint http://localhost:4444 \
+     --secret-src env \
+     --keystore-file docker-compose/localstack/local-key.json \
+     --amount 500000000000000000
    # Password: test
    ```
 
