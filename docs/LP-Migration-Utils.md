@@ -24,12 +24,6 @@ These utilities are designed ONLY for migrating from the legacy monolithic Liqui
 
 In the legacy setup, all functionality (collateral management, pegin, pegout, discovery) existed in a single contract. The utilities point all contract address fields to the same legacy contract address.
 
-## Prerequisites
-
-- Access to the Rootstock RPC endpoint for the target network
-- Wallet secrets configured via the same mechanisms used by the LPS (`--secret-src env|aws`)
-- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed (for `cast` commands used in testing)
-
 ## Build the utilities
 
 ```bash
