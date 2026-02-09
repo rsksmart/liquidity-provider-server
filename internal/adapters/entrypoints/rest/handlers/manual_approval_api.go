@@ -300,7 +300,7 @@ func NewApproveTransactionsHandler() http.HandlerFunc {
 			return
 		}
 
-		log.Infof("Approved %d transaction(s): %v", len(request.TxIds), request.TxIds)
+		log.Infof("Approved %d transaction(s)", len(request.TxIds))
 
 		// Mock response - in real implementation, this would:
 		// 1. Validate transaction IDs exist
@@ -337,7 +337,7 @@ func NewDenyTransactionsHandler() http.HandlerFunc {
 			return
 		}
 
-		log.Infof("Denied %d transaction(s): %v", len(request.TxIds), request.TxIds)
+		log.Infof("Denied %d transaction(s)", len(request.TxIds))
 
 		// Mock response - in real implementation, this would:
 		// 1. Validate transaction IDs exist
