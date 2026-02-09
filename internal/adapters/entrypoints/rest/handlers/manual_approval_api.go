@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -257,75 +256,21 @@ func NewGetHistoryHandler() http.HandlerFunc {
 		sortDescStr := req.URL.Query().Get("sortDesc")
 		sortDesc := sortDescStr == "true"
 
-		// Get mock data
+		// Get and filter mock data
 		allHistory := generateMockHistory()
-
-		// Filter by search term
-		var filteredHistory []HistoryRecord
-		for _, record := range allHistory {
-			// Search filter
-			if search != "" {
-				searchLower := strings.ToLower(search)
-				if !strings.Contains(strings.ToLower(record.TxId), searchLower) &&
-					!strings.Contains(strings.ToLower(record.QuoteHash), searchLower) {
-					continue
-				}
-			}
-
-			// Status filter
-			if status != "" && record.Decision != status {
-				continue
-			}
-
-			// Date range filter
-			if startDate != "" || endDate != "" {
-				recordDate, err := time.Parse(time.RFC3339, record.Date)
-				if err != nil {
-					continue
-				}
-
-				if startDate != "" {
-					start, err := time.Parse("2006-01-02", startDate)
-					if err == nil && recordDate.Before(start) {
-						continue
-					}
-				}
-
-				if endDate != "" {
-					end, err := time.Parse("2006-01-02", endDate)
-					if err == nil && recordDate.After(end.Add(24*time.Hour)) {
-						continue
-					}
-				}
-			}
-
-			filteredHistory = append(filteredHistory, record)
-		}
+		filteredHistory := filterHistoryRecords(allHistory, search, status, startDate, endDate)
 
 		// Sort by date
 		if !sortDesc {
-			// Reverse for ascending
-			for i, j := 0, len(filteredHistory)-1; i < j; i, j = i+1, j-1 {
-				filteredHistory[i], filteredHistory[j] = filteredHistory[j], filteredHistory[i]
-			}
+			reverseHistoryRecords(filteredHistory)
 		}
 
 		// Paginate
 		totalCount := len(filteredHistory)
-		start := (page - 1) * perPage
-		end := start + perPage
-
-		if start >= totalCount {
-			filteredHistory = []HistoryRecord{}
-		} else {
-			if end > totalCount {
-				end = totalCount
-			}
-			filteredHistory = filteredHistory[start:end]
-		}
+		paginatedHistory := paginateHistoryRecords(filteredHistory, page, perPage)
 
 		response := HistoryResponse{
-			History:    filteredHistory,
+			History:    paginatedHistory,
 			TotalCount: totalCount,
 			Page:       page,
 			PerPage:    perPage,
@@ -415,24 +360,99 @@ func parseIntParam(req *http.Request, param string, defaultValue int) int {
 	if valueStr == "" {
 		return defaultValue
 	}
-	
+
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
 		return defaultValue
 	}
-	
+
 	return value
 }
 
-// Helper function to convert wei string to BTC/rBTC (for reference, not used in mock)
-func weiToBTC(weiStr string) float64 {
-	wei := new(big.Int)
-	wei.SetString(weiStr, 10)
-	
-	// 1 BTC = 10^18 wei
-	divisor := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	result := new(big.Float).Quo(new(big.Float).SetInt(wei), new(big.Float).SetInt(divisor))
-	
-	btc, _ := result.Float64()
-	return btc
+// filterHistoryRecords applies search, status, and date filters to history records
+func filterHistoryRecords(records []HistoryRecord, search, status, startDate, endDate string) []HistoryRecord {
+	filtered := make([]HistoryRecord, 0, len(records))
+	for _, record := range records {
+		if !matchesSearchFilter(record, search) {
+			continue
+		}
+		if !matchesStatusFilter(record, status) {
+			continue
+		}
+		if !matchesDateRangeFilter(record, startDate, endDate) {
+			continue
+		}
+		filtered = append(filtered, record)
+	}
+	return filtered
+}
+
+// matchesSearchFilter checks if record matches search term
+func matchesSearchFilter(record HistoryRecord, search string) bool {
+	if search == "" {
+		return true
+	}
+	searchLower := strings.ToLower(search)
+	return strings.Contains(strings.ToLower(record.TxId), searchLower) ||
+		strings.Contains(strings.ToLower(record.QuoteHash), searchLower)
+}
+
+// matchesStatusFilter checks if record matches status filter
+func matchesStatusFilter(record HistoryRecord, status string) bool {
+	if status == "" {
+		return true
+	}
+	return record.Decision == status
+}
+
+// matchesDateRangeFilter checks if record is within date range
+func matchesDateRangeFilter(record HistoryRecord, startDate, endDate string) bool {
+	if startDate == "" && endDate == "" {
+		return true
+	}
+
+	recordDate, err := time.Parse(time.RFC3339, record.Date)
+	if err != nil {
+		return false
+	}
+
+	if startDate != "" {
+		start, err := time.Parse("2006-01-02", startDate)
+		if err == nil && recordDate.Before(start) {
+			return false
+		}
+	}
+
+	if endDate != "" {
+		end, err := time.Parse("2006-01-02", endDate)
+		if err == nil && recordDate.After(end.Add(24*time.Hour)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// reverseHistoryRecords reverses the order of history records for ascending sort
+func reverseHistoryRecords(records []HistoryRecord) {
+	for i, j := 0, len(records)-1; i < j; i, j = i+1, j-1 {
+		records[i], records[j] = records[j], records[i]
+	}
+}
+
+// paginateHistoryRecords returns a paginated slice of history records
+func paginateHistoryRecords(records []HistoryRecord, page, perPage int) []HistoryRecord {
+	totalCount := len(records)
+	start := (page - 1) * perPage
+	end := start + perPage
+
+	if start >= totalCount {
+		return []HistoryRecord{}
+	}
+
+	if end > totalCount {
+		end = totalCount
+	}
+
+	return records[start:end]
 }

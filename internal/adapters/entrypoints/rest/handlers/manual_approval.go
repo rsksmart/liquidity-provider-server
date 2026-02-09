@@ -22,7 +22,7 @@ import (
 func NewManualApprovalPageHandler(env environment.ManagementEnv, store sessions.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorGeneratingTemplate = "Error generating manual approval template: %v"
-		
+
 		// Generate nonce for CSP
 		bytes, err := utils.GetRandomBytes(nonceBytes)
 		if err != nil {
@@ -31,15 +31,15 @@ func NewManualApprovalPageHandler(env environment.ManagementEnv, store sessions.
 			return
 		}
 		nonce := hex.EncodeToString(bytes)
-		
+
 		w.Header().Set(rest.HeaderContentType, "text/html")
 		if env.EnableSecurityHeaders {
 			htmlTemplateSecurityHeaders(w, nonce)
 		}
-		
+
 		// Parse the manual-approval.html template
 		tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, "manual-approval.html"))
-		
+
 		// Execute template with CSRF token and nonce
 		err = tmpl.Execute(w, struct {
 			CSRFToken   string
@@ -48,7 +48,7 @@ func NewManualApprovalPageHandler(env environment.ManagementEnv, store sessions.
 			CSRFToken:   csrf.Token(req),
 			ScriptNonce: nonce,
 		})
-		
+
 		if err != nil {
 			log.Errorf("Error sending manual-approval.html template to client: %s", err.Error())
 		}
