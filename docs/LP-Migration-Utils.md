@@ -10,6 +10,7 @@ This document describes the utility scripts that help Liquidity Providers migrat
 
 These utilities help Liquidity Providers migrate from the **legacy single LiquidityBridgeContract** by allowing them to:
 - Resign from the legacy contract
+- Withdraw collateral after resignation
 - Withdraw funds used for pegins
 
 These utilities are specifically designed for the legacy contract and point all contract address fields to the same legacy contract address (since all functionality was in one contract).
@@ -52,7 +53,7 @@ If you want to run the utilities with minimal flags (for example `./utils/resign
 
 ## Resign utility
 
-Resign from the legacy Liquidity Bridge Contract:
+### Resign
 
 ```bash
 ./utils/resign_utils \
@@ -62,6 +63,19 @@ Resign from the legacy Liquidity Bridge Contract:
   --keystore-file docker-compose/localstack/keystore.json \
   --resign
 ```
+
+### Withdraw collateral
+
+```bash
+./utils/resign_utils \
+  --network testnet \
+  --rsk-endpoint http://localhost:4444 \
+  --secret-src env \
+  --keystore-file docker-compose/localstack/keystore.json \
+  --withdraw-collateral
+```
+
+Note: `--withdraw-collateral` requires the resignation delay to have elapsed after calling `--resign`.
 
 ## Withdraw utility
 
@@ -124,7 +138,18 @@ Testing can be done on regtest (local) for development, or on testnet/mainnet fo
    # Password: <your-password>
    ```
 
-4. **Withdraw liquidity** (all funds):
+4. **Wait for resignation delay** (check contract for delay in blocks)
+
+5. **Withdraw collateral**:
+   ```bash
+   ./utils/resign_utils --withdraw-collateral \
+     --network testnet \
+     --rsk-endpoint https://public-node.testnet.rsk.co \
+     --secret-src env \
+     --keystore-file /path/to/keystore.json
+   ```
+
+6. **Withdraw liquidity** (all funds):
    ```bash
    ./utils/withdraw \
      --network testnet \
@@ -207,7 +232,32 @@ To test legacy contract migration on regtest, start the environment which will d
    # Password: test
    ```
 
-7. **Withdraw funds used for pegins**:
+7. **Wait for resignation delay** - Mine blocks to skip the delay on regtest:
+   ```bash
+   # Check the resignation delay
+   DELAY=$(cast to-dec $(cast call $LBC_ADDR "getResignDelayBlocks()" --rpc-url http://localhost:4444))
+   echo "Resignation delay: $DELAY blocks"
+   
+   # Mine the required number of blocks
+   for i in $(seq 1 $DELAY); do
+     cast rpc evm_mine --rpc-url http://localhost:4444 > /dev/null
+   done
+   
+   echo "Mined $DELAY blocks"
+   ```
+
+8. **Withdraw collateral**:
+   ```bash
+   ./utils/resign_utils \
+     --network regtest \
+     --rsk-endpoint http://localhost:4444 \
+     --secret-src env \
+     --keystore-file docker-compose/localstack/local-key.json \
+     --withdraw-collateral
+   # Password: test
+   ```
+
+9. **Withdraw funds used for pegins**:
    
    Withdraw all funds:
    ```bash
