@@ -27,7 +27,7 @@ func TestPenalizedEventMongoRepository_InsertPenalization(t *testing.T) {
 	t.Run("Insert penalization successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PenalizedEventCollection)
 		collection.On("InsertOne", mock.Anything, mock.MatchedBy(func(q penalization.PenalizedEvent) bool {
-			return q.QuoteHash == testPenalization.QuoteHash && reflect.TypeOf(penalization.PenalizedEvent{}).NumField() == test.CountNonZeroValues(q)
+			return q.QuoteHash == testPenalization.QuoteHash && reflect.TypeFor[penalization.PenalizedEvent]().NumField() == test.CountNonZeroValues(q)
 		})).Return(nil, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPenalizedEventRepository(conn)

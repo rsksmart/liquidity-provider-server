@@ -140,7 +140,7 @@ func TestBtcSuiteClientAdapter_SignRawTransactionWithKey(t *testing.T) {
 	field := reflect.ValueOf(response).Elem().FieldByName("result")
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).
 		Elem().
-		Set(reflect.ValueOf([]uint8(fmt.Sprintf(`{"hex":"%s","complete":true}`, rawTx))))
+		Set(reflect.ValueOf(fmt.Appendf(nil, `{"hex":"%s","complete":true}`, rawTx)))
 	receiveChannel <- response
 	_, _, err = adapter.SignRawTransactionWithKey(tx, keys)
 	require.NoError(t, err)
