@@ -431,3 +431,25 @@ func TestPeginContractImpl_PausedStatus(t *testing.T) {
 	})
 	contractBinding.AssertExpectations(t)
 }
+
+func TestPeginContractImpl_HashPeginQuoteEIP712(t *testing.T) {
+	t.Run("should return hash pegin quote eip712", func(t *testing.T) {
+		contractBinding := &mocks.PeginContractAdapterMock{}
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+		hash := [32]byte{1, 2, 3}
+		contractBinding.EXPECT().HashPegInQuoteEIP712(mock.Anything, parsedPeginQuote).Return(hash, nil).Once()
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+		contractBinding.AssertExpectations(t)
+	})
+	t.Run("should handle error hashing pegin quote eip712", func(t *testing.T) {
+		contractBinding := &mocks.PeginContractAdapterMock{}
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+		contractBinding.EXPECT().HashPegInQuoteEIP712(mock.Anything, parsedPeginQuote).Return([32]byte{}, assert.AnError).Once()
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		contractBinding.AssertExpectations(t)
+	})
+}

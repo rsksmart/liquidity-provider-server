@@ -587,3 +587,30 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		signerMock.AssertExpectations(t)
 	})
 }
+
+func TestPegoutContractImpl_HashPegoutQuoteEIP712(t *testing.T) {
+	contract := &mocks.PegoutContractAdapterMock{}
+	hash := [32]byte{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	pegoutContract := rootstock.NewPegoutContractImpl(
+		dummyClient,
+		test.AnyAddress,
+		contract,
+		nil,
+		rootstock.RetryParams{},
+		time.Duration(1),
+		Abis,
+	)
+	t.Run("should return hash pegout quote eip712", func(t *testing.T) {
+		contract.EXPECT().HashPegOutQuoteEIP712(mock.Anything, parsedPegoutQuote).Return(hash, nil).Once()
+		result, err := pegoutContract.HashPegoutQuoteEIP712(pegoutQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+		contract.AssertExpectations(t)
+	})
+	t.Run("should handle error hashing pegout quote eip712", func(t *testing.T) {
+		contract.EXPECT().HashPegOutQuoteEIP712(mock.Anything, parsedPegoutQuote).Return([32]byte{}, assert.AnError).Once()
+		result, err := pegoutContract.HashPegoutQuoteEIP712(pegoutQuote)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+}
