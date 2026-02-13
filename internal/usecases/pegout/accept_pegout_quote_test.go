@@ -72,6 +72,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
+		ChainId:               31,
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash: quoteHash, DepositAddress: quoteMock.LbcAddress, Signature: signature,
@@ -161,6 +162,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
+		ChainId:               31,
 	}
 	pegoutContract.EXPECT().HashPegoutQuoteEIP712(quoteMock).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil).Twice()
 
@@ -272,6 +274,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			ExpireDate:            uint32(now.Unix() + 600),
 			ExpireBlock:           1,
 			GasFee:                entities.NewWei(20000),
+			ChainId:               31,
 		}
 		// Total required: 40000 + 50000 + 30000 + 20000 + 5000 = 145000 > locking cap of 100000
 
@@ -329,6 +332,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(1),
+		ChainId:               31,
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
@@ -384,6 +388,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 		ExpireDate:            uint32(now.Unix()),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(1),
+		ChainId:               31,
 	}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
@@ -453,6 +458,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(15),
+		ChainId:               31,
 	}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
@@ -502,6 +508,7 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
+		ChainId:               31,
 	}
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
@@ -606,6 +613,7 @@ func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 		ExpireDate:            uint32(now.Unix() + 600),
 		ExpireBlock:           1,
 		GasFee:                entities.NewWei(6),
+		ChainId:               31,
 	}
 
 	pegoutContract := new(mocks.PegoutContractMock)

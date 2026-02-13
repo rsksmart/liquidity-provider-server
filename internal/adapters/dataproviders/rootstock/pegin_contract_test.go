@@ -39,6 +39,7 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
+	ChainId:            31,
 }
 
 var parsedPeginQuote = bindings.QuotesPegInQuote{
@@ -61,6 +62,7 @@ var parsedPeginQuote = bindings.QuotesPegInQuote{
 	DepositConfirmations:        50,
 	CallOnRegister:              true,
 	GasFee:                      big.NewInt(100),
+	ChainId:                     big.NewInt(31),
 }
 
 func TestNewPeginContractImpl(t *testing.T) {

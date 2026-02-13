@@ -295,6 +295,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 		return bindings.QuotesPegInQuote{}, fmt.Errorf("error parsing data: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = peginQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = peginQuote.PenaltyFee.AsBigInt()
 	parsedQuote.GasLimit = peginQuote.GasLimit
@@ -306,5 +307,6 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
+	parsedQuote.ChainId = chainId.SetUint64(peginQuote.ChainId)
 	return parsedQuote, nil
 }

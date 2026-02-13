@@ -26,6 +26,7 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(20000), nil)
 	rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(100), nil)
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil)
 	peginContract := new(mocks.PeginContractMock)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil)

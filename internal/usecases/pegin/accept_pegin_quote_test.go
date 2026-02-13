@@ -52,6 +52,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      10,
 	CallOnRegister:     false,
 	GasFee:             entities.NewWei(1),
+	ChainId:            31,
 }
 
 var federationInfo = rootstock.FederationInfo{

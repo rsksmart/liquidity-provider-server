@@ -48,6 +48,7 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                entities.NewWei(888),
+	ChainId:               31,
 }
 
 var parsedPegoutQuote = bindings.QuotesPegOutQuote{
@@ -69,6 +70,7 @@ var parsedPegoutQuote = bindings.QuotesPegOutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                big.NewInt(888),
+	ChainId:               big.NewInt(31),
 }
 
 var deposits = []*bindings.IPegOutPegOutDeposit{

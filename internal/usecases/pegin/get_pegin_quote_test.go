@@ -70,6 +70,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("EstimateGas", mock.Anything, userRskAddress, quoteValue, quoteData).Return(gasLimit, nil).Once()
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(100), nil).Once()
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 	peginContract := new(mocks.PeginContractMock)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil).Once()
@@ -206,6 +207,7 @@ func TestGetQuoteUseCase_Run_BridgeMinimum(t *testing.T) {
 	lp.On("BtcAddress").Return(test.AnyAddress).Once()
 	rsk.EXPECT().EstimateGas(test.AnyCtx, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil).Once()
 	rsk.EXPECT().GasPrice(test.AnyCtx).Return(entities.NewWei(10), nil).Once()
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 	bridge.On("GetFedAddress").Return(fedAddress, nil).Once()
 	useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp)
 	t.Run("Should compare bridge minimum against quote value", func(t *testing.T) {
@@ -288,6 +290,16 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
+			rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
+		},
+		func(rsk *mocks.RootstockRpcServerMock, bridge *mocks.BridgeMock,
+			peginContract *mocks.PeginContractMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
+			rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil)
+			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(10), nil)
+			bridge.On("GetFedAddress").Return(fedAddress, nil)
+			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
+			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
+			rsk.EXPECT().ChainId(mock.Anything).Return(0, assert.AnError).Once()
 		},
 		func(rsk *mocks.RootstockRpcServerMock, bridge *mocks.BridgeMock,
 			peginContract *mocks.PeginContractMock, lp *mocks.ProviderMock, peginQuoteRepository *mocks.PeginQuoteRepositoryMock) {
@@ -299,6 +311,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			peginContract.On("GetAddress").Return(lbcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
+			rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 			lp.On("RskAddress").Return("0x4b5b6b")
 			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 		},
@@ -311,6 +324,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			peginContract.On("HashPeginQuote", mock.Anything).Return("any hash", nil)
 			peginContract.On("GetAddress").Return(lbcAddress)
 			peginQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(assert.AnError)
+			rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 			lp.On("RskAddress").Return("0x4b5b6b")
 			lp.On("BtcAddress").Return(getPeginTestBtcAddress)
 			lp.On("PeginConfiguration", test.AnyCtx).Return(getPeginConfiguration())
@@ -330,6 +344,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() []func(
 			peginConfig.CallTime = 0
 			lp.On("PeginConfiguration", test.AnyCtx).Return(peginConfig)
 			lp.On("GeneralConfiguration", test.AnyCtx).Return(generalConfig)
+			rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 			lp.On("RskAddress").Return("")
 			lp.On("BtcAddress").Return("")
 		},
@@ -369,6 +384,7 @@ func TestGetQuoteUseCase_Run_RefundAddress(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(100), nil).Twice()
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(100), nil).Twice()
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Twice()
 	peginContract := new(mocks.PeginContractMock)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return(fedAddress, nil).Twice()

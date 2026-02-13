@@ -192,3 +192,18 @@ func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big
 		Nonce:     result.Nonce(),
 	}, nil
 }
+
+func (rpc *rskjRpcServer) ChainId(ctx context.Context) (uint64, error) {
+	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (uint64, error) {
+			if chainId, rpcErr := rpc.client.ChainID(ctx); rpcErr != nil {
+				return 0, rpcErr
+			} else {
+				return chainId.Uint64(), nil
+			}
+		})
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}

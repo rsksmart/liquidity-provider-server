@@ -325,6 +325,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
 	parsedQuote.Nonce = pegoutQuote.Nonce
@@ -337,5 +338,6 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
+	parsedQuote.ChainId = chainId.SetUint64(pegoutQuote.ChainId)
 	return parsedQuote, nil
 }
