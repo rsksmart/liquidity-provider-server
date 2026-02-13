@@ -141,6 +141,11 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
 	}
 
+	chainId, err := useCase.rpc.Rsk.ChainId(ctx)
+	if err != nil {
+		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.GetPegoutQuoteId, err)
+	}
+
 	now := uint32(time.Now().Unix())
 	generalConfiguration := useCase.lp.GeneralConfiguration(ctx)
 	confirmationsForUserTx := generalConfiguration.RskConfirmations.ForValue(request.valueToTransfer)
@@ -164,6 +169,7 @@ func (useCase *GetQuoteUseCase) buildPegoutQuote(
 		ExpireDate:            now + configuration.ExpireTime,
 		ExpireBlock:           uint32(blockNumber + configuration.ExpireBlocks),
 		GasFee:                fees.GasFee,
+		ChainId:               chainId,
 	}
 
 	if err = entities.ValidateStruct(pegoutQuote); err != nil {

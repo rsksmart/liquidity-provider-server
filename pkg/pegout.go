@@ -31,6 +31,7 @@ type PegoutQuoteDTO struct {
 	ExpireDate            uint32   `json:"expireDate" required:"" validate:"required"`
 	ExpireBlock           uint32   `json:"expireBlocks" required:"" validate:"required"`
 	GasFee                *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegout (call on behalf of the user in Bitcoin network)"`
+	ChainId               uint64   `json:"chainId" required:"" validate:"required" description:"Chain ID of the RSK network where the quote is valid"`
 }
 
 type RetainedPegoutQuoteDTO struct {
@@ -78,6 +79,7 @@ func ToPegoutQuoteDTO(entity quote.PegoutQuote) PegoutQuoteDTO {
 		ExpireDate:            entity.ExpireDate,
 		ExpireBlock:           entity.ExpireBlock,
 		GasFee:                entity.GasFee.AsBigInt(),
+		ChainId:               entity.ChainId,
 	}
 }
 

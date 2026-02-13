@@ -33,6 +33,7 @@ type PeginQuoteDTO struct {
 	Confirmations      uint16   `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
 	CallOnRegister     bool     `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
 	GasFee             *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegin (call on behalf of the user)"`
+	ChainId            uint64   `json:"chainId" required:"" validate:"required" description:"Chain ID of the RSK network where the quote is valid"`
 }
 
 type RetainedPeginQuoteDTO struct {
@@ -98,6 +99,7 @@ func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 		Confirmations:      dto.Confirmations,
 		CallOnRegister:     dto.CallOnRegister,
 		GasFee:             entities.NewBigWei(dto.GasFee),
+		ChainId:            dto.ChainId,
 	}
 }
 
@@ -122,6 +124,7 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 		Confirmations:      entity.Confirmations,
 		CallOnRegister:     entity.CallOnRegister,
 		GasFee:             entity.GasFee.AsBigInt(),
+		ChainId:            entity.ChainId,
 	}
 }
 

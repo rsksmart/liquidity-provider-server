@@ -94,6 +94,7 @@ type PeginContract interface {
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
+	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 }
@@ -102,6 +103,7 @@ type PegoutContract interface {
 	Pausable
 	GetAddress() string
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
+	HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error)
 	RefundUserPegOut(quoteHash string) (string, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)

@@ -44,6 +44,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      6,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(50),
+	ChainId:            31,
 }
 
 var testRetainedQuote = quote.RetainedPeginQuote{
@@ -122,6 +123,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPeginQuote.Value.AsBigInt(), response.Detail.Value)
 	assert.Equal(t, testPeginQuote.CallFee.AsBigInt(), response.Detail.CallFee)
 	assert.Equal(t, testPeginQuote.GasLimit, response.Detail.GasLimit)
+	assert.Equal(t, testPeginQuote.ChainId, response.Detail.ChainId)
 
 	// Validate creation data fields
 	assert.Equal(t, testCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)
@@ -134,7 +136,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	statusFieldCount := reflect.TypeOf(response.Status).NumField()
 	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
 
-	const expectedDetailFields = 19      // PeginQuoteDTO has 19 fields
+	const expectedDetailFields = 20      // PeginQuoteDTO has 20 fields
 	const expectedStatusFields = 8       // RetainedPeginQuoteDTO has 8 fields
 	const expectedCreationDataFields = 3 // PeginCreationDataDTO has 3 fields
 

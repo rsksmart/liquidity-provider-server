@@ -50,6 +50,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	rsk := new(mocks.RootstockRpcServerMock)
 	rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	bridge := new(mocks.BridgeMock)
@@ -260,6 +261,16 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				pegoutContract *mocks.PegoutContractMock, lp *mocks.ProviderMock, btcWallet *mocks.BitcoinWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
+				rsk.EXPECT().ChainId(mock.Anything).Return(0, assert.AnError).Once()
+				btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(feeEstimation, nil)
+			},
+		},
+		{
+			Value: func(rsk *mocks.RootstockRpcServerMock, bridge *mocks.BridgeMock,
+				pegoutContract *mocks.PegoutContractMock, lp *mocks.ProviderMock, btcWallet *mocks.BitcoinWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
+				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
+				rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
+				rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 				pegoutContract.On("GetAddress").Return("0x1234")
 				pegoutContract.On("HashPegoutQuote", mock.Anything).Return("0x9876543210", nil)
 				pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(assert.AnError)
@@ -271,6 +282,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				pegoutContract *mocks.PegoutContractMock, lp *mocks.ProviderMock, btcWallet *mocks.BitcoinWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
+				rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 				pegoutContract.On("GetAddress").Return("0x1234")
 				pegoutContract.On("HashPegoutQuote", mock.Anything).Return("", assert.AnError)
 				pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(nil)
@@ -291,6 +303,7 @@ func getQuoteUseCaseUnexpectedErrorSetups() test.Table[func(
 				pegoutContract *mocks.PegoutContractMock, lp *mocks.ProviderMock, btcWallet *mocks.BitcoinWalletMock, pegoutQuoteRepository *mocks.PegoutQuoteRepositoryMock) {
 				rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(50000000), nil)
 				rsk.On("GetHeight", test.AnyCtx).Return(uint64(100), nil)
+				rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 				pegoutContract.On("GetAddress").Return("0x1234")
 				pegoutContract.On("HashPegoutQuote", mock.Anything).Return("0x2134", nil)
 				pegoutQuoteRepository.On("InsertQuote", test.AnyCtx, mock.Anything, mock.Anything).Return(nil)

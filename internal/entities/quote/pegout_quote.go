@@ -95,6 +95,7 @@ type PegoutQuote struct {
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`
 	ExpireBlock           uint32        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
 	GasFee                *entities.Wei `json:"gasFee" bson:"gas_fee" validate:"required"`
+	ChainId               uint64        `json:"chainId" bson:"chain_id" validate:"required"`
 }
 
 func (quote *PegoutQuote) ExpireTime() time.Time {

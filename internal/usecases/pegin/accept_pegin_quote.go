@@ -73,7 +73,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError, errorArgs)
 	}
 
-	trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, quoteHash, signature, peginQuote)
+	trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, signature, *peginQuote)
 	if err != nil {
 		return quote.AcceptedQuote{}, err
 	}
@@ -112,11 +112,11 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}, nil
 }
 
-func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, quoteHash string, signature string, peginQuote *quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
+func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
 		return liquidity_provider.TrustedAccountDetails{}, nil
 	}
-	trustedAccount, err := useCase.getTrustedAccount(ctx, quoteHash, useCase.lp.GetSigner(), signature)
+	trustedAccount, err := useCase.getTrustedAccount(ctx, peginQuote, useCase.lp.GetSigner(), signature)
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
@@ -126,8 +126,14 @@ func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Con
 	return trustedAccount, nil
 }
 
-func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteHash string, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
-	address, err := usecases.RecoverSignerAddress(quoteHash, signature)
+func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, peginQuote quote.PeginQuote, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
+	address, err := usecases.RecoverSignerAddress(signature, func() ([]byte, error) {
+		if hash, err := useCase.contracts.PegIn.HashPeginQuoteEIP712(peginQuote); err != nil {
+			return nil, err
+		} else {
+			return hash[:], nil
+		}
+	})
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
@@ -141,7 +147,7 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 	return trustedAccount.Value, nil
 }
 
-func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, peginQuote *quote.PeginQuote) error {
+func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, peginQuote quote.PeginQuote) error {
 	errorArgs := usecases.NewErrorArgs()
 
 	activeQuotesStates := []quote.PeginState{
@@ -247,7 +253,7 @@ func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quote
 	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *peginQuote); err != nil {
 		return nil, err
 	}
-	if quoteSignature, err = useCase.lp.SignQuote(quoteHash); err != nil {
+	if quoteSignature, err = useCase.lp.SignPeginQuote(ctx, quoteHash); err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 

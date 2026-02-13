@@ -358,6 +358,9 @@ components:
           description: A boolean value indicating whether the callForUser can be called
             on registerPegIn
           type: boolean
+        chainId:
+          description: Chain ID of the RSK network where the quote is valid
+          type: integer
         confirmations:
           description: The number of confirmations that the LP requires before making
             the call
@@ -428,6 +431,7 @@ components:
       - confirmations
       - callOnRegister
       - gasFee
+      - chainId
       type: object
     PeginQuoteRequest:
       properties:
@@ -526,6 +530,9 @@ components:
           type: string
         callFee:
           $ref: '#/components/schemas/'
+        chainId:
+          description: Chain ID of the RSK network where the quote is valid
+          type: integer
         depositAddr:
           type: string
         depositConfirmations:
@@ -577,6 +584,7 @@ components:
       - expireDate
       - expireBlocks
       - gasFee
+      - chainId
       type: object
     PegoutQuoteRequest:
       properties:

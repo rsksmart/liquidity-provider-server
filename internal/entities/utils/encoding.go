@@ -93,3 +93,11 @@ func CompareIgnore0x(a, b string) bool {
 	const prefix = "0x"
 	return strings.EqualFold(strings.TrimPrefix(a, prefix), strings.TrimPrefix(b, prefix))
 }
+
+func Prepend0x(s string) string {
+	const prefix = "0x"
+	if strings.HasPrefix(s, prefix) {
+		return s
+	}
+	return prefix + s
+}

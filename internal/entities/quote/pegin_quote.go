@@ -88,6 +88,7 @@ type PeginQuote struct {
 	Confirmations      uint16        `json:"confirmations" bson:"confirmations"  validate:"required"`
 	CallOnRegister     bool          `json:"callOnRegister" bson:"call_on_register"`
 	GasFee             *entities.Wei `json:"gasFee" bson:"gas_fee"  validate:"required"`
+	ChainId            uint64        `json:"chainId" bson:"chain_id"  validate:"required"`
 }
 
 func (quote *PeginQuote) ExpireTime() time.Time {

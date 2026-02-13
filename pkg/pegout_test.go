@@ -30,6 +30,7 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 		ExpireDate:            50,
 		ExpireBlock:           55,
 		GasFee:                entities.NewWei(60),
+		ChainId:               31,
 	}
 
 	dto := pkg.ToPegoutQuoteDTO(pegoutQuote)
@@ -52,7 +53,8 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, pegoutQuote.ExpireDate, dto.ExpireDate)
 	assert.Equal(t, pegoutQuote.ExpireBlock, dto.ExpireBlock)
 	assert.Equal(t, pegoutQuote.GasFee.String(), dto.GasFee.String())
-	const expectedFields = 18
+	assert.Equal(t, pegoutQuote.ChainId, dto.ChainId)
+	const expectedFields = 19
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(pegoutQuote))
 }

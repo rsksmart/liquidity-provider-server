@@ -253,6 +253,65 @@ func (_c *PeginContractAdapterMock_HashPegInQuote_Call) RunAndReturn(run func(*b
 	return _c
 }
 
+// HashPegInQuoteEIP712 provides a mock function with given fields: opts, quote
+func (_m *PeginContractAdapterMock) HashPegInQuoteEIP712(opts *bind.CallOpts, quote bindings.QuotesPegInQuote) ([32]byte, error) {
+	ret := _m.Called(opts, quote)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HashPegInQuoteEIP712")
+	}
+
+	var r0 [32]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, bindings.QuotesPegInQuote) ([32]byte, error)); ok {
+		return rf(opts, quote)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, bindings.QuotesPegInQuote) [32]byte); ok {
+		r0 = rf(opts, quote)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([32]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts, bindings.QuotesPegInQuote) error); ok {
+		r1 = rf(opts, quote)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractAdapterMock_HashPegInQuoteEIP712_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HashPegInQuoteEIP712'
+type PeginContractAdapterMock_HashPegInQuoteEIP712_Call struct {
+	*mock.Call
+}
+
+// HashPegInQuoteEIP712 is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+//   - quote bindings.QuotesPegInQuote
+func (_e *PeginContractAdapterMock_Expecter) HashPegInQuoteEIP712(opts interface{}, quote interface{}) *PeginContractAdapterMock_HashPegInQuoteEIP712_Call {
+	return &PeginContractAdapterMock_HashPegInQuoteEIP712_Call{Call: _e.mock.On("HashPegInQuoteEIP712", opts, quote)}
+}
+
+func (_c *PeginContractAdapterMock_HashPegInQuoteEIP712_Call) Run(run func(opts *bind.CallOpts, quote bindings.QuotesPegInQuote)) *PeginContractAdapterMock_HashPegInQuoteEIP712_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts), args[1].(bindings.QuotesPegInQuote))
+	})
+	return _c
+}
+
+func (_c *PeginContractAdapterMock_HashPegInQuoteEIP712_Call) Return(_a0 [32]byte, _a1 error) *PeginContractAdapterMock_HashPegInQuoteEIP712_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractAdapterMock_HashPegInQuoteEIP712_Call) RunAndReturn(run func(*bind.CallOpts, bindings.QuotesPegInQuote) ([32]byte, error)) *PeginContractAdapterMock_HashPegInQuoteEIP712_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PauseStatus provides a mock function with given fields: opts
 func (_m *PeginContractAdapterMock) PauseStatus(opts *bind.CallOpts) (struct {
 	IsPaused bool
