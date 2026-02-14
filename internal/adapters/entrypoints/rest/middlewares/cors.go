@@ -1,17 +1,29 @@
 package middlewares
 
-import "net/http"
+import (
+	"net/http"
+	"slices"
+	"strings"
+)
 
-func NewCorsMiddleware() func(next http.Handler) http.Handler {
+func NewCorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handler {
+	normalizedAllowedOrigins := make([]string, len(allowedOrigins))
+	for i, origin := range allowedOrigins {
+		normalizedAllowedOrigins[i] = strings.ToLower(strings.TrimSpace(origin))
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			headers := w.Header()
-			headers.Add("Access-Control-Allow-Origin", "*")
-			headers.Add("Vary", "Origin")
-			headers.Add("Vary", "Access-Control-Request-Method")
-			headers.Add("Vary", "Access-Control-Request-Headers")
-			headers.Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token")
-			headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			origin := strings.ToLower(r.Header.Get("Origin"))
+
+			if slices.Contains(normalizedAllowedOrigins, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			headers.Set("Vary", "Origin")
+			headers.Set("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token")
+			headers.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			next.ServeHTTP(w, r)
 		})
 	}
