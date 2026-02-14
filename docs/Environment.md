@@ -14,6 +14,7 @@ These are the environment variables required by the liquidity provider server (L
 | `AWS_LOCAL_ENDPOINT` | Endpoint for the AWS local instance (localstack). Only required if LPS is running in regtest mode. | `http://localhost:4444` | NO |
 | `WALLET` | Type of the wallet management implementation. To know more read the wallet management section of the [LP Management file](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#context). | One of the following: `native` | YES |
 | `SECRET_SRC` | Source of the secrets required for the wallet management. To know more read the secrets management section of the [LP Management file](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#context). | One of the following: `aws env` | YES |
+| `ALLOWED_ORIGINS` | Comma separated domains to allow CORS | `http://domain1.com,http://domain2.comt` | YES |
 | `MONGODB_USER` | User to connect to MongoDB. | `root` | YES |
 | `MONGODB_PASSWORD` | Password to connect to MongoDB. | `<any password>` | YES |
 | `MONGODB_HOST` | Host to connect to MongoDB. | `localhost` | YES |

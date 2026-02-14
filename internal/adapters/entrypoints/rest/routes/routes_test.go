@@ -27,6 +27,8 @@ import (
 // nolint:gosec // Linter is assuming the header name is a password
 const csrfTokenHeaderName = "X-Csrf-Token"
 
+var testAllowedDomains = []string{"https://allowed.com", "https://another-allowed.com"}
+
 type openApiSpecification struct {
 	// Path - Verb
 	Paths map[string]map[string]any `yaml:"paths"`
@@ -45,6 +47,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
+		AllowedOrigins: testAllowedDomains,
 	}
 
 	routes.ConfigureRoutes(onlyPublicRouter, onlyPublicEnv, useCaseRegistry, newBlockedEndpointFactory())
@@ -56,8 +59,16 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("should configure cors middleware", func(t *testing.T) {
-		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter)
+	t.Run("should configure cors middleware if origin is present", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, testAllowedDomains[0], true)
+	})
+
+	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, "", false)
+	})
+
+	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -97,6 +108,7 @@ func TestConfigureRoutes_Management(t *testing.T) {
 			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
+		AllowedOrigins: testAllowedDomains,
 	}
 	routes.ConfigureRoutes(managementRouter, managementEnv, useCaseRegistry, newBlockedEndpointFactory())
 	managementAndPublicRoutes := make([]*mux.Route, 0)
@@ -108,7 +120,15 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
-		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter)
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, testAllowedDomains[1], true)
+	})
+
+	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, "", false)
+	})
+
+	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -150,7 +170,13 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	})
 }
 
-func testCorsMiddleware(t *testing.T, routesToTest []*mux.Route, routerToTest *mux.Router) {
+func testCorsMiddleware(
+	t *testing.T,
+	routesToTest []*mux.Route,
+	routerToTest *mux.Router,
+	origin string,
+	isOriginAllowed bool,
+) {
 	for _, route := range routesToTest {
 		methods, methodsErr := route.GetMethods()
 		require.NoError(t, methodsErr)
@@ -159,9 +185,14 @@ func testCorsMiddleware(t *testing.T, routesToTest []*mux.Route, routerToTest *m
 				path, pathErr := route.GetPathTemplate()
 				require.NoError(t, pathErr)
 				req := httptest.NewRequest(method, path, nil)
+				req.Header.Set("Origin", origin)
 				responseRecorder := httptest.NewRecorder()
 				routerToTest.ServeHTTP(responseRecorder, req)
-				assertHasCorsHeaders(t, responseRecorder)
+				if isOriginAllowed {
+					assertHasCorsHeadersAllowed(t, responseRecorder, origin)
+				} else {
+					assertHasCorsHeadersNotAllowed(t, responseRecorder)
+				}
 			}
 		}
 	}
@@ -257,10 +288,17 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
 }
 
-func assertHasCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {
-	assert.Equal(t, "*", recorder.Header().Get("Access-Control-Allow-Origin"))
+func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
+	assert.Equal(t, origin, recorder.Header().Get("Access-Control-Allow-Origin"))
 	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
-	assert.Equal(t, "GET, POST, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
+}
+
+func assertHasCorsHeadersNotAllowed(t *testing.T, recorder *httptest.ResponseRecorder) {
+	assert.Empty(t, recorder.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
 }
 
