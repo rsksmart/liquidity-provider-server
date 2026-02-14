@@ -9,7 +9,7 @@ import (
 func NewCorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handler {
 	normalizedAllowedOrigins := make([]string, len(allowedOrigins))
 	for i, origin := range allowedOrigins {
-		normalizedAllowedOrigins[i] = strings.ToLower(origin)
+		normalizedAllowedOrigins[i] = strings.ToLower(strings.TrimSpace(origin))
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

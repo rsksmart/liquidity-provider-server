@@ -292,6 +292,7 @@ func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecord
 	assert.Equal(t, origin, recorder.Header().Get("Access-Control-Allow-Origin"))
 	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "true", recorder.Header().Get("Access-Control-Allow-Credentials"))
 	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
 }
 
