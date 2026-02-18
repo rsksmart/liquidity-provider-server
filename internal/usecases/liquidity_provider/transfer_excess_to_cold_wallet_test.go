@@ -72,6 +72,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	btcTxHash := "btc_tx_hash_123"
 
 	now := time.Now()
+	nowUnix := now.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -87,8 +88,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -105,6 +106,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -121,6 +126,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -155,6 +162,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	peginProvider.AssertExpectations(t)
 	btcWallet.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -196,7 +206,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		GasPrice:        rbtcGasPrice,
 	}
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -212,8 +222,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -232,6 +242,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -248,6 +262,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -285,6 +301,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -331,7 +350,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		GasPrice:        rbtcGasPrice,
 	}
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -347,8 +366,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -375,6 +394,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Times(2)
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -391,6 +414,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -421,6 +446,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -446,7 +474,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
 	rbtcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -462,8 +490,8 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -471,6 +499,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -487,6 +516,8 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -507,6 +538,9 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -553,7 +587,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	btcFee := entities.NewWei(testBtcFeeAmount)
 	btcTxHash := "btc_tx_hash_fixed_tolerance"
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -569,8 +603,8 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -587,6 +621,10 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -603,6 +641,8 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -631,6 +671,9 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	peginProvider.AssertExpectations(t)
 	btcWallet.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -674,6 +717,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	}
 
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
+	oldTransferUnix := oldTransferTime.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -689,8 +733,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferTime,
-		LastRbtcToColdWalletTransfer: &oldTransferTime,
+		LastBtcToColdWalletTransfer:  &oldTransferUnix,
+		LastRbtcToColdWalletTransfer: &oldTransferUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -717,6 +761,10 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Times(2)
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -733,6 +781,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -779,6 +829,9 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -805,6 +858,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	rbtcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
 
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
+	oldTransferUnix := oldTransferTime.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -820,8 +874,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferTime,
-		LastRbtcToColdWalletTransfer: &oldTransferTime,
+		LastBtcToColdWalletTransfer:  &oldTransferUnix,
+		LastRbtcToColdWalletTransfer: &oldTransferUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -829,6 +883,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -845,6 +900,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -865,6 +922,9 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -918,7 +978,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	// BTC: old transfer time (time forcing enabled)
 	// RBTC: recent transfer time (no time forcing)
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
-	now := time.Now()
+	oldTransferUnix := oldTransferTime.Unix()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -934,8 +995,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferTime,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &oldTransferUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -959,6 +1020,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Times(2)
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -975,6 +1040,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1021,6 +1088,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -1068,7 +1138,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	// BTC: recent transfer time (no time forcing)
 	// RBTC: old transfer time (time forcing enabled)
 	now := time.Now()
+	nowUnix := now.Unix()
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
+	oldTransferUnix := oldTransferTime.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1084,8 +1156,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &oldTransferTime,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &oldTransferUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1109,6 +1181,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Times(2)
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1125,6 +1201,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1171,6 +1249,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
+	hashMock.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
 }
 
 func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *testing.T) {
@@ -1194,6 +1275,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	coldWallet.On("GetRskAddress").Return("0x1234567890abcdef")
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1210,6 +1292,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1219,6 +1303,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	assert.Contains(t, err.Error(), "cold wallet not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 }
 
@@ -1243,6 +1330,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	coldWallet.On("GetRskAddress").Return("")
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1259,6 +1347,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1268,9 +1358,13 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	assert.Contains(t, err.Error(), "cold wallet not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 }
 
+// nolint:funlen
 func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *testing.T) {
 	ctx := context.Background()
 
@@ -1302,6 +1396,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1318,6 +1413,8 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1327,6 +1424,9 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	assert.Contains(t, err.Error(), "max liquidity not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 }
@@ -1350,7 +1450,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	rskWalletMutex := &sync.Mutex{}
 
 	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1367,11 +1467,12 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nil,
-		LastRbtcToColdWalletTransfer: &now,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1388,6 +1489,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1397,6 +1500,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1421,7 +1527,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	rskWalletMutex := &sync.Mutex{}
 
 	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1437,12 +1543,13 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
 		LastRbtcToColdWalletTransfer: nil,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1459,6 +1566,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1468,6 +1577,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1514,6 +1626,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	generalProvider.On("StateConfiguration", ctx).Return(emptyStateConfig)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1530,6 +1643,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1539,6 +1654,9 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1577,6 +1695,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	btcFee = new(entities.Wei).Add(btcFee, entities.NewWei(1))
 
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
+	oldTransferUnix := oldTransferTime.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1592,8 +1711,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferTime,
-		LastRbtcToColdWalletTransfer: &oldTransferTime,
+		LastBtcToColdWalletTransfer:  &oldTransferUnix,
+		LastRbtcToColdWalletTransfer: &oldTransferUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1605,6 +1724,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	}, nil)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1621,6 +1741,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1644,6 +1766,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1686,6 +1811,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	rbtcGasPrice = new(entities.Wei).Add(rbtcGasPrice, entities.NewWei(1))
 
 	oldTransferTime := time.Now().Add(-time.Duration(testForceTransferAfterSeconds+3600) * time.Second)
+	oldTransferUnix := oldTransferTime.Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1701,8 +1827,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferTime,
-		LastRbtcToColdWalletTransfer: &oldTransferTime,
+		LastBtcToColdWalletTransfer:  &oldTransferUnix,
+		LastRbtcToColdWalletTransfer: &oldTransferUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1712,6 +1838,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1728,6 +1855,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1750,6 +1879,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	assert.Contains(t, result.RskResult.Message, "not economical")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1778,7 +1910,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	rskWalletMutex := &sync.Mutex{}
 
 	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1794,8 +1926,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1804,6 +1936,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return((*entities.Wei)(nil), expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1820,6 +1953,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1829,6 +1964,9 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	assert.Contains(t, err.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -1855,7 +1993,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 
 	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
 	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1871,8 +2009,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1884,6 +2022,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return((*entities.Wei)(nil), expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1900,6 +2039,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1909,6 +2050,9 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	assert.Contains(t, err.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1943,7 +2087,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	btcExcessBig, _ := new(big.Int).SetString(testExcessAmount, 10)
 	btcExcess := entities.NewBigWei(btcExcessBig)
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -1959,8 +2103,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -1972,6 +2116,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	btcWallet.On("EstimateTxFees", "cold_btc_address", btcExcess).Return(blockchain.BtcFeeEstimation{}, expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -1988,6 +2133,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2005,6 +2152,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -2040,7 +2191,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	btcExcess := entities.NewBigWei(btcExcessBig)
 	btcFee := entities.NewWei(testBtcFeeAmount)
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -2056,8 +2207,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -2073,6 +2224,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{}, expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -2089,6 +2241,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2106,6 +2260,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2138,7 +2295,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	rbtcLiquidityBig, _ := new(big.Int).SetString(testLiquidityAmountWithExcess, 10)
 	rbtcLiquidity := entities.NewBigWei(rbtcLiquidityBig)
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -2154,8 +2311,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -2167,6 +2324,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	rskRpcMock.On("GasPrice", ctx).Return((*entities.Wei)(nil), expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -2183,6 +2341,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2203,6 +2363,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2241,7 +2404,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	rbtcGasCost := new(entities.Wei).Mul(entities.NewWei(liquidity_provider.SimpleTransferGasLimit), rbtcGasPrice)
 	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -2257,8 +2420,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -2272,6 +2435,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{}, expectedError)
 
 	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -2288,6 +2452,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2308,6 +2474,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -2353,7 +2522,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	rbtcGasCost := new(entities.Wei).Mul(entities.NewWei(liquidity_provider.SimpleTransferGasLimit), rbtcGasPrice)
 	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
 
-	now := time.Now()
+	nowUnix := time.Now().Unix()
 
 	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
 	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
@@ -2369,8 +2538,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &now,
-		LastRbtcToColdWalletTransfer: &now,
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
 
@@ -2393,6 +2562,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
 
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
@@ -2409,6 +2579,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 		testRbtcMinTransferFeeMultiplier,
 		testForceTransferAfterSeconds,
 		eventBus,
+		rskWallet,
+		hashMock.Hash,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2431,6 +2603,11 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	assert.Nil(t, result.RskResult.Fee)
 	require.Error(t, result.RskResult.Error)
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
+
+	// Persist is not called when Run returns error (RSK failed)
+	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
+	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
+	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)

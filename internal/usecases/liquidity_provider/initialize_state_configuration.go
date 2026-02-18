@@ -40,7 +40,7 @@ func (useCase *InitializeStateConfigurationUseCase) Run(ctx context.Context) err
 	}
 
 	modified := false
-	now := time.Now()
+	now := time.Now().UTC().Unix()
 
 	// BTC field
 	if stateConfig.LastBtcToColdWalletTransfer == nil {

@@ -85,14 +85,14 @@ var testCredentials = &entities.Signed[liquidity_provider.HashedCredentials]{
 }
 
 var (
-	lastBtcToColdWalletTransfer  = time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-	lastRbtcToColdWalletTransfer = time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+	lastBtcToColdWalletTransferUnix  = time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+	lastRbtcToColdWalletTransferUnix = time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 )
 
 var testStateConfig = &entities.Signed[liquidity_provider.StateConfiguration]{
 	Value: liquidity_provider.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &lastBtcToColdWalletTransfer,
-		LastRbtcToColdWalletTransfer: &lastRbtcToColdWalletTransfer,
+		LastBtcToColdWalletTransfer:  &lastBtcToColdWalletTransferUnix,
+		LastRbtcToColdWalletTransfer: &lastRbtcToColdWalletTransferUnix,
 	},
 	Signature: "state signature",
 	Hash:      "state hash",

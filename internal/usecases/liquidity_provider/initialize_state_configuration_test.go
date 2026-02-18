@@ -21,11 +21,11 @@ func TestInitializeStateConfigurationUseCase_Run_StateConfigAlreadyExists(t *tes
 	hashMock := &mocks.HashMock{}
 
 	// Mock existing state config with all fields initialized
-	existingTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	existingUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 	existingStateConfig := &entities.Signed[lpEntity.StateConfiguration]{
 		Value: lpEntity.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &existingTime,
-			LastRbtcToColdWalletTransfer: &existingTime,
+			LastBtcToColdWalletTransfer:  &existingUnix,
+			LastRbtcToColdWalletTransfer: &existingUnix,
 		},
 		Signature: "existing signature",
 		Hash:      "existing hash",
@@ -59,15 +59,15 @@ func TestInitializeStateConfigurationUseCase_Run_CreateNewStateConfig(t *testing
 	var capturedConfig entities.Signed[lpEntity.StateConfiguration]
 	lpRepository.On("UpsertStateConfiguration", test.AnyCtx, mock.MatchedBy(func(config entities.Signed[lpEntity.StateConfiguration]) bool {
 		capturedConfig = config
-		now := time.Now()
+		nowUnix := time.Now().Unix()
 		if config.Value.LastBtcToColdWalletTransfer == nil || config.Value.LastRbtcToColdWalletTransfer == nil {
 			return false
 		}
-		btcDiff := now.Sub(*config.Value.LastBtcToColdWalletTransfer)
-		rbtcDiff := now.Sub(*config.Value.LastRbtcToColdWalletTransfer)
+		btcDiff := nowUnix - *config.Value.LastBtcToColdWalletTransfer
+		rbtcDiff := nowUnix - *config.Value.LastRbtcToColdWalletTransfer
 
-		return btcDiff >= 0 && btcDiff < 5*time.Second &&
-			rbtcDiff >= 0 && rbtcDiff < 5*time.Second &&
+		return btcDiff >= 0 && btcDiff < 5 &&
+			rbtcDiff >= 0 && rbtcDiff < 5 &&
 			config.Signature != ""
 	})).Return(nil).Once()
 
@@ -133,10 +133,10 @@ func TestInitializeStateConfigurationUseCase_Run_PartialInitialization(t *testin
 	hashMock := &mocks.HashMock{}
 
 	// Mock existing state config with only BTC field initialized
-	existingTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	existingUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 	existingStateConfig := &entities.Signed[lpEntity.StateConfiguration]{
 		Value: lpEntity.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &existingTime,
+			LastBtcToColdWalletTransfer:  &existingUnix,
 			LastRbtcToColdWalletTransfer: nil,
 		},
 		Signature: "old signature",
@@ -152,13 +152,13 @@ func TestInitializeStateConfigurationUseCase_Run_PartialInitialization(t *testin
 	var capturedConfig entities.Signed[lpEntity.StateConfiguration]
 	lpRepository.On("UpsertStateConfiguration", test.AnyCtx, mock.MatchedBy(func(config entities.Signed[lpEntity.StateConfiguration]) bool {
 		capturedConfig = config
-		now := time.Now()
+		nowUnix := time.Now().Unix()
 
 		// BTC field should remain unchanged
 		if config.Value.LastBtcToColdWalletTransfer == nil {
 			return false
 		}
-		if !config.Value.LastBtcToColdWalletTransfer.Equal(existingTime) {
+		if *config.Value.LastBtcToColdWalletTransfer != existingUnix {
 			return false
 		}
 
@@ -166,8 +166,8 @@ func TestInitializeStateConfigurationUseCase_Run_PartialInitialization(t *testin
 		if config.Value.LastRbtcToColdWalletTransfer == nil {
 			return false
 		}
-		rbtcDiff := now.Sub(*config.Value.LastRbtcToColdWalletTransfer)
-		if rbtcDiff < 0 || rbtcDiff >= 5*time.Second {
+		rbtcDiff := nowUnix - *config.Value.LastRbtcToColdWalletTransfer
+		if rbtcDiff < 0 || rbtcDiff >= 5 {
 			return false
 		}
 
@@ -186,7 +186,7 @@ func TestInitializeStateConfigurationUseCase_Run_PartialInitialization(t *testin
 	// Verify captured config
 	assert.NotNil(t, capturedConfig.Value.LastBtcToColdWalletTransfer)
 	assert.NotNil(t, capturedConfig.Value.LastRbtcToColdWalletTransfer)
-	assert.Equal(t, existingTime, *capturedConfig.Value.LastBtcToColdWalletTransfer, "BTC timestamp should remain unchanged")
+	assert.Equal(t, existingUnix, *capturedConfig.Value.LastBtcToColdWalletTransfer, "BTC timestamp should remain unchanged")
 	assert.NotEqual(t, "old signature", capturedConfig.Signature, "New signature should be generated")
 	assert.Equal(t, "070809", capturedConfig.Signature)
 	assert.Equal(t, "0a0b0c", capturedConfig.Hash)

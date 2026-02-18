@@ -3,10 +3,9 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
-	"slices"
-	"time"
-
 	"math/big"
+	"slices"
+	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -106,8 +105,21 @@ type HashedCredentials struct {
 }
 
 type StateConfiguration struct {
-	LastBtcToColdWalletTransfer  *time.Time `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
-	LastRbtcToColdWalletTransfer *time.Time `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+	LastBtcToColdWalletTransfer  *int64 `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer *int64 `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+}
+
+// Implementing this so that we can log the state configuration in a readable format
+func (s StateConfiguration) String() string {
+	btc := "nil"
+	if s.LastBtcToColdWalletTransfer != nil {
+		btc = strconv.FormatInt(*s.LastBtcToColdWalletTransfer, 10)
+	}
+	rbtc := "nil"
+	if s.LastRbtcToColdWalletTransfer != nil {
+		rbtc = strconv.FormatInt(*s.LastRbtcToColdWalletTransfer, 10)
+	}
+	return fmt.Sprintf("{LastBtcToColdWalletTransfer:%s LastRbtcToColdWalletTransfer:%s}", btc, rbtc)
 }
 
 type ConfigurationType interface {

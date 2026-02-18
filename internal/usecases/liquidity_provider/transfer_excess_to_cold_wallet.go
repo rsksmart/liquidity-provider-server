@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -83,6 +84,8 @@ type TransferExcessToColdWalletUseCase struct {
 	rbtcMinTransferFeeMultiplier uint64
 	forceTransferAfterSeconds    uint64
 	eventBus                     entities.EventBus
+	signer                       entities.Signer
+	hashFunc                     entities.HashFunction
 }
 
 func NewTransferExcessToColdWalletUseCase(
@@ -100,6 +103,8 @@ func NewTransferExcessToColdWalletUseCase(
 	rbtcMinTransferFeeMultiplier uint64,
 	forceTransferAfterSeconds uint64,
 	eventBus entities.EventBus,
+	signer entities.Signer,
+	hashFunc entities.HashFunction,
 ) *TransferExcessToColdWalletUseCase {
 	return &TransferExcessToColdWalletUseCase{
 		peginProvider:                peginProvider,
@@ -116,6 +121,8 @@ func NewTransferExcessToColdWalletUseCase(
 		rbtcMinTransferFeeMultiplier: rbtcMinTransferFeeMultiplier,
 		forceTransferAfterSeconds:    forceTransferAfterSeconds,
 		eventBus:                     eventBus,
+		signer:                       signer,
+		hashFunc:                     hashFunc,
 	}
 }
 
@@ -158,7 +165,31 @@ func (useCase *TransferExcessToColdWalletUseCase) Run(ctx context.Context) (*Tra
 		return result, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, rskResult.Error)
 	}
 
-	return NewTransferToColdWalletResult(btcResult, rskResult), nil
+	result := NewTransferToColdWalletResult(btcResult, rskResult)
+	if btcResult.Status == TransferStatusSuccess || rskResult.Status == TransferStatusSuccess {
+		useCase.persistStateConfigAfterTransfers(ctx, stateConfig, btcResult, rskResult)
+	}
+	return result, nil
+}
+
+func (useCase *TransferExcessToColdWalletUseCase) persistStateConfigAfterTransfers(ctx context.Context, stateConfig *liquidity_provider.StateConfiguration, btcResult, rskResult NetworkTransferResult) {
+	updatedStateConfig := *stateConfig
+	now := time.Now().UTC().Unix()
+	if btcResult.Status == TransferStatusSuccess {
+		updatedStateConfig.LastBtcToColdWalletTransfer = &now
+	}
+	if rskResult.Status == TransferStatusSuccess {
+		updatedStateConfig.LastRbtcToColdWalletTransfer = &now
+	}
+	newSigned, err := usecases.SignConfiguration(usecases.TransferExcessToColdWalletId, useCase.signer, useCase.hashFunc, updatedStateConfig)
+	if err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to sign state configuration: %v", err)
+		return
+	}
+	if err := useCase.lpRepository.UpsertStateConfiguration(ctx, newSigned); err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to persist state configuration: %v", err)
+		return
+	}
 }
 
 func (useCase *TransferExcessToColdWalletUseCase) getAndValidateConfiguration(ctx context.Context) (*liquidity_provider.GeneralConfiguration, *liquidity_provider.StateConfiguration, error) {
@@ -459,7 +490,7 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessWithTimeForcing
 	target *entities.Wei,
 	threshold *entities.Wei,
 	currentLiquidity *entities.Wei,
-	lastTransferTime *time.Time,
+	lastTransferUnix *int64,
 ) (*entities.Wei, bool) {
 	// First, calculate normal excess (respecting threshold)
 	excess := useCase.calculateExcess(target, currentLiquidity, threshold)
@@ -468,7 +499,7 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessWithTimeForcing
 		return excess, false // Transfer due to threshold, not time forcing
 	}
 
-	if useCase.shouldForceTransferDueToTime(lastTransferTime) {
+	if useCase.shouldForceTransferDueToTime(lastTransferUnix) {
 		// Calculate excess respecting target
 		forcedExcess := useCase.calculateExcess(target, currentLiquidity, target)
 		return forcedExcess, true
@@ -477,8 +508,7 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessWithTimeForcing
 	return entities.NewWei(0), false
 }
 
-func (useCase *TransferExcessToColdWalletUseCase) shouldForceTransferDueToTime(lastTransferTime *time.Time) bool {
-	timeSinceLastTransfer := time.Since(*lastTransferTime)
-	timeRequiredToForceTransfer := time.Duration(useCase.forceTransferAfterSeconds) * time.Second
-	return timeSinceLastTransfer >= timeRequiredToForceTransfer
+func (useCase *TransferExcessToColdWalletUseCase) shouldForceTransferDueToTime(lastTransferUnix *int64) bool {
+	secondsSinceLastTransfer := time.Now().Unix() - *lastTransferUnix
+	return secondsSinceLastTransfer >= int64(useCase.forceTransferAfterSeconds)
 }

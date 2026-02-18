@@ -724,11 +724,11 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 
 	t.Run("Return signed state configuration from db", func(t *testing.T) {
 		// Create properly signed config using the test wallet
-		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcTime,
-			LastRbtcToColdWalletTransfer: &rbtcTime,
+			LastBtcToColdWalletTransfer:  &btcUnix,
+			LastRbtcToColdWalletTransfer: &rbtcUnix,
 		}
 
 		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -768,19 +768,19 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 	})
 
 	t.Run("Return empty state configuration when db configuration is tampered", func(t *testing.T) {
-		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcTime,
-			LastRbtcToColdWalletTransfer: &rbtcTime,
+			LastBtcToColdWalletTransfer:  &btcUnix,
+			LastRbtcToColdWalletTransfer: &rbtcUnix,
 		}
 
 		tamperedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
 		require.NoError(t, err)
 
 		// Tamper with the data after signing
-		newTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-		tamperedConfig.Value.LastBtcToColdWalletTransfer = &newTime
+		newUnix := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+		tamperedConfig.Value.LastBtcToColdWalletTransfer = &newUnix
 
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
@@ -793,11 +793,11 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 	})
 
 	t.Run("Return empty state configuration when db configuration doesn't have valid signature", func(t *testing.T) {
-		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcTime,
-			LastRbtcToColdWalletTransfer: &rbtcTime,
+			LastBtcToColdWalletTransfer:  &btcUnix,
+			LastRbtcToColdWalletTransfer: &rbtcUnix,
 		}
 
 		// Create config with correct hash but wrong signature
@@ -818,11 +818,11 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 	})
 
 	t.Run("Return empty state configuration when integrity check fails", func(t *testing.T) {
-		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcTime,
-			LastRbtcToColdWalletTransfer: &rbtcTime,
+			LastBtcToColdWalletTransfer:  &btcUnix,
+			LastRbtcToColdWalletTransfer: &rbtcUnix,
 		}
 
 		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -843,11 +843,11 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 	})
 
 	t.Run("Return empty state configuration when there is an unexpected error", func(t *testing.T) {
-		btcTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-		rbtcTime := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC)
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcTime,
-			LastRbtcToColdWalletTransfer: &rbtcTime,
+			LastBtcToColdWalletTransfer:  &btcUnix,
+			LastRbtcToColdWalletTransfer: &rbtcUnix,
 		}
 
 		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)

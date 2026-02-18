@@ -384,6 +384,8 @@ func NewUseCaseRegistry(
 		env.ColdWallet.RbtcMinTransferFeeMultiplier,
 		env.ColdWallet.ForceTransferAfterSeconds,
 		messaging.EventBus,
+		rskRegistry.Wallet,
+		signingHashFunction,
 	),
 	}
 }
