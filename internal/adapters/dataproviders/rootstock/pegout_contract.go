@@ -102,18 +102,6 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 	return nil
 }
 
-func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return pegoutContract.contract.GetFeePercentage(&opts)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
-}
-
 func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
@@ -329,7 +317,6 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
 	return parsedQuote, nil
 }

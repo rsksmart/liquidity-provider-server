@@ -15,39 +15,35 @@ func TestPeginQuote_Total(t *testing.T) {
 	quotes := test.Table[quote.PeginQuote, *entities.Wei]{
 		{
 			Value: quote.PeginQuote{
-				CallFee:          nil,
-				Value:            entities.NewWei(400000000000000000),
-				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
+				CallFee: nil,
+				Value:   entities.NewWei(400000000000000000),
+				GasFee:  entities.NewWei(100000000000000000),
 			},
-			Result: entities.NewWei(700000000000000000),
+			Result: entities.NewWei(500000000000000000),
 		},
 		{
 			Value: quote.PeginQuote{
-				CallFee:          entities.NewWei(300000000000000000),
-				Value:            nil,
-				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
+				CallFee: entities.NewWei(300000000000000000),
+				Value:   nil,
+				GasFee:  entities.NewWei(100000000000000000),
 			},
-			Result: entities.NewWei(600000000000000000),
+			Result: entities.NewWei(400000000000000000),
 		},
 		{
 			Value: quote.PeginQuote{
-				CallFee:          entities.NewWei(300000000000000000),
-				Value:            entities.NewWei(400000000000000000),
-				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: entities.NewWei(0),
+				CallFee: entities.NewWei(300000000000000000),
+				Value:   entities.NewWei(400000000000000000),
+				GasFee:  entities.NewWei(100000000000000000),
 			},
 			Result: entities.NewWei(800000000000000000),
 		},
 		{
 			Value: quote.PeginQuote{
-				CallFee:          entities.NewWei(300000000000000000),
-				Value:            entities.NewWei(400000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
-				GasFee:           nil,
+				CallFee: entities.NewWei(300000000000000000),
+				Value:   entities.NewWei(400000000000000000),
+				GasFee:  nil,
 			},
-			Result: entities.NewWei(900000000000000000),
+			Result: entities.NewWei(700000000000000000),
 		},
 	}
 	test.RunTable(t, quotes, func(value quote.PeginQuote) *entities.Wei {
@@ -84,7 +80,6 @@ func TestPeginQuote_IsExpired(t *testing.T) {
 				Confirmations:      1,
 				CallOnRegister:     false,
 				GasFee:             entities.NewWei(100000000000000000),
-				ProductFeeAmount:   entities.NewWei(200000000000000000),
 			},
 			Result: true,
 		},
@@ -109,7 +104,6 @@ func TestPeginQuote_IsExpired(t *testing.T) {
 				Confirmations:      1,
 				CallOnRegister:     false,
 				GasFee:             entities.NewWei(100000000000000000),
-				ProductFeeAmount:   entities.NewWei(200000000000000000),
 			},
 			Result: false,
 		},

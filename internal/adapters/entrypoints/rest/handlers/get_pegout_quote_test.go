@@ -481,6 +481,5 @@ func createTestPegoutQuote() quote.PegoutQuote {
 		ExpireDate:            1641168000,
 		ExpireBlock:           1000,
 		GasFee:                entities.NewWei(50),
-		ProductFeeAmount:      entities.NewWei(25),
 	}
 }

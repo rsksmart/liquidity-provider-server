@@ -16,10 +16,9 @@ type AcceptedQuote struct {
 }
 
 type Fees struct {
-	CallFee          *entities.Wei
-	GasFee           *entities.Wei
-	PenaltyFee       *entities.Wei
-	ProductFeeAmount *entities.Wei
+	CallFee    *entities.Wei
+	GasFee     *entities.Wei
+	PenaltyFee *entities.Wei
 }
 
 type PegConfiguration interface {

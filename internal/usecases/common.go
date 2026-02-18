@@ -2,22 +2,18 @@ package usecases
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 	"strconv"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 // used for error logging
@@ -106,7 +102,6 @@ type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei
 	EstimatedGasFee       *entities.Wei
-	EstimatedProductFee   *entities.Wei
 }
 
 type ErrorArgs map[string]string
@@ -137,34 +132,6 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	} else {
 		return fmt.Errorf("%s: %w. Args: %v", useCase, err, args)
 	}
-}
-
-type DaoAmounts struct {
-	DaoGasAmount *entities.Wei
-	DaoFeeAmount *entities.Wei
-}
-
-func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
-	var daoGasAmount *entities.Wei
-	daoFeeAmount := new(entities.Wei)
-	var err error
-	if daoFeePercentage == 0 {
-		return DaoAmounts{
-			DaoFeeAmount: entities.NewWei(0),
-			DaoGasAmount: entities.NewWei(0),
-		}, nil
-	}
-
-	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(utils.Scale))
-	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
-	if err != nil {
-		return DaoAmounts{}, err
-	}
-	return DaoAmounts{
-		DaoFeeAmount: daoFeeAmount,
-		DaoGasAmount: daoGasAmount,
-	}, nil
 }
 
 func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {

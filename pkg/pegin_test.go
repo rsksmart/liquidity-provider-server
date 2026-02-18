@@ -32,7 +32,6 @@ func TestToPeginQuoteDTO(t *testing.T) {
 		Confirmations:      40,
 		CallOnRegister:     true,
 		GasFee:             entities.NewWei(45),
-		ProductFeeAmount:   entities.NewWei(50),
 	}
 	dto := pkg.ToPeginQuoteDTO(peginQuote)
 
@@ -55,8 +54,7 @@ func TestToPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, peginQuote.Confirmations, dto.Confirmations)
 	assert.Equal(t, peginQuote.CallOnRegister, dto.CallOnRegister)
 	assert.Equal(t, peginQuote.GasFee.AsBigInt(), dto.GasFee)
-	assert.Equal(t, peginQuote.ProductFeeAmount.AsBigInt(), dto.ProductFeeAmount)
-	const expectedFields = 20
+	const expectedFields = 19
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
 }
@@ -82,7 +80,6 @@ func TestFromPeginQuoteDTO(t *testing.T) {
 		Confirmations:      40,
 		CallOnRegister:     true,
 		GasFee:             big.NewInt(45),
-		ProductFeeAmount:   big.NewInt(50),
 	}
 	peginQuote := pkg.FromPeginQuoteDTO(dto)
 
@@ -105,8 +102,7 @@ func TestFromPeginQuoteDTO(t *testing.T) {
 	assert.Equal(t, dto.Confirmations, peginQuote.Confirmations)
 	assert.Equal(t, dto.CallOnRegister, peginQuote.CallOnRegister)
 	assert.Equal(t, dto.GasFee.String(), peginQuote.GasFee.String())
-	assert.Equal(t, dto.ProductFeeAmount.String(), peginQuote.ProductFeeAmount.String())
-	const expectedFields = 20
+	const expectedFields = 19
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(peginQuote))
 }

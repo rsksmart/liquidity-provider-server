@@ -44,7 +44,6 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      6,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(50),
-	ProductFeeAmount:   entities.NewWei(25),
 }
 
 var testRetainedQuote = quote.RetainedPeginQuote{
@@ -135,7 +134,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	statusFieldCount := reflect.TypeOf(response.Status).NumField()
 	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
 
-	const expectedDetailFields = 20      // PeginQuoteDTO has 20 fields
+	const expectedDetailFields = 19      // PeginQuoteDTO has 19 fields
 	const expectedStatusFields = 8       // RetainedPeginQuoteDTO has 8 fields
 	const expectedCreationDataFields = 3 // PeginCreationDataDTO has 3 fields
 
