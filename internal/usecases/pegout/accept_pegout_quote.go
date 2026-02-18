@@ -168,7 +168,7 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 	// Get all retained quotes for this trusted account
 	quotes, err := useCase.quoteRepository.GetRetainedQuotesForAddress(ctx, trustedAccount.Address, activeQuotesStates...)
 	if err != nil {
-		return usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+		return usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
 	// Sum the total value of the quotes

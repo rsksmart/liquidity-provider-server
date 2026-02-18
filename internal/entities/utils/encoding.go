@@ -96,7 +96,7 @@ func CompareIgnore0x(a, b string) bool {
 
 func Prepend0x(s string) string {
 	const prefix = "0x"
-	if strings.HasPrefix(s, prefix) {
+	if strings.HasPrefix(strings.ToLower(s), prefix) {
 		return s
 	}
 	return prefix + s

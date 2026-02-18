@@ -234,6 +234,8 @@ func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, erro
 	hash, err := getHashFunction()
 	if err != nil {
 		return "", err
+	} else if len(hash) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hash))
 	}
 
 	pubKey, err := crypto.Ecrecover(hash, signatureBytes)
