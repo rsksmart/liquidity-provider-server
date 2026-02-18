@@ -186,6 +186,64 @@ func (_c *PegoutContractMock_HashPegoutQuote_Call) RunAndReturn(run func(quote.P
 	return _c
 }
 
+// HashPegoutQuoteEIP712 provides a mock function with given fields: pegoutQuote
+func (_m *PegoutContractMock) HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error) {
+	ret := _m.Called(pegoutQuote)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HashPegoutQuoteEIP712")
+	}
+
+	var r0 [32]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(quote.PegoutQuote) ([32]byte, error)); ok {
+		return rf(pegoutQuote)
+	}
+	if rf, ok := ret.Get(0).(func(quote.PegoutQuote) [32]byte); ok {
+		r0 = rf(pegoutQuote)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([32]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(quote.PegoutQuote) error); ok {
+		r1 = rf(pegoutQuote)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutContractMock_HashPegoutQuoteEIP712_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HashPegoutQuoteEIP712'
+type PegoutContractMock_HashPegoutQuoteEIP712_Call struct {
+	*mock.Call
+}
+
+// HashPegoutQuoteEIP712 is a helper method to define mock.On call
+//   - pegoutQuote quote.PegoutQuote
+func (_e *PegoutContractMock_Expecter) HashPegoutQuoteEIP712(pegoutQuote interface{}) *PegoutContractMock_HashPegoutQuoteEIP712_Call {
+	return &PegoutContractMock_HashPegoutQuoteEIP712_Call{Call: _e.mock.On("HashPegoutQuoteEIP712", pegoutQuote)}
+}
+
+func (_c *PegoutContractMock_HashPegoutQuoteEIP712_Call) Run(run func(pegoutQuote quote.PegoutQuote)) *PegoutContractMock_HashPegoutQuoteEIP712_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(quote.PegoutQuote))
+	})
+	return _c
+}
+
+func (_c *PegoutContractMock_HashPegoutQuoteEIP712_Call) Return(_a0 [32]byte, _a1 error) *PegoutContractMock_HashPegoutQuoteEIP712_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutContractMock_HashPegoutQuoteEIP712_Call) RunAndReturn(run func(quote.PegoutQuote) ([32]byte, error)) *PegoutContractMock_HashPegoutQuoteEIP712_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsPegOutQuoteCompleted provides a mock function with given fields: quoteHash
 func (_m *PegoutContractMock) IsPegOutQuoteCompleted(quoteHash string) (bool, error) {
 	ret := _m.Called(quoteHash)

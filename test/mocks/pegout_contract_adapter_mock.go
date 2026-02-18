@@ -244,6 +244,65 @@ func (_c *PegoutContractAdapterMock_HashPegOutQuote_Call) RunAndReturn(run func(
 	return _c
 }
 
+// HashPegOutQuoteEIP712 provides a mock function with given fields: opts, quote
+func (_m *PegoutContractAdapterMock) HashPegOutQuoteEIP712(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote) ([32]byte, error) {
+	ret := _m.Called(opts, quote)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HashPegOutQuoteEIP712")
+	}
+
+	var r0 [32]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, bindings.QuotesPegOutQuote) ([32]byte, error)); ok {
+		return rf(opts, quote)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.CallOpts, bindings.QuotesPegOutQuote) [32]byte); ok {
+		r0 = rf(opts, quote)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([32]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.CallOpts, bindings.QuotesPegOutQuote) error); ok {
+		r1 = rf(opts, quote)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HashPegOutQuoteEIP712'
+type PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call struct {
+	*mock.Call
+}
+
+// HashPegOutQuoteEIP712 is a helper method to define mock.On call
+//   - opts *bind.CallOpts
+//   - quote bindings.QuotesPegOutQuote
+func (_e *PegoutContractAdapterMock_Expecter) HashPegOutQuoteEIP712(opts interface{}, quote interface{}) *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call {
+	return &PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call{Call: _e.mock.On("HashPegOutQuoteEIP712", opts, quote)}
+}
+
+func (_c *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call) Run(run func(opts *bind.CallOpts, quote bindings.QuotesPegOutQuote)) *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.CallOpts), args[1].(bindings.QuotesPegOutQuote))
+	})
+	return _c
+}
+
+func (_c *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call) Return(_a0 [32]byte, _a1 error) *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call) RunAndReturn(run func(*bind.CallOpts, bindings.QuotesPegOutQuote) ([32]byte, error)) *PegoutContractAdapterMock_HashPegOutQuoteEIP712_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsQuoteCompleted provides a mock function with given fields: opts, quoteHash
 func (_m *PegoutContractAdapterMock) IsQuoteCompleted(opts *bind.CallOpts, quoteHash [32]byte) (bool, error) {
 	ret := _m.Called(opts, quoteHash)

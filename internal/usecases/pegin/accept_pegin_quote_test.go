@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"strings"
 	"testing"
@@ -28,8 +29,9 @@ var anyScript = "any script"
 var acceptPeginSignature = "signature"
 var acceptPeginDerivationAddress = "derivation address"
 var acceptPeginQuoteHash = "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf"
-var acceptPeginQuoteHashSignature = "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c"
-var ownerAccountAddress = "0x233845a26a4dA08E16218e7B401501D048670674"
+var acceptPeginQuoteEip712Hash = "d6e428284e782153ec3333810c9703e7d7cb997b20985dfa72dbb5d698bfa9a4"
+var acceptPeginQuoteHashSignature = "b94b9b8709315d02ab3af8537ebaf34bba39fc07d3f4009f05ab9abfaddd5f7c0eaa2b8077c362e8e37163942013cb10441c10a560c789a9a28e00560a973a191b"
+var ownerAccountAddress = "0xD839C223634b224327430Bb7062858109C850bf9"
 var testPeginQuote = quote.PeginQuote{
 	FedBtcAddress:      "2N4qmbZNDMyHDBEBKTCP218HV1LhxCMRMti",
 	LbcAddress:         "0x79568c2989232dCa1840087D73d403602364c0D4",
@@ -50,6 +52,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      10,
 	CallOnRegister:     false,
 	GasFee:             entities.NewWei(1),
+	ChainId:            31,
 }
 
 var federationInfo = rootstock.FederationInfo{
@@ -100,7 +103,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	btc.On("DecodeAddress", testPeginQuote.LpBtcAddress).Return(lpParsedAddress, nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
-	lp.On("SignQuote", acceptPeginQuoteHash).Return(acceptPeginSignature, nil)
+	lp.On("SignPeginQuote", mock.Anything, acceptPeginQuoteHash).Return(acceptPeginSignature, nil)
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPeginQuoteEvent) bool {
 		return assert.Equal(t, testPeginQuote, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPeginQuoteEventId, event.Event.Id())
@@ -123,6 +126,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	lp.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
 	mutex.AssertExpectations(t)
+	peginContract.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Equal(t, acceptPeginDerivationAddress, result.DepositAddress)
@@ -161,6 +165,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	lp.On("GetSigner").Return(signerMock)
 	peginContract := new(mocks.PeginContractMock)
 	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	peginContract.EXPECT().HashPeginQuoteEIP712(testPeginQuote).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPeginQuoteEip712Hash))), nil).Twice()
 	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
 
 	t.Run("happy path", func(t *testing.T) {
@@ -200,7 +205,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		btc.On("DecodeAddress", testPeginQuote.LpBtcAddress).Return(lpParsedAddress, nil)
 
 		lp.On("HasPeginLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
-		lp.On("SignQuote", acceptPeginQuoteHash).Return(acceptPeginSignature, nil)
+		lp.On("SignPeginQuote", mock.Anything, acceptPeginQuoteHash).Return(acceptPeginSignature, nil).Once()
 
 		eventBus.On("Publish", mock.MatchedBy(func(event quote.AcceptedPeginQuoteEvent) bool {
 			return assert.Equal(t, testPeginQuote, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) && assert.Equal(t, quote.AcceptedPeginQuoteEventId, event.Event.Id())
@@ -284,6 +289,8 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		quoteRepository.On("GetQuote", mock.Anything, acceptPeginQuoteHash).Return(&newQuote, nil)
 		quoteRepository.On("GetRetainedQuote", mock.Anything, acceptPeginQuoteHash).Return(nil, nil)
 		quoteRepository.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress, quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{existingQuote1, existingQuote2}, nil)
+		peginContract.EXPECT().HashPeginQuoteEIP712(newQuote).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPeginQuoteEip712Hash))), nil).Once()
+		lp.On("SignPeginQuote", mock.Anything, acceptPeginQuoteHash).Return(acceptPeginSignature, nil).Once()
 
 		useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, acceptPeginQuoteHashSignature)
@@ -292,6 +299,22 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		require.ErrorIs(t, err, usecases.LockingCapExceededError)
 		assert.Empty(t, result)
 	})
+	t.Run("error hashing quote for signature verification", func(t *testing.T) {
+		repo := new(mocks.PeginQuoteRepositoryMock)
+		repo.On("GetQuote", mock.Anything, acceptPeginQuoteHash).Return(&testPeginQuote, nil)
+		contract := new(mocks.PeginContractMock)
+		contract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+		contract.EXPECT().HashPeginQuoteEIP712(testPeginQuote).Return([32]byte{}, assert.AnError).Once()
+
+		useCase := pegin.NewAcceptQuoteUseCase(repo, blockchain.RskContracts{PegIn: contract}, blockchain.Rpc{Rsk: rsk, Btc: btc}, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+		result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, acceptPeginQuoteHashSignature)
+
+		require.Error(t, err)
+		assert.Empty(t, result)
+		contract.AssertExpectations(t)
+		repo.AssertExpectations(t)
+	})
+	peginContract.AssertExpectations(t)
 }
 
 func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
@@ -583,7 +606,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
-			lp.On("SignQuote", mock.Anything).Return("", assert.AnError).Once()
+			lp.On("SignPeginQuote", mock.Anything, mock.Anything).Return("", assert.AnError).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
@@ -596,7 +619,7 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
 			// set derivation and signature to empty to malform the retained quote
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(rootstock.FlyoverDerivation{}, nil).Once()
-			lp.On("SignQuote", mock.Anything).Return("", nil).Once()
+			lp.On("SignPeginQuote", mock.Anything, mock.Anything).Return("", nil).Once()
 		},
 		func(quoteHash *string, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock,
 			btc *mocks.BtcRpcMock, lp *mocks.ProviderMock, rsk *mocks.RootstockRpcServerMock) {
@@ -608,8 +631,8 @@ func acceptQuoteUseCaseUnexpectedErrorSetups() []func(quoteHash *string, quoteRe
 			bridge.On("GetFlyoverDerivationAddress", mock.Anything).Return(derivation, nil).Once()
 			rsk.On("GasPrice", test.AnyCtx).Return(entities.NewWei(1), nil).Once()
 			lp.On("HasPeginLiquidity", test.AnyCtx, mock.Anything).Return(nil).Once()
-			lp.On("SignQuote", mock.Anything).Return("signature", nil).Once()
-			quoteRepository.On("InsertRetainedQuote", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
+			lp.On("SignPeginQuote", mock.Anything, mock.Anything).Return("signature", nil).Once()
+			quoteRepository.On("InsertRetainedQuote", mock.Anything, mock.Anything).Return(assert.AnError).Once()
 		},
 	}
 }

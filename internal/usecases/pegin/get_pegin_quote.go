@@ -99,7 +99,7 @@ func (useCase *GetQuoteUseCase) Run(ctx context.Context, request QuoteRequest) (
 		GasFee:     new(entities.Wei).Mul(estimatedCallGas, creationData.GasPrice),
 		PenaltyFee: peginConfiguration.PenaltyFee,
 	}
-	if peginQuote, err = useCase.buildPeginQuote(generalConfiguration, peginConfiguration, request, fedAddress, estimatedCallGas, fees); err != nil {
+	if peginQuote, err = useCase.buildPeginQuote(ctx, generalConfiguration, peginConfiguration, request, fedAddress, estimatedCallGas, fees); err != nil {
 		return GetPeginQuoteResult{}, err
 	}
 
@@ -146,6 +146,7 @@ func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider
 }
 
 func (useCase *GetQuoteUseCase) buildPeginQuote(
+	ctx context.Context,
 	generalConfig liquidity_provider.GeneralConfiguration,
 	peginConfig liquidity_provider.PeginConfiguration,
 	request QuoteRequest,
@@ -165,6 +166,11 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 		btcRefundAddress = blockchain.BitcoinMainnetP2PKHZeroAddress
 	} else {
 		btcRefundAddress = blockchain.BitcoinTestnetP2PKHZeroAddress
+	}
+
+	chainId, err := useCase.rpc.Rsk.ChainId(ctx)
+	if err != nil {
+		return quote.PeginQuote{}, usecases.WrapUseCaseError(usecases.GetPeginQuoteId, err)
 	}
 
 	peginQuote := quote.PeginQuote{
@@ -187,6 +193,7 @@ func (useCase *GetQuoteUseCase) buildPeginQuote(
 		Confirmations:      generalConfig.BtcConfirmations.ForValue(request.valueToTransfer),
 		CallOnRegister:     false,
 		GasFee:             fees.GasFee,
+		ChainId:            chainId,
 	}
 
 	if err = entities.ValidateStruct(peginQuote); err != nil {

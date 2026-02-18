@@ -1,7 +1,6 @@
 package dataproviders_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -28,9 +26,18 @@ import (
 )
 
 const (
-	rskTestAddress = "0x7c292eb881fd15605f7a85c24f4909381d36c3b9"
-	quoteHash      = "5f677ed167ea3af1205ee45c64bf9883338ba9ae51f2d4e1ada949ebbff7d179"
+	rskTestAddress        = "0x7c292eb881fd15605f7a85c24f4909381d36c3b9"
+	peginQuoteHash        = "5f677ed167ea3af1205ee45c64bf9883338ba9ae51f2d4e1ada949ebbff7d179"
+	peginQuoteEip712Hash  = "2ab5f0e021c2f788c2db2915afcdf3e6f07714f2591fbf639668b67676354b9c"
+	pegoutQuoteHash       = "8011b352d9a0a3d4a5f513816978457dbb364f17531623b5a09bf49248fea3e9"
+	pegoutQuoteEip712Hash = "7df6a4af96e3451bd468e352387c7c917ffcaa2f25174bef3a6f6b494160a14b"
+	signatureBeforeSum    = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a900"
+	signatureAfterSum     = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a91b"
 )
+
+var peginQuote = quote.PeginQuote{Nonce: 1}
+
+var pegoutQuote = quote.PegoutQuote{Nonce: 2}
 
 func TestLocalLiquidityProvider_BtcAddress(t *testing.T) {
 	btcWallet := new(mocks.BitcoinWalletMock)
@@ -46,41 +53,125 @@ func TestLocalLiquidityProvider_RskAddress(t *testing.T) {
 	assert.Equal(t, strings.ToLower(rskTestAddress), lp.RskAddress())
 }
 
-func TestLocalLiquidityProvider_SignQuote(t *testing.T) {
-	const (
-		signatureBeforeSum = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a900"
-		signatureAfterSum  = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a91b"
-	)
-	var buffer bytes.Buffer
-	hashBytes, err := hex.DecodeString(quoteHash)
+func TestLocalLiquidityProvider_SignPeginQuote(t *testing.T) {
+	eip712HashBytes, err := hex.DecodeString(peginQuoteEip712Hash)
 	require.NoError(t, err)
-	buffer.WriteString(usecases.EthereumSignedMessagePrefix)
-	buffer.Write(hashBytes)
 	signer := new(mocks.TransactionSignerMock)
 	signatureBytes, err := hex.DecodeString(signatureBeforeSum)
 	require.NoError(t, err)
-	signer.On("SignBytes", mock.MatchedBy(func(content []byte) bool {
-		return bytes.Equal(content, crypto.Keccak256(buffer.Bytes()))
-	})).Return(signatureBytes, nil)
-	lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{})
-	result, err := lp.SignQuote(quoteHash)
+	signer.On("SignBytes", eip712HashBytes).Return(signatureBytes, nil)
+	peginRepo := new(mocks.PeginQuoteRepositoryMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return(utils.To32Bytes(eip712HashBytes), nil).Once()
+	contracts := blockchain.RskContracts{PegIn: peginContract}
+	peginRepo.EXPECT().GetQuote(mock.Anything, peginQuoteHash).Return(&peginQuote, nil).Once()
+	lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, signer, nil, contracts)
+	result, err := lp.SignPeginQuote(context.Background(), peginQuoteHash)
 	signer.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, signatureAfterSum, result)
 }
 
-func TestLocalLiquidityProvider_SignQuote_ErrorHandling(t *testing.T) {
-	t.Run("Invalid hash", func(t *testing.T) {
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
-		result, err := lp.SignQuote(test.AnyString)
+func TestLocalLiquidityProvider_SignPeginQuote_ErrorHandling(t *testing.T) {
+	t.Run("Quote not found", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+		assert.Empty(t, result)
+	})
+	t.Run("Error getting quote from db", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Error hashing quote", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&peginQuote, nil).Once()
+		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return([32]byte{}, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{PegIn: peginContract})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
 	t.Run("Signing error", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&peginQuote, nil).Once()
+		peginContract := new(mocks.PeginContractMock)
+		hashBytes, err := hex.DecodeString(peginQuoteEip712Hash)
+		require.NoError(t, err)
+		peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return(utils.To32Bytes(hashBytes), nil).Once()
 		signer := new(mocks.TransactionSignerMock)
 		signer.On("SignBytes", mock.Anything).Return(nil, assert.AnError).Once()
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{})
-		result, err := lp.SignQuote(quoteHash)
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{PegIn: peginContract})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+}
+
+func TestLocalLiquidityProvider_SignPegoutQuote(t *testing.T) {
+	eip712HashBytes, err := hex.DecodeString(pegoutQuoteEip712Hash)
+	require.NoError(t, err)
+	signer := new(mocks.TransactionSignerMock)
+	signatureBytes, err := hex.DecodeString(signatureBeforeSum)
+	require.NoError(t, err)
+	signer.On("SignBytes", eip712HashBytes).Return(signatureBytes, nil)
+	pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return(utils.To32Bytes(eip712HashBytes), nil).Once()
+	contracts := blockchain.RskContracts{PegOut: pegoutContract}
+	pegoutRepo.EXPECT().GetQuote(mock.Anything, pegoutQuoteHash).Return(&pegoutQuote, nil).Once()
+	lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, signer, nil, contracts)
+	result, err := lp.SignPegoutQuote(context.Background(), pegoutQuoteHash)
+	signer.AssertExpectations(t)
+	require.NoError(t, err)
+	assert.Equal(t, signatureAfterSum, result)
+}
+
+func TestLocalLiquidityProvider_SignPegoutQuote_ErrorHandling(t *testing.T) {
+	t.Run("Quote not found", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+		assert.Empty(t, result)
+	})
+	t.Run("Error getting quote from db", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Error hashing quote", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&pegoutQuote, nil).Once()
+		pegoutContract := new(mocks.PegoutContractMock)
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return([32]byte{}, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{PegOut: pegoutContract})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Signing error", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&pegoutQuote, nil).Once()
+		pegoutContract := new(mocks.PegoutContractMock)
+		hashBytes, err := hex.DecodeString(pegoutQuoteEip712Hash)
+		require.NoError(t, err)
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return(utils.To32Bytes(hashBytes), nil).Once()
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("SignBytes", mock.Anything).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{PegOut: pegoutContract})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})

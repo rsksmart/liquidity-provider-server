@@ -11,13 +11,14 @@ import (
 )
 
 type Environment struct {
-	LpsStage         string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
-	Port             uint   `env:"SERVER_PORT" validate:"required"`
-	LogLevel         string `env:"LOG_LEVEL" validate:"required"`
-	LogFile          string `env:"LOG_FILE"`
-	AwsLocalEndpoint string `env:"AWS_LOCAL_ENDPOINT"`
-	SecretSource     string `env:"SECRET_SRC" validate:"required,oneof=aws env"`
-	WalletManagement string `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
+	Port             uint     `env:"SERVER_PORT" validate:"required"`
+	LogLevel         string   `env:"LOG_LEVEL" validate:"required"`
+	LogFile          string   `env:"LOG_FILE"`
+	AwsLocalEndpoint string   `env:"AWS_LOCAL_ENDPOINT"`
+	SecretSource     string   `env:"SECRET_SRC" validate:"required,oneof=aws env"`
+	WalletManagement string   `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" validate:"required,dive,url"`
 	Management       ManagementEnv
 	Mongo            MongoEnv
 	Rsk              RskEnv

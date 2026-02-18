@@ -75,6 +75,7 @@ services:
       - ENABLE_SECURITY_HEADERS
       - WALLET
       - SECRET_SRC
+      - ALLOWED_ORIGINS
       - KEYSTORE_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT

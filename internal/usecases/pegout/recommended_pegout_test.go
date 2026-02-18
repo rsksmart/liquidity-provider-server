@@ -30,6 +30,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 	rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
 	rsk.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(4600), nil)
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	bridge := new(mocks.BridgeMock)

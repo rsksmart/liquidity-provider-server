@@ -679,3 +679,28 @@ func TestCompareIgnore0x(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepend0x(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Already has 0x prefix",
+			input:    "0x123abc",
+			expected: "0x123abc",
+		},
+		{
+			name:     "Does not have 0x prefix",
+			input:    "123abc",
+			expected: "0x123abc",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.Prepend0x(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

@@ -26,6 +26,62 @@ func (_m *RootstockRpcServerMock) EXPECT() *RootstockRpcServerMock_Expecter {
 	return &RootstockRpcServerMock_Expecter{mock: &_m.Mock}
 }
 
+// ChainId provides a mock function with given fields: ctx
+func (_m *RootstockRpcServerMock) ChainId(ctx context.Context) (uint64, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChainId")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (uint64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) uint64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RootstockRpcServerMock_ChainId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChainId'
+type RootstockRpcServerMock_ChainId_Call struct {
+	*mock.Call
+}
+
+// ChainId is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *RootstockRpcServerMock_Expecter) ChainId(ctx interface{}) *RootstockRpcServerMock_ChainId_Call {
+	return &RootstockRpcServerMock_ChainId_Call{Call: _e.mock.On("ChainId", ctx)}
+}
+
+func (_c *RootstockRpcServerMock_ChainId_Call) Run(run func(ctx context.Context)) *RootstockRpcServerMock_ChainId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *RootstockRpcServerMock_ChainId_Call) Return(_a0 uint64, _a1 error) *RootstockRpcServerMock_ChainId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RootstockRpcServerMock_ChainId_Call) RunAndReturn(run func(context.Context) (uint64, error)) *RootstockRpcServerMock_ChainId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EstimateGas provides a mock function with given fields: ctx, addr, value, data
 func (_m *RootstockRpcServerMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
 	ret := _m.Called(ctx, addr, value, data)

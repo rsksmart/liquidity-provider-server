@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -210,11 +209,7 @@ func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.Bitco
 
 // RecoverSignerAddress recovers the address from a signature. Important function for the management
 // of trusted accounts.
-func RecoverSignerAddress(quoteHash, signature string) (string, error) {
-	if quoteHash == "" {
-		return "", errors.New("empty hash provided")
-	}
-
+func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, error)) (string, error) {
 	if signature == "" {
 		return "", errors.New("empty signature provided")
 	}
@@ -229,16 +224,6 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
 	}
 
-	hashBytes, err := hex.DecodeString(quoteHash)
-	if err != nil {
-		return "", fmt.Errorf("error decoding hash: %w", err)
-	}
-
-	// Hash should be 32 bytes
-	if len(hashBytes) != 32 {
-		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hashBytes))
-	}
-
 	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
 	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
 	v := signatureBytes[64]
@@ -246,13 +231,14 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		signatureBytes[64] = v - 27
 	}
 
-	// Create the Ethereum prefixed message
-	var buf bytes.Buffer
-	buf.WriteString(EthereumSignedMessagePrefix)
-	buf.Write(hashBytes)
-	prefixedHash := crypto.Keccak256(buf.Bytes())
+	hash, err := getHashFunction()
+	if err != nil {
+		return "", err
+	} else if len(hash) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hash))
+	}
 
-	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	pubKey, err := crypto.Ecrecover(hash, signatureBytes)
 	if err != nil {
 		return "", errors.New("error recovering public key: " + err.Error())
 	}
