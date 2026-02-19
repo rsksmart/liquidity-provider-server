@@ -275,14 +275,14 @@ func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, ret
 	return nil
 }
 
-// revalidateRetainedQuote performs the necessary checks to ensure processing the quote stills safe after acquiring the wallet mutex
+// revalidateRetainedQuote performs the necessary checks to ensure processing the quote still safe after acquiring the wallet mutex
 func (useCase *SendPegoutUseCase) revalidateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	if dbQuote, err := useCase.quoteRepository.GetRetainedQuote(ctx, retainedQuote.QuoteHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, false)
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
 	} else if dbQuote == nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
 	} else if dbQuote.State != retainedQuote.State || dbQuote.UserRskTxHash != retainedQuote.UserRskTxHash {
-		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, false)
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
 	}
 	return nil
 }
