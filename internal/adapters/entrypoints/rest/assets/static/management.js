@@ -20,7 +20,14 @@ const generalChanged = { value: false };
 const peginChanged = { value: false };
 const pegoutChanged = { value: false };
 
-const setTextContent = (id, text) => document.getElementById(id).textContent = text;
+const setTextContent = (id, text) => {
+    const element = document.getElementById(id);
+    if (!element) {
+        console.warn(`Element with id "${id}" not found`);
+        return;
+    }
+    element.textContent = text;
+};
 
 const fetchData = async (url, elementId, csrfToken) => {
     try {
@@ -71,10 +78,19 @@ const createInput = (section, key, value, config) => {
 
     if (typeof value === 'boolean') {
         createCheckboxInput(inputContainer, section, key, value);
+    } else if (key === 'excessTolerance' && value && typeof value === 'object') {
+        createExcessToleranceInput(
+            inputContainer,
+            label,
+            section,
+            value.fixedValue ?? '0',
+            value.percentageValue ?? 0,
+            value.isFixed
+        );
     } else if (isExcessToleranceFixedKey(key)) {
         // Handle excess tolerance with combined fixed/percentage toggle
         const percentageValue = config?.excessTolerancePercentage ?? 0;
-        createExcessToleranceInput(inputContainer, label, section, value, percentageValue);
+        createExcessToleranceInput(inputContainer, label, section, value, percentageValue, true);
     } else if (isToggableFeeKey(key)) {
         createToggableFeeInput(inputContainer, label, section, key, value);
     } else if (isFeeKey(key)) {
@@ -148,7 +164,7 @@ const createToggableFeeInput = (inputContainer, label, section, key, value) => {
     label.appendChild(questionIcon);
 };
 
-const createExcessToleranceInput = (inputContainer, label, section, fixedValue, percentageValue) => {
+const createExcessToleranceInput = (inputContainer, label, section, fixedValue, percentageValue, isFixed) => {
     // Create a wrapper for the switch toggle
     const switchWrapper = document.createElement('div');
     switchWrapper.classList.add('form-check', 'form-switch', 'd-inline-block');
@@ -188,11 +204,18 @@ const createExcessToleranceInput = (inputContainer, label, section, fixedValue, 
     input.dataset.currentFixedValue = weiToEther(fixedValue);
     input.dataset.currentPercentageValue = percentageValue || '0';
 
-    // Determine initial mode based on which value is non-zero
+    // Determine initial mode based on explicit flag when present, otherwise by values.
     const fixedNum = parseFloat(fixedValue) || 0;
     const percentageNum = parseFloat(percentageValue) || 0;
-
-    if (fixedNum > 0) {
+    if (isFixed === true) {
+        toggle.checked = true;
+        input.value = fixedNum > 0 ? weiToEther(fixedValue) : '0';
+        input.placeholder = 'Enter amount in rBTC';
+    } else if (isFixed === false) {
+        toggle.checked = false;
+        input.value = percentageValue;
+        input.placeholder = 'Enter percentage (0-100)';
+    } else if (fixedNum > 0) {
         // Fixed mode
         toggle.checked = true;
         input.value = weiToEther(fixedValue);
@@ -303,7 +326,8 @@ const createQuestionIcon = (tooltipText) => {
 const getDisplayLabel = (key) => {
     const labels = {
         maxLiquidity: 'Maximum Liquidity',
-        excessToleranceFixed: 'Excess Tolerance'
+        excessToleranceFixed: 'Excess Tolerance',
+        excessTolerance: 'Excess Tolerance'
     };
     return labels[key] || key;
 };
@@ -675,8 +699,11 @@ function getRegularConfig(sectionId) {
                 throw new Error(validation.error);
             }
             try {
-                config.excessToleranceFixed = rawValue === '' || rawValue === '0' ? '0' : etherToWei(rawValue).toString();
-                config.excessTolerancePercentage = 0;
+                config.excessTolerance = {
+                    isFixed: true,
+                    fixedValue: rawValue === '' || rawValue === '0' ? '0' : etherToWei(rawValue).toString(),
+                    percentageValue: 0
+                };
             } catch (error) {
                 showErrorToast(`"${sectionId}": Invalid input "${rawValue}" for excess tolerance fixed. Please enter a valid number.`);
                 throw error;
@@ -689,10 +716,15 @@ function getRegularConfig(sectionId) {
                 throw new Error(validation.error);
             }
             const percentageValue = parseFloat(rawValue) || 0;
-            config.excessToleranceFixed = '0';
-            config.excessTolerancePercentage = percentageValue;
+            config.excessTolerance = {
+                isFixed: false,
+                fixedValue: '0',
+                percentageValue: percentageValue
+            };
         }
     }
+    delete config.excessToleranceFixed;
+    delete config.excessTolerancePercentage;
 
     return config;
 }
@@ -1134,7 +1166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const rskAddress = data.RskAddress;
     const btcAddress = data.BtcAddress;
     const coldWallet = data.ColdWallet;
-
     document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton', csrfToken));
     document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
