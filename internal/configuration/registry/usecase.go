@@ -81,6 +81,7 @@ type UseCaseRegistry struct {
 	recommendedPegoutUseCase            *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase             *pegin.RecommendedPeginUseCase
 	transferExcessToColdWalletUseCase   *liquidity_provider.TransferExcessToColdWalletUseCase
+	checkColdWalletAddressChangeUseCase *liquidity_provider.CheckColdWalletAddressChangeUseCase
 }
 
 // NewUseCaseRegistry
@@ -254,11 +255,11 @@ func NewUseCaseRegistry(
 			databaseRegistry.LiquidityProviderRepository,
 			messaging.EventBus,
 		),
-	initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
-		databaseRegistry.LiquidityProviderRepository,
-		rskRegistry.Wallet,
-		signingHashFunction,
-	),
+		initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
 		getManagementUiDataUseCase: liquidity_provider.NewGetManagementUiDataUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			lpRegistry.LiquidityProvider,
@@ -369,24 +370,32 @@ func NewUseCaseRegistry(
 			env.Rsk.FeeCollectorAddress,
 			utils.Scale,
 		),
-	transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(
-		lpRegistry.LiquidityProvider,
-		lpRegistry.LiquidityProvider,
-		lpRegistry.LiquidityProvider,
-		databaseRegistry.LiquidityProviderRepository,
-		lpRegistry.ColdWallet,
-		btcRegistry.PaymentWallet,
-		rskRegistry.Wallet,
-		messaging.Rpc,
-		mutexes.BtcWalletMutex(),
-		mutexes.RskWalletMutex(),
-		env.ColdWallet.BtcMinTransferFeeMultiplier,
-		env.ColdWallet.RbtcMinTransferFeeMultiplier,
-		env.ColdWallet.ForceTransferAfterSeconds,
-		messaging.EventBus,
-		rskRegistry.Wallet,
-		signingHashFunction,
-	),
+		transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
+			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.ColdWallet,
+			btcRegistry.PaymentWallet,
+			rskRegistry.Wallet,
+			messaging.Rpc,
+			mutexes.BtcWalletMutex(),
+			mutexes.RskWalletMutex(),
+			env.ColdWallet.BtcMinTransferFeeMultiplier,
+			env.ColdWallet.RbtcMinTransferFeeMultiplier,
+			env.ColdWallet.ForceTransferAfterSeconds,
+			messaging.EventBus,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.ColdWallet,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
 	}
 }
 
@@ -560,4 +569,8 @@ func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeg
 
 func (registry *UseCaseRegistry) TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase {
 	return registry.transferExcessToColdWalletUseCase
+}
+
+func (registry *UseCaseRegistry) CheckColdWalletAddressChangeUseCase() *liquidity_provider.CheckColdWalletAddressChangeUseCase {
+	return registry.checkColdWalletAddressChangeUseCase
 }
