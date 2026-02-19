@@ -1767,6 +1767,53 @@ func (_c *UseCaseRegistryMock_SummariesUseCase_Call) RunAndReturn(run func() *re
 	return _c
 }
 
+// TransferExcessToColdWalletUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for TransferExcessToColdWalletUseCase")
+	}
+
+	var r0 *liquidity_provider.TransferExcessToColdWalletUseCase
+	if rf, ok := ret.Get(0).(func() *liquidity_provider.TransferExcessToColdWalletUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*liquidity_provider.TransferExcessToColdWalletUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransferExcessToColdWalletUseCase'
+type UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call struct {
+	*mock.Call
+}
+
+// TransferExcessToColdWalletUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) TransferExcessToColdWalletUseCase() *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call {
+	return &UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call{Call: _e.mock.On("TransferExcessToColdWalletUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call) Run(run func()) *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call) Return(_a0 *liquidity_provider.TransferExcessToColdWalletUseCase) *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call) RunAndReturn(run func() *liquidity_provider.TransferExcessToColdWalletUseCase) *UseCaseRegistryMock_TransferExcessToColdWalletUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateTrustedAccountUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) UpdateTrustedAccountUseCase() *liquidity_provider.UpdateTrustedAccountUseCase {
 	ret := _m.Called()

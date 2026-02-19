@@ -3,11 +3,12 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"slices"
+	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 var (
@@ -104,8 +105,26 @@ type HashedCredentials struct {
 	PasswordSalt   string `bson:"password_salt"`
 }
 
+type StateConfiguration struct {
+	LastBtcToColdWalletTransfer  *int64 `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer *int64 `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+}
+
+// Implementing this so that we can log the state configuration in a readable format
+func (s StateConfiguration) String() string {
+	btc := "nil"
+	if s.LastBtcToColdWalletTransfer != nil {
+		btc = strconv.FormatInt(*s.LastBtcToColdWalletTransfer, 10)
+	}
+	rbtc := "nil"
+	if s.LastRbtcToColdWalletTransfer != nil {
+		rbtc = strconv.FormatInt(*s.LastRbtcToColdWalletTransfer, 10)
+	}
+	return fmt.Sprintf("{LastBtcToColdWalletTransfer:%s LastRbtcToColdWalletTransfer:%s}", btc, rbtc)
+}
+
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails | StateConfiguration
 }
 
 func validateRange(min, max, amount *entities.Wei) error {

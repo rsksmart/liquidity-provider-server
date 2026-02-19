@@ -22,6 +22,7 @@ const (
 	pegoutConfigId  ConfigurationName = "pegout"
 	generalConfigId ConfigurationName = "general"
 	credentialsId   ConfigurationName = "credentials"
+	stateConfigId   ConfigurationName = "state"
 )
 
 type lpMongoRepository struct {
@@ -99,6 +100,22 @@ func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credential
 		Name:   credentialsId,
 	}
 	return upsertConfiguration(dbCtx, repo, configToStore, false)
+}
+
+func (repo *lpMongoRepository) GetStateConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	return getConfigurationVerbose[liquidity_provider.StateConfiguration](dbCtx, repo, stateConfigId)
+}
+
+func (repo *lpMongoRepository) UpsertStateConfiguration(ctx context.Context, configuration entities.Signed[liquidity_provider.StateConfiguration]) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	configToStore := StoredConfiguration[liquidity_provider.StateConfiguration]{
+		Signed: configuration,
+		Name:   stateConfigId,
+	}
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
 }
 
 func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](

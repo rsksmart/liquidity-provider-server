@@ -205,6 +205,17 @@ func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquid
 	return configuration.Value
 }
 
+func (lp *LocalLiquidityProvider) StateConfiguration(ctx context.Context) liquidity_provider.StateConfiguration {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+		return lp.lpRepository.GetStateConfiguration(ctx)
+	})
+	if err != nil {
+		lp.logConfigError("state", err)
+		return liquidity_provider.StateConfiguration{}
+	}
+	return configuration.Value
+}
+
 func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {
 	return lp.signer
 }
