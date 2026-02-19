@@ -81,6 +81,7 @@ const (
 	RecommendedPegoutId            UseCaseId = "RecommendedPegout"
 	RecommendedPeginId             UseCaseId = "RecommendedPegin"
 	TransferExcessToColdWalletId   UseCaseId = "TransferExcessToColdWallet"
+	CheckColdWalletAddressChangeId UseCaseId = "CheckColdWalletAddressChange"
 )
 
 var (

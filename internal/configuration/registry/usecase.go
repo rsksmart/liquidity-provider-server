@@ -81,6 +81,7 @@ type UseCaseRegistry struct {
 	recommendedPegoutUseCase            *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase             *pegin.RecommendedPeginUseCase
 	transferExcessToColdWalletUseCase   *liquidity_provider.TransferExcessToColdWalletUseCase
+	checkColdWalletAddressChangeUseCase *liquidity_provider.CheckColdWalletAddressChangeUseCase
 }
 
 // NewUseCaseRegistry
@@ -388,6 +389,14 @@ func NewUseCaseRegistry(
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),
+		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.ColdWallet,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
 	}
 }
 
@@ -561,4 +570,8 @@ func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeg
 
 func (registry *UseCaseRegistry) TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase {
 	return registry.transferExcessToColdWalletUseCase
+}
+
+func (registry *UseCaseRegistry) CheckColdWalletAddressChangeUseCase() *liquidity_provider.CheckColdWalletAddressChangeUseCase {
+	return registry.checkColdWalletAddressChangeUseCase
 }
