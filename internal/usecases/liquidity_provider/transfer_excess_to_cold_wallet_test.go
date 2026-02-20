@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -38,6 +40,7 @@ const (
 	testExcessAmount                  = "4500000000000000000"  // 4.5 BTC/RBTC (excess: 24.5 - 20)
 	testExcessAmountBelowThreshold    = 1                      // 1 BTC/RBTC (excess: 21 - 20, forced by time)
 	testBtcFeeAmount                  = 50000000000000         // BTC transaction fee in wei
+	testAlertRecipientEmail           = "test-recipient@example.com"
 )
 
 // nolint:funlen
@@ -111,6 +114,12 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC") && strings.Contains(body, btcTxHash)
+	}), mock.MatchedBy(func(recipients []string) bool {
+		return len(recipients) == 1 && recipients[0] == testAlertRecipientEmail
+	})).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -128,6 +137,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -154,6 +165,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 			assert.Equal(t, btcTxHash, event.TxHash) &&
 			assert.Equal(t, btcFee, event.Fee)
 	}))
+	alertSender.AssertExpectations(t)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -247,6 +259,12 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC") && strings.Contains(body, rskTxHash)
+	}), mock.MatchedBy(func(recipients []string) bool {
+		return len(recipients) == 1 && recipients[0] == testAlertRecipientEmail
+	})).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -264,6 +282,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -292,6 +312,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 			assert.Equal(t, rskTxHash, event.TxHash) &&
 			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
 	}))
+	alertSender.AssertExpectations(t)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -399,6 +420,16 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	recipientMatcher := mock.MatchedBy(func(recipients []string) bool {
+		return len(recipients) == 1 && recipients[0] == testAlertRecipientEmail
+	})
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC")
+	}), recipientMatcher).Return(nil).Once()
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC")
+	}), recipientMatcher).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -416,6 +447,8 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -437,6 +470,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	assert.Equal(t, rbtcActualFee.String(), result.RskResult.Fee.String())
 	require.NoError(t, result.RskResult.Error)
 
+	alertSender.AssertExpectations(t)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -501,6 +535,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -518,6 +553,8 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		"",
 	)
 
 	result, err := useCase.Run(ctx)
@@ -538,6 +575,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -626,6 +664,10 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC") && strings.Contains(body, btcTxHash)
+	}), mock.Anything).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -643,6 +685,8 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -664,6 +708,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	assert.Nil(t, result.RskResult.Fee)
 	require.NoError(t, result.RskResult.Error)
 
+	alertSender.AssertExpectations(t)
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -766,6 +811,13 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC")
+	}), mock.Anything).Return(nil).Once()
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC")
+	}), mock.Anything).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -783,6 +835,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -819,6 +873,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 			assert.Equal(t, rskTxHash, event.TxHash) &&
 			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
 	}))
+	alertSender.AssertExpectations(t)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -885,6 +940,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -902,6 +958,8 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -922,6 +980,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1025,6 +1084,13 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC")
+	}), mock.Anything).Return(nil).Once()
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC")
+	}), mock.Anything).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1042,6 +1108,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1078,6 +1146,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 			assert.Equal(t, rbtcTxHash, event.TxHash) &&
 			assert.Equal(t, rbtcActualFee.String(), event.Fee.String())
 	}))
+	alertSender.AssertExpectations(t)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1186,6 +1255,13 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC")
+	}), mock.Anything).Return(nil).Once()
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC")
+	}), mock.Anything).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1203,6 +1279,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1239,6 +1317,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 			assert.Equal(t, btcTxHash, event.TxHash) &&
 			assert.Equal(t, btcFee, event.Fee)
 	}))
+	alertSender.AssertExpectations(t)
 
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
@@ -1277,6 +1356,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1294,6 +1374,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1303,6 +1385,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	assert.Contains(t, err.Error(), "cold wallet not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1332,6 +1415,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1349,6 +1433,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1358,6 +1444,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	assert.Contains(t, err.Error(), "cold wallet not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1398,6 +1485,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1415,6 +1503,8 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1424,6 +1514,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	assert.Contains(t, err.Error(), "max liquidity not configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1474,6 +1565,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1491,6 +1583,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1500,6 +1594,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1551,6 +1646,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1568,6 +1664,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1577,6 +1675,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1628,6 +1727,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1645,6 +1745,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1654,6 +1756,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	assert.Contains(t, err.Error(), "no transfer history configured")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1726,6 +1829,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1743,6 +1847,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1766,6 +1872,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	require.NoError(t, result.RskResult.Error)
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1840,6 +1947,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1857,6 +1965,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1879,6 +1989,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	assert.Contains(t, result.RskResult.Message, "not economical")
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -1938,6 +2049,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -1955,6 +2067,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -1964,6 +2078,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	assert.Contains(t, err.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2024,6 +2139,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2041,6 +2157,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2050,6 +2168,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	assert.Contains(t, err.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2118,6 +2237,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2135,6 +2255,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2152,6 +2274,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2226,6 +2349,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2243,6 +2367,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2260,6 +2386,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	assert.Contains(t, result.BtcResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2326,6 +2453,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2343,6 +2471,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2363,6 +2493,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2437,6 +2568,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2454,6 +2586,8 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2474,6 +2608,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
 
 	eventBus.AssertNotCalled(t, "Publish")
+	alertSender.AssertNotCalled(t, "SendAlert")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
@@ -2564,6 +2699,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	eventBus.On("Publish", mock.Anything).Once()
 	hashMock := &mocks.HashMock{}
 
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC") && strings.Contains(body, btcTxHash)
+	}), mock.Anything).Return(nil).Once()
 	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
 		peginProvider,
 		pegoutProvider,
@@ -2581,6 +2720,8 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 		eventBus,
 		rskWallet,
 		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
 	)
 
 	result, err := useCase.Run(ctx)
@@ -2604,6 +2745,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	require.Error(t, result.RskResult.Error)
 	assert.Contains(t, result.RskResult.Error.Error(), expectedError.Error())
 
+	alertSender.AssertExpectations(t)
 	// Persist is not called when Run returns error (RSK failed)
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
 	rskWallet.AssertNotCalled(t, "SignBytes", mock.Anything)
