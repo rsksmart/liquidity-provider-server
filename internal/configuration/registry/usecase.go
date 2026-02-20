@@ -387,6 +387,8 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			rskRegistry.Wallet,
 			signingHashFunction,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
 		),
 		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
 			databaseRegistry.LiquidityProviderRepository,

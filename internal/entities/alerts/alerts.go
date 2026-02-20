@@ -11,6 +11,7 @@ const (
 	AlertSubjectPegoutOutOfLiquidity = "PegOut: Out of liquidity"
 	AlertSubjectEclipseAttack        = "Node Eclipse Detected"
 	AlertSubjectColdWalletChange     = "Cold wallet address changed"
+	AlertSubjectHotToColdTransfer   = "Hot to cold wallet transfer executed"
 )
 
 type AlertSender interface {
