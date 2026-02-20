@@ -81,61 +81,6 @@ func (_c *PeginContractMock_CallForUser_Call) RunAndReturn(run func(blockchain.T
 	return _c
 }
 
-// DaoFeePercentage provides a mock function with no fields
-func (_m *PeginContractMock) DaoFeePercentage() (uint64, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for DaoFeePercentage")
-	}
-
-	var r0 uint64
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() uint64); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(uint64)
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PeginContractMock_DaoFeePercentage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DaoFeePercentage'
-type PeginContractMock_DaoFeePercentage_Call struct {
-	*mock.Call
-}
-
-// DaoFeePercentage is a helper method to define mock.On call
-func (_e *PeginContractMock_Expecter) DaoFeePercentage() *PeginContractMock_DaoFeePercentage_Call {
-	return &PeginContractMock_DaoFeePercentage_Call{Call: _e.mock.On("DaoFeePercentage")}
-}
-
-func (_c *PeginContractMock_DaoFeePercentage_Call) Run(run func()) *PeginContractMock_DaoFeePercentage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *PeginContractMock_DaoFeePercentage_Call) Return(_a0 uint64, _a1 error) *PeginContractMock_DaoFeePercentage_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PeginContractMock_DaoFeePercentage_Call) RunAndReturn(run func() (uint64, error)) *PeginContractMock_DaoFeePercentage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetAddress provides a mock function with no fields
 func (_m *PeginContractMock) GetAddress() string {
 	ret := _m.Called()
@@ -291,6 +236,64 @@ func (_c *PeginContractMock_HashPeginQuote_Call) Return(_a0 string, _a1 error) *
 }
 
 func (_c *PeginContractMock_HashPeginQuote_Call) RunAndReturn(run func(quote.PeginQuote) (string, error)) *PeginContractMock_HashPeginQuote_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HashPeginQuoteEIP712 provides a mock function with given fields: peginQuote
+func (_m *PeginContractMock) HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error) {
+	ret := _m.Called(peginQuote)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HashPeginQuoteEIP712")
+	}
+
+	var r0 [32]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(quote.PeginQuote) ([32]byte, error)); ok {
+		return rf(peginQuote)
+	}
+	if rf, ok := ret.Get(0).(func(quote.PeginQuote) [32]byte); ok {
+		r0 = rf(peginQuote)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([32]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(quote.PeginQuote) error); ok {
+		r1 = rf(peginQuote)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_HashPeginQuoteEIP712_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HashPeginQuoteEIP712'
+type PeginContractMock_HashPeginQuoteEIP712_Call struct {
+	*mock.Call
+}
+
+// HashPeginQuoteEIP712 is a helper method to define mock.On call
+//   - peginQuote quote.PeginQuote
+func (_e *PeginContractMock_Expecter) HashPeginQuoteEIP712(peginQuote interface{}) *PeginContractMock_HashPeginQuoteEIP712_Call {
+	return &PeginContractMock_HashPeginQuoteEIP712_Call{Call: _e.mock.On("HashPeginQuoteEIP712", peginQuote)}
+}
+
+func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) Run(run func(peginQuote quote.PeginQuote)) *PeginContractMock_HashPeginQuoteEIP712_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(quote.PeginQuote))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) Return(_a0 [32]byte, _a1 error) *PeginContractMock_HashPeginQuoteEIP712_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) RunAndReturn(run func(quote.PeginQuote) ([32]byte, error)) *PeginContractMock_HashPeginQuoteEIP712_Call {
 	_c.Call.Return(run)
 	return _c
 }

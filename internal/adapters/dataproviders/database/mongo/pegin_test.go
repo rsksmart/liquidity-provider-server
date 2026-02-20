@@ -42,7 +42,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      2,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(1341211956000),
-	ProductFeeAmount:   entities.NewWei(1),
+	ChainId:            31,
 }
 
 var testRetainedPeginQuote = quote.RetainedPeginQuote{
@@ -69,7 +69,7 @@ var testPeginCreationData = quote.PeginCreationData{
 
 func TestPeginMongoRepository_InsertQuote(t *testing.T) {
 	t.Run("Insert pegin quote successfully", func(t *testing.T) {
-		const expectedLog = "INSERT interaction with db: {PeginQuote:{FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1} Hash:any value}"
+		const expectedLog = "INSERT interaction with db: {PeginQuote:{FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ChainId:31} Hash:any value}"
 		client, db := getClientAndDatabaseMocks()
 		quoteCollection := &mocks.CollectionBindingMock{}
 		creationDataCollection := &mocks.CollectionBindingMock{}
@@ -131,7 +131,7 @@ func TestPeginMongoRepository_GetQuote(t *testing.T) {
 	client, collection := getClientAndCollectionMocks(mongo.PeginQuoteCollection)
 	log.SetLevel(log.DebugLevel)
 	t.Run("Get pegin quote successfully", func(t *testing.T) {
-		const expectedLog = "READ interaction with db: {FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ProductFeeAmount:1}"
+		const expectedLog = "READ interaction with db: {FedBtcAddress:3LxPz39femVBL278mTiBvgzBNMVFqXssoH LbcAddress:0xAA9cAf1e3967600578727F975F283446A3Da6612 LpRskAddress:0x4202bac9919c3412fc7c8be4e678e26279386603 BtcRefundAddress:171gGjg8NeLUonNSrFmgwkgT1jgqzXR6QX RskRefundAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 LpBtcAddress:17kksixYkbHeLy9okV16kr4eAxVhFkRhP CallFee:100000000000000 PenaltyFee:10000000000000 ContractAddress:0xaD0DE1962ab903E06C725A1b343b7E8950a0Ff82 Data:010203 GasLimit:21000 Nonce:8373381263192041574 Value:8000000000000000 AgreementTimestamp:1727298699 TimeForDeposit:3600 LpCallTime:7200 Confirmations:2 CallOnRegister:true GasFee:1341211956000 ChainId:31}"
 		repo := mongo.NewPeginMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPeginQuote{
@@ -1247,7 +1247,6 @@ func buildPeginAggregationDocument(q quote.PeginQuote, retained quote.RetainedPe
 		{Key: "confirmations", Value: q.Confirmations},
 		{Key: "call_on_register", Value: q.CallOnRegister},
 		{Key: "gas_fee", Value: q.GasFee.String()},
-		{Key: "product_fee_amount", Value: q.ProductFeeAmount.String()},
 		{Key: "hash", Value: retained.QuoteHash},
 		{Key: "retained", Value: bson.D{
 			{Key: "quote_hash", Value: retained.QuoteHash},
@@ -1440,7 +1439,6 @@ func TestPeginMongoRepository_GetQuotesWithRetainedByStateAndDate_ZeroValueNorma
 		{Key: "confirmations", Value: testQuote.Confirmations},
 		{Key: "call_on_register", Value: testQuote.CallOnRegister},
 		{Key: "gas_fee", Value: testQuote.GasFee.String()},
-		{Key: "product_fee_amount", Value: testQuote.ProductFeeAmount.String()},
 		{Key: "hash", Value: "test-hash"},
 		{Key: "retained", Value: bson.D{
 			{Key: "quote_hash", Value: "test-hash"},

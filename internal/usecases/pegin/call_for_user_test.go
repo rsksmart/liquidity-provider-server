@@ -260,7 +260,7 @@ func callForUserRecoverableErrorSetups() []func(caseRetainedQuote *quote.Retaine
 		Confirmations:      10,
 		CallOnRegister:     false,
 		GasFee:             entities.NewWei(500),
-		ProductFeeAmount:   entities.NewWei(100),
+		ChainId:            31,
 	}
 	return []func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, peginContract *mocks.PeginContractMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock){
 		func(caseRetainedQuote *quote.RetainedPeginQuote, rsk *mocks.RootstockRpcServerMock, peginContract *mocks.PeginContractMock, btc *mocks.BtcRpcMock, quoteRepository *mocks.PeginQuoteRepositoryMock, bridge *mocks.BridgeMock) {

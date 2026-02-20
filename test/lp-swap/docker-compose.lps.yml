@@ -32,7 +32,6 @@ services:
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - DAO_FEE_COLLECTOR_ADDRESS
       - KEY_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
@@ -61,6 +60,7 @@ services:
       - ENABLE_SECURITY_HEADERS
       - WALLET
       - SECRET_SRC
+      - ALLOWED_ORIGINS
       - KEYSTORE_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT

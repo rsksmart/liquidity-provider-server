@@ -30,9 +30,9 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 	rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
 	rsk.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil)
 	rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(4600), nil)
+	rsk.EXPECT().ChainId(mock.Anything).Return(31, nil).Once()
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
-	pegoutContract.On("DaoFeePercentage").Return(uint64(100), nil)
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
 	pegoutContract.On("GetAddress").Return(rskAddress)
@@ -55,27 +55,25 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 
 	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
-	getQuoteUseCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet, test.AnyRskAddress)
+	getQuoteUseCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet)
 	createdQuote, err := getQuoteUseCase.Run(context.Background(), request)
 	require.NoError(t, err)
 	t.Run("should be consistent with get pegout quote calculation", func(t *testing.T) {
 		btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2SHZeroAddress, nil).Once()
-		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2SH)
 		require.NoError(t, err)
 		assert.Equal(t, createdQuote.PegoutQuote.Value, result.RecommendedQuoteValue)
 		assert.Equal(t, createdQuote.PegoutQuote.CallFee, result.EstimatedCallFee)
-		assert.Equal(t, createdQuote.PegoutQuote.ProductFeeAmount, result.EstimatedProductFee)
 		assert.Equal(t, createdQuote.PegoutQuote.GasFee, result.EstimatedGasFee)
 	})
 	t.Run("should use P2PKH if no destination type is provided", func(t *testing.T) {
 		btc.On("GetZeroAddress", blockchain.BtcAddressType("p2pkh")).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil).Once()
-		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), "")
 		require.NoError(t, err)
 		assert.Equal(t, createdQuote.PegoutQuote.Value, result.RecommendedQuoteValue)
 		assert.Equal(t, createdQuote.PegoutQuote.CallFee, result.EstimatedCallFee)
-		assert.Equal(t, createdQuote.PegoutQuote.ProductFeeAmount, result.EstimatedProductFee)
 		assert.Equal(t, createdQuote.PegoutQuote.GasFee, result.EstimatedGasFee)
 	})
 	t.Run("should validate that recommended amount is between provider limits", func(t *testing.T) {
@@ -87,7 +85,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		modifiedLimitLp.On("GeneralConfiguration", mock.Anything).Return(getGeneralConfiguration())
 		modifiedLimitLp.On("RskAddress").Return(test.AnyRskAddress)
 		modifiedLimitLp.On("BtcAddress").Return(test.AnyBtcAddress)
-		useCase := pegout.NewRecommendedPegoutUseCase(modifiedLimitLp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		useCase := pegout.NewRecommendedPegoutUseCase(modifiedLimitLp, contracts, rpc, btcWallet, utils.Scale)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
 		require.ErrorIs(t, err, liquidity_provider.AmountOutOfRangeError)
 		assert.Empty(t, result)
@@ -100,7 +98,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		noLiquidityLp.On("RskAddress").Return(test.AnyRskAddress)
 		noLiquidityLp.On("BtcAddress").Return(test.AnyBtcAddress)
 		noLiquidityLp.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(usecases.NoLiquidityError)
-		useCase := pegout.NewRecommendedPegoutUseCase(noLiquidityLp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		useCase := pegout.NewRecommendedPegoutUseCase(noLiquidityLp, contracts, rpc, btcWallet, utils.Scale)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
 		require.ErrorIs(t, err, usecases.NoLiquidityError)
 		assert.Empty(t, result)
@@ -110,7 +108,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		highMinimumBridge := new(mocks.BridgeMock)
 		highMinimumBridge.On("GetMinimumLockTxValue").Return(new(entities.Wei).Add(entities.NewWei(1), createdQuote.PegoutQuote.Total()), nil)
 		contracts.Bridge = highMinimumBridge
-		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
 		require.ErrorIs(t, err, usecases.TxBelowMinimumError)
 		assert.Empty(t, result)
@@ -120,45 +118,26 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, errorSetup := range recommendedPegoutErrorSetups() {
 		pegoutContract := new(mocks.PegoutContractMock)
-		rsk := new(mocks.RootstockRpcServerMock)
 		btc := new(mocks.BtcRpcMock)
 		btcWallet := new(mocks.BitcoinWalletMock)
 		lp := new(mocks.ProviderMock)
 		lp.On("PegoutConfiguration", mock.Anything).Return(getPegoutConfiguration())
 		contracts := blockchain.RskContracts{PegOut: pegoutContract}
-		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
-		errorSetup(pegoutContract, rsk, btc, btcWallet, lp)
-		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		rpc := blockchain.Rpc{Btc: btc}
+		errorSetup(pegoutContract, btc, btcWallet, lp)
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale)
 		result, err := useCase.Run(context.Background(), entities.NewWei(1), blockchain.BtcAddressTypeP2PKH)
 		assert.Empty(t, result)
 		require.Error(t, err)
 	}
 }
 
-func recommendedPegoutErrorSetups() []func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-	return []func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
-		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			pegoutContract.On("DaoFeePercentage").Return(uint64(0), assert.AnError)
-		},
-		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
-			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
-		},
-		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
-			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
-			rsk.EXPECT().GasPrice(mock.Anything).Return(nil, assert.AnError)
-		},
-		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
-			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
-			rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
+func recommendedPegoutErrorSetups() []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+	return []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
+		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
 			btc.On("GetZeroAddress", mock.Anything).Return("", assert.AnError)
 		},
-		func(pegoutContract *mocks.PegoutContractMock, rsk *mocks.RootstockRpcServerMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-			pegoutContract.On("DaoFeePercentage").Return(uint64(10), nil)
-			rsk.EXPECT().EstimateGas(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.NewWei(1), nil)
-			rsk.EXPECT().GasPrice(mock.Anything).Return(entities.NewWei(1), nil)
+		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
 			btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil)
 			btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(blockchain.BtcFeeEstimation{}, assert.AnError)
 		},

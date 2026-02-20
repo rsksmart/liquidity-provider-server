@@ -11,13 +11,14 @@ import (
 )
 
 type Environment struct {
-	LpsStage         string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
-	Port             uint   `env:"SERVER_PORT" validate:"required"`
-	LogLevel         string `env:"LOG_LEVEL" validate:"required"`
-	LogFile          string `env:"LOG_FILE"`
-	AwsLocalEndpoint string `env:"AWS_LOCAL_ENDPOINT"`
-	SecretSource     string `env:"SECRET_SRC" validate:"required,oneof=aws env"`
-	WalletManagement string `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
+	Port             uint     `env:"SERVER_PORT" validate:"required"`
+	LogLevel         string   `env:"LOG_LEVEL" validate:"required"`
+	LogFile          string   `env:"LOG_FILE"`
+	AwsLocalEndpoint string   `env:"AWS_LOCAL_ENDPOINT"`
+	SecretSource     string   `env:"SECRET_SRC" validate:"required,oneof=aws env"`
+	WalletManagement string   `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" validate:"required,dive,url"`
 	Management       ManagementEnv
 	Mongo            MongoEnv
 	Rsk              RskEnv
@@ -48,7 +49,6 @@ type RskEnv struct {
 	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
 	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
-	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
 	// Only if secret source is aws & wallet is native
 	EncryptedJsonSecret         string `env:"KEY_SECRET"`
 	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`

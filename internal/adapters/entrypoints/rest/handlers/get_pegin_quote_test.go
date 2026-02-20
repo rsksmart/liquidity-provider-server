@@ -488,6 +488,6 @@ func createTestPeginQuote() quote.PeginQuote {
 		Confirmations:      6,
 		CallOnRegister:     true,
 		GasFee:             entities.NewWei(50),
-		ProductFeeAmount:   entities.NewWei(25),
+		ChainId:            31,
 	}
 }

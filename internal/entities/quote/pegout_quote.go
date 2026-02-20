@@ -95,7 +95,7 @@ type PegoutQuote struct {
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`
 	ExpireBlock           uint32        `json:"expireBlocks" bson:"expire_blocks" validate:"required"`
 	GasFee                *entities.Wei `json:"gasFee" bson:"gas_fee" validate:"required"`
-	ProductFeeAmount      *entities.Wei `json:"productFeeAmount" bson:"product_fee_amount" validate:""`
+	ChainId               uint64        `json:"chainId" bson:"chain_id" validate:"required"`
 }
 
 func (quote *PegoutQuote) ExpireTime() time.Time {
@@ -120,13 +120,9 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 	if quote.GasFee == nil {
 		quote.GasFee = entities.NewWei(0)
 	}
-	if quote.ProductFeeAmount == nil {
-		quote.ProductFeeAmount = entities.NewWei(0)
-	}
 	total := new(entities.Wei)
 	total.Add(total, quote.Value)
 	total.Add(total, quote.CallFee)
-	total.Add(total, quote.ProductFeeAmount)
 	total.Add(total, quote.GasFee)
 	return total
 }

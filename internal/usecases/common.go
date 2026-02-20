@@ -1,23 +1,18 @@
 package usecases
 
 import (
-	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 	"strconv"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 // used for error logging
@@ -106,7 +101,6 @@ type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei
 	EstimatedGasFee       *entities.Wei
-	EstimatedProductFee   *entities.Wei
 }
 
 type ErrorArgs map[string]string
@@ -137,34 +131,6 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	} else {
 		return fmt.Errorf("%s: %w. Args: %v", useCase, err, args)
 	}
-}
-
-type DaoAmounts struct {
-	DaoGasAmount *entities.Wei
-	DaoFeeAmount *entities.Wei
-}
-
-func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
-	var daoGasAmount *entities.Wei
-	daoFeeAmount := new(entities.Wei)
-	var err error
-	if daoFeePercentage == 0 {
-		return DaoAmounts{
-			DaoFeeAmount: entities.NewWei(0),
-			DaoGasAmount: entities.NewWei(0),
-		}, nil
-	}
-
-	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(utils.Scale))
-	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
-	if err != nil {
-		return DaoAmounts{}, err
-	}
-	return DaoAmounts{
-		DaoFeeAmount: daoFeeAmount,
-		DaoGasAmount: daoGasAmount,
-	}, nil
 }
 
 func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
@@ -243,11 +209,7 @@ func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.Bitco
 
 // RecoverSignerAddress recovers the address from a signature. Important function for the management
 // of trusted accounts.
-func RecoverSignerAddress(quoteHash, signature string) (string, error) {
-	if quoteHash == "" {
-		return "", errors.New("empty hash provided")
-	}
-
+func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, error)) (string, error) {
 	if signature == "" {
 		return "", errors.New("empty signature provided")
 	}
@@ -262,16 +224,6 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
 	}
 
-	hashBytes, err := hex.DecodeString(quoteHash)
-	if err != nil {
-		return "", fmt.Errorf("error decoding hash: %w", err)
-	}
-
-	// Hash should be 32 bytes
-	if len(hashBytes) != 32 {
-		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hashBytes))
-	}
-
 	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
 	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
 	v := signatureBytes[64]
@@ -279,13 +231,14 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		signatureBytes[64] = v - 27
 	}
 
-	// Create the Ethereum prefixed message
-	var buf bytes.Buffer
-	buf.WriteString(EthereumSignedMessagePrefix)
-	buf.Write(hashBytes)
-	prefixedHash := crypto.Keccak256(buf.Bytes())
+	hash, err := getHashFunction()
+	if err != nil {
+		return "", err
+	} else if len(hash) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hash))
+	}
 
-	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	pubKey, err := crypto.Ecrecover(hash, signatureBytes)
 	if err != nil {
 		return "", errors.New("error recovering public key: " + err.Error())
 	}

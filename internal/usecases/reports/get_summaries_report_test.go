@@ -25,20 +25,18 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Quote without retained (not accepted)
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(100000),
-				GasFee:           entities.NewWei(5000),
-				CallFee:          entities.NewWei(1000),
-				ProductFeeAmount: entities.NewWei(500), // This and the following product fees should not be included in the calculations
+				Value:   entities.NewWei(100000),
+				GasFee:  entities.NewWei(5000),
+				CallFee: entities.NewWei(1000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{}, // Empty retained
 		},
 		// Accepted quote waiting for deposit
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(200000),
-				GasFee:           entities.NewWei(10000),
-				CallFee:          entities.NewWei(2000),
-				ProductFeeAmount: entities.NewWei(1000),
+				Value:   entities.NewWei(200000),
+				GasFee:  entities.NewWei(10000),
+				CallFee: entities.NewWei(2000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-1",
@@ -48,10 +46,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Paid quote - CallForUser succeeded
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(300000),
-				GasFee:           entities.NewWei(15000),
-				CallFee:          entities.NewWei(3000),
-				ProductFeeAmount: entities.NewWei(1500),
+				Value:   entities.NewWei(300000),
+				GasFee:  entities.NewWei(15000),
+				CallFee: entities.NewWei(3000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-2",
@@ -61,10 +58,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Paid quote - CallForUser failed
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(150000),
-				GasFee:           entities.NewWei(7500),
-				CallFee:          entities.NewWei(1500),
-				ProductFeeAmount: entities.NewWei(750),
+				Value:   entities.NewWei(150000),
+				GasFee:  entities.NewWei(7500),
+				CallFee: entities.NewWei(1500),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-3",
@@ -74,10 +70,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Refunded quote - RegisterPegIn succeeded
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(250000),
-				GasFee:           entities.NewWei(12500),
-				CallFee:          entities.NewWei(2500),
-				ProductFeeAmount: entities.NewWei(1250),
+				Value:   entities.NewWei(250000),
+				GasFee:  entities.NewWei(12500),
+				CallFee: entities.NewWei(2500),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-4",
@@ -91,20 +86,18 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Quote without retained (not accepted)
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(80000),
-				GasFee:           entities.NewWei(4000),
-				CallFee:          entities.NewWei(800),
-				ProductFeeAmount: entities.NewWei(400),
+				Value:   entities.NewWei(80000),
+				GasFee:  entities.NewWei(4000),
+				CallFee: entities.NewWei(800),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{}, // Empty retained
 		},
 		// Accepted quote waiting for deposit confirmations
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(180000),
-				GasFee:           entities.NewWei(9000),
-				CallFee:          entities.NewWei(1800),
-				ProductFeeAmount: entities.NewWei(900),
+				Value:   entities.NewWei(180000),
+				GasFee:  entities.NewWei(9000),
+				CallFee: entities.NewWei(1800),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{
 				QuoteHash: "pegout-hash-1",
@@ -114,10 +107,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Paid quote - SendPegout succeeded
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(220000),
-				GasFee:           entities.NewWei(11000),
-				CallFee:          entities.NewWei(2200),
-				ProductFeeAmount: entities.NewWei(1100),
+				Value:   entities.NewWei(220000),
+				GasFee:  entities.NewWei(11000),
+				CallFee: entities.NewWei(2200),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{
 				QuoteHash: "pegout-hash-2",
@@ -127,10 +119,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Refunded quote - BridgeTx succeeded
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(350000),
-				GasFee:           entities.NewWei(17500),
-				CallFee:          entities.NewWei(3500),
-				ProductFeeAmount: entities.NewWei(1750),
+				Value:   entities.NewWei(350000),
+				GasFee:  entities.NewWei(17500),
+				CallFee: entities.NewWei(3500),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{
 				QuoteHash: "pegout-hash-3",
@@ -140,10 +131,9 @@ func TestSummariesUseCase_Run_ComprehensiveScenario(t *testing.T) {
 		// Refunded quote - BTC released
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(120000),
-				GasFee:           entities.NewWei(6000),
-				CallFee:          entities.NewWei(1200),
-				ProductFeeAmount: entities.NewWei(600),
+				Value:   entities.NewWei(120000),
+				GasFee:  entities.NewWei(6000),
+				CallFee: entities.NewWei(1200),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{
 				QuoteHash: "pegout-hash-4",
@@ -352,10 +342,9 @@ func TestSummariesUseCase_Run_OnlyAcceptedNotPaidQuotes(t *testing.T) {
 	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(100000),
-				GasFee:           entities.NewWei(5000),
-				CallFee:          entities.NewWei(1000),
-				ProductFeeAmount: entities.NewWei(500),
+				Value:   entities.NewWei(100000),
+				GasFee:  entities.NewWei(5000),
+				CallFee: entities.NewWei(1000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-1",
@@ -364,10 +353,9 @@ func TestSummariesUseCase_Run_OnlyAcceptedNotPaidQuotes(t *testing.T) {
 		},
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(200000),
-				GasFee:           entities.NewWei(10000),
-				CallFee:          entities.NewWei(2000),
-				ProductFeeAmount: entities.NewWei(1000),
+				Value:   entities.NewWei(200000),
+				GasFee:  entities.NewWei(10000),
+				CallFee: entities.NewWei(2000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-2",
@@ -379,10 +367,9 @@ func TestSummariesUseCase_Run_OnlyAcceptedNotPaidQuotes(t *testing.T) {
 	pegoutQuotesWithRetained := []quote.PegoutQuoteWithRetained{
 		{
 			Quote: quote.PegoutQuote{
-				Value:            entities.NewWei(150000),
-				GasFee:           entities.NewWei(7500),
-				CallFee:          entities.NewWei(1500),
-				ProductFeeAmount: entities.NewWei(750),
+				Value:   entities.NewWei(150000),
+				GasFee:  entities.NewWei(7500),
+				CallFee: entities.NewWei(1500),
 			},
 			RetainedQuote: quote.RetainedPegoutQuote{
 				QuoteHash: "pegout-hash-1",
@@ -469,10 +456,9 @@ func TestSummariesUseCase_Run_WithMultiplePenalizations(t *testing.T) {
 	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(100000),
-				GasFee:           entities.NewWei(5000),
-				CallFee:          entities.NewWei(1000),
-				ProductFeeAmount: entities.NewWei(500),
+				Value:   entities.NewWei(100000),
+				GasFee:  entities.NewWei(5000),
+				CallFee: entities.NewWei(1000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-1",
@@ -481,10 +467,9 @@ func TestSummariesUseCase_Run_WithMultiplePenalizations(t *testing.T) {
 		},
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(200000),
-				GasFee:           entities.NewWei(10000),
-				CallFee:          entities.NewWei(2000),
-				ProductFeeAmount: entities.NewWei(1000),
+				Value:   entities.NewWei(200000),
+				GasFee:  entities.NewWei(10000),
+				CallFee: entities.NewWei(2000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-2",
@@ -717,10 +702,9 @@ func TestSummariesUseCase_Run_ErrorFetchingPenalizations(t *testing.T) {
 	peginQuotesWithRetained := []quote.PeginQuoteWithRetained{
 		{
 			Quote: quote.PeginQuote{
-				Value:            entities.NewWei(100000),
-				GasFee:           entities.NewWei(5000),
-				CallFee:          entities.NewWei(1000),
-				ProductFeeAmount: entities.NewWei(500),
+				Value:   entities.NewWei(100000),
+				GasFee:  entities.NewWei(5000),
+				CallFee: entities.NewWei(1000),
 			},
 			RetainedQuote: quote.RetainedPeginQuote{
 				QuoteHash: "pegin-hash-1",
