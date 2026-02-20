@@ -117,7 +117,7 @@ LOCALSTACK_HOME="${LOCALSTACK_HOME:-./volumes/localstack}"
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'"
 
 # start bitcoind and RSKJ dependant services
-docker compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
+docker compose --env-file "$ENV_FILE" up -d --remove-orphans bitcoind rskj mongodb localstack
 
 # shellcheck disable=SC1090
 . ./"$ENV_FILE"
@@ -169,11 +169,26 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 
   if [ -z "${LBC_ADDR}" ]; then
     echo "LBC_ADDR is not set. Deploying LBC contract..."
+    # Remove stale deployer container bound to a deleted network.
+    docker rm -f lbc-deployer01 >/dev/null 2>&1 || true
 
     # deploy LBC contracts to RSKJ
-    LBC_ADDR_LINE=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer | grep LBC_ADDR | head -n 1 | tr -d '\r')
-    LBC_ADDR=$(echo "${LBC_ADDR_LINE#"LBC_ADDR="}" | awk -F= '{print tolower($2)}')
+    LBC_ADDR=$(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lbc-deployer.yml up lbc-deployer \
+      | sed -n -E 's/.*(LBC_ADDR|LBC_ADDRESS)=(0x[0-9a-fA-F]{40}).*/\2/p; s/.*with address: (0x[0-9a-fA-F]{40}).*/\1/p' \
+      | head -n 1 \
+      | tr '[:upper:]' '[:lower:]' \
+      | tr -d '\r')
+    if [ -z "${LBC_ADDR}" ]; then
+      echo "Failed to parse LBC_ADDR from lbc-deployer output"
+      exit 1
+    fi
     export LBC_ADDR
+    if grep -q "^LBC_ADDR=" "$ENV_FILE"; then
+      "${SED_INPLACE[@]}" "s/^LBC_ADDR=.*/LBC_ADDR=${LBC_ADDR}/" "$ENV_FILE"
+    else
+      echo "LBC_ADDR=${LBC_ADDR}" >> "$ENV_FILE"
+    fi
+    echo "Updated $ENV_FILE with LBC_ADDR=$LBC_ADDR"
   fi
 fi
 
