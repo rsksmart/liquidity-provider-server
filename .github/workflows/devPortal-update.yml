@@ -16,21 +16,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      # Step 1: Clone the Devportal Repository
+      # Step 1: Generate GitHub App Token
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: rsksmart
+          repositories: devportal
+
+      # Step 2: Clone the Devportal Repository
       - name: Clone Devportal Repository
-        env:
-          GITHUB_TOKEN: ${{ secrets.DEVPORTAL_DOCS_UPDATE_TOKEN }}
         run: |
           TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
           BRANCH_NAME="update-from-lps-${TIMESTAMP}"
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
 
-          git clone https://github.com/rsksmart/devportal.git
+          git clone https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/rsksmart/devportal.git
           cd devportal
           git checkout -b ${BRANCH_NAME} || git checkout ${BRANCH_NAME}
           cd ..
 
-      # Step 2: Transform Each File and Copy to Devportal Repository
+      # Step 3: Transform Each File and Copy to Devportal Repository
       - name: Transform Files for Devportal
         run: |
           set -e
@@ -232,27 +240,23 @@ jobs:
           rm ${TEMP_FILE}
           cp ${TRANSFORMED_FILE} ${BASE_DST}/trusted-accounts.md
 
-      # Step 3: Commit and Push Changes to Devportal Repository
+      # Step 4: Commit and Push Changes to Devportal Repository
       - name: Commit and Push Changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.DEVPORTAL_DOCS_UPDATE_TOKEN }}
         run: |
           cd devportal
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/02-developers/06-integrate/02-flyover/
           git commit -m "Automated update from Liquidity Provider Server repository"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/rsksmart/devportal.git
+          git remote set-url origin https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/rsksmart/devportal.git
           git push -f origin ${BRANCH_NAME}
 
-      # Step 4: Create a Pull Request in the Devportal Repository
+      # Step 5: Create a Pull Request in the Devportal Repository
       - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.DEVPORTAL_DOCS_UPDATE_TOKEN }}
         run: |
           cd devportal
           curl -L -X POST -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.DEVPORTAL_DOCS_UPDATE_TOKEN }}" \
+          -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
           https://api.github.com/repos/rsksmart/devportal/pulls \
           -d "{\"title\":\"Liquidity-provider-server automated update of documentation ${BRANCH_NAME}\",\"body\":\"This PR updates the Devportal documentation with the latest changes from the Liquidity Provider Server repository.\",\"head\":\"${BRANCH_NAME}\",\"base\":\"main\"}"
