@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"slices"
 
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 var (
