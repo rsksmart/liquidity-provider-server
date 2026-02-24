@@ -89,6 +89,7 @@ func NewWatcherRegistry(
 		),
 		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(
 			useCaseRegistry.liquidityCheckUseCase,
+			useCaseRegistry.lowLiquidityAlertUseCase,
 			tickers.LiquidityCheckTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),
@@ -134,11 +135,11 @@ func NewWatcherRegistry(
 			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
 		),
-	TransferColdWalletWatcher: watcher.NewTransferColdWalletWatcher(
-		useCaseRegistry.TransferExcessToColdWalletUseCase(),
-		tickers.TransferColdWalletTicker,
-		timeouts.WatcherValidation.Seconds(),
-	),
+		TransferColdWalletWatcher: watcher.NewTransferColdWalletWatcher(
+			useCaseRegistry.TransferExcessToColdWalletUseCase(),
+			tickers.TransferColdWalletTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
 		ColdWalletMetricsWatcher: monitoring.NewColdWalletMetricsWatcher(
 			appMetrics,
 			messaging.EventBus,
