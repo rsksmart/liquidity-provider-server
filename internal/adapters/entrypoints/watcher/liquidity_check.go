@@ -2,30 +2,34 @@ package watcher
 
 import (
 	"context"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type LiquidityCheckWatcher struct {
-	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase
-	watcherStopChannel    chan bool
-	ticker                utils.Ticker
-	validationTimeout     time.Duration
+	checkLiquidityUseCase    *liquidity_provider.CheckLiquidityUseCase
+	lowLiquidityAlertUseCase *liquidity_provider.LowLiquidityAlertUseCase
+	watcherStopChannel       chan bool
+	ticker                   utils.Ticker
+	validationTimeout        time.Duration
 }
 
 func NewLiquidityCheckWatcher(
 	checkLiquidityUseCase *liquidity_provider.CheckLiquidityUseCase,
+	lowLiquidityAlertUseCase *liquidity_provider.LowLiquidityAlertUseCase,
 	ticker utils.Ticker,
 	validationTimeout time.Duration,
 ) *LiquidityCheckWatcher {
 	watcherStopChannel := make(chan bool, 1)
 	return &LiquidityCheckWatcher{
-		checkLiquidityUseCase: checkLiquidityUseCase,
-		watcherStopChannel:    watcherStopChannel,
-		ticker:                ticker,
-		validationTimeout:     validationTimeout,
+		checkLiquidityUseCase:    checkLiquidityUseCase,
+		lowLiquidityAlertUseCase: lowLiquidityAlertUseCase,
+		watcherStopChannel:       watcherStopChannel,
+		ticker:                   ticker,
+		validationTimeout:        validationTimeout,
 	}
 }
 
@@ -45,6 +49,9 @@ watcherLoop:
 			ctx, cancel := context.WithTimeout(context.Background(), watcher.validationTimeout)
 			if err := watcher.checkLiquidityUseCase.Run(ctx); err != nil {
 				log.Error("Error checking liquidity inside watcher: ", err)
+			}
+			if err := watcher.lowLiquidityAlertUseCase.Run(ctx); err != nil {
+				log.Error("Error checking low liquidity inside watcher: ", err)
 			}
 			cancel()
 		case <-watcher.watcherStopChannel:

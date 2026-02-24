@@ -82,6 +82,7 @@ const (
 	RecommendedPeginId             UseCaseId = "RecommendedPegin"
 	TransferExcessToColdWalletId   UseCaseId = "TransferExcessToColdWallet"
 	CheckColdWalletAddressChangeId UseCaseId = "CheckColdWalletAddressChange"
+	LowLiquidityAlertId            UseCaseId = "LowLiquidityAlert"
 )
 
 var (
