@@ -6,12 +6,14 @@ import "context"
 // Changing one of these constants impacts the external alerting system and there is not an automatic way
 // to identify that error.
 const (
-	AlertSubjectPenalization         = "LPS has been penalized"
-	AlertSubjectPeginOutOfLiquidity  = "PegIn: Out of liquidity"
-	AlertSubjectPegoutOutOfLiquidity = "PegOut: Out of liquidity"
-	AlertSubjectEclipseAttack        = "Node Eclipse Detected"
-	AlertSubjectColdWalletChange     = "Cold wallet address changed"
-	AlertSubjectHotToColdTransfer   = "Hot to cold wallet transfer executed"
+	AlertSubjectPenalization                  = "LPS has been penalized"
+	AlertSubjectPeginOutOfLiquidity           = "PegIn: Out of liquidity"
+	AlertSubjectPegoutOutOfLiquidity          = "PegOut: Out of liquidity"
+	AlertSubjectEclipseAttack                 = "Node Eclipse Detected"
+	AlertSubjectColdWalletChange              = "Cold wallet address changed"
+	AlertSubjectHotToColdTransfer             = "Hot to cold wallet transfer executed"
+	AlertSubjectHotWalletLowLiquidityWarning  = "Hot wallet: Low liquidity, refill recommended"
+	AlertSubjectHotWalletLowLiquidityCritical = "Hot wallet: Critical low liquidity, refill required"
 )
 
 type AlertSender interface {
