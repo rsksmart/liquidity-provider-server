@@ -118,59 +118,86 @@ async function loadPendingTransactions() {
     }
 }
 
-// Render pending transactions table
+function createEmptyRow(colspan, message) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = colspan;
+    td.className = 'text-center text-muted py-4';
+    td.textContent = message;
+    tr.appendChild(td);
+    return tr;
+}
+
+function createBadgeCell(text, badgeClass) {
+    const td = document.createElement('td');
+    const span = document.createElement('span');
+    span.className = `badge ${badgeClass}`;
+    span.textContent = text;
+    td.appendChild(span);
+    return td;
+}
+
+function createMonospaceCell(text) {
+    const td = document.createElement('td');
+    const small = document.createElement('small');
+    small.className = 'font-monospace';
+    small.textContent = text;
+    td.appendChild(small);
+    return td;
+}
+
+function createTextCell(text) {
+    const td = document.createElement('td');
+    td.textContent = text;
+    return td;
+}
+
 function renderPendingTable(transactions) {
     const tbody = document.getElementById('pendingTableBody');
+    tbody.replaceChildren();
     
     if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center text-muted py-4">
-                    No pending transactions found
-                </td>
-            </tr>
-        `;
+        tbody.appendChild(createEmptyRow(8, 'No pending transactions found'));
         return;
     }
     
-    tbody.innerHTML = transactions.map(tx => `
-        <tr>
-            <td>
-                <input type="checkbox" class="form-check-input tx-checkbox" value="${tx.txId}" 
-                    ${selectedTxIds.has(tx.txId) ? 'checked' : ''}>
-            </td>
-            <td>
-                <span class="badge ${tx.type === 'pegin' ? 'bg-primary' : 'bg-info'}">${tx.type}</span>
-            </td>
-            <td>
-                <small class="font-monospace">${truncateHash(tx.quoteHash)}</small>
-            </td>
-            <td>${formatDate(tx.date)}</td>
-            <td>${weiToEther(tx.amount)} ${tx.type === 'pegin' ? 'BTC' : 'rBTC'}</td>
-            <td>
-                <span class="badge bg-secondary status-badge">${tx.state}</span>
-            </td>
-            <td>
-                <small class="font-monospace">${truncateHash(tx.userAddress)}</small>
-            </td>
-            <td>
-                <button class="btn btn-success btn-sm" onclick="window.approveOne('${tx.txId}')">
-                    Approve
-                </button>
-                <button class="btn btn-danger btn-sm" onclick="window.denyOne('${tx.txId}')">
-                    Deny
-                </button>
-            </td>
-        </tr>
-    `).join('');
-    
-    // Re-attach checkbox event listeners
-    document.querySelectorAll('.tx-checkbox').forEach(checkbox => {
+    for (const tx of transactions) {
+        const tr = document.createElement('tr');
+
+        const checkboxTd = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input tx-checkbox';
+        checkbox.value = tx.txId;
+        checkbox.checked = selectedTxIds.has(tx.txId);
         checkbox.addEventListener('change', handleCheckboxChange);
-    });
+        checkboxTd.appendChild(checkbox);
+        tr.appendChild(checkboxTd);
+
+        tr.appendChild(createBadgeCell(tx.type, tx.type === 'pegin' ? 'bg-primary' : 'bg-info'));
+        tr.appendChild(createMonospaceCell(truncateHash(tx.quoteHash)));
+        tr.appendChild(createTextCell(formatDate(tx.date)));
+        tr.appendChild(createTextCell(`${weiToEther(tx.amount)} ${tx.type === 'pegin' ? 'BTC' : 'rBTC'}`));
+        tr.appendChild(createBadgeCell(tx.state, 'bg-secondary status-badge'));
+        tr.appendChild(createMonospaceCell(truncateHash(tx.userAddress)));
+
+        const actionsTd = document.createElement('td');
+        const approveBtn = document.createElement('button');
+        approveBtn.className = 'btn btn-success btn-sm';
+        approveBtn.textContent = 'Approve';
+        approveBtn.addEventListener('click', () => showActionModal('approve', [tx.txId]));
+        const denyBtn = document.createElement('button');
+        denyBtn.className = 'btn btn-danger btn-sm';
+        denyBtn.textContent = 'Deny';
+        denyBtn.addEventListener('click', () => showActionModal('deny', [tx.txId]));
+        actionsTd.appendChild(approveBtn);
+        actionsTd.appendChild(denyBtn);
+        tr.appendChild(actionsTd);
+
+        tbody.appendChild(tr);
+    }
 }
 
-// Render pending pagination
 function renderPendingPagination(totalCount) {
     const totalPages = Math.ceil(totalCount / perPage);
     const paginationContainer = document.getElementById('pendingPagination');
@@ -180,10 +207,10 @@ function renderPendingPagination(totalCount) {
     document.getElementById('pendingPaginationInfo').textContent = 
         `Showing ${start}-${end} of ${totalCount}`;
     
-    paginationContainer.innerHTML = renderPaginationButtons(currentPendingPage, totalPages, (page) => {
+    paginationContainer.replaceChildren(renderPaginationButtons(currentPendingPage, totalPages, (page) => {
         currentPendingPage = page;
         loadPendingTransactions();
-    });
+    }));
 }
 
 // Load history records
@@ -220,43 +247,28 @@ async function loadHistoryRecords() {
     }
 }
 
-// Render history table
 function renderHistoryTable(records) {
     const tbody = document.getElementById('historyTableBody');
+    tbody.replaceChildren();
     
     if (!records || records.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center text-muted py-4">
-                    No history records found
-                </td>
-            </tr>
-        `;
+        tbody.appendChild(createEmptyRow(7, 'No history records found'));
         return;
     }
     
-    tbody.innerHTML = records.map(record => `
-        <tr>
-            <td>
-                <span class="badge ${record.type === 'pegin' ? 'bg-primary' : 'bg-info'}">${record.type}</span>
-            </td>
-            <td>
-                <small class="font-monospace">${truncateHash(record.quoteHash)}</small>
-            </td>
-            <td>${formatDate(record.date)}</td>
-            <td>${weiToEther(record.amount)} ${record.type === 'pegin' ? 'BTC' : 'rBTC'}</td>
-            <td>
-                <span class="badge ${record.decision === 'approved' ? 'bg-success' : 'bg-danger'} status-badge">
-                    ${record.decision}
-                </span>
-            </td>
-            <td>${record.approvedOrDeniedBy}</td>
-            <td>${formatDate(record.decisionDate)}</td>
-        </tr>
-    `).join('');
+    for (const record of records) {
+        const tr = document.createElement('tr');
+        tr.appendChild(createBadgeCell(record.type, record.type === 'pegin' ? 'bg-primary' : 'bg-info'));
+        tr.appendChild(createMonospaceCell(truncateHash(record.quoteHash)));
+        tr.appendChild(createTextCell(formatDate(record.date)));
+        tr.appendChild(createTextCell(`${weiToEther(record.amount)} ${record.type === 'pegin' ? 'BTC' : 'rBTC'}`));
+        tr.appendChild(createBadgeCell(record.decision, `${record.decision === 'approved' ? 'bg-success' : 'bg-danger'} status-badge`));
+        tr.appendChild(createTextCell(record.approvedOrDeniedBy));
+        tr.appendChild(createTextCell(formatDate(record.decisionDate)));
+        tbody.appendChild(tr);
+    }
 }
 
-// Render history pagination
 function renderHistoryPagination(totalCount) {
     const totalPages = Math.ceil(totalCount / perPage);
     const paginationContainer = document.getElementById('historyPagination');
@@ -266,77 +278,66 @@ function renderHistoryPagination(totalCount) {
     document.getElementById('historyPaginationInfo').textContent = 
         `Showing ${start}-${end} of ${totalCount}`;
     
-    paginationContainer.innerHTML = renderPaginationButtons(currentHistoryPage, totalPages, (page) => {
+    paginationContainer.replaceChildren(renderPaginationButtons(currentHistoryPage, totalPages, (page) => {
         currentHistoryPage = page;
         loadHistoryRecords();
-    });
+    }));
 }
 
-// Generic pagination button renderer
 function renderPaginationButtons(currentPage, totalPages, onPageChange) {
-    if (totalPages <= 1) return '';
-    
-    let html = '';
-    
-    // Previous button
-    html += `
-        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
-        </li>
-    `;
-    
-    // Page numbers
+    const fragment = document.createDocumentFragment();
+    if (totalPages <= 1) return fragment;
+
+    function createPageItem(label, page, options = {}) {
+        const li = document.createElement('li');
+        li.className = 'page-item';
+        if (options.disabled) li.classList.add('disabled');
+        if (options.active) li.classList.add('active');
+
+        const link = document.createElement(options.disabled && !page ? 'span' : 'a');
+        link.className = 'page-link';
+        link.textContent = label;
+        if (link.tagName === 'A') {
+            link.href = '#';
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!options.disabled && page != null) onPageChange(page);
+            });
+        }
+        li.appendChild(link);
+        return li;
+    }
+
+    fragment.appendChild(createPageItem('Previous', currentPage - 1, { disabled: currentPage === 1 }));
+
     const maxButtons = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-    
     if (endPage - startPage < maxButtons - 1) {
         startPage = Math.max(1, endPage - maxButtons + 1);
     }
-    
+
     if (startPage > 1) {
-        html += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+        fragment.appendChild(createPageItem('1', 1));
         if (startPage > 2) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            fragment.appendChild(createPageItem('...', null, { disabled: true }));
         }
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
-        html += `
-            <li class="page-item ${i === currentPage ? 'active' : ''}">
-                <a class="page-link" href="#" data-page="${i}">${i}</a>
-            </li>
-        `;
+        fragment.appendChild(createPageItem(String(i), i, { active: i === currentPage }));
     }
-    
+
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            fragment.appendChild(createPageItem('...', null, { disabled: true }));
         }
-        html += `<li class="page-item"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`;
+        fragment.appendChild(createPageItem(String(totalPages), totalPages));
     }
-    
-    // Next button
-    html += `
-        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
-        </li>
-    `;
-    
-    // Attach click handlers
-    setTimeout(() => {
-        document.querySelectorAll('#pendingPagination .page-link, #historyPagination .page-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = parseInt(e.target.getAttribute('data-page'));
-                if (!isNaN(page)) {
-                    onPageChange(page);
-                }
-            });
-        });
-    }, 0);
-    
-    return html;
+
+    fragment.appendChild(createPageItem('Next', currentPage + 1, { disabled: currentPage === totalPages }));
+
+    return fragment;
 }
 
 // Handle select all checkbox
@@ -404,26 +405,22 @@ function handleBulkAction(action) {
     showActionModal(action, txIds);
 }
 
-// Approve single transaction
-window.approveOne = (txId) => {
-    showActionModal('approve', [txId]);
-};
-
-// Deny single transaction
-window.denyOne = (txId) => {
-    showActionModal('deny', [txId]);
-};
-
-// Show approve/deny modal
 function showActionModal(action, txIds) {
     const modalId = action === 'approve' ? 'approveModal' : 'denyModal';
     const countEl = document.getElementById(`${action}Count`);
     const listEl = document.getElementById(`${action}TxList`);
     
     countEl.textContent = txIds.length;
-    listEl.innerHTML = txIds.map(txId => `<li><small class="font-monospace">${txId}</small></li>`).join('');
+    listEl.replaceChildren();
+    for (const txId of txIds) {
+        const li = document.createElement('li');
+        const small = document.createElement('small');
+        small.className = 'font-monospace';
+        small.textContent = txId;
+        li.appendChild(small);
+        listEl.appendChild(li);
+    }
     
-    // Store txIds for confirmation
     window.currentActionTxIds = txIds;
     window.currentAction = action;
     
@@ -441,40 +438,47 @@ async function confirmDeny() {
     await executeAction('deny', window.currentActionTxIds);
 }
 
-// Execute approve/deny action
+function setConfirmButtonLoading(button) {
+    button.disabled = true;
+    button.replaceChildren();
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner-border spinner-border-sm';
+    spinner.setAttribute('role', 'status');
+    button.appendChild(spinner);
+    button.appendChild(document.createTextNode(' Processing...'));
+}
+
+function resetConfirmButton(button, action) {
+    button.disabled = false;
+    button.replaceChildren();
+    const icon = document.createElement('i');
+    icon.className = `bi bi-${action === 'approve' ? 'check' : 'x'}-circle`;
+    button.appendChild(icon);
+    button.appendChild(document.createTextNode(` Confirm ${action === 'approve' ? 'Approval' : 'Denial'}`));
+}
+
 async function executeAction(action, txIds) {
+    const confirmButton = document.getElementById(`confirm${action === 'approve' ? 'Approve' : 'Deny'}Button`);
     try {
-        // Disable buttons
-        const confirmButton = document.getElementById(`confirm${action === 'approve' ? 'Approve' : 'Deny'}Button`);
-        confirmButton.disabled = true;
-        confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processing...';
+        setConfirmButtonLoading(confirmButton);
         
         const endpoint = `/management/manual-approval/${action}`;
         await fetchWithCsrf(endpoint, 'POST', { txIds });
         
-        // Close modal
         const modalId = action === 'approve' ? 'approveModal' : 'denyModal';
         const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
         modal.hide();
         
-        // Show success toast
         showToast(`Successfully ${action}ed ${txIds.length} transaction(s)`, true);
         
-        // Clear selection and reload
         clearSelection();
         loadPendingTransactions();
         
-        // Reset button
-        confirmButton.disabled = false;
-        confirmButton.innerHTML = `<i class="bi bi-${action === 'approve' ? 'check' : 'x'}-circle"></i> Confirm ${action === 'approve' ? 'Approval' : 'Denial'}`;
+        resetConfirmButton(confirmButton, action);
     } catch (error) {
         console.error(`Error ${action}ing transactions:`, error);
         showToast(`Failed to ${action} transactions`, false);
-        
-        // Reset button
-        const confirmButton = document.getElementById(`confirm${action === 'approve' ? 'Approve' : 'Deny'}Button`);
-        confirmButton.disabled = false;
-        confirmButton.innerHTML = `<i class="bi bi-${action === 'approve' ? 'check' : 'x'}-circle"></i> Confirm ${action === 'approve' ? 'Approval' : 'Denial'}`;
+        resetConfirmButton(confirmButton, action);
     }
 }
 
