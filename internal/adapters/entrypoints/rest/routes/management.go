@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 	IconPath           = "/favicon.ico"
 )
 
-var AllowedPaths = [...]string{LoginPath, UiPath, ManualApprovalPath, StaticPath, IconPath}
+var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
@@ -178,25 +179,25 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		{
 			Path:    ManualApprovalPath,
 			Method:  http.MethodGet,
-			Handler: handlers.NewManualApprovalPageHandler(env.Management, store),
+			Handler: handlers.NewManagementInterfaceHandler(env.Management, store, useCaseRegistry.GetManagementUiDataUseCase(), liquidity_provider.ManagementManualApprovalTemplate),
 		},
 		{
-			Path:    "/management/manual-approval/pending",
+			Path:    ManualApprovalPath + "/pending",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetPendingTransactionsHandler(),
 		},
 		{
-			Path:    "/management/manual-approval/history",
+			Path:    ManualApprovalPath + "/history",
 			Method:  http.MethodGet,
 			Handler: handlers.NewGetHistoryHandler(),
 		},
 		{
-			Path:    "/management/manual-approval/approve",
+			Path:    ManualApprovalPath + "/approve",
 			Method:  http.MethodPost,
 			Handler: handlers.NewApproveTransactionsHandler(),
 		},
 		{
-			Path:    "/management/manual-approval/deny",
+			Path:    ManualApprovalPath + "/deny",
 			Method:  http.MethodPost,
 			Handler: handlers.NewDenyTransactionsHandler(),
 		},
