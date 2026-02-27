@@ -69,6 +69,9 @@ These are the environment variables required by the liquidity provider server (L
 | `ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK` | Number of milliseconds that the LPS will wait for our BTC node to catch up with the external datasources before assuming the node is eclipsed | `1000` | No |
 | `ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL` | Polling interval in ms to check our BTC node when is out of sync with the external data sources | `500` | No |
 | `ECLIPSE_ALERT_COOLDOWN_SECONDS` | Number of seconds after an eclipsed node detection that the watcher will wait to start checking again | `3600` | No |
+| `BTC_MIN_TRANSFER_FEE_MULTIPLIER` | It is a plain number meaning the minimum multiplier for BTC transfers to cold wallet to be considered economical (transfer amount must be >= fee * multiplier) | `5` | No |
+| `RBTC_MIN_TRANSFER_FEE_MULTIPLIER` | It is a plain number meaning the minimum multiplier for RBTC transfers to cold wallet to be considered economical (transfer amount must be >= fee * multiplier) | `100` | No |
+| `COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS` | Number of seconds after which excess liquidity will be transferred to cold wallet even if below threshold | `1209600` (2 weeks) | No |
 
 ## AWS variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.

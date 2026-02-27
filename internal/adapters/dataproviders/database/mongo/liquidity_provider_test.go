@@ -3,6 +3,9 @@ package mongo_test
 import (
 	"context"
 
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -16,8 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDb "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"testing"
-	"time"
 )
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
@@ -82,6 +83,20 @@ var testCredentials = &entities.Signed[liquidity_provider.HashedCredentials]{
 	},
 	Signature: "credentials signature",
 	Hash:      "credentials hash",
+}
+
+var (
+	lastBtcToColdWalletTransferUnix  = time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+	lastRbtcToColdWalletTransferUnix = time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+)
+
+var testStateConfig = &entities.Signed[liquidity_provider.StateConfiguration]{
+	Value: liquidity_provider.StateConfiguration{
+		LastBtcToColdWalletTransfer:  lastBtcToColdWalletTransferUnix,
+		LastRbtcToColdWalletTransfer: lastRbtcToColdWalletTransferUnix,
+	},
+	Signature: "state signature",
+	Hash:      "state hash",
 }
 
 func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
@@ -326,6 +341,64 @@ func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 		err := repo.UpsertCredentials(context.Background(), *testCredentials)
+		require.Error(t, err)
+	})
+}
+
+func TestLpMongoRepository_GetStateConfiguration(t *testing.T) {
+	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("state")}}
+	log.SetLevel(log.DebugLevel)
+	t.Run("state configuration read successfully", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("FindOne", mock.Anything, filter).
+			Return(mongoDb.NewSingleResultFromDocument(testStateConfig, nil, nil)).Once()
+		result, err := repo.GetStateConfiguration(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, testStateConfig, result)
+	})
+	t.Run("state configuration not found", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("FindOne", mock.Anything, filter).
+			Return(
+				mongoDb.NewSingleResultFromDocument(entities.Signed[liquidity_provider.StateConfiguration]{}, mongoDb.ErrNoDocuments, nil),
+			).Once()
+		result, err := repo.GetStateConfiguration(context.Background())
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("Db error reading state configuration", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("FindOne", mock.Anything, filter).Return(mongoDb.NewSingleResultFromDocument(nil, assert.AnError, nil)).Once()
+		result, err := repo.GetStateConfiguration(context.Background())
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestLpMongoRepository_UpsertStateConfiguration(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	configName := mongo.ConfigurationName("state")
+	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	t.Run("state configuration upserted successfully", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.StateConfiguration]{
+			Signed: *testStateConfig,
+			Name:   configName,
+		}, options.Replace().SetUpsert(true)).
+			Return(nil, nil).Once()
+		err := repo.UpsertStateConfiguration(context.Background(), *testStateConfig)
+		require.NoError(t, err)
+	})
+	t.Run("Db error upserting state configuration", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
+		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
+		collection.On("ReplaceOne", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, assert.AnError).Once()
+		err := repo.UpsertStateConfiguration(context.Background(), *testStateConfig)
 		require.Error(t, err)
 	})
 }

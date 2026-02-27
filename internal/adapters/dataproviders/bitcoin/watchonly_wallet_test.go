@@ -296,6 +296,17 @@ func TestWatchOnlyWallet_Unlock(t *testing.T) {
 	require.ErrorContains(t, err, "watch-only wallet does not support unlocking as it only has monitoring purposes")
 }
 
+func TestWatchOnlyWallet_Send(t *testing.T) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+	wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+	require.NoError(t, err)
+	result, err := wallet.Send("address", nil)
+	require.ErrorContains(t, err, "cannot send from a watch-only wallet")
+	require.Empty(t, result.Hash)
+	require.Nil(t, result.Fee)
+}
+
 func TestWatchOnlyWallet_SendWithOpReturn(t *testing.T) {
 	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()

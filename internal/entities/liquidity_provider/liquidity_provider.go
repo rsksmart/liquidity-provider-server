@@ -72,6 +72,7 @@ type LiquidityProvider interface {
 	BtcAddress() string
 	SignQuote(quoteHash string) (string, error)
 	GeneralConfiguration(ctx context.Context) GeneralConfiguration
+	StateConfiguration(ctx context.Context) (StateConfiguration, error)
 	GetSigner() entities.Signer
 }
 
@@ -96,6 +97,8 @@ type LiquidityProviderRepository interface {
 	UpsertGeneralConfiguration(ctx context.Context, configuration entities.Signed[GeneralConfiguration]) error
 	GetCredentials(ctx context.Context) (*entities.Signed[HashedCredentials], error)
 	UpsertCredentials(ctx context.Context, credentials entities.Signed[HashedCredentials]) error
+	GetStateConfiguration(ctx context.Context) (*entities.Signed[StateConfiguration], error)
+	UpsertStateConfiguration(ctx context.Context, configuration entities.Signed[StateConfiguration]) error
 }
 
 type RegisteredLiquidityProvider struct {
