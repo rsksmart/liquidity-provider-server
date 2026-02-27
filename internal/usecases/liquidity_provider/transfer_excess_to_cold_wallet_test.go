@@ -88,10 +88,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -222,10 +222,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -366,10 +366,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -490,10 +490,10 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -603,10 +603,10 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -733,10 +733,10 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferUnix,
-		LastRbtcToColdWalletTransfer: &oldTransferUnix,
+		LastBtcToColdWalletTransfer:  oldTransferUnix,
+		LastRbtcToColdWalletTransfer: oldTransferUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -874,10 +874,10 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferUnix,
-		LastRbtcToColdWalletTransfer: &oldTransferUnix,
+		LastBtcToColdWalletTransfer:  oldTransferUnix,
+		LastRbtcToColdWalletTransfer: oldTransferUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -995,10 +995,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  oldTransferUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -1156,10 +1156,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &oldTransferUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: oldTransferUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -1466,10 +1466,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  nil,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  0,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
@@ -1543,10 +1543,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: nil,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: 0,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
@@ -1618,12 +1618,8 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	}
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
-	// Provider returns empty struct on validation failure (simulates validation error)
-	emptyStateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  nil,
-		LastRbtcToColdWalletTransfer: nil,
-	}
-	generalProvider.On("StateConfiguration", ctx).Return(emptyStateConfig)
+	providerError := errors.New("database connection failed")
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{}, providerError)
 
 	eventBus := new(mocks.EventBusMock)
 	hashMock := &mocks.HashMock{}
@@ -1651,7 +1647,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 
 	require.Error(t, err)
 	require.Nil(t, result)
-	assert.Contains(t, err.Error(), "no transfer history configured")
+	assert.Contains(t, err.Error(), "database connection failed")
 
 	eventBus.AssertNotCalled(t, "Publish")
 	hashMock.AssertNotCalled(t, "Hash", mock.Anything)
@@ -1711,10 +1707,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferUnix,
-		LastRbtcToColdWalletTransfer: &oldTransferUnix,
+		LastBtcToColdWalletTransfer:  oldTransferUnix,
+		LastRbtcToColdWalletTransfer: oldTransferUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -1827,10 +1823,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &oldTransferUnix,
-		LastRbtcToColdWalletTransfer: &oldTransferUnix,
+		LastBtcToColdWalletTransfer:  oldTransferUnix,
+		LastRbtcToColdWalletTransfer: oldTransferUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -1926,10 +1922,10 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	// Pegout provider (BTC liquidity) returns an error
 	expectedError := errors.New("btc wallet connection failed")
@@ -2009,10 +2005,10 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	// BTC liquidity succeeds
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
@@ -2103,10 +2099,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -2207,10 +2203,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -2311,10 +2307,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -2420,10 +2416,10 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -2538,10 +2534,10 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)

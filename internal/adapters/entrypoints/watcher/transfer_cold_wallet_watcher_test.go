@@ -53,12 +53,12 @@ func TestTransferColdWalletWatcher_Start_Error(t *testing.T) {
 	expectedError := errors.New("cold wallet not configured")
 	useCase := &mockTransferUseCase{err: expectedError}
 	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
-	
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "Error executing transfer to cold wallet")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -67,7 +67,7 @@ func TestTransferColdWalletWatcher_Start_Error(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -98,7 +98,7 @@ func TestTransferColdWalletWatcher_Start_BtcSuccess(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "BTC transfer successful - TxHash: btc_tx_hash_123, Amount: 1000000, Fee: 5000")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -107,7 +107,7 @@ func TestTransferColdWalletWatcher_Start_BtcSuccess(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -138,7 +138,7 @@ func TestTransferColdWalletWatcher_Start_RskSuccess(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "RSK transfer successful - TxHash: rsk_tx_hash_456, Amount: 2000000, Fee: 3000")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -147,7 +147,7 @@ func TestTransferColdWalletWatcher_Start_RskSuccess(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -175,7 +175,7 @@ func TestTransferColdWalletWatcher_Start_BothSkippedNoExcess(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "transfer skipped - no excess liquidity")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -184,7 +184,7 @@ func TestTransferColdWalletWatcher_Start_BothSkippedNoExcess(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -213,7 +213,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedNotEconomical(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "BTC transfer skipped - not economical: transfer amount too small")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -222,7 +222,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedNotEconomical(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -251,7 +251,7 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "RSK transfer skipped - not economical: gas cost too high")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -260,7 +260,7 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -291,7 +291,7 @@ func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "BTC transfer failed - transfer failed: insufficient funds")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -300,7 +300,7 @@ func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -331,7 +331,7 @@ func TestTransferColdWalletWatcher_Start_RskFailed(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "RSK transfer failed - rsk transfer failed: gas price too low")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -340,7 +340,7 @@ func TestTransferColdWalletWatcher_Start_RskFailed(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -374,7 +374,7 @@ func TestTransferColdWalletWatcher_Start_BothTransfersSuccess(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "BTC transfer successful - TxHash: btc_tx_hash_789, Amount: 5000000, Fee: 10000")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -383,7 +383,7 @@ func TestTransferColdWalletWatcher_Start_BothTransfersSuccess(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -415,7 +415,7 @@ func TestTransferColdWalletWatcher_Start_BothFailed(t *testing.T) {
 	wg.Add(2)
 	closeChannel := make(chan bool)
 	defer test.AssertLogContains(t, "BTC transfer failed - btc error: btc wallet unavailable")()
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -424,7 +424,7 @@ func TestTransferColdWalletWatcher_Start_BothFailed(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
@@ -443,7 +443,7 @@ func TestTransferColdWalletWatcher_Start_NilResult(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	
+
 	go func() {
 		defer wg.Done()
 		<-closeChannel
@@ -452,7 +452,7 @@ func TestTransferColdWalletWatcher_Start_NilResult(t *testing.T) {
 		defer wg.Done()
 		w.Start()
 	}()
-	
+
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()

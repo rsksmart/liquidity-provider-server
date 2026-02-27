@@ -2,6 +2,7 @@ package liquidity_provider
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -11,17 +12,20 @@ import (
 )
 
 type InitializeStateConfigurationUseCase struct {
+	provider     liquidity_provider.LiquidityProvider
 	lpRepository liquidity_provider.LiquidityProviderRepository
 	signer       entities.Signer
 	hashFunc     entities.HashFunction
 }
 
 func NewInitializeStateConfigurationUseCase(
+	provider liquidity_provider.LiquidityProvider,
 	lpRepository liquidity_provider.LiquidityProviderRepository,
 	signer entities.Signer,
 	hashFunc entities.HashFunction,
 ) *InitializeStateConfigurationUseCase {
 	return &InitializeStateConfigurationUseCase{
+		provider:     provider,
 		lpRepository: lpRepository,
 		signer:       signer,
 		hashFunc:     hashFunc,
@@ -29,30 +33,23 @@ func NewInitializeStateConfigurationUseCase(
 }
 
 func (useCase *InitializeStateConfigurationUseCase) Run(ctx context.Context) error {
-	signedStateConfig, err := useCase.lpRepository.GetStateConfiguration(ctx)
-	if err != nil {
+	stateConfig, err := useCase.provider.StateConfiguration(ctx)
+	if err != nil && !errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
 		return usecases.WrapUseCaseError(usecases.InitializeStateConfigurationId, err)
-	}
-
-	var stateConfig liquidity_provider.StateConfiguration
-	if signedStateConfig != nil {
-		stateConfig = signedStateConfig.Value
 	}
 
 	modified := false
 	now := time.Now().UTC().Unix()
 
-	// BTC field
-	if stateConfig.LastBtcToColdWalletTransfer == nil {
+	if stateConfig.LastBtcToColdWalletTransfer == 0 {
 		log.Info("Initializing LastBtcToColdWalletTransfer with current timestamp")
-		stateConfig.LastBtcToColdWalletTransfer = &now
+		stateConfig.LastBtcToColdWalletTransfer = now
 		modified = true
 	}
 
-	// RBTC field
-	if stateConfig.LastRbtcToColdWalletTransfer == nil {
+	if stateConfig.LastRbtcToColdWalletTransfer == 0 {
 		log.Info("Initializing LastRbtcToColdWalletTransfer with current timestamp")
-		stateConfig.LastRbtcToColdWalletTransfer = &now
+		stateConfig.LastRbtcToColdWalletTransfer = now
 		modified = true
 	}
 

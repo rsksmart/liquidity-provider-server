@@ -727,8 +727,8 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcUnix,
-			LastRbtcToColdWalletTransfer: &rbtcUnix,
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
 		}
 
 		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -736,43 +736,39 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
-		result := lp.StateConfiguration(context.Background())
+		result, err := lp.StateConfiguration(context.Background())
 
+		require.NoError(t, err)
 		assert.Equal(t, stateConfigValue, result)
-		assert.NotNil(t, result.LastBtcToColdWalletTransfer)
-		assert.NotNil(t, result.LastRbtcToColdWalletTransfer)
+		assert.NotZero(t, result.LastBtcToColdWalletTransfer)
+		assert.NotZero(t, result.LastRbtcToColdWalletTransfer)
 	})
 
-	t.Run("Return empty state configuration when db doesn't have configuration", func(t *testing.T) {
+	t.Run("Return error when db doesn't have configuration", func(t *testing.T) {
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Custom state configuration not found. Using default configuration.")()
+		_, err := lp.StateConfiguration(context.Background())
 
-		config := lp.StateConfiguration(context.Background())
-
-		// StateConfiguration has no defaults - returns empty struct
-		assert.Nil(t, config.LastBtcToColdWalletTransfer)
-		assert.Nil(t, config.LastRbtcToColdWalletTransfer)
+		require.ErrorIs(t, err, liquidity_provider.ConfigurationNotFoundError)
 	})
 
-	t.Run("Return empty state configuration on db read error", func(t *testing.T) {
+	t.Run("Return error on db read error", func(t *testing.T) {
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Error getting state configuration, using default configuration. Error: database error")()
-		config := lp.StateConfiguration(context.Background())
+		_, err := lp.StateConfiguration(context.Background())
 
-		assert.Nil(t, config.LastBtcToColdWalletTransfer)
-		assert.Nil(t, config.LastRbtcToColdWalletTransfer)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "database error")
 	})
 
-	t.Run("Return empty state configuration when db configuration is tampered", func(t *testing.T) {
+	t.Run("Return error when db configuration is tampered", func(t *testing.T) {
 		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcUnix,
-			LastRbtcToColdWalletTransfer: &rbtcUnix,
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
 		}
 
 		tamperedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -780,24 +776,22 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 
 		// Tamper with the data after signing
 		newUnix := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-		tamperedConfig.Value.LastBtcToColdWalletTransfer = &newUnix
+		tamperedConfig.Value.LastBtcToColdWalletTransfer = newUnix
 
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&tamperedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Tampered state configuration. Using default configuration.")()
-		result := lp.StateConfiguration(context.Background())
+		_, err = lp.StateConfiguration(context.Background())
 
-		assert.Nil(t, result.LastBtcToColdWalletTransfer)
-		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+		require.ErrorIs(t, err, entities.IntegrityError)
 	})
 
-	t.Run("Return empty state configuration when db configuration doesn't have valid signature", func(t *testing.T) {
+	t.Run("Return error when db configuration doesn't have valid signature", func(t *testing.T) {
 		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcUnix,
-			LastRbtcToColdWalletTransfer: &rbtcUnix,
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
 		}
 
 		// Create config with correct hash but wrong signature
@@ -809,20 +803,17 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Invalid state configuration signature. Using default configuration.")()
+		_, err = lp.StateConfiguration(context.Background())
 
-		result := lp.StateConfiguration(context.Background())
-
-		assert.Nil(t, result.LastBtcToColdWalletTransfer)
-		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+		require.ErrorIs(t, err, liquidity_provider.InvalidSignatureError)
 	})
 
-	t.Run("Return empty state configuration when integrity check fails", func(t *testing.T) {
+	t.Run("Return error when integrity check fails", func(t *testing.T) {
 		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcUnix,
-			LastRbtcToColdWalletTransfer: &rbtcUnix,
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
 		}
 
 		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -834,20 +825,17 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Tampered state configuration. Using default configuration.")()
+		_, err = lp.StateConfiguration(context.Background())
 
-		result := lp.StateConfiguration(context.Background())
-
-		assert.Nil(t, result.LastBtcToColdWalletTransfer)
-		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+		require.ErrorIs(t, err, entities.IntegrityError)
 	})
 
-	t.Run("Return empty state configuration when there is an unexpected error", func(t *testing.T) {
+	t.Run("Return error when there is an unexpected error", func(t *testing.T) {
 		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
 		stateConfigValue := liquidity_provider.StateConfiguration{
-			LastBtcToColdWalletTransfer:  &btcUnix,
-			LastRbtcToColdWalletTransfer: &rbtcUnix,
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
 		}
 
 		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
@@ -859,11 +847,9 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
 		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
 
-		defer test.AssertLogContains(t, "Error getting state configuration, using default configuration. Error: encoding/hex: invalid byte: U+006E")()
+		_, err = lp.StateConfiguration(context.Background())
 
-		result := lp.StateConfiguration(context.Background())
-
-		assert.Nil(t, result.LastBtcToColdWalletTransfer)
-		assert.Nil(t, result.LastRbtcToColdWalletTransfer)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "encoding/hex: invalid byte")
 	})
 }

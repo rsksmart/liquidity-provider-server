@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	RbtcTransferredDueToThresholdEventId    entities.EventId = "RbtcTransferredDueToThreshold"
-	BtcTransferredDueToThresholdEventId     entities.EventId = "BtcTransferredDueToThreshold"
-	RbtcTransferredDueToTimeForcingEventId  entities.EventId = "RbtcTransferredDueToTimeForcing"
-	BtcTransferredDueToTimeForcingEventId   entities.EventId = "BtcTransferredDueToTimeForcing"
+	RbtcTransferredDueToThresholdEventId   entities.EventId = "RbtcTransferredDueToThreshold"
+	BtcTransferredDueToThresholdEventId    entities.EventId = "BtcTransferredDueToThreshold"
+	RbtcTransferredDueToTimeForcingEventId entities.EventId = "RbtcTransferredDueToTimeForcing"
+	BtcTransferredDueToTimeForcingEventId  entities.EventId = "BtcTransferredDueToTimeForcing"
 )
 
 type RbtcTransferredDueToThresholdEvent struct {

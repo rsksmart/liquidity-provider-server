@@ -400,11 +400,11 @@ func TestColdWalletMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		finalBtcGauge := getGaugeVecValue(appMetrics.ColdWalletLastAmountMetric, monitoring.MetricLabelBtc)
 
 		// RBTC gauge should be either 0.5 (last threshold) or 1.5 (time_forcing) depending on processing order
-		assert.True(t, finalRbtcGauge == 0.5 || finalRbtcGauge == 1.5, 
+		assert.True(t, finalRbtcGauge == 0.5 || finalRbtcGauge == 1.5,
 			"RBTC gauge should be 0.5 or 1.5, got %.2f", finalRbtcGauge)
-		
+
 		// BTC gauge should be either 2.5 (last threshold) or 3.0 (time_forcing) depending on processing order
-		assert.True(t, finalBtcGauge == 2.5 || finalBtcGauge == 3.0, 
+		assert.True(t, finalBtcGauge == 2.5 || finalBtcGauge == 3.0,
 			"BTC gauge should be 2.5 or 3.0, got %.2f", finalBtcGauge)
 
 		watcher.Shutdown(make(chan bool, 1))

@@ -91,8 +91,8 @@ var (
 
 var testStateConfig = &entities.Signed[liquidity_provider.StateConfiguration]{
 	Value: liquidity_provider.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &lastBtcToColdWalletTransferUnix,
-		LastRbtcToColdWalletTransfer: &lastRbtcToColdWalletTransferUnix,
+		LastBtcToColdWalletTransfer:  lastBtcToColdWalletTransferUnix,
+		LastRbtcToColdWalletTransfer: lastRbtcToColdWalletTransferUnix,
 	},
 	Signature: "state signature",
 	Hash:      "state hash",
