@@ -3,8 +3,9 @@ package liquidity_provider
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"slices"
+
+	"math/big"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
