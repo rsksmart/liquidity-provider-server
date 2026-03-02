@@ -56,10 +56,10 @@ func SatoshiToWei(x uint64) *Wei {
 	return w
 }
 
-func CoinToWei(x uint64) *Wei {
-	coin := new(big.Int).SetUint64(x)
+func EtherToWei(x uint64) *Wei {
+	ether := new(big.Int).SetUint64(x)
 	w := new(Wei)
-	w.AsBigInt().Mul(coin, bTenPowEighteen)
+	w.AsBigInt().Mul(ether, bTenPowEighteen)
 	return w
 }
 

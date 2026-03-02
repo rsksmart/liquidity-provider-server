@@ -48,8 +48,8 @@ func (useCase *LowLiquidityAlertUseCase) Run(ctx context.Context) error {
 		return usecases.WrapUseCaseError(usecases.LowLiquidityAlertId, err)
 	}
 
-	warningWei := entities.CoinToWei(useCase.warningThreshold)
-	criticalWei := entities.CoinToWei(useCase.criticalThreshold)
+	warningWei := entities.EtherToWei(useCase.warningThreshold)
+	criticalWei := entities.EtherToWei(useCase.criticalThreshold)
 
 	useCase.checkAndAlert(ctx, "BTC", btcLiquidity, warningWei, criticalWei)
 	useCase.checkAndAlert(ctx, "RBTC", rbtcLiquidity, warningWei, criticalWei)

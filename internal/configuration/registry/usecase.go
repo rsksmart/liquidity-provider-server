@@ -96,6 +96,8 @@ func NewUseCaseRegistry(
 	messaging *Messaging,
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
+	env.ColdWallet.FillWithDefaults()
+
 	return &UseCaseRegistry{
 		summariesUseCase: reports.NewSummariesUseCase(
 			databaseRegistry.PeginRepository,
@@ -393,17 +395,14 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 		),
-		lowLiquidityAlertUseCase: func() *liquidity_provider.LowLiquidityAlertUseCase {
-			coldWallet := env.ColdWallet.FillWithDefaults()
-			return liquidity_provider.NewLowLiquidityAlertUseCase(
-				lpRegistry.LiquidityProvider,
-				lpRegistry.LiquidityProvider,
-				messaging.AlertSender,
-				env.Provider.AlertRecipientEmail,
-				coldWallet.HotWalletLowLiquidityWarning,
-				coldWallet.HotWalletLowLiquidityCritical,
-			)
-		}(),
+		lowLiquidityAlertUseCase: liquidity_provider.NewLowLiquidityAlertUseCase(
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			env.ColdWallet.HotWalletLowLiquidityWarning,
+			env.ColdWallet.HotWalletLowLiquidityCritical,
+		),
 		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
 			databaseRegistry.LiquidityProviderRepository,
 			lpRegistry.LiquidityProvider,
