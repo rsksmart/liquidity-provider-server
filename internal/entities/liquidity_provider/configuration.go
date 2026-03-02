@@ -105,8 +105,13 @@ type HashedCredentials struct {
 	PasswordSalt   string `bson:"password_salt"`
 }
 
+type StateConfiguration struct {
+	LastBtcToColdWalletTransfer  int64 `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer int64 `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+}
+
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails | StateConfiguration
 }
 
 func validateRange(min, max, amount *entities.Wei) error {

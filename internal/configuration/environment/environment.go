@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -27,6 +28,7 @@ type Environment struct {
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
 	Eclipse          EclipseEnv
+	ColdWallet       ColdWalletEnv
 }
 
 type MongoEnv struct {
@@ -185,6 +187,24 @@ type ManagementEnv struct {
 	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
 	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
+}
+
+type ColdWalletEnv struct {
+	BtcMinTransferFeeMultiplier  uint64 `env:"BTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	RbtcMinTransferFeeMultiplier uint64 `env:"RBTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	ForceTransferAfterSeconds    uint64 `env:"COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS"`
+}
+
+func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
+	defaults := ColdWalletEnv{
+		BtcMinTransferFeeMultiplier:  5,
+		RbtcMinTransferFeeMultiplier: 100,
+		ForceTransferAfterSeconds:    1209600, // 2 weeks (14 days * 24 hours * 60 minutes * 60 seconds)
+	}
+	env.BtcMinTransferFeeMultiplier = utils.FirstNonZero(env.BtcMinTransferFeeMultiplier, defaults.BtcMinTransferFeeMultiplier)
+	env.RbtcMinTransferFeeMultiplier = utils.FirstNonZero(env.RbtcMinTransferFeeMultiplier, defaults.RbtcMinTransferFeeMultiplier)
+	env.ForceTransferAfterSeconds = utils.FirstNonZero(env.ForceTransferAfterSeconds, defaults.ForceTransferAfterSeconds)
+	return env
 }
 
 func LoadEnv() *Environment {
