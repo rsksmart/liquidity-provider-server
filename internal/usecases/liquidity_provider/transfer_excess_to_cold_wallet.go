@@ -260,7 +260,7 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 
 // publishBtcTransferEvent emits a BTC cold wallet transfer event to the event bus, distinguishing
 // between threshold-triggered and time-forced transfers.
-func (useCase *TransferExcessToColdWalletUseCase) publishBtcTransferEvent(txResult *internalTxResult, isTimeForcingTransfer bool) {
+func (useCase *TransferExcessToColdWalletUseCase) publishBtcTransferEvent(txResult internalTxResult, isTimeForcingTransfer bool) {
 	if isTimeForcingTransfer {
 		useCase.eventBus.Publish(cold_wallet.BtcTransferredDueToTimeForcingEvent{
 			Event:  entities.NewBaseEvent(cold_wallet.BtcTransferredDueToTimeForcingEventId),
@@ -317,7 +317,7 @@ func (useCase *TransferExcessToColdWalletUseCase) handleBtcTransfer(excess *enti
 
 // publishRskTransferEvent emits an RBTC cold wallet transfer event to the event bus, distinguishing
 // between threshold-triggered and time-forced transfers.
-func (useCase *TransferExcessToColdWalletUseCase) publishRskTransferEvent(txResult *internalTxResult, isTimeForcingTransfer bool) {
+func (useCase *TransferExcessToColdWalletUseCase) publishRskTransferEvent(txResult internalTxResult, isTimeForcingTransfer bool) {
 	if isTimeForcingTransfer {
 		useCase.eventBus.Publish(cold_wallet.RbtcTransferredDueToTimeForcingEvent{
 			Event:  entities.NewBaseEvent(cold_wallet.RbtcTransferredDueToTimeForcingEventId),
@@ -435,26 +435,26 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcess(
 
 // executeBtcTransfer estimates the BTC transaction fee, verifies the transfer is economical
 // (amount >= fee * multiplier), and sends the funds to the cold wallet.
-func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(amount *entities.Wei) (*internalTxResult, error) {
+func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(amount *entities.Wei) (internalTxResult, error) {
 	coldBtcAddress := useCase.coldWallet.GetBtcAddress()
 
 	feeEstimation, err := useCase.btcWallet.EstimateTxFees(coldBtcAddress, amount)
 	if err != nil {
-		return nil, err
+		return internalTxResult{}, err
 	}
 
 	// Check if transfer is economical: amount >= fee * multiplier
 	minWorthwhileAmount := new(entities.Wei).Mul(feeEstimation.Value, entities.NewUWei(useCase.btcMinTransferFeeMultiplier))
 	if amount.Cmp(minWorthwhileAmount) < 0 {
-		return nil, TransferNotEconomicalError
+		return internalTxResult{}, TransferNotEconomicalError
 	}
 
 	txResult, err := useCase.btcWallet.Send(coldBtcAddress, amount)
 	if err != nil {
-		return nil, err
+		return internalTxResult{}, err
 	}
 
-	return &internalTxResult{
+	return internalTxResult{
 		TxHash: txResult.Hash,
 		Amount: amount,
 		Fee:    feeEstimation.Value,
@@ -463,12 +463,12 @@ func (useCase *TransferExcessToColdWalletUseCase) executeBtcTransfer(amount *ent
 
 // executeRskTransfer estimates gas costs, subtracts them from the amount, verifies the transfer is economical
 // (net amount >= gasCost * multiplier), and sends the RBTC to the cold wallet.
-func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context.Context, amount *entities.Wei) (*internalTxResult, error) {
+func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context.Context, amount *entities.Wei) (internalTxResult, error) {
 	coldRskAddress := useCase.coldWallet.GetRskAddress()
 
 	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
 	if err != nil {
-		return nil, err
+		return internalTxResult{}, err
 	}
 
 	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewWei(SimpleTransferGasLimit))
@@ -479,19 +479,19 @@ func (useCase *TransferExcessToColdWalletUseCase) executeRskTransfer(ctx context
 	// Check if transfer is economical: amountToTransfer >= gasCost * multiplier
 	minWorthwhileAmount := new(entities.Wei).Mul(gasCost, entities.NewUWei(useCase.rbtcMinTransferFeeMultiplier))
 	if amountToTransfer.Cmp(minWorthwhileAmount) < 0 {
-		return nil, TransferNotEconomicalError
+		return internalTxResult{}, TransferNotEconomicalError
 	}
 
 	config := blockchain.NewTransactionConfig(amountToTransfer, SimpleTransferGasLimit, gasPrice)
 
 	receipt, err := useCase.rskWallet.SendRbtc(ctx, config, coldRskAddress)
 	if err != nil {
-		return nil, err
+		return internalTxResult{}, err
 	}
 
 	actualFee := new(entities.Wei).Mul(receipt.GasPrice, entities.NewUWei(receipt.GasUsed.Uint64()))
 
-	return &internalTxResult{
+	return internalTxResult{
 		TxHash: receipt.TransactionHash,
 		Amount: amountToTransfer,
 		Fee:    actualFee,
