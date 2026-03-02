@@ -79,36 +79,36 @@ func (useCase *CheckColdWalletAddressChangeUseCase) Run(ctx context.Context) err
 
 // loadStateAndCurrentHashes reads the state config through the LiquidityProvider interface
 // (which validates signatures) and computes current cold wallet address hashes, or returns an error.
-func (useCase *CheckColdWalletAddressChangeUseCase) loadStateAndCurrentHashes(ctx context.Context) (*stateAndCurrentHashes, error) {
+func (useCase *CheckColdWalletAddressChangeUseCase) loadStateAndCurrentHashes(ctx context.Context) (stateAndCurrentHashes, error) {
 	stateConfig, err := useCase.generalProvider.StateConfiguration(ctx)
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, err)
+		return stateAndCurrentHashes{}, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, err)
 	}
 
 	btcAddr := useCase.coldWallet.GetBtcAddress()
 	rskAddr := useCase.coldWallet.GetRskAddress()
 	if btcAddr == "" {
-		return nil, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, errors.New("cold wallet BTC address not configured"))
+		return stateAndCurrentHashes{}, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, errors.New("cold wallet BTC address not configured"))
 	}
 	if rskAddr == "" {
-		return nil, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, errors.New("cold wallet RSK address not configured"))
+		return stateAndCurrentHashes{}, usecases.WrapUseCaseError(usecases.CheckColdWalletAddressChangeId, errors.New("cold wallet RSK address not configured"))
 	}
 
-	return &stateAndCurrentHashes{
+	return stateAndCurrentHashes{
 		StateConfig: stateConfig,
 		NewBtcHash:  useCase.hashAddress(btcAddr),
 		NewRskHash:  useCase.hashAddress(rskAddr),
 	}, nil
 }
 
-func (useCase *CheckColdWalletAddressChangeUseCase) handleFirstRun(ctx context.Context, input *stateAndCurrentHashes) error {
+func (useCase *CheckColdWalletAddressChangeUseCase) handleFirstRun(ctx context.Context, input stateAndCurrentHashes) error {
 	log.Info("CheckColdWalletAddressChange: first run, persisting cold wallet address hashes (no alert)")
 	input.StateConfig.BtcColdWalletAddressHash = input.NewBtcHash
 	input.StateConfig.RskColdWalletAddressHash = input.NewRskHash
 	return useCase.persistStateConfig(ctx, input.StateConfig)
 }
 
-func (useCase *CheckColdWalletAddressChangeUseCase) handleAddressChange(ctx context.Context, input *stateAndCurrentHashes, btcChanged, rskChanged bool) error {
+func (useCase *CheckColdWalletAddressChangeUseCase) handleAddressChange(ctx context.Context, input stateAndCurrentHashes, btcChanged, rskChanged bool) error {
 	if err := useCase.sendAddressChangeAlerts(ctx, btcChanged, rskChanged); err != nil {
 		return err
 	}
