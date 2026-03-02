@@ -391,6 +391,7 @@ func NewUseCaseRegistry(
 		),
 		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
 			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.LiquidityProvider,
 			lpRegistry.ColdWallet,
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
