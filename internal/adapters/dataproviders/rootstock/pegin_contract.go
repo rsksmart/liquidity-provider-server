@@ -240,6 +240,40 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	return transactionReceipt, nil
 }
 
+func (peginContract *peginContractImpl) Withdraw(amount *entities.Wei) error {
+	const functionName = "withdraw"
+	var res []any
+
+	revert := peginContract.contract.Caller().Call(
+		&bind.CallOpts{From: peginContract.signer.Address()}, &res, functionName, amount.AsBigInt(),
+	)
+	parsedRevert, err := ParseRevertReason(peginContract.abis.Flyover, revert)
+	if err != nil && parsedRevert == nil {
+		return fmt.Errorf("error parsing withdraw result: %w", err)
+	} else if parsedRevert != nil {
+		return fmt.Errorf("withdraw reverted with: %s", parsedRevert.Name)
+	}
+
+	opts := &bind.TransactOpts{
+		From:   peginContract.signer.Address(),
+		Signer: peginContract.signer.Sign,
+	}
+
+	receipt, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(peginContract.client, peginContract.miningTimeout, "Withdraw", func() (*geth.Transaction, error) {
+				return peginContract.contract.Withdraw(opts, amount.AsBigInt())
+			})
+		})
+
+	if err != nil {
+		return fmt.Errorf("withdraw error: %w", err)
+	} else if receipt == nil || receipt.Status == 0 {
+		return errors.New("withdraw error: transaction failed")
+	}
+	return nil
+}
+
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types
 // except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, error) {

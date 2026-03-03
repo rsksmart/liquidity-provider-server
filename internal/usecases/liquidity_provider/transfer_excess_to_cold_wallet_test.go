@@ -54,6 +54,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -128,6 +129,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -167,6 +169,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	}))
 	alertSender.AssertExpectations(t)
 
+	peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	peginContract.AssertNotCalled(t, "Withdraw", mock.Anything)
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
@@ -190,6 +195,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -242,6 +248,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	rskWallet.On("SendRbtc", ctx,
 		blockchain.NewTransactionConfig(
@@ -273,6 +282,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -314,17 +324,354 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	}))
 	alertSender.AssertExpectations(t)
 
+	peginContract.AssertCalled(t, "GetBalance", "lp_rsk_address")
+	peginContract.AssertNotCalled(t, "Withdraw", mock.Anything)
+
 	coldWallet.AssertExpectations(t)
 	generalProvider.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
 	pegoutProvider.AssertExpectations(t)
 	peginProvider.AssertExpectations(t)
+	peginContract.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
 	hashMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
 	lpRepository.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcessWithContractFunds(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
+	rskRpcMock := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{
+		Rsk: rskRpcMock,
+	}
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+
+	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
+	rbtcLiquidityBig, _ := new(big.Int).SetString(testLiquidityAmountWithExcess, 10)
+	rbtcLiquidity := entities.NewBigWei(rbtcLiquidityBig)
+
+	rbtcExcessBig, _ := new(big.Int).SetString(testExcessAmount, 10)
+	rbtcExcess := entities.NewBigWei(rbtcExcessBig)
+
+	rbtcGasPrice := entities.NewWei(1000000000)
+	rbtcGasCost := new(entities.Wei).Mul(entities.NewWei(liquidity_provider.SimpleTransferGasLimit), rbtcGasPrice)
+	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
+
+	contractBalance := new(entities.Wei).Mul(entities.NewWei(2), entities.NewWei(oneEtherInWei))
+
+	rskTxHash := "rsk_tx_hash_contract_funds"
+
+	rskReceipt := blockchain.TransactionReceipt{
+		TransactionHash: rskTxHash,
+		GasUsed:         big.NewInt(liquidity_provider.SimpleTransferGasLimit),
+		GasPrice:        rbtcGasPrice,
+	}
+
+	nowUnix := time.Now().Unix()
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+
+	generalConfig := lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	}
+	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
+
+	stateConfig := lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
+	}
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+
+	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
+	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
+
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(contractBalance, nil)
+	peginContract.On("Withdraw", contractBalance).Return(nil)
+
+	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
+	rskWallet.On("SendRbtc", ctx,
+		blockchain.NewTransactionConfig(
+			rbtcAmountToTransfer,
+			liquidity_provider.SimpleTransferGasLimit,
+			rbtcGasPrice,
+		),
+		"cold_rsk_address",
+	).Return(rskReceipt, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
+
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC") && strings.Contains(body, rskTxHash)
+	}), mock.MatchedBy(func(recipients []string) bool {
+		return len(recipients) == 1 && recipients[0] == testAlertRecipientEmail
+	})).Return(nil).Once()
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider,
+		pegoutProvider,
+		generalProvider,
+		lpRepository,
+		coldWallet,
+		btcWallet,
+		rskWallet,
+		peginContract,
+		rpc,
+		btcWalletMutex,
+		rskWalletMutex,
+		testBtcMinTransferFeeMultiplier,
+		testRbtcMinTransferFeeMultiplier,
+		testForceTransferAfterSeconds,
+		eventBus,
+		rskWallet,
+		hashMock.Hash,
+		alertSender,
+		testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, liquidity_provider.TransferStatusSkippedNoExcess, result.BtcResult.Status)
+
+	rbtcActualFee := new(entities.Wei).Mul(rbtcGasPrice, entities.NewUWei(uint64(rskReceipt.GasUsed.Int64())))
+
+	assert.Equal(t, liquidity_provider.TransferStatusSuccess, result.RskResult.Status)
+	assert.Equal(t, rskTxHash, result.RskResult.TxHash)
+	assert.Equal(t, rbtcAmountToTransfer.String(), result.RskResult.Amount.String())
+	assert.Equal(t, rbtcActualFee.String(), result.RskResult.Fee.String())
+	require.NoError(t, result.RskResult.Error)
+
+	peginContract.AssertCalled(t, "GetBalance", "lp_rsk_address")
+	peginContract.AssertCalled(t, "Withdraw", contractBalance)
+
+	alertSender.AssertExpectations(t)
+	coldWallet.AssertExpectations(t)
+	generalProvider.AssertExpectations(t)
+	lpRepository.AssertExpectations(t)
+	pegoutProvider.AssertExpectations(t)
+	peginProvider.AssertExpectations(t)
+	peginContract.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	rskRpcMock.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_RskExcess_GetContractBalanceFails(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
+	rskRpcMock := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rskRpcMock}
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
+	rbtcLiquidityBig, _ := new(big.Int).SetString(testLiquidityAmountWithExcess, 10)
+	rbtcLiquidity := entities.NewBigWei(rbtcLiquidityBig)
+
+	rbtcExcessBig, _ := new(big.Int).SetString(testExcessAmount, 10)
+	rbtcExcess := entities.NewBigWei(rbtcExcessBig)
+	rbtcGasPrice := entities.NewWei(1000000000)
+	rbtcGasCost := new(entities.Wei).Mul(entities.NewWei(liquidity_provider.SimpleTransferGasLimit), rbtcGasPrice)
+	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
+	rskTxHash := "rsk_tx_hash_getbalance_fail"
+	rskReceipt := blockchain.TransactionReceipt{
+		TransactionHash: rskTxHash,
+		GasUsed:         big.NewInt(liquidity_provider.SimpleTransferGasLimit),
+		GasPrice:        rbtcGasPrice,
+	}
+	nowUnix := time.Now().Unix()
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+	generalProvider.On("GeneralConfiguration", ctx).Return(lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	})
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
+	})
+	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
+	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
+
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return((*entities.Wei)(nil), errors.New("rpc timeout"))
+
+	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
+	rskWallet.On("SendRbtc", ctx,
+		blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice),
+		"cold_rsk_address",
+	).Return(rskReceipt, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider, pegoutProvider, generalProvider, lpRepository,
+		coldWallet, btcWallet, rskWallet, peginContract, rpc,
+		btcWalletMutex, rskWalletMutex,
+		testBtcMinTransferFeeMultiplier, testRbtcMinTransferFeeMultiplier, testForceTransferAfterSeconds,
+		eventBus, rskWallet, hashMock.Hash, alertSender, testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, liquidity_provider.TransferStatusSuccess, result.RskResult.Status)
+	assert.Equal(t, rskTxHash, result.RskResult.TxHash)
+
+	peginContract.AssertCalled(t, "GetBalance", "lp_rsk_address")
+	peginContract.AssertNotCalled(t, "Withdraw", mock.Anything)
+
+	peginContract.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	rskRpcMock.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_RskExcess_WithdrawContractFundsFails(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
+	rskRpcMock := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rskRpcMock}
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(testLiquidityAmountWithoutExcess), entities.NewWei(oneEtherInWei))
+	rbtcLiquidityBig, _ := new(big.Int).SetString(testLiquidityAmountWithExcess, 10)
+	rbtcLiquidity := entities.NewBigWei(rbtcLiquidityBig)
+
+	rbtcExcessBig, _ := new(big.Int).SetString(testExcessAmount, 10)
+	rbtcExcess := entities.NewBigWei(rbtcExcessBig)
+	rbtcGasPrice := entities.NewWei(1000000000)
+	rbtcGasCost := new(entities.Wei).Mul(entities.NewWei(liquidity_provider.SimpleTransferGasLimit), rbtcGasPrice)
+	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
+	contractBalance := new(entities.Wei).Mul(entities.NewWei(2), entities.NewWei(oneEtherInWei))
+	rskTxHash := "rsk_tx_hash_withdraw_fail"
+	rskReceipt := blockchain.TransactionReceipt{
+		TransactionHash: rskTxHash,
+		GasUsed:         big.NewInt(liquidity_provider.SimpleTransferGasLimit),
+		GasPrice:        rbtcGasPrice,
+	}
+	nowUnix := time.Now().Unix()
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+	generalProvider.On("GeneralConfiguration", ctx).Return(lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	})
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  &nowUnix,
+		LastRbtcToColdWalletTransfer: &nowUnix,
+	})
+	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
+	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
+
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(contractBalance, nil)
+	peginContract.On("Withdraw", contractBalance).Return(errors.New("withdraw reverted with: NoBalance"))
+
+	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
+	rskWallet.On("SendRbtc", ctx,
+		blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice),
+		"cold_rsk_address",
+	).Return(rskReceipt, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider, pegoutProvider, generalProvider, lpRepository,
+		coldWallet, btcWallet, rskWallet, peginContract, rpc,
+		btcWalletMutex, rskWalletMutex,
+		testBtcMinTransferFeeMultiplier, testRbtcMinTransferFeeMultiplier, testForceTransferAfterSeconds,
+		eventBus, rskWallet, hashMock.Hash, alertSender, testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, liquidity_provider.TransferStatusSuccess, result.RskResult.Status)
+	assert.Equal(t, rskTxHash, result.RskResult.TxHash)
+
+	peginContract.AssertCalled(t, "GetBalance", "lp_rsk_address")
+	peginContract.AssertCalled(t, "Withdraw", contractBalance)
+
+	peginContract.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	rskRpcMock.AssertExpectations(t)
 }
 
 // nolint:funlen
@@ -338,6 +685,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -403,6 +751,9 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		Fee:  btcFee,
 	}, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	rskWallet.On("SendRbtc", ctx,
 		blockchain.NewTransactionConfig(
@@ -438,6 +789,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -496,6 +848,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -544,6 +897,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -598,6 +952,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -676,6 +1031,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -732,6 +1088,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -794,6 +1151,9 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		Fee:  btcFee,
 	}, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	rskWallet.On("SendRbtc", ctx,
 		blockchain.NewTransactionConfig(
@@ -826,6 +1186,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -900,6 +1261,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -949,6 +1311,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1003,6 +1366,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1070,6 +1434,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		Fee:  btcFee,
 	}, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{
 		TransactionHash: rbtcTxHash,
@@ -1099,6 +1466,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1173,6 +1541,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1241,6 +1610,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		Fee:  btcFee,
 	}, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{
 		TransactionHash: rbtcTxHash,
@@ -1270,6 +1642,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1343,6 +1716,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1365,6 +1739,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcColdWalletAddressEmpty(t *test
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1402,6 +1777,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1424,6 +1800,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskColdWalletAddressEmpty(t *test
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1462,6 +1839,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1494,6 +1872,7 @@ func TestTransferExcessToColdWalletUseCase_Run_MaxLiquidityNotConfigured(t *test
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1533,6 +1912,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1574,6 +1954,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1614,6 +1995,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1655,6 +2037,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1695,6 +2078,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1732,6 +2116,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetStateConfigurationFails(t *tes
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1772,6 +2157,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1834,6 +2220,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -1892,6 +2279,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -1938,6 +2326,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 
 	eventBus := new(mocks.EventBusMock)
@@ -1952,6 +2343,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2009,6 +2401,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2054,6 +2447,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2095,6 +2489,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2144,6 +2539,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2187,6 +2583,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2242,6 +2639,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2294,6 +2692,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2354,6 +2753,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2406,6 +2806,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2442,6 +2843,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	// Gas price retrieval fails
 	expectedError := errors.New("rpc connection timeout")
 	rskRpcMock.On("GasPrice", ctx).Return((*entities.Wei)(nil), expectedError)
@@ -2458,6 +2862,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2513,6 +2918,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2555,6 +2961,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 
 	// RSK wallet send fails
@@ -2573,6 +2982,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,
@@ -2629,6 +3039,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	coldWallet := new(mocks.ColdWalletMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
 	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
 	rskRpcMock := new(mocks.RootstockRpcServerMock)
 	rpc := blockchain.Rpc{
 		Rsk: rskRpcMock,
@@ -2687,6 +3098,9 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	}, nil)
 
 	// RSK transfer fails
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
 	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
 	expectedError := errors.New("transaction underpriced")
 	rskWallet.On("SendRbtc", ctx, blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice), "cold_rsk_address").Return(blockchain.TransactionReceipt{}, expectedError)
@@ -2707,6 +3121,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 		coldWallet,
 		btcWallet,
 		rskWallet,
+		peginContract,
 		rpc,
 		btcWalletMutex,
 		rskWalletMutex,

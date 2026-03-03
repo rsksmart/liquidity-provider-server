@@ -79,6 +79,7 @@ type TransferExcessToColdWalletUseCase struct {
 	coldWallet                   cold_wallet.ColdWallet
 	btcWallet                    blockchain.BitcoinWallet
 	rskWallet                    blockchain.RootstockWallet
+	peginContract                blockchain.PeginContract
 	rpc                          blockchain.Rpc
 	btcWalletMutex               sync.Locker
 	rskWalletMutex               sync.Locker
@@ -101,6 +102,7 @@ func NewTransferExcessToColdWalletUseCase(
 	coldWallet cold_wallet.ColdWallet,
 	btcWallet blockchain.BitcoinWallet,
 	rskWallet blockchain.RootstockWallet,
+	peginContract blockchain.PeginContract,
 	rpc blockchain.Rpc,
 	btcWalletMutex sync.Locker,
 	rskWalletMutex sync.Locker,
@@ -121,6 +123,7 @@ func NewTransferExcessToColdWalletUseCase(
 		coldWallet:                   coldWallet,
 		btcWallet:                    btcWallet,
 		rskWallet:                    rskWallet,
+		peginContract:                peginContract,
 		rpc:                          rpc,
 		btcWalletMutex:               btcWalletMutex,
 		rskWalletMutex:               rskWalletMutex,
@@ -366,6 +369,22 @@ func (useCase *TransferExcessToColdWalletUseCase) sendTransferAlert(ctx context.
 	return useCase.alertSender.SendAlert(ctx, alerts.AlertSubjectHotToColdTransfer, body, []string{useCase.alertRecipient})
 }
 
+func (useCase *TransferExcessToColdWalletUseCase) withdrawContractFunds() {
+	lpAddress := useCase.generalProvider.RskAddress()
+	contractBalance, err := useCase.peginContract.GetBalance(lpAddress)
+	if err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to get pegin contract balance: %v", err)
+		return
+	}
+	if contractBalance.Cmp(entities.NewWei(0)) <= 0 {
+		return
+	}
+	log.Infof("TransferExcessToColdWallet: withdrawing %s wei from pegin contract", contractBalance.String())
+	if err := useCase.peginContract.Withdraw(contractBalance); err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to withdraw from pegin contract: %v", err)
+	}
+}
+
 // handleRskTransfer orchestrates a single RBTC transfer: skips if no excess, executes the transfer,
 // checks if the amount is economical, and publishes the corresponding event on success.
 func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.Context, excess *entities.Wei, isTimeForcingTransfer bool) NetworkTransferResult {
@@ -375,6 +394,9 @@ func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.
 			Message: "No RSK excess to transfer",
 		}
 	}
+
+	// In order to give priority to the contract funds, we withdraw them before the transfer
+	useCase.withdrawContractFunds()
 
 	txResult, err := useCase.executeRskTransfer(ctx, excess)
 	if err == nil {

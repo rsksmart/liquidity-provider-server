@@ -383,6 +383,7 @@ func NewUseCaseRegistry(
 			lpRegistry.ColdWallet,
 			btcRegistry.PaymentWallet,
 			rskRegistry.Wallet,
+			rskRegistry.Contracts.PegIn,
 			messaging.Rpc,
 			mutexes.BtcWalletMutex(),
 			mutexes.RskWalletMutex(),
