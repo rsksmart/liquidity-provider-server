@@ -399,10 +399,10 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcessWithContractFun
 	generalProvider.On("GeneralConfiguration", ctx).Return(generalConfig)
 
 	stateConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
 	}
-	generalProvider.On("StateConfiguration", ctx).Return(stateConfig)
+	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -532,9 +532,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskExcess_GetContractBalanceFails
 		},
 	})
 	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
-	})
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
+	}, nil)
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 
@@ -626,9 +626,9 @@ func TestTransferExcessToColdWalletUseCase_Run_RskExcess_WithdrawContractFundsFa
 		},
 	})
 	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  &nowUnix,
-		LastRbtcToColdWalletTransfer: &nowUnix,
-	})
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
+	}, nil)
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
 

@@ -240,6 +240,8 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	return transactionReceipt, nil
 }
 
+// Withdraw withdraws the specified amount from the LP's balance in the pegin contract.
+// It first performs a dry-run call to check for reverts before submitting the actual transaction.
 func (peginContract *peginContractImpl) Withdraw(amount *entities.Wei) error {
 	const functionName = "withdraw"
 	var res []any
