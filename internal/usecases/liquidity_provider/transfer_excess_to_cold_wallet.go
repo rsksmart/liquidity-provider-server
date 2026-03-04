@@ -84,7 +84,7 @@ type TransferExcessToColdWalletUseCase struct {
 	coldWallet                   cold_wallet.ColdWallet
 	btcWallet                    blockchain.BitcoinWallet
 	rskWallet                    blockchain.RootstockWallet
-	peginContract                blockchain.PeginContract
+	contracts                    blockchain.RskContracts
 	rpc                          blockchain.Rpc
 	btcWalletMutex               sync.Locker
 	rskWalletMutex               sync.Locker
@@ -107,7 +107,7 @@ func NewTransferExcessToColdWalletUseCase(
 	coldWallet cold_wallet.ColdWallet,
 	btcWallet blockchain.BitcoinWallet,
 	rskWallet blockchain.RootstockWallet,
-	peginContract blockchain.PeginContract,
+	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
 	btcWalletMutex sync.Locker,
 	rskWalletMutex sync.Locker,
@@ -128,7 +128,7 @@ func NewTransferExcessToColdWalletUseCase(
 		coldWallet:                   coldWallet,
 		btcWallet:                    btcWallet,
 		rskWallet:                    rskWallet,
-		peginContract:                peginContract,
+		contracts:                    contracts,
 		rpc:                          rpc,
 		btcWalletMutex:               btcWalletMutex,
 		rskWalletMutex:               rskWalletMutex,
@@ -419,7 +419,7 @@ func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.
 // back to the hot wallet, ensuring contract funds are prioritized before cold wallet transfers.
 func (useCase *TransferExcessToColdWalletUseCase) withdrawContractFunds() {
 	lpAddress := useCase.generalProvider.RskAddress()
-	contractBalance, err := useCase.peginContract.GetBalance(lpAddress)
+	contractBalance, err := useCase.contracts.PegIn.GetBalance(lpAddress)
 	if err != nil {
 		log.Errorf("TransferExcessToColdWallet: failed to get pegin contract balance: %v", err)
 		return
@@ -428,7 +428,7 @@ func (useCase *TransferExcessToColdWalletUseCase) withdrawContractFunds() {
 		return
 	}
 	log.Infof("TransferExcessToColdWallet: withdrawing %s wei from pegin contract", contractBalance.String())
-	if err := useCase.peginContract.Withdraw(contractBalance); err != nil {
+	if err := useCase.contracts.PegIn.Withdraw(contractBalance); err != nil {
 		log.Errorf("TransferExcessToColdWallet: failed to withdraw from pegin contract: %v", err)
 	}
 }
