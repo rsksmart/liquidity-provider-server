@@ -258,6 +258,7 @@ func NewUseCaseRegistry(
 		initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
 			lpRegistry.LiquidityProvider,
 			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.ColdWallet,
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),

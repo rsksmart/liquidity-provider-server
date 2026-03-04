@@ -34,42 +34,6 @@ func stateConfigWithHashes(btcHash, rskHash string) lpEntity.StateConfiguration 
 	}
 }
 
-func TestCheckColdWalletAddressChangeUseCase_Run_FirstRun_NoStoredHashes(t *testing.T) {
-	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
-	providerMock := new(mocks.ProviderMock)
-	coldWallet := new(mocks.ColdWalletMock)
-	alertSender := new(mocks.AlertSenderMock)
-	walletMock := &mocks.RskWalletMock{}
-
-	stateConfig := stateConfigWithHashes("", "")
-	providerMock.On("StateConfiguration", test.AnyCtx).Return(stateConfig, nil).Once()
-
-	coldWallet.On("GetBtcAddress").Return(test.AnyBtcAddress)
-	coldWallet.On("GetRskAddress").Return(test.AnyRskAddress)
-
-	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
-
-	var capturedConfig entities.Signed[lpEntity.StateConfiguration]
-	lpRepository.On("UpsertStateConfiguration", test.AnyCtx, mock.MatchedBy(func(c entities.Signed[lpEntity.StateConfiguration]) bool {
-		capturedConfig = c
-		return c.Value.BtcColdWalletAddressHash == hashAddressForTest(test.AnyBtcAddress) &&
-			c.Value.RskColdWalletAddressHash == hashAddressForTest(test.AnyRskAddress)
-	})).Return(nil).Once()
-
-	useCase := liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
-		lpRepository, providerMock, coldWallet, alertSender, "recipient@test.com", walletMock, testHashFunction,
-	)
-	err := useCase.Run(context.Background())
-
-	require.NoError(t, err)
-	providerMock.AssertExpectations(t)
-	lpRepository.AssertExpectations(t)
-	coldWallet.AssertExpectations(t)
-	alertSender.AssertNotCalled(t, "SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	assert.Equal(t, hashAddressForTest(test.AnyBtcAddress), capturedConfig.Value.BtcColdWalletAddressHash)
-	assert.Equal(t, hashAddressForTest(test.AnyRskAddress), capturedConfig.Value.RskColdWalletAddressHash)
-}
-
 func TestCheckColdWalletAddressChangeUseCase_Run_StoredHashesMatchCurrent_NoAlertNoWrite(t *testing.T) {
 	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	providerMock := new(mocks.ProviderMock)
@@ -274,54 +238,3 @@ func TestCheckColdWalletAddressChangeUseCase_Run_SendAlertFails_ReturnsError_NoP
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 }
 
-func TestCheckColdWalletAddressChangeUseCase_Run_BtcAddressEmpty_ReturnsError_NoAlertNoPersist(t *testing.T) {
-	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
-	providerMock := new(mocks.ProviderMock)
-	coldWallet := new(mocks.ColdWalletMock)
-	alertSender := new(mocks.AlertSenderMock)
-	walletMock := &mocks.RskWalletMock{}
-
-	stateConfig := stateConfigWithHashes("", "")
-	providerMock.On("StateConfiguration", test.AnyCtx).Return(stateConfig, nil).Once()
-
-	coldWallet.On("GetBtcAddress").Return("")
-	coldWallet.On("GetRskAddress").Return(test.AnyRskAddress)
-
-	useCase := liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
-		lpRepository, providerMock, coldWallet, alertSender, "recipient@test.com", walletMock, testHashFunction,
-	)
-	err := useCase.Run(context.Background())
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cold wallet BTC address not configured")
-	providerMock.AssertExpectations(t)
-	coldWallet.AssertExpectations(t)
-	alertSender.AssertNotCalled(t, "SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
-}
-
-func TestCheckColdWalletAddressChangeUseCase_Run_RskAddressEmpty_ReturnsError_NoAlertNoPersist(t *testing.T) {
-	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
-	providerMock := new(mocks.ProviderMock)
-	coldWallet := new(mocks.ColdWalletMock)
-	alertSender := new(mocks.AlertSenderMock)
-	walletMock := &mocks.RskWalletMock{}
-
-	stateConfig := stateConfigWithHashes("", "")
-	providerMock.On("StateConfiguration", test.AnyCtx).Return(stateConfig, nil).Once()
-
-	coldWallet.On("GetBtcAddress").Return(test.AnyBtcAddress)
-	coldWallet.On("GetRskAddress").Return("")
-
-	useCase := liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
-		lpRepository, providerMock, coldWallet, alertSender, "recipient@test.com", walletMock, testHashFunction,
-	)
-	err := useCase.Run(context.Background())
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cold wallet RSK address not configured")
-	providerMock.AssertExpectations(t)
-	coldWallet.AssertExpectations(t)
-	alertSender.AssertNotCalled(t, "SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
-}
