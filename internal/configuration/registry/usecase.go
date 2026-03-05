@@ -81,6 +81,7 @@ type UseCaseRegistry struct {
 	recommendedPegoutUseCase            *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase             *pegin.RecommendedPeginUseCase
 	transferExcessToColdWalletUseCase   *liquidity_provider.TransferExcessToColdWalletUseCase
+	checkColdWalletAddressChangeUseCase *liquidity_provider.CheckColdWalletAddressChangeUseCase
 }
 
 // NewUseCaseRegistry
@@ -257,6 +258,7 @@ func NewUseCaseRegistry(
 		initializeStateConfigurationUseCase: liquidity_provider.NewInitializeStateConfigurationUseCase(
 			lpRegistry.LiquidityProvider,
 			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.ColdWallet,
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),
@@ -385,6 +387,15 @@ func NewUseCaseRegistry(
 			env.ColdWallet.RbtcMinTransferFeeMultiplier,
 			env.ColdWallet.ForceTransferAfterSeconds,
 			messaging.EventBus,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		checkColdWalletAddressChangeUseCase: liquidity_provider.NewCheckColdWalletAddressChangeUseCase(
+			databaseRegistry.LiquidityProviderRepository,
+			lpRegistry.LiquidityProvider,
+			lpRegistry.ColdWallet,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),
@@ -561,4 +572,8 @@ func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeg
 
 func (registry *UseCaseRegistry) TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase {
 	return registry.transferExcessToColdWalletUseCase
+}
+
+func (registry *UseCaseRegistry) CheckColdWalletAddressChangeUseCase() *liquidity_provider.CheckColdWalletAddressChangeUseCase {
+	return registry.checkColdWalletAddressChangeUseCase
 }

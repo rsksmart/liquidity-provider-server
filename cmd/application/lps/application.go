@@ -144,6 +144,10 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 		log.Fatal("Error initializing state configuration: ", err)
 	}
 
+	if err = app.useCaseRegistry.CheckColdWalletAddressChangeUseCase().Run(context.Background()); err != nil {
+		log.Error("Error checking cold wallet address change: ", err)
+	}
+
 	watchers, err := app.prepareWatchers()
 	if err != nil {
 		log.Fatal("Error initializing watchers: ", err)

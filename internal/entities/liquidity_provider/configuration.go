@@ -106,8 +106,10 @@ type HashedCredentials struct {
 }
 
 type StateConfiguration struct {
-	LastBtcToColdWalletTransfer  int64 `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
-	LastRbtcToColdWalletTransfer int64 `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+	LastBtcToColdWalletTransfer  int64  `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer int64  `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+	BtcColdWalletAddressHash     string `json:"btcColdWalletAddressHash" bson:"btc_cold_wallet_address_hash"`
+	RskColdWalletAddressHash     string `json:"rskColdWalletAddressHash" bson:"rsk_cold_wallet_address_hash"`
 }
 
 type ConfigurationType interface {
