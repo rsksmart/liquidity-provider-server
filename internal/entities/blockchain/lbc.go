@@ -85,6 +85,7 @@ type PeginContract interface {
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	DaoFeePercentage() (uint64, error)
+	Withdraw(amount *entities.Wei) error
 }
 
 type PegoutContract interface {

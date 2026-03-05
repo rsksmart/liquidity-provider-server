@@ -68,6 +68,7 @@ type PeginBinding interface {
 	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote) (*types.Transaction, error)
 	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
 	GetFeePercentage(opts *bind.CallOpts) (*big.Int, error)
+	Withdraw(opts *bind.TransactOpts, amount *big.Int) (*types.Transaction, error)
 }
 
 type PeginContractAdapter interface {

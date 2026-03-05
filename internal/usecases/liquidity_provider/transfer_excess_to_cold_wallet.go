@@ -51,6 +51,11 @@ type TransferToColdWalletResult struct {
 	RskResult NetworkTransferResult
 }
 
+type currentLiquidityResult struct {
+	Btc  *entities.Wei
+	Rbtc *entities.Wei
+}
+
 func NewTransferToColdWalletResult(btcResult, rskResult NetworkTransferResult) *TransferToColdWalletResult {
 	return &TransferToColdWalletResult{
 		BtcResult: btcResult,
@@ -79,6 +84,7 @@ type TransferExcessToColdWalletUseCase struct {
 	coldWallet                   cold_wallet.ColdWallet
 	btcWallet                    blockchain.BitcoinWallet
 	rskWallet                    blockchain.RootstockWallet
+	contracts                    blockchain.RskContracts
 	rpc                          blockchain.Rpc
 	btcWalletMutex               sync.Locker
 	rskWalletMutex               sync.Locker
@@ -101,6 +107,7 @@ func NewTransferExcessToColdWalletUseCase(
 	coldWallet cold_wallet.ColdWallet,
 	btcWallet blockchain.BitcoinWallet,
 	rskWallet blockchain.RootstockWallet,
+	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
 	btcWalletMutex sync.Locker,
 	rskWalletMutex sync.Locker,
@@ -121,6 +128,7 @@ func NewTransferExcessToColdWalletUseCase(
 		coldWallet:                   coldWallet,
 		btcWallet:                    btcWallet,
 		rskWallet:                    rskWallet,
+		contracts:                    contracts,
 		rpc:                          rpc,
 		btcWalletMutex:               btcWalletMutex,
 		rskWalletMutex:               rskWalletMutex,
@@ -349,6 +357,7 @@ func (useCase *TransferExcessToColdWalletUseCase) publishRskTransferEvent(ctx co
 	}
 }
 
+// sendTransferAlert triggers the alertSender to send an alert with the transfer details.
 func (useCase *TransferExcessToColdWalletUseCase) sendTransferAlert(ctx context.Context, asset string, amount *entities.Wei, txHash string, fee *entities.Wei, isTimeForcing bool) error {
 	reason := "threshold"
 	if isTimeForcing {
@@ -375,6 +384,9 @@ func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.
 			Message: "No RSK excess to transfer",
 		}
 	}
+
+	// In order to give priority to the contract funds, we withdraw them before the transfer
+	useCase.withdrawContractFunds()
 
 	txResult, err := useCase.executeRskTransfer(ctx, excess)
 	if err == nil {
@@ -403,9 +415,22 @@ func (useCase *TransferExcessToColdWalletUseCase) handleRskTransfer(ctx context.
 	}
 }
 
-type currentLiquidityResult struct {
-	Btc  *entities.Wei
-	Rbtc *entities.Wei
+// withdrawContractFunds retrieves the LP's balance from the pegin contract and withdraws it
+// back to the hot wallet, ensuring contract funds are prioritized before cold wallet transfers.
+func (useCase *TransferExcessToColdWalletUseCase) withdrawContractFunds() {
+	lpAddress := useCase.generalProvider.RskAddress()
+	contractBalance, err := useCase.contracts.PegIn.GetBalance(lpAddress)
+	if err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to get pegin contract balance: %v", err)
+		return
+	}
+	if contractBalance.Cmp(entities.NewWei(0)) <= 0 {
+		return
+	}
+	log.Infof("TransferExcessToColdWallet: withdrawing %s wei from pegin contract", contractBalance.String())
+	if err := useCase.contracts.PegIn.Withdraw(contractBalance); err != nil {
+		log.Errorf("TransferExcessToColdWallet: failed to withdraw from pegin contract: %v", err)
+	}
 }
 
 // validateColdWallet checks that both BTC and RSK cold wallet addresses are configured.
