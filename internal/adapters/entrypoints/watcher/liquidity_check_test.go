@@ -2,6 +2,10 @@ package watcher_test
 
 import (
 	"context"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -12,22 +16,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestLiquidityCheckWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
-		return watcher.NewLiquidityCheckWatcher(nil, ticker, time.Duration(1))
+		return watcher.NewLiquidityCheckWatcher(nil, nil, ticker, time.Duration(1))
 	})
 }
 
 func TestNewLiquidityCheckWatcher(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	providerMock := &mocks.ProviderMock{}
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{}, &mocks.AlertSenderMock{}, test.AnyString)
-	test.AssertNonZeroValues(t, watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1)))
+	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{}, &mocks.AlertSenderMock{}, test.AnyString)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, &mocks.AlertSenderMock{}, test.AnyString, 3, 1)
+	test.AssertNonZeroValues(t, watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1)))
 }
 
 func TestLiquidityCheckWatcher_Start(t *testing.T) {
@@ -38,10 +40,15 @@ func TestLiquidityCheckWatcher_Start(t *testing.T) {
 	providerMock := &mocks.ProviderMock{}
 	providerMock.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil)
 	providerMock.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil)
+	providerMock.On("AvailablePeginLiquidity", mock.Anything).Return(entities.NewWei(0), nil)
+	providerMock.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(0), nil)
 	bridgeMock := &mocks.BridgeMock{}
 	bridgeMock.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, &mocks.AlertSenderMock{}, test.AnyString)
-	w := watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1))
+	alertSenderMock := &mocks.AlertSenderMock{}
+	alertSenderMock.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
+	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
@@ -68,10 +75,15 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
 	providerMock := &mocks.ProviderMock{}
+	providerMock.On("AvailablePeginLiquidity", mock.Anything).Return(entities.NewWei(0), nil)
+	providerMock.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(0), nil)
 	bridgeMock := &mocks.BridgeMock{}
 	bridgeMock.On("GetMinimumLockTxValue").Return(nil, assert.AnError)
-	useCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, &mocks.AlertSenderMock{}, test.AnyString)
-	w := watcher.NewLiquidityCheckWatcher(useCase, ticker, time.Duration(1))
+	alertSenderMock := &mocks.AlertSenderMock{}
+	alertSenderMock.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
+	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	defer test.AssertLogContains(t, assert.AnError.Error())
@@ -90,6 +102,6 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 }
 
 func TestLiquidityCheckWatcher_Prepare(t *testing.T) {
-	w := watcher.NewLiquidityCheckWatcher(nil, &mocks.TickerMock{}, time.Duration(1))
+	w := watcher.NewLiquidityCheckWatcher(nil, nil, &mocks.TickerMock{}, time.Duration(1))
 	require.NoError(t, w.Prepare(context.Background()))
 }

@@ -89,6 +89,7 @@ func NewWatcherRegistry(
 		),
 		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(
 			useCaseRegistry.liquidityCheckUseCase,
+			useCaseRegistry.lowLiquidityAlertUseCase,
 			tickers.LiquidityCheckTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),

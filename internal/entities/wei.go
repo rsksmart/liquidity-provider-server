@@ -56,6 +56,13 @@ func SatoshiToWei(x uint64) *Wei {
 	return w
 }
 
+func EtherToWei(x uint64) *Wei {
+	ether := new(big.Int).SetUint64(x)
+	w := new(Wei)
+	w.AsBigInt().Mul(ether, bTenPowEighteen)
+	return w
+}
+
 func (w *Wei) Copy() *Wei {
 	return NewBigWei(w.AsBigInt())
 }
