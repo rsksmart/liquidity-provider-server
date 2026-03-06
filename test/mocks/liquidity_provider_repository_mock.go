@@ -256,6 +256,64 @@ func (_c *LiquidityProviderRepositoryMock_GetPegoutConfiguration_Call) RunAndRet
 	return _c
 }
 
+// GetStateConfiguration provides a mock function with given fields: ctx
+func (_m *LiquidityProviderRepositoryMock) GetStateConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetStateConfiguration")
+	}
+
+	var r0 *entities.Signed[liquidity_provider.StateConfiguration]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *entities.Signed[liquidity_provider.StateConfiguration]); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.Signed[liquidity_provider.StateConfiguration])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LiquidityProviderRepositoryMock_GetStateConfiguration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStateConfiguration'
+type LiquidityProviderRepositoryMock_GetStateConfiguration_Call struct {
+	*mock.Call
+}
+
+// GetStateConfiguration is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *LiquidityProviderRepositoryMock_Expecter) GetStateConfiguration(ctx interface{}) *LiquidityProviderRepositoryMock_GetStateConfiguration_Call {
+	return &LiquidityProviderRepositoryMock_GetStateConfiguration_Call{Call: _e.mock.On("GetStateConfiguration", ctx)}
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetStateConfiguration_Call) Run(run func(ctx context.Context)) *LiquidityProviderRepositoryMock_GetStateConfiguration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetStateConfiguration_Call) Return(_a0 *entities.Signed[liquidity_provider.StateConfiguration], _a1 error) *LiquidityProviderRepositoryMock_GetStateConfiguration_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_GetStateConfiguration_Call) RunAndReturn(run func(context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error)) *LiquidityProviderRepositoryMock_GetStateConfiguration_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpsertCredentials provides a mock function with given fields: ctx, credentials
 func (_m *LiquidityProviderRepositoryMock) UpsertCredentials(ctx context.Context, credentials entities.Signed[liquidity_provider.HashedCredentials]) error {
 	ret := _m.Called(ctx, credentials)
@@ -440,6 +498,53 @@ func (_c *LiquidityProviderRepositoryMock_UpsertPegoutConfiguration_Call) Return
 }
 
 func (_c *LiquidityProviderRepositoryMock_UpsertPegoutConfiguration_Call) RunAndReturn(run func(context.Context, entities.Signed[liquidity_provider.PegoutConfiguration]) error) *LiquidityProviderRepositoryMock_UpsertPegoutConfiguration_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertStateConfiguration provides a mock function with given fields: ctx, configuration
+func (_m *LiquidityProviderRepositoryMock) UpsertStateConfiguration(ctx context.Context, configuration entities.Signed[liquidity_provider.StateConfiguration]) error {
+	ret := _m.Called(ctx, configuration)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertStateConfiguration")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, entities.Signed[liquidity_provider.StateConfiguration]) error); ok {
+		r0 = rf(ctx, configuration)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertStateConfiguration'
+type LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call struct {
+	*mock.Call
+}
+
+// UpsertStateConfiguration is a helper method to define mock.On call
+//   - ctx context.Context
+//   - configuration entities.Signed[liquidity_provider.StateConfiguration]
+func (_e *LiquidityProviderRepositoryMock_Expecter) UpsertStateConfiguration(ctx interface{}, configuration interface{}) *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call {
+	return &LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call{Call: _e.mock.On("UpsertStateConfiguration", ctx, configuration)}
+}
+
+func (_c *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call) Run(run func(ctx context.Context, configuration entities.Signed[liquidity_provider.StateConfiguration])) *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(entities.Signed[liquidity_provider.StateConfiguration]))
+	})
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call) Return(_a0 error) *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call) RunAndReturn(run func(context.Context, entities.Signed[liquidity_provider.StateConfiguration]) error) *LiquidityProviderRepositoryMock_UpsertStateConfiguration_Call {
 	_c.Call.Return(run)
 	return _c
 }

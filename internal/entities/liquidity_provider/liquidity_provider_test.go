@@ -3,14 +3,15 @@ package liquidity_provider_test
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,9 +91,16 @@ func TestValidateConfiguration(t *testing.T) {
 				"10": 5,
 				"20": 10,
 			},
-			PublicLiquidityCheck: true,
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              entities.NewWei(1000000),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(20),
+				FixedValue:      entities.NewWei(1234),
+			},
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000,"reimbursementWindowBlocks":100,"excessTolerance":{"isFixed":true,"percentageValue":20,"fixedValue":1234}}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)
@@ -127,6 +135,10 @@ func TestValidateConfiguration(t *testing.T) {
 		require.Equal(t, mockConfig.RskConfirmations, result.Value.RskConfirmations)
 		require.Equal(t, mockConfig.BtcConfirmations, result.Value.BtcConfirmations)
 		require.Equal(t, mockConfig.PublicLiquidityCheck, result.Value.PublicLiquidityCheck)
+		require.Equal(t, mockConfig.MaxLiquidity, result.Value.MaxLiquidity)
+		require.Equal(t, mockConfig.ExcessTolerance.FixedValue, result.Value.ExcessTolerance.FixedValue)
+		require.Equal(t, mockConfig.ExcessTolerance.IsFixed, result.Value.ExcessTolerance.IsFixed)
+		require.Equal(t, mockConfig.ExcessTolerance.PercentageValue, result.Value.ExcessTolerance.PercentageValue)
 		require.Equal(t, hashHex, result.Hash)
 		require.Equal(t, signatureHex, result.Signature)
 
@@ -183,9 +195,16 @@ func TestValidateConfiguration(t *testing.T) {
 				"10": 5,
 				"20": 10,
 			},
-			PublicLiquidityCheck: true,
+			PublicLiquidityCheck:      true,
+			MaxLiquidity:              entities.NewWei(1000000),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(20),
+				FixedValue:      entities.NewWei(1234),
+			},
 		}
-		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true}`)
+		mockConfigBytes := []byte(`{"rskConfirmations":{"10":100,"20":200},"btcConfirmations":{"10":5,"20":10},"publicLiquidityCheck":true,"maxLiquidity":1000000,"reimbursementWindowBlocks":100,"excessTolerance":{"isFixed":true,"percentageValue":20,"fixedValue":1234}}`)
 
 		hash := ethcrypto.Keccak256(mockConfigBytes)
 		hashHex := hex.EncodeToString(hash)

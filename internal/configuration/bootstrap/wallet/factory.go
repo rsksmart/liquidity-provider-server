@@ -7,12 +7,14 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment/secrets"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 )
 
 type AbstractFactory interface {
 	BitcoinMonitoringWallet(walletId string) (blockchain.BitcoinWallet, error)
 	BitcoinPaymentWallet(walletId string) (blockchain.BitcoinWallet, error)
 	RskWallet() (rootstock.RskSignerWallet, error)
+	ColdWallet(rpc blockchain.Rpc) (cold_wallet.ColdWallet, error)
 }
 
 type FactoryCreationArgs struct {

@@ -111,8 +111,8 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "0xBEd51d83cc4676660E3Fc3819dfAD8238549B975", env.Rsk.DiscoveryAddress)
 		assert.Equal(t, "0x0000000000000000000000000000000001000006", env.Rsk.BridgeAddress)
 		assert.Equal(t, 0, env.Rsk.AccountNumber)
-		assert.Equal(t, "UnitTest/Keystore-Secret", env.Rsk.EncryptedJsonSecret)
-		assert.Equal(t, "UnitTest/Password-Secret", env.Rsk.EncryptedJsonPasswordSecret)
+		assert.Equal(t, "UnitTest/Keystore-Secret", env.Rsk.WalletSecret)
+		assert.Equal(t, "UnitTest/Password-Secret", env.Rsk.PasswordSecret)
 		assert.Equal(t, "regtest", env.Btc.Network)
 
 		assert.Equal(t, "a name", scriptInput.ProviderName)
@@ -140,7 +140,7 @@ func TestParseUpdateProviderScriptInput(t *testing.T) {
 		assert.Equal(t, "0x64DCC3BcbEAE8CE586CabDeF79104986bEAFcAD6", env.Rsk.DiscoveryAddress)
 		assert.Equal(t, "0x0000000000000000000000000000000001000006", env.Rsk.BridgeAddress)
 		assert.Equal(t, 0, env.Rsk.AccountNumber)
-		assert.Equal(t, "path/to/a/file", env.Rsk.KeystoreFile)
+		assert.Equal(t, "path/to/a/file", env.Rsk.WalletFile)
 		assert.Equal(t, "secret-password-123", env.Rsk.KeystorePassword)
 		assert.Equal(t, "testnet", env.Btc.Network)
 

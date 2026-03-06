@@ -13,6 +13,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
@@ -48,14 +49,16 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
 		walletFactoryMock.On("BitcoinMonitoringWallet", bitcoin.PeginWalletId).Return(new(mocks.BitcoinWalletMock), nil)
 		walletFactoryMock.On("BitcoinPaymentWallet", bitcoin.DerivativeWalletId).Return(new(mocks.BitcoinWalletMock), nil)
+		walletFactoryMock.EXPECT().ColdWallet(mock.Anything).Return(new(mocks.ColdWalletMock), nil)
 		btcRegistry, err := registry.NewBitcoinRegistry(walletFactoryMock, connection)
 		require.NoError(t, err)
 
 		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
-		lp := registry.NewLiquidityProvider(dbRegistry, rskRegistry, btcRegistry, messagingRegistry)
+		lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
+		require.NoError(t, err)
 		mutexes := environment.NewApplicationMutexes()
 
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
+		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
 
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
