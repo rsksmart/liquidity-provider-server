@@ -4,6 +4,7 @@ set_defaults() {
   # local env defaults
   : "${LPS_UID=$(id -u)}"  ; export LPS_UID
   export ENABLE_MANAGEMENT_API=true
+  export LPS_STAGE=regtest
 }
 
 : "${ENV_FILE=".env.regtest"}"  ; export ENV_FILE
