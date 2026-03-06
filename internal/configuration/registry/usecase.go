@@ -110,7 +110,6 @@ func NewUseCaseRegistry(
 			databaseRegistry.PeginRepository,
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
-			env.Rsk.FeeCollectorAddress,
 		),
 		registerProviderUseCase: liquidity_provider.NewRegistrationUseCase(
 			rskRegistry.Contracts,
@@ -179,7 +178,6 @@ func NewUseCaseRegistry(
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
 			btcRegistry.PaymentWallet,
-			env.Rsk.FeeCollectorAddress,
 		),
 		acceptPegoutQuoteUseCase: pegout.NewAcceptQuoteUseCase(
 			databaseRegistry.PegoutRepository,
@@ -366,13 +364,11 @@ func NewUseCaseRegistry(
 			messaging.Rpc,
 			btcRegistry.PaymentWallet,
 			utils.Scale,
-			env.Rsk.FeeCollectorAddress,
 		),
 		recommendedPeginUseCase: pegin.NewRecommendedPeginUseCase(
 			lpRegistry.LiquidityProvider,
 			rskRegistry.Contracts,
 			messaging.Rpc,
-			env.Rsk.FeeCollectorAddress,
 			utils.Scale,
 		),
 		transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(

@@ -40,6 +40,10 @@ func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationPa
 	var addedPeginCollateral, addedPegoutCollateral bool
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.Discovery, useCase.contracts.CollateralManagement); err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+
 	if err = useCase.validateParams(params); err != nil {
 		return 0, err
 	}

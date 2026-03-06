@@ -66,17 +66,6 @@ services:
       - lp-swap-network
     command:
       [
-        "java",
-        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
-        "-Drpc.providers.web.ws.enabled=true",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=rskj",
-        "-cp",
-        "rskj-core.jar",
-        "-Drsk.conf.file=rsk.conf",
-        "co.rsk.Start",
         "--regtest",
       ]
   lbc-deployer:

@@ -18,7 +18,9 @@ func NewResignUseCase(contracts blockchain.RskContracts, provider liquidity_prov
 
 func (useCase *ResignUseCase) Run() error {
 	var err error
-
+	if err = usecases.CheckPauseState(useCase.contracts.CollateralManagement); err != nil {
+		return usecases.WrapUseCaseError(usecases.ProviderResignId, err)
+	}
 	_, err = useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.ProviderResignId, errors.Join(err, usecases.ProviderConfigurationError))

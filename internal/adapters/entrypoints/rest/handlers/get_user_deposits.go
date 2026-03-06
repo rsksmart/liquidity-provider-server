@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
+
+type GetUserDepositsUseCase interface {
+	Run(ctx context.Context, address string) ([]quote.PegoutDeposit, error)
+}
 
 // NewGetUserQuotesHandler
 // @Title GetUserQuotes
@@ -15,7 +20,7 @@ import (
 // @Param address query string true "User Quote Request Details"
 // @Success 200 {array} pkg.DepositEventDTO "Successfully retrieved the user quotes"
 // @Router /userQuotes [get]
-func NewGetUserQuotesHandler(useCase *pegout.GetUserDepositsUseCase) http.HandlerFunc {
+func NewGetUserQuotesHandler(useCase GetUserDepositsUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		address := req.URL.Query().Get("address")
 

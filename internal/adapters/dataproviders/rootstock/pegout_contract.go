@@ -102,18 +102,6 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 	return nil
 }
 
-func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return pegoutContract.contract.GetFeePercentage(&opts)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
-}
-
 func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
@@ -131,6 +119,25 @@ func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.Pego
 		return "", err
 	}
 	return hex.EncodeToString(results[:]), nil
+}
+
+func (pegoutContract *pegoutContractImpl) HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error) {
+	opts := bind.CallOpts{}
+	var result [32]byte
+
+	parsedQuote, err := parsePegoutQuote(pegoutQuote)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	result, err = rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
+		func() ([32]byte, error) {
+			return pegoutContract.contract.HashPegOutQuoteEIP712(&opts, parsedQuote)
+		})
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return result, nil
 }
 
 func (pegoutContract *pegoutContractImpl) RefundUserPegOut(quoteHash string) (string, error) {
@@ -280,6 +287,15 @@ func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, 
 	return result, nil
 }
 
+func (pegoutContract *pegoutContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
+	opts := new(bind.CallOpts)
+	return rskRetry(
+		pegoutContract.retryParams.Retries,
+		pegoutContract.retryParams.Sleep,
+		func() (blockchain.PauseStatus, error) { return pegoutContract.contract.PauseStatus(opts) },
+	)
+}
+
 // parsePegoutQuote parses a quote.PegoutQuote into a bindings.QuotesPegOutQuote. All BTC address fields support all address types.
 func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote, error) {
 	var parsedQuote bindings.QuotesPegOutQuote
@@ -309,6 +325,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
 	parsedQuote.Nonce = pegoutQuote.Nonce
@@ -320,7 +337,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
+	parsedQuote.ChainId = chainId.SetUint64(pegoutQuote.ChainId)
 	return parsedQuote, nil
 }

@@ -212,6 +212,15 @@ func (discovery *discoveryContractImpl) IsOperational(providerType liquidity_pro
 		})
 }
 
+func (discovery *discoveryContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
+	opts := new(bind.CallOpts)
+	return rskRetry(
+		discovery.retryParams.Retries,
+		discovery.retryParams.Sleep,
+		func() (blockchain.PauseStatus, error) { return discovery.contract.PauseStatus(opts) },
+	)
+}
+
 func (discovery *discoveryContractImpl) toContractProviderType(providerType liquidity_provider.ProviderType) (uint8, error) {
 	if !providerType.IsValid() {
 		return 0, liquidity_provider.InvalidProviderTypeError

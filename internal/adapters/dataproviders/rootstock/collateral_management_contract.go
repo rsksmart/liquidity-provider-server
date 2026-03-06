@@ -240,3 +240,12 @@ func (collateral *collateralManagementContractImpl) GetPenalizedEvents(ctx conte
 	}
 	return result, nil
 }
+
+func (collateral *collateralManagementContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
+	opts := new(bind.CallOpts)
+	return rskRetry(
+		collateral.retryParams.Retries,
+		collateral.retryParams.Sleep,
+		func() (blockchain.PauseStatus, error) { return collateral.contract.PauseStatus(opts) },
+	)
+}

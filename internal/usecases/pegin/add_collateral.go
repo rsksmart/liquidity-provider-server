@@ -18,6 +18,9 @@ func NewAddCollateralUseCase(contracts blockchain.RskContracts, lp liquidity_pro
 
 func (useCase *AddCollateralUseCase) Run(amount *entities.Wei) (*entities.Wei, error) {
 	var err error
+	if err = usecases.CheckPauseState(useCase.contracts.CollateralManagement); err != nil {
+		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)
+	}
 	minCollateral, err := useCase.contracts.CollateralManagement.GetMinimumCollateral()
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AddCollateralId, err)

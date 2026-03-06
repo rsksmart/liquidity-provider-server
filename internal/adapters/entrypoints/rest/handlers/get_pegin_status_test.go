@@ -1,10 +1,11 @@
-package handlers
+package handlers_test
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -43,7 +44,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      6,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(50),
-	ProductFeeAmount:   entities.NewWei(25),
+	ChainId:            31,
 }
 
 var testRetainedQuote = quote.RetainedPeginQuote{
@@ -78,7 +79,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 		nil,
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+testQuoteHash, nil)
 	require.NoError(t, err)
@@ -122,6 +123,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPeginQuote.Value.AsBigInt(), response.Detail.Value)
 	assert.Equal(t, testPeginQuote.CallFee.AsBigInt(), response.Detail.CallFee)
 	assert.Equal(t, testPeginQuote.GasLimit, response.Detail.GasLimit)
+	assert.Equal(t, testPeginQuote.ChainId, response.Detail.ChainId)
 
 	// Validate creation data fields
 	assert.Equal(t, testCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)
@@ -146,7 +148,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_MissingQuoteHashQueryParameter(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status", nil)
 	require.NoError(t, err)
@@ -175,7 +177,7 @@ func TestNewGetPeginQuoteStatusHandler_QuoteNotFound(t *testing.T) {
 		usecases.QuoteNotFoundError,
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+testQuoteHash, nil)
 	require.NoError(t, err)
@@ -202,7 +204,7 @@ func TestNewGetPeginQuoteStatusHandler_QuoteNotAccepted(t *testing.T) {
 		usecases.QuoteNotAcceptedError,
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+testQuoteHash, nil)
 	require.NoError(t, err)
@@ -231,7 +233,7 @@ func TestNewGetPeginQuoteStatusHandler_UnhandledError(t *testing.T) {
 		errors.New(errorMessage),
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+validQuoteHash, nil)
 	require.NoError(t, err)
@@ -268,7 +270,7 @@ func TestNewGetPeginQuoteStatusHandler_WrappedUseCaseError(t *testing.T) {
 		wrappedErr,
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+testQuoteHash, nil)
 	require.NoError(t, err)
@@ -289,7 +291,7 @@ func TestNewGetPeginQuoteStatusHandler_WrappedUseCaseError(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_EmptyQueryParameterValue(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash=", nil)
 	require.NoError(t, err)
@@ -312,7 +314,7 @@ func TestNewGetPeginQuoteStatusHandler_QueryParameterWithSpaces(t *testing.T) {
 
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+quoteHashWithSpaces, nil)
 	require.NoError(t, err)
@@ -332,7 +334,7 @@ func TestNewGetPeginQuoteStatusHandler_QueryParameterWithSpaces(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_WrongParameterName(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?hash=8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819", nil)
 	require.NoError(t, err)
@@ -353,7 +355,7 @@ func TestNewGetPeginQuoteStatusHandler_WrongParameterName(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_CaseSensitiveParameterName(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?QuoteHash=8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819", nil)
 	require.NoError(t, err)
@@ -382,7 +384,7 @@ func TestNewGetPeginQuoteStatusHandler_ErrorResponseFormat(t *testing.T) {
 		errors.New("test error"),
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash="+validQuoteHash, nil)
 	require.NoError(t, err)
@@ -413,7 +415,7 @@ func TestNewGetPeginQuoteStatusHandler_MultipleQueryParameters(t *testing.T) {
 		usecases.QuoteNotFoundError,
 	).Once()
 
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	// Create request with multiple parameters
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?otherParam=value&quoteHash="+testQuoteHash, nil)
@@ -429,7 +431,7 @@ func TestNewGetPeginQuoteStatusHandler_MultipleQueryParameters(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_InvalidQuoteHashFormat(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	// Test with invalid hex characters (exactly 64 characters but contains 'G' which is invalid hex)
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash=8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a681G", nil)
@@ -451,7 +453,7 @@ func TestNewGetPeginQuoteStatusHandler_InvalidQuoteHashFormat(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_QuoteHashEmptyString(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	// Test with `""` string as quote hash value
 	req, err := http.NewRequestWithContext(context.Background(), "GET", `/pegin/status?quoteHash=""`, nil)
@@ -474,7 +476,7 @@ func TestNewGetPeginQuoteStatusHandler_QuoteHashEmptyString(t *testing.T) {
 func TestNewGetPeginQuoteStatusHandler_QuoteHashNullString(t *testing.T) {
 	mockUseCase := mocks.NewPeginStatusUseCaseMock(t)
 	// No mock setup needed since validation fails before reaching use case
-	handler := NewGetPeginQuoteStatusHandler(mockUseCase)
+	handler := handlers.NewGetPeginQuoteStatusHandler(mockUseCase)
 
 	// Test with literal "null" as quote hash value
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/pegin/status?quoteHash=null", nil)

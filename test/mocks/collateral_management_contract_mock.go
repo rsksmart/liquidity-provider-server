@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
+
 	mock "github.com/stretchr/testify/mock"
 
 	penalization "github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
@@ -390,6 +393,61 @@ func (_c *CollateralManagementContractMock_GetPenalizedEvents_Call) Return(_a0 [
 }
 
 func (_c *CollateralManagementContractMock_GetPenalizedEvents_Call) RunAndReturn(run func(context.Context, uint64, *uint64) ([]penalization.PenalizedEvent, error)) *CollateralManagementContractMock_GetPenalizedEvents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PausedStatus provides a mock function with no fields
+func (_m *CollateralManagementContractMock) PausedStatus() (blockchain.PauseStatus, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PausedStatus")
+	}
+
+	var r0 blockchain.PauseStatus
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (blockchain.PauseStatus, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() blockchain.PauseStatus); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(blockchain.PauseStatus)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CollateralManagementContractMock_PausedStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PausedStatus'
+type CollateralManagementContractMock_PausedStatus_Call struct {
+	*mock.Call
+}
+
+// PausedStatus is a helper method to define mock.On call
+func (_e *CollateralManagementContractMock_Expecter) PausedStatus() *CollateralManagementContractMock_PausedStatus_Call {
+	return &CollateralManagementContractMock_PausedStatus_Call{Call: _e.mock.On("PausedStatus")}
+}
+
+func (_c *CollateralManagementContractMock_PausedStatus_Call) Run(run func()) *CollateralManagementContractMock_PausedStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *CollateralManagementContractMock_PausedStatus_Call) Return(_a0 blockchain.PauseStatus, _a1 error) *CollateralManagementContractMock_PausedStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *CollateralManagementContractMock_PausedStatus_Call) RunAndReturn(run func() (blockchain.PauseStatus, error)) *CollateralManagementContractMock_PausedStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -179,6 +179,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		Value:             entities.NewWei(0),
 		GasPrice:          entities.NewWei(1000000000),
 	}, nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)

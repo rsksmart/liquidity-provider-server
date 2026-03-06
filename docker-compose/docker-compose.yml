@@ -56,20 +56,12 @@ services:
       - "4444:4444"
       - "4445:4445"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/var/lib/rsk/database
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/var/log/rsk
     networks:
       - net_lps
     command:
       [
-        "java",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=rskj",
-        "-cp",
-        "rskj-core.jar",
-        "-Drsk.conf.file=rsk.conf",
-        "co.rsk.Start",
         "--${LPS_STAGE}",
       ]
   lps:
@@ -103,8 +95,7 @@ services:
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - DAO_FEE_COLLECTOR_ADDRESS
-      - WALLET_SECRET
+      - KEY_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
       - BTC_USERNAME
@@ -132,7 +123,8 @@ services:
       - ENABLE_SECURITY_HEADERS
       - WALLET
       - SECRET_SRC
-      - WALLET_FILE
+      - ALLOWED_ORIGINS
+      - KEYSTORE_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT
       - WATCHER_PREPARATION_TIMEOUT

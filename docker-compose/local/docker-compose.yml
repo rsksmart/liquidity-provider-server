@@ -115,23 +115,12 @@ services:
       - "4444:4444"
       - "4445:4445"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/var/lib/rsk/database
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/var/log/rsk
     networks:
       - net_lps
     command:
       [
-        "java",
-        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
-        "-Drpc.providers.web.ws.enabled=true",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=rskj",
-        "-cp",
-        "rskj-core.jar",
-        "-Drsk.conf.file=rsk.conf",
-        "co.rsk.Start",
         "--${LPS_STAGE}",
       ]
   mongodb:

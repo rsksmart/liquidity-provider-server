@@ -78,28 +78,42 @@ func NewProviderRegistrationParams(
 	}
 }
 
+type PauseStatus struct {
+	IsPaused bool
+	Reason   string
+	Since    uint64
+}
+
+type Pausable interface {
+	GetAddress() string
+	PausedStatus() (PauseStatus, error)
+}
+
 type PeginContract interface {
+	Pausable
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
+	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
-	DaoFeePercentage() (uint64, error)
 	Withdraw(amount *entities.Wei) error
 }
 
 type PegoutContract interface {
+	Pausable
 	GetAddress() string
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
+	HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error)
 	RefundUserPegOut(quoteHash string) (string, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
 	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	ValidatePegout(quoteHash string, btcTx []byte) error
-	DaoFeePercentage() (uint64, error)
 }
 
 type DiscoveryContract interface {
+	Pausable
 	GetAddress() string
 	SetProviderStatus(id uint64, newStatus bool) error
 	UpdateProvider(name, url string) (string, error)
@@ -110,6 +124,7 @@ type DiscoveryContract interface {
 }
 
 type CollateralManagementContract interface {
+	Pausable
 	GetAddress() string
 	GetPenalizedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]penalization.PenalizedEvent, error)
 	ProviderResign() error

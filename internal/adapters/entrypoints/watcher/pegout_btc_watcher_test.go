@@ -116,6 +116,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		GasPrice:          entities.NewWei(1000000000),
 	}
 	pegoutContract.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{PegOut: pegoutContract}, eventBus, rpc, mutex)
 	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
 	resetMocks := func() {

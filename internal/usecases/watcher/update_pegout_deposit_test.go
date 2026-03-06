@@ -48,7 +48,7 @@ var depositedPegoutQuote = quote.PegoutQuote{
 	ExpireDate:            now + 600,
 	ExpireBlock:           500,
 	GasFee:                entities.NewWei(500),
-	ProductFeeAmount:      entities.NewWei(300),
+	ChainId:               31,
 }
 
 var depositedPegoutCreationData = quote.PegoutCreationData{

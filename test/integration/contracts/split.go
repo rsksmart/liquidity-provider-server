@@ -61,7 +61,6 @@ func (e *SplitLbcExecutor) DepositPegout(s TestSuite, opts *bind.TransactOpts, p
 		pegoutQuote.Value,
 		pegoutQuote.CallFee,
 		pegoutQuote.GasFee,
-		pegoutQuote.ProductFeeAmount,
 	)
 
 	ctx := context.Background()
@@ -215,7 +214,6 @@ func (e *SplitLbcExecutor) parsePegoutQuote(s *suite.Suite, originalQuote pkg.Pe
 		TransferTime:          originalQuote.TransferTime,
 		ExpireDate:            originalQuote.ExpireDate,
 		ExpireBlock:           originalQuote.ExpireBlock,
-		ProductFeeAmount:      originalQuote.ProductFeeAmount,
 		GasFee:                originalQuote.GasFee,
 	}
 }
