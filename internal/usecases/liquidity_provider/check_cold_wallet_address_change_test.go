@@ -237,4 +237,3 @@ func TestCheckColdWalletAddressChangeUseCase_Run_SendAlertFails_ReturnsError_NoP
 	alertSender.AssertExpectations(t)
 	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
 }
-
