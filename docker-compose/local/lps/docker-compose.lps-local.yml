@@ -94,7 +94,7 @@ services:
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 15s
-      start_period: 30s
+      start_period: 120s # this is to allow enough time for the machine in the pipeline to start the server
       retries: 5
     networks:
       - net_lps
