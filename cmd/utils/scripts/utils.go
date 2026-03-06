@@ -94,7 +94,7 @@ func CreatePegoutContract(
 	}
 	return rootstock.NewPegoutContractImpl(
 		rskClient,
-		env.Rsk.PeginContractAddress,
+		env.Rsk.PegoutContractAddress,
 		rootstock.NewPegoutContractAdapter(pegoutContract),
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
@@ -123,7 +123,7 @@ func CreateDiscoveryContract(
 	}
 	return rootstock.NewDiscoveryContractImpl(
 		rskClient,
-		env.Rsk.PeginContractAddress,
+		env.Rsk.DiscoveryAddress,
 		discoveryContract,
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
