@@ -209,7 +209,6 @@ func mustPackPegoutQuote(t *testing.T, q pegoutBindings.QuotesPegOutQuote) []byt
 		{Name: "callFee", Type: "uint256"},
 		{Name: "penaltyFee", Type: "uint256"},
 		{Name: "value", Type: "uint256"},
-		{Name: "productFeeAmount", Type: "uint256"},
 		{Name: "gasFee", Type: "uint256"},
 		{Name: "lbcAddress", Type: "address"},
 		{Name: "lpRskAddress", Type: "address"},

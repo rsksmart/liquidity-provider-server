@@ -26,19 +26,17 @@ func TestPegoutQuote_Total(t *testing.T) {
 	quotes := test.Table[quote.PegoutQuote, *entities.Wei]{
 		{
 			Value: quote.PegoutQuote{
-				Value:            entities.NewWei(400000000000000000),
-				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
+				Value:  entities.NewWei(400000000000000000),
+				GasFee: entities.NewWei(100000000000000000),
 			},
-			Result: entities.NewWei(700000000000000000),
+			Result: entities.NewWei(500000000000000000),
 		},
 		{
 			Value: quote.PegoutQuote{
-				CallFee:          entities.NewWei(300000000000000000),
-				GasFee:           entities.NewWei(100000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
+				CallFee: entities.NewWei(300000000000000000),
+				GasFee:  entities.NewWei(100000000000000000),
 			},
-			Result: entities.NewWei(600000000000000000),
+			Result: entities.NewWei(400000000000000000),
 		},
 		{
 			Value: quote.PegoutQuote{
@@ -50,11 +48,10 @@ func TestPegoutQuote_Total(t *testing.T) {
 		},
 		{
 			Value: quote.PegoutQuote{
-				CallFee:          entities.NewWei(300000000000000000),
-				Value:            entities.NewWei(400000000000000000),
-				ProductFeeAmount: entities.NewWei(200000000000000000),
+				CallFee: entities.NewWei(300000000000000000),
+				Value:   entities.NewWei(400000000000000000),
 			},
-			Result: entities.NewWei(900000000000000000),
+			Result: entities.NewWei(700000000000000000),
 		},
 	}
 	test.RunTable(t, quotes, func(value quote.PegoutQuote) *entities.Wei {
@@ -90,7 +87,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				ExpireDate:            uint32(now - 61),
 				ExpireBlock:           1,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      entities.NewWei(200000000000000000),
+				ChainId:               31,
 			},
 			Result: true,
 		},
@@ -114,7 +111,7 @@ func TestPegoutQuote_IsExpired(t *testing.T) {
 				ExpireDate:            uint32(now + 60),
 				ExpireBlock:           1,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      entities.NewWei(200000000000000000),
+				ChainId:               31,
 			},
 			Result: false,
 		},
@@ -149,7 +146,7 @@ func TestGetCreationBlock(t *testing.T) {
 				ExpireDate:            1,
 				ExpireBlock:           40,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      entities.NewWei(200000000000000000),
+				ChainId:               31,
 			},
 			Result: 0,
 		},
@@ -173,7 +170,7 @@ func TestGetCreationBlock(t *testing.T) {
 				ExpireDate:            1,
 				ExpireBlock:           380,
 				GasFee:                entities.NewWei(100000000000000000),
-				ProductFeeAmount:      entities.NewWei(200000000000000000),
+				ChainId:               31,
 			},
 			Result: 340,
 		},
@@ -186,19 +183,18 @@ func TestGetCreationBlock(t *testing.T) {
 func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 	now := time.Now()
 	pegoutQuote := quote.PegoutQuote{
-		ExpireBlock:      500,
-		ExpireDate:       uint32(now.Unix()) + 60,
-		Value:            entities.NewWei(200000000000000000),
-		CallFee:          entities.NewWei(100000000000000000),
-		GasFee:           entities.NewWei(100000000000000000),
-		ProductFeeAmount: entities.NewWei(100000000000000000),
+		ExpireBlock: 500,
+		ExpireDate:  uint32(now.Unix()) + 60,
+		Value:       entities.NewWei(200000000000000000),
+		CallFee:     entities.NewWei(100000000000000000),
+		GasFee:      entities.NewWei(100000000000000000),
 	}
 	cases := test.Table[quote.PegoutDeposit, bool]{
 		{
 			Value: quote.PegoutDeposit{
 				TxHash:      test.AnyHash,
 				QuoteHash:   test.AnyHash,
-				Amount:      entities.NewWei(490000000000000000),
+				Amount:      entities.NewWei(390000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,
 				From:        test.AnyAddress,
@@ -209,7 +205,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 			Value: quote.PegoutDeposit{
 				TxHash:      test.AnyHash,
 				QuoteHash:   test.AnyHash,
-				Amount:      entities.NewWei(5100000000000000000),
+				Amount:      entities.NewWei(4100000000000000000),
 				Timestamp:   time.Unix(now.Unix()+61, 0),
 				BlockNumber: 499,
 				From:        test.AnyAddress,
@@ -220,7 +216,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 			Value: quote.PegoutDeposit{
 				TxHash:      test.AnyHash,
 				QuoteHash:   test.AnyHash,
-				Amount:      entities.NewWei(5100000000000000000),
+				Amount:      entities.NewWei(4100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 501,
 				From:        test.AnyAddress,
@@ -231,7 +227,7 @@ func TestPegoutDeposit_IsValidForQuote(t *testing.T) {
 			Value: quote.PegoutDeposit{
 				TxHash:      test.AnyHash,
 				QuoteHash:   test.AnyHash,
-				Amount:      entities.NewWei(5100000000000000000),
+				Amount:      entities.NewWei(4100000000000000000),
 				Timestamp:   now,
 				BlockNumber: 499,
 				From:        test.AnyAddress,

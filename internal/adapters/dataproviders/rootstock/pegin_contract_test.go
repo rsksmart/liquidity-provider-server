@@ -39,7 +39,7 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
-	ProductFeeAmount:   entities.NewWei(500),
+	ChainId:            31,
 }
 
 var parsedPeginQuote = bindings.QuotesPegInQuote{
@@ -61,8 +61,8 @@ var parsedPeginQuote = bindings.QuotesPegInQuote{
 	CallTime:                    40,
 	DepositConfirmations:        50,
 	CallOnRegister:              true,
-	ProductFeeAmount:            big.NewInt(500),
 	GasFee:                      big.NewInt(100),
+	ChainId:                     big.NewInt(31),
 }
 
 func TestNewPeginContractImpl(t *testing.T) {
@@ -196,35 +196,6 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 func TestPeginContractImpl_GetAddress(t *testing.T) {
 	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, Abis)
 	assert.Equal(t, test.AnyAddress, peginContract.GetAddress())
-}
-
-func TestPeginContractImpl_DaoFeePercentage(t *testing.T) {
-	contractMock := createBoundContractMock()
-	peginBinding := bindings.NewPeginContract()
-	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(peginBinding.PackGetFeePercentage()),
-			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(1)), nil).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), peginBinding, Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), percentage)
-		contractMock.caller.AssertExpectations(t)
-	})
-	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(peginBinding.PackGetFeePercentage()),
-			mock.Anything,
-		).Return(nil, assert.AnError).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), peginBinding, Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.Error(t, err)
-		require.Zero(t, percentage)
-		contractMock.caller.AssertExpectations(t)
-	})
 }
 
 func TestPeginContractImpl_HashPeginQuote(t *testing.T) {
@@ -498,4 +469,36 @@ func TestPeginContractImpl_PausedStatus(t *testing.T) {
 		assert.Empty(t, result)
 	})
 	contractMock.caller.AssertExpectations(t)
+}
+
+func TestPeginContractImpl_HashPeginQuoteEIP712(t *testing.T) {
+	t.Run("should return hash pegin quote eip712", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginBinding := bindings.NewPeginContract()
+		hash := [32]byte{1, 2, 3}
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuoteEIP712(parsedPeginQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("should handle error hashing pegin quote eip712", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginBinding := bindings.NewPeginContract()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuoteEIP712(parsedPeginQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		contractMock.caller.AssertExpectations(t)
+	})
 }

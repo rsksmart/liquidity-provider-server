@@ -26,10 +26,10 @@ var (
 
 // QuotesPegInQuote is an auto generated low-level Go binding around an user-defined struct.
 type QuotesPegInQuote struct {
+	ChainId                     *big.Int
 	CallFee                     *big.Int
 	PenaltyFee                  *big.Int
 	Value                       *big.Int
-	ProductFeeAmount            *big.Int
 	GasFee                      *big.Int
 	FedBtcAddress               [20]byte
 	LbcAddress                  common.Address
@@ -50,10 +50,10 @@ type QuotesPegInQuote struct {
 
 // QuotesPegOutQuote is an auto generated low-level Go binding around an user-defined struct.
 type QuotesPegOutQuote struct {
+	ChainId               *big.Int
 	CallFee               *big.Int
 	PenaltyFee            *big.Int
 	Value                 *big.Int
-	ProductFeeAmount      *big.Int
 	GasFee                *big.Int
 	LbcAddress            common.Address
 	LpRskAddress          common.Address
@@ -73,7 +73,7 @@ type QuotesPegOutQuote struct {
 
 // CollateralManagementContractMetaData contains all meta data concerning the CollateralManagementContract contract.
 var CollateralManagementContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"addPegInCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegInCollateralTo\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegOutCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegOutCollateralTo\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getMinCollateral\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInCollateral\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegOutCollateral\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPenalties\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getResignDelayInBlocks\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getResignationBlock\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRewardPercentage\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRewards\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isCollateralSufficient\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isRegistered\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pause\",\"inputs\":[{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"resign\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"slashPegInCollateral\",\"inputs\":[{\"name\":\"punisher\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"slashPegOutCollateral\",\"inputs\":[{\"name\":\"punisher\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"unpause\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawRewards\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"PegInCollateralAdded\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutCollateralAdded\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Penalized\",\"inputs\":[{\"name\":\"liquidityProvider\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"punisher\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"collateralType\",\"type\":\"uint8\",\"indexed\":false,\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"penalty\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"reward\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Resigned\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RewardsWithdrawn\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"WithdrawCollateral\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AlreadyResigned\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NotResigned\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NothingToWithdraw\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"ResignationDelayNotMet\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"resignationBlockNum\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"resignDelayInBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"WithdrawalFailed\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"addPegInCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegInCollateralTo\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegOutCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"addPegOutCollateralTo\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getMinCollateral\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInCollateral\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegOutCollateral\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPenalties\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getResignDelayInBlocks\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getResignationBlock\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRewardPercentage\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRewards\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isCollateralSufficient\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isRegistered\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"resign\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"slashPegInCollateral\",\"inputs\":[{\"name\":\"punisher\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"slashPegOutCollateral\",\"inputs\":[{\"name\":\"punisher\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawCollateral\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawCollateral\",\"inputs\":[{\"name\":\"to\",\"type\":\"address\",\"internalType\":\"addresspayable\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawRewards\",\"inputs\":[{\"name\":\"to\",\"type\":\"address\",\"internalType\":\"addresspayable\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawRewards\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"PegInCollateralAdded\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutCollateralAdded\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Penalized\",\"inputs\":[{\"name\":\"liquidityProvider\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"punisher\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"collateralType\",\"type\":\"uint8\",\"indexed\":false,\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"penalty\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"reward\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Resigned\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RewardsWithdrawn\",\"inputs\":[{\"name\":\"caller\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"recipient\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"WithdrawCollateral\",\"inputs\":[{\"name\":\"caller\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"recipient\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AlreadyResigned\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InvalidRewardPercentage\",\"inputs\":[{\"name\":\"maxRewardPercentage\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"passedRewardPercentage\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"NotResigned\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NothingToWithdraw\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"ResignationDelayNotMet\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"resignationBlockNum\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"resignDelayInBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"WithdrawalFailed\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]",
 	ID:  "CollateralManagementContract",
 }
 
@@ -535,28 +535,6 @@ func (collateralManagementContract *CollateralManagementContract) UnpackIsRegist
 	return out0, nil
 }
 
-// PackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function pause(string reason) returns()
-func (collateralManagementContract *CollateralManagementContract) PackPause(reason string) []byte {
-	enc, err := collateralManagementContract.abi.Pack("pause", reason)
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function pause(string reason) returns()
-func (collateralManagementContract *CollateralManagementContract) TryPackPause(reason string) ([]byte, error) {
-	return collateralManagementContract.abi.Pack("pause", reason)
-}
-
 // PackPauseStatus is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x466916ca.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -669,28 +647,6 @@ func (collateralManagementContract *CollateralManagementContract) TryPackSlashPe
 	return collateralManagementContract.abi.Pack("slashPegOutCollateral", punisher, quote, quoteHash)
 }
 
-// PackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function unpause() returns()
-func (collateralManagementContract *CollateralManagementContract) PackUnpause() []byte {
-	enc, err := collateralManagementContract.abi.Pack("unpause")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function unpause() returns()
-func (collateralManagementContract *CollateralManagementContract) TryPackUnpause() ([]byte, error) {
-	return collateralManagementContract.abi.Pack("unpause")
-}
-
 // PackWithdrawCollateral is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x59c153be.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -713,13 +669,35 @@ func (collateralManagementContract *CollateralManagementContract) TryPackWithdra
 	return collateralManagementContract.abi.Pack("withdrawCollateral")
 }
 
-// PackWithdrawRewards is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xc7b8981c.  This method will panic if any
+// PackWithdrawCollateral0 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x928d300e.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function withdrawRewards() returns()
-func (collateralManagementContract *CollateralManagementContract) PackWithdrawRewards() []byte {
-	enc, err := collateralManagementContract.abi.Pack("withdrawRewards")
+// Solidity: function withdrawCollateral(address to) returns()
+func (collateralManagementContract *CollateralManagementContract) PackWithdrawCollateral0(to common.Address) []byte {
+	enc, err := collateralManagementContract.abi.Pack("withdrawCollateral0", to)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackWithdrawCollateral0 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x928d300e.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function withdrawCollateral(address to) returns()
+func (collateralManagementContract *CollateralManagementContract) TryPackWithdrawCollateral0(to common.Address) ([]byte, error) {
+	return collateralManagementContract.abi.Pack("withdrawCollateral0", to)
+}
+
+// PackWithdrawRewards is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x42d86693.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function withdrawRewards(address to) returns()
+func (collateralManagementContract *CollateralManagementContract) PackWithdrawRewards(to common.Address) []byte {
+	enc, err := collateralManagementContract.abi.Pack("withdrawRewards", to)
 	if err != nil {
 		panic(err)
 	}
@@ -727,12 +705,34 @@ func (collateralManagementContract *CollateralManagementContract) PackWithdrawRe
 }
 
 // TryPackWithdrawRewards is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x42d86693.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function withdrawRewards(address to) returns()
+func (collateralManagementContract *CollateralManagementContract) TryPackWithdrawRewards(to common.Address) ([]byte, error) {
+	return collateralManagementContract.abi.Pack("withdrawRewards", to)
+}
+
+// PackWithdrawRewards0 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xc7b8981c.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function withdrawRewards() returns()
+func (collateralManagementContract *CollateralManagementContract) PackWithdrawRewards0() []byte {
+	enc, err := collateralManagementContract.abi.Pack("withdrawRewards0")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackWithdrawRewards0 is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0xc7b8981c.  This method will return an error
 // if any inputs are invalid/nil.
 //
 // Solidity: function withdrawRewards() returns()
-func (collateralManagementContract *CollateralManagementContract) TryPackWithdrawRewards() ([]byte, error) {
-	return collateralManagementContract.abi.Pack("withdrawRewards")
+func (collateralManagementContract *CollateralManagementContract) TryPackWithdrawRewards0() ([]byte, error) {
+	return collateralManagementContract.abi.Pack("withdrawRewards0")
 }
 
 // CollateralManagementContractPegInCollateralAdded represents a PegInCollateralAdded event raised by the CollateralManagementContract contract.
@@ -908,9 +908,10 @@ func (collateralManagementContract *CollateralManagementContract) UnpackResigned
 
 // CollateralManagementContractRewardsWithdrawn represents a RewardsWithdrawn event raised by the CollateralManagementContract contract.
 type CollateralManagementContractRewardsWithdrawn struct {
-	Addr   common.Address
-	Amount *big.Int
-	Raw    *types.Log // Blockchain specific contextual infos
+	Caller    common.Address
+	Recipient common.Address
+	Amount    *big.Int
+	Raw       *types.Log // Blockchain specific contextual infos
 }
 
 const CollateralManagementContractRewardsWithdrawnEventName = "RewardsWithdrawn"
@@ -923,7 +924,7 @@ func (CollateralManagementContractRewardsWithdrawn) ContractEventName() string {
 // UnpackRewardsWithdrawnEvent is the Go binding that unpacks the event data emitted
 // by contract.
 //
-// Solidity: event RewardsWithdrawn(address indexed addr, uint256 indexed amount)
+// Solidity: event RewardsWithdrawn(address indexed caller, address indexed recipient, uint256 indexed amount)
 func (collateralManagementContract *CollateralManagementContract) UnpackRewardsWithdrawnEvent(log *types.Log) (*CollateralManagementContractRewardsWithdrawn, error) {
 	event := "RewardsWithdrawn"
 	if len(log.Topics) == 0 || log.Topics[0] != collateralManagementContract.abi.Events[event].ID {
@@ -950,9 +951,10 @@ func (collateralManagementContract *CollateralManagementContract) UnpackRewardsW
 
 // CollateralManagementContractWithdrawCollateral represents a WithdrawCollateral event raised by the CollateralManagementContract contract.
 type CollateralManagementContractWithdrawCollateral struct {
-	Addr   common.Address
-	Amount *big.Int
-	Raw    *types.Log // Blockchain specific contextual infos
+	Caller    common.Address
+	Recipient common.Address
+	Amount    *big.Int
+	Raw       *types.Log // Blockchain specific contextual infos
 }
 
 const CollateralManagementContractWithdrawCollateralEventName = "WithdrawCollateral"
@@ -965,7 +967,7 @@ func (CollateralManagementContractWithdrawCollateral) ContractEventName() string
 // UnpackWithdrawCollateralEvent is the Go binding that unpacks the event data emitted
 // by contract.
 //
-// Solidity: event WithdrawCollateral(address indexed addr, uint256 indexed amount)
+// Solidity: event WithdrawCollateral(address indexed caller, address indexed recipient, uint256 indexed amount)
 func (collateralManagementContract *CollateralManagementContract) UnpackWithdrawCollateralEvent(log *types.Log) (*CollateralManagementContractWithdrawCollateral, error) {
 	event := "WithdrawCollateral"
 	if len(log.Topics) == 0 || log.Topics[0] != collateralManagementContract.abi.Events[event].ID {
@@ -995,6 +997,9 @@ func (collateralManagementContract *CollateralManagementContract) UnpackWithdraw
 func (collateralManagementContract *CollateralManagementContract) UnpackError(raw []byte) (any, error) {
 	if bytes.Equal(raw[:4], collateralManagementContract.abi.Errors["AlreadyResigned"].ID.Bytes()[:4]) {
 		return collateralManagementContract.UnpackAlreadyResignedError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], collateralManagementContract.abi.Errors["InvalidRewardPercentage"].ID.Bytes()[:4]) {
+		return collateralManagementContract.UnpackInvalidRewardPercentageError(raw[4:])
 	}
 	if bytes.Equal(raw[:4], collateralManagementContract.abi.Errors["NotResigned"].ID.Bytes()[:4]) {
 		return collateralManagementContract.UnpackNotResignedError(raw[4:])
@@ -1030,6 +1035,31 @@ func CollateralManagementContractAlreadyResignedErrorID() common.Hash {
 func (collateralManagementContract *CollateralManagementContract) UnpackAlreadyResignedError(raw []byte) (*CollateralManagementContractAlreadyResigned, error) {
 	out := new(CollateralManagementContractAlreadyResigned)
 	if err := collateralManagementContract.abi.UnpackIntoInterface(out, "AlreadyResigned", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CollateralManagementContractInvalidRewardPercentage represents a InvalidRewardPercentage error raised by the CollateralManagementContract contract.
+type CollateralManagementContractInvalidRewardPercentage struct {
+	MaxRewardPercentage    *big.Int
+	PassedRewardPercentage *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error InvalidRewardPercentage(uint256 maxRewardPercentage, uint256 passedRewardPercentage)
+func CollateralManagementContractInvalidRewardPercentageErrorID() common.Hash {
+	return common.HexToHash("0x039ce2a5fe1aa24dc190d954054e8789a74d76c65ea4f9c116da6020933ded8d")
+}
+
+// UnpackInvalidRewardPercentageError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error InvalidRewardPercentage(uint256 maxRewardPercentage, uint256 passedRewardPercentage)
+func (collateralManagementContract *CollateralManagementContract) UnpackInvalidRewardPercentageError(raw []byte) (*CollateralManagementContractInvalidRewardPercentage, error) {
+	out := new(CollateralManagementContractInvalidRewardPercentage)
+	if err := collateralManagementContract.abi.UnpackIntoInterface(out, "InvalidRewardPercentage", raw); err != nil {
 		return nil, err
 	}
 	return out, nil

@@ -78,22 +78,6 @@ func (peginContract *peginContractImpl) GetBalance(address string) (*entities.We
 	return entities.NewBigWei(balance), nil
 }
 
-func (peginContract *peginContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			callData, dataErr := peginContract.binding.TryPackGetFeePercentage()
-			if dataErr != nil {
-				return nil, dataErr
-			}
-			return bind.Call(peginContract.contract, &opts, callData, peginContract.binding.UnpackGetFeePercentage)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
-}
-
 func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuote) (string, error) {
 	var results [32]byte
 
@@ -114,6 +98,28 @@ func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuo
 		return "", err
 	}
 	return hex.EncodeToString(results[:]), nil
+}
+
+func (peginContract *peginContractImpl) HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error) {
+	var result [32]byte
+
+	parsedQuote, err := parsePeginQuote(peginQuote)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	result, err = rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
+		func() ([32]byte, error) {
+			callData, dataErr := peginContract.binding.TryPackHashPegInQuoteEIP712(parsedQuote)
+			if dataErr != nil {
+				return [32]byte{}, dataErr
+			}
+			return bind.Call(peginContract.contract, &bind.CallOpts{}, callData, peginContract.binding.UnpackHashPegInQuoteEIP712)
+		})
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return result, nil
 }
 
 func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
@@ -315,6 +321,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 		return bindings.QuotesPegInQuote{}, fmt.Errorf("error parsing data: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = peginQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = peginQuote.PenaltyFee.AsBigInt()
 	parsedQuote.GasLimit = peginQuote.GasLimit
@@ -324,8 +331,8 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
+	parsedQuote.ChainId = chainId.SetUint64(peginQuote.ChainId)
 	return parsedQuote, nil
 }

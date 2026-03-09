@@ -41,7 +41,7 @@ var pegoutQuote = quote.PegoutQuote{
 	ExpireDate:            700,
 	ExpireBlock:           600,
 	GasFee:                entities.NewWei(888),
-	ProductFeeAmount:      entities.NewWei(789),
+	ChainId:               31,
 }
 
 var parsedPegoutQuote = bindings.QuotesPegOutQuote{
@@ -62,8 +62,8 @@ var parsedPegoutQuote = bindings.QuotesPegOutQuote{
 	TransferTime:          800,
 	ExpireDate:            700,
 	ExpireBlock:           600,
-	ProductFeeAmount:      big.NewInt(789),
 	GasFee:                big.NewInt(888),
+	ChainId:               big.NewInt(31),
 }
 
 var deposits = []geth.Log{
@@ -275,33 +275,6 @@ func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 		result, err := pegoutContract.IsPegOutQuoteCompleted("0104050302")
 		require.ErrorContains(t, err, "quote hash must be 32 bytes long")
 		assert.False(t, result)
-	})
-}
-
-func TestPegoutContractImpl_DaoFeePercentage(t *testing.T) {
-	contractMock := createBoundContractMock()
-	pegoutBinding := bindings.NewPegoutContract()
-	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(pegoutBinding.PackGetFeePercentage()),
-			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(1)), nil).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
-		percentage, err := pegoutContract.DaoFeePercentage()
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), percentage)
-	})
-	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(pegoutBinding.PackGetFeePercentage()),
-			mock.Anything,
-		).Return(nil, assert.AnError).Once()
-		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
-		percentage, err := pegoutContract.DaoFeePercentage()
-		require.Error(t, err)
-		require.Zero(t, percentage)
 	})
 }
 
@@ -580,7 +553,6 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 			CallFee:               big.NewInt(1),
 			PenaltyFee:            big.NewInt(1),
 			Value:                 big.NewInt(1),
-			ProductFeeAmount:      big.NewInt(1),
 			GasFee:                big.NewInt(1),
 			LbcAddress:            common.HexToAddress("10"),
 			LpRskAddress:          common.HexToAddress("10"),
@@ -661,5 +633,54 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		err := pegoutContract.ValidatePegout("0104050302", btcTx)
 		require.ErrorContains(t, err, "quote hash must be 32 bytes long")
 		signerMock.AssertExpectations(t)
+	})
+}
+
+func TestPegoutContractImpl_HashPegoutQuoteEIP712(t *testing.T) {
+	hash := [32]byte{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	contractMock := createBoundContractMock()
+	pegoutBinding := bindings.NewPegoutContract()
+	signerMock := &mocks.TransactionSignerMock{}
+	t.Run("should return hash pegout quote eip712", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuoteEIP712(parsedPegoutQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
+		pegoutContract := rootstock.NewPegoutContractImpl(
+			dummyClient,
+			test.AnyAddress,
+			contractMock.contract,
+			signerMock,
+			rootstock.RetryParams{},
+			time.Duration(1),
+			pegoutBinding,
+			Abis,
+		)
+		result, err := pegoutContract.HashPegoutQuoteEIP712(pegoutQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("should handle error hashing pegout quote eip712", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuoteEIP712(parsedPegoutQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		pegoutContract := rootstock.NewPegoutContractImpl(
+			dummyClient,
+			test.AnyAddress,
+			contractMock.contract,
+			signerMock,
+			rootstock.RetryParams{},
+			time.Duration(1),
+			pegoutBinding,
+			Abis,
+		)
+		result, err := pegoutContract.HashPegoutQuoteEIP712(pegoutQuote)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		contractMock.caller.AssertExpectations(t)
 	})
 }

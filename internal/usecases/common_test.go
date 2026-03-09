@@ -1,9 +1,7 @@
 package usecases_test
 
 import (
-	"context"
-	"errors"
-	"math"
+	"encoding/hex"
 	"math/big"
 	"strings"
 	"testing"
@@ -25,16 +23,6 @@ import (
 
 const id = "anyUseCase"
 
-type rpcMock struct {
-	mock.Mock
-	blockchain.RootstockRpcServer
-}
-
-func (m *rpcMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
-	args := m.Called(ctx, addr, value, data)
-	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
 type bridgeMock struct {
 	mock.Mock
 	rootstock.Bridge
@@ -43,64 +31,6 @@ type bridgeMock struct {
 func (m *bridgeMock) GetMinimumLockTxValue() (*entities.Wei, error) {
 	args := m.Called()
 	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
-func TestCalculateDaoAmounts(t *testing.T) {
-	type testArgs struct {
-		value      *entities.Wei
-		percentage uint64
-	}
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(500000000000000), nil)
-
-	ctx := context.Background()
-	feeCollectorAddress := "0x1234"
-
-	cases := test.Table[testArgs, u.DaoAmounts]{
-		{
-			Value:  testArgs{entities.NewWei(1000000000000000000), 0},
-			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
-		},
-		{
-			Value: testArgs{entities.NewWei(500000000000000000), 0.5 * utils.Scale},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(250000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(6000000000000000000), 0.01 * utils.Scale},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(60000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(7700000000000000000), uint64(math.Round(0.17 * float64(utils.Scale)))},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(1309000000000000000),
-			},
-		},
-	}
-
-	test.RunTable(t, cases, func(args testArgs) u.DaoAmounts {
-		amounts, err := u.CalculateDaoAmounts(ctx, &rpc, args.value, args.percentage, feeCollectorAddress)
-		require.NoError(t, err)
-		return amounts
-	})
-
-}
-
-func TestCalculateDaoAmounts_Fail(t *testing.T) {
-	ctx := context.Background()
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(0), errors.New("some error"))
-	result, err := u.CalculateDaoAmounts(ctx, &rpc, entities.NewUWei(500000000000000), 1, "0x1234")
-	require.Equal(t, u.DaoAmounts{}, result)
-	require.Error(t, err)
 }
 
 func TestValidateMinLockValue(t *testing.T) {
@@ -308,11 +238,12 @@ func TestRecoverSignerAddress(t *testing.T) {
 	}{
 		{
 			name:            "valid signature and hash",
-			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
-			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
-			expectedAddress: "0x233845a26a4dA08E16218e7B401501D048670674",
+			quoteHash:       "b2e14c87f0cd6e0074bdd7f7617f4c206cb7a48abe572f7862ada5f265d4d1d6",
+			signature:       "3763a6b88b92d31546d1369668834624a5c4fc7cd95c0c90c461db7313a218390b1c6d89fe8107da5325f328d2429959f89d86dcc9cd7eedd2be147f10ad82dd1c",
+			expectedAddress: "0xAFf2c034FD8Bc690e62A897BbC5A6C4dF2321992",
 			expectError:     false,
 		},
+		/* TODO removing these cases temporarily until we have testnet/mainnet real cases
 		{
 			name:            "valid signature and hash mainnet",
 			quoteHash:       "249e59bf1a92a867629f111222fa63946370640030faaa5fdb79744fd0539f81",
@@ -334,6 +265,7 @@ func TestRecoverSignerAddress(t *testing.T) {
 			expectedAddress: "0xdfcf32644e6cc5badd1188cddf66f66e21b24375",
 			expectError:     false,
 		},
+		*/
 		{
 			name:            "invalid hash format",
 			quoteHash:       "invalid-hex",
@@ -386,25 +318,27 @@ func TestRecoverSignerAddress(t *testing.T) {
 		},
 		{
 			name:      "signature with recovery ID = 27 (0x1b)",
-			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			quoteHash: "17d04ce861f43c2d3162568c44d0b5ae285ce26b3153c9f98b6f5e8c30b02f6c",
 			// This is a signature with recovery ID 27 (0x1b) which should adjust to 0
-			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1b",
-			expectedAddress: "0xf719893448f705385d9f7192d2f72c894767d9dc", // Actual recovered address for this signature
+			signature:       "2a3bfcbf5dc437ee1c76ff0320b674900eb6fd6e55b359df6a030b2d1e3c041f140c450de729b98ea3b314da6cc924c593666e24749151d52ffc23d8a611e5041b",
+			expectedAddress: "0xD839C223634b224327430Bb7062858109C850bf9", // Actual recovered address for this signature
 			expectError:     false,
 		},
 		{
 			name:      "signature with recovery ID = 28 (0x1c)",
-			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			quoteHash: "bad965e00a5b1085cb2d4d448e2cdb7fd06b8875583055620f08516b18ee899f",
 			// Valid signature with recovery ID 28 (0x1c) which should adjust to 1
-			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
-			expectedAddress: "0x233845a26a4dA08E16218e7B401501D048670674",
+			signature:       "82925cbc9ed77f4d27fc426e1b78e6cf013bfd05243973b6bac59920dac3b21612752cde635b0685a4351b3bc92ec052b417f9783e0ca1f7c3ebd64db5f1645c1c",
+			expectedAddress: "0x57f9F71E683E2A8ff3d2f394aE45C58b2d913A35",
 			expectError:     false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			recoveredAddress, err := u.RecoverSignerAddress(tc.quoteHash, tc.signature)
+			recoveredAddress, err := u.RecoverSignerAddress(tc.signature, func() ([]byte, error) {
+				return hex.DecodeString(tc.quoteHash)
+			})
 
 			if tc.expectError {
 				assert.Error(t, err)

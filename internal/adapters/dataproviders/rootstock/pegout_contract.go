@@ -113,22 +113,6 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 	return nil
 }
 
-func (pegoutContract *pegoutContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			callData, dataErr := pegoutContract.binding.TryPackGetFeePercentage()
-			if dataErr != nil {
-				return nil, dataErr
-			}
-			return bind.Call(pegoutContract.contract, &opts, callData, pegoutContract.binding.UnpackGetFeePercentage)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
-}
-
 func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error) {
 	opts := bind.CallOpts{}
 	var results [32]byte
@@ -150,6 +134,28 @@ func (pegoutContract *pegoutContractImpl) HashPegoutQuote(pegoutQuote quote.Pego
 		return "", err
 	}
 	return hex.EncodeToString(results[:]), nil
+}
+
+func (pegoutContract *pegoutContractImpl) HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error) {
+	var result [32]byte
+
+	parsedQuote, err := parsePegoutQuote(pegoutQuote)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	result, err = rskRetry(pegoutContract.retryParams.Retries, pegoutContract.retryParams.Sleep,
+		func() ([32]byte, error) {
+			callData, dataErr := pegoutContract.binding.TryPackHashPegOutQuoteEIP712(parsedQuote)
+			if dataErr != nil {
+				return [32]byte{}, dataErr
+			}
+			return bind.Call(pegoutContract.contract, &bind.CallOpts{}, callData, pegoutContract.binding.UnpackHashPegOutQuote)
+		})
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return result, nil
 }
 
 func (pegoutContract *pegoutContractImpl) RefundUserPegOut(quoteHash string) (string, error) {
@@ -358,6 +364,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = pegoutQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = pegoutQuote.PenaltyFee.AsBigInt()
 	parsedQuote.Nonce = pegoutQuote.Nonce
@@ -369,7 +376,7 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 	parsedQuote.TransferTime = pegoutQuote.TransferTime
 	parsedQuote.ExpireDate = pegoutQuote.ExpireDate
 	parsedQuote.ExpireBlock = pegoutQuote.ExpireBlock
-	parsedQuote.ProductFeeAmount = pegoutQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = pegoutQuote.GasFee.AsBigInt()
+	parsedQuote.ChainId = chainId.SetUint64(pegoutQuote.ChainId)
 	return parsedQuote, nil
 }

@@ -43,7 +43,7 @@ var testPegoutQuote = quote.PegoutQuote{
 	ExpireDate:            1641000000,
 	ExpireBlock:           1000000,
 	GasFee:                entities.NewWei(50),
-	ProductFeeAmount:      entities.NewWei(25),
+	ChainId:               31,
 }
 
 var testRetainedPegoutQuote = quote.RetainedPegoutQuote{
@@ -124,6 +124,7 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPegoutQuote.Value.AsBigInt(), response.Detail.Value)
 	assert.Equal(t, testPegoutQuote.CallFee.AsBigInt(), response.Detail.CallFee)
 	assert.Equal(t, testPegoutQuote.PenaltyFee.AsBigInt(), response.Detail.PenaltyFee)
+	assert.Equal(t, testPegoutQuote.ChainId, response.Detail.ChainId)
 
 	// Validate creation data fields
 	assert.Equal(t, testPegoutCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)

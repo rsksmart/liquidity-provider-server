@@ -44,7 +44,7 @@ var testPeginQuote = quote.PeginQuote{
 	Confirmations:      6,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(50),
-	ProductFeeAmount:   entities.NewWei(25),
+	ChainId:            31,
 }
 
 var testRetainedQuote = quote.RetainedPeginQuote{
@@ -123,6 +123,7 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.Equal(t, testPeginQuote.Value.AsBigInt(), response.Detail.Value)
 	assert.Equal(t, testPeginQuote.CallFee.AsBigInt(), response.Detail.CallFee)
 	assert.Equal(t, testPeginQuote.GasLimit, response.Detail.GasLimit)
+	assert.Equal(t, testPeginQuote.ChainId, response.Detail.ChainId)
 
 	// Validate creation data fields
 	assert.Equal(t, testCreationData.GasPrice.AsBigInt(), response.CreationData.GasPrice)

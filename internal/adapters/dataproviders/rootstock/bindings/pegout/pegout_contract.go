@@ -26,10 +26,10 @@ var (
 
 // QuotesPegOutQuote is an auto generated low-level Go binding around an user-defined struct.
 type QuotesPegOutQuote struct {
+	ChainId               *big.Int
 	CallFee               *big.Int
 	PenaltyFee            *big.Int
 	Value                 *big.Int
-	ProductFeeAmount      *big.Int
 	GasFee                *big.Int
 	LbcAddress            common.Address
 	LpRskAddress          common.Address
@@ -49,7 +49,7 @@ type QuotesPegOutQuote struct {
 
 // PegoutContractMetaData contains all meta data concerning the PegoutContract contract.
 var PegoutContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"depositPegOut\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getCurrentContribution\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getFeeCollector\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getFeePercentage\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegOutQuote\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isQuoteCompleted\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pause\",\"inputs\":[{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"refundPegOut\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"btcTx\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"refundUserPegOut\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"unpause\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"validatePegout\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"btcTx\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"stateMutability\":\"view\"},{\"type\":\"event\",\"name\":\"PegOutChangePaid\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"userAddress\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"change\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutDeposit\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"sender\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"timestamp\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutRefunded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutUserRefunded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"userAddress\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"InvalidDestination\",\"inputs\":[{\"name\":\"expected\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"actual\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"InvalidQuoteHash\",\"inputs\":[{\"name\":\"expected\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"actual\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"MalformedTransaction\",\"inputs\":[{\"name\":\"outputScript\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"NotEnoughConfirmations\",\"inputs\":[{\"name\":\"required\",\"type\":\"int256\",\"internalType\":\"int256\"},{\"name\":\"current\",\"type\":\"int256\",\"internalType\":\"int256\"}]},{\"type\":\"error\",\"name\":\"QuoteAlreadyCompleted\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"QuoteAlreadyRegistered\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"QuoteExpiredByBlocks\",\"inputs\":[{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"}]},{\"type\":\"error\",\"name\":\"QuoteExpiredByTime\",\"inputs\":[{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"}]},{\"type\":\"error\",\"name\":\"QuoteNotExpired\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"UnableToGetConfirmations\",\"inputs\":[{\"name\":\"errorCode\",\"type\":\"int256\",\"internalType\":\"int256\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"depositPegOut\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"eip712Domain\",\"inputs\":[],\"outputs\":[{\"name\":\"fields\",\"type\":\"bytes1\",\"internalType\":\"bytes1\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"version\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"verifyingContract\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"salt\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"extensions\",\"type\":\"uint256[]\",\"internalType\":\"uint256[]\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getBalance\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegOutQuote\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegOutQuoteEIP712\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isQuoteCompleted\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"refundPegOut\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"btcTx\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHeaderHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"refundUserPegOut\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"validatePegout\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"btcTx\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegOutQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"lpRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"transferTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"transferConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"lpBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"withdraw\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"BalanceDecrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"BalanceIncrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"EIP712DomainChanged\",\"inputs\":[],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutChangePaid\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"userAddress\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"change\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutDeposit\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"sender\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"timestamp\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutRefunded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegOutUserRefunded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"userAddress\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"value\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Withdrawal\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"to\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"InvalidDestination\",\"inputs\":[{\"name\":\"expected\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"actual\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"InvalidQuoteHash\",\"inputs\":[{\"name\":\"expected\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"actual\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"MalformedTransaction\",\"inputs\":[{\"name\":\"outputScript\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"NotEnoughConfirmations\",\"inputs\":[{\"name\":\"required\",\"type\":\"int256\",\"internalType\":\"int256\"},{\"name\":\"current\",\"type\":\"int256\",\"internalType\":\"int256\"}]},{\"type\":\"error\",\"name\":\"QuoteAlreadyCompleted\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"QuoteAlreadyRegistered\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"QuoteExpiredByBlocks\",\"inputs\":[{\"name\":\"expireBlock\",\"type\":\"uint32\",\"internalType\":\"uint32\"}]},{\"type\":\"error\",\"name\":\"QuoteExpiredByTime\",\"inputs\":[{\"name\":\"depositDateLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"expireDate\",\"type\":\"uint32\",\"internalType\":\"uint32\"}]},{\"type\":\"error\",\"name\":\"QuoteNotExpired\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"UnableToGetConfirmations\",\"inputs\":[{\"name\":\"errorCode\",\"type\":\"int256\",\"internalType\":\"int256\"}]}]",
 	ID:  "PegoutContract",
 }
 
@@ -95,104 +95,88 @@ func (pegoutContract *PegoutContract) TryPackDepositPegOut(quote QuotesPegOutQuo
 	return pegoutContract.abi.Pack("depositPegOut", quote, signature)
 }
 
-// PackGetCurrentContribution is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xb8623d53.  This method will panic if any
+// PackEip712Domain is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x84b0196e.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (pegoutContract *PegoutContract) PackGetCurrentContribution() []byte {
-	enc, err := pegoutContract.abi.Pack("getCurrentContribution")
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (pegoutContract *PegoutContract) PackEip712Domain() []byte {
+	enc, err := pegoutContract.abi.Pack("eip712Domain")
 	if err != nil {
 		panic(err)
 	}
 	return enc
 }
 
-// TryPackGetCurrentContribution is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xb8623d53.  This method will return an error
+// TryPackEip712Domain is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x84b0196e.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (pegoutContract *PegoutContract) TryPackGetCurrentContribution() ([]byte, error) {
-	return pegoutContract.abi.Pack("getCurrentContribution")
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (pegoutContract *PegoutContract) TryPackEip712Domain() ([]byte, error) {
+	return pegoutContract.abi.Pack("eip712Domain")
 }
 
-// UnpackGetCurrentContribution is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0xb8623d53.
+// Eip712DomainOutput serves as a container for the return parameters of contract
+// method Eip712Domain.
+type Eip712DomainOutput struct {
+	Fields            [1]byte
+	Name              string
+	Version           string
+	ChainId           *big.Int
+	VerifyingContract common.Address
+	Salt              [32]byte
+	Extensions        []*big.Int
+}
+
+// UnpackEip712Domain is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x84b0196e.
 //
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (pegoutContract *PegoutContract) UnpackGetCurrentContribution(data []byte) (*big.Int, error) {
-	out, err := pegoutContract.abi.Unpack("getCurrentContribution", data)
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (pegoutContract *PegoutContract) UnpackEip712Domain(data []byte) (Eip712DomainOutput, error) {
+	out, err := pegoutContract.abi.Unpack("eip712Domain", data)
+	outstruct := new(Eip712DomainOutput)
 	if err != nil {
-		return new(big.Int), err
+		return *outstruct, err
 	}
-	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
-	return out0, nil
+	outstruct.Fields = *abi.ConvertType(out[0], new([1]byte)).(*[1]byte)
+	outstruct.Name = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Version = *abi.ConvertType(out[2], new(string)).(*string)
+	outstruct.ChainId = abi.ConvertType(out[3], new(big.Int)).(*big.Int)
+	outstruct.VerifyingContract = *abi.ConvertType(out[4], new(common.Address)).(*common.Address)
+	outstruct.Salt = *abi.ConvertType(out[5], new([32]byte)).(*[32]byte)
+	outstruct.Extensions = *abi.ConvertType(out[6], new([]*big.Int)).(*[]*big.Int)
+	return *outstruct, nil
 }
 
-// PackGetFeeCollector is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x12fde4b7.  This method will panic if any
+// PackGetBalance is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xf8b2cb4f.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function getFeeCollector() view returns(address)
-func (pegoutContract *PegoutContract) PackGetFeeCollector() []byte {
-	enc, err := pegoutContract.abi.Pack("getFeeCollector")
+// Solidity: function getBalance(address addr) view returns(uint256)
+func (pegoutContract *PegoutContract) PackGetBalance(addr common.Address) []byte {
+	enc, err := pegoutContract.abi.Pack("getBalance", addr)
 	if err != nil {
 		panic(err)
 	}
 	return enc
 }
 
-// TryPackGetFeeCollector is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x12fde4b7.  This method will return an error
+// TryPackGetBalance is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xf8b2cb4f.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function getFeeCollector() view returns(address)
-func (pegoutContract *PegoutContract) TryPackGetFeeCollector() ([]byte, error) {
-	return pegoutContract.abi.Pack("getFeeCollector")
+// Solidity: function getBalance(address addr) view returns(uint256)
+func (pegoutContract *PegoutContract) TryPackGetBalance(addr common.Address) ([]byte, error) {
+	return pegoutContract.abi.Pack("getBalance", addr)
 }
 
-// UnpackGetFeeCollector is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x12fde4b7.
+// UnpackGetBalance is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0xf8b2cb4f.
 //
-// Solidity: function getFeeCollector() view returns(address)
-func (pegoutContract *PegoutContract) UnpackGetFeeCollector(data []byte) (common.Address, error) {
-	out, err := pegoutContract.abi.Unpack("getFeeCollector", data)
-	if err != nil {
-		return *new(common.Address), err
-	}
-	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
-	return out0, nil
-}
-
-// PackGetFeePercentage is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x11efbf61.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (pegoutContract *PegoutContract) PackGetFeePercentage() []byte {
-	enc, err := pegoutContract.abi.Pack("getFeePercentage")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackGetFeePercentage is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x11efbf61.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (pegoutContract *PegoutContract) TryPackGetFeePercentage() ([]byte, error) {
-	return pegoutContract.abi.Pack("getFeePercentage")
-}
-
-// UnpackGetFeePercentage is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x11efbf61.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (pegoutContract *PegoutContract) UnpackGetFeePercentage(data []byte) (*big.Int, error) {
-	out, err := pegoutContract.abi.Unpack("getFeePercentage", data)
+// Solidity: function getBalance(address addr) view returns(uint256)
+func (pegoutContract *PegoutContract) UnpackGetBalance(data []byte) (*big.Int, error) {
+	out, err := pegoutContract.abi.Unpack("getBalance", data)
 	if err != nil {
 		return new(big.Int), err
 	}
@@ -235,6 +219,41 @@ func (pegoutContract *PegoutContract) UnpackHashPegOutQuote(data []byte) ([32]by
 	return out0, nil
 }
 
+// PackHashPegOutQuoteEIP712 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5966252a.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function hashPegOutQuoteEIP712((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) view returns(bytes32)
+func (pegoutContract *PegoutContract) PackHashPegOutQuoteEIP712(quote QuotesPegOutQuote) []byte {
+	enc, err := pegoutContract.abi.Pack("hashPegOutQuoteEIP712", quote)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackHashPegOutQuoteEIP712 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5966252a.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function hashPegOutQuoteEIP712((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) view returns(bytes32)
+func (pegoutContract *PegoutContract) TryPackHashPegOutQuoteEIP712(quote QuotesPegOutQuote) ([]byte, error) {
+	return pegoutContract.abi.Pack("hashPegOutQuoteEIP712", quote)
+}
+
+// UnpackHashPegOutQuoteEIP712 is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x5966252a.
+//
+// Solidity: function hashPegOutQuoteEIP712((uint256,uint256,uint256,uint256,uint256,address,address,address,int64,uint32,uint32,uint32,uint32,uint32,uint16,uint16,bytes,bytes,bytes) quote) view returns(bytes32)
+func (pegoutContract *PegoutContract) UnpackHashPegOutQuoteEIP712(data []byte) ([32]byte, error) {
+	out, err := pegoutContract.abi.Unpack("hashPegOutQuoteEIP712", data)
+	if err != nil {
+		return *new([32]byte), err
+	}
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+	return out0, nil
+}
+
 // PackIsQuoteCompleted is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x35bf61f1.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -268,28 +287,6 @@ func (pegoutContract *PegoutContract) UnpackIsQuoteCompleted(data []byte) (bool,
 	}
 	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
 	return out0, nil
-}
-
-// PackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function pause(string reason) returns()
-func (pegoutContract *PegoutContract) PackPause(reason string) []byte {
-	enc, err := pegoutContract.abi.Pack("pause", reason)
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function pause(string reason) returns()
-func (pegoutContract *PegoutContract) TryPackPause(reason string) ([]byte, error) {
-	return pegoutContract.abi.Pack("pause", reason)
 }
 
 // PackPauseStatus is the Go binding used to pack the parameters required for calling
@@ -382,28 +379,6 @@ func (pegoutContract *PegoutContract) TryPackRefundUserPegOut(quoteHash [32]byte
 	return pegoutContract.abi.Pack("refundUserPegOut", quoteHash)
 }
 
-// PackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function unpause() returns()
-func (pegoutContract *PegoutContract) PackUnpause() []byte {
-	enc, err := pegoutContract.abi.Pack("unpause")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function unpause() returns()
-func (pegoutContract *PegoutContract) TryPackUnpause() ([]byte, error) {
-	return pegoutContract.abi.Pack("unpause")
-}
-
 // PackValidatePegout is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x7846150c.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -437,6 +412,152 @@ func (pegoutContract *PegoutContract) UnpackValidatePegout(data []byte) (QuotesP
 	}
 	out0 := *abi.ConvertType(out[0], new(QuotesPegOutQuote)).(*QuotesPegOutQuote)
 	return out0, nil
+}
+
+// PackWithdraw is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xf3fef3a3.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function withdraw(address addr, uint256 amount) returns()
+func (pegoutContract *PegoutContract) PackWithdraw(addr common.Address, amount *big.Int) []byte {
+	enc, err := pegoutContract.abi.Pack("withdraw", addr, amount)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackWithdraw is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xf3fef3a3.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function withdraw(address addr, uint256 amount) returns()
+func (pegoutContract *PegoutContract) TryPackWithdraw(addr common.Address, amount *big.Int) ([]byte, error) {
+	return pegoutContract.abi.Pack("withdraw", addr, amount)
+}
+
+// PegoutContractBalanceDecrease represents a BalanceDecrease event raised by the PegoutContract contract.
+type PegoutContractBalanceDecrease struct {
+	Dest   common.Address
+	Amount *big.Int
+	Raw    *types.Log // Blockchain specific contextual infos
+}
+
+const PegoutContractBalanceDecreaseEventName = "BalanceDecrease"
+
+// ContractEventName returns the user-defined event name.
+func (PegoutContractBalanceDecrease) ContractEventName() string {
+	return PegoutContractBalanceDecreaseEventName
+}
+
+// UnpackBalanceDecreaseEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event BalanceDecrease(address indexed dest, uint256 indexed amount)
+func (pegoutContract *PegoutContract) UnpackBalanceDecreaseEvent(log *types.Log) (*PegoutContractBalanceDecrease, error) {
+	event := "BalanceDecrease"
+	if len(log.Topics) == 0 || log.Topics[0] != pegoutContract.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(PegoutContractBalanceDecrease)
+	if len(log.Data) > 0 {
+		if err := pegoutContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range pegoutContract.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// PegoutContractBalanceIncrease represents a BalanceIncrease event raised by the PegoutContract contract.
+type PegoutContractBalanceIncrease struct {
+	Dest   common.Address
+	Amount *big.Int
+	Raw    *types.Log // Blockchain specific contextual infos
+}
+
+const PegoutContractBalanceIncreaseEventName = "BalanceIncrease"
+
+// ContractEventName returns the user-defined event name.
+func (PegoutContractBalanceIncrease) ContractEventName() string {
+	return PegoutContractBalanceIncreaseEventName
+}
+
+// UnpackBalanceIncreaseEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event BalanceIncrease(address indexed dest, uint256 indexed amount)
+func (pegoutContract *PegoutContract) UnpackBalanceIncreaseEvent(log *types.Log) (*PegoutContractBalanceIncrease, error) {
+	event := "BalanceIncrease"
+	if len(log.Topics) == 0 || log.Topics[0] != pegoutContract.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(PegoutContractBalanceIncrease)
+	if len(log.Data) > 0 {
+		if err := pegoutContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range pegoutContract.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// PegoutContractEIP712DomainChanged represents a EIP712DomainChanged event raised by the PegoutContract contract.
+type PegoutContractEIP712DomainChanged struct {
+	Raw *types.Log // Blockchain specific contextual infos
+}
+
+const PegoutContractEIP712DomainChangedEventName = "EIP712DomainChanged"
+
+// ContractEventName returns the user-defined event name.
+func (PegoutContractEIP712DomainChanged) ContractEventName() string {
+	return PegoutContractEIP712DomainChangedEventName
+}
+
+// UnpackEIP712DomainChangedEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event EIP712DomainChanged()
+func (pegoutContract *PegoutContract) UnpackEIP712DomainChangedEvent(log *types.Log) (*PegoutContractEIP712DomainChanged, error) {
+	event := "EIP712DomainChanged"
+	if len(log.Topics) == 0 || log.Topics[0] != pegoutContract.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(PegoutContractEIP712DomainChanged)
+	if len(log.Data) > 0 {
+		if err := pegoutContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range pegoutContract.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
 }
 
 // PegoutContractPegOutChangePaid represents a PegOutChangePaid event raised by the PegoutContract contract.
@@ -592,6 +713,49 @@ func (pegoutContract *PegoutContract) UnpackPegOutUserRefundedEvent(log *types.L
 		return nil, errors.New("event signature mismatch")
 	}
 	out := new(PegoutContractPegOutUserRefunded)
+	if len(log.Data) > 0 {
+		if err := pegoutContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range pegoutContract.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// PegoutContractWithdrawal represents a Withdrawal event raised by the PegoutContract contract.
+type PegoutContractWithdrawal struct {
+	From   common.Address
+	To     common.Address
+	Amount *big.Int
+	Raw    *types.Log // Blockchain specific contextual infos
+}
+
+const PegoutContractWithdrawalEventName = "Withdrawal"
+
+// ContractEventName returns the user-defined event name.
+func (PegoutContractWithdrawal) ContractEventName() string {
+	return PegoutContractWithdrawalEventName
+}
+
+// UnpackWithdrawalEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event Withdrawal(address indexed from, address indexed to, uint256 indexed amount)
+func (pegoutContract *PegoutContract) UnpackWithdrawalEvent(log *types.Log) (*PegoutContractWithdrawal, error) {
+	event := "Withdrawal"
+	if len(log.Topics) == 0 || log.Topics[0] != pegoutContract.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(PegoutContractWithdrawal)
 	if len(log.Data) > 0 {
 		if err := pegoutContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
 			return nil, err

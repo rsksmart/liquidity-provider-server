@@ -40,7 +40,7 @@ func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseReg
 }
 
 func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
-	router.Use(middlewares.NewCorsMiddleware())
+	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
 
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {

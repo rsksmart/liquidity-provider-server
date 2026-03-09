@@ -26,7 +26,7 @@ var (
 
 // FlyoverMetaData contains all meta data concerning the Flyover contract.
 var FlyoverMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"error\",\"name\":\"EmptyBlockHeader\",\"inputs\":[{\"name\":\"heightOrHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"IncorrectContract\",\"inputs\":[{\"name\":\"expected\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"actual\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InsufficientAmount\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidAddress\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InvalidSender\",\"inputs\":[{\"name\":\"expected\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"actual\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NoBalance\",\"inputs\":[{\"name\":\"wanted\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"actual\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"NoContract\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"Overflow\",\"inputs\":[{\"name\":\"passedAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"PaymentFailed\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"reason\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"PaymentNotAllowed\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"ProviderNotRegistered\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"QuoteNotFound\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]}]",
+	ABI: "[{\"type\":\"error\",\"name\":\"EmptyBlockHeader\",\"inputs\":[{\"name\":\"heightOrHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"EnforcedPause\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"IncorrectContract\",\"inputs\":[{\"name\":\"expected\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"actual\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InsufficientAmount\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidAddress\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InvalidChainId\",\"inputs\":[{\"name\":\"expected\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"actual\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidSender\",\"inputs\":[{\"name\":\"expected\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"actual\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NoBalance\",\"inputs\":[{\"name\":\"wanted\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"actual\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"NoContract\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"Overflow\",\"inputs\":[{\"name\":\"passedAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"PaymentFailed\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"reason\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"PaymentNotAllowed\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"ProviderNotRegistered\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"QuoteNotFound\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]}]",
 	ID:  "Flyover",
 }
 
@@ -56,6 +56,9 @@ func (flyover *Flyover) UnpackError(raw []byte) (any, error) {
 	if bytes.Equal(raw[:4], flyover.abi.Errors["EmptyBlockHeader"].ID.Bytes()[:4]) {
 		return flyover.UnpackEmptyBlockHeaderError(raw[4:])
 	}
+	if bytes.Equal(raw[:4], flyover.abi.Errors["EnforcedPause"].ID.Bytes()[:4]) {
+		return flyover.UnpackEnforcedPauseError(raw[4:])
+	}
 	if bytes.Equal(raw[:4], flyover.abi.Errors["IncorrectContract"].ID.Bytes()[:4]) {
 		return flyover.UnpackIncorrectContractError(raw[4:])
 	}
@@ -64,6 +67,9 @@ func (flyover *Flyover) UnpackError(raw []byte) (any, error) {
 	}
 	if bytes.Equal(raw[:4], flyover.abi.Errors["InvalidAddress"].ID.Bytes()[:4]) {
 		return flyover.UnpackInvalidAddressError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], flyover.abi.Errors["InvalidChainId"].ID.Bytes()[:4]) {
+		return flyover.UnpackInvalidChainIdError(raw[4:])
 	}
 	if bytes.Equal(raw[:4], flyover.abi.Errors["InvalidSender"].ID.Bytes()[:4]) {
 		return flyover.UnpackInvalidSenderError(raw[4:])
@@ -111,6 +117,29 @@ func FlyoverEmptyBlockHeaderErrorID() common.Hash {
 func (flyover *Flyover) UnpackEmptyBlockHeaderError(raw []byte) (*FlyoverEmptyBlockHeader, error) {
 	out := new(FlyoverEmptyBlockHeader)
 	if err := flyover.abi.UnpackIntoInterface(out, "EmptyBlockHeader", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FlyoverEnforcedPause represents a EnforcedPause error raised by the Flyover contract.
+type FlyoverEnforcedPause struct {
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error EnforcedPause()
+func FlyoverEnforcedPauseErrorID() common.Hash {
+	return common.HexToHash("0xd93c0665d6c96d04a8f174024fc4ddd66c250604aff22bbec808de86dd3637e3")
+}
+
+// UnpackEnforcedPauseError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error EnforcedPause()
+func (flyover *Flyover) UnpackEnforcedPauseError(raw []byte) (*FlyoverEnforcedPause, error) {
+	out := new(FlyoverEnforcedPause)
+	if err := flyover.abi.UnpackIntoInterface(out, "EnforcedPause", raw); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -185,6 +214,31 @@ func FlyoverInvalidAddressErrorID() common.Hash {
 func (flyover *Flyover) UnpackInvalidAddressError(raw []byte) (*FlyoverInvalidAddress, error) {
 	out := new(FlyoverInvalidAddress)
 	if err := flyover.abi.UnpackIntoInterface(out, "InvalidAddress", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FlyoverInvalidChainId represents a InvalidChainId error raised by the Flyover contract.
+type FlyoverInvalidChainId struct {
+	Expected *big.Int
+	Actual   *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error InvalidChainId(uint256 expected, uint256 actual)
+func FlyoverInvalidChainIdErrorID() common.Hash {
+	return common.HexToHash("0x9fba672f6672f44dc27784b208145b99fe892bc4b6a497de84dfb629e18d300e")
+}
+
+// UnpackInvalidChainIdError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error InvalidChainId(uint256 expected, uint256 actual)
+func (flyover *Flyover) UnpackInvalidChainIdError(raw []byte) (*FlyoverInvalidChainId, error) {
+	out := new(FlyoverInvalidChainId)
+	if err := flyover.abi.UnpackIntoInterface(out, "InvalidChainId", raw); err != nil {
 		return nil, err
 	}
 	return out, nil

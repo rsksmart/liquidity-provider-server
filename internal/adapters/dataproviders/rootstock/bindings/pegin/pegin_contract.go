@@ -26,10 +26,10 @@ var (
 
 // QuotesPegInQuote is an auto generated low-level Go binding around an user-defined struct.
 type QuotesPegInQuote struct {
+	ChainId                     *big.Int
 	CallFee                     *big.Int
 	PenaltyFee                  *big.Int
 	Value                       *big.Int
-	ProductFeeAmount            *big.Int
 	GasFee                      *big.Int
 	FedBtcAddress               [20]byte
 	LbcAddress                  common.Address
@@ -50,7 +50,7 @@ type QuotesPegInQuote struct {
 
 // PeginContractMetaData contains all meta data concerning the PeginContract contract.
 var PeginContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"callForUser\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"deposit\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getBalance\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getCurrentContribution\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getFeeCollector\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getFeePercentage\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMinPegIn\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getQuoteStatus\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumIPegIn.PegInStates\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegInQuote\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pause\",\"inputs\":[{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerPegIn\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRawTransaction\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"partialMerkleTree\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\",\"internalType\":\"int256\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"unpause\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"validatePegInDepositAddress\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"productFeeAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"withdraw\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"BalanceDecrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"BalanceIncrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"BridgeCapExceeded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"errorCode\",\"type\":\"int256\",\"indexed\":true,\"internalType\":\"int256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"CallForUser\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"gasLimit\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"},{\"name\":\"success\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegInRegistered\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"transferredAmount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Refund\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"success\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Withdrawal\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AmountUnderMinimum\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InsufficientGas\",\"inputs\":[{\"name\":\"gasLeft\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasRequired\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidRefundAddress\",\"inputs\":[{\"name\":\"refundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"NotEnoughConfirmations\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"QuoteAlreadyProcessed\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"UnexpectedBridgeError\",\"inputs\":[{\"name\":\"errorCode\",\"type\":\"int256\",\"internalType\":\"int256\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"callForUser\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"deposit\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"eip712Domain\",\"inputs\":[],\"outputs\":[{\"name\":\"fields\",\"type\":\"bytes1\",\"internalType\":\"bytes1\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"version\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"verifyingContract\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"salt\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"extensions\",\"type\":\"uint256[]\",\"internalType\":\"uint256[]\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getBalance\",\"inputs\":[{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMinPegIn\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getQuoteStatus\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumIPegIn.PegInStates\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegInQuote\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"hashPegInQuoteEIP712\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerPegIn\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"signature\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcRawTransaction\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"partialMerkleTree\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"int256\",\"internalType\":\"int256\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"validatePegInDepositAddress\",\"inputs\":[{\"name\":\"quote\",\"type\":\"tuple\",\"internalType\":\"structQuotes.PegInQuote\",\"components\":[{\"name\":\"chainId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"fedBtcAddress\",\"type\":\"bytes20\",\"internalType\":\"bytes20\"},{\"name\":\"lbcAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"liquidityProviderRskAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"contractAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"rskRefundAddress\",\"type\":\"address\",\"internalType\":\"addresspayable\"},{\"name\":\"nonce\",\"type\":\"int64\",\"internalType\":\"int64\"},{\"name\":\"gasLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"agreementTimestamp\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"timeForDeposit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"callTime\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"depositConfirmations\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"callOnRegister\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"btcRefundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"liquidityProviderBtcAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"name\":\"depositAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"withdraw\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"BalanceDecrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"BalanceIncrease\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"BridgeCapExceeded\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"errorCode\",\"type\":\"int256\",\"indexed\":true,\"internalType\":\"int256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"CallForUser\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"gasLimit\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"value\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"},{\"name\":\"success\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"EIP712DomainChanged\",\"inputs\":[],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegInRegistered\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"transferredAmount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Refund\",\"inputs\":[{\"name\":\"dest\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"success\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Withdrawal\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AmountUnderMinimum\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InsufficientGas\",\"inputs\":[{\"name\":\"gasLeft\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"gasRequired\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidRefundAddress\",\"inputs\":[{\"name\":\"refundAddress\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]},{\"type\":\"error\",\"name\":\"NotEnoughConfirmations\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"QuoteAlreadyProcessed\",\"inputs\":[{\"name\":\"quoteHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"UnexpectedBridgeError\",\"inputs\":[{\"name\":\"errorCode\",\"type\":\"int256\",\"internalType\":\"int256\"}]}]",
 	ID:  "PeginContract",
 }
 
@@ -131,6 +131,60 @@ func (peginContract *PeginContract) TryPackDeposit() ([]byte, error) {
 	return peginContract.abi.Pack("deposit")
 }
 
+// PackEip712Domain is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x84b0196e.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (peginContract *PeginContract) PackEip712Domain() []byte {
+	enc, err := peginContract.abi.Pack("eip712Domain")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackEip712Domain is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x84b0196e.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (peginContract *PeginContract) TryPackEip712Domain() ([]byte, error) {
+	return peginContract.abi.Pack("eip712Domain")
+}
+
+// Eip712DomainOutput serves as a container for the return parameters of contract
+// method Eip712Domain.
+type Eip712DomainOutput struct {
+	Fields            [1]byte
+	Name              string
+	Version           string
+	ChainId           *big.Int
+	VerifyingContract common.Address
+	Salt              [32]byte
+	Extensions        []*big.Int
+}
+
+// UnpackEip712Domain is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x84b0196e.
+//
+// Solidity: function eip712Domain() view returns(bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)
+func (peginContract *PeginContract) UnpackEip712Domain(data []byte) (Eip712DomainOutput, error) {
+	out, err := peginContract.abi.Unpack("eip712Domain", data)
+	outstruct := new(Eip712DomainOutput)
+	if err != nil {
+		return *outstruct, err
+	}
+	outstruct.Fields = *abi.ConvertType(out[0], new([1]byte)).(*[1]byte)
+	outstruct.Name = *abi.ConvertType(out[1], new(string)).(*string)
+	outstruct.Version = *abi.ConvertType(out[2], new(string)).(*string)
+	outstruct.ChainId = abi.ConvertType(out[3], new(big.Int)).(*big.Int)
+	outstruct.VerifyingContract = *abi.ConvertType(out[4], new(common.Address)).(*common.Address)
+	outstruct.Salt = *abi.ConvertType(out[5], new([32]byte)).(*[32]byte)
+	outstruct.Extensions = *abi.ConvertType(out[6], new([]*big.Int)).(*[]*big.Int)
+	return *outstruct, nil
+}
+
 // PackGetBalance is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0xf8b2cb4f.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -159,111 +213,6 @@ func (peginContract *PeginContract) TryPackGetBalance(addr common.Address) ([]by
 // Solidity: function getBalance(address addr) view returns(uint256)
 func (peginContract *PeginContract) UnpackGetBalance(data []byte) (*big.Int, error) {
 	out, err := peginContract.abi.Unpack("getBalance", data)
-	if err != nil {
-		return new(big.Int), err
-	}
-	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
-	return out0, nil
-}
-
-// PackGetCurrentContribution is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xb8623d53.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (peginContract *PeginContract) PackGetCurrentContribution() []byte {
-	enc, err := peginContract.abi.Pack("getCurrentContribution")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackGetCurrentContribution is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xb8623d53.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (peginContract *PeginContract) TryPackGetCurrentContribution() ([]byte, error) {
-	return peginContract.abi.Pack("getCurrentContribution")
-}
-
-// UnpackGetCurrentContribution is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0xb8623d53.
-//
-// Solidity: function getCurrentContribution() view returns(uint256)
-func (peginContract *PeginContract) UnpackGetCurrentContribution(data []byte) (*big.Int, error) {
-	out, err := peginContract.abi.Unpack("getCurrentContribution", data)
-	if err != nil {
-		return new(big.Int), err
-	}
-	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
-	return out0, nil
-}
-
-// PackGetFeeCollector is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x12fde4b7.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function getFeeCollector() view returns(address)
-func (peginContract *PeginContract) PackGetFeeCollector() []byte {
-	enc, err := peginContract.abi.Pack("getFeeCollector")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackGetFeeCollector is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x12fde4b7.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function getFeeCollector() view returns(address)
-func (peginContract *PeginContract) TryPackGetFeeCollector() ([]byte, error) {
-	return peginContract.abi.Pack("getFeeCollector")
-}
-
-// UnpackGetFeeCollector is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x12fde4b7.
-//
-// Solidity: function getFeeCollector() view returns(address)
-func (peginContract *PeginContract) UnpackGetFeeCollector(data []byte) (common.Address, error) {
-	out, err := peginContract.abi.Unpack("getFeeCollector", data)
-	if err != nil {
-		return *new(common.Address), err
-	}
-	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
-	return out0, nil
-}
-
-// PackGetFeePercentage is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x11efbf61.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (peginContract *PeginContract) PackGetFeePercentage() []byte {
-	enc, err := peginContract.abi.Pack("getFeePercentage")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackGetFeePercentage is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x11efbf61.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (peginContract *PeginContract) TryPackGetFeePercentage() ([]byte, error) {
-	return peginContract.abi.Pack("getFeePercentage")
-}
-
-// UnpackGetFeePercentage is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x11efbf61.
-//
-// Solidity: function getFeePercentage() view returns(uint256)
-func (peginContract *PeginContract) UnpackGetFeePercentage(data []byte) (*big.Int, error) {
-	out, err := peginContract.abi.Unpack("getFeePercentage", data)
 	if err != nil {
 		return new(big.Int), err
 	}
@@ -376,26 +325,39 @@ func (peginContract *PeginContract) UnpackHashPegInQuote(data []byte) ([32]byte,
 	return out0, nil
 }
 
-// PackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will panic if any
+// PackHashPegInQuoteEIP712 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x928f4598.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function pause(string reason) returns()
-func (peginContract *PeginContract) PackPause(reason string) []byte {
-	enc, err := peginContract.abi.Pack("pause", reason)
+// Solidity: function hashPegInQuoteEIP712((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) view returns(bytes32)
+func (peginContract *PeginContract) PackHashPegInQuoteEIP712(quote QuotesPegInQuote) []byte {
+	enc, err := peginContract.abi.Pack("hashPegInQuoteEIP712", quote)
 	if err != nil {
 		panic(err)
 	}
 	return enc
 }
 
-// TryPackPause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x6da66355.  This method will return an error
+// TryPackHashPegInQuoteEIP712 is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x928f4598.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function pause(string reason) returns()
-func (peginContract *PeginContract) TryPackPause(reason string) ([]byte, error) {
-	return peginContract.abi.Pack("pause", reason)
+// Solidity: function hashPegInQuoteEIP712((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) view returns(bytes32)
+func (peginContract *PeginContract) TryPackHashPegInQuoteEIP712(quote QuotesPegInQuote) ([]byte, error) {
+	return peginContract.abi.Pack("hashPegInQuoteEIP712", quote)
+}
+
+// UnpackHashPegInQuoteEIP712 is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x928f4598.
+//
+// Solidity: function hashPegInQuoteEIP712((uint256,uint256,uint256,uint256,uint256,bytes20,address,address,address,address,int64,uint32,uint32,uint32,uint32,uint16,bool,bytes,bytes,bytes) quote) view returns(bytes32)
+func (peginContract *PeginContract) UnpackHashPegInQuoteEIP712(data []byte) ([32]byte, error) {
+	out, err := peginContract.abi.Unpack("hashPegInQuoteEIP712", data)
+	if err != nil {
+		return *new([32]byte), err
+	}
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+	return out0, nil
 }
 
 // PackPauseStatus is the Go binding used to pack the parameters required for calling
@@ -477,28 +439,6 @@ func (peginContract *PeginContract) UnpackRegisterPegIn(data []byte) (*big.Int, 
 	}
 	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
 	return out0, nil
-}
-
-// PackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will panic if any
-// invalid/nil inputs are passed.
-//
-// Solidity: function unpause() returns()
-func (peginContract *PeginContract) PackUnpause() []byte {
-	enc, err := peginContract.abi.Pack("unpause")
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
-
-// TryPackUnpause is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x3f4ba83a.  This method will return an error
-// if any inputs are invalid/nil.
-//
-// Solidity: function unpause() returns()
-func (peginContract *PeginContract) TryPackUnpause() ([]byte, error) {
-	return peginContract.abi.Pack("unpause")
 }
 
 // PackValidatePegInDepositAddress is the Go binding used to pack the parameters required for calling
@@ -713,6 +653,46 @@ func (peginContract *PeginContract) UnpackCallForUserEvent(log *types.Log) (*Peg
 		return nil, errors.New("event signature mismatch")
 	}
 	out := new(PeginContractCallForUser)
+	if len(log.Data) > 0 {
+		if err := peginContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range peginContract.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// PeginContractEIP712DomainChanged represents a EIP712DomainChanged event raised by the PeginContract contract.
+type PeginContractEIP712DomainChanged struct {
+	Raw *types.Log // Blockchain specific contextual infos
+}
+
+const PeginContractEIP712DomainChangedEventName = "EIP712DomainChanged"
+
+// ContractEventName returns the user-defined event name.
+func (PeginContractEIP712DomainChanged) ContractEventName() string {
+	return PeginContractEIP712DomainChangedEventName
+}
+
+// UnpackEIP712DomainChangedEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event EIP712DomainChanged()
+func (peginContract *PeginContract) UnpackEIP712DomainChangedEvent(log *types.Log) (*PeginContractEIP712DomainChanged, error) {
+	event := "EIP712DomainChanged"
+	if len(log.Topics) == 0 || log.Topics[0] != peginContract.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(PeginContractEIP712DomainChanged)
 	if len(log.Data) > 0 {
 		if err := peginContract.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
 			return nil, err

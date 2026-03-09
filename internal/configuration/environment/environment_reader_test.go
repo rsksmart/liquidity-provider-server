@@ -33,6 +33,7 @@ func setUpEnv(t *testing.T) {
 		"ECLIPSE_CHECK_ENABLED":                "true",
 		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
 		"USE_SEGWIT_FEDERATION":                "true",
+		"ALLOWED_ORIGINS":                      "http://example.com,http://example2.com",
 	}
 	const envFilePath = "../../../sample-config.env"
 	envFile, err := os.ReadFile(envFilePath)

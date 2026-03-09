@@ -16,14 +16,12 @@ import (
 
 // Fixed fees per quote (not part of RequiredLiquidity but added to each quote's Total())
 const (
-	callFeePerQuote          = 1000000 // 0.000001 RBTC (1e6 wei)
-	productFeeAmountPerQuote = 500000  // 0.0000005 RBTC (5e5 wei)
+	callFeePerQuote = 1000000 // 0.000001 RBTC (1e6 wei)
 )
 
 // additionalFeesPerQuote returns the sum of fixed fees added to each quote
 func additionalFeesPerQuote() *entities.Wei {
 	total := entities.NewWei(callFeePerQuote)
-	total.Add(total, entities.NewWei(productFeeAmountPerQuote))
 	return total
 }
 
@@ -39,18 +37,16 @@ type ExpectedBtcCalculations struct {
 }
 
 type splitQuoteValues struct {
-	Value            *entities.Wei
-	CallFee          *entities.Wei
-	ProductFeeAmount *entities.Wei
-	GasFee           *entities.Wei
+	Value   *entities.Wei
+	CallFee *entities.Wei
+	GasFee  *entities.Wei
 }
 
 // splitRequiredLiquidity splits the RequiredLiquidity into quote field values so the call to Total() is more realistic:
 // RequiredLiquidity is composed of Value and GasFee. We split it as 5% for GasFee and 95% for Value.
-// CallFee and ProductFeeAmount are set to reasonable fixed values (not part of the required liquidity calculation).
+// CallFee is set to reasonable fixed values (not part of the required liquidity calculation).
 func splitRequiredLiquidity(t *testing.T, requiredLiquidity *entities.Wei) splitQuoteValues {
 	callFee := entities.NewWei(callFeePerQuote)
-	productFeeAmount := entities.NewWei(productFeeAmountPerQuote)
 
 	// Calculate 5% for GasFee
 	gasFeeInt := new(big.Int).Mul(requiredLiquidity.AsBigInt(), big.NewInt(5))
@@ -66,10 +62,9 @@ func splitRequiredLiquidity(t *testing.T, requiredLiquidity *entities.Wei) split
 		"Value + GasFee must equal RequiredLiquidity")
 
 	return splitQuoteValues{
-		Value:            value,
-		CallFee:          callFee,
-		ProductFeeAmount: productFeeAmount,
-		GasFee:           gasFee,
+		Value:   value,
+		CallFee: callFee,
+		GasFee:  gasFee,
 	}
 }
 
@@ -80,10 +75,9 @@ func retainedPegoutQuotesToPegoutQuotes(t *testing.T, retainedQuotes []quote.Ret
 	for i, rq := range retainedQuotes {
 		split := splitRequiredLiquidity(t, rq.RequiredLiquidity)
 		result[i] = quote.PegoutQuote{
-			Value:            split.Value,
-			CallFee:          split.CallFee,
-			ProductFeeAmount: split.ProductFeeAmount,
-			GasFee:           split.GasFee,
+			Value:   split.Value,
+			CallFee: split.CallFee,
+			GasFee:  split.GasFee,
 		}
 	}
 	return result
@@ -94,10 +88,9 @@ func retainedPeginQuotesToPeginQuotes(t *testing.T, retainedQuotes []quote.Retai
 	for i, rq := range retainedQuotes {
 		split := splitRequiredLiquidity(t, rq.RequiredLiquidity)
 		result[i] = quote.PeginQuote{
-			Value:            split.Value,
-			CallFee:          split.CallFee,
-			ProductFeeAmount: split.ProductFeeAmount,
-			GasFee:           split.GasFee,
+			Value:   split.Value,
+			CallFee: split.CallFee,
+			GasFee:  split.GasFee,
 		}
 	}
 	return result
@@ -122,7 +115,7 @@ func calculateExpectedBtcValues(quotes []quote.RetainedPegoutQuote, btcWalletBal
 	expectedBtcWaitingForRefund := entities.NewWei(0)      // RefundPegOutSucceeded + SendPegoutSucceeded + BridgeTxSucceeded
 
 	// Calculate sums based on quote states
-	// Each quote's Total() = RequiredLiquidity + callFeePerQuote + productFeeAmountPerQuote
+	// Each quote's Total() = RequiredLiquidity + callFeePerQuote
 	additionalFees := additionalFeesPerQuote()
 
 	for _, q := range quotes {
@@ -174,7 +167,7 @@ func calculateExpectedRbtcValues(
 	expectedRbtcReservedForUsers := entities.NewWei(0) // WaitingForDeposit + WaitingForDepositConfirmations
 
 	// Calculate sums based on pegin quote states
-	// Each quote's Total() = RequiredLiquidity + callFeePerQuote + productFeeAmountPerQuote
+	// Each quote's Total() = RequiredLiquidity + callFeePerQuote
 	additionalFees := additionalFeesPerQuote()
 
 	for _, q := range peginQuotes {
