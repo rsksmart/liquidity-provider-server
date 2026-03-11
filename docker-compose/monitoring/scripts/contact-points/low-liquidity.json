@@ -1,0 +1,11 @@
+{
+  "name": "lps-email-low-liquidity",
+  "type": "email",
+  "disableResolveMessage": true,
+  "settings": {
+    "addresses": "__ALERT_EMAIL__",
+    "singleEmail": true,
+    "subject": "[{{ index .GroupLabels \"grafana_folder\" }}] {{ index .GroupLabels \"alertname\" }}",
+    "message": "{{ range .Alerts }}{{ .Annotations.summary }}\n\n{{ .Annotations.description }}\n\nNetwork:   {{ .Labels.network }}\nCurrent:   {{ .Labels.current }}\nThreshold: {{ .Labels.threshold }}\n{{ end }}"
+  }
+}
