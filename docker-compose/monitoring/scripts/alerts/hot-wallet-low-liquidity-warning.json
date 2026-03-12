@@ -1,0 +1,75 @@
+{
+  "uid": "hotwalletlowliqwarn",
+  "title": "Hot Wallet Low Liquidity Warning Alert",
+  "condition": "C",
+  "data": [
+    {
+      "refId": "A",
+      "queryType": "instant",
+      "relativeTimeRange": {
+        "from": 120,
+        "to": 0
+      },
+      "datasourceUid": "loki-uid",
+      "model": {
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-uid"
+        },
+        "editorMode": "code",
+        "expr": "sum by (network, current, threshold) (count_over_time({service=\"lps\"} |~ \"Alert! - Subject: Hot wallet: Low liquidity, refill recommended\" | regexp \"Network: (?P<network>\\\\w+) \\\\| Current: (?P<current>[\\\\d.]+) \\\\| Threshold: (?P<threshold>[\\\\d.]+)\" [1m]))",
+        "instant": true,
+        "intervalMs": 1000,
+        "maxDataPoints": 43200,
+        "queryType": "instant",
+        "refId": "A"
+      }
+    },
+    {
+      "refId": "C",
+      "datasourceUid": "__expr__",
+      "model": {
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [0],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": ["C"]
+            },
+            "reducer": {
+              "params": [],
+              "type": "last"
+            },
+            "type": "query"
+          }
+        ],
+        "datasource": {
+          "type": "__expr__",
+          "uid": "__expr__"
+        },
+        "expression": "A",
+        "intervalMs": 1000,
+        "maxDataPoints": 43200,
+        "refId": "C",
+        "type": "threshold"
+      }
+    }
+  ],
+  "noDataState": "OK",
+  "execErrState": "OK",
+  "for": "0s",
+  "annotations": {
+    "description": "Hot wallet liquidity is below the warning threshold and a refill is recommended",
+    "summary": "[WARNING] Hot Wallet Low Liquidity - Network: {{ $labels.network }} | Current: {{ $labels.current }} | Recommended: {{ $labels.threshold }}"
+  },
+  "labels": {},
+  "folderUID": "LPS",
+  "ruleGroup": "10s",
+  "intervalSeconds": 10,
+  "__contact_point__": "lps-email-low-liquidity"
+}

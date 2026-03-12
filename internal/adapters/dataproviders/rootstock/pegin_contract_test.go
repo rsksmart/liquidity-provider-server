@@ -408,6 +408,96 @@ func TestPeginContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 	})
 }
 
+func TestPeginContractImpl_Withdraw(t *testing.T) {
+	contractBinding := &mocks.PeginContractAdapterMock{}
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	callerMock := &mocks.ContractCallerBindingMock{}
+	peginContract := rootstock.NewPeginContractImpl(
+		rootstock.NewRskClient(mockClient),
+		test.AnyAddress,
+		contractBinding,
+		signerMock,
+		rootstock.RetryParams{},
+		time.Duration(1),
+		Abis,
+	)
+	withdrawAmount := entities.NewWei(5000000000000000000)
+	matchOptsFunc := func(opts *bind.TransactOpts) bool {
+		return opts.From.String() == parsedAddress.String()
+	}
+	t.Run("Success", func(t *testing.T) {
+		contractBinding.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "withdraw", withdrawAmount.AsBigInt()).Return(nil).Once()
+		tx := prepareTxMocks(mockClient, signerMock, true)
+		contractBinding.On("Withdraw", mock.MatchedBy(matchOptsFunc), withdrawAmount.AsBigInt()).Return(tx, nil).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.NoError(t, err)
+		contractBinding.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
+	})
+}
+
+// nolint:funlen
+func TestPeginContractImpl_Withdraw_ErrorHandling(t *testing.T) {
+	contractBinding := &mocks.PeginContractAdapterMock{}
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	callerMock := &mocks.ContractCallerBindingMock{}
+	peginContract := rootstock.NewPeginContractImpl(
+		rootstock.NewRskClient(mockClient),
+		test.AnyAddress,
+		contractBinding,
+		signerMock,
+		rootstock.RetryParams{},
+		time.Duration(1),
+		Abis,
+	)
+	withdrawAmount := entities.NewWei(5000000000000000000)
+	signerMock.On("Address").Return(parsedAddress)
+	matchOptsFunc := func(opts *bind.TransactOpts) bool {
+		return opts.From.String() == parsedAddress.String()
+	}
+	t.Run("Error handling (dry-run revert NoBalance)", func(t *testing.T) {
+		e := NewRskRpcError("transaction reverted", "0x29226653")
+		contractBinding.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "withdraw", withdrawAmount.AsBigInt()).Return(e).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw reverted with: NoBalance")
+		contractBinding.AssertNotCalled(t, "Withdraw", mock.Anything, mock.Anything)
+		contractBinding.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (dry-run parse error)", func(t *testing.T) {
+		contractBinding.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "withdraw", withdrawAmount.AsBigInt()).Return(assert.AnError).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "error parsing withdraw result")
+		contractBinding.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (transaction send error)", func(t *testing.T) {
+		contractBinding.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "withdraw", withdrawAmount.AsBigInt()).Return(nil).Once()
+		_ = prepareTxMocks(mockClient, signerMock, true)
+		contractBinding.On("Withdraw", mock.MatchedBy(matchOptsFunc), withdrawAmount.AsBigInt()).Return(nil, assert.AnError).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw error")
+		contractBinding.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
+	})
+	t.Run("Error handling (transaction reverted)", func(t *testing.T) {
+		contractBinding.On("Caller").Return(callerMock).Once()
+		callerMock.On("Call", mock.Anything, mock.Anything, "withdraw", withdrawAmount.AsBigInt()).Return(nil).Once()
+		tx := prepareTxMocks(mockClient, signerMock, false)
+		contractBinding.On("Withdraw", mock.MatchedBy(matchOptsFunc), withdrawAmount.AsBigInt()).Return(tx, nil).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw error: transaction failed")
+		contractBinding.AssertExpectations(t)
+		callerMock.AssertExpectations(t)
+	})
+}
+
 func TestPeginContractImpl_PausedStatus(t *testing.T) {
 	contractBinding := &mocks.PeginContractAdapterMock{}
 	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)

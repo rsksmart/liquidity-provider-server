@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -28,6 +29,7 @@ type Environment struct {
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
 	Eclipse          EclipseEnv
+	ColdWallet       ColdWalletEnv
 }
 
 type MongoEnv struct {
@@ -50,10 +52,10 @@ type RskEnv struct {
 	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	// Only if secret source is aws & wallet is native
-	EncryptedJsonSecret         string `env:"KEY_SECRET"`
-	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
+	WalletSecret   string `env:"WALLET_SECRET"`
+	PasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	WalletFile       string   `env:"WALLET_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 }
@@ -185,6 +187,33 @@ type ManagementEnv struct {
 	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
 	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
+}
+
+type ColdWalletEnv struct {
+	BtcMinTransferFeeMultiplier   uint64 `env:"BTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	RbtcMinTransferFeeMultiplier  uint64 `env:"RBTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	ForceTransferAfterSeconds     uint64 `env:"COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS"`
+	HotWalletLowLiquidityWarning  uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_WARNING"`
+	HotWalletLowLiquidityCritical uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_CRITICAL"`
+}
+
+func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
+	defaults := ColdWalletEnv{
+		BtcMinTransferFeeMultiplier:   5,
+		RbtcMinTransferFeeMultiplier:  100,
+		ForceTransferAfterSeconds:     1209600, // 2 weeks (14 days * 24 hours * 60 minutes * 60 seconds)
+		HotWalletLowLiquidityWarning:  3,
+		HotWalletLowLiquidityCritical: 1,
+	}
+	env.BtcMinTransferFeeMultiplier = utils.FirstNonZero(env.BtcMinTransferFeeMultiplier, defaults.BtcMinTransferFeeMultiplier)
+	env.RbtcMinTransferFeeMultiplier = utils.FirstNonZero(env.RbtcMinTransferFeeMultiplier, defaults.RbtcMinTransferFeeMultiplier)
+	env.ForceTransferAfterSeconds = utils.FirstNonZero(env.ForceTransferAfterSeconds, defaults.ForceTransferAfterSeconds)
+	env.HotWalletLowLiquidityWarning = utils.FirstNonZero(env.HotWalletLowLiquidityWarning, defaults.HotWalletLowLiquidityWarning)
+	env.HotWalletLowLiquidityCritical = utils.FirstNonZero(env.HotWalletLowLiquidityCritical, defaults.HotWalletLowLiquidityCritical)
+	if env.HotWalletLowLiquidityCritical >= env.HotWalletLowLiquidityWarning {
+		log.Fatal("HOT_WALLET_LOW_LIQUIDITY_CRITICAL must be less than HOT_WALLET_LOW_LIQUIDITY_WARNING")
+	}
+	return env
 }
 
 func LoadEnv() *Environment {

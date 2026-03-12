@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"slices"
 
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"math/big"
 )
 
 var (
-	AmountOutOfRangeError = errors.New("amount out of range")
+	AmountOutOfRangeError     = errors.New("amount out of range")
+	InvalidConfigurationError = errors.New("invalid configuration")
 )
 
 // ConfirmationsPerAmount the key represents the amount in wei serialized as a string, and the value represents the number of confirmations required for that amount.
@@ -64,9 +66,36 @@ func (config PegoutConfiguration) GetFeePercentage() *utils.BigFloat {
 }
 
 type GeneralConfiguration struct {
-	RskConfirmations     ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
-	BtcConfirmations     ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
-	PublicLiquidityCheck bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
+	RskConfirmations          ConfirmationsPerAmount `json:"rskConfirmations" bson:"rsk_confirmations" validate:"required"`
+	BtcConfirmations          ConfirmationsPerAmount `json:"btcConfirmations" bson:"btc_confirmations" validate:"required"`
+	PublicLiquidityCheck      bool                   `json:"publicLiquidityCheck" bson:"public_liquidity_check" validate:""`
+	MaxLiquidity              *entities.Wei          `json:"maxLiquidity" bson:"max_liquidity" validate:""`
+	ReimbursementWindowBlocks uint64                 `json:"reimbursementWindowBlocks" bson:"reimbursement_window_blocks" validate:""`
+	ExcessTolerance           ExcessTolerance        `json:"excessTolerance" bson:"excess_tolerance" validate:"required"`
+}
+
+type ExcessTolerance struct {
+	IsFixed         bool            `json:"isFixed" bson:"is_fixed"`
+	PercentageValue *utils.BigFloat `json:"percentageValue" bson:"percentage_value" validate:"required"`
+	FixedValue      *entities.Wei   `json:"fixedValue" bson:"fixed_value" validate:"required"`
+}
+
+func (et *ExcessTolerance) Normalize() {
+	if et.IsFixed {
+		et.PercentageValue = utils.NewBigFloat64(0)
+	} else {
+		et.FixedValue = entities.NewWei(0)
+	}
+}
+
+func (et *ExcessTolerance) Validate() error {
+	if et.IsFixed && et.FixedValue.Cmp(entities.NewWei(0)) <= 0 {
+		return fmt.Errorf("%w: if excess tolerance is fixed, fixed value must be greater than zero", InvalidConfigurationError)
+	}
+	if !et.IsFixed && et.PercentageValue.Native().Cmp(big.NewFloat(0)) <= 0 {
+		return fmt.Errorf("%w: if excess tolerance is percentage-based, percentage value must be greater than zero", InvalidConfigurationError)
+	}
+	return nil
 }
 
 type HashedCredentials struct {
@@ -76,8 +105,15 @@ type HashedCredentials struct {
 	PasswordSalt   string `bson:"password_salt"`
 }
 
+type StateConfiguration struct {
+	LastBtcToColdWalletTransfer  int64  `json:"lastBtcToColdWalletTransfer" bson:"last_btc_to_cold_wallet_transfer"`
+	LastRbtcToColdWalletTransfer int64  `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
+	BtcColdWalletAddressHash     string `json:"btcColdWalletAddressHash" bson:"btc_cold_wallet_address_hash"`
+	RskColdWalletAddressHash     string `json:"rskColdWalletAddressHash" bson:"rsk_cold_wallet_address_hash"`
+}
+
 type ConfigurationType interface {
-	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails
+	PeginConfiguration | PegoutConfiguration | GeneralConfiguration | HashedCredentials | TrustedAccountDetails | StateConfiguration
 }
 
 func validateRange(min, max, amount *entities.Wei) error {

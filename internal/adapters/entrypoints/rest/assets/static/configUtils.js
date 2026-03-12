@@ -24,11 +24,119 @@ function etherToWei(ether) {
 }
 
 function isFeeKey(key) {
-    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee'].includes(key);
+    return ['penaltyFee', 'callFee', 'maxValue', 'minValue', 'bridgeTransactionMin','fixedFee', 'maxLiquidity'].includes(key);
+}
+
+function isMaxLiquidityKey(key) {
+    return key === 'maxLiquidity';
+}
+
+/**
+ * Validates a maxLiquidity value.
+ * @param {string|number} value - The value to validate (in RBTC)
+ * @returns {{isValid: boolean, error: string|null}} Validation result
+ */
+function validateMaxLiquidity(value) {
+    if (value === null || value === undefined || value === '') {
+        return { isValid: false, error: 'Max liquidity is required' };
+    }
+
+    const strValue = String(value).trim();
+
+    // Check if it's a valid number
+    const num = parseFloat(strValue);
+    if (isNaN(num)) {
+        return { isValid: false, error: 'Max liquidity must be a valid number' };
+    }
+
+    // Check if positive
+    if (num <= 0) {
+        return { isValid: false, error: 'Max liquidity must be a positive number' };
+    }
+
+    // Check decimal places (maximum 18)
+    const decimalPart = strValue.split('.')[1];
+    if (decimalPart && decimalPart.length > 18) {
+        return { isValid: false, error: 'Max liquidity cannot have more than 18 decimal places' };
+    }
+
+    return { isValid: true, error: null };
 }
 
 function isfeePercentageKey(key) {
     return key === 'feePercentage';
+}
+
+function isExcessToleranceKey(key) {
+    return key === 'excessToleranceFixed' || key === 'excessTolerancePercentage';
+}
+
+function isExcessToleranceFixedKey(key) {
+    return key === 'excessToleranceFixed';
+}
+
+function isExcessTolerancePercentageKey(key) {
+    return key === 'excessTolerancePercentage';
+}
+
+/**
+ * Validates an excessToleranceFixed value.
+ * @param {string|number} value - The value to validate
+ * @returns {{isValid: boolean, error: string|null}} Validation result
+ */
+function validateExcessToleranceFixed(value) {
+    if (value === null || value === undefined || value === '') {
+        return { isValid: true, error: null }; // Optional field, empty is OK
+    }
+
+    const strValue = String(value).trim();
+
+    // Check if it's a valid number
+    const num = parseFloat(strValue);
+    if (isNaN(num)) {
+        return { isValid: false, error: 'Excess tolerance fixed must be a valid number' };
+    }
+
+    // Check if non-negative
+    if (num < 0) {
+        return { isValid: false, error: 'Excess tolerance fixed must be a non-negative number' };
+    }
+
+    // Check decimal places (maximum 18 for wei conversion)
+    const decimalPart = strValue.split('.')[1];
+    if (decimalPart && decimalPart.length > 18) {
+        return { isValid: false, error: 'Excess tolerance fixed cannot have more than 18 decimal places' };
+    }
+
+    return { isValid: true, error: null };
+}
+
+/**
+ * Validates an excessTolerancePercentage value.
+ * @param {string|number} value - The value to validate (0-100 percentage)
+ * @returns {{isValid: boolean, error: string|null}} Validation result
+ */
+function validateExcessTolerancePercentage(value) {
+    if (value === null || value === undefined || value === '') {
+        return { isValid: true, error: null }; // Optional field, empty is OK (will default to 0)
+    }
+
+    const strValue = String(value).trim();
+    const num = parseFloat(strValue);
+
+    if (isNaN(num)) {
+        return { isValid: false, error: 'Excess tolerance percentage must be a valid number' };
+    }
+
+    if (num < 0) {
+        return { isValid: false, error: 'Excess tolerance percentage must be non-negative' };
+    }
+
+    if (num > 100) {
+        return { isValid: false, error: 'Excess tolerance percentage cannot exceed 100%' };
+    }
+
+    return { isValid: true, error: null };
 }
 
 function inferType(value) {
@@ -46,7 +154,7 @@ function validateConfig(config, originalConfig) {
         const expectedType = inferType(expectedValue);
         let actualType = inferType(value);
         if (
-            (isFeeKey(key) || isfeePercentageKey(key)) &&
+            (isFeeKey(key) || isfeePercentageKey(key) || isExcessToleranceKey(key)) &&
             ((expectedType === 'number' && actualType === 'string') ||
              (expectedType === 'string' && actualType === 'number'))
         ) {
@@ -98,7 +206,7 @@ async function postConfig(sectionId, endpoint, config, csrfToken) {
             body: JSON.stringify({ configuration: config })
         });
         if (!response.ok) {
-            const errorData = await response.json();            
+            const errorData = await response.json();
             if (errorData.details && typeof errorData.details === 'object') {
                 const detailMessages = Object.entries(errorData.details)
                     .map(([field, message]) => `${field}: ${message}`)
@@ -139,6 +247,8 @@ export {
     weiToEther,
     etherToWei,
     isFeeKey,
+    isMaxLiquidityKey,
+    validateMaxLiquidity,
     inferType,
     validateConfig,
     formatGeneralConfig,
@@ -146,5 +256,10 @@ export {
     hasDuplicateConfirmationAmounts,
     isfeePercentageKey,
     isToggableFeeKey,
-    formatCap
+    formatCap,
+    isExcessToleranceKey,
+    isExcessToleranceFixedKey,
+    isExcessTolerancePercentageKey,
+    validateExcessToleranceFixed,
+    validateExcessTolerancePercentage
 };

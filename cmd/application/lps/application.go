@@ -7,7 +7,6 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
@@ -25,7 +24,7 @@ import (
 type Application struct {
 	env               environment.Environment
 	timeouts          environment.ApplicationTimeouts
-	liquidityProvider *dataproviders.LocalLiquidityProvider
+	lpRegistry        *registry.LiquidityProvider
 	useCaseRegistry   *registry.UseCaseRegistry
 	watcherRegistry   *registry.WatcherRegistry
 	rskRegistry       *registry.Rootstock
@@ -80,22 +79,20 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 
 	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection, externalClients)
-	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
+	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry, walletFactory)
+	if err != nil {
+		log.Fatal("Error creating Liquidity Provider registry:", err)
+	}
 	mutexes := environment.NewApplicationMutexes()
 
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
-		env:               env,
-		timeouts:          timeouts,
-		liquidityProvider: liquidityProvider,
-		useCaseRegistry:   useCaseRegistry,
-		rskRegistry:       rootstockRegistry,
-		btcRegistry:       btcRegistry,
-		dbRegistry:        dbRegistry,
-		messagingRegistry: messagingRegistry,
-		watcherRegistry:   watcherRegistry,
-		runningServices:   make([]entities.Closeable, 0),
+		env: env, timeouts: timeouts,
+		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
+		rskRegistry: rootstockRegistry, btcRegistry: btcRegistry,
+		dbRegistry: dbRegistry, messagingRegistry: messagingRegistry,
+		watcherRegistry: watcherRegistry, runningServices: make([]entities.Closeable, 0),
 	}
 }
 
@@ -142,6 +139,15 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 		log.Fatal("Error generating default password for management interface: ", err)
 	}
 
+	err = app.useCaseRegistry.InitializeStateConfigurationUseCase().Run(context.Background())
+	if err != nil {
+		log.Fatal("Error initializing state configuration: ", err)
+	}
+
+	if err = app.useCaseRegistry.CheckColdWalletAddressChangeUseCase().Run(context.Background()); err != nil {
+		log.Error("Error checking cold wallet address change: ", err)
+	}
+
 	watchers, err := app.prepareWatchers()
 	if err != nil {
 		log.Fatal("Error initializing watchers: ", err)
@@ -174,6 +180,8 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.BtcReleaseWatcher,
 		app.watcherRegistry.QuoteMetricsWatcher,
 		app.watcherRegistry.AssetReportWatcher,
+		app.watcherRegistry.TransferColdWalletWatcher,
+		app.watcherRegistry.ColdWalletMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {

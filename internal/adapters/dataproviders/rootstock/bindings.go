@@ -78,6 +78,7 @@ type PeginBinding interface {
 	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)
 	CallForUser(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote) (*types.Transaction, error)
 	GetBalance(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
+	Withdraw(opts *bind.TransactOpts, amount *big.Int) (*types.Transaction, error)
 }
 
 type PeginContractAdapter interface {
