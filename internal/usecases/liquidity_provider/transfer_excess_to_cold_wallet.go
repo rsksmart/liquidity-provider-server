@@ -157,6 +157,11 @@ func (useCase *TransferExcessToColdWalletUseCase) Run(ctx context.Context) (*Tra
 		return nil, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, err)
 	}
 
+	if time.Now().Unix() < stateConfig.RatioCooldownEndTimestamp {
+		log.Infof("TransferExcessToColdWallet: skipping due to liquidity target cooldown (ends at %d)", stateConfig.RatioCooldownEndTimestamp)
+		return NewTransferToColdWalletResult(NetworkTransferResult{}, NetworkTransferResult{}), nil
+	}
+
 	currentLiquidity, err := useCase.getCurrentLiquidity(ctx)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.TransferExcessToColdWalletId, err)
@@ -247,21 +252,37 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 	stateConfig liquidity_provider.StateConfiguration,
 	currentLiquidity currentLiquidityResult,
 ) (excessCalculationResult, error) {
-	targetPerNetwork, err := new(entities.Wei).Div(generalConfig.MaxLiquidity, entities.NewWei(2))
+	btcPercentage := stateConfig.BtcLiquidityTargetPercentage
+	rbtcPercentage := 100 - btcPercentage
+
+	btcTarget, err := new(entities.Wei).Div(
+		new(entities.Wei).Mul(generalConfig.MaxLiquidity, entities.NewUWei(btcPercentage)),
+		entities.NewUWei(100),
+	)
 	if err != nil {
 		return excessCalculationResult{}, err
 	}
-	threshold := useCase.calculateThreshold(targetPerNetwork, generalConfig.ExcessTolerance)
+
+	rbtcTarget, err := new(entities.Wei).Div(
+		new(entities.Wei).Mul(generalConfig.MaxLiquidity, entities.NewUWei(rbtcPercentage)),
+		entities.NewUWei(100),
+	)
+	if err != nil {
+		return excessCalculationResult{}, err
+	}
+
+	btcThreshold := useCase.calculateThreshold(btcTarget, generalConfig.ExcessTolerance)
+	rbtcThreshold := useCase.calculateThreshold(rbtcTarget, generalConfig.ExcessTolerance)
 
 	btcLiquidityExcess, btcIsTimeForced := useCase.calculateExcessWithTimeForcing(
-		targetPerNetwork,
-		threshold,
+		btcTarget,
+		btcThreshold,
 		currentLiquidity.Btc,
 		stateConfig.LastBtcToColdWalletTransfer,
 	)
 	rbtcLiquidityExcess, rbtcIsTimeForced := useCase.calculateExcessWithTimeForcing(
-		targetPerNetwork,
-		threshold,
+		rbtcTarget,
+		rbtcThreshold,
 		currentLiquidity.Rbtc,
 		stateConfig.LastRbtcToColdWalletTransfer,
 	)
