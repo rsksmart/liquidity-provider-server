@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -12,13 +13,17 @@ import (
 	"net/http"
 )
 
+type GetPeginQuoteUseCase interface {
+	Run(ctx context.Context, request pegin.QuoteRequest) (pegin.GetPeginQuoteResult, error)
+}
+
 // NewGetPeginQuoteHandler
 // @Title Pegin GetQuote
 // @Description Gets Pegin Quote
 // @Param PeginQuoteRequest  body pkg.PeginQuoteRequest true "Interface with parameters for computing possible quotes for the service"
 // @Success 200 array pkg.GetPeginQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
 // @Route /pegin/getQuote [post]
-func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
+func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		var result pegin.GetPeginQuoteResult
@@ -44,11 +49,7 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 		)
 
 		result, err = useCase.Run(req.Context(), peginRequest)
-		if errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
-			errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
-			errors.Is(err, usecases.RskAddressNotSupportedError) ||
-			errors.Is(err, usecases.TxBelowMinimumError) ||
-			errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
+		if isGetPeginQuoteBadRequest(err) {
 			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
@@ -64,4 +65,13 @@ func NewGetPeginQuoteHandler(useCase *pegin.GetQuoteUseCase) http.HandlerFunc {
 		}} // to keep compatibility with legacy API
 		rest.JsonResponseWithBody(w, http.StatusOK, &responseBody)
 	}
+}
+
+func isGetPeginQuoteBadRequest(err error) bool {
+	return errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
+		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
+		errors.Is(err, usecases.RskAddressNotSupportedError) ||
+		errors.Is(err, usecases.TxBelowMinimumError) ||
+		errors.Is(err, pegin.DataCapExceededError) ||
+		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
 }
