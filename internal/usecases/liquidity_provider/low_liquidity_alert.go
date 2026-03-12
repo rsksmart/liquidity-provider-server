@@ -3,6 +3,7 @@ package liquidity_provider
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
@@ -14,6 +15,7 @@ import (
 type LowLiquidityAlertUseCase struct {
 	peginProvider     liquidity_provider.PeginLiquidityProvider
 	pegoutProvider    liquidity_provider.PegoutLiquidityProvider
+	generalProvider   liquidity_provider.LiquidityProvider
 	alertSender       alerts.AlertSender
 	recipient         string
 	warningThreshold  uint64
@@ -23,6 +25,7 @@ type LowLiquidityAlertUseCase struct {
 func NewLowLiquidityAlertUseCase(
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
+	generalProvider liquidity_provider.LiquidityProvider,
 	alertSender alerts.AlertSender,
 	recipient string,
 	warningThreshold uint64,
@@ -31,6 +34,7 @@ func NewLowLiquidityAlertUseCase(
 	return &LowLiquidityAlertUseCase{
 		peginProvider:     peginProvider,
 		pegoutProvider:    pegoutProvider,
+		generalProvider:   generalProvider,
 		alertSender:       alertSender,
 		recipient:         recipient,
 		warningThreshold:  warningThreshold,
@@ -39,6 +43,15 @@ func NewLowLiquidityAlertUseCase(
 }
 
 func (useCase *LowLiquidityAlertUseCase) Run(ctx context.Context) error {
+	stateConfig, err := useCase.generalProvider.StateConfiguration(ctx)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.LowLiquidityAlertId, err)
+	}
+	if time.Now().Unix() < stateConfig.RatioCooldownEndTimestamp {
+		log.Infof("LowLiquidityAlert: skipping due to liquidity target cooldown (ends at %d)", stateConfig.RatioCooldownEndTimestamp)
+		return nil
+	}
+
 	btcLiquidity, err := useCase.pegoutProvider.AvailablePegoutLiquidity(ctx)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.LowLiquidityAlertId, err)

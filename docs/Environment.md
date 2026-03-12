@@ -74,6 +74,7 @@ These are the environment variables required by the liquidity provider server (L
 | `COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS` | Number of seconds after which excess liquidity will be transferred to cold wallet even if below threshold | `1209600` (2 weeks) | No |
 | `HOT_WALLET_LOW_LIQUIDITY_WARNING` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a warning alert is emitted every check cycle | `3` | No |
 | `HOT_WALLET_LOW_LIQUIDITY_CRITICAL` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a critical alert is emitted every check cycle. Must be less than `HOT_WALLET_LOW_LIQUIDITY_WARNING` | `1` | No |
+| `BTC_LIQUIDITY_TARGET_PERCENTAGE` | Percentage of MaxLiquidity allocated to BTC in the hot wallet (RBTC gets the remainder). Must be between 10 and 90 | `50` | No |
 
 ## AWS variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.

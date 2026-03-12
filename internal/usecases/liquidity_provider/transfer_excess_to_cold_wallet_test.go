@@ -94,6 +94,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBtcExcess(t *testing.T) 
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -242,6 +243,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcess(t *testing.T) 
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -401,6 +403,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathRskExcessWithContractFun
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -534,6 +537,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskExcess_GetContractBalanceFails
 	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}, nil)
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -628,6 +632,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskExcess_WithdrawContractFundsFa
 	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}, nil)
 	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
 	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
@@ -737,6 +742,7 @@ func TestTransferExcessToColdWalletUseCase_Run_HappyPathBothExcess(t *testing.T)
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -879,6 +885,7 @@ func TestTransferExcessToColdWalletUseCase_Run_NoExcess(t *testing.T) {
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -998,6 +1005,7 @@ func TestTransferExcessToColdWalletUseCase_Run_FixedToleranceInsteadOfPercentage
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -1137,6 +1145,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForced(t *testing.T) {
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  oldTransferUnix,
 		LastRbtcToColdWalletTransfer: oldTransferUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -1293,6 +1302,7 @@ func TestTransferExcessToColdWalletUseCase_Run_TimeForcedButNoExcess(t *testing.
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  oldTransferUnix,
 		LastRbtcToColdWalletTransfer: oldTransferUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -1420,6 +1430,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTimeForcedRskThresholdExceeded
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  oldTransferUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -1596,6 +1607,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTimeForcedBtcThresholdExceeded
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: oldTransferUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -1939,6 +1951,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferHistoryNotConfigured(t
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  0,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2022,6 +2035,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskTransferHistoryNotConfigured(t
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: 0,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2198,6 +2212,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcExcessNotEconomical(t *testing
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  oldTransferUnix,
 		LastRbtcToColdWalletTransfer: oldTransferUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2320,6 +2335,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcExcessNotEconomical(t *testin
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  oldTransferUnix,
 		LastRbtcToColdWalletTransfer: oldTransferUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2428,6 +2444,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetBtcLiquidityFails(t *testing.T
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2517,6 +2534,7 @@ func TestTransferExcessToColdWalletUseCase_Run_GetRbtcLiquidityFails(t *testing.
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2617,6 +2635,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcFeeEstimationFails(t *testing.
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2727,6 +2746,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcTransferFails(t *testing.T) {
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2837,6 +2857,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RskGasPriceRetrievalFails(t *test
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -2955,6 +2976,7 @@ func TestTransferExcessToColdWalletUseCase_Run_RbtcTransferFails(t *testing.T) {
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -3082,6 +3104,7 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	stateConfig := lpEntity.StateConfiguration{
 		LastBtcToColdWalletTransfer:  nowUnix,
 		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
 	}
 	generalProvider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 
@@ -3170,5 +3193,286 @@ func TestTransferExcessToColdWalletUseCase_Run_BtcSucceedsRskFails(t *testing.T)
 	btcWallet.AssertExpectations(t)
 	rskRpcMock.AssertExpectations(t)
 	rskWallet.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_CooldownActiveSkipsTransfer(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+	eventBus := new(mocks.EventBusMock)
+	hashMock := &mocks.HashMock{}
+	alertSender := new(mocks.AlertSenderMock)
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+	nowUnix := time.Now().Unix()
+	cooldownEnd := nowUnix + 3600
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+	generalProvider.On("GeneralConfiguration", ctx).Return(lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	})
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 50,
+		RatioCooldownEndTimestamp:    cooldownEnd,
+	}, nil)
+
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider, pegoutProvider, generalProvider, lpRepository,
+		coldWallet, btcWallet, rskWallet, blockchain.RskContracts{}, blockchain.Rpc{},
+		btcWalletMutex, rskWalletMutex,
+		testBtcMinTransferFeeMultiplier, testRbtcMinTransferFeeMultiplier, testForceTransferAfterSeconds,
+		eventBus, rskWallet, hashMock.Hash, alertSender, testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, liquidity_provider.TransferStatus(""), result.BtcResult.Status)
+	assert.Empty(t, result.BtcResult.TxHash)
+	assert.Nil(t, result.BtcResult.Amount)
+	assert.Nil(t, result.BtcResult.Fee)
+	require.NoError(t, result.BtcResult.Error)
+
+	assert.Equal(t, liquidity_provider.TransferStatus(""), result.RskResult.Status)
+	assert.Empty(t, result.RskResult.TxHash)
+	assert.Nil(t, result.RskResult.Amount)
+	assert.Nil(t, result.RskResult.Fee)
+	require.NoError(t, result.RskResult.Error)
+
+	pegoutProvider.AssertNotCalled(t, "AvailablePegoutLiquidity", mock.Anything)
+	peginProvider.AssertNotCalled(t, "AvailablePeginLiquidity", mock.Anything)
+	btcWallet.AssertNotCalled(t, "Send", mock.Anything, mock.Anything)
+	rskWallet.AssertNotCalled(t, "SendRbtc", mock.Anything, mock.Anything, mock.Anything)
+	generalProvider.AssertExpectations(t)
+	coldWallet.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_Ratio40_60_BtcExcess(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+
+	// Both networks have 20 BTC each.
+	// With 40/60 ratio: BTC target = 16, threshold = 19.2 → 20 > 19.2 → excess = 20-16 = 4 BTC
+	// RBTC target = 24, threshold = 28.8 → 20 < 24 → no excess
+	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(20), entities.NewWei(oneEtherInWei))
+	rbtcLiquidity := new(entities.Wei).Mul(entities.NewWei(20), entities.NewWei(oneEtherInWei))
+	btcExcess := new(entities.Wei).Mul(entities.NewWei(4), entities.NewWei(oneEtherInWei))
+
+	btcFee := entities.NewWei(testBtcFeeAmount)
+	btcTxHash := "btc_tx_hash_ratio_40_60"
+	nowUnix := time.Now().Unix()
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+	generalProvider.On("GeneralConfiguration", ctx).Return(lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	})
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 40,
+	}, nil)
+	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
+	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
+
+	btcWallet.On("EstimateTxFees", "cold_btc_address", btcExcess).Return(blockchain.BtcFeeEstimation{
+		Value: btcFee,
+	}, nil)
+	btcWallet.On("Send", "cold_btc_address", btcExcess).Return(blockchain.BitcoinTransactionResult{
+		Hash: btcTxHash,
+		Fee:  btcFee,
+	}, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
+
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: BTC") && strings.Contains(body, btcTxHash)
+	}), mock.Anything).Return(nil).Once()
+
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider, pegoutProvider, generalProvider, lpRepository,
+		coldWallet, btcWallet, rskWallet, blockchain.RskContracts{PegIn: peginContract}, blockchain.Rpc{},
+		btcWalletMutex, rskWalletMutex,
+		testBtcMinTransferFeeMultiplier, testRbtcMinTransferFeeMultiplier, testForceTransferAfterSeconds,
+		eventBus, rskWallet, hashMock.Hash, alertSender, testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, liquidity_provider.TransferStatusSuccess, result.BtcResult.Status)
+	assert.Equal(t, btcTxHash, result.BtcResult.TxHash)
+	assert.Equal(t, btcExcess.String(), result.BtcResult.Amount.String())
+	assert.Equal(t, btcFee, result.BtcResult.Fee)
+	require.NoError(t, result.BtcResult.Error)
+
+	assert.Equal(t, liquidity_provider.TransferStatusSkippedNoExcess, result.RskResult.Status)
+	assert.Empty(t, result.RskResult.TxHash)
+	assert.Nil(t, result.RskResult.Amount)
+	assert.Nil(t, result.RskResult.Fee)
+	require.NoError(t, result.RskResult.Error)
+
+	generalProvider.AssertExpectations(t)
+	pegoutProvider.AssertExpectations(t)
+	peginProvider.AssertExpectations(t)
+	btcWallet.AssertExpectations(t)
+	alertSender.AssertExpectations(t)
+	eventBus.AssertExpectations(t)
+}
+
+// nolint:funlen
+func TestTransferExcessToColdWalletUseCase_Run_Ratio60_40_RbtcExcess(t *testing.T) {
+	ctx := context.Background()
+
+	peginProvider := new(mocks.ProviderMock)
+	pegoutProvider := new(mocks.ProviderMock)
+	generalProvider := new(mocks.ProviderMock)
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+	coldWallet := new(mocks.ColdWalletMock)
+	btcWallet := new(mocks.BitcoinWalletMock)
+	rskWallet := new(mocks.RskWalletMock)
+	peginContract := new(mocks.PeginContractMock)
+	rskRpcMock := new(mocks.RootstockRpcServerMock)
+	rpc := blockchain.Rpc{Rsk: rskRpcMock}
+	btcWalletMutex := &sync.Mutex{}
+	rskWalletMutex := &sync.Mutex{}
+
+	maxLiquidity := new(entities.Wei).Mul(entities.NewWei(testMaxLiquidityBtc), entities.NewWei(oneEtherInWei))
+
+	// Both networks have 20 BTC/RBTC each.
+	// With 60/40 ratio: BTC target = 24, threshold = 28.8 → 20 < 24 → no excess
+	// RBTC target = 16, threshold = 19.2 → 20 > 19.2 → excess = 20-16 = 4 RBTC
+	btcLiquidity := new(entities.Wei).Mul(entities.NewWei(20), entities.NewWei(oneEtherInWei))
+	rbtcLiquidity := new(entities.Wei).Mul(entities.NewWei(20), entities.NewWei(oneEtherInWei))
+	rbtcExcess := new(entities.Wei).Mul(entities.NewWei(4), entities.NewWei(oneEtherInWei))
+
+	rbtcGasPrice := entities.NewWei(1000000000)
+	rbtcGasCost := new(entities.Wei).Mul(rbtcGasPrice, entities.NewWei(liquidity_provider.SimpleTransferGasLimit))
+	rbtcAmountToTransfer := new(entities.Wei).Sub(rbtcExcess, rbtcGasCost)
+	rskTxHash := "rsk_tx_hash_ratio_60_40"
+	rskReceipt := blockchain.TransactionReceipt{
+		TransactionHash: rskTxHash,
+		GasUsed:         big.NewInt(liquidity_provider.SimpleTransferGasLimit),
+		GasPrice:        rbtcGasPrice,
+	}
+	nowUnix := time.Now().Unix()
+
+	coldWallet.On("GetBtcAddress").Return("cold_btc_address")
+	coldWallet.On("GetRskAddress").Return("cold_rsk_address")
+	generalProvider.On("GeneralConfiguration", ctx).Return(lpEntity.GeneralConfiguration{
+		MaxLiquidity: maxLiquidity,
+		ExcessTolerance: lpEntity.ExcessTolerance{
+			IsFixed:         false,
+			PercentageValue: utils.NewBigFloat64(testExcessTolerancePercent),
+			FixedValue:      entities.NewWei(0),
+		},
+	})
+	generalProvider.On("StateConfiguration", ctx).Return(lpEntity.StateConfiguration{
+		LastBtcToColdWalletTransfer:  nowUnix,
+		LastRbtcToColdWalletTransfer: nowUnix,
+		BtcLiquidityTargetPercentage: 60,
+	}, nil)
+	pegoutProvider.On("AvailablePegoutLiquidity", ctx).Return(btcLiquidity, nil)
+	peginProvider.On("AvailablePeginLiquidity", ctx).Return(rbtcLiquidity, nil)
+
+	generalProvider.On("RskAddress").Return("lp_rsk_address")
+	peginContract.On("GetBalance", "lp_rsk_address").Return(entities.NewWei(0), nil)
+
+	rskRpcMock.On("GasPrice", ctx).Return(rbtcGasPrice, nil)
+	rskWallet.On("SendRbtc", ctx,
+		blockchain.NewTransactionConfig(rbtcAmountToTransfer, liquidity_provider.SimpleTransferGasLimit, rbtcGasPrice),
+		"cold_rsk_address",
+	).Return(rskReceipt, nil)
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Once()
+	hashMock := &mocks.HashMock{}
+	hashMock.On("Hash", mock.Anything).Return([]byte{4, 5, 6}).Once()
+	rskWallet.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+	lpRepository.On("UpsertStateConfiguration", mock.Anything, mock.Anything).Return(nil).Once()
+
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", mock.Anything, alerts.AlertSubjectHotToColdTransfer, mock.MatchedBy(func(body string) bool {
+		return strings.Contains(body, "Asset: RBTC") && strings.Contains(body, rskTxHash)
+	}), mock.Anything).Return(nil).Once()
+
+	useCase := liquidity_provider.NewTransferExcessToColdWalletUseCase(
+		peginProvider, pegoutProvider, generalProvider, lpRepository,
+		coldWallet, btcWallet, rskWallet, blockchain.RskContracts{PegIn: peginContract}, rpc,
+		btcWalletMutex, rskWalletMutex,
+		testBtcMinTransferFeeMultiplier, testRbtcMinTransferFeeMultiplier, testForceTransferAfterSeconds,
+		eventBus, rskWallet, hashMock.Hash, alertSender, testAlertRecipientEmail,
+	)
+
+	result, err := useCase.Run(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, liquidity_provider.TransferStatusSkippedNoExcess, result.BtcResult.Status)
+	assert.Empty(t, result.BtcResult.TxHash)
+	assert.Nil(t, result.BtcResult.Amount)
+	assert.Nil(t, result.BtcResult.Fee)
+	require.NoError(t, result.BtcResult.Error)
+
+	rbtcActualFee := new(entities.Wei).Mul(rskReceipt.GasPrice, entities.NewUWei(rskReceipt.GasUsed.Uint64()))
+	assert.Equal(t, liquidity_provider.TransferStatusSuccess, result.RskResult.Status)
+	assert.Equal(t, rskTxHash, result.RskResult.TxHash)
+	assert.Equal(t, rbtcAmountToTransfer.String(), result.RskResult.Amount.String())
+	assert.Equal(t, rbtcActualFee.String(), result.RskResult.Fee.String())
+	require.NoError(t, result.RskResult.Error)
+
+	generalProvider.AssertExpectations(t)
+	pegoutProvider.AssertExpectations(t)
+	peginProvider.AssertExpectations(t)
+	rskWallet.AssertExpectations(t)
+	rskRpcMock.AssertExpectations(t)
+	alertSender.AssertExpectations(t)
 	eventBus.AssertExpectations(t)
 }
