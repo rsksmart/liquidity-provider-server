@@ -107,6 +107,7 @@ if [ "$CONTACT_POINT_EXISTS" == "not_found" ]; then
     else
         echo "Failed to create default contact point"
         echo "Response: $CONTACT_POINT_CREATE_RESPONSE"
+        exit 1
     fi
 else
     echo "Default contact point already exists"
@@ -211,6 +212,7 @@ if echo "$POLICY_RESPONSE" | grep -q '"message"'; then
 else
     echo "Failed to configure notification policy"
     echo "Response: $POLICY_RESPONSE"
+    exit 1
 fi
 
 # Function to prepare rule file with correct datasource UID
