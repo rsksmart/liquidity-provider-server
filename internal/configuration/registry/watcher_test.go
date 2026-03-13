@@ -29,6 +29,7 @@ func TestNewWatcherRegistry(t *testing.T) {
 				BridgeAddress:               "0x0000000000000000000000000000000001000006",
 			},
 			Btc: environment.BtcEnv{Network: "testnet"},
+			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 		}
 
 		client := &mocks.DbClientBindingMock{}
@@ -53,7 +54,8 @@ func TestNewWatcherRegistry(t *testing.T) {
 		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
 		lp := registry.NewLiquidityProvider(dbRegistry, rskRegistry, btcRegistry, messagingRegistry)
 		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
+		useCaseRegistry, err := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
+		require.NoError(t, err)
 
 		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lp, messagingRegistry, watcher.NewApplicationTickers(), environment.DefaultTimeouts())
 

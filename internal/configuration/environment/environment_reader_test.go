@@ -34,6 +34,7 @@ func setUpEnv(t *testing.T) {
 		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
 		"USE_SEGWIT_FEDERATION":                "true",
 		"ALLOWED_ORIGINS":                      "http://example.com,http://example2.com",
+		"REBALANCE_STRATEGY":                   "ALL_AT_ONCE",
 	}
 	const envFilePath = "../../../sample-config.env"
 	envFile, err := os.ReadFile(envFilePath)
