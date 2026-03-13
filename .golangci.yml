@@ -4,7 +4,12 @@ run:
   tests: true
 issues:
   exclude-dirs:
-    - internal/adapters/dataproviders/rootstock/bindings
+    - internal/adapters/dataproviders/rootstock/bindings/discovery
+    - internal/adapters/dataproviders/rootstock/bindings/pegin
+    - internal/adapters/dataproviders/rootstock/bindings/pegout
+    - internal/adapters/dataproviders/rootstock/bindings/collateral_management
+    - internal/adapters/dataproviders/rootstock/bindings/flyover
+    - internal/adapters/dataproviders/rootstock/bindings/bridge
     - test/mocks
 linters:
   presets:

@@ -121,3 +121,8 @@ packages:
   github.com/prometheus/client_golang/prometheus:
     interfaces:
       Registerer:
+  github.com/ethereum/go-ethereum/accounts/abi/bind/v2:
+    interfaces:
+      ContractTransactor:
+      ContractCaller:
+      ContractFilterer:

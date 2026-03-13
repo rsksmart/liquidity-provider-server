@@ -2,7 +2,11 @@ package rootstock
 
 import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	collateral "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
+	discovery "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
+	flyover "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/flyover"
+	pegin "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	pegout "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 )
 
 type FlyoverABIs struct {
@@ -14,23 +18,23 @@ type FlyoverABIs struct {
 }
 
 func MustLoadFlyoverABIs() *FlyoverABIs {
-	pegInAbi, err := bindings.IPegInMetaData.GetAbi()
+	pegInAbi, err := pegin.PeginContractMetaData.ParseABI()
 	if err != nil {
 		panic("could not load PegIn ABI: " + err.Error())
 	}
-	pegOutAbi, err := bindings.IPegOutMetaData.GetAbi()
+	pegOutAbi, err := pegout.PegoutContractMetaData.ParseABI()
 	if err != nil {
 		panic("could not load PegOut ABI: " + err.Error())
 	}
-	discoveryAbi, err := bindings.IFlyoverDiscoveryMetaData.GetAbi()
+	discoveryAbi, err := discovery.FlyoverDiscoveryMetaData.ParseABI()
 	if err != nil {
 		panic("could not load Discovery ABI: " + err.Error())
 	}
-	collateralManagementAbi, err := bindings.ICollateralManagementMetaData.GetAbi()
+	collateralManagementAbi, err := collateral.CollateralManagementContractMetaData.ParseABI()
 	if err != nil {
 		panic("could not load Collateral Management ABI: " + err.Error())
 	}
-	flyoverAbi, err := bindings.FlyoverMetaData.GetAbi()
+	flyoverAbi, err := flyover.FlyoverMetaData.ParseABI()
 	if err != nil {
 		panic("could not load Flyover ABI: " + err.Error())
 	}

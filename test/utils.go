@@ -288,3 +288,13 @@ func MustParseDate(s string) time.Time {
 	}
 	return parsed
 }
+
+func MustEncode32Bytes(value string) [32]byte {
+	decoded, err := hex.DecodeString(value)
+	if err != nil {
+		panic(err)
+	}
+	var arr [32]byte
+	copy(arr[:], decoded)
+	return arr
+}
