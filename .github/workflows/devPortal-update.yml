@@ -48,10 +48,10 @@ jobs:
           BASE_DST="devportal/docs/02-developers/06-integrate/02-flyover"
 
           #####################################
-          #  Usecases                         #
+          #  Overview                         #
           #####################################
           TEMP_FILE="temp_index.md"
-          tail -n +2 ${BASE_SRC}/docs/Usecases.md > ${TEMP_FILE}
+          tail -n +2 ${BASE_SRC}/docs/Overview.md > ${TEMP_FILE}
           TRANSFORMED_FILE="transformed/index.md"
           echo "---" > ${TRANSFORMED_FILE}
           echo "sidebar_label: RBTC Flyover" >> ${TRANSFORMED_FILE}
