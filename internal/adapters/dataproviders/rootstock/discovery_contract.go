@@ -229,7 +229,7 @@ func (discovery *discoveryContractImpl) IsOperational(providerType liquidity_pro
 			result, revert := bind.Call(discovery.contract, opts, callData, discovery.binding.UnpackIsOperational)
 			parsedRevert, parseErr := ParseRevertReason(discovery.abis.Flyover, revert)
 			if parseErr != nil && parsedRevert == nil {
-				return false, fmt.Errorf("error parsing IsOperational result: %w", err)
+				return false, fmt.Errorf("error parsing IsOperational result: %w", parseErr)
 			} else if parsedRevert != nil && strings.EqualFold(lbcProviderNotRegisteredError, parsedRevert.Name) {
 				return false, nil
 			} else if parsedRevert != nil {

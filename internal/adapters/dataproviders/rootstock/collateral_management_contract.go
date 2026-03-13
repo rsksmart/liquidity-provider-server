@@ -261,10 +261,11 @@ func (collateral *collateralManagementContractImpl) GetPenalizedEvents(ctx conte
 	)
 
 	defer func() {
-		if iterator != nil {
-			if iteratorError := iterator.Close(); iteratorError != nil {
-				log.Error("Error closing Penalized event iterator: ", err)
-			}
+		if iterator == nil {
+			return
+		}
+		if iteratorError := iterator.Close(); iteratorError != nil {
+			log.Error("Error closing Penalized event iterator: ", iteratorError)
 		}
 	}()
 	if err != nil || iterator == nil {

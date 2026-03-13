@@ -285,10 +285,11 @@ func (bridge *rskBridgeImpl) GetBatchPegOutCreatedEvent(ctx context.Context, fro
 	)
 
 	defer func() {
-		if iterator != nil {
-			if iteratorError := iterator.Close(); iteratorError != nil {
-				log.Error("Error closing BatchPegOutCreated event iterator: ", err)
-			}
+		if iterator == nil {
+			return
+		}
+		if iteratorError := iterator.Close(); iteratorError != nil {
+			log.Error("Error closing BatchPegOutCreated event iterator: ", iteratorError)
 		}
 	}()
 

@@ -150,7 +150,7 @@ func (pegoutContract *pegoutContractImpl) HashPegoutQuoteEIP712(pegoutQuote quot
 			if dataErr != nil {
 				return [32]byte{}, dataErr
 			}
-			return bind.Call(pegoutContract.contract, &bind.CallOpts{}, callData, pegoutContract.binding.UnpackHashPegOutQuote)
+			return bind.Call(pegoutContract.contract, &bind.CallOpts{}, callData, pegoutContract.binding.UnpackHashPegOutQuoteEIP712)
 		})
 	if err != nil {
 		return [32]byte{}, err
@@ -284,10 +284,11 @@ func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, 
 	)
 
 	defer func() {
-		if iterator != nil {
-			if iteratorError := iterator.Close(); iteratorError != nil {
-				log.Error("Error closing PegOutDeposit event iterator: ", err)
-			}
+		if iterator == nil {
+			return
+		}
+		if iteratorError := iterator.Close(); iteratorError != nil {
+			log.Error("Error closing PegOutDeposit event iterator: ", iteratorError)
 		}
 	}()
 	if err != nil || iterator == nil {
