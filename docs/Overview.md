@@ -19,7 +19,7 @@ Flyover:
 | **Core mechanism** | Federated 2-Way Peg (HSMs + PoW) | LP advances funds, settles via PowPeg |
 | **Peg-in speed** | ~17 hours (100 Bitcoin confirmations) | 20–60 min |
 | **Peg-out speed** | ~34 hours (4,000 Rootstock confirmations) | 20–60 min |
-| **Fees** | Network fees only | 0.15% LP fee + network fees |
+| **Fees** | Network fees only | 0.15% LP fee + network fees * |
 | **Minimum peg-in** | 0.005 BTC | 0.00500001 BTC |
 | **Minimum peg-out** | 0.004 rBTC | 0.004 rBTC |
 | **Maximum** | None | 15 BTC / 15 rBTC * |
@@ -27,6 +27,7 @@ Flyover:
 
 Flyover's speed depends on the amount: smaller amounts need fewer Bitcoin confirmations and settle faster; larger amounts need more.
 
+* The LP fee is set by each LP. 0.15% is the current default but may vary.
 * Maximum transfer limits are set by the LP and will increase over time.
 
 ---
@@ -44,13 +45,13 @@ flowchart LR
     end
 
     subgraph btc["Bitcoin"]
-        E["User sends BTC\nto deposit address"]
-        E --> F["Wait for\nconfirmations"]
+        E["User sends BTC<br>to deposit address"]
+        E --> F["Wait for<br>confirmations"]
     end
 
     subgraph rsk["Rootstock"]
-        G["LP calls callForUser\n→ User receives rBTC"]
-        G --> H["LP registers peg-in\n→ Bridge refunds LP"]
+        G["LP calls callForUser<br>→ User receives rBTC"]
+        G --> H["LP registers peg-in<br>→ Bridge refunds LP"]
     end
 
     off --> btc --> rsk
@@ -64,7 +65,7 @@ flowchart LR
 The user requests a quote through the PowPeg App. The quote shows the amount of rBTC the user will receive, fees, required Bitcoin confirmations, and a time estimate.
 
 **2. Accept the quote**
-The LP generates a unique Bitcoin deposit address tied to this specific quote. The address is derived from the quote hash — every transaction gets its own address.
+The user must carefully review the quote details — including the amount, fees, confirmations required, and time estimate — and explicitly accept it before proceeding. Once the user accepts, the LP generates a unique Bitcoin deposit address tied to this specific quote. The address is derived from the quote hash — every transaction gets its own address.
 
 **3. Deposit BTC**
 The user sends BTC to the deposit address. The LP monitors Bitcoin and waits for the required number of confirmations.
@@ -119,16 +120,16 @@ flowchart LR
     end
 
     subgraph rsk["Rootstock"]
-        D["User deposits rBTC\ninto LBC"]
-        D --> E["Wait for\nconfirmations"]
+        D["User deposits rBTC<br>into LBC"]
+        D --> E["Wait for<br>confirmations"]
     end
 
     subgraph btc["Bitcoin"]
-        F["LP sends BTC\n→ User receives BTC"]
+        F["LP sends BTC<br>→ User receives BTC"]
     end
 
-    subgraph settle["Settlement"]
-        G["LP proves BTC was sent\n→ Bridge refunds LP"]
+    subgraph settle["Rootstock Bridge"]
+        G["LP proves BTC was sent<br>→ Bridge refunds LP"]
     end
 
     off --> rsk --> btc --> settle
@@ -197,7 +198,7 @@ Flyover builds on PowPeg — live since 2018 with 100% uptime and operational ex
 
 ### Non-Custodial
 
-The LP never has access to user funds. User BTC goes directly to a PowPeg federation-controlled address. The LP advances rBTC from its own separate balance. The LP cannot access, redirect, or withhold user BTC at any point in the process.
+The LP never has access to user funds. In a peg-in, user BTC goes directly to a PowPeg federation-controlled address. In a peg-out, user rBTC is locked in the Liquidity Bridge Contract (LBC), which acts as the trusted third party instead of the federation. In both cases, the LP advances funds from its own separate balance and cannot access, redirect, or withhold user funds at any point in the process.
 
 ### Trust Model
 
@@ -233,7 +234,7 @@ Quote negotiation happens off-chain. Everything else — fund custody, delivery,
 | Scenario | Outcome |
 | --- | --- |
 | **LP doesn't deliver within deadline** | LP's collateral is slashed. User receives a refund in rBTC. |
-| **LP goes offline before accepting a quote** | No transaction starts. User can choose another route (PowPeg or aggregated routes). |
+| **LP goes offline before accepting a quote** | No transaction starts. User can choose another LP, PowPeg, or aggregated routes. |
 | **User doesn't deposit in time** | Quote expires. No funds are moved. |
 
 ### Audited
@@ -256,7 +257,7 @@ The smart contract on Rootstock that coordinates Flyover transactions. It holds 
 
 | Fee | Description |
 | --- | --- |
-| **LP fee** | 0.15% of the transaction value |
+| **LP fee** | Set by each LP. Currently 0.15% of the transaction value |
 | **Network fees** | Bitcoin transaction fees + Rootstock gas |
 
 All fees are shown in the quote before you confirm.
