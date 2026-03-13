@@ -168,6 +168,7 @@ type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
 	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
 	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
+	RebalanceStrategy           string `env:"REBALANCE_STRATEGY" validate:"required,oneof=ALL_AT_ONCE UTXO_SPLIT"`
 }
 
 type CaptchaEnv struct {
