@@ -30,7 +30,7 @@ const (
 
 func ParseRebalanceStrategy(s string) (RebalanceStrategy, error) {
 	switch s {
-	case string(AllAtOnce):
+	case "", string(AllAtOnce):
 		return AllAtOnce, nil
 	case string(UtxoSplit):
 		return UtxoSplit, nil
@@ -132,20 +132,20 @@ func (useCase *BridgePegoutUseCase) runUtxoSplit(
 	watchedQuotes []quote.WatchedPegoutQuote,
 ) error {
 	bridgeMin := pegoutConfig.BridgeTransactionMin
-	numTxs, err := new(entities.Wei).Div(totalValue, bridgeMin)
+	numTxsWei, err := new(entities.Wei).Div(totalValue, bridgeMin)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
 	}
-	remainder := new(entities.Wei).Sub(totalValue, new(entities.Wei).Mul(numTxs, bridgeMin))
+	numTxs := numTxsWei.Uint64()
+	remainder := new(entities.Wei).Sub(totalValue, new(entities.Wei).Mul(numTxsWei, bridgeMin))
 
 	gasPerTx := entities.NewWei(BridgeConversionGasLimit * BridgeConversionGasPrice)
-	requiredBalance := new(entities.Wei).Add(totalValue, new(entities.Wei).Mul(numTxs, gasPerTx))
+	requiredBalance := new(entities.Wei).Add(totalValue, new(entities.Wei).Mul(numTxsWei, gasPerTx))
 	if err := useCase.checkBalance(ctx, requiredBalance); err != nil {
 		return err
 	}
 
 	bridgeAddress := useCase.contracts.Bridge.GetAddress()
-	n := numTxs.Uint64()
 
 	// First chunk absorbs the remainder (when N=1, firstChunk == totalValue)
 	firstChunk := new(entities.Wei).Add(bridgeMin.Copy(), remainder)
@@ -155,19 +155,19 @@ func (useCase *BridgePegoutUseCase) runUtxoSplit(
 	config := blockchain.NewTransactionConfig(firstChunk, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 	receipt, txErr = useCase.rskWallet.SendRbtc(ctx, config, bridgeAddress)
 	if txErr == nil {
-		log.Debugf("%s: split tx 1/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, n, receipt.TransactionHash)
+		log.Debugf("%s: split tx 1/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, numTxs, receipt.TransactionHash)
 	} else {
-		if err := useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes); err != nil {
-			return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
-		}
-		return usecases.WrapUseCaseError(usecases.BridgePegoutId, txErr)
+		return usecases.WrapUseCaseError(
+			usecases.BridgePegoutId,
+			useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes),
+		)
 	}
 
-	for i := uint64(1); i < n; i++ {
+	for i := uint64(1); i < numTxs; i++ {
 		config = blockchain.NewTransactionConfig(bridgeMin.Copy(), BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 		receipt, txErr = useCase.rskWallet.SendRbtc(ctx, config, bridgeAddress)
 		if txErr == nil {
-			log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, i+1, n, receipt.TransactionHash)
+			log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, i+1, numTxs, receipt.TransactionHash)
 		} else {
 			break
 		}

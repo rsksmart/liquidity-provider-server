@@ -354,9 +354,10 @@ func TestParseRebalanceStrategy(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, pegout.AllAtOnce, strategy)
 	})
-	t.Run("empty string returns error", func(t *testing.T) {
-		_, err := pegout.ParseRebalanceStrategy("")
-		require.Error(t, err)
+	t.Run("empty string defaults to ALL_AT_ONCE", func(t *testing.T) {
+		strategy, err := pegout.ParseRebalanceStrategy("")
+		require.NoError(t, err)
+		assert.Equal(t, pegout.AllAtOnce, strategy)
 	})
 	t.Run("unknown value returns error", func(t *testing.T) {
 		_, err := pegout.ParseRebalanceStrategy("UNKNOWN")
