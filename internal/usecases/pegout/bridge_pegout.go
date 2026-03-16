@@ -3,6 +3,7 @@ package pegout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -20,12 +21,31 @@ const (
 	BridgeConversionGasPrice = 60000000
 )
 
+type RebalanceStrategy string
+
+const (
+	AllAtOnce RebalanceStrategy = "ALL_AT_ONCE"
+	UtxoSplit RebalanceStrategy = "UTXO_SPLIT"
+)
+
+func ParseRebalanceStrategy(s string) (RebalanceStrategy, error) {
+	switch s {
+	case "", string(AllAtOnce):
+		return AllAtOnce, nil
+	case string(UtxoSplit):
+		return UtxoSplit, nil
+	default:
+		return "", fmt.Errorf("unknown rebalance strategy: %q", s)
+	}
+}
+
 type BridgePegoutUseCase struct {
 	quoteRepository quote.PegoutQuoteRepository
 	pegoutProvider  liquidity_provider.PegoutLiquidityProvider
 	rskWallet       blockchain.RootstockWallet
 	contracts       blockchain.RskContracts
 	rskWalletMutex  sync.Locker
+	strategy        RebalanceStrategy
 }
 
 func NewBridgePegoutUseCase(
@@ -34,6 +54,7 @@ func NewBridgePegoutUseCase(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	rskWalletMutex sync.Locker,
+	strategy RebalanceStrategy,
 ) *BridgePegoutUseCase {
 	return &BridgePegoutUseCase{
 		quoteRepository: quoteRepository,
@@ -41,12 +62,13 @@ func NewBridgePegoutUseCase(
 		rskWallet:       rskWallet,
 		contracts:       contracts,
 		rskWalletMutex:  rskWalletMutex,
+		strategy:        strategy,
 	}
 }
 
 func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...quote.WatchedPegoutQuote) error {
 	var err error
-	var balance, totalValue *entities.Wei
+	var totalValue *entities.Wei
 
 	totalValue, err = useCase.calculateTotalToPegout(watchedQuotes)
 	if err != nil {
@@ -66,11 +88,29 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
-	requiredBalance := new(entities.Wei).Add(totalValue, entities.NewWei(BridgeConversionGasLimit*BridgeConversionGasPrice))
-	if balance, err = useCase.rskWallet.GetBalance(ctx); err != nil {
+	switch useCase.strategy {
+	case UtxoSplit:
+		return useCase.runUtxoSplit(ctx, totalValue, pegoutConfig, watchedQuotes)
+	default:
+		return useCase.runAllAtOnce(ctx, totalValue, watchedQuotes)
+	}
+}
+
+func (useCase *BridgePegoutUseCase) checkBalance(ctx context.Context, requiredBalance *entities.Wei) error {
+	balance, err := useCase.rskWallet.GetBalance(ctx)
+	if err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
-	} else if balance.Cmp(requiredBalance) < 0 {
+	}
+	if balance.Cmp(requiredBalance) < 0 {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, usecases.InsufficientAmountError)
+	}
+	return nil
+}
+
+func (useCase *BridgePegoutUseCase) runAllAtOnce(ctx context.Context, totalValue *entities.Wei, watchedQuotes []quote.WatchedPegoutQuote) error {
+	requiredBalance := new(entities.Wei).Add(totalValue, entities.NewWei(BridgeConversionGasLimit*BridgeConversionGasPrice))
+	if err := useCase.checkBalance(ctx, requiredBalance); err != nil {
+		return err
 	}
 
 	config := blockchain.NewTransactionConfig(totalValue, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
@@ -79,8 +119,61 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, receipt.TransactionHash)
 	}
 
-	err = useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes)
+	if err := useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes); err != nil {
+		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
+	}
+	return nil
+}
+
+func (useCase *BridgePegoutUseCase) runUtxoSplit(
+	ctx context.Context,
+	totalValue *entities.Wei,
+	pegoutConfig liquidity_provider.PegoutConfiguration,
+	watchedQuotes []quote.WatchedPegoutQuote,
+) error {
+	bridgeMin := pegoutConfig.BridgeTransactionMin
+	numTxsWei, err := new(entities.Wei).Div(totalValue, bridgeMin)
 	if err != nil {
+		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
+	}
+	numTxs := numTxsWei.Uint64()
+	remainder := new(entities.Wei).Sub(totalValue, new(entities.Wei).Mul(numTxsWei, bridgeMin))
+
+	gasPerTx := entities.NewWei(BridgeConversionGasLimit * BridgeConversionGasPrice)
+	requiredBalance := new(entities.Wei).Add(totalValue, new(entities.Wei).Mul(numTxsWei, gasPerTx))
+	if err := useCase.checkBalance(ctx, requiredBalance); err != nil {
+		return err
+	}
+
+	bridgeAddress := useCase.contracts.Bridge.GetAddress()
+
+	// First chunk absorbs the remainder (when N=1, firstChunk == totalValue)
+	firstChunk := new(entities.Wei).Add(bridgeMin.Copy(), remainder)
+	var receipt blockchain.TransactionReceipt
+	var txErr error
+
+	config := blockchain.NewTransactionConfig(firstChunk, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
+	receipt, txErr = useCase.rskWallet.SendRbtc(ctx, config, bridgeAddress)
+	if txErr == nil {
+		log.Debugf("%s: split tx 1/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, numTxs, receipt.TransactionHash)
+	} else {
+		return usecases.WrapUseCaseError(
+			usecases.BridgePegoutId,
+			useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes),
+		)
+	}
+
+	for i := uint64(1); i < numTxs; i++ {
+		config = blockchain.NewTransactionConfig(bridgeMin.Copy(), BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
+		receipt, txErr = useCase.rskWallet.SendRbtc(ctx, config, bridgeAddress)
+		if txErr == nil {
+			log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, i+1, numTxs, receipt.TransactionHash)
+		} else {
+			break
+		}
+	}
+
+	if err := useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes); err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
 	}
 	return nil
