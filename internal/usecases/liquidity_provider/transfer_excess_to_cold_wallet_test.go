@@ -3247,13 +3247,13 @@ func TestTransferExcessToColdWalletUseCase_Run_CooldownActiveSkipsTransfer(t *te
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	assert.Equal(t, liquidity_provider.TransferStatus(""), result.BtcResult.Status)
+	assert.Equal(t, liquidity_provider.TransferStatusSkippedCooldown, result.BtcResult.Status)
 	assert.Empty(t, result.BtcResult.TxHash)
 	assert.Nil(t, result.BtcResult.Amount)
 	assert.Nil(t, result.BtcResult.Fee)
 	require.NoError(t, result.BtcResult.Error)
 
-	assert.Equal(t, liquidity_provider.TransferStatus(""), result.RskResult.Status)
+	assert.Equal(t, liquidity_provider.TransferStatusSkippedCooldown, result.RskResult.Status)
 	assert.Empty(t, result.RskResult.TxHash)
 	assert.Nil(t, result.RskResult.Amount)
 	assert.Nil(t, result.RskResult.Fee)

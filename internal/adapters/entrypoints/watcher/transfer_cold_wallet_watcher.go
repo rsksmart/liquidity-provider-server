@@ -69,38 +69,22 @@ func (watcher *TransferColdWalletWatcher) logTransferResult(result *liquidity_pr
 	if result == nil {
 		return
 	}
+	watcher.logNetworkTransferResult("BTC", result.BtcResult)
+	watcher.logNetworkTransferResult("RSK", result.RskResult)
+}
 
-	// Log BTC transfer result
-	switch result.BtcResult.Status {
+func (watcher *TransferColdWalletWatcher) logNetworkTransferResult(network string, result liquidity_provider.NetworkTransferResult) {
+	switch result.Status {
 	case liquidity_provider.TransferStatusSuccess:
-		log.Infof("TransferColdWalletWatcher: BTC transfer successful - TxHash: %s, Amount: %s, Fee: %s",
-			result.BtcResult.TxHash,
-			result.BtcResult.Amount.String(),
-			result.BtcResult.Fee.String())
+		log.Infof("TransferColdWalletWatcher: %s transfer successful - TxHash: %s, Amount: %s, Fee: %s",
+			network, result.TxHash, result.Amount.String(), result.Fee.String())
 	case liquidity_provider.TransferStatusSkippedNoExcess:
-		log.Info("TransferColdWalletWatcher: BTC transfer skipped - no excess liquidity")
+		log.Infof("TransferColdWalletWatcher: %s transfer skipped - no excess liquidity", network)
 	case liquidity_provider.TransferStatusSkippedNotEconomical:
-		log.Info("TransferColdWalletWatcher: BTC transfer skipped - not economical: ", result.BtcResult.Message)
+		log.Infof("TransferColdWalletWatcher: %s transfer skipped - not economical: %s", network, result.Message)
+	case liquidity_provider.TransferStatusSkippedCooldown:
+		log.Infof("TransferColdWalletWatcher: %s transfer skipped - liquidity target cooldown active", network)
 	case liquidity_provider.TransferStatusFailed:
-		log.Errorf("TransferColdWalletWatcher: BTC transfer failed - %s: %v",
-			result.BtcResult.Message,
-			result.BtcResult.Error)
-	}
-
-	// Log RSK transfer result
-	switch result.RskResult.Status {
-	case liquidity_provider.TransferStatusSuccess:
-		log.Infof("TransferColdWalletWatcher: RSK transfer successful - TxHash: %s, Amount: %s, Fee: %s",
-			result.RskResult.TxHash,
-			result.RskResult.Amount.String(),
-			result.RskResult.Fee.String())
-	case liquidity_provider.TransferStatusSkippedNoExcess:
-		log.Info("TransferColdWalletWatcher: RSK transfer skipped - no excess liquidity")
-	case liquidity_provider.TransferStatusSkippedNotEconomical:
-		log.Info("TransferColdWalletWatcher: RSK transfer skipped - not economical: ", result.RskResult.Message)
-	case liquidity_provider.TransferStatusFailed:
-		log.Errorf("TransferColdWalletWatcher: RSK transfer failed - %s: %v",
-			result.RskResult.Message,
-			result.RskResult.Error)
+		log.Errorf("TransferColdWalletWatcher: %s transfer failed - %s: %v", network, result.Message, result.Error)
 	}
 }

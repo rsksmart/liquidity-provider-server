@@ -35,6 +35,7 @@ const (
 	TransferStatusSkippedNoExcess      TransferStatus = "skipped_no_excess"
 	TransferStatusSkippedNotEconomical TransferStatus = "skipped_not_economical"
 	TransferStatusFailed               TransferStatus = "failed"
+	TransferStatusSkippedCooldown      TransferStatus = "skipped_cooldown"
 )
 
 type NetworkTransferResult struct {
@@ -159,7 +160,11 @@ func (useCase *TransferExcessToColdWalletUseCase) Run(ctx context.Context) (*Tra
 
 	if time.Now().Unix() < stateConfig.RatioCooldownEndTimestamp {
 		log.Infof("TransferExcessToColdWallet: skipping due to liquidity target cooldown (ends at %d)", stateConfig.RatioCooldownEndTimestamp)
-		return NewTransferToColdWalletResult(NetworkTransferResult{}, NetworkTransferResult{}), nil
+		cooldownResult := NetworkTransferResult{
+			Status:  TransferStatusSkippedCooldown,
+			Message: "Skipped due to liquidity target cooldown",
+		}
+		return NewTransferToColdWalletResult(cooldownResult, cooldownResult), nil
 	}
 
 	currentLiquidity, err := useCase.getCurrentLiquidity(ctx)
@@ -253,7 +258,6 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 	currentLiquidity currentLiquidityResult,
 ) (excessCalculationResult, error) {
 	btcPercentage := stateConfig.BtcLiquidityTargetPercentage
-	rbtcPercentage := 100 - btcPercentage
 
 	btcTarget, err := new(entities.Wei).Div(
 		new(entities.Wei).Mul(generalConfig.MaxLiquidity, entities.NewUWei(btcPercentage)),
@@ -263,13 +267,7 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 		return excessCalculationResult{}, err
 	}
 
-	rbtcTarget, err := new(entities.Wei).Div(
-		new(entities.Wei).Mul(generalConfig.MaxLiquidity, entities.NewUWei(rbtcPercentage)),
-		entities.NewUWei(100),
-	)
-	if err != nil {
-		return excessCalculationResult{}, err
-	}
+	rbtcTarget := new(entities.Wei).Sub(generalConfig.MaxLiquidity, btcTarget)
 
 	btcThreshold := useCase.calculateThreshold(btcTarget, generalConfig.ExcessTolerance)
 	rbtcThreshold := useCase.calculateThreshold(rbtcTarget, generalConfig.ExcessTolerance)

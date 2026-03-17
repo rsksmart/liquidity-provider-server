@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const CoolDownAfterRatioChange int64 = 10800 // 3 hours
+const CooldownAfterRatioChange int64 = 10800 // 3 hours
 
 type InitializeStateConfigurationUseCase struct {
 	provider                     liquidity_provider.LiquidityProvider
@@ -108,7 +108,7 @@ func (useCase *InitializeStateConfigurationUseCase) applyRatioUpdate(stateConfig
 		log.Infof("BtcLiquidityTargetPercentage changed from %d to %d, activating cooldown",
 			stateConfig.BtcLiquidityTargetPercentage, useCase.btcLiquidityTargetPercentage)
 		stateConfig.BtcLiquidityTargetPercentage = useCase.btcLiquidityTargetPercentage
-		stateConfig.RatioCooldownEndTimestamp = now + CoolDownAfterRatioChange
+		stateConfig.RatioCooldownEndTimestamp = now + CooldownAfterRatioChange
 		return stateConfig, true
 	}
 	return stateConfig, false

@@ -291,7 +291,7 @@ func TestInitializeStateConfigurationUseCase_Run_RatioChangeActivatesCooldown(t 
 	walletMock.AssertExpectations(t)
 
 	assert.Equal(t, uint64(60), capturedConfig.Value.BtcLiquidityTargetPercentage)
-	expectedCooldownEnd := time.Now().Unix() + liquidity_provider.CoolDownAfterRatioChange
+	expectedCooldownEnd := time.Now().Unix() + liquidity_provider.CooldownAfterRatioChange
 	cooldownDiff := expectedCooldownEnd - capturedConfig.Value.RatioCooldownEndTimestamp
 	assert.True(t, cooldownDiff >= 0 && cooldownDiff < 5, "cooldown end timestamp should be approximately now + 3 hours")
 }
