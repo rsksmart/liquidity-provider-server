@@ -403,7 +403,6 @@ func NewUseCaseRegistry(
 		lowLiquidityAlertUseCase: liquidity_provider.NewLowLiquidityAlertUseCase(
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
-			lpRegistry.LiquidityProvider,
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 			env.ColdWallet.HotWalletLowLiquidityWarning,
