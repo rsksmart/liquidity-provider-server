@@ -143,6 +143,15 @@ components:
           format: date-time
           type: string
       type: object
+    ExcessToleranceDTO:
+      properties:
+        fixedValue:
+          type: string
+        isFixed:
+          type: boolean
+        percentageValue:
+          type: number
+      type: object
     GeneralConfigurationDTO:
       properties:
         btcConfirmations:
@@ -150,8 +159,15 @@ components:
             key:
               type: integer
           type: object
+        excessTolerance:
+          $ref: '#/components/schemas/ExcessToleranceDTO'
+          type: object
+        maxLiquidity:
+          type: string
         publicLiquidityCheck:
           type: boolean
+        reimbursementWindowBlocks:
+          type: integer
         rskConfirmations:
           properties:
             key:
@@ -292,6 +308,48 @@ components:
       - apiBaseUrl
       - status
       - providerType
+      type: object
+    LiquidityRatioResponse:
+      properties:
+        btcCurrentBalance:
+          $ref: '#/components/schemas/'
+        btcImpact:
+          $ref: '#/components/schemas/NetworkImpact'
+          type: object
+        btcPercentage:
+          type: integer
+        btcTarget:
+          $ref: '#/components/schemas/'
+        btcThreshold:
+          $ref: '#/components/schemas/'
+        cooldownActive:
+          type: boolean
+        cooldownDurationSeconds:
+          type: integer
+        cooldownEndTimestamp:
+          type: integer
+        isPreview:
+          type: boolean
+        maxLiquidity:
+          $ref: '#/components/schemas/'
+        rbtcCurrentBalance:
+          $ref: '#/components/schemas/'
+        rbtcImpact:
+          $ref: '#/components/schemas/NetworkImpact'
+          type: object
+        rbtcPercentage:
+          type: integer
+        rbtcTarget:
+          $ref: '#/components/schemas/'
+        rbtcThreshold:
+          $ref: '#/components/schemas/'
+      type: object
+    NetworkImpact:
+      properties:
+        amount:
+          $ref: '#/components/schemas/'
+        type:
+          type: string
       type: object
     PaginationMetadata:
       properties:
@@ -845,6 +903,11 @@ components:
         rsk:
           type: string
       type: object
+    SetLiquidityRatioRequest:
+      properties:
+        btcPercentage:
+          type: integer
+      type: object
     TrustedAccountRequest:
       properties:
         address:
@@ -1019,6 +1082,39 @@ paths:
         "200":
           description: ""
       summary: Set Login Credentials
+  /management/liquidity-ratio:
+    get:
+      description: ' Get the current liquidity ratio status. Optionally pass btcPercentage
+        query param to preview a change. Included in the management API.'
+      parameters:
+      - description: Proposed BTC percentage for preview
+        in: query
+        name: btcPercentage
+        schema:
+          description: Proposed BTC percentage for preview
+          format: int64
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiquidityRatioResponse'
+          description: ""
+      summary: Get Liquidity Ratio
+    post:
+      description: ' Set the BTC/RBTC liquidity ratio. Included in the management
+        API.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLiquidityRatioRequest'
+        required: true
+      responses:
+        "204":
+          description: ""
+      summary: Set Liquidity Ratio
   /management/login:
     post:
       description: ' Authenticate to start a Management API session'

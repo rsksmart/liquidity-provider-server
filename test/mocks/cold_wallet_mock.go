@@ -62,51 +62,6 @@ func (_c *ColdWalletMock_GetBtcAddress_Call) RunAndReturn(run func() string) *Co
 	return _c
 }
 
-// GetRskAddress provides a mock function with no fields
-func (_m *ColdWalletMock) GetRskAddress() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRskAddress")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// ColdWalletMock_GetRskAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRskAddress'
-type ColdWalletMock_GetRskAddress_Call struct {
-	*mock.Call
-}
-
-// GetRskAddress is a helper method to define mock.On call
-func (_e *ColdWalletMock_Expecter) GetRskAddress() *ColdWalletMock_GetRskAddress_Call {
-	return &ColdWalletMock_GetRskAddress_Call{Call: _e.mock.On("GetRskAddress")}
-}
-
-func (_c *ColdWalletMock_GetRskAddress_Call) Run(run func()) *ColdWalletMock_GetRskAddress_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *ColdWalletMock_GetRskAddress_Call) Return(_a0 string) *ColdWalletMock_GetRskAddress_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ColdWalletMock_GetRskAddress_Call) RunAndReturn(run func() string) *ColdWalletMock_GetRskAddress_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetLabel provides a mock function with no fields
 func (_m *ColdWalletMock) GetLabel() string {
 	ret := _m.Called()
@@ -148,6 +103,51 @@ func (_c *ColdWalletMock_GetLabel_Call) Return(_a0 string) *ColdWalletMock_GetLa
 }
 
 func (_c *ColdWalletMock_GetLabel_Call) RunAndReturn(run func() string) *ColdWalletMock_GetLabel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRskAddress provides a mock function with no fields
+func (_m *ColdWalletMock) GetRskAddress() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRskAddress")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// ColdWalletMock_GetRskAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRskAddress'
+type ColdWalletMock_GetRskAddress_Call struct {
+	*mock.Call
+}
+
+// GetRskAddress is a helper method to define mock.On call
+func (_e *ColdWalletMock_Expecter) GetRskAddress() *ColdWalletMock_GetRskAddress_Call {
+	return &ColdWalletMock_GetRskAddress_Call{Call: _e.mock.On("GetRskAddress")}
+}
+
+func (_c *ColdWalletMock_GetRskAddress_Call) Run(run func()) *ColdWalletMock_GetRskAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ColdWalletMock_GetRskAddress_Call) Return(_a0 string) *ColdWalletMock_GetRskAddress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ColdWalletMock_GetRskAddress_Call) RunAndReturn(run func() string) *ColdWalletMock_GetRskAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }

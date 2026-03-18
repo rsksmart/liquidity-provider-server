@@ -83,6 +83,8 @@ type UseCaseRegistry struct {
 	transferExcessToColdWalletUseCase   *liquidity_provider.TransferExcessToColdWalletUseCase
 	checkColdWalletAddressChangeUseCase *liquidity_provider.CheckColdWalletAddressChangeUseCase
 	lowLiquidityAlertUseCase            *liquidity_provider.LowLiquidityAlertUseCase
+	getLiquidityRatioUseCase            *liquidity_provider.GetLiquidityRatioUseCase
+	setLiquidityRatioUseCase            *liquidity_provider.SetLiquidityRatioUseCase
 }
 
 // NewUseCaseRegistry
@@ -97,6 +99,12 @@ func NewUseCaseRegistry(
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
 	env.ColdWallet.FillWithDefaults()
+
+	getLiquidityRatio := liquidity_provider.NewGetLiquidityRatioUseCase(
+		lpRegistry.LiquidityProvider,
+		lpRegistry.LiquidityProvider,
+		lpRegistry.LiquidityProvider,
+	)
 
 	return &UseCaseRegistry{
 		summariesUseCase: reports.NewSummariesUseCase(
@@ -262,7 +270,6 @@ func NewUseCaseRegistry(
 			lpRegistry.ColdWallet,
 			rskRegistry.Wallet,
 			signingHashFunction,
-			env.ColdWallet.BtcLiquidityTargetPercentage,
 		),
 		getManagementUiDataUseCase: liquidity_provider.NewGetManagementUiDataUseCase(
 			databaseRegistry.LiquidityProviderRepository,
@@ -408,6 +415,13 @@ func NewUseCaseRegistry(
 			lpRegistry.ColdWallet,
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
+			rskRegistry.Wallet,
+			signingHashFunction,
+		),
+		getLiquidityRatioUseCase: getLiquidityRatio,
+		setLiquidityRatioUseCase: liquidity_provider.NewSetLiquidityRatioUseCase(
+			lpRegistry.LiquidityProvider,
+			databaseRegistry.LiquidityProviderRepository,
 			rskRegistry.Wallet,
 			signingHashFunction,
 		),
@@ -592,4 +606,12 @@ func (registry *UseCaseRegistry) CheckColdWalletAddressChangeUseCase() *liquidit
 
 func (registry *UseCaseRegistry) LowLiquidityAlertUseCase() *liquidity_provider.LowLiquidityAlertUseCase {
 	return registry.lowLiquidityAlertUseCase
+}
+
+func (registry *UseCaseRegistry) GetLiquidityRatioUseCase() *liquidity_provider.GetLiquidityRatioUseCase {
+	return registry.getLiquidityRatioUseCase
+}
+
+func (registry *UseCaseRegistry) SetLiquidityRatioUseCase() *liquidity_provider.SetLiquidityRatioUseCase {
+	return registry.setLiquidityRatioUseCase
 }
