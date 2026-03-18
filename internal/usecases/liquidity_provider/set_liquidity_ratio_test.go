@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -31,8 +31,8 @@ func TestSetLiquidityRatioUseCase_Run_HappyPath(t *testing.T) {
 	now := time.Now().Unix()
 	lpRepository.On("UpsertStateConfiguration", ctx, mock.MatchedBy(func(config entities.Signed[lpEntity.StateConfiguration]) bool {
 		return config.Value.BtcLiquidityTargetPercentage == 70 &&
-			config.Value.RatioCooldownEndTimestamp >= now+liquidity_provider.CoolDownAfterRatioChange-1 &&
-			config.Value.RatioCooldownEndTimestamp <= now+liquidity_provider.CoolDownAfterRatioChange+1
+			config.Value.RatioCooldownEndTimestamp >= now+liquidity_provider.CooldownAfterRatioChange-1 &&
+			config.Value.RatioCooldownEndTimestamp <= now+liquidity_provider.CooldownAfterRatioChange+1
 	})).Return(nil)
 
 	useCase := liquidity_provider.NewSetLiquidityRatioUseCase(provider, lpRepository, walletMock, crypto.Keccak256)
