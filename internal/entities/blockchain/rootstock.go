@@ -103,6 +103,7 @@ type RootstockRpcServer interface {
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 	ChainId(ctx context.Context) (uint64, error)
+	PeerCount(ctx context.Context) (uint64, error)
 }
 
 type RootstockWallet interface {

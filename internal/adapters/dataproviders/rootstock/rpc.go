@@ -193,6 +193,13 @@ func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big
 	}, nil
 }
 
+func (rpc *rskjRpcServer) PeerCount(ctx context.Context) (uint64, error) {
+	return rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (uint64, error) {
+			return rpc.client.PeerCount(ctx)
+		})
+}
+
 func (rpc *rskjRpcServer) ChainId(ctx context.Context) (uint64, error) {
 	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
 		func() (uint64, error) {

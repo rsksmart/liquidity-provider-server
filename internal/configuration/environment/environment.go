@@ -56,6 +56,14 @@ type RskEnv struct {
 	KeystoreFile     string   `env:"KEYSTORE_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
+	MinPeers         uint64   `env:"RSK_MIN_PEERS"`
+}
+
+const defaultRskMinPeers uint64 = 3
+
+func (env *RskEnv) FillWithDefaults() *RskEnv {
+	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultRskMinPeers)
+	return env
 }
 
 type BtcExtraSource struct {
@@ -69,6 +77,14 @@ type BtcEnv struct {
 	Password        string           `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
 	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
+	MinPeers        uint64           `env:"BITCOIN_MIN_PEERS"`
+}
+
+const defaultBitcoinMinPeers uint64 = 5
+
+func (env *BtcEnv) FillWithDefaults() *BtcEnv {
+	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultBitcoinMinPeers)
+	return env
 }
 
 type TimeoutEnv struct {
@@ -127,7 +143,7 @@ func (env *EclipseEnv) ToConfig() watcher.EclipseCheckConfig {
 	}
 }
 
-func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
+func (env *BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
 	switch env.Network {
 	case "mainnet":
 		return &chaincfg.MainNetParams, nil
