@@ -172,6 +172,8 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
 		app.watcherRegistry.BtcReleaseWatcher,
+		app.watcherRegistry.BitcoinPeerWatcher,
+		app.watcherRegistry.RootstockPeerWatcher,
 		app.watcherRegistry.QuoteMetricsWatcher,
 		app.watcherRegistry.AssetReportWatcher,
 	}

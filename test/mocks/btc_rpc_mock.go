@@ -83,3 +83,8 @@ func (m *BtcRpcMock) GetZeroAddress(addressType blockchain.BtcAddressType) (stri
 	args := m.Called(addressType)
 	return args.String(0), args.Error(1)
 }
+
+func (m *BtcRpcMock) GetConnectionCount() (int64, error) {
+	args := m.Called()
+	return args.Get(0).(int64), args.Error(1)
+}

@@ -7,13 +7,46 @@ import (
 )
 
 type Metrics struct {
-	PeginQuotesMetric  *prometheus.CounterVec
-	PegoutQuotesMetric *prometheus.CounterVec
-	ServerInfoMetric   *prometheus.GaugeVec
-	AssetsMetrics      *prometheus.GaugeVec
+	PeginQuotesMetric          *prometheus.CounterVec
+	PegoutQuotesMetric         *prometheus.CounterVec
+	ServerInfoMetric           *prometheus.GaugeVec
+	AssetsMetrics              *prometheus.GaugeVec
+	NodePeerCountMetric        *prometheus.GaugeVec
+	NodePeerMinThresholdMetric *prometheus.GaugeVec
+	NodePeerBelowThreshold     *prometheus.GaugeVec
+	NodePeerCheckErrors        *prometheus.CounterVec
+	NodePeerAlerts             *prometheus.CounterVec
+}
+
+func newNodePeerMetrics() (
+	peerCount, minThreshold, belowThreshold *prometheus.GaugeVec,
+	checkErrors, alerts *prometheus.CounterVec,
+) {
+	peerCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lps_node_peer_count",
+		Help: "Current number of peers connected to the node",
+	}, []string{"node"})
+	minThreshold = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lps_node_peer_min_threshold",
+		Help: "Configured minimum peer threshold for the node",
+	}, []string{"node"})
+	belowThreshold = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "lps_node_peer_below_threshold",
+		Help: "Whether the node peer count is below the configured threshold (1=below, 0=ok)",
+	}, []string{"node"})
+	checkErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lps_node_peer_check_errors_total",
+		Help: "Total number of peer check RPC errors",
+	}, []string{"node"})
+	alerts = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "lps_node_peer_alerts_total",
+		Help: "Total number of low peer count alerts sent",
+	}, []string{"node"})
+	return
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
+	peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts := newNodePeerMetrics()
 	appMetrics := Metrics{
 		PeginQuotesMetric: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -43,6 +76,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			},
 			[]string{"currency", "type"},
 		),
+		NodePeerCountMetric:        peerCount,
+		NodePeerMinThresholdMetric: minThreshold,
+		NodePeerBelowThreshold:     belowThreshold,
+		NodePeerCheckErrors:        checkErrors,
+		NodePeerAlerts:             peerAlerts,
 	}
 
 	reg.MustRegister(
@@ -50,6 +88,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		appMetrics.PeginQuotesMetric,
 		appMetrics.ServerInfoMetric,
 		appMetrics.AssetsMetrics,
+		peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts,
 	)
 	return &appMetrics
 }
@@ -81,6 +120,24 @@ func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {
 	m.AssetsMetrics.WithLabelValues("btc", "allocation_reserved_for_users").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.ReservedForUsers))
 	m.AssetsMetrics.WithLabelValues("btc", "allocation_waiting_refund").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.WaitingForRefund))
 	m.AssetsMetrics.WithLabelValues("btc", "allocation_available").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.Available))
+}
+
+func (m *Metrics) UpdateNodePeerStatus(node string, currentPeers float64, minPeers float64, belowThreshold bool) {
+	m.NodePeerCountMetric.WithLabelValues(node).Set(currentPeers)
+	m.NodePeerMinThresholdMetric.WithLabelValues(node).Set(minPeers)
+	if belowThreshold {
+		m.NodePeerBelowThreshold.WithLabelValues(node).Set(1)
+	} else {
+		m.NodePeerBelowThreshold.WithLabelValues(node).Set(0)
+	}
+}
+
+func (m *Metrics) IncrementNodePeerCheckError(node string) {
+	m.NodePeerCheckErrors.WithLabelValues(node).Inc()
+}
+
+func (m *Metrics) IncrementNodePeerAlert(node string) {
+	m.NodePeerAlerts.WithLabelValues(node).Inc()
 }
 
 func weiToBtcFloat64(weiValue *entities.Wei) float64 {
