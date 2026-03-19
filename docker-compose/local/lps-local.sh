@@ -7,6 +7,22 @@ set_defaults() {
   export LPS_STAGE=regtest
 }
 
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+  echo "Usage: $0 [OPTIONS]"
+  echo ""
+  echo "Options:"
+  echo "  -r, --reset    Reset the environment by stopping containers and removing volumes"
+  echo "  -h, --help     Show this help message and exit"
+  exit 0
+fi
+
+if [[ "$1" == "--reset" || "$1" == "-r" ]]; then
+  echo "Resetting environment..."
+  docker compose -p local down
+  rm -rf volumes
+  rm -f .env.regtest # delete default
+fi
+
 : "${ENV_FILE=".env.regtest"}"  ; export ENV_FILE
 if [ ! -f "$ENV_FILE" ]; then
   echo "Creating $ENV_FILE from sample-config.env..."; cp ../../sample-config.env "$ENV_FILE"
