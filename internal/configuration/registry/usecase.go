@@ -262,6 +262,7 @@ func NewUseCaseRegistry(
 			lpRegistry.ColdWallet,
 			rskRegistry.Wallet,
 			signingHashFunction,
+			env.ColdWallet.BtcLiquidityTargetPercentage,
 		),
 		getManagementUiDataUseCase: liquidity_provider.NewGetManagementUiDataUseCase(
 			databaseRegistry.LiquidityProviderRepository,
@@ -393,6 +394,7 @@ func NewUseCaseRegistry(
 			env.Provider.AlertRecipientEmail,
 		),
 		lowLiquidityAlertUseCase: liquidity_provider.NewLowLiquidityAlertUseCase(
+			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
 			messaging.AlertSender,

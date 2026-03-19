@@ -110,6 +110,8 @@ type StateConfiguration struct {
 	LastRbtcToColdWalletTransfer int64  `json:"lastRbtcToColdWalletTransfer" bson:"last_rbtc_to_cold_wallet_transfer"`
 	BtcColdWalletAddressHash     string `json:"btcColdWalletAddressHash" bson:"btc_cold_wallet_address_hash"`
 	RskColdWalletAddressHash     string `json:"rskColdWalletAddressHash" bson:"rsk_cold_wallet_address_hash"`
+	BtcLiquidityTargetPercentage uint64 `json:"btcLiquidityTargetPercentage" bson:"btc_liquidity_target_percentage"`
+	RatioCooldownEndTimestamp    int64  `json:"ratioCooldownEndTimestamp" bson:"ratio_cooldown_end_timestamp"`
 }
 
 type ConfigurationType interface {

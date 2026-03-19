@@ -13,12 +13,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const CooldownAfterRatioChange int64 = 10800 // 3 hours
+
 type InitializeStateConfigurationUseCase struct {
-	provider     liquidity_provider.LiquidityProvider
-	lpRepository liquidity_provider.LiquidityProviderRepository
-	coldWallet   cold_wallet.ColdWallet
-	signer       entities.Signer
-	hashFunc     entities.HashFunction
+	provider                     liquidity_provider.LiquidityProvider
+	lpRepository                 liquidity_provider.LiquidityProviderRepository
+	coldWallet                   cold_wallet.ColdWallet
+	signer                       entities.Signer
+	hashFunc                     entities.HashFunction
+	btcLiquidityTargetPercentage uint64
 }
 
 func NewInitializeStateConfigurationUseCase(
@@ -27,13 +30,15 @@ func NewInitializeStateConfigurationUseCase(
 	coldWallet cold_wallet.ColdWallet,
 	signer entities.Signer,
 	hashFunc entities.HashFunction,
+	btcLiquidityTargetPercentage uint64,
 ) *InitializeStateConfigurationUseCase {
 	return &InitializeStateConfigurationUseCase{
-		provider:     provider,
-		lpRepository: lpRepository,
-		coldWallet:   coldWallet,
-		signer:       signer,
-		hashFunc:     hashFunc,
+		provider:                     provider,
+		lpRepository:                 lpRepository,
+		coldWallet:                   coldWallet,
+		signer:                       signer,
+		hashFunc:                     hashFunc,
+		btcLiquidityTargetPercentage: btcLiquidityTargetPercentage,
 	}
 }
 
@@ -80,12 +85,33 @@ func (useCase *InitializeStateConfigurationUseCase) Run(ctx context.Context) err
 		modified = true
 	}
 
+	stateConfig, ratioUpdated := useCase.applyRatioUpdate(stateConfig, now)
+	if ratioUpdated {
+		modified = true
+	}
+
 	if !modified {
 		log.Debug("State configuration already fully initialized")
 		return nil
 	}
 
 	return useCase.signAndPersist(ctx, stateConfig)
+}
+
+func (useCase *InitializeStateConfigurationUseCase) applyRatioUpdate(stateConfig liquidity_provider.StateConfiguration, now int64) (liquidity_provider.StateConfiguration, bool) {
+	if stateConfig.BtcLiquidityTargetPercentage == 0 {
+		log.Infof("Initializing BtcLiquidityTargetPercentage to %d", useCase.btcLiquidityTargetPercentage)
+		stateConfig.BtcLiquidityTargetPercentage = useCase.btcLiquidityTargetPercentage
+		return stateConfig, true
+	}
+	if stateConfig.BtcLiquidityTargetPercentage != useCase.btcLiquidityTargetPercentage {
+		log.Infof("BtcLiquidityTargetPercentage changed from %d to %d, activating cooldown",
+			stateConfig.BtcLiquidityTargetPercentage, useCase.btcLiquidityTargetPercentage)
+		stateConfig.BtcLiquidityTargetPercentage = useCase.btcLiquidityTargetPercentage
+		stateConfig.RatioCooldownEndTimestamp = now + CooldownAfterRatioChange
+		return stateConfig, true
+	}
+	return stateConfig, false
 }
 
 func (useCase *InitializeStateConfigurationUseCase) validateColdWalletAddresses() (coldWalletAddresses, error) {
