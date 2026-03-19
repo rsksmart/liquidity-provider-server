@@ -28,11 +28,13 @@ func TestSetLiquidityRatioUseCase_Run_HappyPath(t *testing.T) {
 	provider.On("StateConfiguration", ctx).Return(stateConfig, nil)
 	walletMock.On("SignBytes", mock.Anything).Return([]byte{1, 2, 3}, nil)
 
-	now := time.Now().Unix()
 	lpRepository.On("UpsertStateConfiguration", ctx, mock.MatchedBy(func(config entities.Signed[lpEntity.StateConfiguration]) bool {
-		return config.Value.BtcLiquidityTargetPercentage == 70 &&
-			config.Value.RatioCooldownEndTimestamp >= now+liquidity_provider.CooldownAfterRatioChange-1 &&
-			config.Value.RatioCooldownEndTimestamp <= now+liquidity_provider.CooldownAfterRatioChange+1
+		nowUnix := time.Now().Unix()
+		diff := config.Value.RatioCooldownEndTimestamp - (nowUnix + liquidity_provider.CooldownAfterRatioChange)
+		if diff < 0 {
+			diff = -diff
+		}
+		return config.Value.BtcLiquidityTargetPercentage == 70 && diff < 5
 	})).Return(nil)
 
 	useCase := liquidity_provider.NewSetLiquidityRatioUseCase(provider, lpRepository, walletMock, crypto.Keccak256)

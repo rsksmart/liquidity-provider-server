@@ -107,6 +107,22 @@ func TestGetLiquidityRatioHandler_InvalidQueryParam(t *testing.T) {
 	mockUseCase.AssertNotCalled(t, "Run", mock.Anything, mock.Anything)
 }
 
+func TestGetLiquidityRatioHandler_OutOfRangeQueryParam(t *testing.T) {
+	cases := []string{"0", "9", "91", "101", "200"}
+	for _, param := range cases {
+		request := httptest.NewRequest(http.MethodGet, "/management/liquidity-ratio?btcPercentage="+param, nil)
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetLiquidityRatioUseCaseMock)
+
+		handler := handlers.NewGetLiquidityRatioHandler(mockUseCase)
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code, "expected 400 for btcPercentage=%s", param)
+		mockUseCase.AssertNotCalled(t, "Run", mock.Anything, mock.Anything)
+	}
+}
+
 func TestGetLiquidityRatioHandler_UseCaseError(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/management/liquidity-ratio", nil)
 	recorder := httptest.NewRecorder()

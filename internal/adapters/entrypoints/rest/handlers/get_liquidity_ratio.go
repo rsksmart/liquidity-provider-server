@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -27,6 +28,10 @@ func NewGetLiquidityRatioHandler(useCase GetLiquidityRatioUseCase) http.HandlerF
 			parsed, err := strconv.ParseUint(param, 10, 64)
 			if err != nil {
 				rest.ValidateRequestError(w, err)
+				return
+			}
+			if parsed < 10 || parsed > 90 {
+				rest.ValidateRequestError(w, errors.New("btcPercentage must be between 10 and 90"))
 				return
 			}
 			proposedPercentage = parsed
