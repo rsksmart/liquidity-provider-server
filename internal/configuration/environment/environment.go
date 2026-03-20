@@ -195,7 +195,6 @@ type ColdWalletEnv struct {
 	ForceTransferAfterSeconds     uint64 `env:"COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS"`
 	HotWalletLowLiquidityWarning  uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_WARNING"`
 	HotWalletLowLiquidityCritical uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_CRITICAL"`
-	BtcLiquidityTargetPercentage  uint64 `env:"BTC_LIQUIDITY_TARGET_PERCENTAGE"`
 }
 
 func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
@@ -205,19 +204,14 @@ func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
 		ForceTransferAfterSeconds:     1209600, // 2 weeks (14 days * 24 hours * 60 minutes * 60 seconds)
 		HotWalletLowLiquidityWarning:  3,
 		HotWalletLowLiquidityCritical: 1,
-		BtcLiquidityTargetPercentage:  50,
 	}
 	env.BtcMinTransferFeeMultiplier = utils.FirstNonZero(env.BtcMinTransferFeeMultiplier, defaults.BtcMinTransferFeeMultiplier)
 	env.RbtcMinTransferFeeMultiplier = utils.FirstNonZero(env.RbtcMinTransferFeeMultiplier, defaults.RbtcMinTransferFeeMultiplier)
 	env.ForceTransferAfterSeconds = utils.FirstNonZero(env.ForceTransferAfterSeconds, defaults.ForceTransferAfterSeconds)
 	env.HotWalletLowLiquidityWarning = utils.FirstNonZero(env.HotWalletLowLiquidityWarning, defaults.HotWalletLowLiquidityWarning)
 	env.HotWalletLowLiquidityCritical = utils.FirstNonZero(env.HotWalletLowLiquidityCritical, defaults.HotWalletLowLiquidityCritical)
-	env.BtcLiquidityTargetPercentage = utils.FirstNonZero(env.BtcLiquidityTargetPercentage, defaults.BtcLiquidityTargetPercentage)
 	if env.HotWalletLowLiquidityCritical >= env.HotWalletLowLiquidityWarning {
 		log.Fatal("HOT_WALLET_LOW_LIQUIDITY_CRITICAL must be less than HOT_WALLET_LOW_LIQUIDITY_WARNING")
-	}
-	if env.BtcLiquidityTargetPercentage < 10 || env.BtcLiquidityTargetPercentage > 90 {
-		log.Fatal("BTC_LIQUIDITY_TARGET_PERCENTAGE must be between 10 and 90")
 	}
 	return env
 }

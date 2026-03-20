@@ -49,4 +49,6 @@ type UseCaseRegistry interface {
 	RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase
 	RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase
 	TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase
+	GetLiquidityRatioUseCase() *liquidity_provider.GetLiquidityRatioUseCase
+	SetLiquidityRatioUseCase() *liquidity_provider.SetLiquidityRatioUseCase
 }

@@ -4,11 +4,9 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
-	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -32,10 +30,9 @@ const (
 func TestLowLiquidityAlertUseCase_Run_NoAlertAboveWarning(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertNotCalled(t, "SendAlert")
@@ -45,10 +42,9 @@ func TestLowLiquidityAlertUseCase_Run_NoAlertAboveWarning(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_NoAlertAtExactWarning(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(atWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(atWarningCoins), nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertNotCalled(t, "SendAlert")
@@ -58,7 +54,6 @@ func TestLowLiquidityAlertUseCase_Run_NoAlertAtExactWarning(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_WarningAlertBtc(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(belowWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -69,7 +64,7 @@ func TestLowLiquidityAlertUseCase_Run_WarningAlertBtc(t *testing.T) {
 		}),
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -79,7 +74,6 @@ func TestLowLiquidityAlertUseCase_Run_WarningAlertBtc(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_WarningAlertRbtc(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(belowWarningCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -90,7 +84,7 @@ func TestLowLiquidityAlertUseCase_Run_WarningAlertRbtc(t *testing.T) {
 		}),
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -100,7 +94,6 @@ func TestLowLiquidityAlertUseCase_Run_WarningAlertRbtc(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_CriticalAlertBtc(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -111,7 +104,7 @@ func TestLowLiquidityAlertUseCase_Run_CriticalAlertBtc(t *testing.T) {
 		}),
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -121,7 +114,6 @@ func TestLowLiquidityAlertUseCase_Run_CriticalAlertBtc(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_CriticalAlertRbtc(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -132,7 +124,7 @@ func TestLowLiquidityAlertUseCase_Run_CriticalAlertRbtc(t *testing.T) {
 		}),
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -142,7 +134,6 @@ func TestLowLiquidityAlertUseCase_Run_CriticalAlertRbtc(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_BothNetworksBelowCritical(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -161,7 +152,7 @@ func TestLowLiquidityAlertUseCase_Run_BothNetworksBelowCritical(t *testing.T) {
 		}),
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -171,7 +162,6 @@ func TestLowLiquidityAlertUseCase_Run_BothNetworksBelowCritical(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_OnlyCriticalWhenBelowCritical(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	alertSender.On("SendAlert",
@@ -180,7 +170,7 @@ func TestLowLiquidityAlertUseCase_Run_OnlyCriticalWhenBelowCritical(t *testing.T
 		mock.Anything,
 		[]string{alertRecipientEmail},
 	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertExpectations(t)
@@ -196,9 +186,8 @@ func TestLowLiquidityAlertUseCase_Run_OnlyCriticalWhenBelowCritical(t *testing.T
 func TestLowLiquidityAlertUseCase_Run_ErrorFromPegoutProvider(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), assert.AnError).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertNotCalled(t, "SendAlert")
@@ -208,51 +197,12 @@ func TestLowLiquidityAlertUseCase_Run_ErrorFromPegoutProvider(t *testing.T) {
 func TestLowLiquidityAlertUseCase_Run_ErrorFromPeginProvider(t *testing.T) {
 	provider := &mocks.ProviderMock{}
 	alertSender := &mocks.AlertSenderMock{}
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
 	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.NewWei(zeroCoins), assert.AnError).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
+	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
 	err := useCase.Run(context.Background())
 	provider.AssertExpectations(t)
 	alertSender.AssertNotCalled(t, "SendAlert")
 	require.Error(t, err)
 }
 
-func TestLowLiquidityAlertUseCase_Run_CooldownActiveSkipsAlerts(t *testing.T) {
-	provider := &mocks.ProviderMock{}
-	alertSender := &mocks.AlertSenderMock{}
-	cooldownEnd := time.Now().Unix() + 3600
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{
-		RatioCooldownEndTimestamp: cooldownEnd,
-	}, nil)
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
-	err := useCase.Run(context.Background())
-	require.NoError(t, err)
-	provider.AssertNotCalled(t, "AvailablePegoutLiquidity", mock.Anything)
-	provider.AssertNotCalled(t, "AvailablePeginLiquidity", mock.Anything)
-	alertSender.AssertNotCalled(t, "SendAlert")
-}
-
-func TestLowLiquidityAlertUseCase_Run_CooldownExpiredProceeds(t *testing.T) {
-	provider := &mocks.ProviderMock{}
-	alertSender := &mocks.AlertSenderMock{}
-	cooldownEnd := time.Now().Unix() - 1
-	provider.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{
-		RatioCooldownEndTimestamp: cooldownEnd,
-	}, nil)
-	provider.On("AvailablePegoutLiquidity", mock.Anything).Return(entities.EtherToWei(belowWarningCoins), nil).Once()
-	provider.On("AvailablePeginLiquidity", mock.Anything).Return(entities.EtherToWei(aboveWarningCoins), nil).Once()
-	alertSender.On("SendAlert",
-		test.AnyCtx,
-		alerts.AlertSubjectHotWalletLowLiquidityWarning,
-		mock.MatchedBy(func(body string) bool {
-			return strings.Contains(body, "Network: BTC")
-		}),
-		[]string{alertRecipientEmail},
-	).Return(nil).Once()
-	useCase := liquidity_provider.NewLowLiquidityAlertUseCase(provider, provider, provider, alertSender, alertRecipientEmail, warningThreshold, criticalThreshold)
-	err := useCase.Run(context.Background())
-	require.NoError(t, err)
-	provider.AssertExpectations(t)
-	alertSender.AssertExpectations(t)
-}

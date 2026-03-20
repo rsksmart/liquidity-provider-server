@@ -9,7 +9,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	lpEntity "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -29,7 +28,7 @@ func TestNewLiquidityCheckWatcher(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	providerMock := &mocks.ProviderMock{}
 	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{}, &mocks.AlertSenderMock{}, test.AnyString)
-	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, providerMock, &mocks.AlertSenderMock{}, test.AnyString, 3, 1)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, &mocks.AlertSenderMock{}, test.AnyString, 3, 1)
 	test.AssertNonZeroValues(t, watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1)))
 }
 
@@ -47,9 +46,8 @@ func TestLiquidityCheckWatcher_Start(t *testing.T) {
 	bridgeMock.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
 	alertSenderMock := &mocks.AlertSenderMock{}
 	alertSenderMock.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	providerMock.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
-	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
 	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -83,9 +81,8 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	bridgeMock.On("GetMinimumLockTxValue").Return(nil, assert.AnError)
 	alertSenderMock := &mocks.AlertSenderMock{}
 	alertSenderMock.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	providerMock.On("StateConfiguration", mock.Anything).Return(lpEntity.StateConfiguration{}, nil)
 	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
-	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
 	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
