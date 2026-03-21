@@ -10,6 +10,7 @@ RUN (getent passwd "$UID" && userdel -r "$(getent passwd "$UID" | cut -d: -f1)" 
     useradd -m -u "$UID" --home="$HOME" rsk && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
+      curl \
       dbus debconf-utils \
       init-system-helpers \
       software-properties-common \

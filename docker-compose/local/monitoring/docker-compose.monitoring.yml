@@ -7,7 +7,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ../monitoring/prometheus:/etc/prometheus
+      - ./monitoring/prometheus:/etc/prometheus
     networks:
       - net_lps
   loki:
@@ -47,7 +47,7 @@ services:
       - GF_SMTP_FROM_NAME=LPS-Alerts-Local
       - GF_SMTP_SKIP_VERIFY=true
     volumes:
-      - ../monitoring/grafana:/etc/grafana/provisioning
+      - ./monitoring/grafana:/etc/grafana/provisioning
     depends_on:
       - prometheus
       - loki
