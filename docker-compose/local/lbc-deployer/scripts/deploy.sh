@@ -29,13 +29,14 @@ fi
 
 echo ""
 echo "Verifying deployed contracts..."
-for CONTRACT_VAR in PEGIN_CONTRACT_ADDRESS PEGOUT_CONTRACT_ADDRESS COLLATERAL_MANAGEMENT_ADDRESS DISCOVERY_ADDRESS; do
+for CONTRACT_VAR in PEGIN_PROXY PEGOUT_PROXY COLLATERAL_PROXY DISCOVERY_PROXY; do
   CONTRACT_ADDR=$(eval echo "\$$CONTRACT_VAR")
   CODE=$(curl -s -X POST "$RSK_ENDPOINT" -H "Content-Type: application/json" \
     -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\": [\"$CONTRACT_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
 
   if [ "$CODE" = "0x" ] || [ -z "$CODE" ]; then
     echo "  ✗ $CONTRACT_VAR ($CONTRACT_ADDR) - NO CODE (deployment may have failed)"
+    exit 1
   else
     echo "  ✓ $CONTRACT_VAR ($CONTRACT_ADDR) - verified"
   fi

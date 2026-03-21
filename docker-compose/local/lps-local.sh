@@ -34,6 +34,7 @@ set -a
 source "$ENV_FILE"
 set +a
 set_defaults
+set -e
 
 ### Create base (always runs) ###
 docker compose --env-file "$ENV_FILE" up -d --wait
@@ -48,7 +49,11 @@ fi
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
   docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml -f lbc-deployer/docker-compose.lbc-deployer.yml --env-file "$ENV_FILE" up -d --wait
-  docker wait lbc-deployer
+  EXIT_CODE=$(docker wait lbc-deployer)
+  if [ "$EXIT_CODE" != "0" ]; then
+    echo "ERROR: Contract deployment failed (exit code $EXIT_CODE)"
+    exit 1
+  fi
   echo "Contracts deployed"
   set -a
   # shellcheck disable=SC1090
@@ -66,7 +71,7 @@ fi
 docker compose -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d --wait
 
 if [[ "$CREATE_MONITORING" == "true" ]]; then
-  docker compose -f docker-compose.yml -f metrics/docker-compose.metrics.yml --env-file "$ENV_FILE" up --wait
+  docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait
 fi
 
 echo ""
