@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/migrations"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint) (*mongo.Client, error) {
+func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint, runMigrations bool) (*mongo.Client, error) {
 	var err error
 	var client *mongo.Client
 	log.Info("Connecting to MongoDB")
@@ -29,11 +30,15 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 		return nil, err
 	}
 	db := client.Database(DbName)
-	if err = createIndexes(ctx, db); err == nil {
-		return client, nil
-	} else {
+	if err = createIndexes(ctx, db); err != nil {
 		return nil, err
 	}
+	if runMigrations {
+		if err = migrations.RunAll(ctx, &migrations.MongoDatabaseAdapter{DB: db}); err != nil {
+			return nil, err
+		}
+	}
+	return client, nil
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
@@ -51,7 +56,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		}
 		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
 	}
-
 	return nil
 }
 

@@ -35,6 +35,7 @@ func setUpEnv(t *testing.T) {
 		"USE_SEGWIT_FEDERATION":                "true",
 		"ALLOWED_ORIGINS":                      "http://example.com,http://example2.com",
 		"REBALANCE_STRATEGY":                   "ALL_AT_ONCE",
+		"RUN_DB_MIGRATIONS":                    "true",
 	}
 	const envFilePath = "../../../sample-config.env"
 	envFile, err := os.ReadFile(envFilePath)

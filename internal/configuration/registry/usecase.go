@@ -93,10 +93,6 @@ func NewUseCaseRegistry(
 	messaging *Messaging,
 	mutexes entities.ApplicationMutexes,
 ) (*UseCaseRegistry, error) {
-	rebalanceStrategy, err := pegout.ParseRebalanceStrategy(env.Pegout.RebalanceStrategy)
-	if err != nil {
-		return nil, err
-	}
 	return &UseCaseRegistry{
 		summariesUseCase: reports.NewSummariesUseCase(
 			databaseRegistry.PeginRepository,
@@ -258,12 +254,14 @@ func NewUseCaseRegistry(
 			env.Provider.ApiBaseUrl,
 		),
 		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(
-			databaseRegistry.PegoutRepository,
 			liquidityProvider,
-			rskRegistry.Wallet,
-			rskRegistry.Contracts,
 			mutexes.RskWalletMutex(),
-			rebalanceStrategy,
+			pegout.NewRebalanceHandler(
+				pegout.RebalanceStrategy(env.Pegout.RebalanceStrategy),
+				databaseRegistry.PegoutRepository,
+				rskRegistry.Wallet,
+				rskRegistry.Contracts,
+			),
 		),
 		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
 		pegoutStatusUseCase:       pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),

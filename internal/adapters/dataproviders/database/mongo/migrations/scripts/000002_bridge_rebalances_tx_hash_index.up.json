@@ -1,0 +1,13 @@
+[
+  {
+    "createIndexes": "retainedPegoutQuote",
+    "indexes": [
+      {
+        "key": {
+          "bridge_rebalances.tx_hash": 1
+        },
+        "name": "bridge_rebalances.tx_hash_1"
+      }
+    ]
+  }
+]

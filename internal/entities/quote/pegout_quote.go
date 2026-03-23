@@ -127,23 +127,31 @@ func (quote *PegoutQuote) Total() *entities.Wei {
 	return total
 }
 
+type BridgeRebalanceAllocation struct {
+	TxHash   string        `bson:"tx_hash" json:"txHash"`
+	GasUsed  uint64        `bson:"gas_used" json:"gasUsed"`
+	GasPrice *entities.Wei `bson:"gas_price" json:"gasPrice"`
+}
+
 type RetainedPegoutQuote struct {
-	QuoteHash            string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress       string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature            string        `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity    *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State                PegoutState   `json:"state" bson:"state" validate:"required"`
-	UserRskTxHash        string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
-	LpBtcTxHash          string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
-	RefundPegoutTxHash   string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash   string        `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
-	BridgeRefundGasUsed  uint64        `json:"bridgeRefundGasUsed" bson:"bridge_refund_gas_used"`
-	BridgeRefundGasPrice *entities.Wei `json:"bridgeRefundGasPrice" bson:"bridge_refund_gas_price"`
-	RefundPegoutGasUsed  uint64        `json:"refundPegoutGasUsed" bson:"refund_pegout_gas_used"`
-	RefundPegoutGasPrice *entities.Wei `json:"refundPegoutGasPrice" bson:"refund_pegout_gas_price"`
-	SendPegoutBtcFee     *entities.Wei `json:"sendPegoutBtcFee" bson:"send_pegout_btc_fee"`
-	BtcReleaseTxHash     string        `json:"btcReleaseTxHash" bson:"btc_release_tx_hash"`
-	OwnerAccountAddress  string        `json:"ownerAccountAddress" bson:"owner_account_address"`
+	QuoteHash            string                      `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress       string                      `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature            string                      `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity    *entities.Wei               `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State                PegoutState                 `json:"state" bson:"state" validate:"required"`
+	UserRskTxHash        string                      `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
+	LpBtcTxHash          string                      `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
+	RefundPegoutTxHash   string                      `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	BridgeRefundTxHash   string                      `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	BridgeRefundGasUsed  uint64                      `json:"bridgeRefundGasUsed" bson:"bridge_refund_gas_used"`
+	BridgeRefundGasPrice *entities.Wei               `json:"bridgeRefundGasPrice" bson:"bridge_refund_gas_price"`
+	RemainingToRefund    *entities.Wei               `json:"remainingToRefund,omitempty" bson:"remaining_to_refund,omitempty"`
+	BridgeRebalances     []BridgeRebalanceAllocation `json:"bridgeRebalances,omitempty" bson:"bridge_rebalances,omitempty"`
+	RefundPegoutGasUsed  uint64                      `json:"refundPegoutGasUsed" bson:"refund_pegout_gas_used"`
+	RefundPegoutGasPrice *entities.Wei               `json:"refundPegoutGasPrice" bson:"refund_pegout_gas_price"`
+	SendPegoutBtcFee     *entities.Wei               `json:"sendPegoutBtcFee" bson:"send_pegout_btc_fee"`
+	BtcReleaseTxHash     string                      `json:"btcReleaseTxHash" bson:"btc_release_tx_hash"`
+	OwnerAccountAddress  string                      `json:"ownerAccountAddress" bson:"owner_account_address"`
 }
 
 // FillZeroValues ensures that gas-related Wei fields have zero values instead of nil

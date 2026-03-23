@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "retainedPegoutQuote",
+    "index": "bridge_rebalances.tx_hash_1"
+  }
+]
