@@ -3,12 +3,13 @@ package pegout
 import (
 	"context"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/big"
 )
 
 type RecommendedPegoutUseCase struct {
@@ -46,6 +47,11 @@ func (useCase *RecommendedPegoutUseCase) Run(
 	}
 	config := useCase.pegoutProvider.PegoutConfiguration(ctx)
 	result := new(big.Int).Set(userBalance.AsBigInt())
+
+	if err := config.ValidateAmount(userBalance); err != nil {
+		err = fmt.Errorf("recommended amount %s is out of range: %w", userBalance.String(), err)
+		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPegoutId, err)
+	}
 
 	// Percentage fees
 	scaledCallFeePercentage := useCase.getScaledCallFeePercentage(config)
