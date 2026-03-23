@@ -11,6 +11,7 @@ const (
 	DefaultExcessToleranceIsFixed         = false
 	DefaultExcessTolerancePercentageValue = 20
 	DefaultExcessToleranceFixedValue      = 100000000000000000
+	DefaultBtcLiquidityTargetPercentage   = 50
 )
 
 const (

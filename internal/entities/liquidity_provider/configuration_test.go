@@ -156,6 +156,63 @@ func TestExcessTolerance_Normalize(t *testing.T) {
 	}
 }
 
+func TestExcessTolerance_ComputeThreshold(t *testing.T) {
+	type input struct {
+		tolerance liquidity_provider.ExcessTolerance
+		target    *entities.Wei
+	}
+	table := test.Table[input, *entities.Wei]{
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(200),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(500),
+				},
+				target: entities.NewWei(0),
+			},
+			Result: entities.NewWei(500),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(20),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(50),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(200),
+			},
+			Result: entities.NewWei(300),
+		},
+	}
+	for _, item := range table {
+		result := item.Value.tolerance.ComputeThreshold(item.Value.target)
+		require.Equal(t, item.Result.AsBigInt().String(), result.AsBigInt().String())
+	}
+}
+
 func TestExcessTolerance_Validate(t *testing.T) {
 	table := test.Table[liquidity_provider.ExcessTolerance, error]{
 		{

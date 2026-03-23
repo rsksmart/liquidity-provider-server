@@ -6,7 +6,6 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
@@ -83,18 +82,18 @@ func (useCase *GetLiquidityRatioUseCase) Run(ctx context.Context, proposedBtcPer
 	}
 	rbtcPercentage := 100 - btcPercentage
 
-	btcTarget, err := calculateTarget(generalConfig.MaxLiquidity, btcPercentage)
+	btcTarget, err := useCase.calculateTarget(generalConfig.MaxLiquidity, btcPercentage)
 	if err != nil {
 		return LiquidityRatioDetail{}, usecases.WrapUseCaseError(usecases.GetLiquidityRatioId, err)
 	}
 
-	rbtcTarget, err := calculateTarget(generalConfig.MaxLiquidity, rbtcPercentage)
+	rbtcTarget, err := useCase.calculateTarget(generalConfig.MaxLiquidity, rbtcPercentage)
 	if err != nil {
 		return LiquidityRatioDetail{}, usecases.WrapUseCaseError(usecases.GetLiquidityRatioId, err)
 	}
 
-	btcThreshold := calculateThreshold(btcTarget, generalConfig.ExcessTolerance)
-	rbtcThreshold := calculateThreshold(rbtcTarget, generalConfig.ExcessTolerance)
+	btcThreshold := generalConfig.ExcessTolerance.ComputeThreshold(btcTarget)
+	rbtcThreshold := generalConfig.ExcessTolerance.ComputeThreshold(rbtcTarget)
 
 	return LiquidityRatioDetail{
 		BtcPercentage:           btcPercentage,
@@ -106,8 +105,8 @@ func (useCase *GetLiquidityRatioUseCase) Run(ctx context.Context, proposedBtcPer
 		RbtcThreshold:           rbtcThreshold,
 		BtcCurrentBalance:       btcBalance,
 		RbtcCurrentBalance:      rbtcBalance,
-		BtcImpact:               calculateImpact(btcBalance, btcTarget, btcThreshold),
-		RbtcImpact:              calculateImpact(rbtcBalance, rbtcTarget, rbtcThreshold),
+		BtcImpact:               useCase.calculateImpact(btcBalance, btcTarget, btcThreshold),
+		RbtcImpact:              useCase.calculateImpact(rbtcBalance, rbtcTarget, rbtcThreshold),
 		CooldownActive:          time.Now().Unix() < stateConfig.RatioCooldownEndTimestamp,
 		CooldownEndTimestamp:    stateConfig.RatioCooldownEndTimestamp,
 		CooldownDurationSeconds: CooldownAfterRatioChange,
@@ -115,22 +114,14 @@ func (useCase *GetLiquidityRatioUseCase) Run(ctx context.Context, proposedBtcPer
 	}, nil
 }
 
-func calculateTarget(maxLiquidity *entities.Wei, percentage uint64) (*entities.Wei, error) {
+func (useCase *GetLiquidityRatioUseCase) calculateTarget(maxLiquidity *entities.Wei, percentage uint64) (*entities.Wei, error) {
 	return new(entities.Wei).Div(
 		new(entities.Wei).Mul(maxLiquidity, entities.NewUWei(percentage)),
 		entities.NewUWei(100),
 	)
 }
 
-func calculateThreshold(target *entities.Wei, tolerance liquidity_provider.ExcessTolerance) *entities.Wei {
-	if tolerance.IsFixed {
-		return new(entities.Wei).Add(target, tolerance.FixedValue)
-	}
-	thresholdBigInt := utils.ApplyPercentageIncrease(target.AsBigInt(), tolerance.PercentageValue.Native())
-	return entities.NewBigWei(thresholdBigInt)
-}
-
-func calculateImpact(balance, target, threshold *entities.Wei) NetworkImpactDetail {
+func (useCase *GetLiquidityRatioUseCase) calculateImpact(balance, target, threshold *entities.Wei) NetworkImpactDetail {
 	if balance.Cmp(target) < 0 {
 		return NetworkImpactDetail{
 			Type:   NetworkImpactDeficit,

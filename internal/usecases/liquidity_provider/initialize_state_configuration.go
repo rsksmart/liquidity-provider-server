@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	CooldownAfterRatioChange            int64  = 10800 // 3 hours
-	DefaultBtcLiquidityTargetPercentage uint64 = 50
+	CooldownAfterRatioChange int64 = 10800 // 3 hours
 )
 
 type InitializeStateConfigurationUseCase struct {
@@ -87,7 +86,7 @@ func (useCase *InitializeStateConfigurationUseCase) Run(ctx context.Context) err
 
 	if stateConfig.BtcLiquidityTargetPercentage == 0 {
 		log.Info("Initializing BtcLiquidityTargetPercentage to default (50)")
-		stateConfig.BtcLiquidityTargetPercentage = DefaultBtcLiquidityTargetPercentage
+		stateConfig.BtcLiquidityTargetPercentage = liquidity_provider.DefaultBtcLiquidityTargetPercentage
 		modified = true
 	}
 

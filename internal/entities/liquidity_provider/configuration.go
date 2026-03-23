@@ -88,6 +88,14 @@ func (et *ExcessTolerance) Normalize() {
 	}
 }
 
+func (et *ExcessTolerance) ComputeThreshold(target *entities.Wei) *entities.Wei {
+	if et.IsFixed {
+		return new(entities.Wei).Add(target, et.FixedValue)
+	}
+	thresholdBigInt := utils.ApplyPercentageIncrease(target.AsBigInt(), et.PercentageValue.Native())
+	return entities.NewBigWei(thresholdBigInt)
+}
+
 func (et *ExcessTolerance) Validate() error {
 	if et.IsFixed && et.FixedValue.Cmp(entities.NewWei(0)) <= 0 {
 		return fmt.Errorf("%w: if excess tolerance is fixed, fixed value must be greater than zero", InvalidConfigurationError)
