@@ -49,7 +49,7 @@ func (useCase *RecommendedPegoutUseCase) Run(
 	result := new(big.Int).Set(userBalance.AsBigInt())
 
 	if err := config.ValidateAmount(userBalance); err != nil {
-		err = fmt.Errorf("recommended amount %s is out of range: %w", userBalance.String(), err)
+		err = fmt.Errorf("provided amount %s is out of range: %w", userBalance.String(), err)
 		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPegoutId, err)
 	}
 

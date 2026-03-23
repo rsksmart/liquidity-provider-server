@@ -41,6 +41,12 @@ func (useCase *RecommendedPeginUseCase) Run(
 	config := useCase.peginProvider.PeginConfiguration(ctx)
 	result := new(big.Int).Set(userBalance.AsBigInt())
 
+	if userBalance.Cmp(config.MinValue) < 0 {
+		outOfRangeErr := fmt.Errorf("%w [%v, %v]", liquidity_provider.AmountOutOfRangeError, config.MinValue, config.MaxValue)
+		err := fmt.Errorf("provided amount %s is out of range: %w", userBalance.String(), outOfRangeErr)
+		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPeginId, err)
+	}
+
 	if !blockchain.IsRskAddress(destinationAddress) {
 		destinationAddress = blockchain.RskZeroAddress
 	}
