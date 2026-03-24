@@ -59,9 +59,8 @@ type RskEnv struct {
 	MinPeers         uint64   `env:"RSK_MIN_PEERS"`
 }
 
-const defaultRskMinPeers uint64 = 3
-
 func (env *RskEnv) FillWithDefaults() *RskEnv {
+	const defaultRskMinPeers uint64 = 3
 	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultRskMinPeers)
 	return env
 }
@@ -80,9 +79,8 @@ type BtcEnv struct {
 	MinPeers        uint64           `env:"BITCOIN_MIN_PEERS"`
 }
 
-const defaultBitcoinMinPeers uint64 = 5
-
 func (env *BtcEnv) FillWithDefaults() *BtcEnv {
+	const defaultBitcoinMinPeers uint64 = 5
 	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultBitcoinMinPeers)
 	return env
 }

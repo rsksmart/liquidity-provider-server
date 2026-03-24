@@ -24,6 +24,7 @@ type WatcherRegistry struct {
 	BitcoinPeerWatcher         *watcher.BitcoinPeerWatcher
 	RootstockPeerWatcher       *watcher.RootstockPeerWatcher
 	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
+	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
 	AssetReportWatcher         *monitoring.AssetReportWatcher
 }
 
@@ -126,27 +127,23 @@ func NewWatcherRegistry(
 			timeouts.BtcReleaseCheck.Seconds(),
 		),
 		BitcoinPeerWatcher: watcher.NewBitcoinPeerWatcher(
-			messaging.Rpc,
-			useCaseRegistry.nodePeerAlertUseCase,
+			useCaseRegistry.nodePeerCheckUseCase,
 			tickers.BitcoinPeerWatcherTicker,
-			env.Btc.FillWithDefaults().MinPeers,
 			timeouts.WatcherValidation.Seconds(),
-			watcher.PeerAlertCooldown,
-			appMetrics,
 		),
 		RootstockPeerWatcher: watcher.NewRootstockPeerWatcher(
-			messaging.Rpc,
-			useCaseRegistry.nodePeerAlertUseCase,
+			useCaseRegistry.nodePeerCheckUseCase,
 			tickers.RootstockPeerWatcherTicker,
-			env.Rsk.FillWithDefaults().MinPeers,
 			timeouts.WatcherValidation.Seconds(),
-			watcher.PeerAlertCooldown,
-			appMetrics,
 		),
 		QuoteMetricsWatcher: monitoring.NewQuoteMetricsWatcher(
 			appMetrics,
 			messaging.EventBus,
 			useCaseRegistry.GetServerInfoUseCase(),
+		),
+		PeerMetricsWatcher: monitoring.NewPeerMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
 		),
 		AssetReportWatcher: monitoring.NewAssetReportWatcher(
 			appMetrics,

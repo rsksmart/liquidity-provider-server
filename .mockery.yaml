@@ -115,7 +115,7 @@ packages:
     interfaces:
       EclipseCheckUseCase:
       UpdateBtcReleaseUseCase:
-      NodePeerAlertUseCase:
+      NodePeerCheckUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
     interfaces:
       GetAssetReportUseCase:
