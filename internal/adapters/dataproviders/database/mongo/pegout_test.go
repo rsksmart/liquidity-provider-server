@@ -66,7 +66,7 @@ var testRetainedPegoutQuote = quote.RetainedPegoutQuote{
 		GasUsed:  21000,
 		GasPrice: entities.NewWei(20000000000),
 	}},
-	RefundPegoutGasUsed: 22000,
+	RefundPegoutGasUsed:  22000,
 	RefundPegoutGasPrice: entities.NewWei(25000000000),
 	SendPegoutBtcFee:     entities.NewWei(15000),
 	BtcReleaseTxHash:     "0xd8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb",

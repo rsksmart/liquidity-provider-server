@@ -70,72 +70,95 @@ func (h *UtxoSplitHandler) sendAndPersistProgress(
 	watchedQuotes []quote.WatchedPegoutQuote,
 ) error {
 	bridgeAddress := h.contracts.Bridge.GetAddress()
-	zero := entities.NewWei(0)
 
 	for i, chunkAmount := range chunkAmounts {
-		config := blockchain.NewTransactionConfig(chunkAmount, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
-		receipt, txErr := h.rskWallet.SendRbtc(ctx, config, bridgeAddress)
-		if txErr != nil {
-			log.Errorf("%s: split tx %d/%d failed: %v", usecases.BridgePegoutId, i+1, len(chunkAmounts), txErr)
-			continue
+		updatedQuotes, err := h.sendChunkAndPersist(ctx, i, len(chunkAmounts), chunkAmount, bridgeAddress, watchedQuotes)
+		if err != nil {
+			return err
 		}
-
-		if receipt.TransactionHash == "" {
-			log.Errorf("%s: split tx %d/%d failed: incomplete receipt", usecases.BridgePegoutId, i+1, len(chunkAmounts))
-			continue
-		}
-
-		log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, i+1, len(chunkAmounts), receipt.TransactionHash)
-
-		if receipt.Value == nil {
-			log.Errorf("%s: split tx %d/%d failed: missing receipt value", usecases.BridgePegoutId, i+1, len(chunkAmounts))
-			continue
-		}
-		chunkRemaining := receipt.Value.Copy()
-		for chunkRemaining.Cmp(zero) > 0 && len(watchedQuotes) != 0 {
-			watchedQuote := watchedQuotes[0]
-			quoteRemaining := getRemaining(watchedQuote)
-			if quoteRemaining.Cmp(zero) == 0 {
-				watchedQuote.RetainedQuote.RemainingToRefund = entities.NewWei(0)
-				watchedQuote.RetainedQuote.State = quote.PegoutStateBridgeTxSucceeded
-				setDeprecatedRefundFields(&watchedQuote.RetainedQuote)
-				if err := h.quoteRepository.UpdateRetainedQuote(ctx, watchedQuote.RetainedQuote); err != nil {
-					log.Errorf("%s: split tx %d/%d failed to persist quote update: %v", usecases.BridgePegoutId, i+1, len(chunkAmounts), err)
-					return err
-				}
-				watchedQuotes = watchedQuotes[1:]
-				continue
-			}
-
-			appendAllocation(&watchedQuote.RetainedQuote, receipt)
-			taken := minWei(quoteRemaining, chunkRemaining)
-			quoteRemaining.Sub(quoteRemaining, taken)
-			chunkRemaining.Sub(chunkRemaining, taken)
-
-			if quoteRemaining.Cmp(zero) == 0 {
-				watchedQuote.RetainedQuote.RemainingToRefund = entities.NewWei(0)
-				watchedQuote.RetainedQuote.State = quote.PegoutStateBridgeTxSucceeded
-			} else {
-				watchedQuote.RetainedQuote.RemainingToRefund = quoteRemaining.Copy()
-			}
-			setDeprecatedRefundFields(&watchedQuote.RetainedQuote)
-
-			if err := h.quoteRepository.UpdateRetainedQuote(ctx, watchedQuote.RetainedQuote); err != nil {
-				log.Errorf("%s: split tx %d/%d failed to persist quote update: %v", usecases.BridgePegoutId, i+1, len(chunkAmounts), err)
-				return err
-			}
-
-			if quoteRemaining.Cmp(zero) == 0 {
-				watchedQuotes = watchedQuotes[1:]
-				continue
-			}
-			watchedQuotes[0] = watchedQuote
-			break
-		}
+		watchedQuotes = updatedQuotes
 	}
 	return nil
 }
 
+func (h *UtxoSplitHandler) sendChunkAndPersist(
+	ctx context.Context,
+	chunkIndex, totalChunks int,
+	chunkAmount *entities.Wei,
+	bridgeAddress string,
+	watchedQuotes []quote.WatchedPegoutQuote,
+) ([]quote.WatchedPegoutQuote, error) {
+	config := blockchain.NewTransactionConfig(chunkAmount, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
+	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, bridgeAddress)
+	if txErr != nil {
+		log.Errorf("%s: split tx %d/%d failed: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, txErr)
+		return watchedQuotes, nil
+	}
+	if !isValidSplitReceipt(receipt, chunkIndex, totalChunks) {
+		return watchedQuotes, nil
+	}
+	return h.distributeChunkReceipt(ctx, chunkIndex, totalChunks, receipt, watchedQuotes)
+}
+
+func isValidSplitReceipt(receipt blockchain.TransactionReceipt, chunkIndex, totalChunks int) bool {
+	if receipt.TransactionHash == "" {
+		log.Errorf("%s: split tx %d/%d failed: incomplete receipt", usecases.BridgePegoutId, chunkIndex+1, totalChunks)
+		return false
+	}
+	log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash)
+	if receipt.Value == nil {
+		log.Errorf("%s: split tx %d/%d failed: missing receipt value", usecases.BridgePegoutId, chunkIndex+1, totalChunks)
+		return false
+	}
+	return true
+}
+
+func (h *UtxoSplitHandler) distributeChunkReceipt(
+	ctx context.Context,
+	chunkIndex, totalChunks int,
+	receipt blockchain.TransactionReceipt,
+	watchedQuotes []quote.WatchedPegoutQuote,
+) ([]quote.WatchedPegoutQuote, error) {
+	zero := entities.NewWei(0)
+	chunkRemaining := receipt.Value.Copy()
+	for chunkRemaining.Cmp(zero) > 0 && len(watchedQuotes) != 0 {
+		watchedQuote := watchedQuotes[0]
+		quoteRemaining := getRemaining(watchedQuote)
+		if quoteRemaining.Cmp(zero) == 0 {
+			watchedQuote.RetainedQuote.RemainingToRefund = entities.NewWei(0)
+			watchedQuote.RetainedQuote.State = quote.PegoutStateBridgeTxSucceeded
+			setDeprecatedRefundFields(&watchedQuote.RetainedQuote)
+			if err := h.quoteRepository.UpdateRetainedQuote(ctx, watchedQuote.RetainedQuote); err != nil {
+				log.Errorf("%s: split tx %d/%d failed to persist quote update: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, err)
+				return nil, err
+			}
+			watchedQuotes = watchedQuotes[1:]
+			continue
+		}
+		appendAllocation(&watchedQuote.RetainedQuote, receipt)
+		taken := minWei(quoteRemaining, chunkRemaining)
+		quoteRemaining.Sub(quoteRemaining, taken)
+		chunkRemaining.Sub(chunkRemaining, taken)
+		if quoteRemaining.Cmp(zero) == 0 {
+			watchedQuote.RetainedQuote.RemainingToRefund = entities.NewWei(0)
+			watchedQuote.RetainedQuote.State = quote.PegoutStateBridgeTxSucceeded
+		} else {
+			watchedQuote.RetainedQuote.RemainingToRefund = quoteRemaining.Copy()
+		}
+		setDeprecatedRefundFields(&watchedQuote.RetainedQuote)
+		if err := h.quoteRepository.UpdateRetainedQuote(ctx, watchedQuote.RetainedQuote); err != nil {
+			log.Errorf("%s: split tx %d/%d failed to persist quote update: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, err)
+			return nil, err
+		}
+		if quoteRemaining.Cmp(zero) == 0 {
+			watchedQuotes = watchedQuotes[1:]
+			continue
+		}
+		watchedQuotes[0] = watchedQuote
+		break
+	}
+	return watchedQuotes, nil
+}
 
 func buildChunkAmounts(numTxs uint64, bridgeMin, remainder *entities.Wei) []*entities.Wei {
 	chunkAmounts := make([]*entities.Wei, numTxs)
@@ -145,8 +168,6 @@ func buildChunkAmounts(numTxs uint64, bridgeMin, remainder *entities.Wei) []*ent
 	}
 	return chunkAmounts
 }
-
-
 
 func adjustTotalForRetries(watchedQuotes []quote.WatchedPegoutQuote) *entities.Wei {
 	adjusted := entities.NewWei(0)

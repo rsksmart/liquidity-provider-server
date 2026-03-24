@@ -13,19 +13,26 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-
 type mockDatabase struct {
 	mock.Mock
 }
 
 func (m *mockDatabase) RunCommand(ctx context.Context, runCommand any, opts ...*options.RunCmdOptions) *mongo.SingleResult {
 	args := m.Called(ctx, runCommand)
-	return args.Get(0).(*mongo.SingleResult)
+	result, ok := args.Get(0).(*mongo.SingleResult)
+	if !ok {
+		return mongo.NewSingleResultFromDocument(bson.D{}, assert.AnError, nil)
+	}
+	return result
 }
 
 func (m *mockDatabase) Collection(name string, opts ...*options.CollectionOptions) CollectionBinding {
 	args := m.Called(name)
-	return args.Get(0).(CollectionBinding)
+	collection, ok := args.Get(0).(CollectionBinding)
+	if !ok {
+		return &mockCollection{}
+	}
+	return collection
 }
 
 type mockCollection struct {
@@ -34,21 +41,32 @@ type mockCollection struct {
 
 func (m *mockCollection) FindOne(ctx context.Context, filter any, opts ...*options.FindOneOptions) *mongo.SingleResult {
 	args := m.Called(ctx, filter, opts)
-	return args.Get(0).(*mongo.SingleResult)
+	result, ok := args.Get(0).(*mongo.SingleResult)
+	if !ok {
+		return mongo.NewSingleResultFromDocument(bson.D{}, assert.AnError, nil)
+	}
+	return result
 }
 
 func (m *mockCollection) UpdateOne(
 	ctx context.Context, filter any, update any, opts ...*options.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
 	args := m.Called(ctx, filter, update, opts)
-	return args.Get(0).(*mongo.UpdateResult), args.Error(1)
+	result, ok := args.Get(0).(*mongo.UpdateResult)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 func (m *mockCollection) DeleteOne(ctx context.Context, filter any, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
 	args := m.Called(ctx, filter, opts)
-	return args.Get(0).(*mongo.DeleteResult), args.Error(1)
+	result, ok := args.Get(0).(*mongo.DeleteResult)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
-
 
 func newSuccessResult() *mongo.SingleResult {
 	return mongo.NewSingleResultFromDocument(bson.D{primitive.E{Key: "ok", Value: 1}}, nil, nil)
@@ -92,7 +110,6 @@ func expectRemoveVersion(col *mockCollection, version int) {
 	col.On("DeleteOne", mock.Anything, filter, mock.Anything).
 		Return(&mongo.DeleteResult{DeletedCount: 1}, nil).Once()
 }
-
 
 func TestLoadMigrations(t *testing.T) {
 	pairs, err := loadMigrations()
@@ -157,7 +174,6 @@ func TestFindVersion(t *testing.T) {
 	})
 }
 
-
 func TestRunAll_FreshDatabase(t *testing.T) {
 	db := &mockDatabase{}
 	col := setupFreshDbMocks(db)
@@ -213,7 +229,6 @@ func TestRunAll_CommandFails_MarksDirty(t *testing.T) {
 	col.AssertExpectations(t)
 }
 
-
 func TestDown_RollsBackLastMigration(t *testing.T) {
 	db := &mockDatabase{}
 	col := setupVersionedDbMocks(db, 2)
@@ -256,7 +271,6 @@ func TestDown_VersionNotInScripts(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found in scripts")
 }
 
-
 func TestMigrateTo_AlreadyAtTarget(t *testing.T) {
 	db := &mockDatabase{}
 	_ = setupVersionedDbMocks(db, 1)
@@ -290,7 +304,6 @@ func TestMigrateTo_DownToZero(t *testing.T) {
 	db.AssertExpectations(t)
 	col.AssertExpectations(t)
 }
-
 
 func TestGetCurrentVersion_FreshDatabase(t *testing.T) {
 	db := &mockDatabase{}

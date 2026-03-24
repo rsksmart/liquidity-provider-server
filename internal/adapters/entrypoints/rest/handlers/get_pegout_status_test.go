@@ -140,7 +140,7 @@ func TestNewGetPegoutQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
 
 	const expectedDetailFields = 19      // PegoutQuoteDTO has 19 fields
-	const expectedStatusFields = 10      // RetainedPegoutQuoteDTO has 10 fields
+	const expectedStatusFields = 9       // RetainedPegoutQuoteDTO has 9 fields
 	const expectedCreationDataFields = 4 // PegoutCreationDataDTO has 4 fields
 
 	assert.Equal(t, expectedDetailFields, detailFieldCount, "Detail object should have exactly %d fields", expectedDetailFields)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"sort"
@@ -218,7 +219,6 @@ func logResult(applied, previousVersion, latestVersion int) {
 	}
 }
 
-
 func loadMigrations() ([]migrationPair, error) {
 	files, err := migrationScripts.ReadDir("scripts")
 	if err != nil {
@@ -329,13 +329,12 @@ func findVersion(pairs []migrationPair, version int) (migrationPair, bool) {
 	return migrationPair{}, false
 }
 
-
 func getCurrentVersion(ctx context.Context, db DatabaseBinding) (int, error) {
 	var record migrationRecord
 	err := db.Collection(migrationsCollection).FindOne(ctx, bson.D{},
 		options.FindOne().SetSort(bson.D{primitive.E{Key: "version", Value: -1}}),
 	).Decode(&record)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return 0, nil
 	}
 	if err != nil {
