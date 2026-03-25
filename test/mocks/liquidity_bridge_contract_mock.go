@@ -1344,6 +1344,52 @@ func (_c *LiquidityBridgeContractMock_UpdateProvider_Call) RunAndReturn(run func
 	return _c
 }
 
+// Withdraw provides a mock function with given fields: amount
+func (_m *LiquidityBridgeContractMock) Withdraw(amount *entities.Wei) error {
+	ret := _m.Called(amount)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Withdraw")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*entities.Wei) error); ok {
+		r0 = rf(amount)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// LiquidityBridgeContractMock_Withdraw_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Withdraw'
+type LiquidityBridgeContractMock_Withdraw_Call struct {
+	*mock.Call
+}
+
+// Withdraw is a helper method to define mock.On call
+//   - amount *entities.Wei
+func (_e *LiquidityBridgeContractMock_Expecter) Withdraw(amount interface{}) *LiquidityBridgeContractMock_Withdraw_Call {
+	return &LiquidityBridgeContractMock_Withdraw_Call{Call: _e.mock.On("Withdraw", amount)}
+}
+
+func (_c *LiquidityBridgeContractMock_Withdraw_Call) Run(run func(amount *entities.Wei)) *LiquidityBridgeContractMock_Withdraw_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*entities.Wei))
+	})
+	return _c
+}
+
+func (_c *LiquidityBridgeContractMock_Withdraw_Call) Return(_a0 error) *LiquidityBridgeContractMock_Withdraw_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *LiquidityBridgeContractMock_Withdraw_Call) RunAndReturn(run func(*entities.Wei) error) *LiquidityBridgeContractMock_Withdraw_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithdrawCollateral provides a mock function with no fields
 func (_m *LiquidityBridgeContractMock) WithdrawCollateral() error {
 	ret := _m.Called()
