@@ -22,8 +22,7 @@ To run the project locally you can follow these steps:
 
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `cd docker-compose/local`
-3. `export LPS_STAGE=regtest`
-4. `./lps-env.sh up`
+3. `./lps-local.sh`
 
 This will set up a local environment, please keep in mind that a productive set-up could vary in multiple aspects.
 
