@@ -34,7 +34,6 @@ set -a
 source "$ENV_FILE"
 set +a
 set_defaults
-set -e
 
 ### Create base (always runs) ###
 docker compose --env-file "$ENV_FILE" up -d --wait

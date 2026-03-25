@@ -5,6 +5,7 @@ services:
       args:
         LBC_COMMIT: "${LBC_COMMIT}"
     image: lbc-deployer:latest
+    pull_policy: build
     volumes:
       - ./lbc-deployer/scripts:/scripts
       - ./${ENV_FILE}:/${ENV_FILE}

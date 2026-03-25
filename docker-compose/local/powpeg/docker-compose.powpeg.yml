@@ -2,6 +2,7 @@ services:
   powpeg-pegin:
     build:
       context: powpeg/pegin
+    pull_policy: build
     image: powpeg-pegin:latest
     container_name: powpeg-pegin
     ports:
@@ -27,6 +28,7 @@ services:
   powpeg-pegout:
     build:
       context: powpeg/pegout
+    pull_policy: build
     image: powpeg-pegout:latest
     container_name: powpeg-pegout
     ports:

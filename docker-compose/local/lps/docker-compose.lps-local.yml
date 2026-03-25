@@ -7,6 +7,7 @@ services:
         UID: "${LPS_UID}"
         COMMIT_HASH: "${COMMIT_HASH}"
         COMMIT_TAG: "${COMMIT_TAG}"
+    pull_policy: build
     image: lps:latest
     container_name: lps01
     restart: on-failure:3

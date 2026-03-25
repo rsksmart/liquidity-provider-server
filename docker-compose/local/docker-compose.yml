@@ -4,6 +4,7 @@ services:
       context: ./localstack
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     container_name: localstack
     image: flyover-localstack
     ports:
@@ -21,6 +22,7 @@ services:
       context: ../bitcoind
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     image: bitcond:latest
     container_name: bitcoind01
     environment:
@@ -53,6 +55,7 @@ services:
       context: ../rskj
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     image: rskj:latest
     container_name: rskj01
     ports:
