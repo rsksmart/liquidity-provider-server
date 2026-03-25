@@ -174,6 +174,9 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.BtcReleaseWatcher,
 		app.watcherRegistry.QuoteMetricsWatcher,
 		app.watcherRegistry.AssetReportWatcher,
+		app.watcherRegistry.BitcoinReorgWatcher,
+		app.watcherRegistry.RootstockReorgWatcher,
+		app.watcherRegistry.ReorgMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {

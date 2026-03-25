@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	NodeEclipseEventId entities.EventId = "NodeEclipse"
+	NodeEclipseEventId         entities.EventId = "NodeEclipse"
+	NodeReorgCheckEventId      entities.EventId = "NodeReorgCheck"
+	NodeReorgCheckErrorEventId entities.EventId = "NodeReorgCheckError"
+	NodeReorgAlertSentEventId  entities.EventId = "NodeReorgAlertSent"
 )
 
 type Rpc struct {
@@ -20,4 +23,23 @@ type NodeEclipseEvent struct {
 	EclipsedBlockNumber uint64
 	EclipsedBlockHash   string
 	DetectionTime       time.Time
+}
+
+type NodeReorgCheckEvent struct {
+	entities.BaseEvent
+	NodeType        entities.NodeType
+	CurrentDepth    uint64
+	MaxAllowedDepth uint64
+	AboveThreshold  bool
+}
+
+type NodeReorgCheckErrorEvent struct {
+	entities.BaseEvent
+	NodeType entities.NodeType
+}
+
+type NodeReorgAlertSentEvent struct {
+	entities.BaseEvent
+	NodeType      entities.NodeType
+	DetectedDepth uint64
 }

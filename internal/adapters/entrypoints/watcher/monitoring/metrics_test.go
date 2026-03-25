@@ -183,10 +183,15 @@ func createTestAssetReport() reports.GetAssetsReportResult {
 func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.RegistererMock) {
 	registerer := mocks.NewRegistererMock(t)
 	registerer.On("MustRegister",
-		mock.AnythingOfType("*prometheus.CounterVec"), // PegoutQuotesMetric
-		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
-		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
-		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+		mock.AnythingOfType("*prometheus.CounterVec"),
+		mock.AnythingOfType("*prometheus.CounterVec"),
+		mock.AnythingOfType("*prometheus.GaugeVec"),
+		mock.AnythingOfType("*prometheus.GaugeVec"),
+		mock.AnythingOfType("*prometheus.GaugeVec"),
+		mock.AnythingOfType("*prometheus.GaugeVec"),
+		mock.AnythingOfType("*prometheus.GaugeVec"),
+		mock.AnythingOfType("*prometheus.CounterVec"),
+		mock.AnythingOfType("*prometheus.CounterVec"),
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)

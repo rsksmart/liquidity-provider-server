@@ -28,6 +28,7 @@ type Environment struct {
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
 	Eclipse          EclipseEnv
+	NodeReorg        NodeReorgEnv
 }
 
 type MongoEnv struct {
@@ -56,6 +57,13 @@ type RskEnv struct {
 	KeystoreFile     string   `env:"KEYSTORE_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
+	MaxReorgDepth    uint64   `env:"RSK_MAX_REORG_DEPTH"`
+}
+
+func (env *RskEnv) FillWithDefaults() *RskEnv {
+	const defaultMaxReorgDepth uint64 = 2
+	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
+	return env
 }
 
 type BtcExtraSource struct {
@@ -69,6 +77,13 @@ type BtcEnv struct {
 	Password        string           `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
 	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
+	MaxReorgDepth   uint64           `env:"BITCOIN_MAX_REORG_DEPTH"`
+}
+
+func (env *BtcEnv) FillWithDefaults() *BtcEnv {
+	const defaultMaxReorgDepth uint64 = 2
+	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
+	return env
 }
 
 type TimeoutEnv struct {
@@ -94,6 +109,17 @@ type EclipseEnv struct {
 	BtcMaxMsWaitForBlock     uint64 `env:"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK"`
 	BtcWaitPollingMsInterval uint64 `env:"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL"`
 	AlertCooldownSeconds     uint64 `env:"ECLIPSE_ALERT_COOLDOWN_SECONDS"`
+}
+
+type NodeReorgEnv struct {
+	// AlertCooldownSeconds is the minimum time between email alerts when reorg depth stays above the configured max.
+	AlertCooldownSeconds uint64 `env:"NODE_REORG_ALERT_COOLDOWN_SECONDS"`
+}
+
+func (env *NodeReorgEnv) FillWithDefaults() *NodeReorgEnv {
+	const defaultAlertCooldownSeconds uint64 = 30 * 60
+	env.AlertCooldownSeconds = utils.FirstNonZero(env.AlertCooldownSeconds, defaultAlertCooldownSeconds)
+	return env
 }
 
 func (env *EclipseEnv) FillWithDefaults() *EclipseEnv {
@@ -127,7 +153,7 @@ func (env *EclipseEnv) ToConfig() watcher.EclipseCheckConfig {
 	}
 }
 
-func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
+func (env *BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
 	switch env.Network {
 	case "mainnet":
 		return &chaincfg.MainNetParams, nil

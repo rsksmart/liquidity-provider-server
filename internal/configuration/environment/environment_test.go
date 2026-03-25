@@ -35,6 +35,24 @@ func TestBtcEnv_GetNetworkParams(t *testing.T) {
 	})
 }
 
+func TestBtcEnv_FillWithDefaults(t *testing.T) {
+	env := &environment.BtcEnv{MaxReorgDepth: 0}
+	defaults := env.FillWithDefaults()
+	require.Equal(t, uint64(2), defaults.MaxReorgDepth)
+}
+
+func TestNodeReorgEnv_FillWithDefaults(t *testing.T) {
+	env := &environment.NodeReorgEnv{AlertCooldownSeconds: 0}
+	defaults := env.FillWithDefaults()
+	require.Equal(t, uint64(30*60), defaults.AlertCooldownSeconds)
+}
+
+func TestRskEnv_FillWithDefaults(t *testing.T) {
+	env := &environment.RskEnv{MaxReorgDepth: 0}
+	defaults := env.FillWithDefaults()
+	require.Equal(t, uint64(2), defaults.MaxReorgDepth)
+}
+
 func TestEclipseEnv_FillWithDefaults(t *testing.T) {
 	env := &environment.EclipseEnv{
 		RskToleranceThreshold:    0,

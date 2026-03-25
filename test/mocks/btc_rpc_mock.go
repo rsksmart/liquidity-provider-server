@@ -83,3 +83,16 @@ func (m *BtcRpcMock) GetZeroAddress(addressType blockchain.BtcAddressType) (stri
 	args := m.Called(addressType)
 	return args.String(0), args.Error(1)
 }
+
+func (m *BtcRpcMock) GetBlockHashAtHeight(height int64) (string, error) {
+	args := m.Called(height)
+	return args.String(0), args.Error(1)
+}
+
+func (m *BtcRpcMock) GetBlockHeaderVerbose(blockHash string) (blockchain.BitcoinBlockHeaderInfo, error) {
+	args := m.Called(blockHash)
+	if args.Get(0) == nil {
+		return blockchain.BitcoinBlockHeaderInfo{}, args.Error(1)
+	}
+	return args.Get(0).(blockchain.BitcoinBlockHeaderInfo), args.Error(1)
+}

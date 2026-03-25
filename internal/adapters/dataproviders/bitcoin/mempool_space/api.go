@@ -470,6 +470,14 @@ func (api *MempoolSpaceApi) GetZeroAddress(addressType blockchain.BtcAddressType
 	return "", errors.New("not supported in MempoolSpace API")
 }
 
+func (api *MempoolSpaceApi) GetBlockHashAtHeight(int64) (string, error) {
+	return "", errors.New("bitcoin reorg detection requires a direct Bitcoin Core RPC connection")
+}
+
+func (api *MempoolSpaceApi) GetBlockHeaderVerbose(string) (blockchain.BitcoinBlockHeaderInfo, error) {
+	return blockchain.BitcoinBlockHeaderInfo{}, errors.New("bitcoin reorg detection requires a direct Bitcoin Core RPC connection")
+}
+
 func (api *MempoolSpaceApi) getBlock(blockHash string) (*btcutil.Block, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("%s/block/%s/raw", api.url, blockHash), nil)
 	if err != nil {

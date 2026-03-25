@@ -140,6 +140,14 @@ type BitcoinNetwork interface {
 	NetworkName() string
 	GetBlockchainInfo() (BitcoinBlockchainInfo, error)
 	GetZeroAddress(addressType BtcAddressType) (string, error)
+	GetBlockHashAtHeight(height int64) (string, error)
+	GetBlockHeaderVerbose(blockHash string) (BitcoinBlockHeaderInfo, error)
+}
+
+type BitcoinBlockHeaderInfo struct {
+	Hash         string
+	Height       uint64
+	PreviousHash string
 }
 
 type BitcoinTransactionInformation struct {

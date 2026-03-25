@@ -533,6 +533,122 @@ func (_c *ClientAdapterMock_GetBlockChainInfo_Call) RunAndReturn(run func() (*bt
 	return _c
 }
 
+// GetBlockHash provides a mock function with given fields: blockHeight
+func (_m *ClientAdapterMock) GetBlockHash(blockHeight int64) (*chainhash.Hash, error) {
+	ret := _m.Called(blockHeight)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBlockHash")
+	}
+
+	var r0 *chainhash.Hash
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int64) (*chainhash.Hash, error)); ok {
+		return rf(blockHeight)
+	}
+	if rf, ok := ret.Get(0).(func(int64) *chainhash.Hash); ok {
+		r0 = rf(blockHeight)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*chainhash.Hash)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(blockHeight)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientAdapterMock_GetBlockHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBlockHash'
+type ClientAdapterMock_GetBlockHash_Call struct {
+	*mock.Call
+}
+
+// GetBlockHash is a helper method to define mock.On call
+//   - blockHeight int64
+func (_e *ClientAdapterMock_Expecter) GetBlockHash(blockHeight interface{}) *ClientAdapterMock_GetBlockHash_Call {
+	return &ClientAdapterMock_GetBlockHash_Call{Call: _e.mock.On("GetBlockHash", blockHeight)}
+}
+
+func (_c *ClientAdapterMock_GetBlockHash_Call) Run(run func(blockHeight int64)) *ClientAdapterMock_GetBlockHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int64))
+	})
+	return _c
+}
+
+func (_c *ClientAdapterMock_GetBlockHash_Call) Return(_a0 *chainhash.Hash, _a1 error) *ClientAdapterMock_GetBlockHash_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientAdapterMock_GetBlockHash_Call) RunAndReturn(run func(int64) (*chainhash.Hash, error)) *ClientAdapterMock_GetBlockHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBlockHeaderVerbose provides a mock function with given fields: blockHash
+func (_m *ClientAdapterMock) GetBlockHeaderVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockHeaderVerboseResult, error) {
+	ret := _m.Called(blockHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBlockHeaderVerbose")
+	}
+
+	var r0 *btcjson.GetBlockHeaderVerboseResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*chainhash.Hash) (*btcjson.GetBlockHeaderVerboseResult, error)); ok {
+		return rf(blockHash)
+	}
+	if rf, ok := ret.Get(0).(func(*chainhash.Hash) *btcjson.GetBlockHeaderVerboseResult); ok {
+		r0 = rf(blockHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*btcjson.GetBlockHeaderVerboseResult)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*chainhash.Hash) error); ok {
+		r1 = rf(blockHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientAdapterMock_GetBlockHeaderVerbose_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBlockHeaderVerbose'
+type ClientAdapterMock_GetBlockHeaderVerbose_Call struct {
+	*mock.Call
+}
+
+// GetBlockHeaderVerbose is a helper method to define mock.On call
+//   - blockHash *chainhash.Hash
+func (_e *ClientAdapterMock_Expecter) GetBlockHeaderVerbose(blockHash interface{}) *ClientAdapterMock_GetBlockHeaderVerbose_Call {
+	return &ClientAdapterMock_GetBlockHeaderVerbose_Call{Call: _e.mock.On("GetBlockHeaderVerbose", blockHash)}
+}
+
+func (_c *ClientAdapterMock_GetBlockHeaderVerbose_Call) Run(run func(blockHash *chainhash.Hash)) *ClientAdapterMock_GetBlockHeaderVerbose_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*chainhash.Hash))
+	})
+	return _c
+}
+
+func (_c *ClientAdapterMock_GetBlockHeaderVerbose_Call) Return(_a0 *btcjson.GetBlockHeaderVerboseResult, _a1 error) *ClientAdapterMock_GetBlockHeaderVerbose_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientAdapterMock_GetBlockHeaderVerbose_Call) RunAndReturn(run func(*chainhash.Hash) (*btcjson.GetBlockHeaderVerboseResult, error)) *ClientAdapterMock_GetBlockHeaderVerbose_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBlockVerbose provides a mock function with given fields: blockHash
 func (_m *ClientAdapterMock) GetBlockVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockVerboseResult, error) {
 	ret := _m.Called(blockHash)

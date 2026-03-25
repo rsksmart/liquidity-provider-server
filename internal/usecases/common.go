@@ -72,6 +72,7 @@ const (
 	GetRevenueReportId         UseCaseId = "GetRevenueReport"
 	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
 	EclipseCheckId             UseCaseId = "EclipseCheck"
+	NodeReorgAlertId           UseCaseId = "NodeReorgAlert"
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
 	RecommendedPeginId         UseCaseId = "RecommendedPegin"
