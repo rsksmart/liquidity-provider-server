@@ -99,6 +99,45 @@
                         <div class="loading-bar" id="trustedAccountsLoadingBar"></div>
                     </div>
                 </div>
+                <div class="card">
+                    <div class="card-header">Liquidity Ratio</div>
+                    <div class="card-body">
+                        <div class="alert alert-info d-none" id="ratioCooldownBanner" role="alert">
+                            <strong>Cooldown active</strong> &mdash; reimbursement sweeps are suppressed until <span id="ratioCooldownEnd"></span>
+                        </div>
+                        <p class="text-muted small mb-3">Match your expected flow. Peg-ins dominate &rarr; allocate more to RBTC.</p>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: bold;">BTC / RBTC Split</label>
+                            <input type="range" class="form-range" id="ratioSlider" min="10" max="90" step="1" value="50">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold" id="ratioSliderBtcLabel">BTC:</span>
+                                <span class="fw-bold" id="ratioSliderRbtcLabel">RBTC:</span>
+                            </div>
+                        </div>
+                        <div id="ratioImpact" class="d-none">
+                            <hr>
+                            <div class="row">
+                                <div class="col-6">
+                                    <h6 class="fw-bold">BTC</h6>
+                                    <p class="mb-1 small">Target: <span id="ratioImpactBtcTarget">--</span></p>
+                                    <p class="mb-1 small">Threshold: <span id="ratioImpactBtcThreshold">--</span></p>
+                                    <p class="mb-1 small">Balance: <span id="ratioImpactBtcBalance">--</span></p>
+                                    <p class="mb-0"><span class="badge" id="ratioImpactBtcBadge">--</span></p>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="fw-bold">RBTC</h6>
+                                    <p class="mb-1 small">Target: <span id="ratioImpactRbtcTarget">--</span></p>
+                                    <p class="mb-1 small">Threshold: <span id="ratioImpactRbtcThreshold">--</span></p>
+                                    <p class="mb-1 small">Balance: <span id="ratioImpactRbtcBalance">--</span></p>
+                                    <p class="mb-0"><span class="badge" id="ratioImpactRbtcBadge">--</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-primary" id="saveRatio">Save Ratio</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-6">
@@ -233,6 +272,50 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="saveAccountButton">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmRatioModal" tabindex="-1" aria-labelledby="confirmRatioModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmRatioModalLabel">Confirm Ratio Change</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are about to change the liquidity ratio to:</p>
+                    <p class="fw-bold text-center" id="confirmRatioSummary"></p>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            <h6 class="fw-bold">BTC</h6>
+                            <p class="mb-1 small">Target: <span id="confirmBtcTarget">--</span></p>
+                            <p class="mb-1 small">Balance: <span id="confirmBtcBalance">--</span></p>
+                            <p class="mb-0"><span class="badge" id="confirmBtcBadge">--</span></p>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="fw-bold">RBTC</h6>
+                            <p class="mb-1 small">Target: <span id="confirmRbtcTarget">--</span></p>
+                            <p class="mb-1 small">Balance: <span id="confirmRbtcBalance">--</span></p>
+                            <p class="mb-0"><span class="badge" id="confirmRbtcBadge">--</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-none" id="confirmDeficitWarning">
+                        <div class="alert alert-warning mb-0">
+                            <strong>Deficit detected.</strong> One or more networks will be below target after save.
+                        </div>
+                    </div>
+                    <div class="mt-3 d-none" id="confirmExcessWarning">
+                        <div class="alert alert-info mb-0">
+                            <strong>Excess detected.</strong> Funds above target will be swept to cold wallet after the cooldown period.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmRatioSave">Confirm Save</button>
                 </div>
             </div>
         </div>

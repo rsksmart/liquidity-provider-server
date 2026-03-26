@@ -20,6 +20,8 @@ const generalChanged = { value: false };
 const peginChanged = { value: false };
 const pegoutChanged = { value: false };
 
+let savedBtcPercentage = 50;
+
 const setTextContent = (id, text) => {
     const element = document.getElementById(id);
     if (!element) {
@@ -1159,6 +1161,149 @@ const removeTrustedAccount = async (address, csrfToken) => {
     }
 };
 
+const impactLabels = {
+    deficit: 'Deficit',
+    excess: 'Excess',
+    withinTolerance: 'Within Tolerance'
+};
+
+const formatImpactBadge = (badgeElement, impact, unit) => {
+    const type = impact.type;
+    badgeElement.className = 'badge';
+    badgeElement.classList.add(`badge-${type}`);
+    if (type === 'withinTolerance') {
+        badgeElement.textContent = impactLabels[type];
+    } else {
+        badgeElement.textContent = `${impactLabels[type]}: ${formatCap(weiToEther(impact.amount), unit)}`;
+    }
+};
+
+const updateRatioLabels = (btcPercentage) => {
+    setTextContent('ratioSliderBtcLabel', `BTC: ${btcPercentage}%`);
+    setTextContent('ratioSliderRbtcLabel', `RBTC: ${100 - btcPercentage}%`);
+};
+
+const populateRatioCard = (ratioData) => {
+    const slider = document.getElementById('ratioSlider');
+    slider.value = ratioData.btcPercentage;
+    updateRatioLabels(ratioData.btcPercentage);
+
+    if (!ratioData.isPreview) {
+        savedBtcPercentage = ratioData.btcPercentage;
+    }
+
+    const cooldownBanner = document.getElementById('ratioCooldownBanner');
+    if (ratioData.cooldownActive) {
+        const d = new Date(ratioData.cooldownEndTimestamp * 1000);
+        const endTime = d.getFullYear() + '/' +
+            String(d.getMonth() + 1).padStart(2, '0') + '/' +
+            String(d.getDate()).padStart(2, '0') + ' ' +
+            String(d.getHours()).padStart(2, '0') + ':' +
+            String(d.getMinutes()).padStart(2, '0') + ':' +
+            String(d.getSeconds()).padStart(2, '0');
+        setTextContent('ratioCooldownEnd', endTime);
+        cooldownBanner.classList.remove('d-none');
+    } else {
+        cooldownBanner.classList.add('d-none');
+    }
+
+    setTextContent('ratioImpactBtcTarget', formatCap(weiToEther(ratioData.btcTarget), 'BTC'));
+    setTextContent('ratioImpactBtcThreshold', formatCap(weiToEther(ratioData.btcThreshold), 'BTC'));
+    setTextContent('ratioImpactBtcBalance', formatCap(weiToEther(ratioData.btcCurrentBalance), 'BTC'));
+    formatImpactBadge(document.getElementById('ratioImpactBtcBadge'), ratioData.btcImpact, 'BTC');
+
+    setTextContent('ratioImpactRbtcTarget', formatCap(weiToEther(ratioData.rbtcTarget), 'RBTC'));
+    setTextContent('ratioImpactRbtcThreshold', formatCap(weiToEther(ratioData.rbtcThreshold), 'RBTC'));
+    setTextContent('ratioImpactRbtcBalance', formatCap(weiToEther(ratioData.rbtcCurrentBalance), 'RBTC'));
+    formatImpactBadge(document.getElementById('ratioImpactRbtcBadge'), ratioData.rbtcImpact, 'RBTC');
+
+    document.getElementById('ratioImpact').classList.remove('d-none');
+};
+
+const fetchLiquidityRatio = async (csrfToken, btcPercentage) => {
+    try {
+        let url = '/management/liquidity-ratio';
+        if (btcPercentage !== undefined) {
+            url += `?btcPercentage=${btcPercentage}`;
+        }
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to fetch liquidity ratio');
+        }
+        const ratioData = await response.json();
+        populateRatioCard(ratioData);
+        return ratioData;
+    } catch (error) {
+        showErrorToast(`Error loading liquidity ratio: ${error.message}`);
+    }
+};
+
+const populateConfirmModal = (ratioData) => {
+    setTextContent('confirmRatioSummary', `BTC: ${ratioData.btcPercentage}% / RBTC: ${ratioData.rbtcPercentage}%`);
+
+    setTextContent('confirmBtcTarget', formatCap(weiToEther(ratioData.btcTarget), 'BTC'));
+    setTextContent('confirmBtcBalance', formatCap(weiToEther(ratioData.btcCurrentBalance), 'BTC'));
+    formatImpactBadge(document.getElementById('confirmBtcBadge'), ratioData.btcImpact, 'BTC');
+
+    setTextContent('confirmRbtcTarget', formatCap(weiToEther(ratioData.rbtcTarget), 'RBTC'));
+    setTextContent('confirmRbtcBalance', formatCap(weiToEther(ratioData.rbtcCurrentBalance), 'RBTC'));
+    formatImpactBadge(document.getElementById('confirmRbtcBadge'), ratioData.rbtcImpact, 'RBTC');
+
+    const hasDeficit = ratioData.btcImpact.type === 'deficit' || ratioData.rbtcImpact.type === 'deficit';
+    const hasExcess = ratioData.btcImpact.type === 'excess' || ratioData.rbtcImpact.type === 'excess';
+    document.getElementById('confirmDeficitWarning').classList.toggle('d-none', !hasDeficit);
+    document.getElementById('confirmExcessWarning').classList.toggle('d-none', !hasExcess);
+};
+
+const saveRatio = async (csrfToken) => {
+    const btcPercentage = parseInt(document.getElementById('ratioSlider').value, 10);
+    if (btcPercentage === savedBtcPercentage) {
+        showSuccessToast();
+        return;
+    }
+
+    const ratioData = await fetchLiquidityRatio(csrfToken, btcPercentage);
+    if (!ratioData) return;
+
+    populateConfirmModal(ratioData);
+    const modal = new bootstrap.Modal(document.getElementById('confirmRatioModal'));
+    modal.show();
+};
+
+const confirmSaveRatio = async (csrfToken) => {
+    const btcPct = parseInt(document.getElementById('ratioSlider').value, 10);
+    const confirmBtn = document.getElementById('confirmRatioSave');
+    confirmBtn.disabled = true;
+    try {
+        const response = await fetch('/management/liquidity-ratio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ btcPercentage: btcPct })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to save liquidity ratio');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('confirmRatioModal')).hide();
+        showSuccessToast();
+        await fetchLiquidityRatio(csrfToken);
+    } catch (error) {
+        showErrorToast(`Error saving liquidity ratio: ${error.message}`);
+    } finally {
+        confirmBtn.disabled = false;
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const csrfToken = data.CsrfToken;
     const configurations = data.Configuration;
@@ -1171,6 +1316,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
     document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
     document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
+    document.getElementById('saveRatio').addEventListener('click', () => saveRatio(csrfToken));
+    document.getElementById('confirmRatioSave').addEventListener('click', () => confirmSaveRatio(csrfToken));
+
+    let ratioDebounceTimer = null;
+    const ratioSlider = document.getElementById('ratioSlider');
+    ratioSlider.addEventListener('input', () => {
+        const btcPct = parseInt(ratioSlider.value, 10);
+        updateRatioLabels(btcPct);
+        clearTimeout(ratioDebounceTimer);
+        ratioDebounceTimer = setTimeout(() => fetchLiquidityRatio(csrfToken, btcPct), 500);
+    });
 
     // Clear validation states when modal is opened
     document.getElementById('addTrustedAccountModal').addEventListener('show.bs.modal', () => {
@@ -1199,6 +1355,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
     fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
+    fetchLiquidityRatio(csrfToken);
     checkFeeWarnings();
 
     const today = new Date();

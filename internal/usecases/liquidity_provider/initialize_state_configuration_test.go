@@ -45,7 +45,7 @@ func TestInitializeStateConfigurationUseCase_Run_StateConfigAlreadyExists(t *tes
 
 	providerMock.On("StateConfiguration", test.AnyCtx).Return(existingConfig, nil).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestInitializeStateConfigurationUseCase_Run_CreateNewStateConfig(t *testing
 			config.Signature != ""
 	})).Return(nil).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestInitializeStateConfigurationUseCase_Run_UpsertStateConfigurationError(t
 
 	lpRepository.On("UpsertStateConfiguration", test.AnyCtx, mock.Anything).Return(assert.AnError).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.Error(t, err)
@@ -157,7 +157,7 @@ func TestInitializeStateConfigurationUseCase_Run_PartialInitialization(t *testin
 			config.Signature != "" && config.Signature != "old signature"
 	})).Return(nil).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.NoError(t, err)
@@ -181,7 +181,7 @@ func TestInitializeStateConfigurationUseCase_Run_ProviderError(t *testing.T) {
 
 	providerMock.On("StateConfiguration", test.AnyCtx).Return(lpEntity.StateConfiguration{}, assert.AnError).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.Error(t, err)
@@ -201,7 +201,7 @@ func TestInitializeStateConfigurationUseCase_Run_SigningError(t *testing.T) {
 
 	walletMock.On("SignBytes", mock.Anything).Return(nil, assert.AnError)
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.Error(t, err)
@@ -220,7 +220,7 @@ func TestInitializeStateConfigurationUseCase_Run_BtcAddressEmpty_ReturnsError(t 
 	coldWallet.On("GetBtcAddress").Return("")
 	coldWallet.On("GetRskAddress").Return(test.AnyRskAddress)
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.Error(t, err)
@@ -246,7 +246,7 @@ func TestInitializeStateConfigurationUseCase_Run_FirstRunInitializesPercentage(t
 		return true
 	})).Return(nil).Once()
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 40)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.NoError(t, err)
@@ -254,72 +254,8 @@ func TestInitializeStateConfigurationUseCase_Run_FirstRunInitializesPercentage(t
 	lpRepository.AssertExpectations(t)
 	walletMock.AssertExpectations(t)
 
-	assert.Equal(t, uint64(40), capturedConfig.Value.BtcLiquidityTargetPercentage)
+	assert.Equal(t, uint64(50), capturedConfig.Value.BtcLiquidityTargetPercentage)
 	assert.Equal(t, int64(0), capturedConfig.Value.RatioCooldownEndTimestamp, "first-run should not activate cooldown")
-}
-
-func TestInitializeStateConfigurationUseCase_Run_RatioChangeActivatesCooldown(t *testing.T) {
-	providerMock := &mocks.ProviderMock{}
-	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
-	coldWallet := configuredColdWalletMock()
-	walletMock := &mocks.RskWalletMock{}
-
-	existingUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
-	existingConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  existingUnix,
-		LastRbtcToColdWalletTransfer: existingUnix,
-		BtcColdWalletAddressHash:     initHashAddress(test.AnyBtcAddress),
-		RskColdWalletAddressHash:     initHashAddress(test.AnyRskAddress),
-		BtcLiquidityTargetPercentage: 50,
-	}
-
-	providerMock.On("StateConfiguration", test.AnyCtx).Return(existingConfig, nil).Once()
-	walletMock.On("SignBytes", mock.Anything).Return([]byte{4, 5, 6}, nil)
-
-	var capturedConfig entities.Signed[lpEntity.StateConfiguration]
-	lpRepository.On("UpsertStateConfiguration", test.AnyCtx, mock.MatchedBy(func(config entities.Signed[lpEntity.StateConfiguration]) bool {
-		capturedConfig = config
-		return true
-	})).Return(nil).Once()
-
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 60)
-	err := useCase.Run(context.Background())
-
-	require.NoError(t, err)
-	providerMock.AssertExpectations(t)
-	lpRepository.AssertExpectations(t)
-	walletMock.AssertExpectations(t)
-
-	assert.Equal(t, uint64(60), capturedConfig.Value.BtcLiquidityTargetPercentage)
-	expectedCooldownEnd := time.Now().Unix() + liquidity_provider.CooldownAfterRatioChange
-	cooldownDiff := expectedCooldownEnd - capturedConfig.Value.RatioCooldownEndTimestamp
-	assert.True(t, cooldownDiff >= 0 && cooldownDiff < 5, "cooldown end timestamp should be approximately now + 3 hours")
-}
-
-func TestInitializeStateConfigurationUseCase_Run_SameRatioNoModification(t *testing.T) {
-	providerMock := &mocks.ProviderMock{}
-	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
-	coldWallet := configuredColdWalletMock()
-	walletMock := &mocks.RskWalletMock{}
-
-	existingUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
-	existingConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:  existingUnix,
-		LastRbtcToColdWalletTransfer: existingUnix,
-		BtcColdWalletAddressHash:     initHashAddress(test.AnyBtcAddress),
-		RskColdWalletAddressHash:     initHashAddress(test.AnyRskAddress),
-		BtcLiquidityTargetPercentage: 40,
-	}
-
-	providerMock.On("StateConfiguration", test.AnyCtx).Return(existingConfig, nil).Once()
-
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 40)
-	err := useCase.Run(context.Background())
-
-	require.NoError(t, err)
-	providerMock.AssertExpectations(t)
-	lpRepository.AssertNotCalled(t, "UpsertStateConfiguration", mock.Anything, mock.Anything)
-	walletMock.AssertNotCalled(t, "SignBytes", mock.Anything)
 }
 
 func TestInitializeStateConfigurationUseCase_Run_RskAddressEmpty_ReturnsError(t *testing.T) {
@@ -331,7 +267,7 @@ func TestInitializeStateConfigurationUseCase_Run_RskAddressEmpty_ReturnsError(t 
 	coldWallet.On("GetBtcAddress").Return(test.AnyBtcAddress)
 	coldWallet.On("GetRskAddress").Return("")
 
-	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256, 50)
+	useCase := liquidity_provider.NewInitializeStateConfigurationUseCase(providerMock, lpRepository, coldWallet, walletMock, crypto.Keccak256)
 	err := useCase.Run(context.Background())
 
 	require.Error(t, err)

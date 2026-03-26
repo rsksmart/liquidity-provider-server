@@ -12,7 +12,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 )
@@ -269,8 +268,8 @@ func (useCase *TransferExcessToColdWalletUseCase) calculateExcessForBothNetworks
 
 	rbtcTarget := new(entities.Wei).Sub(generalConfig.MaxLiquidity, btcTarget)
 
-	btcThreshold := useCase.calculateThreshold(btcTarget, generalConfig.ExcessTolerance)
-	rbtcThreshold := useCase.calculateThreshold(rbtcTarget, generalConfig.ExcessTolerance)
+	btcThreshold := generalConfig.ExcessTolerance.ComputeThreshold(btcTarget)
+	rbtcThreshold := generalConfig.ExcessTolerance.ComputeThreshold(rbtcTarget)
 
 	btcLiquidityExcess, btcIsTimeForced := useCase.calculateExcessWithTimeForcing(
 		btcTarget,
@@ -480,20 +479,6 @@ func (useCase *TransferExcessToColdWalletUseCase) getCurrentLiquidity(ctx contex
 		Btc:  btcCurrentLiquidity,
 		Rbtc: rskCurrentLiquidity,
 	}, nil
-}
-
-// calculateThreshold computes the balance above which a transfer is triggered, by adding the configured
-// tolerance (either a fixed amount or a percentage) to the per-network target.
-func (useCase *TransferExcessToColdWalletUseCase) calculateThreshold(
-	target *entities.Wei,
-	tolerance liquidity_provider.ExcessTolerance,
-) *entities.Wei {
-	if tolerance.IsFixed {
-		return new(entities.Wei).Add(target, tolerance.FixedValue)
-	}
-
-	thresholdBigInt := utils.ApplyPercentageIncrease(target.AsBigInt(), tolerance.PercentageValue.Native())
-	return entities.NewBigWei(thresholdBigInt)
 }
 
 // calculateExcess returns currentLiquidity minus target if currentLiquidity exceeds compareValue, otherwise zero.

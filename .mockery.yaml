@@ -62,11 +62,13 @@ packages:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:
+      SetLiquidityRatioUseCase:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
       RecommendedPeginUseCase:
       GetRevenueReportUseCase:
+      GetLiquidityRatioUseCase:
       GetSummariesReportUseCase:
       GetTrustedAccountsUseCase:
       ServerInfoUseCase:

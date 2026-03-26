@@ -79,6 +79,8 @@ const (
 	TransferExcessToColdWalletId   UseCaseId = "TransferExcessToColdWallet"
 	CheckColdWalletAddressChangeId UseCaseId = "CheckColdWalletAddressChange"
 	LowLiquidityAlertId            UseCaseId = "LowLiquidityAlert"
+	GetLiquidityRatioId            UseCaseId = "GetLiquidityRatio"
+	SetLiquidityRatioId            UseCaseId = "SetLiquidityRatio"
 )
 
 var (
