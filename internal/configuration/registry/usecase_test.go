@@ -56,7 +56,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		}
 
 		// ensure that all methods of the UseCaseRegistry interface return a non-nil value
-		registryInterfaceType := reflect.TypeOf((*registryInterface.UseCaseRegistry)(nil)).Elem()
+		registryInterfaceType := reflect.TypeFor[registryInterface.UseCaseRegistry]()
 		for i := 0; i < registryInterfaceType.NumMethod(); i++ {
 			method := registryInterfaceType.Method(i)
 			result := reflect.ValueOf(useCaseRegistry).MethodByName(method.Name).Call([]reflect.Value{})

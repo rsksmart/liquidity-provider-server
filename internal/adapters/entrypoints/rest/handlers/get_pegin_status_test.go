@@ -130,9 +130,9 @@ func TestNewGetPeginQuoteStatusHandler_SuccessfulResponse(t *testing.T) {
 	assert.InDelta(t, expectedFeePercentage, response.CreationData.FeePercentage, 0.0)
 
 	// Count fields in all three main objects and assert expected counts
-	detailFieldCount := reflect.TypeOf(response.Detail).NumField()
-	statusFieldCount := reflect.TypeOf(response.Status).NumField()
-	creationDataFieldCount := reflect.TypeOf(response.CreationData).NumField()
+	detailFieldCount := reflect.TypeFor[pkg.PeginQuoteDTO]().NumField()
+	statusFieldCount := reflect.TypeFor[pkg.RetainedPeginQuoteDTO]().NumField()
+	creationDataFieldCount := reflect.TypeFor[pkg.PeginCreationDataDTO]().NumField()
 
 	const expectedDetailFields = 20      // PeginQuoteDTO has 20 fields
 	const expectedStatusFields = 8       // RetainedPeginQuoteDTO has 8 fields
