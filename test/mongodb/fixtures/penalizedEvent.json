@@ -1,0 +1,12 @@
+[
+  {
+    "liquidity_provider": "0x1234567890abcdef1234567890abcdef12345678",
+    "penalty": "5000000",
+    "quote_hash": "df0c39c06419bed708cc5d373026545ad5dd532eebeae3da33397c6e07610896"
+  },
+  {
+    "liquidity_provider": "0x1234567890abcdef1234567890abcdef12345678",
+    "penalty": "5000000",
+    "quote_hash": "6378f065807f7c5c0769de7f4d529fef4f7a812d3f5f3b51b18e00fbb395ef25"
+  }
+]

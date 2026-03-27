@@ -1,0 +1,19 @@
+services:
+  mongodb:
+    image: mongo:4
+    restart: on-failure
+    container_name: flyover-test-mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=test
+      - MONGO_INITDB_ROOT_PASSWORD=test
+      - MONGO_INITDB_DATABASE=flyover
+    ports:
+      - "27018:27017"
+    command: ["mongod", "--bind_ip_all"]
+    healthcheck:
+      test: >
+        mongo --username test --password test --authenticationDatabase admin --eval "db.runCommand({ ping: 1 }).ok" --quiet
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s

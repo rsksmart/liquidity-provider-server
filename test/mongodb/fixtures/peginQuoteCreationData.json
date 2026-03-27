@@ -1,0 +1,42 @@
+[
+  {
+    "gas_price": "60000000",
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "fixed_fee": "1000000",
+    "hash": "df0c39c06419bed708cc5d373026545ad5dd532eebeae3da33397c6e07610896"
+  },
+  {
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "fixed_fee": "1000000",
+    "hash": "6378f065807f7c5c0769de7f4d529fef4f7a812d3f5f3b51b18e00fbb395ef25",
+    "gas_price": "60000000"
+  },
+  {
+    "fixed_fee": "1000000",
+    "hash": "2254d65846577a056662eda8e0eb1d823360444daf25b4773c4e2068fc0e6967",
+    "gas_price": "60000000",
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    }
+  },
+  {
+    "gas_price": "60000000",
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "fixed_fee": "1000000",
+    "hash": "c384d8eba8ac9082aa2b509d569a425f5d37321dc4dadd36588dcc5fce0c1588"
+  },
+  {
+    "gas_price": "60000000",
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "fixed_fee": "1000000",
+    "hash": "54064253bdac126bf43f9cb01f5f468c1cf19044ddf3b256d97fd247d77ec97e"
+  }
+]
