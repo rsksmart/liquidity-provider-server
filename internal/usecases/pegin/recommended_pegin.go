@@ -3,12 +3,13 @@ package pegin
 import (
 	"context"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/big"
 )
 
 type RecommendedPeginUseCase struct {
@@ -41,9 +42,8 @@ func (useCase *RecommendedPeginUseCase) Run(
 	config := useCase.peginProvider.PeginConfiguration(ctx)
 	result := new(big.Int).Set(userBalance.AsBigInt())
 
-	if userBalance.Cmp(config.MinValue) < 0 {
-		outOfRangeErr := fmt.Errorf("%w [%v, %v]", liquidity_provider.AmountOutOfRangeError, config.MinValue, config.MaxValue)
-		err := fmt.Errorf("provided amount %s is out of range: %w", userBalance.String(), outOfRangeErr)
+	if err := config.ValidateAmount(userBalance); err != nil {
+		err = fmt.Errorf("provided amount %s is out of range: %w", userBalance.String(), err)
 		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPeginId, err)
 	}
 

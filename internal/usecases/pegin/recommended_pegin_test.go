@@ -76,6 +76,17 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 		assert.Empty(t, result)
 		rskNotCalled.AssertNotCalled(t, "EstimateGas")
 	})
+	t.Run("should return AmountOutOfRangeError without calling EstimateGas when amount is above config MaxValue", func(t *testing.T) {
+		rskNotCalled := new(mocks.RootstockRpcServerMock)
+		rpcNotCalled := blockchain.Rpc{Rsk: rskNotCalled, Btc: btc}
+		limitedLp := new(mocks.ProviderMock)
+		limitedLp.On("PeginConfiguration", mock.Anything).Return(getPeginConfiguration())
+		useCase := pegin.NewRecommendedPeginUseCase(limitedLp, contracts, rpcNotCalled, utils.Scale)
+		result, err = useCase.Run(context.Background(), entities.NewWei(99999), test.AnyRskAddress, data)
+		require.ErrorIs(t, err, liquidity_provider.AmountOutOfRangeError)
+		assert.Empty(t, result)
+		rskNotCalled.AssertNotCalled(t, "EstimateGas")
+	})
 	t.Run("should validate that recommended amount is between provider limits", func(t *testing.T) {
 		modifiedConfig := getPeginConfiguration()
 		modifiedConfig.MaxValue = modifiedConfig.MinValue
