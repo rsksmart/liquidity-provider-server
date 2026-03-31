@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -13,7 +14,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var NodeReorgAlertBodyTemplate = "Your %s node has a blockchain reorganization depth of %d blocks, exceeding the configured maximum of %d."
+const (
+	reorgWindowSize            = 10
+	minReorgWindow             = 12
+	nodeReorgAlertBodyTemplate = "Your %s node has a blockchain reorganization depth of %d blocks, exceeding the configured maximum of %d."
+)
+
+var errHistoryWindowExceeded = errors.New("history window exceeded")
 
 type reorgChainState struct {
 	lastTipHash       string
@@ -22,15 +29,14 @@ type reorgChainState struct {
 }
 
 type NodeReorgCheckUseCase struct {
-	rpc             blockchain.Rpc
-	alertSender     alerts.AlertSender
-	alertRecipient  string
-	eventBus        entities.EventBus
-	maxDepthByNode  map[entities.NodeType]uint64
-	alertCooldown   time.Duration
-	lastAlertByNode map[entities.NodeType]time.Time
-	bitcoinState    *reorgChainState
-	rootstockState  *reorgChainState
+	rpc            blockchain.Rpc
+	alertSender    alerts.AlertSender
+	alertRecipient string
+	eventBus       entities.EventBus
+	maxDepth       uint64
+	alertCooldown  time.Duration
+	lastAlert      time.Time
+	state          *reorgChainState
 }
 
 func NewNodeReorgCheckUseCase(
@@ -38,8 +44,7 @@ func NewNodeReorgCheckUseCase(
 	alertSender alerts.AlertSender,
 	alertRecipient string,
 	eventBus entities.EventBus,
-	bitcoinMaxReorgDepth uint64,
-	rootstockMaxReorgDepth uint64,
+	maxDepth uint64,
 	alertCooldown time.Duration,
 ) *NodeReorgCheckUseCase {
 	return &NodeReorgCheckUseCase{
@@ -47,19 +52,15 @@ func NewNodeReorgCheckUseCase(
 		alertSender:    alertSender,
 		alertRecipient: alertRecipient,
 		eventBus:       eventBus,
-		maxDepthByNode: map[entities.NodeType]uint64{
-			entities.NodeTypeBitcoin:   bitcoinMaxReorgDepth,
-			entities.NodeTypeRootstock: rootstockMaxReorgDepth,
-		},
-		alertCooldown:   alertCooldown,
-		lastAlertByNode: make(map[entities.NodeType]time.Time),
+		maxDepth:       maxDepth,
+		alertCooldown:  alertCooldown,
 	}
 }
 
 func reorgHistoryWindow(maxDepth uint64) uint64 {
-	window := maxDepth + 10
-	if window < 12 {
-		window = 12
+	window := maxDepth + reorgWindowSize
+	if window < minReorgWindow {
+		window = minReorgWindow
 	}
 	return window
 }
@@ -86,15 +87,15 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 	reorgDepth uint64,
 	maxDepth uint64,
 ) error {
-	if time.Since(useCase.lastAlertByNode[nodeType]) < useCase.alertCooldown {
+	if time.Since(useCase.lastAlert) < useCase.alertCooldown {
 		return nil
 	}
-	body := fmt.Sprintf(NodeReorgAlertBodyTemplate, nodeType, reorgDepth, maxDepth)
+	body := fmt.Sprintf(nodeReorgAlertBodyTemplate, nodeType, reorgDepth, maxDepth)
 	if alertErr := useCase.alertSender.SendAlert(ctx, alerts.AlertSubjectNodeReorg, body, []string{useCase.alertRecipient}); alertErr != nil {
 		log.Errorf("NodeReorgCheckUseCase[%s]: error sending reorg alert: %v", nodeType, alertErr)
-		return useCase.reorgError(nodeType, alertErr)
+		return usecases.WrapUseCaseError(usecases.NodeReorgAlertId, alertErr)
 	}
-	useCase.lastAlertByNode[nodeType] = time.Now()
+	useCase.lastAlert = time.Now()
 	useCase.eventBus.Publish(blockchain.NodeReorgAlertSentEvent{
 		BaseEvent:     entities.NewBaseEvent(blockchain.NodeReorgAlertSentEventId),
 		NodeType:      nodeType,
@@ -105,8 +106,8 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 
 func (useCase *NodeReorgCheckUseCase) runBitcoin(ctx context.Context) error {
 	btc := useCase.rpc.Btc
-	maxDepth := useCase.maxDepthByNode[entities.NodeTypeBitcoin]
-	hw := reorgHistoryWindow(maxDepth)
+	maxDepth := useCase.maxDepth
+	historyWindow := reorgHistoryWindow(maxDepth)
 	nodeType := entities.NodeTypeBitcoin
 
 	info, err := btc.GetBlockchainInfo()
@@ -118,18 +119,13 @@ func (useCase *NodeReorgCheckUseCase) runBitcoin(ctx context.Context) error {
 	tipHash := info.BestBlockHash
 	tipHeight := uint64(info.ValidatedBlocks.Int64())
 
-	if useCase.bitcoinState == nil {
-		useCase.bitcoinState = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
+	if useCase.state == nil {
+		useCase.state = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
 	}
-	st := useCase.bitcoinState
+	state := useCase.state
 
-	if st.lastTipHash == "" {
-		return useCase.initBitcoinState(st, btc, tipHash, tipHeight, maxDepth, hw)
-	}
-
-	if tipHash == st.lastTipHash {
-		useCase.publishReorgCheck(nodeType, 0, maxDepth, false)
-		return nil
+	if state.lastTipHash == "" || tipHash == state.lastTipHash {
+		return useCase.handleBitcoinInitialOrSameTip(state, btc, tipHash, tipHeight, historyWindow, maxDepth)
 	}
 
 	parentHash, err := useCase.getBitcoinParentHash(btc, tipHash)
@@ -137,130 +133,187 @@ func (useCase *NodeReorgCheckUseCase) runBitcoin(ctx context.Context) error {
 		return err
 	}
 
-	if parentHash == st.lastTipHash {
-		return useCase.advanceBitcoinTip(st, btc, tipHash, tipHeight, maxDepth, hw)
+	if parentHash == state.lastTipHash {
+		return useCase.handleBitcoinTipAppend(state, btc, tipHash, tipHeight, historyWindow, maxDepth)
 	}
 
-	reorgDepth := bitcoinReorgDepth(btc, st, tipHeight, hw, maxDepth)
-	above := reorgDepth > maxDepth
-	useCase.publishReorgCheck(nodeType, reorgDepth, maxDepth, above)
+	return useCase.handleBitcoinPotentialReorg(ctx, state, btc, tipHash, tipHeight, historyWindow, maxDepth)
+}
 
+func (useCase *NodeReorgCheckUseCase) handleBitcoinInitialOrSameTip(
+	state *reorgChainState,
+	btc blockchain.BitcoinNetwork,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	if state.lastTipHash == "" {
+		if initErr := useCase.initBitcoinState(state, btc, tipHash, tipHeight, historyWindow); initErr != nil {
+			return initErr
+		}
+	}
+	useCase.publishReorgCheck(entities.NodeTypeBitcoin, 0, maxDepth, false)
+	return nil
+}
+
+func (useCase *NodeReorgCheckUseCase) handleBitcoinTipAppend(
+	state *reorgChainState,
+	btc blockchain.BitcoinNetwork,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	useCase.advanceBitcoinTip(state, tipHash, tipHeight)
+	if err := refreshBitcoinWindow(state, btc, tipHeight, historyWindow); err != nil {
+		return useCase.reorgError(entities.NodeTypeBitcoin, err)
+	}
+	useCase.publishReorgCheck(entities.NodeTypeBitcoin, 0, maxDepth, false)
+	return nil
+}
+
+func (useCase *NodeReorgCheckUseCase) handleBitcoinPotentialReorg(
+	ctx context.Context,
+	state *reorgChainState,
+	btc blockchain.BitcoinNetwork,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	reorgDepth, err := bitcoinChainDivergenceDepth(btc, state, tipHeight, historyWindow)
+	if errors.Is(err, errHistoryWindowExceeded) {
+		state.lastTipHash = tipHash
+		state.lastTipHeight = tipHeight
+		if refreshErr := refreshBitcoinWindow(state, btc, tipHeight, historyWindow); refreshErr != nil {
+			return useCase.reorgError(entities.NodeTypeBitcoin, refreshErr)
+		}
+		return nil
+	}
+	if err != nil {
+		return useCase.reorgError(entities.NodeTypeBitcoin, err)
+	}
+
+	above := reorgDepth > maxDepth
+	useCase.publishReorgCheck(entities.NodeTypeBitcoin, reorgDepth, maxDepth, above)
 	if above {
-		if alertErr := useCase.handleReorgAlert(ctx, nodeType, reorgDepth, maxDepth); alertErr != nil {
+		if alertErr := useCase.handleReorgAlert(ctx, entities.NodeTypeBitcoin, reorgDepth, maxDepth); alertErr != nil {
 			return alertErr
 		}
 	}
 
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	if err = refreshBitcoinWindow(st, btc, tipHeight, hw); err != nil {
-		return useCase.reorgError(nodeType, err)
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
+	if refreshErr := refreshBitcoinWindow(state, btc, tipHeight, historyWindow); refreshErr != nil {
+		return useCase.reorgError(entities.NodeTypeBitcoin, refreshErr)
 	}
 	return nil
 }
 
 func (useCase *NodeReorgCheckUseCase) initBitcoinState(
-	st *reorgChainState,
+	state *reorgChainState,
 	btc blockchain.BitcoinNetwork,
 	tipHash string,
 	tipHeight uint64,
-	maxDepth uint64,
-	hw uint64,
+	historyWindow uint64,
 ) error {
-	if err := refreshBitcoinWindow(st, btc, tipHeight, hw); err != nil {
+	if err := refreshBitcoinWindow(state, btc, tipHeight, historyWindow); err != nil {
 		return useCase.reorgError(entities.NodeTypeBitcoin, err)
 	}
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	useCase.publishReorgCheck(entities.NodeTypeBitcoin, 0, maxDepth, false)
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
 	return nil
 }
 
 func (useCase *NodeReorgCheckUseCase) getBitcoinParentHash(btc blockchain.BitcoinNetwork, tipHash string) (string, error) {
-	hdr, err := btc.GetBlockHeaderVerbose(tipHash)
+	header, err := btc.GetBlockHeaderVerbose(tipHash)
 	if err != nil {
 		log.Errorf("NodeReorgCheckUseCase[bitcoin]: error getting block header: %v", err)
 		return "", useCase.reorgError(entities.NodeTypeBitcoin, err)
 	}
-	return hdr.PreviousHash, nil
+	return header.PreviousHash, nil
 }
 
 func (useCase *NodeReorgCheckUseCase) advanceBitcoinTip(
-	st *reorgChainState,
-	btc blockchain.BitcoinNetwork,
+	state *reorgChainState,
 	tipHash string,
 	tipHeight uint64,
-	maxDepth uint64,
-	hw uint64,
-) error {
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	if err := refreshBitcoinWindow(st, btc, tipHeight, hw); err != nil {
-		return useCase.reorgError(entities.NodeTypeBitcoin, err)
-	}
-	useCase.publishReorgCheck(entities.NodeTypeBitcoin, 0, maxDepth, false)
-	return nil
+) {
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
 }
 
-func refreshBitcoinWindow(st *reorgChainState, btc blockchain.BitcoinNetwork, tipHeight uint64, hw uint64) error {
-	st.knownHashByHeight = make(map[uint64]string)
-	for i := uint64(0); i < hw; i++ {
+func refreshBitcoinWindow(state *reorgChainState, btc blockchain.BitcoinNetwork, tipHeight uint64, historyWindow uint64) error {
+	state.knownHashByHeight = make(map[uint64]string)
+	for i := uint64(0); i < historyWindow; i++ {
 		if tipHeight < i {
 			break
 		}
-		h := tipHeight - i
-		hash, err := btc.GetBlockHashAtHeight(int64(h))
+		blockHeight := tipHeight - i
+		hash, err := btc.GetBlockHashAtHeight(int64(blockHeight))
 		if err != nil {
 			return err
 		}
-		st.knownHashByHeight[h] = hash
+		state.knownHashByHeight[blockHeight] = hash
 	}
 	return nil
 }
 
-func bitcoinReorgDepth(
+// bitcoinChainDivergenceDepth walks backwards from the lower of the current and
+// previously seen tip heights until it finds the last block height whose hash
+// still matches the locally cached history window.
+//
+// The returned value is the distance from the previously seen tip to that last
+// common block. This is the amount of chain history that diverged from the last
+// observed state, which can correspond to a reorg or to another discontinuity
+// between executions.
+//
+// If no common block is found inside the retained history window,
+// errHistoryWindowExceeded is returned. Callers must treat that as "depth
+// unknown, resync required" rather than as a confirmed reorg depth.
+func bitcoinChainDivergenceDepth(
 	btc blockchain.BitcoinNetwork,
-	st *reorgChainState,
+	state *reorgChainState,
 	currentTipHeight uint64,
-	hw uint64,
-	maxDepth uint64,
-) uint64 {
-	minTip := st.lastTipHeight
+	historyWindow uint64,
+) (uint64, error) {
+	minTip := state.lastTipHeight
 	if currentTipHeight < minTip {
 		minTip = currentTipHeight
 	}
-	maxTip := st.lastTipHeight
+	maxTip := state.lastTipHeight
 	if currentTipHeight > maxTip {
 		maxTip = currentTipHeight
 	}
 
 	var lowerBound uint64
-	if maxTip >= hw {
-		lowerBound = maxTip - hw + 1
+	if maxTip >= historyWindow {
+		lowerBound = maxTip - historyWindow + 1
 	}
 
-	for h := minTip; ; {
-		if h < lowerBound {
-			return maxDepth + 1
+	for blockHeight := minTip; ; {
+		if blockHeight < lowerBound {
+			return 0, errHistoryWindowExceeded
 		}
-		curHash, err := btc.GetBlockHashAtHeight(int64(h))
+		curHash, err := btc.GetBlockHashAtHeight(int64(blockHeight))
 		if err != nil {
-			return maxDepth + 1
+			return 0, err
 		}
-		if oldHash, ok := st.knownHashByHeight[h]; ok && curHash == oldHash {
-			return st.lastTipHeight - h
+		if oldHash, ok := state.knownHashByHeight[blockHeight]; ok && curHash == oldHash {
+			return state.lastTipHeight - blockHeight, nil
 		}
-		if h == 0 {
-			return maxDepth + 1
+		if blockHeight == 0 {
+			return 0, errHistoryWindowExceeded
 		}
-		h--
+		blockHeight--
 	}
 }
 
 func (useCase *NodeReorgCheckUseCase) runRootstock(ctx context.Context) error {
 	rsk := useCase.rpc.Rsk
-	maxDepth := useCase.maxDepthByNode[entities.NodeTypeRootstock]
-	hw := reorgHistoryWindow(maxDepth)
+	maxDepth := useCase.maxDepth
+	historyWindow := reorgHistoryWindow(maxDepth)
 	nodeType := entities.NodeTypeRootstock
 
 	tipHeight, err := rsk.GetHeight(ctx)
@@ -276,138 +329,191 @@ func (useCase *NodeReorgCheckUseCase) runRootstock(ctx context.Context) error {
 	}
 	tipHash := tipBlock.Hash
 
-	if useCase.rootstockState == nil {
-		useCase.rootstockState = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
+	if useCase.state == nil {
+		useCase.state = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
 	}
-	st := useCase.rootstockState
+	state := useCase.state
 
-	if st.lastTipHash == "" {
-		return useCase.initRootstockState(ctx, st, rsk, tipHash, tipHeight, maxDepth, hw)
+	if state.lastTipHash == "" || tipHash == state.lastTipHash {
+		return useCase.handleRootstockInitialOrSameTip(ctx, state, rsk, tipHash, tipHeight, historyWindow, maxDepth)
 	}
 
-	if tipHash == st.lastTipHash {
-		useCase.publishReorgCheck(nodeType, 0, maxDepth, false)
+	if tipBlock.ParentHash == state.lastTipHash {
+		return useCase.handleRootstockTipAppend(ctx, state, rsk, tipHash, tipHeight, historyWindow, maxDepth)
+	}
+
+	return useCase.handleRootstockPotentialReorg(ctx, state, rsk, tipHash, tipHeight, historyWindow, maxDepth)
+}
+
+func (useCase *NodeReorgCheckUseCase) handleRootstockInitialOrSameTip(
+	ctx context.Context,
+	state *reorgChainState,
+	rsk blockchain.RootstockRpcServer,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	if state.lastTipHash == "" {
+		if initErr := useCase.initRootstockState(ctx, state, rsk, tipHash, tipHeight, historyWindow); initErr != nil {
+			return initErr
+		}
+	}
+	useCase.publishReorgCheck(entities.NodeTypeRootstock, 0, maxDepth, false)
+	return nil
+}
+
+func (useCase *NodeReorgCheckUseCase) handleRootstockTipAppend(
+	ctx context.Context,
+	state *reorgChainState,
+	rsk blockchain.RootstockRpcServer,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	useCase.advanceRootstockTip(state, tipHash, tipHeight)
+	if err := refreshRootstockWindow(ctx, state, rsk, tipHeight, historyWindow); err != nil {
+		return useCase.reorgError(entities.NodeTypeRootstock, err)
+	}
+	useCase.publishReorgCheck(entities.NodeTypeRootstock, 0, maxDepth, false)
+	return nil
+}
+
+func (useCase *NodeReorgCheckUseCase) handleRootstockPotentialReorg(
+	ctx context.Context,
+	state *reorgChainState,
+	rsk blockchain.RootstockRpcServer,
+	tipHash string,
+	tipHeight uint64,
+	historyWindow uint64,
+	maxDepth uint64,
+) error {
+	reorgDepth, err := rootstockChainDivergenceDepth(ctx, rsk, state, tipHeight, historyWindow)
+	if errors.Is(err, errHistoryWindowExceeded) {
+		state.lastTipHash = tipHash
+		state.lastTipHeight = tipHeight
+		if refreshErr := refreshRootstockWindow(ctx, state, rsk, tipHeight, historyWindow); refreshErr != nil {
+			return useCase.reorgError(entities.NodeTypeRootstock, refreshErr)
+		}
 		return nil
 	}
-
-	if tipBlock.ParentHash == st.lastTipHash {
-		return useCase.advanceRootstockTip(ctx, st, rsk, tipHash, tipHeight, maxDepth, hw)
+	if err != nil {
+		return useCase.reorgError(entities.NodeTypeRootstock, err)
 	}
 
-	reorgDepth := rootstockReorgDepth(ctx, rsk, st, tipHeight, hw, maxDepth)
 	above := reorgDepth > maxDepth
-	useCase.publishReorgCheck(nodeType, reorgDepth, maxDepth, above)
-
+	useCase.publishReorgCheck(entities.NodeTypeRootstock, reorgDepth, maxDepth, above)
 	if above {
-		if alertErr := useCase.handleReorgAlert(ctx, nodeType, reorgDepth, maxDepth); alertErr != nil {
+		if alertErr := useCase.handleReorgAlert(ctx, entities.NodeTypeRootstock, reorgDepth, maxDepth); alertErr != nil {
 			return alertErr
 		}
 	}
 
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	if err = refreshRootstockWindow(ctx, st, rsk, tipHeight, hw); err != nil {
-		return useCase.reorgError(nodeType, err)
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
+	if refreshErr := refreshRootstockWindow(ctx, state, rsk, tipHeight, historyWindow); refreshErr != nil {
+		return useCase.reorgError(entities.NodeTypeRootstock, refreshErr)
 	}
 	return nil
 }
 
 func (useCase *NodeReorgCheckUseCase) initRootstockState(
 	ctx context.Context,
-	st *reorgChainState,
+	state *reorgChainState,
 	rsk blockchain.RootstockRpcServer,
 	tipHash string,
 	tipHeight uint64,
-	maxDepth uint64,
-	hw uint64,
+	historyWindow uint64,
 ) error {
-	if err := refreshRootstockWindow(ctx, st, rsk, tipHeight, hw); err != nil {
+	if err := refreshRootstockWindow(ctx, state, rsk, tipHeight, historyWindow); err != nil {
 		return useCase.reorgError(entities.NodeTypeRootstock, err)
 	}
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	useCase.publishReorgCheck(entities.NodeTypeRootstock, 0, maxDepth, false)
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
 	return nil
 }
 
 func (useCase *NodeReorgCheckUseCase) advanceRootstockTip(
-	ctx context.Context,
-	st *reorgChainState,
-	rsk blockchain.RootstockRpcServer,
+	state *reorgChainState,
 	tipHash string,
 	tipHeight uint64,
-	maxDepth uint64,
-	hw uint64,
-) error {
-	st.lastTipHash = tipHash
-	st.lastTipHeight = tipHeight
-	if err := refreshRootstockWindow(ctx, st, rsk, tipHeight, hw); err != nil {
-		return useCase.reorgError(entities.NodeTypeRootstock, err)
-	}
-	useCase.publishReorgCheck(entities.NodeTypeRootstock, 0, maxDepth, false)
-	return nil
+) {
+	state.lastTipHash = tipHash
+	state.lastTipHeight = tipHeight
 }
 
 func refreshRootstockWindow(
 	ctx context.Context,
-	st *reorgChainState,
+	state *reorgChainState,
 	rsk blockchain.RootstockRpcServer,
 	tipHeight uint64,
-	hw uint64,
+	historyWindow uint64,
 ) error {
-	st.knownHashByHeight = make(map[uint64]string)
-	for i := uint64(0); i < hw; i++ {
+	state.knownHashByHeight = make(map[uint64]string)
+	for i := uint64(0); i < historyWindow; i++ {
 		if tipHeight < i {
 			break
 		}
-		h := tipHeight - i
-		bi, err := rsk.GetBlockByNumber(ctx, new(big.Int).SetUint64(h))
+		blockHeight := tipHeight - i
+		bi, err := rsk.GetBlockByNumber(ctx, new(big.Int).SetUint64(blockHeight))
 		if err != nil {
 			return err
 		}
-		st.knownHashByHeight[h] = bi.Hash
+		state.knownHashByHeight[blockHeight] = bi.Hash
 	}
 	return nil
 }
 
-func rootstockReorgDepth(
+// rootstockChainDivergenceDepth walks backwards from the lower of the current
+// and previously seen tip heights until it finds the last block height whose
+// hash still matches the locally cached history window.
+//
+// The returned value is the distance from the previously seen tip to that last
+// common block. This is the amount of chain history that diverged from the last
+// observed state, which can correspond to a reorg or to another discontinuity
+// between executions.
+//
+// If no common block is found inside the retained history window,
+// errHistoryWindowExceeded is returned. Callers must treat that as "depth
+// unknown, resync required" rather than as a confirmed reorg depth.
+func rootstockChainDivergenceDepth(
 	ctx context.Context,
 	rsk blockchain.RootstockRpcServer,
-	st *reorgChainState,
+	state *reorgChainState,
 	currentTipHeight uint64,
-	hw uint64,
-	maxDepth uint64,
-) uint64 {
-	minTip := st.lastTipHeight
+	historyWindow uint64,
+) (uint64, error) {
+	minTip := state.lastTipHeight
 	if currentTipHeight < minTip {
 		minTip = currentTipHeight
 	}
-	maxTip := st.lastTipHeight
+	maxTip := state.lastTipHeight
 	if currentTipHeight > maxTip {
 		maxTip = currentTipHeight
 	}
 
 	var lowerBound uint64
-	if maxTip >= hw {
-		lowerBound = maxTip - hw + 1
+	if maxTip >= historyWindow {
+		lowerBound = maxTip - historyWindow + 1
 	}
 
-	for h := minTip; ; {
-		if h < lowerBound {
-			return maxDepth + 1
+	for blockHeight := minTip; ; {
+		if blockHeight < lowerBound {
+			return 0, errHistoryWindowExceeded
 		}
-		bi, err := rsk.GetBlockByNumber(ctx, new(big.Int).SetUint64(h))
+		bi, err := rsk.GetBlockByNumber(ctx, new(big.Int).SetUint64(blockHeight))
 		if err != nil {
-			return maxDepth + 1
+			return 0, err
 		}
 		curHash := bi.Hash
-		if oldHash, ok := st.knownHashByHeight[h]; ok && curHash == oldHash {
-			return st.lastTipHeight - h
+		if oldHash, ok := state.knownHashByHeight[blockHeight]; ok && curHash == oldHash {
+			return state.lastTipHeight - blockHeight, nil
 		}
-		if h == 0 {
-			return maxDepth + 1
+		if blockHeight == 0 {
+			return 0, errHistoryWindowExceeded
 		}
-		h--
+		blockHeight--
 	}
 }
 

@@ -137,12 +137,12 @@ func NewWatcherRegistry(
 			tickers.AssetReportTicker,
 		),
 		BitcoinReorgWatcher: watcher.NewBitcoinReorgWatcher(
-			useCaseRegistry.nodeReorgCheckUseCase,
+			useCaseRegistry.btcReorgCheckUseCase,
 			tickers.BitcoinReorgWatcherTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),
 		RootstockReorgWatcher: watcher.NewRootstockReorgWatcher(
-			useCaseRegistry.nodeReorgCheckUseCase,
+			useCaseRegistry.rskReorgCheckUseCase,
 			tickers.RootstockReorgWatcherTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),

@@ -21,8 +21,8 @@ const (
 	rskEclipseCheckInterval          = 15 * time.Second
 	btcReleaseCheckInterval          = 3 * time.Minute
 	assetMetricsUpdateInterval       = 1 * time.Minute
-	bitcoinReorgCheckInterval        = 1 * time.Minute
-	rootstockReorgCheckInterval      = 1 * time.Minute
+	bitcoinReorgCheckInterval        = 5 * time.Minute
+	rootstockReorgCheckInterval      = 30 * time.Second
 )
 
 type Watcher interface {

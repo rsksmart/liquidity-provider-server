@@ -18,35 +18,46 @@ type Metrics struct {
 	NodeReorgAlertsMetric         *prometheus.CounterVec
 }
 
-func newNodeReorgMetrics() (
-	depth, maxDepth, aboveThreshold *prometheus.GaugeVec,
-	checkErrors, alerts *prometheus.CounterVec,
-) {
-	depth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+type nodeReorgMetrics struct {
+	Depth          *prometheus.GaugeVec
+	MaxDepth       *prometheus.GaugeVec
+	AboveThreshold *prometheus.GaugeVec
+	CheckErrors    *prometheus.CounterVec
+	Alerts         *prometheus.CounterVec
+}
+
+func newNodeReorgMetrics() nodeReorgMetrics {
+	depth := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "lps_node_reorg_depth",
 		Help: "Detected blockchain reorganization depth for the node",
 	}, []string{"node"})
-	maxDepth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	maxDepth := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "lps_node_reorg_max_depth_threshold",
 		Help: "Configured maximum reorganization depth before alerting",
 	}, []string{"node"})
-	aboveThreshold = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	aboveThreshold := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "lps_node_reorg_above_threshold",
 		Help: "Whether reorganization depth exceeds configured threshold (1=yes, 0=no)",
 	}, []string{"node"})
-	checkErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+	checkErrors := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "lps_node_reorg_check_errors_total",
 		Help: "Total number of reorg check RPC errors",
 	}, []string{"node"})
-	alerts = prometheus.NewCounterVec(prometheus.CounterOpts{
+	alerts := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "lps_node_reorg_alerts_total",
 		Help: "Total number of reorganization alerts sent",
 	}, []string{"node"})
-	return
+	return nodeReorgMetrics{
+		Depth:          depth,
+		MaxDepth:       maxDepth,
+		AboveThreshold: aboveThreshold,
+		CheckErrors:    checkErrors,
+		Alerts:         alerts,
+	}
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
-	reorgDepth, reorgMax, reorgAbove, reorgErrs, reorgAlerts := newNodeReorgMetrics()
+	reorg := newNodeReorgMetrics()
 	appMetrics := Metrics{
 		PeginQuotesMetric: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -76,11 +87,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			},
 			[]string{"currency", "type"},
 		),
-		NodeReorgDepthMetric:          reorgDepth,
-		NodeReorgMaxDepthMetric:       reorgMax,
-		NodeReorgAboveThresholdMetric: reorgAbove,
-		NodeReorgCheckErrorsMetric:    reorgErrs,
-		NodeReorgAlertsMetric:         reorgAlerts,
+		NodeReorgDepthMetric:          reorg.Depth,
+		NodeReorgMaxDepthMetric:       reorg.MaxDepth,
+		NodeReorgAboveThresholdMetric: reorg.AboveThreshold,
+		NodeReorgCheckErrorsMetric:    reorg.CheckErrors,
+		NodeReorgAlertsMetric:         reorg.Alerts,
 	}
 
 	reg.MustRegister(
@@ -88,11 +99,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		appMetrics.PeginQuotesMetric,
 		appMetrics.ServerInfoMetric,
 		appMetrics.AssetsMetrics,
-		reorgDepth,
-		reorgMax,
-		reorgAbove,
-		reorgErrs,
-		reorgAlerts,
+		reorg.Depth,
+		reorg.MaxDepth,
+		reorg.AboveThreshold,
+		reorg.CheckErrors,
+		reorg.Alerts,
 	)
 	return &appMetrics
 }

@@ -471,11 +471,11 @@ func (api *MempoolSpaceApi) GetZeroAddress(addressType blockchain.BtcAddressType
 }
 
 func (api *MempoolSpaceApi) GetBlockHashAtHeight(int64) (string, error) {
-	return "", errors.New("bitcoin reorg detection requires a direct Bitcoin Core RPC connection")
+	return "", errors.New("unimplemented")
 }
 
 func (api *MempoolSpaceApi) GetBlockHeaderVerbose(string) (blockchain.BitcoinBlockHeaderInfo, error) {
-	return blockchain.BitcoinBlockHeaderInfo{}, errors.New("bitcoin reorg detection requires a direct Bitcoin Core RPC connection")
+	return blockchain.BitcoinBlockHeaderInfo{}, errors.New("unimplemented")
 }
 
 func (api *MempoolSpaceApi) getBlock(blockHash string) (*btcutil.Block, error) {
