@@ -23,6 +23,9 @@ const (
 	assetMetricsUpdateInterval       = 1 * time.Minute
 	bitcoinReorgCheckInterval        = 5 * time.Minute
 	rootstockReorgCheckInterval      = 30 * time.Second
+	bitcoinPeerCheckInterval         = 1 * time.Minute
+	rootstockPeerCheckInterval       = 1 * time.Minute
+	PeerAlertCooldown                = 30 * time.Minute
 )
 
 type Watcher interface {

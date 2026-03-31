@@ -11,6 +11,7 @@ const (
 	AlertSubjectPegoutOutOfLiquidity = "PegOut: Out of liquidity"
 	AlertSubjectEclipseAttack        = "Node Eclipse Detected"
 	AlertSubjectNodeReorg            = "Node Blockchain Reorganization"
+	AlertSubjectLowPeers             = "Node Low Peer Count"
 )
 
 type AlertSender interface {

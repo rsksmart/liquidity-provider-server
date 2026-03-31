@@ -21,6 +21,8 @@ import (
 
 var signingHashFunction = crypto.Keccak256
 
+const nodePeerAlertCooldown = 30 * time.Minute
+
 type UseCaseRegistry struct {
 	getPeginQuoteUseCase          *pegin.GetQuoteUseCase
 	registerProviderUseCase       *liquidity_provider.RegistrationUseCase
@@ -80,13 +82,14 @@ type UseCaseRegistry struct {
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	btcReorgCheckUseCase          *watcher.NodeReorgCheckUseCase
 	rskReorgCheckUseCase          *watcher.NodeReorgCheckUseCase
+	nodePeerCheckUseCase          *watcher.NodePeerCheckUseCase
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase       *pegin.RecommendedPeginUseCase
 }
 
 // NewUseCaseRegistry
-// nolint:funlen
+// nolint:funlen,maintidx
 func NewUseCaseRegistry(
 	env environment.Environment,
 	rskRegistry *Rootstock,
@@ -348,6 +351,15 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			env.Rsk.FillWithDefaults().MaxReorgDepth,
 			time.Duration(env.NodeReorg.FillWithDefaults().AlertCooldownSeconds)*time.Second,
+		),
+		nodePeerCheckUseCase: watcher.NewNodePeerCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Btc.FillWithDefaults().MinPeers,
+			env.Rsk.FillWithDefaults().MinPeers,
+			nodePeerAlertCooldown,
 		),
 		updateBtcReleaseUseCase: pegout.NewUpdateBtcReleaseUseCase(
 			databaseRegistry.PegoutRepository,

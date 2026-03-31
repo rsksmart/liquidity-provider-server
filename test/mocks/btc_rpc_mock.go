@@ -96,3 +96,8 @@ func (m *BtcRpcMock) GetBlockHeaderVerbose(blockHash string) (blockchain.Bitcoin
 	}
 	return args.Get(0).(blockchain.BitcoinBlockHeaderInfo), args.Error(1)
 }
+
+func (m *BtcRpcMock) GetConnectionCount() (int64, error) {
+	args := m.Called()
+	return args.Get(0).(int64), args.Error(1)
+}

@@ -285,6 +285,10 @@ func (rpc *bitcoindRpc) GetZeroAddress(addressType blockchain.BtcAddressType) (s
 	return addresses.Address(addressType)
 }
 
+func (rpc *bitcoindRpc) GetConnectionCount() (int64, error) {
+	return rpc.conn.client.GetConnectionCount()
+}
+
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {
 	parsedTxHash, err := chainhash.NewHashFromStr(txHash)
 	if err != nil {

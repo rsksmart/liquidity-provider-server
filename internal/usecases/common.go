@@ -76,6 +76,7 @@ const (
 	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
 	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
 	RecommendedPeginId         UseCaseId = "RecommendedPegin"
+	NodePeerAlertId            UseCaseId = "NodePeerAlert"
 )
 
 var (

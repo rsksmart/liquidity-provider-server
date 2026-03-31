@@ -776,3 +776,23 @@ func TestBitcoindRpc_GetBlockHeaderVerbose(t *testing.T) {
 		client.AssertNotCalled(t, "GetBlockHeaderVerbose")
 	})
 }
+
+func TestBitcoindRpc_GetConnectionCount(t *testing.T) {
+	t.Run("Should return connection count", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetConnectionCount().Return(int64(8), nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		count, err := rpc.GetConnectionCount()
+		require.NoError(t, err)
+		assert.Equal(t, int64(8), count)
+		client.AssertExpectations(t)
+	})
+	t.Run("Should return error when client fails", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetConnectionCount().Return(int64(0), assert.AnError).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		_, err := rpc.GetConnectionCount()
+		require.Error(t, err)
+		client.AssertExpectations(t)
+	})
+}

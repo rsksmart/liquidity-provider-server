@@ -10,6 +10,9 @@ const (
 	NodeReorgCheckEventId      entities.EventId = "NodeReorgCheck"
 	NodeReorgCheckErrorEventId entities.EventId = "NodeReorgCheckError"
 	NodeReorgAlertSentEventId  entities.EventId = "NodeReorgAlertSent"
+	NodePeerCheckEventId       entities.EventId = "NodePeerCheck"
+	NodePeerCheckErrorEventId  entities.EventId = "NodePeerCheckError"
+	NodePeerAlertSentEventId   entities.EventId = "NodePeerAlertSent"
 )
 
 type Rpc struct {
@@ -38,8 +41,26 @@ type NodeReorgCheckErrorEvent struct {
 	NodeType entities.NodeType
 }
 
+type NodePeerCheckEvent struct {
+	entities.BaseEvent
+	NodeType       entities.NodeType
+	CurrentPeers   int64
+	MinPeers       uint64
+	BelowThreshold bool
+}
+
+type NodePeerCheckErrorEvent struct {
+	entities.BaseEvent
+	NodeType entities.NodeType
+}
+
 type NodeReorgAlertSentEvent struct {
 	entities.BaseEvent
 	NodeType      entities.NodeType
 	DetectedDepth uint64
+}
+
+type NodePeerAlertSentEvent struct {
+	entities.BaseEvent
+	NodeType entities.NodeType
 }

@@ -58,11 +58,14 @@ type RskEnv struct {
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 	MaxReorgDepth    uint64   `env:"RSK_MAX_REORG_DEPTH"`
+	MinPeers         uint64   `env:"RSK_MIN_PEERS"`
 }
 
 func (env *RskEnv) FillWithDefaults() *RskEnv {
 	const defaultMaxReorgDepth uint64 = 2
+	const defaultRskMinPeers uint64 = 3
 	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
+	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultRskMinPeers)
 	return env
 }
 
@@ -78,11 +81,14 @@ type BtcEnv struct {
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
 	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
 	MaxReorgDepth   uint64           `env:"BITCOIN_MAX_REORG_DEPTH"`
+	MinPeers        uint64           `env:"BITCOIN_MIN_PEERS"`
 }
 
 func (env *BtcEnv) FillWithDefaults() *BtcEnv {
 	const defaultMaxReorgDepth uint64 = 2
+	const defaultBitcoinMinPeers uint64 = 5
 	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
+	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultBitcoinMinPeers)
 	return env
 }
 

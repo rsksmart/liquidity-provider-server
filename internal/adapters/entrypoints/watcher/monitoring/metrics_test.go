@@ -23,6 +23,11 @@ func TestNewMetrics(t *testing.T) {
 		assert.NotNil(t, metrics.PegoutQuotesMetric)
 		assert.NotNil(t, metrics.ServerInfoMetric)
 		assert.NotNil(t, metrics.AssetsMetrics)
+		assert.NotNil(t, metrics.NodePeerCountMetric)
+		assert.NotNil(t, metrics.NodePeerMinThresholdMetric)
+		assert.NotNil(t, metrics.NodePeerBelowThreshold)
+		assert.NotNil(t, metrics.NodePeerCheckErrors)
+		assert.NotNil(t, metrics.NodePeerAlerts)
 
 		// Verify metric names and help text by checking descriptors
 		peginDesc := getMetricDesc(metrics.PeginQuotesMetric)
@@ -183,15 +188,20 @@ func createTestAssetReport() reports.GetAssetsReportResult {
 func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.RegistererMock) {
 	registerer := mocks.NewRegistererMock(t)
 	registerer.On("MustRegister",
-		mock.AnythingOfType("*prometheus.CounterVec"),
-		mock.AnythingOfType("*prometheus.CounterVec"),
-		mock.AnythingOfType("*prometheus.GaugeVec"),
-		mock.AnythingOfType("*prometheus.GaugeVec"),
-		mock.AnythingOfType("*prometheus.GaugeVec"),
-		mock.AnythingOfType("*prometheus.GaugeVec"),
-		mock.AnythingOfType("*prometheus.GaugeVec"),
-		mock.AnythingOfType("*prometheus.CounterVec"),
-		mock.AnythingOfType("*prometheus.CounterVec"),
+		mock.AnythingOfType("*prometheus.CounterVec"), // PegoutQuotesMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgMaxDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgAboveThresholdMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgCheckErrorsMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgAlertsMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerCountMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerMinThresholdMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerCheckErrors
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerAlerts
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)
@@ -211,4 +221,37 @@ func createWeiFromString(weiStr string) *entities.Wei {
 	val := new(big.Int)
 	val.SetString(weiStr, 10)
 	return entities.NewBigWei(val)
+}
+
+func TestMetrics_UpdateNodePeerStatus(t *testing.T) {
+	t.Run("should set peer count and threshold when below", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+		metrics.UpdateNodePeerStatus("bitcoin", 1, 3, true)
+		assert.InDelta(t, 1.0, getGaugeVecValue(metrics.NodePeerCountMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.NodePeerMinThresholdMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 1.0, getGaugeVecValue(metrics.NodePeerBelowThreshold, "bitcoin"), 0.0001)
+	})
+	t.Run("should set peer count and threshold when at or above", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+		metrics.UpdateNodePeerStatus("bitcoin", 5, 3, false)
+		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.NodePeerCountMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.NodePeerMinThresholdMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.NodePeerBelowThreshold, "bitcoin"), 0.0001)
+	})
+}
+
+func TestMetrics_IncrementNodePeerCheckError(t *testing.T) {
+	metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	metrics.IncrementNodePeerCheckError("bitcoin")
+	assert.InDelta(t, 1.0, getCounterVecValue(metrics.NodePeerCheckErrors, "bitcoin"), 0.0001)
+	metrics.IncrementNodePeerCheckError("bitcoin")
+	assert.InDelta(t, 2.0, getCounterVecValue(metrics.NodePeerCheckErrors, "bitcoin"), 0.0001)
+}
+
+func TestMetrics_IncrementNodePeerAlert(t *testing.T) {
+	metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	metrics.IncrementNodePeerAlert("bitcoin")
+	assert.InDelta(t, 1.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
+	metrics.IncrementNodePeerAlert("bitcoin")
+	assert.InDelta(t, 2.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
 }
