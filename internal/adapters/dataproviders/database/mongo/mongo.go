@@ -30,13 +30,13 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 		return nil, err
 	}
 	db := client.Database(DbName)
-	if err = createIndexes(ctx, db); err != nil {
-		return nil, err
-	}
 	if runMigrations {
-		if err = migrations.RunAll(ctx, &migrations.MongoDatabaseAdapter{DB: db}); err != nil {
+		if err = migrations.NewRunner(migrations.NewMongoDatabaseAdapter(db)).RunAll(ctx); err != nil {
 			return nil, err
 		}
+	}
+	if err = createIndexes(ctx, db); err != nil {
+		return nil, err
 	}
 	return client, nil
 }
@@ -56,6 +56,10 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		}
 		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
 	}
+	if err := createIndex(ctx, db, RetainedPegoutQuoteCollection, "bridge_rebalances.tx_hash"); err != nil {
+		return fmt.Errorf("error creating index on %s.bridge_rebalances.tx_hash: %w", RetainedPegoutQuoteCollection, err)
+	}
+	log.Infof("Created index on %s.bridge_rebalances.tx_hash", RetainedPegoutQuoteCollection)
 	return nil
 }
 
@@ -65,6 +69,16 @@ func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName, 
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: field, Value: 1}},
 			Options: options.Index().SetUnique(true),
+		},
+	)
+	return err
+}
+
+func createIndex(ctx context.Context, db *mongo.Database, collectionName, field string) error {
+	_, err := db.Collection(collectionName).Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{{Key: field, Value: 1}},
 		},
 	)
 	return err

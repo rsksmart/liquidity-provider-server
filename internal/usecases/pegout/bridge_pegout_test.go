@@ -128,6 +128,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 		BlockNumber:       uint64(1000),
 		From:              "0x123",
 		To:                test.AnyAddress,
+		Status:            true,
 		CumulativeGasUsed: big.NewInt(21000),
 		GasUsed:           big.NewInt(21000),
 		Value:             entities.NewWei(558),
@@ -145,8 +146,8 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(matchAllQuotesBridgeTxSucceeded)).
 		Return(nil).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -174,8 +175,8 @@ func testBridgePegoutUseCaseValueBelowMinimum(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(5000),
 	}).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -205,8 +206,8 @@ func testBridgePegoutUseCaseWalletBalanceError(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -236,8 +237,8 @@ func testBridgePegoutUseCaseWalletWithoutBalance(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -281,8 +282,8 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 		}
 		return true
 	})).Return(nil).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -326,8 +327,8 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.Anything).Return(errors.New("update error")).Once()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -351,15 +352,15 @@ func TestNewRebalanceHandler(t *testing.T) {
 	contracts := blockchain.RskContracts{Bridge: bridge}
 
 	t.Run("ALL_AT_ONCE returns AllAtOnceHandler", func(t *testing.T) {
-		handler := pegout.NewRebalanceHandler(pegout.AllAtOnce, pegoutRepository, wallet, contracts)
+		handler := pegout.NewRebalanceHandler(pegout.AllAtOnce, pegoutRepository, wallet, contracts, &sync.Mutex{})
 		assert.IsType(t, &pegout.AllAtOnceHandler{}, handler)
 	})
 	t.Run("UTXO_SPLIT returns UtxoSplitHandler", func(t *testing.T) {
-		handler := pegout.NewRebalanceHandler(pegout.UtxoSplit, pegoutRepository, wallet, contracts)
+		handler := pegout.NewRebalanceHandler(pegout.UtxoSplit, pegoutRepository, wallet, contracts, &sync.Mutex{})
 		assert.IsType(t, &pegout.UtxoSplitHandler{}, handler)
 	})
 	t.Run("unknown value defaults to AllAtOnceHandler", func(t *testing.T) {
-		handler := pegout.NewRebalanceHandler("UNKNOWN", pegoutRepository, wallet, contracts)
+		handler := pegout.NewRebalanceHandler("UNKNOWN", pegoutRepository, wallet, contracts, &sync.Mutex{})
 		assert.IsType(t, &pegout.AllAtOnceHandler{}, handler)
 	})
 }
@@ -396,11 +397,13 @@ func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderM
 		TransactionHash: "0xtx1", GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    entities.NewWei(358),
+		Status:   true,
 	}
 	receipt2 := blockchain.TransactionReceipt{
 		TransactionHash: "0xtx2", GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    entities.NewWei(200),
+		Status:   true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(358)) == 0
@@ -453,8 +456,8 @@ func assertUtxoSplitSuccessResult(t *testing.T, updatedQuotes []quote.RetainedPe
 
 func testUtxoSplitSuccess(t *testing.T) {
 	pegoutRepository, pegoutLp, wallet, mutex, bridge, updatedQuotes, testQuotes := setupUtxoSplitSuccess()
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), testQuotes[1], testQuotes[2], testQuotes[4])
 	require.NoError(t, err)
 	assertUtxoSplitSuccessResult(t, *updatedQuotes)
@@ -476,6 +479,7 @@ func testUtxoSplitNoSplitWhenN1(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(350),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(350)) == 0
@@ -495,8 +499,8 @@ func testUtxoSplitNoSplitWhenN1(t *testing.T) {
 			PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(200), CallFee: entities.NewWei(50), GasFee: entities.NewWei(100)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	pegoutRepository.AssertExpectations(t)
@@ -520,8 +524,8 @@ func testUtxoSplitBelowMinimum(t *testing.T) {
 			PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(100), CallFee: entities.NewWei(30), GasFee: entities.NewWei(20)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.ErrorIs(t, err, usecases.TxBelowMinimumError)
 	wallet.AssertNotCalled(t, "SendRbtc")
@@ -539,6 +543,7 @@ func testUtxoSplitExactMultiple(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(200),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(200)) == 0
@@ -558,8 +563,8 @@ func testUtxoSplitExactMultiple(t *testing.T) {
 			PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(100), GasFee: entities.NewWei(200)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	pegoutRepository.AssertExpectations(t)
@@ -578,6 +583,7 @@ func testUtxoSplitFailMidSplit(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(358),
+		Status:          true,
 	}
 	emptyReceipt := blockchain.TransactionReceipt{}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
@@ -602,8 +608,8 @@ func testUtxoSplitFailMidSplit(t *testing.T) {
 				updatedQuotes = append(updatedQuotes, q)
 			}
 		}).Return(nil)
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(context.Background(), testQuotes[1], testQuotes[2], testQuotes[4])
@@ -638,8 +644,8 @@ func testUtxoSplitInsufficientGas(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
 	}).Once()
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(context.Background(), testQuotes[1], testQuotes[2], testQuotes[4])
@@ -693,6 +699,7 @@ func runAmountIntegritySubtest(t *testing.T, total, bridgeMin *big.Int, wantN in
 		TransactionHash: test.AnyHash, GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    totalWei.Copy(),
+		Status:   true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).
 		Run(func(args mock.Arguments) {
@@ -718,8 +725,8 @@ func runAmountIntegritySubtest(t *testing.T, total, bridgeMin *big.Int, wantN in
 			PegoutQuote:   quote.PegoutQuote{Value: totalWei, CallFee: entities.NewWei(0), GasFee: entities.NewWei(0)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, walletMutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, walletMutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	assertAmountIntegrity(t, sentAmounts, total, bridgeMin, wantN)
@@ -797,6 +804,7 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(700),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(700)) == 0
@@ -824,8 +832,8 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 		{RetainedQuote: quote.RetainedPegoutQuote{QuoteHash: "span-02", State: quote.PegoutStateRefundPegOutSucceeded},
 			PegoutQuote: quote.PegoutQuote{Value: entities.NewWei(400), CallFee: zero, GasFee: zero}},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 
@@ -858,12 +866,14 @@ func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock,
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
+		Status:          true,
 	}
 	receipt2 := blockchain.TransactionReceipt{
 		TransactionHash: "0xmulti2",
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(300),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
@@ -917,8 +927,8 @@ func assertUtxoSplitQuoteSpansMultipleChunksResult(t *testing.T, updatedQuotes [
 
 func testUtxoSplitQuoteSpansMultipleChunks(t *testing.T) {
 	pegoutRepository, pegoutLp, wallet, mutex, bridge, customQuotes, updatedQuotes := setupUtxoSplitQuoteSpansMultipleChunks()
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	assertUtxoSplitQuoteSpansMultipleChunksResult(t, *updatedQuotes)
@@ -939,6 +949,7 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
@@ -959,8 +970,8 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 			PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(100), GasFee: entities.NewWei(100)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.ErrorContains(t, err, "db connection lost")
 	wallet.AssertExpectations(t)
@@ -979,6 +990,7 @@ func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mock
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
+		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
@@ -1039,8 +1051,8 @@ func assertUtxoSplitRetryWithRemainingResult(t *testing.T, updatedQuotes []quote
 
 func testUtxoSplitRetryWithRemaining(t *testing.T) {
 	pegoutRepository, wallet, pegoutLp, mutex, bridge, customQuotes, updatedQuotes := setupUtxoSplitRetryWithRemaining()
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	assertUtxoSplitRetryWithRemainingResult(t, *updatedQuotes)
@@ -1074,8 +1086,8 @@ func testUtxoSplitAllChunksFail(t *testing.T) {
 			PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(50), GasFee: entities.NewWei(50)},
 		},
 	}
-	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge})
-	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, mutex, handler)
+	handler := pegout.NewUtxoSplitHandler(pegoutRepository, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutLp, handler)
 	err := useCase.Run(context.Background(), customQuotes...)
 	require.NoError(t, err)
 	pegoutRepository.AssertNotCalled(t, "UpdateRetainedQuote")

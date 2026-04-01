@@ -80,10 +80,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection, externalClients)
 	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
 	mutexes := environment.NewApplicationMutexes()
-	useCaseRegistry, err := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
-	if err != nil {
-		log.Fatal("Error creating use case registry:", err)
-	}
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env:               env,

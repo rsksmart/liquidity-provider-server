@@ -82,7 +82,7 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return blockchain.TransactionReceipt{}, err
 	}
 
-	return wallet.buildTransactionReceipt(receipt, signedTx)
+	return wallet.buildTransactionReceipt(receipt, signedTx), nil
 }
 
 func (wallet *RskWalletImpl) validateAndPrepareSendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (common.Address, uint64, error) {
@@ -134,7 +134,7 @@ func (wallet *RskWalletImpl) sendAndAwaitTransaction(ctx context.Context, signed
 	return receipt, nil
 }
 
-func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *geth.Transaction) (blockchain.TransactionReceipt, error) {
+func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *geth.Transaction) blockchain.TransactionReceipt {
 	// Use the transaction directly to get the "To" address and the Value
 	toAddressStr := ""
 	txValue := entities.NewWei(0)
@@ -145,24 +145,19 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 		txValue = entities.NewBigWei(tx.Value())
 	}
 
-	transactionReceipt := blockchain.TransactionReceipt{
+	return blockchain.TransactionReceipt{
 		TransactionHash:   receipt.TxHash.String(),
 		BlockHash:         receipt.BlockHash.String(),
 		BlockNumber:       receipt.BlockNumber.Uint64(),
 		From:              wallet.Address().String(),
 		To:                toAddressStr,
+		Status:            receipt.Status == geth.ReceiptStatusSuccessful,
 		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
 		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
 		Value:             txValue,
 		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
 		Logs:              make([]blockchain.TransactionLog, 0),
 	}
-
-	if receipt.Status == 0 {
-		return transactionReceipt, fmt.Errorf("send rbtc error: transaction reverted (%s)", receipt.TxHash.String())
-	}
-
-	return transactionReceipt, nil
 }
 
 func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, error) {

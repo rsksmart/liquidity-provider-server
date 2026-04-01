@@ -55,6 +55,7 @@ type TransactionReceipt struct {
 	BlockNumber       uint64
 	From              string
 	To                string
+	Status            bool
 	CumulativeGasUsed *big.Int
 	GasUsed           *big.Int
 	Value             *entities.Wei

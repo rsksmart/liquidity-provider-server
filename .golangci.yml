@@ -6,6 +6,10 @@ issues:
   exclude-dirs:
     - internal/adapters/dataproviders/rootstock/bindings
     - test/mocks
+  exclude-rules:
+    - linters:
+        - staticcheck
+      text: "SA1019: .*\\.(BridgeRefundTxHash|BridgeRefundGasUsed|BridgeRefundGasPrice) is deprecated: superseded by BridgeRebalances;"
 linters:
   presets:
     - bugs

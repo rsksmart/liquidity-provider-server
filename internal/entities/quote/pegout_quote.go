@@ -134,19 +134,27 @@ type BridgeRebalanceAllocation struct {
 }
 
 type RetainedPegoutQuote struct {
-	QuoteHash            string                      `json:"quoteHash" bson:"quote_hash" validate:"required"`
-	DepositAddress       string                      `json:"depositAddress" bson:"deposit_address" validate:"required"`
-	Signature            string                      `json:"signature" bson:"signature" validate:"required"`
-	RequiredLiquidity    *entities.Wei               `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
-	State                PegoutState                 `json:"state" bson:"state" validate:"required"`
-	UserRskTxHash        string                      `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
-	LpBtcTxHash          string                      `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
-	RefundPegoutTxHash   string                      `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
-	BridgeRefundTxHash   string                      `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
-	BridgeRefundGasUsed  uint64                      `json:"bridgeRefundGasUsed" bson:"bridge_refund_gas_used"`
-	BridgeRefundGasPrice *entities.Wei               `json:"bridgeRefundGasPrice" bson:"bridge_refund_gas_price"`
-	RemainingToRefund    *entities.Wei               `json:"remainingToRefund,omitempty" bson:"remaining_to_refund,omitempty"`
-	BridgeRebalances     []BridgeRebalanceAllocation `json:"bridgeRebalances,omitempty" bson:"bridge_rebalances,omitempty"`
+	QuoteHash          string        `json:"quoteHash" bson:"quote_hash" validate:"required"`
+	DepositAddress     string        `json:"depositAddress" bson:"deposit_address" validate:"required"`
+	Signature          string        `json:"signature" bson:"signature" validate:"required"`
+	RequiredLiquidity  *entities.Wei `json:"requiredLiquidity" bson:"required_liquidity" validate:"required"`
+	State              PegoutState   `json:"state" bson:"state" validate:"required"`
+	UserRskTxHash      string        `json:"userRskTxHash" bson:"user_rsk_tx_hash"`
+	LpBtcTxHash        string        `json:"lpBtcTxHash" bson:"lp_btc_tx_hash"`
+	RefundPegoutTxHash string        `json:"refundPegoutTxHash" bson:"refund_pegout_tx_hash"`
+	// Deprecated: superseded by BridgeRebalances; kept for backwards compatibility with existing records.
+	BridgeRefundTxHash string `json:"BridgeRefundTxHash" bson:"bridge_refund_tx_hash"`
+	// Deprecated: superseded by BridgeRebalances; kept for backwards compatibility with existing records.
+	BridgeRefundGasUsed uint64 `json:"bridgeRefundGasUsed" bson:"bridge_refund_gas_used"`
+	// Deprecated: superseded by BridgeRebalances; kept for backwards compatibility with existing records.
+	BridgeRefundGasPrice *entities.Wei `json:"bridgeRefundGasPrice" bson:"bridge_refund_gas_price"`
+	// RemainingToRefund tracks how much of the quote's total value (Value + CallFee + GasFee) still needs
+	// to be covered by bridge refund transactions. It is initialized to quote.Total() when the quote is
+	// accepted and decremented as each bridge refund transaction covers a portion of the amount. When it
+	// reaches zero the quote transitions to PegoutStateBridgeTxSucceeded. A nil value is treated as
+	// quote.Total() for backwards compatibility with records created before this field was introduced.
+	RemainingToRefund    *entities.Wei               `json:"remainingToRefund" bson:"remaining_to_refund"`
+	BridgeRebalances     []BridgeRebalanceAllocation `json:"bridgeRebalances" bson:"bridge_rebalances"`
 	RefundPegoutGasUsed  uint64                      `json:"refundPegoutGasUsed" bson:"refund_pegout_gas_used"`
 	RefundPegoutGasPrice *entities.Wei               `json:"refundPegoutGasPrice" bson:"refund_pegout_gas_price"`
 	SendPegoutBtcFee     *entities.Wei               `json:"sendPegoutBtcFee" bson:"send_pegout_btc_fee"`
@@ -176,6 +184,13 @@ type WatchedPegoutQuote struct {
 
 func NewWatchedPegoutQuote(pegoutQuote PegoutQuote, retainedQuote RetainedPegoutQuote, creationData PegoutCreationData) WatchedPegoutQuote {
 	return WatchedPegoutQuote{PegoutQuote: pegoutQuote, RetainedQuote: retainedQuote, CreationData: creationData}
+}
+
+func (wq WatchedPegoutQuote) Remaining() *entities.Wei {
+	if wq.RetainedQuote.RemainingToRefund != nil {
+		return wq.RetainedQuote.RemainingToRefund.Copy()
+	}
+	return wq.PegoutQuote.Total()
 }
 
 type AcceptedPegoutQuoteEvent struct {
@@ -218,4 +233,30 @@ type PegoutBtcSentToUserEvent struct {
 type PegoutQuoteWithRetained struct {
 	Quote         PegoutQuote
 	RetainedQuote RetainedPegoutQuote
+}
+
+// SetDeprecatedRefundFields backfills the legacy BridgeRefundTx* fields from the first entry
+// in BridgeRebalances for backwards compatibility. It is a no-op when BridgeRebalances is empty
+// or the field is already set.
+func (r *RetainedPegoutQuote) SetDeprecatedRefundFields() {
+	if len(r.BridgeRebalances) == 0 || r.BridgeRefundTxHash != "" {
+		return
+	}
+	first := r.BridgeRebalances[0]
+	r.BridgeRefundTxHash = first.TxHash
+	r.BridgeRefundGasUsed = first.GasUsed
+	r.BridgeRefundGasPrice = first.GasPrice
+}
+
+// AppendRebalanceAllocation records a bridge rebalance transaction against this retained quote.
+// A zero txHash is ignored (no-op).
+func (r *RetainedPegoutQuote) AppendRebalanceAllocation(txHash string, gasUsed uint64, gasPrice *entities.Wei) {
+	if txHash == "" {
+		return
+	}
+	r.BridgeRebalances = append(r.BridgeRebalances, BridgeRebalanceAllocation{
+		TxHash:   txHash,
+		GasUsed:  gasUsed,
+		GasPrice: gasPrice,
+	})
 }

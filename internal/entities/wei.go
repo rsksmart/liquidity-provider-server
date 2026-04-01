@@ -187,3 +187,12 @@ func (w *Wei) Div(x, y *Wei) (*Wei, error) {
 	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
 	return w, nil
 }
+
+func (w *Wei) Min(x, y *Wei) *Wei {
+	if x.Cmp(y) <= 0 {
+		w.AsBigInt().Set(x.AsBigInt())
+	} else {
+		w.AsBigInt().Set(y.AsBigInt())
+	}
+	return w
+}

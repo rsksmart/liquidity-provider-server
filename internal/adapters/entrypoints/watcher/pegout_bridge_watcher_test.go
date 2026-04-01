@@ -35,8 +35,8 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	mutexes := environment.NewApplicationMutexes()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, rskWallet, blockchain.RskContracts{Bridge: bridge})
-	bridgeUseCase := pegout.NewBridgePegoutUseCase(providerMock, mutexes.RskWalletMutex(), handler)
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, rskWallet, blockchain.RskContracts{Bridge: bridge}, mutexes.RskWalletMutex())
+	bridgeUseCase := pegout.NewBridgePegoutUseCase(providerMock, handler)
 	getUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 	bridgeWatcher := watcher.NewPegoutBridgeWatcher(getUseCase, bridgeUseCase, ticker)
 	resetMocks := func() {

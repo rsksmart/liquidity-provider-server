@@ -92,7 +92,7 @@ func NewUseCaseRegistry(
 	liquidityProvider *dataproviders.LocalLiquidityProvider,
 	messaging *Messaging,
 	mutexes entities.ApplicationMutexes,
-) (*UseCaseRegistry, error) {
+) *UseCaseRegistry {
 	return &UseCaseRegistry{
 		summariesUseCase: reports.NewSummariesUseCase(
 			databaseRegistry.PeginRepository,
@@ -255,12 +255,12 @@ func NewUseCaseRegistry(
 		),
 		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(
 			liquidityProvider,
-			mutexes.RskWalletMutex(),
 			pegout.NewRebalanceHandler(
 				pegout.RebalanceStrategy(env.Pegout.RebalanceStrategy),
 				databaseRegistry.PegoutRepository,
 				rskRegistry.Wallet,
 				rskRegistry.Contracts,
+				mutexes.RskWalletMutex(),
 			),
 		),
 		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
@@ -351,7 +351,7 @@ func NewUseCaseRegistry(
 			messaging.Rpc,
 			utils.Scale,
 		),
-	}, nil
+	}
 }
 
 func (registry *UseCaseRegistry) GetPeginQuoteUseCase() *pegin.GetQuoteUseCase {

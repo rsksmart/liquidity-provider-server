@@ -54,8 +54,7 @@ func TestNewWatcherRegistry(t *testing.T) {
 		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
 		lp := registry.NewLiquidityProvider(dbRegistry, rskRegistry, btcRegistry, messagingRegistry)
 		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry, err := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
-		require.NoError(t, err)
+		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
 
 		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lp, messagingRegistry, watcher.NewApplicationTickers(), environment.DefaultTimeouts())
 

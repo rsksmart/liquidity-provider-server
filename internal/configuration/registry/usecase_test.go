@@ -56,8 +56,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		lp := registry.NewLiquidityProvider(dbRegistry, rskRegistry, btcRegistry, messagingRegistry)
 		mutexes := environment.NewApplicationMutexes()
 
-		useCaseRegistry, err := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
-		require.NoError(t, err)
+		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {

@@ -38,6 +38,7 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		BlockNumber:       receipt.BlockNumber.Uint64(),
 		From:              from.String(),
 		To:                tx.To().String(),
+		Status:            receipt.Status == geth.ReceiptStatusSuccessful,
 		CumulativeGasUsed: cumulativeGasUsed,
 		GasUsed:           gasUsed,
 		Value:             entities.NewBigWei(tx.Value()),
