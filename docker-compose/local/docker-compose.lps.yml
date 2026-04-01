@@ -89,6 +89,8 @@ services:
       - BTC_RELEASE_CHECK_TIMEOUT
       - REBALANCE_STRATEGY
       - RUN_DB_MIGRATIONS
+      - RSK_MIN_PEERS
+      - BITCOIN_MIN_PEERS
     ports:
       - "8080:8080"
     volumes:

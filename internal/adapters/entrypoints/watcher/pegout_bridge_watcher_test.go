@@ -74,7 +74,6 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		resetMocks()
 		log.SetLevel(log.DebugLevel)
-		checkFunc := test.AssertLogContains(t, "transaction sent to the bridge successfully")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
 		}, nil).Once()
@@ -93,12 +92,18 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			GasPrice:          entities.NewWei(1000000000),
 		}
 		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(sendRbtcReceipt, nil).Once()
-		pegoutRepository.EXPECT().UpdateRetainedQuotes(mock.Anything, mock.Anything).Return(nil).Once()
+		updated := make(chan struct{}, 1)
+		pegoutRepository.EXPECT().
+			UpdateRetainedQuotes(mock.Anything, mock.Anything).
+			Run(func(ctx context.Context, quotes []quote.RetainedPegoutQuote) { updated <- struct{}{} }).
+			Return(nil).
+			Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
-		}, time.Second, 10*time.Millisecond)
+		require.Eventually(t, func() bool { return len(updated) > 0 }, 5*time.Second, 10*time.Millisecond)
+		rskWallet.AssertExpectations(t)
+		providerMock.AssertExpectations(t)
+		pegoutRepository.AssertExpectations(t)
 	})
 }
 

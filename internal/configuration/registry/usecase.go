@@ -2,6 +2,7 @@ package registry
 
 import (
 	"sync"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
@@ -19,6 +20,8 @@ import (
 )
 
 var signingHashFunction = crypto.Keccak256
+
+const nodePeerAlertCooldown = 30 * time.Minute
 
 type UseCaseRegistry struct {
 	getPeginQuoteUseCase          *pegin.GetQuoteUseCase
@@ -77,6 +80,7 @@ type UseCaseRegistry struct {
 	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
 	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	nodePeerCheckUseCase          *watcher.NodePeerCheckUseCase
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
 	recommendedPeginUseCase       *pegin.RecommendedPeginUseCase
@@ -332,6 +336,15 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 			&sync.Mutex{},
+		),
+		nodePeerCheckUseCase: watcher.NewNodePeerCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Btc.FillWithDefaults().MinPeers,
+			env.Rsk.FillWithDefaults().MinPeers,
+			nodePeerAlertCooldown,
 		),
 		updateBtcReleaseUseCase: pegout.NewUpdateBtcReleaseUseCase(
 			databaseRegistry.PegoutRepository,

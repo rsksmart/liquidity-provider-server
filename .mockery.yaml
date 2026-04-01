@@ -115,9 +115,15 @@ packages:
     interfaces:
       EclipseCheckUseCase:
       UpdateBtcReleaseUseCase:
+      NodePeerCheckUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
     interfaces:
       GetAssetReportUseCase:
   github.com/prometheus/client_golang/prometheus:
     interfaces:
       Registerer:
+  github.com/ethereum/go-ethereum/accounts/abi/bind/v2:
+    interfaces:
+      ContractTransactor:
+      ContractCaller:
+      ContractFilterer:

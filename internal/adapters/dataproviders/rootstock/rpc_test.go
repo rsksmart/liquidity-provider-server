@@ -470,3 +470,24 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		client.AssertExpectations(t)
 	})
 }
+
+func TestRskjRpcServer_PeerCount(t *testing.T) {
+	t.Run("should return peer count", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().PeerCount(mock.Anything).Return(uint64(5), nil)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		count, err := rpc.PeerCount(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, uint64(5), count)
+		client.AssertExpectations(t)
+	})
+	t.Run("should handle errors", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().PeerCount(mock.Anything).Return(uint64(0), assert.AnError)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		count, err := rpc.PeerCount(context.Background())
+		require.Error(t, err)
+		assert.Equal(t, uint64(0), count)
+		client.AssertExpectations(t)
+	})
+}

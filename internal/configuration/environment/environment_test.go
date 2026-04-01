@@ -35,6 +35,32 @@ func TestBtcEnv_GetNetworkParams(t *testing.T) {
 	})
 }
 
+func TestBtcEnv_FillWithDefaults(t *testing.T) {
+	t.Run("should fill with default min peers when zero", func(t *testing.T) {
+		env := &environment.BtcEnv{MinPeers: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(5), defaults.MinPeers)
+	})
+	t.Run("should keep custom min peers when set", func(t *testing.T) {
+		env := &environment.BtcEnv{MinPeers: 10}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(10), defaults.MinPeers)
+	})
+}
+
+func TestRskEnv_FillWithDefaults(t *testing.T) {
+	t.Run("should fill with default min peers when zero", func(t *testing.T) {
+		env := &environment.RskEnv{MinPeers: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(3), defaults.MinPeers)
+	})
+	t.Run("should keep custom min peers when set", func(t *testing.T) {
+		env := &environment.RskEnv{MinPeers: 10}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(10), defaults.MinPeers)
+	})
+}
+
 func TestEclipseEnv_FillWithDefaults(t *testing.T) {
 	env := &environment.EclipseEnv{
 		RskToleranceThreshold:    0,
