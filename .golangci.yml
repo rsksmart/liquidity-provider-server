@@ -11,6 +11,10 @@ issues:
     - internal/adapters/dataproviders/rootstock/bindings/flyover
     - internal/adapters/dataproviders/rootstock/bindings/bridge
     - test/mocks
+  exclude-rules:
+    - linters:
+        - staticcheck
+      text: "SA1019: .*\\.(BridgeRefundTxHash|BridgeRefundGasUsed|BridgeRefundGasPrice) is deprecated: superseded by BridgeRebalances;"
 linters:
   presets:
     - bugs

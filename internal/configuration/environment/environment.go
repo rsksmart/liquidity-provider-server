@@ -31,10 +31,11 @@ type Environment struct {
 }
 
 type MongoEnv struct {
-	Username string `env:"MONGODB_USER" validate:"required"`
-	Password string `env:"MONGODB_PASSWORD" validate:"required"`
-	Host     string `env:"MONGODB_HOST" validate:"required"`
-	Port     uint   `env:"MONGODB_PORT" validate:"required"`
+	Username      string `env:"MONGODB_USER" validate:"required"`
+	Password      string `env:"MONGODB_PASSWORD" validate:"required"`
+	Host          string `env:"MONGODB_HOST" validate:"required"`
+	Port          uint   `env:"MONGODB_PORT" validate:"required"`
+	RunMigrations bool   `env:"RUN_DB_MIGRATIONS"`
 }
 
 type RskEnv struct {
@@ -182,6 +183,7 @@ type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
 	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
 	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
+	RebalanceStrategy           string `env:"REBALANCE_STRATEGY" validate:"oneof=ALL_AT_ONCE UTXO_SPLIT"`
 }
 
 type CaptchaEnv struct {

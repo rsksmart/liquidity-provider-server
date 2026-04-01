@@ -29,7 +29,8 @@ func TestNewUseCaseRegistry(t *testing.T) {
 				PegoutContractAddress:       "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
 				BridgeAddress:               "0x0000000000000000000000000000000001000006",
 			},
-			Btc: environment.BtcEnv{Network: "testnet"},
+			Btc:    environment.BtcEnv{Network: "testnet"},
+			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 		}
 
 		client := &mocks.DbClientBindingMock{}
@@ -56,7 +57,6 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		mutexes := environment.NewApplicationMutexes()
 
 		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lp, messagingRegistry, mutexes)
-
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {
