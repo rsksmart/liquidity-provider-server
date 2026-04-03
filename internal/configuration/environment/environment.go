@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -155,11 +156,18 @@ func (env *BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
 }
 
 type ProviderEnv struct {
-	AlertSenderEmail    string `env:"ALERT_SENDER_EMAIL"  validate:"required"`
-	AlertRecipientEmail string `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
-	Name                string `env:"PROVIDER_NAME"  validate:"required"`
-	ApiBaseUrl          string `env:"BASE_URL"  validate:"required"`
-	ProviderTypeName    string `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+	AlertSenderEmail                string `env:"ALERT_SENDER_EMAIL"  validate:"required"`
+	AlertRecipientEmail             string `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
+	Name                            string `env:"PROVIDER_NAME"  validate:"required"`
+	ApiBaseUrl                      string `env:"BASE_URL"  validate:"required"`
+	ProviderTypeName                string `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+	RegistrationPollIntervalSeconds uint64 `env:"LP_REGISTRATION_POLL_INTERVAL_SECONDS"`
+}
+
+func (env *ProviderEnv) FillWithDefaults() *ProviderEnv {
+	const defaultRegistrationPollIntervalSeconds uint64 = 30
+	env.RegistrationPollIntervalSeconds = utils.FirstNonZero(env.RegistrationPollIntervalSeconds, defaultRegistrationPollIntervalSeconds)
+	return env
 }
 
 func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {

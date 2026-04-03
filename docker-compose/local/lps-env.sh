@@ -199,6 +199,8 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 
   # Path to liquidity-bridge-contract repo for Foundry deployment
   LBC_REPO_PATH="${LBC_REPO_PATH:-$HOME/liquidity-bridge-contract}"
+  # Branch to use for deployment (defaults to QA-Test)
+  LBC_BRANCH="${LBC_BRANCH:-QA-Test}"
   # Private key for local deployment (default Hardhat/Foundry test key)
   DEPLOYER_PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
   DEPLOYER_ADDRESS="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -253,9 +255,9 @@ if [ "$LPS_STAGE" = "regtest" ]; then
 
     # Save current branch and checkout the deployment script branch
     ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    echo "Switching to QA-Test branch for deployment..."
-    git fetch origin QA-Test 2>/dev/null || true
-    git checkout QA-Test 2>/dev/null || git checkout -b QA-Test origin/QA-Test
+    echo "Switching to $LBC_BRANCH branch for deployment..."
+    git fetch origin "$LBC_BRANCH" 2>/dev/null || true
+    git checkout "$LBC_BRANCH" 2>/dev/null || git checkout -b "$LBC_BRANCH" "origin/$LBC_BRANCH"
 
     echo "Running Foundry deployment script..."
     export DEV_SIGNER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY"
@@ -374,6 +376,52 @@ fi
 # start LPS
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml build lps
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml up -d lps
+
+if [ "$LPS_STAGE" = "regtest" ]; then
+  # LBC_REGISTRATION_DECISION: "approve" (default) or "reject" to test negative flow
+  LBC_REGISTRATION_DECISION="${LBC_REGISTRATION_DECISION:-approve}"
+
+  echo "Waiting for LPS to submit registration request..."
+  DECISION_DONE=false
+  for _ in $(seq 1 30); do
+    sleep 2
+    REG_STATE=$(cast call "$DISCOVERY_ADDRESS" "getRegistrationState(address)(uint8)" "$LIQUIDITY_PROVIDER_RSK_ADDR" \
+      --rpc-url http://127.0.0.1:4444 2>/dev/null || echo "error")
+    if [ "$REG_STATE" = "1" ]; then
+      if [ "$LBC_REGISTRATION_DECISION" = "reject" ]; then
+        echo "LPS registration is pending, rejecting (LBC_REGISTRATION_DECISION=reject)..."
+        cast send "$DISCOVERY_ADDRESS" "rejectRegistration(address)" "$LIQUIDITY_PROVIDER_RSK_ADDR" \
+          --rpc-url http://127.0.0.1:4444 \
+          --private-key "$DEPLOYER_PRIVATE_KEY" \
+          --legacy \
+          --quiet
+        echo "LPS registration rejected!"
+      else
+        echo "LPS registration is pending, restarting lps01 to verify pending state is handled correctly on restart..."
+        docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.lps.yml restart lps
+        echo "lps01 restarted, waiting for it to detect pending state..."
+        sleep 10
+        echo "Approving registration..."
+        cast send "$DISCOVERY_ADDRESS" "approveRegistration(address)" "$LIQUIDITY_PROVIDER_RSK_ADDR" \
+          --rpc-url http://127.0.0.1:4444 \
+          --private-key "$DEPLOYER_PRIVATE_KEY" \
+          --legacy \
+          --quiet
+        echo "LPS registration approved!"
+      fi
+      DECISION_DONE=true
+      break
+    elif [ "$REG_STATE" = "2" ]; then
+      echo "LPS registration already approved"
+      DECISION_DONE=true
+      break
+    fi
+    echo "  Registration state: $REG_STATE, waiting..."
+  done
+  if [ "$DECISION_DONE" = false ]; then
+    echo "WARNING: Could not process LPS registration within timeout"
+  fi
+fi
 
 FAIL=true
 for _ in $(seq 1 10);

@@ -129,8 +129,8 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 
 	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType())
 	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)
-	if errors.Is(err, usecases.AlreadyRegisteredError) {
-		log.Info("Provider already registered")
+	if errors.Is(err, usecases.RegistrationRejectedError) {
+		log.Fatal("Registration rejected by admin. Contact an admin to approve your registration before restarting.")
 	} else if err != nil {
 		log.Fatal("Error registering provider: ", err)
 	} else {
