@@ -544,3 +544,52 @@ func TestDiscoveryContractImpl_PausedStatus(t *testing.T) {
 	})
 	contractMock.caller.AssertExpectations(t)
 }
+
+// nolint:funlen
+func TestDiscoveryContractImpl_GetRegistrationState(t *testing.T) {
+	contractMock := createBoundContractMock()
+	discoveryBinding := bindings.NewFlyoverDiscovery()
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	callData, err := discoveryBinding.TryPackGetRegistrationState(parsedAddress)
+	require.NoError(t, err)
+
+	stateCases := []struct {
+		name  string
+		state blockchain.RegistrationState
+	}{
+		{"None", blockchain.RegistrationStateNone},
+		{"Pending", blockchain.RegistrationStatePending},
+		{"Approved", blockchain.RegistrationStateApproved},
+		{"Rejected", blockchain.RegistrationStateRejected},
+		{"Withdrawn", blockchain.RegistrationStateWithdrawn},
+	}
+	for _, tc := range stateCases {
+		t.Run("Success state "+tc.name, func(t *testing.T) {
+			contractMock.caller.EXPECT().CallContract(
+				mock.Anything,
+				matchCallData(callData),
+				mock.Anything,
+			).Return(mustPackUint8(t, uint8(tc.state)), nil).Once()
+			result, err := discovery.GetRegistrationState(parsedAddress.String())
+			require.NoError(t, err)
+			assert.Equal(t, tc.state, result)
+			contractMock.caller.AssertExpectations(t)
+		})
+	}
+	t.Run("Error handling on GetRegistrationState call fail", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := discovery.GetRegistrationState(parsedAddress.String())
+		require.Error(t, err)
+		assert.Equal(t, blockchain.RegistrationStateNone, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("Invalid address", func(t *testing.T) {
+		result, err := discovery.GetRegistrationState(test.AnyString)
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+		assert.Equal(t, blockchain.RegistrationStateNone, result)
+	})
+}

@@ -262,6 +262,27 @@ func (discovery *discoveryContractImpl) PausedStatus() (blockchain.PauseStatus, 
 	}, nil
 }
 
+func (discovery *discoveryContractImpl) GetRegistrationState(address string) (blockchain.RegistrationState, error) {
+	var parsedAddress common.Address
+	if err := ParseAddress(&parsedAddress, address); err != nil {
+		return blockchain.RegistrationStateNone, err
+	}
+
+	opts := &bind.CallOpts{}
+	raw, err := rskRetry(discovery.retryParams.Retries, discovery.retryParams.Sleep,
+		func() (uint8, error) {
+			callData, dataErr := discovery.binding.TryPackGetRegistrationState(parsedAddress)
+			if dataErr != nil {
+				return 0, dataErr
+			}
+			return bind.Call(discovery.contract, opts, callData, discovery.binding.UnpackGetRegistrationState)
+		})
+	if err != nil {
+		return blockchain.RegistrationStateNone, fmt.Errorf("error getting registration state: %w", err)
+	}
+	return blockchain.RegistrationState(raw), nil
+}
+
 func (discovery *discoveryContractImpl) toContractProviderType(providerType liquidity_provider.ProviderType) (uint8, error) {
 	if !providerType.IsValid() {
 		return 0, liquidity_provider.InvalidProviderTypeError

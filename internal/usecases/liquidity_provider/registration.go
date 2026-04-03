@@ -1,6 +1,8 @@
 package liquidity_provider
 
 import (
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -9,12 +11,21 @@ import (
 )
 
 type RegistrationUseCase struct {
-	contracts blockchain.RskContracts
-	provider  liquidity_provider.LiquidityProvider
+	contracts    blockchain.RskContracts
+	provider     liquidity_provider.LiquidityProvider
+	pollInterval time.Duration
 }
 
-func NewRegistrationUseCase(contracts blockchain.RskContracts, provider liquidity_provider.LiquidityProvider) *RegistrationUseCase {
-	return &RegistrationUseCase{contracts: contracts, provider: provider}
+func NewRegistrationUseCase(
+	contracts blockchain.RskContracts,
+	provider liquidity_provider.LiquidityProvider,
+	pollInterval time.Duration,
+) *RegistrationUseCase {
+	return &RegistrationUseCase{
+		contracts:    contracts,
+		provider:     provider,
+		pollInterval: pollInterval,
+	}
 }
 
 type collateralInfo struct {
@@ -28,75 +39,83 @@ type operationalInfo struct {
 	operationalForPegout bool
 }
 
-type addedCollateralInfo struct {
-	pegin  bool
-	pegout bool
-}
-
 func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationParams) (int64, error) {
-	var collateral collateralInfo
-	var operational operationalInfo
-	var addedCollateral addedCollateralInfo
-	var addedPeginCollateral, addedPegoutCollateral bool
-	var err error
-
-	if err = usecases.CheckPauseState(useCase.contracts.Discovery, useCase.contracts.CollateralManagement); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-
-	if err = useCase.validateParams(params); err != nil {
-		return 0, err
-	}
-
-	if collateral, err = useCase.getCollateralInfo(); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	if operational, err = useCase.getOperationalInfo(); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-
-	if useCase.isProviderOperational(params.Type, operational) {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
-	}
-
-	addedPeginCollateral, err = useCase.addPeginCollateral(params, operational, collateral)
+	state, err := useCase.contracts.Discovery.GetRegistrationState(useCase.provider.RskAddress())
 	if err != nil {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
-	addedCollateral.pegin = addedPeginCollateral
-	if useCase.isProviderReady(addedCollateral, operational) {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
+	switch state {
+	case blockchain.RegistrationStateApproved:
+		return useCase.handleApproved()
+	case blockchain.RegistrationStatePending:
+		return useCase.handlePending()
+	case blockchain.RegistrationStateRejected:
+		return useCase.handleRejected()
+	default:
+		return useCase.handleNoneOrWithdrawn(params)
 	}
-
-	addedPegoutCollateral, err = useCase.addPegoutCollateral(params, operational, collateral)
-	if err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	addedCollateral.pegout = addedPegoutCollateral
-	if useCase.isProviderReady(addedCollateral, operational) {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.AlreadyRegisteredError)
-	}
-
-	log.Debug("Registering new provider...")
-	return useCase.registerProvider(params, collateral)
 }
 
-func (useCase *RegistrationUseCase) isProviderReady(addedCollateral addedCollateralInfo, operational operationalInfo) bool {
+func (useCase *RegistrationUseCase) handleApproved() (int64, error) {
 	provider, err := useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
 	if err != nil {
-		return false
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
+	return int64(provider.Id), nil
+}
 
-	readyForPegin := operational.operationalForPegin || (!operational.operationalForPegin && addedCollateral.pegin)
-	if provider.ProviderType.AcceptsPegin() && !readyForPegin {
-		return false
-	}
+func (useCase *RegistrationUseCase) handlePending() (int64, error) {
+	log.Info("Registration pending admin approval, waiting...")
+	return useCase.waitForApproval()
+}
 
-	readyForPegout := operational.operationalForPegout || (!operational.operationalForPegout && addedCollateral.pegout)
-	if provider.ProviderType.AcceptsPegout() && !readyForPegout {
-		return false
+func (useCase *RegistrationUseCase) handleRejected() (int64, error) {
+	log.Error("Registration rejected by admin. Contact an admin to approve your registration before restarting.")
+	return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.RegistrationRejectedError)
+}
+
+func (useCase *RegistrationUseCase) handleNoneOrWithdrawn(params blockchain.ProviderRegistrationParams) (int64, error) {
+	if err := usecases.CheckPauseState(useCase.contracts.Discovery, useCase.contracts.CollateralManagement); err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
-	return true
+	if err := useCase.validateParams(params); err != nil {
+		return 0, err
+	}
+	collateral, err := useCase.getCollateralInfo()
+	if err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+	operational, err := useCase.getOperationalInfo()
+	if err != nil {
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+	if _, err = useCase.addPeginCollateral(params, operational, collateral); err != nil {
+		return 0, err
+	}
+	if _, err = useCase.addPegoutCollateral(params, operational, collateral); err != nil {
+		return 0, err
+	}
+	log.Debug("Registering new provider...")
+	if _, err = useCase.registerProvider(params, collateral); err != nil {
+		return 0, err
+	}
+	log.Info("Registration submitted, waiting for admin approval...")
+	return useCase.waitForApproval()
+}
+
+func (useCase *RegistrationUseCase) waitForApproval() (int64, error) {
+	for {
+		state, err := useCase.contracts.Discovery.GetRegistrationState(useCase.provider.RskAddress())
+		if err != nil {
+			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+		}
+		if state == blockchain.RegistrationStateApproved {
+			return useCase.handleApproved()
+		} else if state == blockchain.RegistrationStateRejected {
+			return useCase.handleRejected()
+		}
+		time.Sleep(useCase.pollInterval)
+	}
 }
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {
@@ -125,21 +144,13 @@ func (useCase *RegistrationUseCase) getOperationalInfo() (operationalInfo, error
 	if operationalForPegin, err = useCase.contracts.Discovery.IsOperational(liquidity_provider.PeginProvider, useCase.provider.RskAddress()); err != nil {
 		return operationalInfo{}, err
 	}
-
 	if operationalForPegout, err = useCase.contracts.Discovery.IsOperational(liquidity_provider.PegoutProvider, useCase.provider.RskAddress()); err != nil {
 		return operationalInfo{}, err
 	}
-
 	return operationalInfo{
 		operationalForPegin:  operationalForPegin,
 		operationalForPegout: operationalForPegout,
 	}, nil
-}
-
-func (useCase *RegistrationUseCase) isProviderOperational(providerType liquidity_provider.ProviderType, operational operationalInfo) bool {
-	return (providerType == liquidity_provider.FullProvider && operational.operationalForPegin && operational.operationalForPegout) ||
-		(providerType == liquidity_provider.PeginProvider && operational.operationalForPegin) ||
-		(providerType == liquidity_provider.PegoutProvider && operational.operationalForPegout)
 }
 
 func (useCase *RegistrationUseCase) registerProvider(params blockchain.ProviderRegistrationParams, collateral collateralInfo) (int64, error) {
@@ -167,17 +178,15 @@ func (useCase *RegistrationUseCase) addPeginCollateral(
 	operational operationalInfo,
 	collateral collateralInfo,
 ) (bool, error) {
-	var err error
 	if !(params.Type.AcceptsPegin() && !operational.operationalForPegin && collateral.peginCollateral.Cmp(entities.NewWei(0)) != 0) {
 		return false, nil
 	}
 	collateralToAdd := new(entities.Wei)
 	log.Debug("Adding pegin collateral...")
-	if err = useCase.contracts.CollateralManagement.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
+	if err := useCase.contracts.CollateralManagement.AddCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.peginCollateral)); err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	} else {
-		return true, nil
 	}
+	return true, nil
 }
 
 func (useCase *RegistrationUseCase) addPegoutCollateral(
@@ -185,15 +194,13 @@ func (useCase *RegistrationUseCase) addPegoutCollateral(
 	operational operationalInfo,
 	collateral collateralInfo,
 ) (bool, error) {
-	var err error
 	if !(params.Type.AcceptsPegout() && !operational.operationalForPegout && collateral.pegoutCollateral.Cmp(entities.NewWei(0)) != 0) {
 		return false, nil
 	}
 	collateralToAdd := new(entities.Wei)
 	log.Debug("Adding pegout collateral...")
-	if err = useCase.contracts.CollateralManagement.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
+	if err := useCase.contracts.CollateralManagement.AddPegoutCollateral(collateralToAdd.Sub(collateral.minimumCollateral, collateral.pegoutCollateral)); err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	} else {
-		return true, nil
 	}
+	return true, nil
 }

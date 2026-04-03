@@ -113,6 +113,7 @@ func NewUseCaseRegistry(
 		registerProviderUseCase: liquidity_provider.NewRegistrationUseCase(
 			rskRegistry.Contracts,
 			liquidityProvider,
+			time.Duration(env.Provider.FillWithDefaults().RegistrationPollIntervalSeconds)*time.Second,
 		),
 		callForUserUseCase: pegin.NewCallForUserUseCase(
 			rskRegistry.Contracts,

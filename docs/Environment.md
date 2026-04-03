@@ -40,6 +40,7 @@ These are the environment variables required by the liquidity provider server (L
 | `PROVIDER_NAME` | The liquidity provider name to be registered in the liquidity bridge contract. | `Default provider` | YES |
 | `BASE_URL` | URL of the LPS to register in the liquidity bridge contract. | `http://localhost:8080` | YES |
 | `PROVIDER_TYPE` | Whether the liquidity provider will provide for pegin, pegout or both operations. | One of the following: `pegin`, `pegout`, `both` | YES |
+| `LP_REGISTRATION_POLL_INTERVAL_SECONDS` | How often (in seconds) the server polls the discovery contract for registration approval while waiting for an admin to approve the registration. | `30` | NO |
 | `PEGOUT_DEPOSIT_CACHE_START_BLOCK` | If provided, the LPS will upsert into the database all the pegout deposits that were done from this block to the current one. | `500` | NO |
 | `CAPTCHA_SECRET_KEY` | Captcha key used in the server to validate client requests. | `<a captcha secret>` | NO |
 | `CAPTCHA_SITE_KEY` | Captcha key used by the client to perform the challenge. | `<a captcha site key>` | NO |
