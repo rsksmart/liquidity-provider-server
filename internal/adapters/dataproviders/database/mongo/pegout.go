@@ -39,6 +39,13 @@ type pegoutMongoRepository struct {
 	conn *Connection
 }
 
+// pegoutQuoteWithRetainedAggDoc decodes pegout quote aggregation rows after $lookup and $unwind on "retained"
+// (e.g. ListQuotesByDateRange, GetQuotesWithRetainedByStateAndDate).
+type pegoutQuoteWithRetainedAggDoc struct {
+	StoredPegoutQuote `bson:",inline"`
+	Retained          quote.RetainedPegoutQuote `bson:"retained"`
+}
+
 func NewPegoutMongoRepository(conn *Connection) quote.PegoutQuoteRepository {
 	return &pegoutMongoRepository{conn: conn}
 }
@@ -423,120 +430,108 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	// Fetch quotes with pagination
-	storedQuotes, err := repo.fetchQuotesByDateRange(dbCtx, startDate, endDate, page, perPage)
+	dateMatch := repo.listQuotesByDateRangeDateMatch(startDate, endDate)
+	total, err := repo.countQuotesWithRetainedInDateRange(dbCtx, dateMatch)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	if len(storedQuotes) == 0 {
-		result := make([]quote.PegoutQuoteWithRetained, 0)
-		logDbInteraction(Read, result)
-		return result, 0, nil
+	if total == 0 {
+		empty := make([]quote.PegoutQuoteWithRetained, 0)
+		logDbInteraction(Read, empty)
+		return empty, 0, nil
 	}
 
-	// Build initial result structure with quotes
-	result, quoteHashes := repo.buildQuoteResults(storedQuotes)
+	dataPipeline := append(repo.listQuotesByDateRangePipelinePrefix(dateMatch),
+		bson.D{{Key: "$unwind", Value: "$retained"}},
+		bson.D{{Key: "$sort", Value: bson.D{{Key: "agreement_timestamp", Value: SortAscending}}}},
+	)
+	if page > 0 && perPage > 0 {
+		skip := int64((page - 1) * perPage)
+		dataPipeline = append(dataPipeline,
+			bson.D{{Key: "$skip", Value: skip}},
+			bson.D{{Key: "$limit", Value: int64(perPage)}},
+		)
+	}
 
-	// Fetch and merge retained quotes
-	if err := repo.mergeRetainedQuotes(dbCtx, result, quoteHashes); err != nil {
-		return result, len(result), err
+	dataCursor, err := repo.conn.Collection(PegoutQuoteCollection).Aggregate(dbCtx, dataPipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer dataCursor.Close(dbCtx)
+
+	var result []quote.PegoutQuoteWithRetained
+	for dataCursor.Next(dbCtx) {
+		var doc pegoutQuoteWithRetainedAggDoc
+		if err := dataCursor.Decode(&doc); err != nil {
+			return nil, 0, err
+		}
+		doc.Retained.FillZeroValues()
+		result = append(result, quote.PegoutQuoteWithRetained{
+			Quote:         doc.PegoutQuote,
+			RetainedQuote: doc.Retained,
+		})
+	}
+	if err := dataCursor.Err(); err != nil {
+		return nil, 0, err
 	}
 
 	logDbInteraction(Read, len(result))
-	return result, len(result), nil
+	return result, total, nil
 }
 
-func (repo *pegoutMongoRepository) fetchQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]StoredPegoutQuote, error) {
-	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
+func (repo *pegoutMongoRepository) listQuotesByDateRangeDateMatch(startDate, endDate time.Time) bson.D {
+	return bson.D{{Key: "agreement_timestamp", Value: bson.D{
 		{Key: "$gte", Value: startDate.Unix()},
 		{Key: "$lte", Value: endDate.Unix()},
 	}}}
-
-	findOpts := repo.buildFindOptions(page, perPage)
-
-	quoteCursor, err := repo.conn.Collection(PegoutQuoteCollection).Find(ctx, quoteFilter, findOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	var storedQuotes []StoredPegoutQuote
-	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
-		return nil, err
-	}
-
-	return storedQuotes, nil
 }
 
-func (repo *pegoutMongoRepository) buildFindOptions(page, perPage int) *options.FindOptions {
-	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: SortAscending}})
-
-	// Apply pagination if page and perPage are provided (not 0)
-	// When page=0 and perPage=0, return all results (backward compatibility)
-	if page > 0 && perPage > 0 {
-		skip := (page - 1) * perPage
-		findOpts.SetSkip(int64(skip)).SetLimit(int64(perPage))
-	}
-
-	return findOpts
+func (repo *pegoutMongoRepository) listQuotesByDateRangeLookupStage() bson.D {
+	return bson.D{{Key: "$lookup", Value: bson.D{
+		{Key: "from", Value: RetainedPegoutQuoteCollection},
+		{Key: "localField", Value: "hash"},
+		{Key: "foreignField", Value: "quote_hash"},
+		{Key: "as", Value: "retained"},
+	}}}
 }
 
-func (repo *pegoutMongoRepository) buildQuoteResults(storedQuotes []StoredPegoutQuote) ([]quote.PegoutQuoteWithRetained, []string) {
-	result := make([]quote.PegoutQuoteWithRetained, len(storedQuotes))
-	quoteHashes := make([]string, len(storedQuotes))
-
-	for i, stored := range storedQuotes {
-		quoteHashes[i] = stored.Hash
-		result[i] = quote.PegoutQuoteWithRetained{
-			Quote:         stored.PegoutQuote,
-			RetainedQuote: quote.RetainedPegoutQuote{},
-		}
-	}
-
-	return result, quoteHashes
+func (repo *pegoutMongoRepository) listQuotesByDateRangeHasRetainedMatch() bson.D {
+	return bson.D{{Key: "$match", Value: bson.D{
+		{Key: "retained.0", Value: bson.D{{Key: "$exists", Value: true}}},
+	}}}
 }
 
-func (repo *pegoutMongoRepository) mergeRetainedQuotes(ctx context.Context, result []quote.PegoutQuoteWithRetained, quoteHashes []string) error {
-	retainedQuotes, err := repo.fetchRetainedQuotes(ctx, quoteHashes)
-	if err != nil {
-		return err
+// listQuotesByDateRangePipelinePrefix is shared by the count and data aggregations so both apply the same filters.
+func (repo *pegoutMongoRepository) listQuotesByDateRangePipelinePrefix(dateMatch bson.D) mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$match", Value: dateMatch}},
+		repo.listQuotesByDateRangeLookupStage(),
+		repo.listQuotesByDateRangeHasRetainedMatch(),
 	}
-
-	// Create hash to index mapping for efficient lookup
-	hashToIndex := make(map[string]int, len(quoteHashes))
-	for i, hash := range quoteHashes {
-		hashToIndex[hash] = i
-	}
-
-	// Merge retained quotes into result
-	for _, retainedQuote := range retainedQuotes {
-		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
-			result[idx].RetainedQuote = retainedQuote
-		}
-	}
-
-	return nil
 }
 
-func (repo *pegoutMongoRepository) fetchRetainedQuotes(ctx context.Context, quoteHashes []string) ([]quote.RetainedPegoutQuote, error) {
-	retainedCursor, err := repo.conn.Collection(RetainedPegoutQuoteCollection).Find(
-		ctx,
-		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
+func (repo *pegoutMongoRepository) countQuotesWithRetainedInDateRange(ctx context.Context, dateMatch bson.D) (int, error) {
+	pipeline := append(repo.listQuotesByDateRangePipelinePrefix(dateMatch),
+		bson.D{{Key: "$count", Value: "total"}},
 	)
+	cursor, err := repo.conn.Collection(PegoutQuoteCollection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
+	defer cursor.Close(ctx)
 
-	var retainedQuotes []quote.RetainedPegoutQuote
-	if err = retainedCursor.All(ctx, &retainedQuotes); err != nil {
-		return nil, err
+	var out struct {
+		Total int `bson:"total"`
 	}
-
-	for i := range retainedQuotes {
-		retainedQuotes[i].FillZeroValues()
+	if cursor.Next(ctx) {
+		if err := cursor.Decode(&out); err != nil {
+			return 0, err
+		}
 	}
-
-	return retainedQuotes, nil
+	if err := cursor.Err(); err != nil {
+		return 0, err
+	}
+	return out.Total, nil
 }
 
 func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
@@ -658,10 +653,7 @@ func (repo *pegoutMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx conte
 
 	result := make([]quote.PegoutQuoteWithRetained, 0)
 	for cursor.Next(dbCtx) {
-		var doc struct {
-			StoredPegoutQuote `bson:",inline"`
-			Retained          quote.RetainedPegoutQuote `bson:"retained"`
-		}
+		var doc pegoutQuoteWithRetainedAggDoc
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}
