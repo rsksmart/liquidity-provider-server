@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -35,8 +36,12 @@ type NodeReorgCheckUseCase struct {
 	eventBus       entities.EventBus
 	maxDepth       uint64
 	alertCooldown  time.Duration
-	lastAlert      time.Time
-	state          *reorgChainState
+	btcMu          sync.Mutex
+	btcLastAlert   time.Time
+	btcState       *reorgChainState
+	rskMu          sync.Mutex
+	rskLastAlert   time.Time
+	rskState       *reorgChainState
 }
 
 func NewNodeReorgCheckUseCase(
@@ -87,7 +92,14 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 	reorgDepth uint64,
 	maxDepth uint64,
 ) error {
-	if time.Since(useCase.lastAlert) < useCase.alertCooldown {
+	var lastAlert *time.Time
+	switch nodeType {
+	case entities.NodeTypeBitcoin:
+		lastAlert = &useCase.btcLastAlert
+	case entities.NodeTypeRootstock:
+		lastAlert = &useCase.rskLastAlert
+	}
+	if time.Since(*lastAlert) < useCase.alertCooldown {
 		return nil
 	}
 	body := fmt.Sprintf(nodeReorgAlertBodyTemplate, nodeType, reorgDepth, maxDepth)
@@ -95,7 +107,7 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 		log.Errorf("NodeReorgCheckUseCase[%s]: error sending reorg alert: %v", nodeType, alertErr)
 		return usecases.WrapUseCaseError(usecases.NodeReorgAlertId, alertErr)
 	}
-	useCase.lastAlert = time.Now()
+	*lastAlert = time.Now()
 	useCase.eventBus.Publish(blockchain.NodeReorgAlertSentEvent{
 		BaseEvent:     entities.NewBaseEvent(blockchain.NodeReorgAlertSentEventId),
 		NodeType:      nodeType,
@@ -105,6 +117,9 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 }
 
 func (useCase *NodeReorgCheckUseCase) runBitcoin(ctx context.Context) error {
+	useCase.btcMu.Lock()
+	defer useCase.btcMu.Unlock()
+
 	btc := useCase.rpc.Btc
 	maxDepth := useCase.maxDepth
 	historyWindow := reorgHistoryWindow(maxDepth)
@@ -119,10 +134,10 @@ func (useCase *NodeReorgCheckUseCase) runBitcoin(ctx context.Context) error {
 	tipHash := info.BestBlockHash
 	tipHeight := uint64(info.ValidatedBlocks.Int64())
 
-	if useCase.state == nil {
-		useCase.state = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
+	if useCase.btcState == nil {
+		useCase.btcState = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
 	}
-	state := useCase.state
+	state := useCase.btcState
 
 	if state.lastTipHash == "" || tipHash == state.lastTipHash {
 		return useCase.handleBitcoinInitialOrSameTip(state, btc, tipHash, tipHeight, historyWindow, maxDepth)
@@ -311,6 +326,9 @@ func bitcoinChainDivergenceDepth(
 }
 
 func (useCase *NodeReorgCheckUseCase) runRootstock(ctx context.Context) error {
+	useCase.rskMu.Lock()
+	defer useCase.rskMu.Unlock()
+
 	rsk := useCase.rpc.Rsk
 	maxDepth := useCase.maxDepth
 	historyWindow := reorgHistoryWindow(maxDepth)
@@ -329,10 +347,10 @@ func (useCase *NodeReorgCheckUseCase) runRootstock(ctx context.Context) error {
 	}
 	tipHash := tipBlock.Hash
 
-	if useCase.state == nil {
-		useCase.state = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
+	if useCase.rskState == nil {
+		useCase.rskState = &reorgChainState{knownHashByHeight: make(map[uint64]string)}
 	}
-	state := useCase.state
+	state := useCase.rskState
 
 	if state.lastTipHash == "" || tipHash == state.lastTipHash {
 		return useCase.handleRootstockInitialOrSameTip(ctx, state, rsk, tipHash, tipHeight, historyWindow, maxDepth)
