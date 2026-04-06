@@ -25,6 +25,8 @@ type RskWalletImpl struct {
 	miningTimeout time.Duration
 }
 
+var TxFailedError = errors.New("transaction failed")
+
 func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64, miningTimeout time.Duration) *RskWalletImpl {
 	return &RskWalletImpl{client: client.client, account: account, chainId: chainId, miningTimeout: miningTimeout}
 }
@@ -82,7 +84,7 @@ func (wallet *RskWalletImpl) SendRbtc(ctx context.Context, config blockchain.Tra
 		return blockchain.TransactionReceipt{}, err
 	}
 
-	return wallet.buildTransactionReceipt(receipt, signedTx), nil
+	return wallet.buildTransactionReceipt(receipt, signedTx)
 }
 
 func (wallet *RskWalletImpl) validateAndPrepareSendRbtc(ctx context.Context, config blockchain.TransactionConfig, toAddress string) (common.Address, uint64, error) {
@@ -134,7 +136,7 @@ func (wallet *RskWalletImpl) sendAndAwaitTransaction(ctx context.Context, signed
 	return receipt, nil
 }
 
-func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *geth.Transaction) blockchain.TransactionReceipt {
+func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *geth.Transaction) (blockchain.TransactionReceipt, error) {
 	// Use the transaction directly to get the "To" address and the Value
 	toAddressStr := ""
 	txValue := entities.NewWei(0)
@@ -145,7 +147,7 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 		txValue = entities.NewBigWei(tx.Value())
 	}
 
-	return blockchain.TransactionReceipt{
+	transactionReceipt := blockchain.TransactionReceipt{
 		TransactionHash:   receipt.TxHash.String(),
 		BlockHash:         receipt.BlockHash.String(),
 		BlockNumber:       receipt.BlockNumber.Uint64(),
@@ -158,6 +160,12 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
 		Logs:              make([]blockchain.TransactionLog, 0),
 	}
+
+	if receipt.Status == 0 {
+		return transactionReceipt, fmt.Errorf("%w: send rbtc error: transaction reverted (%s)", TxFailedError, receipt.TxHash.String())
+	}
+
+	return transactionReceipt, nil
 }
 
 func (wallet *RskWalletImpl) GetBalance(ctx context.Context) (*entities.Wei, error) {
