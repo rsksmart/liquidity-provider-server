@@ -6,23 +6,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func exportFixturesAsExtJSON(ctx context.Context, client *mongodriver.Client) (string, error) {
-	fixturesDir := fixturesPath()
+	fixturesDir := support.FixturesPath()
 	if err := ensureFixturesDir(fixturesDir); err != nil {
 		return "", err
 	}
 
 	rawDB := client.Database(mongo.DbName)
 	for _, c := range fixtureCollections {
-		if err := exportOneCollectionAsExtJSON(ctx, rawDB, fixturesDir, c.collection, c.fileName); err != nil {
+		if err := exportOneCollectionAsExtJSON(ctx, rawDB, fixturesDir, c.Collection, c.FileName); err != nil {
 			return "", err
 		}
 	}
@@ -77,15 +77,4 @@ func exportOneCollectionAsExtJSON(ctx context.Context, rawDB *mongodriver.Databa
 	}
 
 	return nil
-}
-
-func fixturesPath() string {
-	if v := os.Getenv("FIXTURES_DIR"); v != "" {
-		return v
-	}
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "fixtures"
-	}
-	return filepath.Join(filepath.Dir(filename), "..", "..", "fixtures")
 }

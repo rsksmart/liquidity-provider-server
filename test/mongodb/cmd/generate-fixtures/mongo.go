@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
@@ -19,15 +19,15 @@ type mongoConfig struct {
 }
 
 func loadConfigFromEnv() (mongoConfig, error) {
-	port, err := envOrUint("MONGODB_PORT", 27018)
+	port, err := support.EnvOrUint("MONGODB_PORT", 27018)
 	if err != nil {
 		return mongoConfig{}, fmt.Errorf("invalid MONGODB_PORT: %w", err)
 	}
 	return mongoConfig{
-		host:     envOr("MONGODB_HOST", "localhost"),
+		host:     support.EnvOr("MONGODB_HOST", "localhost"),
 		port:     port,
-		username: envOr("MONGODB_USER", "test"),
-		password: envOr("MONGODB_PASSWORD", "test"),
+		username: support.EnvOr("MONGODB_USER", "test"),
+		password: support.EnvOr("MONGODB_PASSWORD", "test"),
 	}, nil
 }
 
@@ -50,28 +50,9 @@ func disconnectMongo(client *mongodriver.Client) {
 func resetCollections(ctx context.Context, client *mongodriver.Client) error {
 	db := client.Database(mongo.DbName)
 	for _, c := range fixtureCollections {
-		if _, err := db.Collection(c.collection).DeleteMany(ctx, bson.M{}); err != nil {
-			return fmt.Errorf("reset collection %s: %w", c.collection, err)
+		if _, err := db.Collection(c.Collection).DeleteMany(ctx, bson.M{}); err != nil {
+			return fmt.Errorf("reset collection %s: %w", c.Collection, err)
 		}
 	}
 	return nil
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func envOrUint(key string, fallback uint) (uint, error) {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback, nil
-	}
-	parsed, err := strconv.ParseUint(v, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return uint(parsed), nil
 }

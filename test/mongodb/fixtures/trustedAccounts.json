@@ -1,18 +1,18 @@
 [
   {
-    "hash": "aabbaaaa",
-    "address": "0xaaaa111122223333444455556666777788889999",
     "name": "Fixture_0xaaaa1111",
     "btc_locking_cap": "5000000000000000000",
     "rbtc_locking_cap": "10000000000000000000",
-    "signature": "trusted-sig-fixture-0xaaaa11"
+    "signature": "trusted-sig-fixture-0xaaaa11",
+    "hash": "aabbaaaa",
+    "address": "0xaaaa111122223333444455556666777788889999"
   },
   {
+    "address": "0xbbbb111122223333444455556666777788889999",
+    "name": "Fixture_0xbbbb1111",
     "btc_locking_cap": "5000000000000000000",
     "rbtc_locking_cap": "10000000000000000000",
     "signature": "trusted-sig-fixture-0xbbbb11",
-    "hash": "aabbbbbb",
-    "address": "0xbbbb111122223333444455556666777788889999",
-    "name": "Fixture_0xbbbb1111"
+    "hash": "aabbbbbb"
   }
 ]

@@ -8,6 +8,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,8 +41,8 @@ func TestBatch_Upsert_InsertThenUpdate(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	txHash := "0x" + randomHash()
-	batch := newTestBatchPegOut(txHash)
+	txHash := "0x" + support.RandomHash()
+	batch := support.NewTestBatchPegOut(txHash)
 	err := batchRepo.UpsertBatch(ctx, batch)
 	require.NoError(t, err)
 
@@ -76,8 +77,8 @@ func TestBatch_UpsertIdempotent(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	txHash := "0x" + randomHash()
-	batch := newTestBatchPegOut(txHash)
+	txHash := "0x" + support.RandomHash()
+	batch := support.NewTestBatchPegOut(txHash)
 
 	err := batchRepo.UpsertBatch(ctx, batch)
 	require.NoError(t, err)
@@ -103,11 +104,11 @@ func TestBatch_Upsert_SameTransactionHashUpdatesExistingDocument(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	txHash := "0x" + randomHash()
-	batch1 := newTestBatchPegOut(txHash)
+	txHash := "0x" + support.RandomHash()
+	batch1 := support.NewTestBatchPegOut(txHash)
 	batch1.BlockNumber = 1
 
-	batch2 := newTestBatchPegOut(txHash)
+	batch2 := support.NewTestBatchPegOut(txHash)
 	batch2.BlockNumber = 2
 
 	require.NoError(t, batchRepo.UpsertBatch(ctx, batch1))

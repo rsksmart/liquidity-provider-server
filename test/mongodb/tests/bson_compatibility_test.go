@@ -10,10 +10,15 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+// assertWeiEq is a convenience wrapper around assertWeiEqual for cases where
+// the expected value is a plain int64 rather than a *entities.Wei.
 
 // --- Layer 1: Frozen fixture dataset tests ---
 
@@ -44,9 +49,7 @@ func requireRestoredFixtures(t *testing.T) context.Context {
 
 func assertWeiEq(t *testing.T, expected int64, actual *entities.Wei) {
 	t.Helper()
-
-	require.NotNil(t, actual)
-	assert.Zero(t, actual.Cmp(entities.NewWei(expected)))
+	assertWeiEqual(t, entities.NewWei(expected), actual)
 }
 
 func TestFixtures_PeginQuotes_Readable(t *testing.T) {
@@ -239,13 +242,59 @@ func TestFixtures_Penalizations_Readable(t *testing.T) {
 	assert.Empty(t, want, "missing penalizations for some requested quote hashes")
 }
 
+// TestFixtures_RetainedPegoutQuotes_UpdateViaTransaction verifies that the
+// transactional path (StartSession + WithTransaction) works correctly against
+// documents stored by the current driver. When upgrading to a new driver
+// version, this test will catch any incompatibility between the new session/
+// transaction API and the BSON shapes written by the old driver.
+func TestFixtures_RetainedPegoutQuotes_UpdateViaTransaction(t *testing.T) {
+	ctx := requireRestoredFixtures(t)
+
+	coll := rawCollection(mongo.RetainedPegoutQuoteCollection)
+	cursor, err := coll.Find(ctx, bson.M{})
+	require.NoError(t, err)
+	defer cursor.Close(ctx)
+
+	type storedRetained struct {
+		QuoteHash string `bson:"quote_hash"`
+	}
+	var items []storedRetained
+	require.NoError(t, cursor.All(ctx, &items))
+	require.NotEmpty(t, items, "fixture should have retained pegout quotes")
+
+	quotes := make([]quote.RetainedPegoutQuote, 0, len(items))
+	for _, item := range items {
+		got, getErr := pegoutRepo.GetRetainedQuote(ctx, item.QuoteHash)
+		require.NoError(t, getErr)
+		require.NotNil(t, got)
+		// Toggle to a state that differs from the current one so every UpdateOne
+		// always modifies the document (ModifiedCount=1) regardless of fixture content.
+		if got.State == quote.PegoutStateRefundPegOutSucceeded {
+			got.State = quote.PegoutStateBridgeTxFailed
+		} else {
+			got.State = quote.PegoutStateRefundPegOutSucceeded
+		}
+		quotes = append(quotes, *got)
+	}
+
+	err = pegoutRepo.UpdateRetainedQuotes(ctx, quotes)
+	require.NoError(t, err)
+
+	for _, q := range quotes {
+		got, getErr := pegoutRepo.GetRetainedQuote(ctx, q.QuoteHash)
+		require.NoError(t, getErr)
+		require.NotNil(t, got)
+		assert.Equal(t, q.State, got.State)
+	}
+}
+
 // --- Layer 2: Hand-crafted raw BSON legacy shape tests ---
 
 func TestBSON_Wei_StoredAsInt64(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "hash", Value: hash},
 		{Key: "fed_address", Value: "2N1234567890abcdef"},
@@ -286,7 +335,7 @@ func TestBSON_Wei_StoredAsString(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "hash", Value: hash},
 		{Key: "fed_address", Value: "2N1234567890abcdef"},
@@ -327,7 +376,7 @@ func TestBSON_Wei_StoredAsNull(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "quote_hash", Value: hash},
 		{Key: "deposit_address", Value: "2N1234567890abcdef"},
@@ -362,7 +411,7 @@ func TestBSON_Wei_StoredAsNilString(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "hash", Value: hash},
 		{Key: "fed_address", Value: "2N1234567890abcdef"},
@@ -402,7 +451,7 @@ func TestBSON_BigFloat_StoredAsDouble(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "hash", Value: hash},
 		{Key: "gas_price", Value: "60000000"},
@@ -425,7 +474,7 @@ func TestBSON_RetainedPeginQuote_MissingGasFields(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "quote_hash", Value: hash},
 		{Key: "deposit_address", Value: "2N1234567890abcdef"},
@@ -459,7 +508,7 @@ func TestBSON_RetainedPegoutQuote_MissingGasFields(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
+	hash := support.RandomHash()
 	doc := bson.D{
 		{Key: "quote_hash", Value: hash},
 		{Key: "deposit_address", Value: "0xdeposit123"},
@@ -499,8 +548,8 @@ func TestBSON_PegoutDeposit_WeiAmount(t *testing.T) {
 	ctx := context.Background()
 
 	doc := bson.D{
-		{Key: "tx_hash", Value: "0x" + randomHash()},
-		{Key: "quote_hash", Value: randomHash()},
+		{Key: "tx_hash", Value: "0x" + support.RandomHash()},
+		{Key: "quote_hash", Value: support.RandomHash()},
 		{Key: "amount", Value: int64(1000000000)},
 		{Key: "timestamp", Value: "2024-01-15T10:30:00Z"},
 		{Key: "block_number", Value: int64(50000)},

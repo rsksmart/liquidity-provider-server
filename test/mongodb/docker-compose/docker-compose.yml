@@ -6,14 +6,23 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=test
       - MONGO_INITDB_ROOT_PASSWORD=test
-      - MONGO_INITDB_DATABASE=flyover
     ports:
-      - "27018:27017"
-    command: ["mongod", "--bind_ip_all"]
+      - "27018:27018"
+    entrypoint:
+      - bash
+      - -c
+      - >-
+        printf 'FlyoverTestKeyForDevOnly\n' > /tmp/keyfile &&
+        chmod 400 /tmp/keyfile &&
+        chown 999:999 /tmp/keyfile &&
+        exec /usr/local/bin/docker-entrypoint.sh mongod --bind_ip_all --replSet rs0 --port 27018 --keyFile /tmp/keyfile
     healthcheck:
       test: >
-        mongo --username test --password test --authenticationDatabase admin --eval "db.runCommand({ ping: 1 }).ok" --quiet
+        mongo --port 27018 -u test -p test --authenticationDatabase admin --quiet --eval "
+          try { rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27018'}]}) } catch(e) {}
+          if (rs.status().myState !== 1) { quit(1) }
+        "
       interval: 5s
       timeout: 10s
-      retries: 5
-      start_period: 10s
+      retries: 20
+      start_period: 30s

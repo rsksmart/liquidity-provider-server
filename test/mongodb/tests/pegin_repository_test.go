@@ -9,6 +9,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,8 +18,8 @@ func TestPegin_InsertAndGetQuote(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
-	created := newTestPeginQuote(hash)
+	hash := support.RandomHash()
+	created := support.NewTestPeginQuote(hash)
 	require.NoError(t, peginRepo.InsertQuote(ctx, created))
 
 	got, err := peginRepo.GetQuote(ctx, hash)
@@ -40,7 +41,7 @@ func TestPegin_GetQuote_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	got, err := peginRepo.GetQuote(ctx, randomHash())
+	got, err := peginRepo.GetQuote(ctx, support.RandomHash())
 	require.NoError(t, err)
 	assert.Nil(t, got)
 }
@@ -49,8 +50,8 @@ func TestPegin_GetPeginCreationData(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
-	created := newTestPeginQuote(hash)
+	hash := support.RandomHash()
+	created := support.NewTestPeginQuote(hash)
 	require.NoError(t, peginRepo.InsertQuote(ctx, created))
 
 	got := peginRepo.GetPeginCreationData(ctx, hash)
@@ -64,7 +65,7 @@ func TestPegin_GetPeginCreationData_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	got := peginRepo.GetPeginCreationData(ctx, randomHash())
+	got := peginRepo.GetPeginCreationData(ctx, support.RandomHash())
 	zeroVal := quote.PeginCreationDataZeroValue()
 	assertWeiEqual(t, zeroVal.GasPrice, got.GasPrice)
 	assertWeiEqual(t, zeroVal.FixedFee, got.FixedFee)
@@ -75,15 +76,15 @@ func TestPegin_GetQuotesByHashesAndDate(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	hash1 := randomHash()
-	hash2 := randomHash()
-	hash3 := randomHash()
+	hash1 := support.RandomHash()
+	hash2 := support.RandomHash()
+	hash3 := support.RandomHash()
 
-	q1 := newTestPeginQuote(hash1)
+	q1 := support.NewTestPeginQuote(hash1)
 	q1.Quote.AgreementTimestamp = uint32(now.Unix())
-	q2 := newTestPeginQuote(hash2)
+	q2 := support.NewTestPeginQuote(hash2)
 	q2.Quote.AgreementTimestamp = uint32(now.Add(-2 * time.Hour).Unix())
-	q3 := newTestPeginQuote(hash3)
+	q3 := support.NewTestPeginQuote(hash3)
 	q3.Quote.AgreementTimestamp = uint32(now.Add(-48 * time.Hour).Unix())
 
 	require.NoError(t, peginRepo.InsertQuote(ctx, q1))
@@ -101,8 +102,8 @@ func TestPegin_InsertAndGetRetainedQuote(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
-	retained := newTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
+	hash := support.RandomHash()
+	retained := support.NewTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
 	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, retained))
 
 	got, err := peginRepo.GetRetainedQuote(ctx, hash)
@@ -121,7 +122,7 @@ func TestPegin_GetRetainedQuote_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	got, err := peginRepo.GetRetainedQuote(ctx, randomHash())
+	got, err := peginRepo.GetRetainedQuote(ctx, support.RandomHash())
 	require.NoError(t, err)
 	assert.Nil(t, got)
 }
@@ -130,8 +131,8 @@ func TestPegin_UpdateRetainedQuote(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	hash := randomHash()
-	retained := newTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
+	hash := support.RandomHash()
+	retained := support.NewTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
 	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, retained))
 
 	retained.State = quote.PeginStateCallForUserSucceeded
@@ -151,7 +152,7 @@ func TestPegin_UpdateRetainedQuote_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	retained := newTestRetainedPeginQuote(randomHash(), quote.PeginStateCallForUserSucceeded)
+	retained := support.NewTestRetainedPeginQuote(support.RandomHash(), quote.PeginStateCallForUserSucceeded)
 	err := peginRepo.UpdateRetainedQuote(ctx, retained)
 	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
 }
@@ -160,12 +161,12 @@ func TestPegin_GetRetainedQuoteByState(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	h1 := randomHash()
-	h2 := randomHash()
-	h3 := randomHash()
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h3, quote.PeginStateRegisterPegInSucceeded)))
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	h3 := support.RandomHash()
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h3, quote.PeginStateRegisterPegInSucceeded)))
 
 	results, err := peginRepo.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserSucceeded)
 	require.NoError(t, err)
@@ -182,12 +183,12 @@ func TestPegin_GetQuotesByState(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	h1 := randomHash()
-	h2 := randomHash()
-	require.NoError(t, peginRepo.InsertQuote(ctx, newTestPeginQuote(h1)))
-	require.NoError(t, peginRepo.InsertQuote(ctx, newTestPeginQuote(h2)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserFailed)))
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	require.NoError(t, peginRepo.InsertQuote(ctx, support.NewTestPeginQuote(h1)))
+	require.NoError(t, peginRepo.InsertQuote(ctx, support.NewTestPeginQuote(h2)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserFailed)))
 
 	results, err := peginRepo.GetQuotesByState(ctx, quote.PeginStateWaitingForDeposit)
 	require.NoError(t, err)
@@ -198,12 +199,12 @@ func TestPegin_DeleteQuotes(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	h1 := randomHash()
-	h2 := randomHash()
-	require.NoError(t, peginRepo.InsertQuote(ctx, newTestPeginQuote(h1)))
-	require.NoError(t, peginRepo.InsertQuote(ctx, newTestPeginQuote(h2)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	require.NoError(t, peginRepo.InsertQuote(ctx, support.NewTestPeginQuote(h1)))
+	require.NoError(t, peginRepo.InsertQuote(ctx, support.NewTestPeginQuote(h2)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
 
 	count, err := peginRepo.DeleteQuotes(ctx, []string{h1, h2})
 	require.NoError(t, err)
@@ -223,23 +224,23 @@ func TestPegin_ListQuotesByDateRange(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	h1 := randomHash()
-	h2 := randomHash()
-	h3 := randomHash()
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	h3 := support.RandomHash()
 
-	q1 := newTestPeginQuote(h1)
+	q1 := support.NewTestPeginQuote(h1)
 	q1.Quote.AgreementTimestamp = uint32(now.Unix())
-	q2 := newTestPeginQuote(h2)
+	q2 := support.NewTestPeginQuote(h2)
 	q2.Quote.AgreementTimestamp = uint32(now.Add(-1 * time.Hour).Unix())
-	q3 := newTestPeginQuote(h3)
+	q3 := support.NewTestPeginQuote(h3)
 	q3.Quote.AgreementTimestamp = uint32(now.Add(-48 * time.Hour).Unix())
 
 	require.NoError(t, peginRepo.InsertQuote(ctx, q1))
 	require.NoError(t, peginRepo.InsertQuote(ctx, q2))
 	require.NoError(t, peginRepo.InsertQuote(ctx, q3))
 
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)))
 
 	startDate := now.Add(-3 * time.Hour)
 	endDate := now.Add(time.Hour)
@@ -264,15 +265,15 @@ func TestPegin_GetRetainedQuotesForAddress(t *testing.T) {
 	addr := "0x1234567890abcdef1234567890abcdef12345678"
 	otherAddr := "0xaaaa567890abcdef1234567890abcdef12345678"
 
-	h1 := randomHash()
-	h2 := randomHash()
-	h3 := randomHash()
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	h3 := support.RandomHash()
 
-	r1 := newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)
+	r1 := support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)
 	r1.OwnerAccountAddress = addr
-	r2 := newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)
+	r2 := support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)
 	r2.OwnerAccountAddress = addr
-	r3 := newTestRetainedPeginQuote(h3, quote.PeginStateWaitingForDeposit)
+	r3 := support.NewTestRetainedPeginQuote(h3, quote.PeginStateWaitingForDeposit)
 	r3.OwnerAccountAddress = otherAddr
 
 	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r1))
@@ -292,17 +293,17 @@ func TestPegin_GetQuotesWithRetainedByStateAndDate(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	h1 := randomHash()
-	h2 := randomHash()
-	h3 := randomHash()
+	h1 := support.RandomHash()
+	h2 := support.RandomHash()
+	h3 := support.RandomHash()
 
-	q1 := newTestPeginQuote(h1)
+	q1 := support.NewTestPeginQuote(h1)
 	q1.Quote.Nonce = int64(1)
 	q1.Quote.AgreementTimestamp = uint32(now.Unix())
-	q2 := newTestPeginQuote(h2)
+	q2 := support.NewTestPeginQuote(h2)
 	q2.Quote.Nonce = int64(2)
 	q2.Quote.AgreementTimestamp = uint32(now.Add(-1 * time.Hour).Unix())
-	q3 := newTestPeginQuote(h3)
+	q3 := support.NewTestPeginQuote(h3)
 	q3.Quote.Nonce = int64(3)
 	q3.Quote.AgreementTimestamp = uint32(now.Unix())
 
@@ -310,8 +311,8 @@ func TestPegin_GetQuotesWithRetainedByStateAndDate(t *testing.T) {
 	require.NoError(t, peginRepo.InsertQuote(ctx, q2))
 	require.NoError(t, peginRepo.InsertQuote(ctx, q3))
 
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, newTestRetainedPeginQuote(h2, quote.PeginStateCallForUserFailed)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, support.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserFailed)))
 	// h3 has no retained quote
 
 	startDate := now.Add(-3 * time.Hour)

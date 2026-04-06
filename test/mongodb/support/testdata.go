@@ -1,6 +1,4 @@
-//go:build integration
-
-package mongodb_test
+package support
 
 import (
 	"crypto/rand"
@@ -26,7 +24,7 @@ var (
 	defaultOwnerAddress     = "0x1234567890abcdef1234567890abcdef12345678"
 )
 
-func randomHash() string {
+func RandomHash() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		panic(fmt.Sprintf("failed to read random bytes: %v", err))
@@ -34,7 +32,7 @@ func randomHash() string {
 	return hex.EncodeToString(b)
 }
 
-func newTestPeginQuote(hash string) quote.CreatedPeginQuote {
+func NewTestPeginQuote(hash string) quote.CreatedPeginQuote {
 	return quote.CreatedPeginQuote{
 		Hash: hash,
 		Quote: quote.PeginQuote{
@@ -67,7 +65,7 @@ func newTestPeginQuote(hash string) quote.CreatedPeginQuote {
 	}
 }
 
-func newTestRetainedPeginQuote(hash string, state quote.PeginState) quote.RetainedPeginQuote {
+func NewTestRetainedPeginQuote(hash string, state quote.PeginState) quote.RetainedPeginQuote {
 	return quote.RetainedPeginQuote{
 		QuoteHash:             hash,
 		DepositAddress:        "2N1234567890abcdef",
@@ -85,7 +83,7 @@ func newTestRetainedPeginQuote(hash string, state quote.PeginState) quote.Retain
 	}
 }
 
-func newTestPegoutQuote(hash string) quote.CreatedPegoutQuote {
+func NewTestPegoutQuote(hash string) quote.CreatedPegoutQuote {
 	return quote.CreatedPegoutQuote{
 		Hash: hash,
 		Quote: quote.PegoutQuote{
@@ -118,7 +116,7 @@ func newTestPegoutQuote(hash string) quote.CreatedPegoutQuote {
 	}
 }
 
-func newTestRetainedPegoutQuote(hash string, state quote.PegoutState) quote.RetainedPegoutQuote {
+func NewTestRetainedPegoutQuote(hash string, state quote.PegoutState) quote.RetainedPegoutQuote {
 	return quote.RetainedPegoutQuote{
 		QuoteHash:            hash,
 		DepositAddress:       "0xdeposit1234567890abcdef1234567890abcdef",
@@ -139,7 +137,7 @@ func newTestRetainedPegoutQuote(hash string, state quote.PegoutState) quote.Reta
 	}
 }
 
-func newTestPegoutDeposit(txHash, quoteHash string) quote.PegoutDeposit {
+func NewTestPegoutDeposit(txHash, quoteHash string) quote.PegoutDeposit {
 	return quote.PegoutDeposit{
 		TxHash:      txHash,
 		QuoteHash:   quoteHash,
@@ -150,7 +148,7 @@ func newTestPegoutDeposit(txHash, quoteHash string) quote.PegoutDeposit {
 	}
 }
 
-func newTestPeginConfig() entities.Signed[liquidity_provider.PeginConfiguration] {
+func NewTestPeginConfig() entities.Signed[liquidity_provider.PeginConfiguration] {
 	return entities.Signed[liquidity_provider.PeginConfiguration]{
 		Value: liquidity_provider.PeginConfiguration{
 			TimeForDeposit: 3600,
@@ -166,7 +164,7 @@ func newTestPeginConfig() entities.Signed[liquidity_provider.PeginConfiguration]
 	}
 }
 
-func newTestPegoutConfig() entities.Signed[liquidity_provider.PegoutConfiguration] {
+func NewTestPegoutConfig() entities.Signed[liquidity_provider.PegoutConfiguration] {
 	return entities.Signed[liquidity_provider.PegoutConfiguration]{
 		Value: liquidity_provider.PegoutConfiguration{
 			TimeForDeposit:       3600,
@@ -184,7 +182,7 @@ func newTestPegoutConfig() entities.Signed[liquidity_provider.PegoutConfiguratio
 	}
 }
 
-func newTestGeneralConfig() entities.Signed[liquidity_provider.GeneralConfiguration] {
+func NewTestGeneralConfig() entities.Signed[liquidity_provider.GeneralConfiguration] {
 	return entities.Signed[liquidity_provider.GeneralConfiguration]{
 		Value: liquidity_provider.GeneralConfiguration{
 			RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
@@ -202,7 +200,7 @@ func newTestGeneralConfig() entities.Signed[liquidity_provider.GeneralConfigurat
 	}
 }
 
-func newTestCredentials() entities.Signed[liquidity_provider.HashedCredentials] {
+func NewTestCredentials() entities.Signed[liquidity_provider.HashedCredentials] {
 	return entities.Signed[liquidity_provider.HashedCredentials]{
 		Value: liquidity_provider.HashedCredentials{
 			HashedUsername: "hashed_user_abc123",
@@ -215,7 +213,7 @@ func newTestCredentials() entities.Signed[liquidity_provider.HashedCredentials] 
 	}
 }
 
-func newTestTrustedAccount(address string) entities.Signed[liquidity_provider.TrustedAccountDetails] {
+func NewTestTrustedAccount(address string) entities.Signed[liquidity_provider.TrustedAccountDetails] {
 	namePrefix := address
 	if len(namePrefix) > 8 {
 		namePrefix = namePrefix[:8]
@@ -237,7 +235,7 @@ func newTestTrustedAccount(address string) entities.Signed[liquidity_provider.Tr
 	}
 }
 
-func newTestPenalizedEvent(quoteHash string) penalization.PenalizedEvent {
+func NewTestPenalizedEvent(quoteHash string) penalization.PenalizedEvent {
 	return penalization.PenalizedEvent{
 		LiquidityProvider: defaultOwnerAddress,
 		Penalty:           entities.NewWei(5000000),
@@ -245,7 +243,7 @@ func newTestPenalizedEvent(quoteHash string) penalization.PenalizedEvent {
 	}
 }
 
-func newTestBatchPegOut(txHash string) rootstock.BatchPegOut {
+func NewTestBatchPegOut(txHash string) rootstock.BatchPegOut {
 	return rootstock.BatchPegOut{
 		TransactionHash:    txHash,
 		BlockHash:          "0xblockhash" + txHash[:8],

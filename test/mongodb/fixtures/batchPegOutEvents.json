@@ -1,14 +1,14 @@
 [
   {
-    "transaction_hash": "0xc4eddcabe134a55120e645e0a2b98afc497ea34bc1070046a232ef18ce7ea8ee",
-    "block_hash": "0xblockhash_fixture_0xc4eddc",
+    "transaction_hash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "block_hash": "0xblockhash_fixture_0xffffff",
     "block_number": {
       "$numberLong": "99999"
     },
-    "btc_tx_hash": "btcbatch_fixture_0xc4eddc",
+    "btc_tx_hash": "btcbatch_fixture_0xffffff",
     "release_rsk_tx_hashes": [
-      "0xrelease1_0xc4eddc",
-      "0xrelease2_0xc4eddc"
+      "0xrelease1_0xffffff",
+      "0xrelease2_0xffffff"
     ]
   }
 ]

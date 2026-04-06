@@ -15,9 +15,9 @@ the new driver can still read them correctly through the repository interfaces.
 ./test/mongodb/scripts/generate-fixtures.sh
 ```
 
-The generator connects to the docker-compose MongoDB, writes documents through
-the repository interfaces (same code path as production), exports the raw BSON
-as Extended JSON, and writes the files here.
+The generator connects to the docker-compose MongoDB (`mongo:4`, credentials `test/test`,
+port `27018`), writes documents through the repository interfaces (same code path as
+production), exports the raw BSON as Extended JSON, and writes the files here.
 
 ## How to run the integration suite
 
@@ -40,29 +40,25 @@ and always tears Mongo down on exit.
 
 This suite is intended to stay stable while you switch Mongo driver versions in LPS.
 
-### Run with v1 driver (current default line)
+### Run with v1 driver (current default)
 
-1. Ensure `go.mod` uses v1, for example:
-   - `go.mongodb.org/mongo-driver v1.17.4`
+1. Ensure `go.mod` uses v1, for example `go.mongodb.org/mongo-driver v1.17.4`.
 2. Run:
 
 ```bash
 make test-integration-db
 ```
 
-### Run with v2 driver (upgrade validation line)
+### Run with v2 driver (upgrade validation)
 
-1. Switch LPS imports and module to v2.
-2. Use a v2 version in `go.mod`, for example:
-   - `go.mongodb.org/mongo-driver/v2 v2.0.0` (initial migration check), or
-   - `go.mongodb.org/mongo-driver/v2 v2.5.0` (latest stable revalidation used in this task)
-3. Run:
+1. Switch LPS imports and `go.mod` to v2, for example `go.mongodb.org/mongo-driver/v2 v2.0.0`.
+2. Run:
 
 ```bash
 make test-integration-db
 ```
 
-If tests fail after version switch, first check for mixed v1/v2 imports in `test/mongodb`
+If tests fail after the version switch, first check for mixed v1/v2 imports in `test/mongodb`
 and in Mongo adapter code.
 
 ## When to regenerate
