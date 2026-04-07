@@ -243,28 +243,26 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, ret
 	if err != nil {
 		return err
 	}
-	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
-	result, err := session.WithTransaction(dbCtx, func(sessionContext mongo.SessionContext) (any, error) {
+	//nolint:contextcheck
+	_, err = session.WithTransaction(dbCtx, func(sessionContext mongo.SessionContext) (any, error) {
+		collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 		var count int64 = 0
 		for _, retainedQuote := range retainedQuotes {
 			filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
 			updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
-			updateResult, updateErr := collection.UpdateOne(dbCtx, filter, updateStatement)
+			updateResult, updateErr := collection.UpdateOne(sessionContext, filter, updateStatement)
 			if updateErr != nil {
-				return int64(0), updateErr
+				return nil, updateErr
 			}
 			count += updateResult.ModifiedCount
 		}
-		return count, nil
+		if count != int64(len(retainedQuotes)) {
+			return nil, fmt.Errorf("mismatch on updated documents. Expected %d, updated %d", len(retainedQuotes), count)
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return err
-	}
-	parsedResult, ok := result.(int64)
-	if !ok {
-		return errors.New("unexpected result type")
-	} else if parsedResult != int64(len(retainedQuotes)) {
-		return fmt.Errorf("mismatch on updated documents. Expected %d, updated %d", len(retainedQuotes), result)
 	}
 	logDbInteraction(Update, retainedQuotes)
 	return nil
