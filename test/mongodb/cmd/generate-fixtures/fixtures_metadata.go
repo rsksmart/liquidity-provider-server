@@ -1,5 +1,5 @@
 package main
 
-import "github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+import "github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 
-var fixtureCollections = support.FixtureCollections
+var fixtureCollections = utils.FixtureCollections

@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
@@ -19,15 +19,15 @@ type mongoConfig struct {
 }
 
 func loadConfigFromEnv() (mongoConfig, error) {
-	port, err := support.EnvOrUint("MONGODB_PORT", 27018)
+	port, err := utils.EnvOrUint("MONGODB_PORT", 27018)
 	if err != nil {
 		return mongoConfig{}, fmt.Errorf("invalid MONGODB_PORT: %w", err)
 	}
 	return mongoConfig{
-		host:     support.EnvOr("MONGODB_HOST", "localhost"),
+		host:     utils.EnvOr("MONGODB_HOST", "localhost"),
 		port:     port,
-		username: support.EnvOr("MONGODB_USER", "test"),
-		password: support.EnvOr("MONGODB_PASSWORD", "test"),
+		username: utils.EnvOr("MONGODB_USER", "test"),
+		password: utils.EnvOr("MONGODB_PASSWORD", "test"),
 	}, nil
 }
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
-	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,7 +38,7 @@ func TestBootstrap_IndexesCreated(t *testing.T) {
 
 			found := false
 			for _, idx := range indexes {
-				if support.IndexKeysContainField(idx["key"], field) {
+				if utils.IndexKeysContainField(idx["key"], field) {
 					unique, _ := idx["unique"].(bool)
 					assert.True(t, unique, "index on %s.%s should be unique", collName, field)
 					found = true

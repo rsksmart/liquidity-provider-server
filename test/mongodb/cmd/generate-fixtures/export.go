@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func exportFixturesAsExtJSON(ctx context.Context, client *mongodriver.Client) (string, error) {
-	fixturesDir := support.FixturesPath()
+	fixturesDir := utils.FixturesPath()
 	if err := ensureFixturesDir(fixturesDir); err != nil {
 		return "", err
 	}

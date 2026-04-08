@@ -18,7 +18,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
@@ -37,22 +37,22 @@ var (
 )
 
 var allCollections = func() []string {
-	names := make([]string, len(support.FixtureCollections))
-	for i, fc := range support.FixtureCollections {
+	names := make([]string, len(utils.FixtureCollections))
+	for i, fc := range utils.FixtureCollections {
 		names[i] = fc.Collection
 	}
 	return names
 }()
 
 func TestMain(m *testing.M) {
-	host := support.EnvOr("MONGODB_HOST", "localhost")
-	port, err := support.EnvOrUint("MONGODB_PORT", 27018)
+	host := utils.EnvOr("MONGODB_HOST", "localhost")
+	port, err := utils.EnvOrUint("MONGODB_PORT", 27018)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid MONGODB_PORT: %v\n", err)
 		os.Exit(1)
 	}
-	username := support.EnvOr("MONGODB_USER", "test")
-	password := support.EnvOr("MONGODB_PASSWORD", "test")
+	username := utils.EnvOr("MONGODB_USER", "test")
+	password := utils.EnvOr("MONGODB_PASSWORD", "test")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -90,7 +90,7 @@ func cleanCollections(t *testing.T) {
 	defer cancel()
 	for _, name := range allCollections {
 		coll := rawCollection(name)
-		_, err := coll.DeleteMany(ctx, support.EmptyFilter())
+		_, err := coll.DeleteMany(ctx, utils.EmptyFilter())
 		if err != nil {
 			t.Fatalf("failed to clean collection %s: %v", name, err)
 		}
@@ -108,7 +108,7 @@ func restoreFixtures(t *testing.T) {
 
 	fixturesDir := fixturesPath()
 
-	for _, fc := range support.FixtureCollections {
+	for _, fc := range utils.FixtureCollections {
 		filePath := filepath.Join(fixturesDir, fc.FileName)
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -129,7 +129,7 @@ func restoreFixtures(t *testing.T) {
 
 		docsInterface := make([]any, len(rawDocs))
 		for i, raw := range rawDocs {
-			doc, err := support.ExtJSONToDocument(raw)
+			doc, err := utils.ExtJSONToDocument(raw)
 			if err != nil {
 				t.Fatalf("Failed to parse extended json in %s: %v", fc.FileName, err)
 			}
@@ -137,7 +137,7 @@ func restoreFixtures(t *testing.T) {
 		}
 
 		coll := rawCollection(fc.Collection)
-		if _, err := coll.DeleteMany(ctx, support.EmptyFilter()); err != nil {
+		if _, err := coll.DeleteMany(ctx, utils.EmptyFilter()); err != nil {
 			t.Fatalf("Failed to clear collection %s before restoring fixtures: %v", fc.Collection, err)
 		}
 		_, err = coll.InsertMany(ctx, docsInterface)
@@ -148,7 +148,7 @@ func restoreFixtures(t *testing.T) {
 }
 
 func fixturesPath() string {
-	return support.FixturesPath()
+	return utils.FixturesPath()
 }
 
 func assertWeiEqual(t testing.TB, want, got *entities.Wei) {

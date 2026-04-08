@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/test/mongodb/support"
+	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ func TestLP_UpsertAndGetPeginConfig(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	config := support.NewTestPeginConfig()
+	config := utils.NewTestPeginConfig()
 	err := lpRepo.UpsertPeginConfiguration(ctx, config)
 	require.NoError(t, err)
 
@@ -88,7 +88,7 @@ func TestLP_UpsertAndGetPegoutConfig(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	config := support.NewTestPegoutConfig()
+	config := utils.NewTestPegoutConfig()
 	err := lpRepo.UpsertPegoutConfiguration(ctx, config)
 	require.NoError(t, err)
 
@@ -107,7 +107,7 @@ func TestLP_UpsertAndGetGeneralConfig(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	config := support.NewTestGeneralConfig()
+	config := utils.NewTestGeneralConfig()
 	err := lpRepo.UpsertGeneralConfiguration(ctx, config)
 	require.NoError(t, err)
 
@@ -124,7 +124,7 @@ func TestLP_UpsertAndGetCredentials(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	creds := support.NewTestCredentials()
+	creds := utils.NewTestCredentials()
 	err := lpRepo.UpsertCredentials(ctx, creds)
 	require.NoError(t, err)
 

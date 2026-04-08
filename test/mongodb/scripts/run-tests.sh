@@ -23,6 +23,3 @@ MONGODB_PORT=27018 \
 MONGODB_USER=test \
 MONGODB_PASSWORD=test \
 go test -v -tags integration -timeout 5m ./test/mongodb/...
-TEST_EXIT_CODE=$?
-
-exit "$TEST_EXIT_CODE"

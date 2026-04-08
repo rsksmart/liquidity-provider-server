@@ -1,4 +1,4 @@
-package support
+package utils
 
 import "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 
