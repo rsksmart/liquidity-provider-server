@@ -2,6 +2,7 @@ package mongo_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -692,11 +693,11 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
 				require.True(t, ok)
-				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
-				require.NoError(t, err)
-				assert.Equal(t, int64(len(retainedQuotes)), count)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.NoError(t, cbErr)
+				assert.Nil(t, result)
 			}).
-			Return(any(int64(len(retainedQuotes))), nil)
+			Return(nil, nil)
 		for _, q := range retainedQuotes {
 			collection.On("UpdateOne", mock.Anything,
 				bson.D{primitive.E{Key: "quote_hash", Value: q.QuoteHash}},
@@ -735,11 +736,11 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
 				require.True(t, ok)
-				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
-				require.Error(t, err)
-				assert.Equal(t, int64(0), count)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.Error(t, cbErr)
+				assert.Nil(t, result)
 			}).
-			Return(int64(0), assert.AnError)
+			Return(nil, assert.AnError)
 
 		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
@@ -753,15 +754,26 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("Update count mismatch", func(t *testing.T) {
-		client, _ := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		session := &mocks.SessionBindingMock{}
 		client.On("StartSession").Return(session, nil).Once()
 		session.On("EndSession", mock.Anything).Return().Once()
-		session.On("WithTransaction", mock.Anything, mock.Anything).Return(any(int64(len(retainedQuotes)-1)), nil)
+		session.On("WithTransaction", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				require.True(t, ok)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.Error(t, cbErr)
+				assert.Nil(t, result)
+			}).
+			Return(nil, errors.New("mismatch on updated documents. Expected 2, updated 1"))
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 0}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
 		defer test.AssertNoLog(t)()
 		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		collection.AssertExpectations(t)
 		client.AssertExpectations(t)
 		session.AssertExpectations(t)
 		require.ErrorContains(t, err, "mismatch on updated documents. Expected 2, updated 1")
