@@ -430,108 +430,84 @@ func (repo *pegoutMongoRepository) ListQuotesByDateRange(ctx context.Context, st
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	dateMatch := repo.listQuotesByDateRangeDateMatch(startDate, endDate)
-	total, err := repo.countQuotesWithRetainedInDateRange(dbCtx, dateMatch)
+	cursor, err := repo.conn.Collection(PegoutQuoteCollection).Aggregate(dbCtx, buildPegoutListByDateRangePipeline(startDate, endDate, page, perPage))
 	if err != nil {
 		return nil, 0, err
 	}
-	if total == 0 {
-		empty := make([]quote.PegoutQuoteWithRetained, 0)
-		logDbInteraction(Read, empty)
-		return empty, 0, nil
-	}
+	defer cursor.Close(dbCtx)
 
-	dataPipeline := append(repo.listQuotesByDateRangePipelinePrefix(dateMatch),
-		bson.D{{Key: "$unwind", Value: "$retained"}},
-		bson.D{{Key: "$sort", Value: bson.D{{Key: "agreement_timestamp", Value: SortAscending}}}},
-	)
-	if page > 0 && perPage > 0 {
-		skip := int64((page - 1) * perPage)
-		dataPipeline = append(dataPipeline,
-			bson.D{{Key: "$skip", Value: skip}},
-			bson.D{{Key: "$limit", Value: int64(perPage)}},
-		)
+	// $facet always produces exactly one document whose fields are the branch names,
+	// so the cursor will have at most one row.
+	var facetResult struct {
+		Metadata []struct {
+			Total int `bson:"total"`
+		} `bson:"metadata"`
+		Data []pegoutQuoteWithRetainedAggDoc `bson:"data"`
 	}
-
-	dataCursor, err := repo.conn.Collection(PegoutQuoteCollection).Aggregate(dbCtx, dataPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer dataCursor.Close(dbCtx)
-
-	var result []quote.PegoutQuoteWithRetained
-	for dataCursor.Next(dbCtx) {
-		var doc pegoutQuoteWithRetainedAggDoc
-		if err := dataCursor.Decode(&doc); err != nil {
+	if cursor.Next(dbCtx) {
+		if err := cursor.Decode(&facetResult); err != nil {
 			return nil, 0, err
 		}
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	// Metadata is a slice because $count inside $facet always returns an array
+	total := 0
+	if len(facetResult.Metadata) > 0 {
+		total = facetResult.Metadata[0].Total
+	}
+
+	result := make([]quote.PegoutQuoteWithRetained, 0, len(facetResult.Data))
+	for _, doc := range facetResult.Data {
 		doc.Retained.FillZeroValues()
 		result = append(result, quote.PegoutQuoteWithRetained{
 			Quote:         doc.PegoutQuote,
 			RetainedQuote: doc.Retained,
 		})
 	}
-	if err := dataCursor.Err(); err != nil {
-		return nil, 0, err
-	}
 
 	logDbInteraction(Read, len(result))
 	return result, total, nil
 }
 
-func (repo *pegoutMongoRepository) listQuotesByDateRangeDateMatch(startDate, endDate time.Time) bson.D {
-	return bson.D{{Key: "agreement_timestamp", Value: bson.D{
-		{Key: "$gte", Value: startDate.Unix()},
-		{Key: "$lte", Value: endDate.Unix()},
-	}}}
-}
+func buildPegoutListByDateRangePipeline(startDate, endDate time.Time, page, perPage int) mongo.Pipeline {
+	pagedRowsPipeline := mongo.Pipeline{
+		{{Key: "$unwind", Value: "$retained"}},
+		{{Key: "$sort", Value: bson.D{{Key: "agreement_timestamp", Value: SortAscending}}}},
+	}
+	if page > 0 && perPage > 0 {
+		skip := int64((page - 1) * perPage)
+		pagedRowsPipeline = append(pagedRowsPipeline,
+			bson.D{{Key: "$skip", Value: skip}},
+			bson.D{{Key: "$limit", Value: int64(perPage)}},
+		)
+	}
 
-func (repo *pegoutMongoRepository) listQuotesByDateRangeLookupStage() bson.D {
-	return bson.D{{Key: "$lookup", Value: bson.D{
-		{Key: "from", Value: RetainedPegoutQuoteCollection},
-		{Key: "localField", Value: "hash"},
-		{Key: "foreignField", Value: "quote_hash"},
-		{Key: "as", Value: "retained"},
-	}}}
-}
-
-func (repo *pegoutMongoRepository) listQuotesByDateRangeHasRetainedMatch() bson.D {
-	return bson.D{{Key: "$match", Value: bson.D{
-		{Key: "retained.0", Value: bson.D{{Key: "$exists", Value: true}}},
-	}}}
-}
-
-// listQuotesByDateRangePipelinePrefix is shared by the count and data aggregations so both apply the same filters.
-func (repo *pegoutMongoRepository) listQuotesByDateRangePipelinePrefix(dateMatch bson.D) mongo.Pipeline {
 	return mongo.Pipeline{
-		{{Key: "$match", Value: dateMatch}},
-		repo.listQuotesByDateRangeLookupStage(),
-		repo.listQuotesByDateRangeHasRetainedMatch(),
+		{{Key: "$match", Value: bson.D{{Key: "agreement_timestamp", Value: bson.D{
+			{Key: "$gte", Value: startDate.Unix()},
+			{Key: "$lte", Value: endDate.Unix()},
+		}}}}},
+		{{Key: "$lookup", Value: bson.D{
+			{Key: "from", Value: RetainedPegoutQuoteCollection},
+			{Key: "localField", Value: "hash"},
+			{Key: "foreignField", Value: "quote_hash"},
+			{Key: "as", Value: "retained"},
+		}}},
+		// Drop quotes with no retained record (i.e. quotes that were never accepted).
+		{{Key: "$match", Value: bson.D{
+			{Key: "retained.0", Value: bson.D{{Key: "$exists", Value: true}}},
+		}}},
+		// Single round-trip: count the full result set and return the requested page simultaneously.
+		{{Key: "$facet", Value: bson.D{
+			{Key: "metadata", Value: mongo.Pipeline{
+				{{Key: "$count", Value: "total"}},
+			}},
+			{Key: "data", Value: pagedRowsPipeline},
+		}}},
 	}
-}
-
-func (repo *pegoutMongoRepository) countQuotesWithRetainedInDateRange(ctx context.Context, dateMatch bson.D) (int, error) {
-	pipeline := append(repo.listQuotesByDateRangePipelinePrefix(dateMatch),
-		bson.D{{Key: "$count", Value: "total"}},
-	)
-	cursor, err := repo.conn.Collection(PegoutQuoteCollection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return 0, err
-	}
-	defer cursor.Close(ctx)
-
-	var out struct {
-		Total int `bson:"total"`
-	}
-	if cursor.Next(ctx) {
-		if err := cursor.Decode(&out); err != nil {
-			return 0, err
-		}
-	}
-	if err := cursor.Err(); err != nil {
-		return 0, err
-	}
-	return out.Total, nil
 }
 
 func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {

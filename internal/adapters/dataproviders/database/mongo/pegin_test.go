@@ -635,15 +635,16 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	t.Run("Successfully list quotes with pagination and retained quotes", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(2)
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 2}}, nil, nil)).Once()
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{
-				peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote1, Retained: testRetainedPeginQuote},
-				peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote2, Retained: testRetainedQuote2},
-			}, nil, nil)).Once()
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 2}},
+				"data": bson.A{
+					peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote1, Retained: testRetainedPeginQuote},
+					peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote2, Retained: testRetainedQuote2},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
@@ -663,14 +664,15 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	t.Run("Successfully list quotes without pagination", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(2)
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 1}}, nil, nil)).Once()
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{
-				peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote1, Retained: testRetainedPeginQuote},
-			}, nil, nil)).Once()
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 1}},
+				"data": bson.A{
+					peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote1, Retained: testRetainedPeginQuote},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
@@ -691,11 +693,14 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{},
+				"data":     bson.A{},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
-		defer assertDbInteractionLog(t, "READ interaction with db: []")()
+		defer assertDbInteractionLog(t, "READ interaction with db: 0")()
 
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
 		require.NoError(t, err)
@@ -704,50 +709,11 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 		peginCollection.AssertExpectations(t)
 	})
 
-	t.Run("Returns empty when quotes have no retained row", func(t *testing.T) {
+	t.Run("Error on aggregation", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		peginCollection := &mocks.CollectionBindingMock{}
 		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 0}}, nil, nil)).Once()
-
-		conn := mongo.NewConnection(client, time.Duration(1))
-		repo := mongo.NewPeginMongoRepository(conn)
-		defer assertDbInteractionLog(t, "READ interaction with db: []")()
-
-		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-		require.NoError(t, err)
-		assert.Equal(t, 0, count)
-		require.Empty(t, result)
-		peginCollection.AssertExpectations(t)
-	})
-
-	t.Run("Error on count aggregation", func(t *testing.T) {
-		client, db := getClientAndDatabaseMocks()
-		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
-
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(nil, assert.AnError).Once()
-
-		conn := mongo.NewConnection(client, time.Duration(1))
-		repo := mongo.NewPeginMongoRepository(conn)
-		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-		require.Error(t, err)
-		assert.Equal(t, assert.AnError, err)
-		assert.Equal(t, 0, count)
-		assert.Nil(t, result)
-		peginCollection.AssertExpectations(t)
-	})
-
-	t.Run("Error on data aggregation after successful count", func(t *testing.T) {
-		client, db := getClientAndDatabaseMocks()
-		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(2)
-
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 1}}, nil, nil)).Once()
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 
@@ -764,14 +730,15 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	t.Run("Successfully handle pagination edge cases", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(2)
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 2}}, nil, nil)).Once()
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{
-				peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote2, Retained: testRetainedQuote2},
-			}, nil, nil)).Once()
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 2}},
+				"data": bson.A{
+					peginListQuotesByDateRangeAggRow{StoredPeginQuote: testStoredQuote2, Retained: testRetainedQuote2},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
@@ -789,7 +756,7 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	t.Run("Should fill zero values for retained pegin quotes with missing gas fields", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		peginCollection := &mocks.CollectionBindingMock{}
-		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(2)
+		db.EXPECT().Collection(mongo.PeginQuoteCollection).Return(peginCollection).Times(1)
 
 		oldRetainedDocument := bson.D{
 			{Key: "quote_hash", Value: testHash1},
@@ -808,9 +775,10 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 		row["retained"] = oldRetainedDocument
 
 		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{"total": 1}}, nil, nil)).Once()
-		peginCollection.On("Aggregate", mock.Anything, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{row}, nil, nil)).Once()
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 1}},
+				"data":     bson.A{row},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPeginMongoRepository(conn)
