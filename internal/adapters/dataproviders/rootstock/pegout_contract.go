@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -101,18 +100,15 @@ func (pegoutContract *pegoutContractImpl) ValidatePegout(quoteHash string, btcTx
 	}
 	_, err = bind.Call(pegoutContract.contract, opts, callData, pegoutContract.binding.UnpackValidatePegout)
 	if err != nil {
-		var dataError rpc.DataError
-		if !errors.As(err, &dataError) {
-			// No error data at all - plain network/RPC error (potentially recoverable)
+		// Try to parse the revert reason to distinguish contract validation errors from network/RPC errors
+		parsedRevert, parseErr := ParseRevertReason(pegoutContract.abis.PegOut, err)
+		if parseErr != nil {
+			// Failed to parse - could be network/RPC error (potentially recoverable)
 			return fmt.Errorf("error validating pegout: %w", err)
-		}
-		// Error has data field - it is a contract revert (non-recoverable regardless of whether
-		// the selector can be decoded)
-		parsedRevert, _ := ParseRevertReason(pegoutContract.abis.PegOut, err)
-		if parsedRevert != nil {
+		} else if parsedRevert != nil {
+			// Successfully parsed contract revert - this is a validation error (non-recoverable)
 			return fmt.Errorf("validatePegout reverted with: %s", parsedRevert.Name)
 		}
-		return fmt.Errorf("validatePegout reverted with: %w", err)
 	}
 	return nil
 }

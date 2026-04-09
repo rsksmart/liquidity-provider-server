@@ -614,24 +614,6 @@ func TestPegoutContractImpl_ValidatePegout(t *testing.T) {
 		signerMock.AssertExpectations(t)
 	})
 
-	t.Run("Should handle DataError with empty revert data as non-recoverable", func(t *testing.T) {
-		signerMock.On("Address").Return(parsedAddress).Once()
-		// Contract revert with empty data (e.g. regtest bridge panic) - has DataError interface
-		// but no parseable selector; must still be treated as non-recoverable contract revert
-		emptyDataError := NewRskRpcError("execution reverted", "0x")
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(pegoutBinding.PackValidatePegout(parsedQuoteHash, btcTx)),
-			mock.Anything,
-		).Return(nil, emptyDataError).Once()
-		err := pegoutContract.ValidatePegout(quoteHash, btcTx)
-		require.Error(t, err)
-		require.ErrorContains(t, err, "reverted with:")
-		require.NotContains(t, err.Error(), "error validating pegout:")
-		contractMock.caller.AssertExpectations(t)
-		signerMock.AssertExpectations(t)
-	})
-
 	t.Run("Should handle invalid quote hash format", func(t *testing.T) {
 		signerMock.On("Address").Return(parsedAddress).Once()
 		err := pegoutContract.ValidatePegout("not-a-hex-string", btcTx)
