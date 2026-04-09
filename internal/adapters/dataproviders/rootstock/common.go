@@ -159,6 +159,10 @@ func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
 		return nil, fmt.Errorf("found generic error: %s", reason)
 	}
 
+	if len(revertDataBytes) < errorSelectorSize {
+		return nil, fmt.Errorf("contract reverted with no parseable error data: %x", revertDataBytes)
+	}
+
 	var selectorBytes [errorSelectorSize]byte
 	var parsedError *abi.Error
 	copy(selectorBytes[:], revertDataBytes[:errorSelectorSize])

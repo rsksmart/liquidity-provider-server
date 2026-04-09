@@ -195,7 +195,7 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
-			rootstock.ParseDepositEvent,
+			rootstock.ParseDepositEventByQuoteHash,
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(

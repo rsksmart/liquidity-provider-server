@@ -426,7 +426,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "0102030000000000000000000000000000000000000000000000000000000000", State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash}
 
 	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutRepository)
-	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEvent)
+	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEventByQuoteHash)
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, expireUseCase, sendPegoutUseCase, nil, nil)
 	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
 
