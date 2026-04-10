@@ -54,7 +54,7 @@ func csrfMiddleware(env environment.ManagementEnv) func(next http.Handler) http.
 	if err != nil {
 		log.Fatalf("error decoding session token auth key: %v", err)
 	}
-	return csrf.Protect(
+	protect := csrf.Protect(
 		authKey,
 		csrf.MaxAge(cookies.SessionMaxSeconds),
 		csrf.CookieName(cookies.CsrfCookieName),
@@ -68,4 +68,15 @@ func csrfMiddleware(env environment.ManagementEnv) func(next http.Handler) http.
 			rest.JsonErrorResponse(w, http.StatusForbidden, jsonErr)
 		})),
 	)
+	if env.UseHttps {
+		return protect
+	}
+	// gorilla/csrf v1.7.3+ assumes TLS by default for Referer checks.
+	// Signal plaintext HTTP to skip strict Referer enforcement.
+	return func(next http.Handler) http.Handler {
+		csrfHandler := protect(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			csrfHandler.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
+		})
+	}
 }
