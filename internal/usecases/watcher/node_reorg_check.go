@@ -92,22 +92,30 @@ func (useCase *NodeReorgCheckUseCase) handleReorgAlert(
 	reorgDepth uint64,
 	maxDepth uint64,
 ) error {
-	var lastAlert *time.Time
+	var lastAlert time.Time
 	switch nodeType {
 	case entities.NodeTypeBitcoin:
-		lastAlert = &useCase.btcLastAlert
+		lastAlert = useCase.btcLastAlert
 	case entities.NodeTypeRootstock:
-		lastAlert = &useCase.rskLastAlert
+		lastAlert = useCase.rskLastAlert
 	}
-	if time.Since(*lastAlert) < useCase.alertCooldown {
+
+	if time.Since(lastAlert) < useCase.alertCooldown {
 		return nil
 	}
+
 	body := fmt.Sprintf(nodeReorgAlertBodyTemplate, nodeType, reorgDepth, maxDepth)
 	if alertErr := useCase.alertSender.SendAlert(ctx, alerts.AlertSubjectNodeReorg, body, []string{useCase.alertRecipient}); alertErr != nil {
 		log.Errorf("NodeReorgCheckUseCase[%s]: error sending reorg alert: %v", nodeType, alertErr)
 		return usecases.WrapUseCaseError(usecases.NodeReorgAlertId, alertErr)
 	}
-	*lastAlert = time.Now()
+
+	switch nodeType {
+	case entities.NodeTypeBitcoin:
+		useCase.btcLastAlert = time.Now()
+	case entities.NodeTypeRootstock:
+		useCase.rskLastAlert = time.Now()
+	}
 	useCase.eventBus.Publish(blockchain.NodeReorgAlertSentEvent{
 		BaseEvent:     entities.NewBaseEvent(blockchain.NodeReorgAlertSentEventId),
 		NodeType:      nodeType,
