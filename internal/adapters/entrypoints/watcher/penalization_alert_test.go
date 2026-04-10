@@ -47,8 +47,11 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		require.NoError(t, err)
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			assert.Equal(collect, uint64(555), penalizationWatcher.GetCurrentBlock())
+			rskRpc.AssertExpectations(mt)
+			collateral.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should update block if use case executed successfully", func(t *testing.T) {
@@ -71,8 +74,11 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		require.NoError(t, err)
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(599), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			assert.Equal(collect, uint64(599), penalizationWatcher.GetCurrentBlock())
+			rskRpc.AssertExpectations(mt)
+			collateral.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 }

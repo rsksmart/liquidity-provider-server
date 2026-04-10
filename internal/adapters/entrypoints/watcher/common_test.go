@@ -4,10 +4,18 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
 )
+
+// mockCollectT wraps assert.CollectT to satisfy mock.TestingT which also requires Logf.
+type mockCollectT struct {
+	*assert.CollectT
+}
+
+func (m mockCollectT) Logf(string, ...interface{}) {}
 
 func createWatcherShutdownTest(t *testing.T, createFunc func(t utils.Ticker) watcher.Watcher) {
 	tickerChannel := make(chan time.Time, 1)

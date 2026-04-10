@@ -101,7 +101,11 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 		watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyString)
 		assert.False(t, ok)
 		assert.Empty(t, watchedQuote)
-		assert.Eventually(t, func() bool { return btcWallet.AssertExpectations(t) && checkFunction() }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			btcWallet.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunction())
 	})
 	t.Run("handle accepted pegin quote", func(t *testing.T) {
 		defer test.AssertNoLog(t)
@@ -116,13 +120,15 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 			Quote:         testPeginQuote,
 			RetainedQuote: testRetainedQuote,
 		}
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
 			watchedQuote, ok = peginWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			assert.True(t, ok)
-			return assert.Equal(t, quote.WatchedPeginQuote{
+			assert.True(collect, ok)
+			assert.Equal(collect, quote.WatchedPeginQuote{
 				PeginQuote:    testPeginQuote,
 				RetainedQuote: testRetainedQuote,
-			}, watchedQuote) && btcWallet.AssertExpectations(t)
+			}, watchedQuote)
+			btcWallet.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
@@ -145,8 +151,10 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	closeChannel := make(chan bool)
 	go peginWatcher.Shutdown(closeChannel)
 	<-closeChannel
-	assert.Eventually(t, func() bool {
-		return eventBus.AssertExpectations(t) && ticker.AssertExpectations(t)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := mockCollectT{collect}
+		eventBus.AssertExpectations(mt)
+		ticker.AssertExpectations(mt)
 	}, time.Second, 10*time.Millisecond)
 }
 
@@ -213,18 +221,18 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetHeight").Return(big.NewInt(7), nil).Once()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return assert.Equal(t, big.NewInt(5), peginWatcher.GetCurrentBlock())
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.Equal(collect, big.NewInt(5), peginWatcher.GetCurrentBlock())
 		}, time.Second, 10*time.Millisecond)
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return assert.Equal(t, big.NewInt(5), peginWatcher.GetCurrentBlock())
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.Equal(collect, big.NewInt(5), peginWatcher.GetCurrentBlock())
 		}, time.Second, 10*time.Millisecond)
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return assert.Equal(t, big.NewInt(7), peginWatcher.GetCurrentBlock())
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.Equal(collect, big.NewInt(7), peginWatcher.GetCurrentBlock())
 		}, time.Second, 10*time.Millisecond)
 
 		btcRpc.AssertExpectations(t)
@@ -252,10 +260,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 				Quote:         expiredQuote,
 				RetainedQuote: expiredRetained,
 			}
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.True(t, ok)
-				return assert.Equal(t, quote.WatchedPeginQuote{
+				assert.True(collect, ok)
+				assert.Equal(collect, quote.WatchedPeginQuote{
 					PeginQuote:    expiredQuote,
 					RetainedQuote: expiredRetained,
 				}, watchedQuote)
@@ -263,21 +271,26 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 
 			tickerChannel <- time.Now()
 
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return checkFunction() && assert.NotEmpty(t, watchedQuote) && assert.True(t, ok) &&
-					peginRepository.AssertExpectations(t) && btcRpc.AssertExpectations(t) && btcWallet.AssertExpectations(t)
+				assert.NotEmpty(collect, watchedQuote)
+				assert.True(collect, ok)
+				peginRepository.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
+				btcWallet.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
+			assert.True(t, checkFunction())
 		})
 		t.Run("should stop tracking quotes after expiring them", func(t *testing.T) {
 			resetMocks()
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 			btcRpc.On("GetHeight").Return(big.NewInt(10), nil).Once()
 			btcWallet.On("GetTransactions", test.AnyAddress).Return([]blockchain.BitcoinTransactionInformation{}, nil).Once()
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.True(t, ok)
-				return assert.Equal(t, quote.WatchedPeginQuote{
+				assert.True(collect, ok)
+				assert.Equal(collect, quote.WatchedPeginQuote{
 					PeginQuote:    expiredQuote,
 					RetainedQuote: expiredRetained,
 				}, watchedQuote)
@@ -285,9 +298,13 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 
 			tickerChannel <- time.Now()
 
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return assert.Empty(t, watchedQuote) && assert.False(t, ok) && peginRepository.AssertExpectations(t) && btcRpc.AssertExpectations(t)
+				assert.Empty(collect, watchedQuote)
+				assert.False(collect, ok)
+				peginRepository.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
 		})
 	})
@@ -300,7 +317,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			Quote:         testQuote,
 			RetainedQuote: testRetainedQuote,
 		}
-		assert.Eventually(t, func() bool { return btcWallet.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			btcWallet.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 		t.Run("should handle error getting transactions from wallet", func(t *testing.T) {
 			resetMocks()
 			const errorMsg = "error getting tx"
@@ -308,9 +328,11 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			checkFunction := test.AssertLogContains(t, errorMsg)
 			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return(nil, errors.New(errorMsg)).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
-				return checkFunction() && btcWallet.AssertExpectations(t)
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
+				btcWallet.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
+			assert.True(t, checkFunction())
 		})
 		t.Run("should handle error getting transaction block", func(t *testing.T) {
 			resetMocks()
@@ -322,9 +344,12 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			}, nil).Once()
 			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{}, errors.New(errorMsg)).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
-				return checkFunction() && btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t)
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
+				btcWallet.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
+			assert.True(t, checkFunction())
 		})
 		t.Run("should not update quote if doesn't meet the conditions", func(t *testing.T) {
 			resetMocks()
@@ -344,8 +369,11 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{Time: time.Now().Add(8000 * time.Second)}, nil).Once()
 			tickerChannel <- time.Now()
 
-			assert.Eventually(t, func() bool {
-				return btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t) && peginRepository.AssertNotCalled(t, "UpdateRetainedQuote", mock.Anything, mock.Anything)
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
+				btcWallet.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertNotCalled(mt, "UpdateRetainedQuote", mock.Anything, mock.Anything)
 			}, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should update quote successfully and continue tracking it", func(t *testing.T) {
@@ -357,10 +385,13 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, _ := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t) &&
-					peginRepository.AssertExpectations(t) && assert.Equal(t, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
+				btcWallet.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertExpectations(mt)
+				assert.Equal(collect, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
 			}, time.Second, 10*time.Millisecond)
 		})
 	})
@@ -370,8 +401,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetHeight").Return(big.NewInt(16), nil).Once()
 			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 5}, nil).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
-				return btcRpc.AssertExpectations(t) && peginRepository.AssertNotCalled(t, "UpdateRetainedQuote", mock.Anything, mock.Anything)
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertNotCalled(mt, "UpdateRetainedQuote", mock.Anything, mock.Anything)
 			}, time.Second, 10*time.Millisecond)
 		})
 		t.Run("shouldn't stop tracking quote on recoverable error", func(t *testing.T) {
@@ -380,9 +413,13 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
 			peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return btcRpc.AssertExpectations(t) && peginRepository.AssertExpectations(t) && assert.True(t, ok) && assert.NotEmpty(t, watchedQuote)
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertExpectations(mt)
+				assert.True(collect, ok)
+				assert.NotEmpty(collect, watchedQuote)
 			}, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should stop tracking quote on non-recoverable error", func(t *testing.T) {
@@ -391,9 +428,13 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
 			peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return btcRpc.AssertExpectations(t) && peginRepository.AssertExpectations(t) && assert.False(t, ok) && assert.Empty(t, watchedQuote)
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertExpectations(mt)
+				assert.False(collect, ok)
+				assert.Empty(collect, watchedQuote)
 			}, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should stop tracking quote on successful call for user", func(t *testing.T) {
@@ -417,10 +458,14 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 				RetainedQuote: testRetainedQuote,
 			}
 			tickerChannel <- time.Now()
-			assert.Eventually(t, func() bool {
+			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+				mt := mockCollectT{collect}
 				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				return btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t) && peginRepository.AssertExpectations(t) &&
-					assert.False(t, ok) && assert.Empty(t, watchedQuote)
+				btcWallet.AssertExpectations(mt)
+				btcRpc.AssertExpectations(mt)
+				peginRepository.AssertExpectations(mt)
+				assert.False(collect, ok)
+				assert.Empty(collect, watchedQuote)
 			}, time.Second, 10*time.Millisecond)
 		})
 	})
@@ -439,7 +484,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			Quote:         testQuote,
 			RetainedQuote: testRetainedQuote,
 		}
-		assert.Eventually(t, func() bool { return btcWallet.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			btcWallet.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 		btcRpc.On("GetHeight").Return(big.NewInt(20), nil).Once()
 		tx := blockchain.BitcoinTransactionInformation{Hash: txHash, Confirmations: 1, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1)}}}
 		btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{tx}, nil).Once()
@@ -447,10 +495,13 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionInfo", txHash).Return(tx, nil).Once()
 		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
 			watchedQuote, _ := peginWatcher.GetWatchedQuote(otherHash)
-			return btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t) &&
-				peginRepository.AssertExpectations(t) && assert.Equal(t, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
+			btcWallet.AssertExpectations(mt)
+			btcRpc.AssertExpectations(mt)
+			peginRepository.AssertExpectations(mt)
+			assert.Equal(collect, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should update expired quote and call for user if block was mined before expiration and confirmations already passed", func(t *testing.T) {
@@ -468,7 +519,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			Quote:         testQuote,
 			RetainedQuote: testRetainedQuote,
 		}
-		assert.Eventually(t, func() bool { return btcWallet.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			btcWallet.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 		btcRpc.On("GetHeight").Return(big.NewInt(21), nil).Once()
 		confirmedTx := blockchain.BitcoinTransactionInformation{Hash: txHash, Confirmations: 100, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1)}}}
 		unconfirmedTx := confirmedTx
@@ -481,10 +535,14 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Twice()
 		peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
 			watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-			return btcWallet.AssertExpectations(t) && btcRpc.AssertExpectations(t) && peginRepository.AssertExpectations(t) &&
-				assert.False(t, ok) && assert.Empty(t, watchedQuote)
+			btcWallet.AssertExpectations(mt)
+			btcRpc.AssertExpectations(mt)
+			peginRepository.AssertExpectations(mt)
+			assert.False(collect, ok)
+			assert.Empty(collect, watchedQuote)
 		}, time.Second, 10*time.Millisecond)
 	})
 }

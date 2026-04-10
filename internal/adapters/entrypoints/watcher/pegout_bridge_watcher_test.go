@@ -52,7 +52,11 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		checkFunc := test.AssertLogContains(t, "error getting pegout quotes")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool { return checkFunc() && pegoutRepository.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			pegoutRepository.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 	const quoteHash = "0102"
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
@@ -66,9 +70,13 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			rskWallet.AssertExpectations(mt)
+			providerMock.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		resetMocks()
@@ -95,9 +103,13 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		pegoutRepository.EXPECT().UpdateRetainedQuotes(mock.Anything, mock.Anything).Return(nil).Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := mockCollectT{collect}
+			rskWallet.AssertExpectations(mt)
+			providerMock.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 }
 
