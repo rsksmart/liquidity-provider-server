@@ -132,6 +132,36 @@ func CreateDiscoveryContract(
 	), nil
 }
 
+func CreateCollateralManagementContract(
+	ctx context.Context,
+	factory RskClientFactory,
+	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
+) (blockchain.CollateralManagementContract, error) {
+	rskClient, err := factory(ctx, env)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
+	}
+	rskWallet, err := GetWallet(ctx, env, timeouts, rskClient)
+	if err != nil {
+		return nil, fmt.Errorf("error accessing to wallet: %w", err)
+	}
+	collateralManagement, err := bindings.NewICollateralManagement(common.HexToAddress(env.Rsk.CollateralManagementAddress), rskClient.Rpc())
+	if err != nil {
+		return nil, err
+	}
+	return rootstock.NewCollateralManagementContractImpl(
+		rskClient,
+		rskWallet.Address().String(),
+		env.Rsk.CollateralManagementAddress,
+		rootstock.NewCollateralManagementAdapter(collateralManagement),
+		rskWallet,
+		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
+		rootstock.MustLoadFlyoverABIs(),
+	), nil
+}
+
 func SetUsageMessage(msg string) {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", msg)

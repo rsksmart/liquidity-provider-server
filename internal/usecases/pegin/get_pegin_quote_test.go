@@ -184,6 +184,12 @@ func validateRequestTestCases() test.Table[func(btc *mocks.BtcRpcMock) pegin.Quo
 				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(999), getPeginTestUserAddress)
 			}, Result: lpEntity.AmountOutOfRangeError,
 		},
+		{
+			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+				oversizedData := make([]byte, pegin.MaxPeginDataSize+1)
+				return pegin.NewQuoteRequest(getPeginTestUserAddress, oversizedData, entities.NewWei(1000), getPeginTestUserAddress)
+			}, Result: pegin.DataCapExceededError,
+		},
 	}
 }
 

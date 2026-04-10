@@ -147,7 +147,7 @@ export LOG_FILE="/home/lps/logs/lps.log"
 echo "LPS_UID: $LPS_UID; BTCD_HOME: '$BTCD_HOME'; RSKJ_HOME: '$RSKJ_HOME'; LPS_HOME: '$LPS_HOME'; MONGO_HOME: '$MONGO_HOME'; POWPEG_PEGIN_HOME: '$POWPEG_PEGIN_HOME'; POWPEG_PEGOUT_HOME: '$POWPEG_PEGOUT_HOME'; LOCALSTACK_HOME: '$LOCALSTACK_HOME'; LOKI_HOME: './volumes/loki'"
 
 # start bitcoind and RSKJ dependant services
-docker compose --env-file "$ENV_FILE" up -d bitcoind rskj mongodb localstack
+docker compose --env-file "$ENV_FILE" up -d --remove-orphans bitcoind rskj mongodb localstack
 
 # shellcheck disable=SC1090
 . ./"$ENV_FILE"
