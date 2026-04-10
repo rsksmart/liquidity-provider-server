@@ -1,10 +1,10 @@
-version: "3"
 services:
   localstack:
     build:
-      context: ../localstack
+      context: ./localstack
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     container_name: localstack
     image: flyover-localstack
     ports:
@@ -17,66 +17,12 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - net_lps
-  powpeg-pegin:
-    build:
-      context: ../powpeg/pegin
-      args:
-        UID: "${LPS_UID}"
-    image: powpeg-pegin:latest
-    container_name: powpeg-pegin
-    ports:
-      - "4450:4450"
-    volumes:
-      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/db:/home/powpeg/.rsk
-      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/logs:/home/powpeg/logs
-    networks:
-      - net_lps
-    command:
-      [
-        "java",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=powpeg-pegin",
-        "-cp",
-        "powpeg.jar",
-        "-Drsk.conf.file=regtest-fed.conf",
-        "co.rsk.federate.FederateRunner",
-        "--regtest",
-      ]
-  powpeg-pegout:
-    build:
-      context: ../powpeg/pegout
-      args:
-        UID: "${LPS_UID}"
-    image: powpeg-pegout:latest
-    container_name: powpeg-pegout
-    ports:
-      - "4451:4450"
-    volumes:
-      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/db:/home/powpeg/.rsk
-      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/logs:/home/powpeg/logs
-    networks:
-      - net_lps
-    depends_on: [powpeg-pegin]
-    command:
-      [
-        "java",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=powpeg-pegout",
-        "-cp",
-        "powpeg.jar",
-        "-Drsk.conf.file=regtest-fed.conf",
-        "co.rsk.federate.FederateRunner",
-        "--regtest",
-      ]
   bitcoind:
     build:
       context: ../bitcoind
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     image: bitcond:latest
     container_name: bitcoind01
     environment:
@@ -109,6 +55,7 @@ services:
       context: ../rskj
       args:
         UID: "${LPS_UID}"
+    pull_policy: build
     image: rskj:latest
     container_name: rskj01
     ports:

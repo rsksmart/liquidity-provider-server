@@ -1,0 +1,20 @@
+services:
+  wallet-funder:
+    image: node:25.7.0@sha256:18e02657e2a2cc3a87210ee421e9769ff28a1ac824865d64f74d6d2d59f74b6b
+    volumes:
+      - ./wallet-funder/scripts:/scripts
+    command: ["node", "/scripts/funder.js"]
+    restart: "no"
+    container_name: wallet-funder
+    environment:
+      - FUNDED_RSK_WALLETS
+      - FUNDED_BTC_WALLETS
+      - BTC_ENDPOINT
+      - RSK_ENDPOINT
+      - BTC_USERNAME
+      - BTC_PASSWORD
+    networks:
+      - net_lps
+networks:
+  net_lps:
+    driver: "bridge"

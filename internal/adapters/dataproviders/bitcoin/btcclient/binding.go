@@ -50,6 +50,7 @@ type RpcClient interface {
 	CreateWallet(name string, opts ...rpcclient.CreateWalletOpt) (*btcjson.CreateWalletResult, error)
 	LoadWallet(walletName string) (*btcjson.LoadWalletResult, error)
 	EstimateSmartFee(confTarget int64, mode *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error)
+	GetConnectionCount() (int64, error)
 }
 
 type ClientAdapter interface {

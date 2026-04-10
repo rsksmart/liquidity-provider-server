@@ -1,0 +1,122 @@
+services:
+  lps:
+    build:
+      context: ../../
+      dockerfile: docker-compose/lps/Dockerfile
+      args:
+        UID: "${LPS_UID}"
+        COMMIT_HASH: "${COMMIT_HASH}"
+        COMMIT_TAG: "${COMMIT_TAG}"
+    pull_policy: build
+    image: lps:latest
+    container_name: lps01
+    restart: on-failure:3
+    environment:
+      - LPS_STAGE
+      - SERVER_PORT
+      - LOG_LEVEL
+      - LOG_FILE
+      - ENABLE_MANAGEMENT_API
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_HOST
+      - MONGODB_PORT
+      - RSK_ENDPOINT
+      - CHAIN_ID
+      - PEGIN_CONTRACT_ADDRESS
+      - PEGOUT_CONTRACT_ADDRESS
+      - COLLATERAL_MANAGEMENT_ADDRESS
+      - DISCOVERY_ADDRESS
+      - RSK_BRIDGE_ADDR
+      - RSK_REQUIRED_BRIDGE_CONFIRMATIONS
+      - ERP_KEYS
+      - USE_SEGWIT_FEDERATION
+      - ACCOUNT_NUM
+      - KEY_SECRET
+      - PASSWORD_SECRET
+      - BTC_NETWORK
+      - BTC_USERNAME
+      - BTC_PASSWORD
+      - BTC_ENDPOINT
+      - ALERT_SENDER_EMAIL
+      - ALERT_RECIPIENT_EMAIL
+      - PROVIDER_NAME
+      - BASE_URL
+      - PROVIDER_TYPE
+      - PEGOUT_DEPOSIT_CACHE_START_BLOCK
+      - CAPTCHA_SECRET_KEY
+      - CAPTCHA_SITE_KEY
+      - CAPTCHA_THRESHOLD
+      - DISABLE_CAPTCHA
+      - CAPTCHA_URL
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_REGION
+      - AWS_LOCAL_ENDPOINT
+      - MANAGEMENT_AUTH_KEY
+      - MANAGEMENT_ENCRYPTION_KEY
+      - MANAGEMENT_TOKEN_AUTH_KEY
+      - MANAGEMENT_USE_HTTPS
+      - ENABLE_SECURITY_HEADERS
+      - WALLET
+      - SECRET_SRC
+      - ALLOWED_ORIGINS
+      - KEYSTORE_FILE
+      - KEYSTORE_PWD
+      - BOOTSTRAP_TIMEOUT
+      - WATCHER_PREPARATION_TIMEOUT
+      - WATCHER_VALIDATION_TIMEOUT
+      - DATABASE_INTERACTION_TIMEOUT
+      - MINING_WAIT_TIMEOUT
+      - DATABASE_CONNECTION_TIMEOUT
+      - SERVER_READ_HEADER_TIMEOUT
+      - SERVER_WRITE_TIMEOUT
+      - SERVER_IDLE_TIMEOUT
+      - PEGOUT_DEPOSIT_CHECK_TIMEOUT
+      - RSK_EXTRA_SOURCES
+      - BTC_EXTRA_SOURCES
+      - ECLIPSE_CHECK_ENABLED
+      - ECLIPSE_RSK_TOLERANCE_THRESHOLD
+      - ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK
+      - ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL
+      - ECLIPSE_BTC_TOLERANCE_THRESHOLD
+      - ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK
+      - ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL
+      - ECLIPSE_ALERT_COOLDOWN_SECONDS
+      - BTC_RELEASE_WATCHER_START_BLOCK
+      - BTC_RELEASE_WATCHER_PAGE_SIZE
+      - BTC_RELEASE_CHECK_TIMEOUT
+      - RSK_MIN_PEERS
+      - BITCOIN_MIN_PEERS
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${LPS_HOME:-./volumes/lps/db}:/home/lps/db
+      - ${LPS_HOME:-./volumes/lps/logs}:/home/lps/logs
+      - ./lps/lps_configuration_data:/tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      start_period: 120s # this is to allow enough time for the machine in the pipeline to start the server
+      retries: 5
+    networks:
+      - net_lps
+    command: ["liquidity-provider-server"]
+  lps-configurer:
+    image: node:25.7.0@sha256:18e02657e2a2cc3a87210ee421e9769ff28a1ac824865d64f74d6d2d59f74b6b
+    volumes:
+      - ./lps/configurations:/configurations
+      - ./lps/lps_configuration_data:/lps_configuration_data
+    command: ["node", "/configurations/index.js"]
+    depends_on:
+      lps:
+        condition: service_healthy
+    restart: "no"
+    container_name: lps-configurer
+    environment:
+      - TRUSTED_ACCOUNT_ADDRESS
+    networks:
+      - net_lps
+networks:
+  net_lps:
+    driver: "bridge"
