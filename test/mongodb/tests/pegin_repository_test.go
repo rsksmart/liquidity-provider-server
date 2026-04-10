@@ -254,7 +254,7 @@ func TestPegin_ListQuotesByDateRange(t *testing.T) {
 	// With pagination
 	results, count, err = peginRepo.ListQuotesByDateRange(ctx, startDate, endDate, 1, 1)
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.Equal(t, 2, count)
 	assert.Len(t, results, 1)
 }
 

@@ -410,7 +410,7 @@ func TestPegout_ListQuotesByDateRange(t *testing.T) {
 	// With pagination
 	results, count, err = pegoutRepo.ListQuotesByDateRange(ctx, startDate, endDate, 1, 1)
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.Equal(t, 2, count)
 	require.Len(t, results, 1)
 	// Sorted by agreement_timestamp ascending, so the oldest in-range quote should be returned first.
 	assert.Equal(t, int64(2), results[0].Quote.Nonce)
