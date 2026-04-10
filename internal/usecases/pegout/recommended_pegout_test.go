@@ -2,6 +2,8 @@ package pegout_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // nolint:funlen
@@ -105,15 +106,29 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		require.ErrorIs(t, err, usecases.NoLiquidityError)
 		assert.Empty(t, result)
 	})
-	t.Run("should validate recommended amount is over bridge minimum", func(t *testing.T) {
+	t.Run("should succeed when recommended amount is below bridge minimum", func(t *testing.T) {
 		btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil).Once()
 		highMinimumBridge := new(mocks.BridgeMock)
 		highMinimumBridge.On("GetMinimumLockTxValue").Return(new(entities.Wei).Add(entities.NewWei(1), createdQuote.PegoutQuote.Total()), nil)
-		contracts.Bridge = highMinimumBridge
-		useCase := pegout.NewRecommendedPegoutUseCase(lp, contracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		modifiedContracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: highMinimumBridge}
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, modifiedContracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
-		require.ErrorIs(t, err, usecases.TxBelowMinimumError)
-		assert.Empty(t, result)
+		// Should succeed despite being below bridge minimum
+		require.NoError(t, err)
+		assert.NotEmpty(t, result)
+		assert.Equal(t, createdQuote.PegoutQuote.Value, result.RecommendedQuoteValue)
+	})
+	t.Run("should succeed when recommended amount equals bridge minimum", func(t *testing.T) {
+		btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil).Once()
+		// Set bridge minimum equal to the recommended amount
+		equalMinimumBridge := new(mocks.BridgeMock)
+		equalMinimumBridge.On("GetMinimumLockTxValue").Return(createdQuote.PegoutQuote.Total(), nil)
+		modifiedContracts := blockchain.RskContracts{Lbc: lbc, FeeCollector: feeCollector, Bridge: equalMinimumBridge}
+		useCase := pegout.NewRecommendedPegoutUseCase(lp, modifiedContracts, rpc, btcWallet, utils.Scale, test.AnyRskAddress)
+		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
+		require.NoError(t, err)
+		assert.NotEmpty(t, result)
+		assert.Equal(t, createdQuote.PegoutQuote.Value, result.RecommendedQuoteValue)
 	})
 }
 

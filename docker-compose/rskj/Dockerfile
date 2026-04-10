@@ -1,12 +1,13 @@
 FROM --platform=linux/amd64 ubuntu:noble@sha256:d22e4fb389065efa4a61bb36416768698ef6d955fe8a7e0cdb3cd6de80fa7eec
 
-ARG RSKJ_VERSION="8.1.0~noble"
+ARG RSKJ_VERSION="9.0.1~noble"
 ARG UID=1001
 ARG HOME="/home/rsk"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN useradd -m -u "$UID" --home="$HOME" rsk && \
+RUN (getent passwd "$UID" && userdel -r "$(getent passwd "$UID" | cut -d: -f1)" || true) && \
+    useradd -m -u "$UID" --home="$HOME" rsk && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
       dbus debconf-utils \

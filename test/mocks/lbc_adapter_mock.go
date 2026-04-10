@@ -1703,6 +1703,65 @@ func (_c *LbcAdapterMock_UpdateProvider_Call) RunAndReturn(run func(*bind.Transa
 	return _c
 }
 
+// Withdraw provides a mock function with given fields: opts, amount
+func (_m *LbcAdapterMock) Withdraw(opts *bind.TransactOpts, amount *big.Int) (*types.Transaction, error) {
+	ret := _m.Called(opts, amount)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Withdraw")
+	}
+
+	var r0 *types.Transaction
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*bind.TransactOpts, *big.Int) (*types.Transaction, error)); ok {
+		return rf(opts, amount)
+	}
+	if rf, ok := ret.Get(0).(func(*bind.TransactOpts, *big.Int) *types.Transaction); ok {
+		r0 = rf(opts, amount)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Transaction)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*bind.TransactOpts, *big.Int) error); ok {
+		r1 = rf(opts, amount)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LbcAdapterMock_Withdraw_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Withdraw'
+type LbcAdapterMock_Withdraw_Call struct {
+	*mock.Call
+}
+
+// Withdraw is a helper method to define mock.On call
+//   - opts *bind.TransactOpts
+//   - amount *big.Int
+func (_e *LbcAdapterMock_Expecter) Withdraw(opts interface{}, amount interface{}) *LbcAdapterMock_Withdraw_Call {
+	return &LbcAdapterMock_Withdraw_Call{Call: _e.mock.On("Withdraw", opts, amount)}
+}
+
+func (_c *LbcAdapterMock_Withdraw_Call) Run(run func(opts *bind.TransactOpts, amount *big.Int)) *LbcAdapterMock_Withdraw_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bind.TransactOpts), args[1].(*big.Int))
+	})
+	return _c
+}
+
+func (_c *LbcAdapterMock_Withdraw_Call) Return(_a0 *types.Transaction, _a1 error) *LbcAdapterMock_Withdraw_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *LbcAdapterMock_Withdraw_Call) RunAndReturn(run func(*bind.TransactOpts, *big.Int) (*types.Transaction, error)) *LbcAdapterMock_Withdraw_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithdrawCollateral provides a mock function with given fields: opts
 func (_m *LbcAdapterMock) WithdrawCollateral(opts *bind.TransactOpts) (*types.Transaction, error) {
 	ret := _m.Called(opts)
