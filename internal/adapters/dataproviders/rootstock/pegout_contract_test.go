@@ -368,6 +368,21 @@ func TestPegoutContractImpl_RefundPegout(t *testing.T) {
 		contractBinding.AssertNotCalled(t, "RefundPegOut")
 		callerMock.AssertExpectations(t)
 	})
+	t.Run("Error handling (empty revert data from bridge)", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		e := NewRskRpcError("execution reverted", "0x")
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, e).Once()
+		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
+		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
+		assert.Empty(t, result)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
 	t.Run("Error handling (Call error)", func(t *testing.T) {
 		contractBinding := &mocks.PegoutContractAdapterMock{}
 		callerMock := &mocks.ContractCallerBindingMock{}
