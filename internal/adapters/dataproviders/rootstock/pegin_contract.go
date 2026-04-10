@@ -255,6 +255,27 @@ func (peginContract *peginContractImpl) PausedStatus() (blockchain.PauseStatus, 
 	)
 }
 
+func (peginContract *peginContractImpl) Withdraw(amount *entities.Wei) error {
+	opts := &bind.TransactOpts{
+		From:   peginContract.signer.Address(),
+		Signer: peginContract.signer.Sign,
+	}
+
+	receipt, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(peginContract.client, peginContract.miningTimeout, "Withdraw", func() (*geth.Transaction, error) {
+				return peginContract.contract.Withdraw(opts, amount.AsBigInt())
+			})
+		})
+
+	if err != nil {
+		return fmt.Errorf("withdraw error: %w", err)
+	} else if receipt == nil || receipt.Status == 0 {
+		return errors.New("withdraw error")
+	}
+	return nil
+}
+
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types
 // except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, error) {
