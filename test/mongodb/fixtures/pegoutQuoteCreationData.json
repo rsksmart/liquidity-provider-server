@@ -1,0 +1,57 @@
+[
+  {
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fee_rate": {
+      "$numberDouble": "0.001"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "gas_price": "60000000",
+    "fixed_fee": "2000000"
+  },
+  {
+    "gas_price": "60000000",
+    "fixed_fee": "2000000",
+    "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "fee_rate": {
+      "$numberDouble": "0.001"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    }
+  },
+  {
+    "gas_price": "60000000",
+    "fixed_fee": "2000000",
+    "hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "fee_rate": {
+      "$numberDouble": "0.001"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    }
+  },
+  {
+    "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "fee_rate": {
+      "$numberDouble": "0.001"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "gas_price": "60000000",
+    "fixed_fee": "2000000"
+  },
+  {
+    "fee_rate": {
+      "$numberDouble": "0.001"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    },
+    "gas_price": "60000000",
+    "fixed_fee": "2000000",
+    "hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  }
+]

@@ -1,4 +1,4 @@
-.PHONY: test all clean utils
+.PHONY: test all clean utils test-integration-db generate-fixtures
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -88,6 +88,12 @@ monitoring:
 		-p $(MONITOR_PORT):$(MONITOR_PORT) \
 		-e MONITOR_PORT=$(MONITOR_PORT) \
 		monitoring
+
+test-integration-db:
+	./test/mongodb/scripts/run-tests.sh
+
+generate-fixtures:
+	./test/mongodb/scripts/generate-fixtures.sh
 
 bindings:
 	./scripts/create-bindings.sh $(IMAGE) && echo "Bindings generated successfully"
