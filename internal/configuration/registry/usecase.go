@@ -80,6 +80,8 @@ type UseCaseRegistry struct {
 	getTrustedAccountUseCase      *liquidity_provider.GetTrustedAccountUseCase
 	btcEclipseCheckUseCase        *watcher.EclipseCheckUseCase
 	rskEclipseCheckUseCase        *watcher.EclipseCheckUseCase
+	btcReorgCheckUseCase          *watcher.NodeReorgCheckUseCase
+	rskReorgCheckUseCase          *watcher.NodeReorgCheckUseCase
 	nodePeerCheckUseCase          *watcher.NodePeerCheckUseCase
 	updateBtcReleaseUseCase       *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase      *pegout.RecommendedPegoutUseCase
@@ -87,7 +89,7 @@ type UseCaseRegistry struct {
 }
 
 // NewUseCaseRegistry
-// nolint:funlen
+// nolint:funlen,maintidx
 func NewUseCaseRegistry(
 	env environment.Environment,
 	rskRegistry *Rootstock,
@@ -336,6 +338,22 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 			&sync.Mutex{},
+		),
+		btcReorgCheckUseCase: watcher.NewNodeReorgCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Btc.FillWithDefaults().MaxReorgDepth,
+			time.Duration(env.NodeReorg.FillWithDefaults().AlertCooldownSeconds)*time.Second,
+		),
+		rskReorgCheckUseCase: watcher.NewNodeReorgCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
+			time.Duration(env.NodeReorg.FillWithDefaults().AlertCooldownSeconds)*time.Second,
 		),
 		nodePeerCheckUseCase: watcher.NewNodePeerCheckUseCase(
 			messaging.Rpc,
