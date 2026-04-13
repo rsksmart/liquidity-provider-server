@@ -52,7 +52,6 @@ func utxoSplitReceipt(txHash string, value int64) blockchain.TransactionReceipt 
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(value),
-		Status:          true,
 	}
 }
 

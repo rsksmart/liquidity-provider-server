@@ -106,7 +106,6 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				BlockNumber:       123,
 				From:              walletAddress.String(),
 				To:                common.HexToAddress(toAddress).String(), // Use normalized address format
-				Status:            true,
 				CumulativeGasUsed: big.NewInt(50000),
 				GasUsed:           big.NewInt(21000),
 				Value:             entities.NewWei(89607151182921727),
@@ -193,7 +192,7 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
-			require.ErrorIs(t, err, rootstock.TxFailedError)
+			require.ErrorIs(t, err, blockchain.TxFailedError)
 
 			expectedReceipt := blockchain.TransactionReceipt{
 				TransactionHash:   txHash,
@@ -201,7 +200,6 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 				BlockNumber:       123,
 				From:              walletAddress.String(),
 				To:                common.HexToAddress(toAddress).String(), // Use normalized address format
-				Status:            false,
 				CumulativeGasUsed: big.NewInt(50000),
 				GasUsed:           big.NewInt(21000),
 				Value:             entities.NewWei(1),

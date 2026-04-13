@@ -2,6 +2,7 @@ package pegout
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -97,23 +98,19 @@ func (h *UtxoSplitHandler) sendChunkAndPersist(
 ) ([]quote.WatchedPegoutQuote, error) {
 	config := blockchain.NewTransactionConfig(chunkAmount, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, bridgeAddress)
-	if txErr != nil {
-		log.Errorf("%s: split tx %d/%d failed: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, txErr)
-		return watchedQuotes, nil
-	}
-	if !h.isValidSplitReceipt(receipt, chunkIndex, totalChunks) {
+	if !h.isValidSplitReceipt(receipt, txErr, chunkIndex, totalChunks) {
 		return watchedQuotes, nil
 	}
 	return h.distributeChunkReceipt(ctx, chunkIndex, totalChunks, receipt, watchedQuotes)
 }
 
-func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionReceipt, chunkIndex, totalChunks int) bool {
-	if receipt.TransactionHash == "" {
-		log.Errorf("%s: split tx %d/%d failed: incomplete receipt", usecases.BridgePegoutId, chunkIndex+1, totalChunks)
+func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionReceipt, txErr error, chunkIndex, totalChunks int) bool {
+	if errors.Is(txErr, blockchain.TxFailedError) {
+		log.Errorf("%s: split tx %d/%d failed: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, txErr)
 		return false
 	}
-	if !receipt.Status {
-		log.Errorf("%s: split tx %d/%d failed: transaction reverted (%s)", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash)
+	if receipt.TransactionHash == "" {
+		log.Errorf("%s: split tx %d/%d failed: incomplete receipt", usecases.BridgePegoutId, chunkIndex+1, totalChunks)
 		return false
 	}
 	if receipt.Value == nil {

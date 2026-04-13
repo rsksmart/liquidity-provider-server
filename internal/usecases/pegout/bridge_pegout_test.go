@@ -128,7 +128,6 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 		BlockNumber:       uint64(1000),
 		From:              "0x123",
 		To:                test.AnyAddress,
-		Status:            true,
 		CumulativeGasUsed: big.NewInt(21000),
 		GasUsed:           big.NewInt(21000),
 		Value:             entities.NewWei(558),
@@ -397,13 +396,11 @@ func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderM
 		TransactionHash: "0xtx1", GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    entities.NewWei(358),
-		Status:   true,
 	}
 	receipt2 := blockchain.TransactionReceipt{
 		TransactionHash: "0xtx2", GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    entities.NewWei(200),
-		Status:   true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(358)) == 0
@@ -479,7 +476,6 @@ func testUtxoSplitNoSplitWhenN1(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(350),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(350)) == 0
@@ -543,7 +539,6 @@ func testUtxoSplitExactMultiple(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(200),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(200)) == 0
@@ -583,7 +578,6 @@ func testUtxoSplitFailMidSplit(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(358),
-		Status:          true,
 	}
 	emptyReceipt := blockchain.TransactionReceipt{}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
@@ -699,7 +693,6 @@ func runAmountIntegritySubtest(t *testing.T, total, bridgeMin *big.Int, wantN in
 		TransactionHash: test.AnyHash, GasUsed: big.NewInt(21000),
 		GasPrice: entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:    totalWei.Copy(),
-		Status:   true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).
 		Run(func(args mock.Arguments) {
@@ -804,7 +797,6 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(700),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(700)) == 0
@@ -866,14 +858,12 @@ func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock,
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
-		Status:          true,
 	}
 	receipt2 := blockchain.TransactionReceipt{
 		TransactionHash: "0xmulti2",
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(300),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
@@ -949,7 +939,6 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
@@ -990,7 +979,6 @@ func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mock
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 		Value:           entities.NewWei(500),
-		Status:          true,
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0

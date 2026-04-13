@@ -3,7 +3,6 @@ package pegout
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -60,9 +59,6 @@ func (h *AllAtOnceHandler) Execute(
 
 	config := blockchain.NewTransactionConfig(totalValue, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, h.contracts.Bridge.GetAddress())
-	if txErr == nil && !receipt.Status {
-		txErr = fmt.Errorf("transaction reverted (%s)", receipt.TransactionHash)
-	}
 	if txErr == nil {
 		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, receipt.TransactionHash)
 	}

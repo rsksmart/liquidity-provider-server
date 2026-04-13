@@ -25,8 +25,6 @@ type RskWalletImpl struct {
 	miningTimeout time.Duration
 }
 
-var TxFailedError = errors.New("transaction failed")
-
 func NewRskWalletImpl(client *RskClient, account *account.RskAccount, chainId uint64, miningTimeout time.Duration) *RskWalletImpl {
 	return &RskWalletImpl{client: client.client, account: account, chainId: chainId, miningTimeout: miningTimeout}
 }
@@ -153,7 +151,6 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 		BlockNumber:       receipt.BlockNumber.Uint64(),
 		From:              wallet.Address().String(),
 		To:                toAddressStr,
-		Status:            receipt.Status == geth.ReceiptStatusSuccessful,
 		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
 		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
 		Value:             txValue,
@@ -162,7 +159,7 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 	}
 
 	if receipt.Status == 0 {
-		return transactionReceipt, fmt.Errorf("%w: send rbtc error: transaction reverted (%s)", TxFailedError, receipt.TxHash.String())
+		return transactionReceipt, fmt.Errorf("%w: send rbtc error: transaction reverted (%s)", blockchain.TxFailedError, receipt.TxHash.String())
 	}
 
 	return transactionReceipt, nil

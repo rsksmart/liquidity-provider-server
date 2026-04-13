@@ -313,7 +313,6 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			BlockNumber:       blockNumber,
 			From:              "0x82a06eBDB97776a2da4041dF8f2b2ea8D3257852",
 			To:                contract,
-			Status:            true,
 			CumulativeGasUsed: big.NewInt(143691),
 			GasUsed:           big.NewInt(143691),
 			Value:             entities.NewWei(0),

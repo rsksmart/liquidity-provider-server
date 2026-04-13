@@ -50,16 +50,6 @@ func allAtOnceConfig(bridgeMin int64) liquidity_provider.PegoutConfiguration {
 func allAtOnceReceipt() blockchain.TransactionReceipt {
 	return blockchain.TransactionReceipt{
 		TransactionHash: test.AnyHash,
-		Status:          true,
-		GasUsed:         big.NewInt(21000),
-		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
-	}
-}
-
-func allAtOnceRevertedReceipt() blockchain.TransactionReceipt {
-	return blockchain.TransactionReceipt{
-		TransactionHash: test.AnyHash,
-		Status:          false,
 		GasUsed:         big.NewInt(21000),
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 	}
@@ -270,7 +260,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		wallet.On("SendRbtc", mock.Anything,
 			mock.MatchedBy(matchBridgeTxConfig(entities.NewWei(allAtOnceTotal))),
 			test.AnyAddress,
-		).Return(allAtOnceRevertedReceipt(), nil).Once()
+		).Return(allAtOnceReceipt(), blockchain.TxFailedError).Once()
 		bridge.On("GetAddress").Return(test.AnyAddress).Once()
 		mutex.On("Lock").Return().Once()
 		mutex.On("Unlock").Return().Once()
@@ -282,7 +272,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		handler := newAllAtOnceHandler(repo, wallet, bridge, mutex)
 		err := handler.Execute(context.Background(), allAtOnceConfig(500), testQuotes)
 
-		require.ErrorContains(t, err, "transaction reverted")
+		require.ErrorIs(t, err, blockchain.TxFailedError)
 		repo.AssertExpectations(t)
 		wallet.AssertExpectations(t)
 		bridge.AssertExpectations(t)
