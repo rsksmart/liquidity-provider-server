@@ -26,6 +26,9 @@ type WatcherRegistry struct {
 	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
 	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
 	AssetReportWatcher         *monitoring.AssetReportWatcher
+	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
+	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
+	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
 }
 
 // nolint:funlen
@@ -149,6 +152,20 @@ func NewWatcherRegistry(
 			appMetrics,
 			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
+		),
+		BitcoinReorgWatcher: watcher.NewBitcoinReorgWatcher(
+			useCaseRegistry.btcReorgCheckUseCase,
+			tickers.BitcoinReorgWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		RootstockReorgWatcher: watcher.NewRootstockReorgWatcher(
+			useCaseRegistry.rskReorgCheckUseCase,
+			tickers.RootstockReorgWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		ReorgMetricsWatcher: monitoring.NewReorgMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
 		),
 	}
 }
