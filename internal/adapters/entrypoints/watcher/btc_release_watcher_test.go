@@ -124,7 +124,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			useCase.AssertExpectations(mt)
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
@@ -156,7 +156,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			useCase.AssertExpectations(mt)
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
@@ -208,7 +208,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			useCase.AssertNotCalled(mt, "Run")
 			bridge.AssertNotCalled(mt, "GetBatchPegOutCreatedEvent")
 			rskRpc.AssertExpectations(mt)
@@ -236,7 +236,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			useCase.AssertNotCalled(mt, "Run")
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
@@ -265,7 +265,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			useCase.AssertExpectations(mt)
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)

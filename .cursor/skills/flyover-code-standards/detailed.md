@@ -488,6 +488,44 @@ successful paths.
 - Split large tests into smaller ones rather than disabling `maintidx`. Disabling
   `funlen` in tests is acceptable.
 
+### Test package naming
+
+Test files must declare `package foo_test`, not `package foo`. This enforces
+black-box testing: if a behavior can only be verified by reaching into unexported
+identifiers, that is a signal the API surface needs improvement, not that the
+test should be given internal access.
+
+```go
+// BAD — test lives inside the package, can access unexported symbols
+package watcher
+
+import "testing"
+
+func TestSomething(t *testing.T) {
+    s := internalHelper() // compiles only because it's in the same package
+    ...
+}
+```
+
+```go
+// GOOD — test is an external consumer of the package
+package watcher_test
+
+import (
+    "testing"
+    "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+)
+
+func TestSomething(t *testing.T) {
+    w := watcher.New(...)
+    ...
+}
+```
+
+If test helpers or shared setup are needed across test files in the same
+directory, place them in a dedicated `common_test.go` file that also declares
+`package foo_test`. Never use the production package name in test files.
+
 ### Coverage gaps
 
 Every handler, converter, and public function should be tested. "Not tested" is

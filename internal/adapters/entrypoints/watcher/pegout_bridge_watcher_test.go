@@ -53,7 +53,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 		assert.True(t, checkFunc())
@@ -71,7 +71,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		rskWallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			rskWallet.AssertExpectations(mt)
 			providerMock.AssertExpectations(mt)
 			pegoutRepository.AssertExpectations(mt)
@@ -104,7 +104,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			rskWallet.AssertExpectations(mt)
 			providerMock.AssertExpectations(mt)
 			pegoutRepository.AssertExpectations(mt)

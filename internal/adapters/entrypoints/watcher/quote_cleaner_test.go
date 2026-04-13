@@ -31,7 +31,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go quoteCleaner.Shutdown(make(chan bool))
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			peginRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
@@ -57,7 +57,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go quoteCleaner.Shutdown(make(chan bool))
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			peginRepository.AssertExpectations(mt)
 			pegoutRepository.AssertExpectations(mt)

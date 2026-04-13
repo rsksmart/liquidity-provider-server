@@ -132,7 +132,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 	go peginWatcher.Shutdown(closeChannel)
 	<-closeChannel
 	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		mt := mockCollectT{collect}
+		mt := newMockCollectT(collect)
 		eventBus.AssertExpectations(mt)
 		ticker.AssertExpectations(mt)
 	}, time.Second, 10*time.Millisecond)
@@ -234,7 +234,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 		}
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 			bridge.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
@@ -260,7 +260,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 			quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(nil, assert.AnError).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := mockCollectT{collect}
+				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
 				quoteRepository.AssertExpectations(mt)
@@ -290,7 +290,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 			quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := mockCollectT{collect}
+				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
 				quoteRepository.AssertExpectations(mt)
@@ -326,7 +326,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 			quoteRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := mockCollectT{collect}
+				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
 				quoteRepository.AssertExpectations(mt)

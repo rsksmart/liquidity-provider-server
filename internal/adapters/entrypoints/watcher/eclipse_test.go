@@ -30,7 +30,7 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
@@ -50,7 +50,7 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
@@ -71,7 +71,7 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
@@ -93,7 +93,7 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			ticker.AssertExpectations(mt)
 			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)

@@ -24,6 +24,7 @@ Before submitting code, verify:
 - [ ] **Errors are specific** — proper HTTP status codes; `errors.Is` for type checks; `fmt.Errorf` for wrapping
 - [ ] **Pointers are justified** — prefer values; nil-check every pointer; use zero-value structs over nil
 - [ ] **Tests are complete** — assert error types, all result fields, events; use mockery; expected on left
+- [ ] **Test package uses `_test` suffix** — test files declare `package foo_test`, not `package foo`
 - [ ] **Security basics** — `textContent` not `innerHTML` in JS; `BigInt` not `Number` for large values in JS; verify config signatures in Go
 
 ## Architecture (Go)

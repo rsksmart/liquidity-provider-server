@@ -48,7 +48,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			assert.Equal(collect, uint64(555), penalizationWatcher.GetCurrentBlock())
 			rskRpc.AssertExpectations(mt)
 			collateral.AssertExpectations(mt)
@@ -75,7 +75,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			assert.Equal(collect, uint64(599), penalizationWatcher.GetCurrentBlock())
 			rskRpc.AssertExpectations(mt)
 			collateral.AssertExpectations(mt)

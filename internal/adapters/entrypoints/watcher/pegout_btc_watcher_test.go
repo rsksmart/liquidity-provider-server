@@ -84,7 +84,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 	go pegoutWatcher.Shutdown(closeChannel)
 	<-closeChannel
 	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		mt := mockCollectT{collect}
+		mt := newMockCollectT(collect)
 		eventBus.AssertExpectations(mt)
 		ticker.AssertExpectations(mt)
 	}, time.Second, 10*time.Millisecond)
@@ -160,7 +160,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetHeight").Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 		assert.True(t, checkFunction())
@@ -176,7 +176,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 		assert.True(t, checkFunction())
@@ -190,7 +190,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		assert.Equal(t, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			watchedQuote, ok = pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			btcRpc.AssertExpectations(mt)
 			assert.True(collect, ok)
@@ -209,7 +209,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		assert.Equal(t, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			watchedQuote, ok = pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			btcRpc.AssertExpectations(mt)
 			assert.True(collect, ok)
@@ -229,7 +229,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		assert.Equal(t, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			watchedQuote, ok = pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			btcRpc.AssertExpectations(mt)
 			assert.False(collect, ok)
@@ -260,7 +260,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		tickerChannel <- time.Now()
 
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := mockCollectT{collect}
+			mt := newMockCollectT(collect)
 			watchedQuote, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 			assert.False(collect, ok)
 			assert.Empty(collect, watchedQuote)
@@ -273,7 +273,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	go pegoutWatcher.Shutdown(closeChannel)
 	<-closeChannel
 	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		mt := mockCollectT{collect}
+		mt := newMockCollectT(collect)
 		eventBus.AssertExpectations(mt)
 		ticker.AssertExpectations(mt)
 	}, time.Second, 10*time.Millisecond)
