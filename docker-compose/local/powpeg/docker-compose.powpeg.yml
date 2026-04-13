@@ -1,0 +1,56 @@
+services:
+  powpeg-pegin:
+    build:
+      context: powpeg/pegin
+    pull_policy: build
+    image: powpeg-pegin:latest
+    container_name: powpeg-pegin
+    ports:
+      - "4450:4450"
+    volumes:
+      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/db:/home/powpeg/.rsk
+      - ${POWPEG_PEGIN_HOME:-./volumes/powpeg/pegin}/logs:/home/powpeg/logs
+    networks:
+      - net_lps
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=powpeg-pegin",
+        "-cp",
+        "powpeg.jar",
+        "-Drsk.conf.file=regtest-fed.conf",
+        "co.rsk.federate.FederateRunner",
+        "--regtest",
+      ]
+  powpeg-pegout:
+    build:
+      context: powpeg/pegout
+    pull_policy: build
+    image: powpeg-pegout:latest
+    container_name: powpeg-pegout
+    ports:
+      - "4451:4450"
+    volumes:
+      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/db:/home/powpeg/.rsk
+      - ${POWPEG_PEGOUT_HOME:-./volumes/powpeg/pegout}/logs:/home/powpeg/logs
+    networks:
+      - net_lps
+    command:
+      [
+        "java",
+        "-Drpc.providers.web.http.bind_address=0.0.0.0",
+        "-Drpc.providers.web.cors=*",
+        "-Drpc.providers.web.http.hosts.0=localhost",
+        "-Drpc.providers.web.http.hosts.1=powpeg-pegout",
+        "-cp",
+        "powpeg.jar",
+        "-Drsk.conf.file=regtest-fed.conf",
+        "co.rsk.federate.FederateRunner",
+        "--regtest",
+      ]
+networks:
+  net_lps:
+    driver: "bridge"
