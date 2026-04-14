@@ -192,8 +192,8 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 	)
 	parsedRevert, err := ParseRevertReason(pegoutContract.abis.PegOut, revert)
 	if errors.Is(err, ErrShortRevertData) {
-		log.Debugln("RefundPegout: bridge reverted with short data. retrying on next confirmation.")
-		return blockchain.TransactionReceipt{}, blockchain.WaitingForBridgeError
+		log.Debugln("RefundPegout: revert payload empty/short (unparseable); returning parse error (no WaitingForBridgeError mapping)")
+		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing refundPegout result: %w", err)
 	} else if err != nil && parsedRevert == nil {
 		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing refundPegout result: %w", err)
 	} else if parsedRevert != nil && (strings.EqualFold(notEnoughConfirmationsError, parsedRevert.Name) || strings.EqualFold(unableToGetConfirmations, parsedRevert.Name)) {

@@ -219,5 +219,5 @@ type rskRpcErrorWithIntData struct {
 	data    int
 }
 
-func (r rskRpcErrorWithIntData) Error() string         { return r.message }
+func (r rskRpcErrorWithIntData) Error() string          { return r.message }
 func (r rskRpcErrorWithIntData) ErrorData() interface{} { return r.data }

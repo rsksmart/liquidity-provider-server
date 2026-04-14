@@ -369,19 +369,23 @@ func TestPegoutContractImpl_RefundPegout(t *testing.T) {
 		callerMock.AssertExpectations(t)
 	})
 	t.Run("Error handling (empty revert data from bridge)", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractBinding := &mocks.PegoutContractAdapterMock{}
+		callerMock := &mocks.ContractCallerBindingMock{}
+		pegoutContract := rootstock.NewPegoutContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
 		e := NewRskRpcError("execution reverted", "0x")
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(txData),
-			mock.Anything,
-		).Return(nil, e).Once()
+		contractBinding.EXPECT().Caller().Return(callerMock).Once()
+		callerMock.EXPECT().Call(mock.Anything, mock.Anything, "refundPegOut",
+			refundParams.QuoteHash, refundParams.BtcRawTx, refundParams.BtcBlockHeaderHash,
+			refundParams.MerkleBranchPath, refundParams.MerkleBranchHashes,
+		).Return(e).Once()
+
 		result, err := pegoutContract.RefundPegout(txConfig, refundParams)
-		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "error parsing refundPegout result")
 		assert.Empty(t, result)
-		contractMock.caller.AssertExpectations(t)
-		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+		contractBinding.AssertExpectations(t)
+		contractBinding.AssertNotCalled(t, "RefundPegOut")
+		callerMock.AssertExpectations(t)
 	})
 	t.Run("Error handling (Call error)", func(t *testing.T) {
 		contractBinding := &mocks.PegoutContractAdapterMock{}
