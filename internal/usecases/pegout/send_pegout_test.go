@@ -1054,10 +1054,14 @@ func TestSendPegoutUseCase_Run_MultipleDepositsInOneTx(t *testing.T) {
 	rsk.On("GetHeight", test.AnyCtx).Return(uint64(450), nil).Once()
 
 	// Receipt has two PegOutDeposit logs:
-	//   index 0 — a different quote (wrong for sendPegoutRetainedQuote)
+	//   index 0 — a different quote and retained quote (wrong for sendPegoutRetainedQuote)
 	//   index 1 — sendPegoutRetainedQuote with correct amount
 	otherRetained := sendPegoutRetainedQuote
 	otherRetained.QuoteHash = quoteHashOther
+	otherQuote := sendPegoutTestQuote
+	otherQuote.Value = entities.NewWei(9999)
+	otherQuote.CallFee = entities.NewWei(1)
+	otherQuote.GasFee = entities.NewWei(1)
 	receipt := &blockchain.TransactionReceipt{
 		TransactionHash:   "0x5b5c5d",
 		BlockHash:         blockHash,
@@ -1068,7 +1072,7 @@ func TestSendPegoutUseCase_Run_MultipleDepositsInOneTx(t *testing.T) {
 		GasUsed:           big.NewInt(500),
 		Value:             entities.NewWei(8500),
 	}
-	receipt = test.AppendDepositLogFromQuote(t, receipt, sendPegoutTestQuote, otherRetained)
+	receipt = test.AppendDepositLogFromQuote(t, receipt, otherQuote, otherRetained)
 	receipt = test.AppendDepositLogFromQuote(t, receipt, sendPegoutTestQuote, sendPegoutRetainedQuote)
 
 	rsk.On("GetTransactionReceipt", test.AnyCtx, sendPegoutRetainedQuote.UserRskTxHash).Return(*receipt, nil).Once()

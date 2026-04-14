@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -15,8 +17,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 type PegoutRskDepositWatcher struct {

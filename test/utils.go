@@ -214,12 +214,12 @@ func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
 
-func AddDepositLogFromQuote(
+func buildDepositLog(
 	t *testing.T,
 	receipt *blockchain.TransactionReceipt,
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
-) *blockchain.TransactionReceipt {
+) blockchain.TransactionLog {
 	const depositTopic = "b1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
 	parsedDepositTopic, err := hex.DecodeString(depositTopic)
 	require.NoError(t, err)
@@ -230,12 +230,10 @@ func AddDepositLogFromQuote(
 	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
 	timestampTopic, err := hex.DecodeString(timestampHex)
 	require.NoError(t, err)
-
 	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
 	parsedData, err := hex.DecodeString(amountHex)
 	require.NoError(t, err)
-
-	log := blockchain.TransactionLog{
+	return blockchain.TransactionLog{
 		Address: pegoutQuote.LbcAddress,
 		Topics: [][32]byte{
 			utils.To32Bytes(parsedDepositTopic),
@@ -251,7 +249,15 @@ func AddDepositLogFromQuote(
 		Index:       0,
 		Removed:     false,
 	}
-	receipt.Logs = slices.Insert(receipt.Logs, 0, log)
+}
+
+func AddDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	receipt.Logs = slices.Insert(receipt.Logs, 0, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
 	return receipt
 }
 
@@ -261,38 +267,7 @@ func AppendDepositLogFromQuote(
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
 ) *blockchain.TransactionReceipt {
-	const depositTopic = "b1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
-	parsedDepositTopic, err := hex.DecodeString(depositTopic)
-	require.NoError(t, err)
-	quoteHashTopic, err := hex.DecodeString(retainedQuote.QuoteHash)
-	require.NoError(t, err)
-	senderTopic, err := hex.DecodeString(strings.TrimPrefix(receipt.From, "0x"))
-	require.NoError(t, err)
-	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
-	timestampTopic, err := hex.DecodeString(timestampHex)
-	require.NoError(t, err)
-
-	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
-	parsedData, err := hex.DecodeString(amountHex)
-	require.NoError(t, err)
-
-	depositLog := blockchain.TransactionLog{
-		Address: pegoutQuote.LbcAddress,
-		Topics: [][32]byte{
-			utils.To32Bytes(parsedDepositTopic),
-			utils.To32Bytes(quoteHashTopic),
-			utils.To32Bytes(senderTopic),
-			utils.To32Bytes(timestampTopic),
-		},
-		Data:        parsedData,
-		BlockNumber: receipt.BlockNumber,
-		TxHash:      receipt.TransactionHash,
-		TxIndex:     0,
-		BlockHash:   receipt.BlockHash,
-		Index:       0,
-		Removed:     false,
-	}
-	receipt.Logs = append(receipt.Logs, depositLog)
+	receipt.Logs = append(receipt.Logs, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
 	return receipt
 }
 
