@@ -6,10 +6,13 @@ import (
 )
 
 const (
-	NodeEclipseEventId        entities.EventId = "NodeEclipse"
-	NodePeerCheckEventId      entities.EventId = "NodePeerCheck"
-	NodePeerCheckErrorEventId entities.EventId = "NodePeerCheckError"
-	NodePeerAlertSentEventId  entities.EventId = "NodePeerAlertSent"
+	NodeEclipseEventId         entities.EventId = "NodeEclipse"
+	NodeReorgCheckEventId      entities.EventId = "NodeReorgCheck"
+	NodeReorgCheckErrorEventId entities.EventId = "NodeReorgCheckError"
+	NodeReorgAlertSentEventId  entities.EventId = "NodeReorgAlertSent"
+	NodePeerCheckEventId       entities.EventId = "NodePeerCheck"
+	NodePeerCheckErrorEventId  entities.EventId = "NodePeerCheckError"
+	NodePeerAlertSentEventId   entities.EventId = "NodePeerAlertSent"
 )
 
 type Rpc struct {
@@ -25,6 +28,19 @@ type NodeEclipseEvent struct {
 	DetectionTime       time.Time
 }
 
+type NodeReorgCheckEvent struct {
+	entities.BaseEvent
+	NodeType        entities.NodeType
+	CurrentDepth    uint64
+	MaxAllowedDepth uint64
+	AboveThreshold  bool
+}
+
+type NodeReorgCheckErrorEvent struct {
+	entities.BaseEvent
+	NodeType entities.NodeType
+}
+
 type NodePeerCheckEvent struct {
 	entities.BaseEvent
 	NodeType       entities.NodeType
@@ -36,6 +52,12 @@ type NodePeerCheckEvent struct {
 type NodePeerCheckErrorEvent struct {
 	entities.BaseEvent
 	NodeType entities.NodeType
+}
+
+type NodeReorgAlertSentEvent struct {
+	entities.BaseEvent
+	NodeType      entities.NodeType
+	DetectedDepth uint64
 }
 
 type NodePeerAlertSentEvent struct {

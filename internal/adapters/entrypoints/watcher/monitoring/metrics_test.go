@@ -192,6 +192,11 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgMaxDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgAboveThresholdMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgCheckErrorsMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgAlertsMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerCountMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerMinThresholdMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold

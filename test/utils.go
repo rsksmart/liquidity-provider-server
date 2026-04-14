@@ -39,7 +39,7 @@ const (
 	AnyString     = "any value"
 	AnyHash       = "d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb"
 	AnyUrl        = "url.com"
-	keyPath       = "../../docker-compose/localstack/local-key.json"
+	keyPath       = "../../docker-compose/local/localstack/local-key.json"
 	KeyPassword   = "test"
 )
 
