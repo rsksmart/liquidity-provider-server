@@ -251,6 +251,9 @@ func buildDepositLog(
 	}
 }
 
+// AddDepositLogFromQuote inserts a deposit log at the beginning of the receipt's log slice.
+// Use this when the deposit log must appear before any other logs already in the receipt
+// (e.g. to simulate a real transaction where the deposit event is the first log emitted).
 func AddDepositLogFromQuote(
 	t *testing.T,
 	receipt *blockchain.TransactionReceipt,
@@ -261,6 +264,9 @@ func AddDepositLogFromQuote(
 	return receipt
 }
 
+// AppendDepositLogFromQuote appends a deposit log at the end of the receipt's log slice.
+// Use this when the deposit log should follow existing logs, such as when building a receipt
+// that contains multiple deposits and order matters for multi-deposit parsing tests.
 func AppendDepositLogFromQuote(
 	t *testing.T,
 	receipt *blockchain.TransactionReceipt,
