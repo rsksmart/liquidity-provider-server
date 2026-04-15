@@ -73,13 +73,13 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError, errorArgs)
 	}
 
+	useCase.peginLiquidityMutex.Lock()
+	defer useCase.peginLiquidityMutex.Unlock()
+
 	trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, signature, *peginQuote)
 	if err != nil {
 		return quote.AcceptedQuote{}, err
 	}
-
-	useCase.peginLiquidityMutex.Lock()
-	defer useCase.peginLiquidityMutex.Unlock()
 
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)

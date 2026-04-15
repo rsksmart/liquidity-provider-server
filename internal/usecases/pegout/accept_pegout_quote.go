@@ -60,12 +60,12 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, err
 	}
 
+	useCase.pegoutLiquidityMutex.Lock()
+	defer useCase.pegoutLiquidityMutex.Unlock()
+
 	if trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, signature, pegoutQuote); err != nil {
 		return quote.AcceptedQuote{}, err
 	}
-
-	useCase.pegoutLiquidityMutex.Lock()
-	defer useCase.pegoutLiquidityMutex.Unlock()
 
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)

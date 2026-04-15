@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"sync"
 	"testing"
 	"time"
 
@@ -112,7 +113,8 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, signature, result.Signature)
 }
 
-// nolint:funlen
+// TODO Test don't require modification, however they should be split to avoid linter complains
+// nolint:funlen,maintidx
 func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	signerMock := &mocks.SignerMock{}
 	signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
@@ -134,13 +136,10 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	}, nil)
 
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
-	pegoutContract := new(mocks.PegoutContractMock)
-	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("GetSigner").Return(signerMock)
-	contracts := blockchain.RskContracts{PegOut: pegoutContract}
 
 	now := time.Now()
 	quoteMock := quote.PegoutQuote{
@@ -164,11 +163,12 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		GasFee:                entities.NewWei(6),
 		ChainId:               31,
 	}
-	pegoutContract.EXPECT().HashPegoutQuoteEIP712(quoteMock).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil).Twice()
 
 	t.Run("happy path", func(t *testing.T) {
+		pegoutContract := new(mocks.PegoutContractMock)
 		quoteHash := acceptPegoutQuoteHash
 		signature := acceptPegoutQuoteHashSignature
+		contracts := blockchain.RskContracts{PegOut: pegoutContract}
 
 		requiredLiquidity := entities.NewWei(18)
 		retainedQuote := quote.RetainedPegoutQuote{
@@ -187,8 +187,9 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		quoteRepositoryMock.On("InsertRetainedQuote", test.AnyCtx, retainedQuote).Return(nil)
 		quoteRepositoryMock.On("GetRetainedQuotesForAddress", test.AnyCtx, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{}, nil)
 		quoteRepositoryMock.EXPECT().GetPegoutCreationData(test.AnyCtx, quoteHash).Return(creationData).Once()
-
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		pegoutContract.On("GetAddress").Return("0xabcd01").Once()
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(quoteMock).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil).Once()
 		lp.On("HasPegoutLiquidity", test.AnyCtx, requiredLiquidity).Return(nil)
 		lp.On("SignPegoutQuote", mock.Anything, acceptPegoutQuoteHash).Return(acceptPegoutQuoteHashSignature, nil)
 
@@ -209,9 +210,15 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		assert.NotEmpty(t, result)
 		assert.Equal(t, quoteMock.LbcAddress, result.DepositAddress)
 		assert.Equal(t, signature, result.Signature)
+		pegoutContract.AssertExpectations(t)
 	})
 
 	t.Run("invalid signature", func(t *testing.T) {
+		pegoutContract := new(mocks.PegoutContractMock)
+		contracts := blockchain.RskContracts{PegOut: pegoutContract}
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(quoteMock).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil).Once()
+
 		quoteHash := acceptPegoutQuoteHash
 
 		// Set up a well-formed but invalid signature
@@ -232,9 +239,13 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		lp.AssertNotCalled(t, "HasPegoutLiquidity")
 		lp.AssertNotCalled(t, "SignQuote")
 		eventBus.AssertNotCalled(t, "Publish")
+		pegoutContract.AssertExpectations(t)
 	})
 
 	t.Run("locking cap exceeded", func(t *testing.T) {
+		pegoutContract := new(mocks.PegoutContractMock)
+		contracts := blockchain.RskContracts{PegOut: pegoutContract}
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 		// Create two existing quotes that together with the new quote will exceed the locking cap
 		existingQuote1 := quote.RetainedPegoutQuote{
 			QuoteHash:           "existing-hash-1",
@@ -278,19 +289,20 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		}
 		// Total required: 40000 + 50000 + 30000 + 20000 + 5000 = 145000 > locking cap of 100000
 
-		quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
-		quoteRepositoryMock.On("GetQuote", mock.Anything, acceptPegoutQuoteHash).Return(&lockingCapQuote, nil)
-		quoteRepositoryMock.On("GetRetainedQuote", mock.Anything, acceptPegoutQuoteHash).Return(nil, nil)
-		quoteRepositoryMock.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{existingQuote1, existingQuote2}, nil)
+		repository := new(mocks.PegoutQuoteRepositoryMock)
+		repository.On("GetQuote", mock.Anything, acceptPegoutQuoteHash).Return(&lockingCapQuote, nil)
+		repository.On("GetRetainedQuote", mock.Anything, acceptPegoutQuoteHash).Return(nil, nil)
+		repository.On("GetRetainedQuotesForAddress", mock.Anything, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).Return([]quote.RetainedPegoutQuote{existingQuote1, existingQuote2}, nil)
 		pegoutContract.EXPECT().HashPegoutQuoteEIP712(lockingCapQuote).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil).Once()
 		lp.On("SignPegoutQuote", mock.Anything, acceptPegoutQuoteHash).Return(acceptPegoutQuoteHashSignature, nil)
 
-		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+		useCase := pegout.NewAcceptQuoteUseCase(repository, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 		result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, acceptPegoutQuoteHashSignature)
 
 		require.Error(t, err)
 		require.ErrorIs(t, err, usecases.LockingCapExceededError)
 		assert.Empty(t, result)
+		pegoutContract.AssertExpectations(t)
 	})
 	t.Run("error hasing quote for signature verification", func(t *testing.T) {
 		repo := new(mocks.PegoutQuoteRepositoryMock)
@@ -307,7 +319,138 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		contract.AssertExpectations(t)
 		repo.AssertExpectations(t)
 	})
-	pegoutContract.AssertExpectations(t)
+	t.Run("shouldn't allow to bypass locking cap using concurrent requests", func(t *testing.T) {
+		bus := new(mocks.EventBusMock)
+		bus.On("Publish", mock.Anything)
+		pegoutContract := new(mocks.PegoutContractMock)
+		contracts := blockchain.RskContracts{PegOut: pegoutContract}
+		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+		pegoutContract.EXPECT().GetAddress().Return(test.AnyRskAddress)
+		// Total required: 60_000 + 70_000 + 80_000 = 210_000 > locking cap of 100_000
+		quotes := []quote.PegoutQuote{
+			{
+				LbcAddress:            test.AnyRskAddress,
+				LpRskAddress:          test.AnyRskAddress,
+				BtcRefundAddress:      test.AnyBtcAddress,
+				RskRefundAddress:      test.AnyRskAddress,
+				LpBtcAddress:          test.AnyBtcAddress,
+				CallFee:               entities.NewWei(10),
+				PenaltyFee:            entities.NewWei(20000),
+				Nonce:                 1,
+				DepositAddress:        test.AnyBtcAddress,
+				Value:                 entities.NewWei(60_000),
+				AgreementTimestamp:    uint32(now.Unix()),
+				DepositDateLimit:      uint32(now.Unix() + 600),
+				DepositConfirmations:  15,
+				TransferConfirmations: 2,
+				TransferTime:          600,
+				ExpireDate:            uint32(now.Unix() + 3600),
+				ExpireBlock:           1000,
+				GasFee:                entities.NewWei(10),
+				ChainId:               30,
+			},
+			{
+				LbcAddress:            test.AnyRskAddress,
+				LpRskAddress:          test.AnyRskAddress,
+				BtcRefundAddress:      test.AnyBtcAddress,
+				RskRefundAddress:      test.AnyRskAddress,
+				LpBtcAddress:          test.AnyBtcAddress,
+				CallFee:               entities.NewWei(10),
+				PenaltyFee:            entities.NewWei(20000),
+				Nonce:                 2,
+				DepositAddress:        test.AnyBtcAddress,
+				Value:                 entities.NewWei(70_000),
+				AgreementTimestamp:    uint32(now.Unix()),
+				DepositDateLimit:      uint32(now.Unix() + 600),
+				DepositConfirmations:  15,
+				TransferConfirmations: 2,
+				TransferTime:          600,
+				ExpireDate:            uint32(now.Unix() + 3600),
+				ExpireBlock:           1000,
+				GasFee:                entities.NewWei(10),
+				ChainId:               30,
+			},
+			{
+				LbcAddress:            test.AnyRskAddress,
+				LpRskAddress:          test.AnyRskAddress,
+				BtcRefundAddress:      test.AnyBtcAddress,
+				RskRefundAddress:      test.AnyRskAddress,
+				LpBtcAddress:          test.AnyBtcAddress,
+				CallFee:               entities.NewWei(10),
+				PenaltyFee:            entities.NewWei(20000),
+				Nonce:                 3,
+				DepositAddress:        test.AnyBtcAddress,
+				Value:                 entities.NewWei(80_000),
+				AgreementTimestamp:    uint32(now.Unix()),
+				DepositDateLimit:      uint32(now.Unix() + 600),
+				DepositConfirmations:  15,
+				TransferConfirmations: 2,
+				TransferTime:          600,
+				ExpireDate:            uint32(now.Unix() + 3600),
+				ExpireBlock:           1000,
+				GasFee:                entities.NewWei(10),
+				ChainId:               30,
+			},
+		}
+
+		quoteRepositoryMock = new(mocks.PegoutQuoteRepositoryMock)
+		for _, q := range quotes {
+			quoteRepositoryMock.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&q, nil).Once()
+			pegoutContract.EXPECT().HashPegoutQuoteEIP712(q).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil)
+		}
+
+		var dbMock []quote.RetainedPegoutQuote // we emulate the db to remember which quotes were already accepted
+		creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(1), FixedFee: entities.NewWei(100)}
+		quoteRepositoryMock.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(creationData)
+		quoteRepositoryMock.EXPECT().InsertRetainedQuote(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, retainedPegoutQuote quote.RetainedPegoutQuote) error {
+			dbMock = append(dbMock, retainedPegoutQuote)
+			return nil
+		})
+		quoteRepositoryMock.EXPECT().GetRetainedQuote(mock.Anything, mock.Anything).Return(nil, nil)
+		quoteRepositoryMock.EXPECT().GetRetainedQuotesForAddress(mock.Anything, ownerAccountAddress, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations).RunAndReturn(func(ctx context.Context, s string, state ...quote.PegoutState) ([]quote.RetainedPegoutQuote, error) {
+			return dbMock, nil
+		})
+		lp.On("SignPegoutQuote", mock.Anything, acceptPegoutQuoteHash).Return(acceptPegoutQuoteHashSignature, nil)
+		lp.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil)
+		const (
+			expectedErrors    = 2
+			expectedSuccesses = 1
+		)
+		errChannel := make(chan error, expectedErrors)
+		resultChannel := make(chan quote.AcceptedQuote, expectedSuccesses)
+		quoteHash := acceptPegoutQuoteHash
+		signature := acceptPegoutQuoteHashSignature
+		//use actual mutex
+		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, bus, &sync.Mutex{}, trustedAccountRepository, signingHashFunction)
+		for i := 0; i < expectedErrors+expectedSuccesses; i++ {
+			go func() {
+				result, err := useCase.Run(context.Background(), quoteHash, signature)
+				if err != nil {
+					errChannel <- err
+				} else {
+					resultChannel <- result
+				}
+			}()
+		}
+
+		var (
+			errorCounter   = 0
+			successCounter = 0
+		)
+		for i := 0; i < expectedErrors+expectedSuccesses; i++ {
+			select {
+			case err := <-errChannel:
+				errorCounter++
+				require.ErrorIs(t, err, usecases.LockingCapExceededError)
+			case result := <-resultChannel:
+				successCounter++
+				assert.NotEmpty(t, result)
+			}
+		}
+		assert.Equal(t, expectedSuccesses, successCounter)
+		assert.Equal(t, expectedErrors, errorCounter)
+		pegoutContract.AssertExpectations(t)
+	})
 }
 
 func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
