@@ -214,12 +214,12 @@ func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
 
-func AddDepositLogFromQuote(
+func buildDepositLog(
 	t *testing.T,
 	receipt *blockchain.TransactionReceipt,
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
-) *blockchain.TransactionReceipt {
+) blockchain.TransactionLog {
 	const depositTopic = "b1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
 	parsedDepositTopic, err := hex.DecodeString(depositTopic)
 	require.NoError(t, err)
@@ -230,12 +230,10 @@ func AddDepositLogFromQuote(
 	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
 	timestampTopic, err := hex.DecodeString(timestampHex)
 	require.NoError(t, err)
-
 	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
 	parsedData, err := hex.DecodeString(amountHex)
 	require.NoError(t, err)
-
-	log := blockchain.TransactionLog{
+	return blockchain.TransactionLog{
 		Address: pegoutQuote.LbcAddress,
 		Topics: [][32]byte{
 			utils.To32Bytes(parsedDepositTopic),
@@ -251,7 +249,31 @@ func AddDepositLogFromQuote(
 		Index:       0,
 		Removed:     false,
 	}
-	receipt.Logs = slices.Insert(receipt.Logs, 0, log)
+}
+
+// AddDepositLogFromQuote inserts a deposit log at the beginning of the receipt's log slice.
+// Use this when the deposit log must appear before any other logs already in the receipt
+// (e.g. to simulate a real transaction where the deposit event is the first log emitted).
+func AddDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	receipt.Logs = slices.Insert(receipt.Logs, 0, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
+	return receipt
+}
+
+// AppendDepositLogFromQuote appends a deposit log at the end of the receipt's log slice.
+// Use this when the deposit log should follow existing logs, such as when building a receipt
+// that contains multiple deposits and order matters for multi-deposit parsing tests.
+func AppendDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	receipt.Logs = append(receipt.Logs, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
 	return receipt
 }
 
