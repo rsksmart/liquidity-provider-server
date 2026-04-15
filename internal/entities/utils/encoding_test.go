@@ -9,8 +9,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -200,7 +199,7 @@ func TestBigFloat_Native(t *testing.T) {
 }
 
 func TestBigFloat_UnmarshalBSONValue(t *testing.T) {
-	dataTypeCases := test.Table[bsontype.Type, error]{
+	dataTypeCases := test.Table[bson.Type, error]{
 		{Value: bson.TypeInt64, Result: entities.DeserializationError},
 		{Value: bson.TypeString, Result: entities.DeserializationError},
 		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
@@ -220,17 +219,17 @@ func TestBigFloat_UnmarshalBSONValue(t *testing.T) {
 
 	var nilBigFloat *utils.BigFloat
 	var bytes []byte
-	var bsonTypeResult bsontype.Type
+	var bsonTypeResult byte
 	var err error
 	bigFloatValue := utils.NewBigFloat64(1.12351251)
-	require.ErrorIs(t, nilBigFloat.UnmarshalBSONValue(bson.TypeString, []byte{}), entities.DeserializationError)
-	test.RunTable(t, dataTypeCases, func(bsonType bsontype.Type) error {
-		return bigFloatValue.UnmarshalBSONValue(bsonType, zeroRepresentation)
+	require.ErrorIs(t, nilBigFloat.UnmarshalBSONValue(byte(bson.TypeString), []byte{}), entities.DeserializationError)
+	test.RunTable(t, dataTypeCases, func(bsonType bson.Type) error {
+		return bigFloatValue.UnmarshalBSONValue(byte(bsonType), zeroRepresentation)
 	})
 	test.RunTable(t, successCases, func(value *utils.BigFloat) []byte {
 		bsonTypeResult, bytes, err = value.MarshalBSONValue()
 		require.NoError(t, err)
-		assert.Equal(t, bson.TypeDouble, bsonTypeResult)
+		assert.Equal(t, byte(bson.TypeDouble), bsonTypeResult)
 		return bytes
 	})
 }

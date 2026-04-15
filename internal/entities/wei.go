@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var ErrNonPositiveWei = errors.New("wei value must be positive")
@@ -121,27 +120,29 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 	return w.AsBigInt().UnmarshalJSON(bytes)
 }
 
-func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (w *Wei) MarshalBSONValue() (byte, []byte, error) {
 	if w == nil {
-		return bson.TypeNull, []byte{}, nil
+		return byte(bson.TypeNull), []byte{}, nil
 	}
-	return bson.MarshalValue(w.AsBigInt().String())
+	t, data, err := bson.MarshalValue(w.AsBigInt().String())
+	return byte(t), data, err
 }
 
 // nolint:cyclop
-func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if bsonType == bson.TypeNull {
+func (w *Wei) UnmarshalBSONValue(bsonType byte, bytes []byte) error {
+	typ := bson.Type(bsonType)
+	if typ == bson.TypeNull {
 		return nil
 	}
 
-	supportedType := bsonType == bson.TypeInt64 || bsonType == bson.TypeString
+	supportedType := typ == bson.TypeInt64 || typ == bson.TypeString
 	if w == nil || !supportedType || len(bytes) == 0 {
 		return DeserializationError
 	}
 
-	if bsonType == bson.TypeInt64 {
+	if typ == bson.TypeInt64 {
 		var value int64
-		if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+		if err := bson.UnmarshalValue(typ, bytes, &value); err != nil {
 			return errors.Join(DeserializationError, err)
 		}
 		w.AsBigInt().SetInt64(value)
@@ -149,7 +150,7 @@ func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
 	}
 
 	var value string
-	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+	if err := bson.UnmarshalValue(typ, bytes, &value); err != nil {
 		return errors.Join(DeserializationError, err)
 	}
 

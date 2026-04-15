@@ -6,9 +6,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func Connect(ctx context.Context, connectTimeout time.Duration, username, password, host string, port uint) (*mongo.Client, error) {
@@ -25,7 +25,7 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 	ctx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
-	if client, err = mongo.Connect(ctx, clientOptions); err != nil {
+	if client, err = mongo.Connect(clientOptions); err != nil {
 		return nil, err
 	}
 	db := client.Database(DbName)

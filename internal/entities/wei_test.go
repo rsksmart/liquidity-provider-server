@@ -11,8 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestSatoshiToWei(t *testing.T) {
@@ -454,7 +453,7 @@ func TestWei_UnmarshalJSON(t *testing.T) {
 }
 
 func TestWei_UnmarshalBSONValue(t *testing.T) {
-	dataTypeCases := test.Table[bsontype.Type, error]{
+	dataTypeCases := test.Table[bson.Type, error]{
 		{Value: bson.TypeDBPointer, Result: entities.DeserializationError},
 		{Value: bson.TypeBinary, Result: entities.DeserializationError},
 		{Value: bson.TypeDouble, Result: entities.DeserializationError},
@@ -466,29 +465,29 @@ func TestWei_UnmarshalBSONValue(t *testing.T) {
 	t.Run("should return error for unsupported bson type", func(t *testing.T) {
 		var nilWei *entities.Wei
 		zeroWei := entities.NewWei(0)
-		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeInt64, []byte{}), entities.DeserializationError)
-		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeString, []byte{}), entities.DeserializationError)
-		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeString, zeroString))
-		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeInt64, zeroInt64))
-		test.RunTable(t, dataTypeCases, func(dataType bsontype.Type) error {
-			return nilWei.UnmarshalBSONValue(dataType, zeroInt64)
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(byte(bson.TypeInt64), []byte{}), entities.DeserializationError)
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(byte(bson.TypeString), []byte{}), entities.DeserializationError)
+		require.NoError(t, zeroWei.UnmarshalBSONValue(byte(bson.TypeString), zeroString))
+		require.NoError(t, zeroWei.UnmarshalBSONValue(byte(bson.TypeInt64), zeroInt64))
+		test.RunTable(t, dataTypeCases, func(dataType bson.Type) error {
+			return nilWei.UnmarshalBSONValue(byte(dataType), zeroInt64)
 		})
 	})
 	t.Run("should handle null values gracefully", func(t *testing.T) {
 		zeroWei := entities.NewWei(0)
 		// When BSON contains a null value, UnmarshalBSONValue should succeed
 		// This allows the Go MongoDB driver to set the field to nil
-		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeNull, []byte{}))
+		require.NoError(t, zeroWei.UnmarshalBSONValue(byte(bson.TypeNull), []byte{}))
 	})
 	t.Run("should handle '<nil>' string values gracefully", func(t *testing.T) {
 		zeroWei := entities.NewWei(0)
 		// When MongoDB stores nil pointers as the string "<nil>", we should handle it gracefully
 		nilStringBytes := []byte{0x06, 0x00, 0x00, 0x00, 0x3c, 0x6e, 0x69, 0x6c, 0x3e, 0x00} // BSON string "<nil>"
-		require.NoError(t, zeroWei.UnmarshalBSONValue(bson.TypeString, nilStringBytes))
+		require.NoError(t, zeroWei.UnmarshalBSONValue(byte(bson.TypeString), nilStringBytes))
 
 		// Test with nil Wei pointer should still error
 		var nilWei *entities.Wei
-		require.ErrorIs(t, nilWei.UnmarshalBSONValue(bson.TypeString, nilStringBytes), entities.DeserializationError)
+		require.ErrorIs(t, nilWei.UnmarshalBSONValue(byte(bson.TypeString), nilStringBytes), entities.DeserializationError)
 	})
 }
 
@@ -497,7 +496,7 @@ func TestWei_MarshalBSONValue(t *testing.T) {
 		var nilWei *entities.Wei
 		bsonType, bytes, err := nilWei.MarshalBSONValue()
 		require.NoError(t, err)
-		assert.Equal(t, bson.TypeNull, bsonType)
+		assert.Equal(t, byte(bson.TypeNull), bsonType)
 		assert.Empty(t, bytes)
 	})
 
@@ -505,12 +504,12 @@ func TestWei_MarshalBSONValue(t *testing.T) {
 		wei := entities.NewWei(12345)
 		bsonType, bytes, err := wei.MarshalBSONValue()
 		require.NoError(t, err)
-		assert.Equal(t, bson.TypeString, bsonType)
+		assert.Equal(t, byte(bson.TypeString), bsonType)
 		assert.NotEmpty(t, bytes)
 
 		// Verify we can unmarshal it back
 		var result string
-		err = bson.UnmarshalValue(bsonType, bytes, &result)
+		err = bson.UnmarshalValue(bson.Type(bsonType), bytes, &result)
 		require.NoError(t, err)
 		assert.Equal(t, "12345", result)
 	})
@@ -533,7 +532,7 @@ func TestWei_UnmarshalBSONValue_Integration(t *testing.T) {
 		}
 		for _, tc := range int64Cases {
 			result := new(entities.Wei)
-			err := result.UnmarshalBSONValue(bson.TypeInt64, tc.Value)
+			err := result.UnmarshalBSONValue(byte(bson.TypeInt64), tc.Value)
 			require.NoError(t, err)
 			assert.Equal(t, tc.Result, result)
 		}
@@ -555,7 +554,7 @@ func TestWei_UnmarshalBSONValue_Integration(t *testing.T) {
 		}
 		for _, tc := range stringCases {
 			result := new(entities.Wei)
-			err := result.UnmarshalBSONValue(bson.TypeString, tc.Value)
+			err := result.UnmarshalBSONValue(byte(bson.TypeString), tc.Value)
 			require.NoError(t, err)
 			assert.Equal(t, tc.Result, result)
 		}

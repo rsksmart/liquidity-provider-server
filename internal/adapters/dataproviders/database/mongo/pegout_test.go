@@ -21,10 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mongoDb "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var testPegoutQuote = quote.PegoutQuote{
@@ -150,7 +148,7 @@ func TestPegoutMongoRepository_GetQuote(t *testing.T) {
 	t.Run("Get pegout quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {LbcAddress:0xc2A630c053D12D63d32b025082f6Ba268db18300 LpRskAddress:0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b BtcRefundAddress:n2Ge4xMVQKp5Hzzf8xTBJBLppRgjRZYYyq RskRefundAddress:0x79568C2989232dcA1840087d73d403602364c0D4 LpBtcAddress:mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe CallFee:100000000000000 PenaltyFee:10000000000000 Nonce:6410832321595034747 DepositAddress:n2Ge4xMVQKp5Hzzf8xTBJBLppRgjRZYYyq Value:5000000000000000 AgreementTimestamp:1721944367 DepositDateLimit:1721951567 DepositConfirmations:4 TransferConfirmations:2 TransferTime:7200 ExpireDate:1721958767 ExpireBlock:5366409 GasFee:4170000000000 ChainId:31}"
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "hash", Value: test.AnyHash}}).
+		collection.On("FindOne", mock.Anything, bson.D{bson.E{Key: "hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(mongo.StoredPegoutQuote{
 				PegoutQuote: testPegoutQuote,
 				Hash:        test.AnyString,
@@ -195,7 +193,7 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 	t.Run("Get retained pegout quote successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {QuoteHash:27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f DepositAddress:mkE1WWdiu5VgjfugomDk8GxV6JdEEEJR9s Signature:5c9eab91c753355f87c19d09ea88b2fd02773981e513bc2821fed5ceba0d452a0a3d21e2252cb35348ce5c6803117e3abb62837beb8f5866a375ce66587d004b1c RequiredLiquidity:55 State:WaitingForDepositConfirmations UserRskTxHash:0x6b2e1e4daf8cf00c5c3534b72cdeec3526e8a38f70c11e44888b6e4ae1ee7d38 LpBtcTxHash:6ac3779dc33ad52f3409cbb909bcd458745995496a2a3954406206f6e5d4cb0e RefundPegoutTxHash:0x8e773a2826e73f8e5792304379a7e46dff38f17089c6d344335e03537b31c2bc BridgeRefundTxHash:0x4f3f6f0664a732e4c907971e75c1e3fd8671461dcb53f566660432fc47255d8b BridgeRefundGasUsed:21000 BridgeRefundGasPrice:20000000000 RefundPegoutGasUsed:22000 RefundPegoutGasPrice:25000000000 SendPegoutBtcFee:15000 BtcReleaseTxHash:0xd8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb OwnerAccountAddress:0x233845a26a4dA08E16218e7B401501D048670674}"
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
+		collection.On("FindOne", mock.Anything, bson.D{bson.E{Key: "quote_hash", Value: test.AnyHash}}).
 			Return(mongoDb.NewSingleResultFromDocument(testRetainedPegoutQuote, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
@@ -250,7 +248,7 @@ func TestPegoutMongoRepository_GetRetainedQuote(t *testing.T) {
 		singleResult := mongoDb.NewSingleResultFromDocument(oldBsonDocument, nil, nil)
 
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
-		collection.On("FindOne", mock.Anything, bson.D{primitive.E{Key: "quote_hash", Value: test.AnyHash}}).
+		collection.On("FindOne", mock.Anything, bson.D{bson.E{Key: "quote_hash", Value: test.AnyHash}}).
 			Return(singleResult).Once()
 
 		result, err := repo.GetRetainedQuote(context.Background(), test.AnyHash)
@@ -312,8 +310,8 @@ func TestPegoutMongoRepository_UpdateRetainedQuote(t *testing.T) {
 		updatedQuote.BridgeRefundTxHash = updated
 		updatedQuote.RequiredLiquidity = entities.NewWei(200)
 		collection.On("UpdateOne", mock.Anything,
-			bson.D{primitive.E{Key: "quote_hash", Value: testRetainedPegoutQuote.QuoteHash}},
-			bson.D{primitive.E{Key: "$set", Value: updatedQuote}},
+			bson.D{bson.E{Key: "quote_hash", Value: testRetainedPegoutQuote.QuoteHash}},
+			bson.D{bson.E{Key: "$set", Value: updatedQuote}},
 		).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
@@ -367,13 +365,13 @@ func TestPegoutMongoRepository_DeleteQuotes(t *testing.T) {
 		parsedClientMock.On("Collection", mongo.RetainedPegoutQuoteCollection).Return(retainedCollection)
 		parsedClientMock.On("Collection", mongo.PegoutCreationDataCollection).Return(creationDataCollection)
 		quoteCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+			bson.D{bson.E{Key: "hash", Value: bson.D{bson.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		retainedCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+			bson.D{bson.E{Key: "quote_hash", Value: bson.D{bson.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		creationDataCollection.On("DeleteMany", mock.Anything,
-			bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: hashes}}}},
+			bson.D{bson.E{Key: "hash", Value: bson.D{bson.E{Key: "$in", Value: hashes}}}},
 		).Return(&mongoDb.DeleteResult{DeletedCount: 3}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
@@ -466,7 +464,7 @@ func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 		secondQuote.Signature = "456"
 		secondQuote.RequiredLiquidity = entities.NewWei(777)
 		collection.On("Find", mock.Anything,
-			bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}},
+			bson.D{bson.E{Key: "state", Value: bson.D{bson.E{Key: "$in", Value: states}}}},
 		).Return(mongoDb.NewCursorFromDocuments([]any{testRetainedPegoutQuote, secondQuote}, nil, nil)).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuoteByState(context.Background(), states...)
@@ -524,7 +522,7 @@ func TestPegoutMongoRepository_GetRetainedQuoteByState(t *testing.T) {
 
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("Find", mock.Anything,
-			bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}},
+			bson.D{bson.E{Key: "state", Value: bson.D{bson.E{Key: "$in", Value: states}}}},
 		).Return(cursor, nil).Once()
 
 		result, err := repo.GetRetainedQuoteByState(context.Background(), states...)
@@ -562,7 +560,7 @@ func TestPegoutMongoRepository_ListPegoutDepositsByAddress(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("Find", mock.Anything,
 			bson.M{"from": bson.M{"$regex": test.AnyAddress, "$options": "i"}},
-			options.Find().SetSort(bson.M{"timestamp": -1}),
+			sortedBy(bson.M{"timestamp": -1}),
 		).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutDeposit}, nil, nil)).Once()
 		defer assertDbInteractionLog(t, mongo.Read)()
 		result, err := repo.ListPegoutDepositsByAddress(context.Background(), test.AnyAddress)
@@ -583,7 +581,7 @@ func TestPegoutMongoRepository_ListPegoutDepositsByAddress(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("Find", mock.Anything,
 			bson.M{"from": bson.M{"$regex": "0x1234567890abcdef1234567890abcdef12345678\\(a\\+\\)\\+", "$options": "i"}},
-			options.Find().SetSort(bson.M{"timestamp": -1}),
+			sortedBy(bson.M{"timestamp": -1}),
 		).Return(mongoDb.NewCursorFromDocuments([]any{testPegoutDeposit}, nil, nil)).Once()
 		result, err := repo.ListPegoutDepositsByAddress(context.Background(), "0x1234567890abcdef1234567890abcdef12345678(a+)+")
 		collection.AssertExpectations(t)
@@ -604,7 +602,7 @@ func TestPegoutMongoRepository_UpsertPegoutDeposit(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything,
 			bson.M{"tx_hash": testPegoutDeposit.TxHash},
 			newDeposit,
-			options.Replace().SetUpsert(true),
+			withUpsert(),
 		).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
@@ -691,17 +689,17 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		session.On("EndSession", mock.Anything).Return().Once()
 		session.On("WithTransaction", mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				fn, ok := args.Get(1).(func(context.Context) (any, error))
 				require.True(t, ok)
-				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				result, cbErr := fn(context.Background())
 				require.NoError(t, cbErr)
 				assert.Nil(t, result)
 			}).
 			Return(nil, nil)
 		for _, q := range retainedQuotes {
 			collection.On("UpdateOne", mock.Anything,
-				bson.D{primitive.E{Key: "quote_hash", Value: q.QuoteHash}},
-				bson.D{primitive.E{Key: "$set", Value: q}},
+				bson.D{bson.E{Key: "quote_hash", Value: q.QuoteHash}},
+				bson.D{bson.E{Key: "$set", Value: q}},
 			).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		}
 		conn := mongo.NewConnection(client, time.Duration(1))
@@ -734,9 +732,9 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		session.On("EndSession", mock.Anything).Return().Once()
 		session.On("WithTransaction", mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				fn, ok := args.Get(1).(func(context.Context) (any, error))
 				require.True(t, ok)
-				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				result, cbErr := fn(context.Background())
 				require.Error(t, cbErr)
 				assert.Nil(t, result)
 			}).
@@ -760,9 +758,9 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		session.On("EndSession", mock.Anything).Return().Once()
 		session.On("WithTransaction", mock.Anything, mock.Anything).
 			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				fn, ok := args.Get(1).(func(context.Context) (any, error))
 				require.True(t, ok)
-				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				result, cbErr := fn(context.Background())
 				require.Error(t, cbErr)
 				assert.Nil(t, result)
 			}).
@@ -788,7 +786,7 @@ func TestPegoutMongoRepository_GetPegoutCreationData(t *testing.T) {
 			hash        = "27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f"
 		)
 		client, collection := getClientAndCollectionMocks(mongo.PegoutCreationDataCollection)
-		collection.EXPECT().FindOne(mock.Anything, bson.D{primitive.E{Key: "hash", Value: hash}}).
+		collection.EXPECT().FindOne(mock.Anything, bson.D{bson.E{Key: "hash", Value: hash}}).
 			Return(mongoDb.NewSingleResultFromDocument(testPegoutCreationData, nil, nil)).Once()
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		defer assertDbInteractionLog(t, expectedLog)()
@@ -1280,9 +1278,9 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 
 		collection.On("Find", mock.Anything,
 			bson.D{
-				primitive.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
-				primitive.E{Key: "bridge_refund_tx_hash", Value: bson.D{
-					primitive.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+				bson.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
+				bson.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+					bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
 				}},
 			},
 		).Return(mongoDb.NewCursorFromDocuments([]any{testRetainedPegoutQuote, secondQuote}, nil, nil)).Once()
@@ -1297,9 +1295,9 @@ func TestPegoutMongoRepository_GetRetainedQuotesInBatch(t *testing.T) {
 
 		collection.On("Find", mock.Anything,
 			bson.D{
-				primitive.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
-				primitive.E{Key: "bridge_refund_tx_hash", Value: bson.D{
-					primitive.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+				bson.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
+				bson.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+					bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
 				}},
 			},
 		).Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()

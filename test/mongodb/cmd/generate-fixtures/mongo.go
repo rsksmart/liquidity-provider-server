@@ -7,8 +7,8 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
-	"go.mongodb.org/mongo-driver/bson"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type mongoConfig struct {

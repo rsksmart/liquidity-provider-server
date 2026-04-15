@@ -12,8 +12,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mongodrv "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodrv "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestBootstrap_IndexesCreated(t *testing.T) {

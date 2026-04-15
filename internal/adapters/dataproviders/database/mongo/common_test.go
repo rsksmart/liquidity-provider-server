@@ -2,15 +2,18 @@ package mongo_test
 
 import (
 	"context"
+	"reflect"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"sync"
-	"testing"
-	"time"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 func TestNewConnection(t *testing.T) {
@@ -92,6 +95,32 @@ func TestConnection_Collection(t *testing.T) {
 	db.On("Collection", collectionName).Return(&mocks.CollectionBindingMock{})
 	conn := mongo.NewConnection(client, time.Duration(1))
 	assert.NotNil(t, conn.Collection(collectionName))
+}
+
+// withUpsert returns a testify matcher that verifies an options builder has Upsert=true
+func withUpsert() interface{} {
+	return mock.MatchedBy(func(opt options.Lister[options.ReplaceOptions]) bool {
+		resolved := &options.ReplaceOptions{}
+		for _, fn := range opt.List() {
+			if err := fn(resolved); err != nil {
+				return false
+			}
+		}
+		return resolved.Upsert != nil && *resolved.Upsert
+	})
+}
+
+// sortedBy returns a testify matcher that verifies a Find options builder has the given sort document
+func sortedBy(sort any) interface{} {
+	return mock.MatchedBy(func(opt options.Lister[options.FindOptions]) bool {
+		resolved := &options.FindOptions{}
+		for _, fn := range opt.List() {
+			if err := fn(resolved); err != nil {
+				return false
+			}
+		}
+		return reflect.DeepEqual(resolved.Sort, sort)
+	})
 }
 
 func assertDbInteractionLog(t *testing.T, interaction mongo.DbInteraction) (assertFunc func() bool) {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const TrustedAccountCollection = "trustedAccounts"
@@ -81,7 +81,7 @@ func (repo *trustedAccountMongoRepository) UpdateTrustedAccount(ctx context.Cont
 		return err
 	}
 	filter := bson.M{"address": account.Value.Address}
-	opts := options.Update()
+	opts := options.UpdateOne()
 	update := bson.M{"$set": account}
 	_, err = collection.UpdateOne(dbCtx, filter, update, opts)
 	if err != nil {
