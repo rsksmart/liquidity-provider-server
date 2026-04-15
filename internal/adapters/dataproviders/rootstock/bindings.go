@@ -73,6 +73,7 @@ type PegoutContractAdapter interface {
 
 type PeginBinding interface {
 	PausableBinding
+	Withdraw(opts *bind.TransactOpts, amount *big.Int) (*types.Transaction, error)
 	HashPegInQuote(opts *bind.CallOpts, quote bindings.QuotesPegInQuote) ([32]byte, error)
 	HashPegInQuoteEIP712(opts *bind.CallOpts, quote bindings.QuotesPegInQuote) ([32]byte, error)
 	RegisterPegIn(opts *bind.TransactOpts, quote bindings.QuotesPegInQuote, signature []byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) (*types.Transaction, error)

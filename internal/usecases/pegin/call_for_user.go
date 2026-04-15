@@ -210,5 +210,20 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	if err = usecases.ValidateBridgeUtxoMin(useCase.contracts.Bridge, txInfo, retainedQuote.DepositAddress); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, !errors.Is(err, usecases.TxBelowMinimumError))
 	}
+
+	rawBtcTx, err := useCase.rpc.Btc.GetRawTransaction(retainedQuote.UserBtcTxHash)
+	if err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
+	}
+	if len(rawBtcTx) > MaxPeginDepositTxSize {
+		return useCase.publishErrorEvent(
+			ctx,
+			retainedQuote,
+			*peginQuote,
+			fmt.Errorf("BTC tx is larger than allowed: %d bytes (maximum is %d bytes)", len(rawBtcTx), MaxPeginDepositTxSize),
+			false,
+		)
+	}
+
 	return nil
 }

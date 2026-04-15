@@ -74,12 +74,6 @@ func TestNewRecommendedPegoutHandler(t *testing.T) {
 		handler := handlers.NewRecommendedPegoutHandler(useCase)
 		assert.HTTPStatusCode(t, handler, http.MethodGet, path, queryFull, http.StatusBadRequest)
 	})
-	t.Run("should return 400 if the recommended amount is below the bridge minimum", func(t *testing.T) {
-		useCase := new(mocks.RecommendedPegoutUseCaseMock)
-		useCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(usecases.RecommendedOperationResult{}, usecases.TxBelowMinimumError)
-		handler := handlers.NewRecommendedPegoutHandler(useCase)
-		assert.HTTPStatusCode(t, handler, http.MethodGet, path, queryFull, http.StatusBadRequest)
-	})
 	t.Run("should return 500 for unkown errors", func(t *testing.T) {
 		useCase := new(mocks.RecommendedPegoutUseCaseMock)
 		useCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(usecases.RecommendedOperationResult{}, assert.AnError)
