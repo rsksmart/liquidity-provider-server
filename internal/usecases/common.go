@@ -99,6 +99,28 @@ var (
 	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
+type EffectiveAmountTooLowError struct {
+	EffectiveAmount    *entities.Wei
+	MinEffectiveAmount *entities.Wei
+	SuggestedAmount    *entities.Wei
+}
+
+func NewEffectiveAmountTooLowError(effectiveAmount, minEffectiveAmount, suggestedAmount *entities.Wei) *EffectiveAmountTooLowError {
+	return &EffectiveAmountTooLowError{
+		EffectiveAmount:    effectiveAmount,
+		MinEffectiveAmount: minEffectiveAmount,
+		SuggestedAmount:    suggestedAmount,
+	}
+}
+
+func (e *EffectiveAmountTooLowError) Error() string {
+	return fmt.Sprintf(
+		"Amount too low: after fees your effective amount is %s, but it must be at least %s.",
+		e.EffectiveAmount.String(),
+		e.MinEffectiveAmount.String(),
+	)
+}
+
 type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei

@@ -1,6 +1,10 @@
 package handlers_test
 
 import (
+	"net/http"
+	"net/url"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -9,9 +13,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"net/http"
-	"net/url"
-	"testing"
 )
 
 // nolint:funlen
@@ -98,6 +99,22 @@ func TestNewRecommendedPeginHandler(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(usecases.RecommendedOperationResult{}, liquidity_provider.AmountOutOfRangeError)
 		handler := handlers.NewRecommendedPeginHandler(useCase)
 		assert.HTTPStatusCode(t, handler, http.MethodGet, path, queryFull, http.StatusBadRequest)
+	})
+	t.Run("should return 400 with structured details when effective amount is too low after fees", func(t *testing.T) {
+		effectiveErr := usecases.NewEffectiveAmountTooLowError(
+			entities.NewWei(5999310330477010),
+			entities.NewWei(6000000000000000),
+			entities.NewWei(6000689669522990),
+		)
+		useCase := new(mocks.RecommendedPeginUseCaseMock)
+		// Return the error wrapped as the use case produces it, to exercise the errors.As unwrap path in the handler.
+		useCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPeginId, effectiveErr))
+		handler := handlers.NewRecommendedPeginHandler(useCase)
+		assert.HTTPStatusCode(t, handler, http.MethodGet, path, queryFull, http.StatusBadRequest)
+		assert.HTTPBodyContains(t, handler, http.MethodGet, path, queryFull, "Amount too low")
+		assert.HTTPBodyContains(t, handler, http.MethodGet, path, queryFull, `"effectiveAmount":5999310330477010`)
+		assert.HTTPBodyContains(t, handler, http.MethodGet, path, queryFull, `"minEffectiveAmount":6000000000000000`)
+		assert.HTTPBodyContains(t, handler, http.MethodGet, path, queryFull, `"suggestedAmount":6000689669522990`)
 	})
 	t.Run("should return 400 if there is no liquidity for the recommended amount", func(t *testing.T) {
 		useCase := new(mocks.RecommendedPeginUseCaseMock)

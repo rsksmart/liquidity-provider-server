@@ -2,6 +2,10 @@ package pegin_test
 
 import (
 	"context"
+	"math"
+	"math/big"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -13,8 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math"
-	"testing"
 )
 
 // nolint:funlen
@@ -92,14 +94,32 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 		modifiedConfig.MaxValue = modifiedConfig.MinValue
 		modifiedLimitLp := new(mocks.ProviderMock)
 		modifiedLimitLp.On("PeginConfiguration", mock.Anything).Return(modifiedConfig)
-		modifiedLimitLp.On("GeneralConfiguration", mock.Anything).Return(getGeneralConfiguration())
-		modifiedLimitLp.On("RskAddress").Return(test.AnyRskAddress)
-		modifiedLimitLp.On("BtcAddress").Return(test.AnyBtcAddress)
-		modifiedLimitLp.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil)
 		useCase := pegin.NewRecommendedPeginUseCase(modifiedLimitLp, contracts, rpc, utils.Scale)
-		result, err = useCase.Run(context.Background(), createdQuote.PeginQuote.Total(), test.AnyRskAddress, data)
+		// Input equals MinValue=MaxValue: passes first validation but result after fee deduction is < MinValue
+		// and the suggested amount exceeds MaxValue, so no valid input exists in the provider range.
+		result, err = useCase.Run(context.Background(), modifiedConfig.MinValue, test.AnyRskAddress, data)
 		require.ErrorIs(t, err, liquidity_provider.AmountOutOfRangeError)
 		assert.Empty(t, result)
+		modifiedLimitLp.AssertNotCalled(t, "HasPeginLiquidity")
+	})
+	t.Run("should return EffectiveAmountTooLowError with exact suggested amount when userBalance equals MinValue", func(t *testing.T) {
+		// MinValue=1000, gasFee=20000*100=2000000, fixedFee=100, feePercentage=1.25%, scale=10000
+		// scaledCallFeePercentage=125, totalPercentages=10125
+		// result = floor((1000-2000000-100)*10000/10125) = -1974419
+		// requiredNet = ceil(1000*10125/10000) = 1013
+		// suggestedAmount = 2000000+100+1013 = 2001113
+		useCase := pegin.NewRecommendedPeginUseCase(lp, contracts, rpc, utils.Scale)
+		result, err = useCase.Run(context.Background(), entities.NewWei(1000), test.AnyRskAddress, data)
+		var effectiveErr *usecases.EffectiveAmountTooLowError
+		require.ErrorAs(t, err, &effectiveErr)
+		assert.Empty(t, result)
+		assert.Equal(t, entities.NewWei(1000), effectiveErr.MinEffectiveAmount)
+		assert.Equal(t, entities.NewBigWei(big.NewInt(-1974419)), effectiveErr.EffectiveAmount)
+		assert.Equal(t, entities.NewWei(2001113), effectiveErr.SuggestedAmount)
+		// Verify re-running with the suggested amount succeeds and result >= MinValue
+		successResult, successErr := useCase.Run(context.Background(), effectiveErr.SuggestedAmount, test.AnyRskAddress, data)
+		require.NoError(t, successErr)
+		assert.GreaterOrEqual(t, successResult.RecommendedQuoteValue.Cmp(entities.NewWei(1000)), 0)
 	})
 	t.Run("should validate liquidity is enough for recommended amount", func(t *testing.T) {
 		noLiquidityLp := new(mocks.ProviderMock)

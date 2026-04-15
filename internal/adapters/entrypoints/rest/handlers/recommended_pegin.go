@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"net/http"
+	"strings"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"math/big"
-	"net/http"
-	"strings"
 )
 
 type RecommendedPeginUseCase interface {
@@ -65,19 +66,37 @@ func NewRecommendedPeginHandler(useCase RecommendedPeginUseCase) http.HandlerFun
 		}
 
 		result, err := useCase.Run(r.Context(), entities.NewBigWei(parsedAmount), destinationAddress, parsedData)
-
-		if errors.Is(err, usecases.NoLiquidityError) ||
-			errors.Is(err, usecases.TxBelowMinimumError) ||
-			errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
-			jsonErr := rest.NewErrorResponse(err.Error(), true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if handleRecommendedPeginError(w, err) {
 			return
 		}
 		response := pkg.ToRecommendedOperationDTO(result)
 		rest.JsonResponseWithBody(w, http.StatusOK, &response)
 	}
+}
+
+func handleRecommendedPeginError(w http.ResponseWriter, err error) bool {
+	var effectiveTooLowErr *usecases.EffectiveAmountTooLowError
+	if errors.As(err, &effectiveTooLowErr) {
+		details := rest.ErrorDetails{
+			"effectiveAmount":    effectiveTooLowErr.EffectiveAmount,
+			"minEffectiveAmount": effectiveTooLowErr.MinEffectiveAmount,
+			"suggestedAmount":    effectiveTooLowErr.SuggestedAmount,
+		}
+		jsonErr := rest.NewErrorResponseWithDetails(effectiveTooLowErr.Error(), details, true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return true
+	}
+	if errors.Is(err, usecases.NoLiquidityError) ||
+		errors.Is(err, usecases.TxBelowMinimumError) ||
+		errors.Is(err, liquidity_provider.AmountOutOfRangeError) {
+		jsonErr := rest.NewErrorResponse(err.Error(), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+		return true
+	}
+	if err != nil {
+		jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
+		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		return true
+	}
+	return false
 }
