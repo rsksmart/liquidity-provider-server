@@ -12,10 +12,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const (
@@ -88,7 +87,7 @@ func (repo *pegoutMongoRepository) GetPegoutCreationData(ctx context.Context, ha
 	}
 
 	collection := repo.conn.Collection(PegoutCreationDataCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if err != nil {
@@ -109,7 +108,7 @@ func (repo *pegoutMongoRepository) GetQuote(ctx context.Context, hash string) (*
 	}
 
 	collection := repo.conn.Collection(PegoutQuoteCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -171,7 +170,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuote(ctx context.Context, hash st
 	}
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -222,8 +221,8 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuote(ctx context.Context, reta
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
-	updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+	updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
 
 	result, err := collection.UpdateOne(dbCtx, filter, updateStatement)
 	if err != nil {
@@ -250,13 +249,13 @@ func (repo *pegoutMongoRepository) UpdateRetainedQuotes(ctx context.Context, ret
 	if err != nil {
 		return err
 	}
-	//nolint:contextcheck
-	_, err = session.WithTransaction(dbCtx, func(sessionContext mongo.SessionContext) (any, error) {
+
+	_, err = session.WithTransaction(dbCtx, func(sessionContext context.Context) (any, error) {
 		collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 		var count int64 = 0
 		for _, retainedQuote := range retainedQuotes {
-			filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
-			updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
+			filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+			updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
 			updateResult, updateErr := collection.UpdateOne(sessionContext, filter, updateStatement)
 			if updateErr != nil {
 				return nil, updateErr
@@ -281,7 +280,7 @@ func (repo *pegoutMongoRepository) GetRetainedQuoteByState(ctx context.Context, 
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
-	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}}
+	query := bson.D{bson.E{Key: "state", Value: bson.D{bson.E{Key: "$in", Value: states}}}}
 	rows, err := collection.Find(dbCtx, query)
 	if err != nil {
 		return nil, err
@@ -351,8 +350,8 @@ func (repo *pegoutMongoRepository) DeleteQuotes(ctx context.Context, quotes []st
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()
 
-	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	retainedFilter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	quoteFilter := bson.D{bson.E{Key: "hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
+	retainedFilter := bson.D{bson.E{Key: "quote_hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
 	pegoutResult, err := repo.conn.Collection(PegoutQuoteCollection).DeleteMany(dbCtx, quoteFilter)
 	if err != nil {
 		return 0, err
@@ -515,9 +514,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesForAddress(ctx context.Conte
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	filter := bson.D{
-		primitive.E{Key: "owner_account_address", Value: address},
-		primitive.E{Key: "state", Value: bson.D{
-			primitive.E{Key: "$in", Value: states},
+		bson.E{Key: "owner_account_address", Value: address},
+		bson.E{Key: "state", Value: bson.D{
+			bson.E{Key: "$in", Value: states},
 		}},
 	}
 
@@ -542,9 +541,9 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	query := bson.D{
-		primitive.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
-		primitive.E{Key: "bridge_refund_tx_hash", Value: bson.D{
-			primitive.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+		bson.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
+		bson.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+			bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
 		}},
 	}
 

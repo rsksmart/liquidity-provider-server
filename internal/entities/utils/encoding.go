@@ -9,8 +9,7 @@ import (
 	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type BigFloat big.Float
@@ -44,20 +43,23 @@ func (bf *BigFloat) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (bf *BigFloat) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (bf *BigFloat) MarshalBSONValue() (byte, []byte, error) {
 	if bf == nil {
-		return bson.MarshalValue(float64(0))
+		t, data, err := bson.MarshalValue(float64(0))
+		return byte(t), data, err
 	}
 	value, _ := bf.Native().Float64()
-	return bson.MarshalValue(value)
+	t, data, err := bson.MarshalValue(value)
+	return byte(t), data, err
 }
 
-func (bf *BigFloat) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if bf == nil || bsonType != bson.TypeDouble || len(bytes) == 0 {
+func (bf *BigFloat) UnmarshalBSONValue(bsonType byte, bytes []byte) error {
+	typ := bson.Type(bsonType)
+	if bf == nil || typ != bson.TypeDouble || len(bytes) == 0 {
 		return entities.DeserializationError
 	}
 	var value float64
-	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+	if err := bson.UnmarshalValue(typ, bytes, &value); err != nil {
 		return errors.Join(entities.DeserializationError, err)
 	}
 	result := big.NewFloat(value)

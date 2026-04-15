@@ -13,7 +13,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // assertWeiEq is a convenience wrapper around assertWeiEqual for cases where
@@ -39,7 +39,7 @@ func requireRestoredFixtures(t *testing.T) context.Context {
 	t.Helper()
 
 	if !hasFixtureFiles() {
-		t.Skip("No fixture files found. Run generate-fixtures.sh first.")
+		t.Fatal("No fixture files found in test/mongodb/fixtures")
 	}
 	cleanCollections(t)
 	restoreFixtures(t)
