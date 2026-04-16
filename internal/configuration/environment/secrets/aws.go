@@ -16,13 +16,19 @@ type AwsSecretsLoader struct {
 }
 
 func NewAwsSecretsLoader(ctx context.Context, env environment.Environment) (SecretLoader, error) {
-	awsConfiguration, err := environment.GetAwsConfig(ctx, env)
+	awsConfiguration, err := environment.GetAwsConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error loading secrets: %w", err)
 	}
+	var opts []func(*secretsmanager.Options)
+	if endpoint := environment.AwsLocalEndpoint(env); endpoint != "" {
+		opts = append(opts, func(o *secretsmanager.Options) {
+			o.BaseEndpoint = &endpoint
+		})
+	}
 	return &AwsSecretsLoader{
 		config:         awsConfiguration,
-		secretsManager: secretsmanager.NewFromConfig(awsConfiguration),
+		secretsManager: secretsmanager.NewFromConfig(awsConfiguration, opts...),
 		env:            env,
 	}, nil
 }

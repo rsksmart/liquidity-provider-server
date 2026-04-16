@@ -1,6 +1,9 @@
 package watcher_test
 
 import (
+	"testing"
+	"time"
+
 	w "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -8,8 +11,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 // nolint:funlen
@@ -28,8 +29,10 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
 	})
 	t.Run("should not perform eclipse check during the cooldown", func(t *testing.T) {
@@ -46,8 +49,10 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
 	})
 	t.Run("should run again the eclipse check after an error", func(t *testing.T) {
@@ -65,8 +70,10 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
 	})
 	t.Run("should run again the eclipse check after the cooldown", func(t *testing.T) {
@@ -85,8 +92,10 @@ func TestEclipseWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go eclipseWatcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
 		}, time.Second*1, time.Millisecond*100)
 	})
 }

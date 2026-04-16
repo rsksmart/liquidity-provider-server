@@ -30,9 +30,12 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		go quoteCleaner.Start()
 		tickerChannel <- time.Now()
 		go quoteCleaner.Shutdown(make(chan bool))
-		assert.Eventually(t, func() bool {
-			return checkFunction() && ticker.AssertExpectations(t) && peginRepository.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			peginRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunction())
 	})
 	t.Run("clean quotes successfully", func(t *testing.T) {
 		checkFunction := test.AssertLogContains(t, "Cleaned 3 quotes")
@@ -53,9 +56,13 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		go quoteCleaner.Start()
 		tickerChannel <- time.Now()
 		go quoteCleaner.Shutdown(make(chan bool))
-		assert.Eventually(t, func() bool {
-			return checkFunction() && ticker.AssertExpectations(t) && peginRepository.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			peginRepository.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunction())
 	})
 }
 

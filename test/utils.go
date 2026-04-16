@@ -127,11 +127,12 @@ func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
-			t.Errorf("No log message found")
 			return false
 		}
 		_, err := buff.Read(message)
-		require.NoError(t, err, "Error reading log message")
+		if err != nil {
+			return false
+		}
 		return assert.Contains(t, string(message), expected, "Expected message not found")
 	}
 }
