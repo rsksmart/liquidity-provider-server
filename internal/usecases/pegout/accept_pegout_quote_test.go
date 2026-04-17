@@ -446,6 +446,8 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			case result := <-resultChannel:
 				successCounter++
 				assert.NotEmpty(t, result)
+			case <-time.After(10 * time.Second):
+				t.Fatal("test timed out")
 			}
 		}
 		assert.Equal(t, expectedSuccesses, successCounter)
