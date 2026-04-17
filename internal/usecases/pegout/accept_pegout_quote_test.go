@@ -417,13 +417,13 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			expectedErrors    = 2
 			expectedSuccesses = 1
 		)
-		errChannel := make(chan error, expectedErrors)
-		resultChannel := make(chan quote.AcceptedQuote, expectedSuccesses)
+		errChannel := make(chan error, len(quotes))
+		resultChannel := make(chan quote.AcceptedQuote, len(quotes))
 		quoteHash := acceptPegoutQuoteHash
 		signature := acceptPegoutQuoteHashSignature
 		//use actual mutex
 		useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, bus, &sync.Mutex{}, trustedAccountRepository, signingHashFunction)
-		for i := 0; i < expectedErrors+expectedSuccesses; i++ {
+		for i := 0; i < len(quotes); i++ {
 			go func() {
 				result, err := useCase.Run(context.Background(), quoteHash, signature)
 				if err != nil {
@@ -438,7 +438,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			errorCounter   = 0
 			successCounter = 0
 		)
-		for i := 0; i < expectedErrors+expectedSuccesses; i++ {
+		for i := 0; i < len(quotes); i++ {
 			select {
 			case err := <-errChannel:
 				errorCounter++
