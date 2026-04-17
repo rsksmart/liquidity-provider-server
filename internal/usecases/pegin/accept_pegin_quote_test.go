@@ -134,7 +134,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, acceptPeginSignature, result.Signature)
 }
 
-// TODO Test don't require modification, however they should be split to avoid linter complains
+// TODO Tests don't require modification, however they should be split to avoid linter complaints
 // nolint:funlen,maintidx
 func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	signerMock := &mocks.SignerMock{}
@@ -414,8 +414,9 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 
 		quoteRepositoryMock := new(mocks.PeginQuoteRepositoryMock)
 		for _, q := range quotes {
-			quoteRepositoryMock.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&q, nil).Once()
-			peginContract.EXPECT().HashPeginQuoteEIP712(q).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPeginQuoteEip712Hash))), nil)
+			qCopy := q
+			quoteRepositoryMock.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&qCopy, nil).Once()
+			peginContract.EXPECT().HashPeginQuoteEIP712(qCopy).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPeginQuoteEip712Hash))), nil)
 		}
 
 		var dbMock []quote.RetainedPeginQuote // we emulate the db to remember which quotes were already accepted

@@ -113,7 +113,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	assert.Equal(t, signature, result.Signature)
 }
 
-// TODO Test don't require modification, however they should be split to avoid linter complains
+// TODO Tests don't require modification; however, they should be split to avoid linter complaints.
 // nolint:funlen,maintidx
 func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	signerMock := &mocks.SignerMock{}
@@ -395,7 +395,8 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 
 		quoteRepositoryMock = new(mocks.PegoutQuoteRepositoryMock)
 		for _, q := range quotes {
-			quoteRepositoryMock.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&q, nil).Once()
+			qCopy := q
+			quoteRepositoryMock.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&qCopy, nil).Once()
 			pegoutContract.EXPECT().HashPegoutQuoteEIP712(q).Return(utils.To32Bytes(hexutil.MustDecode(utils.Prepend0x(acceptPegoutQuoteEip712Hash))), nil)
 		}
 
