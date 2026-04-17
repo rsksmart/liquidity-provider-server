@@ -304,7 +304,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		assert.Empty(t, result)
 		pegoutContract.AssertExpectations(t)
 	})
-	t.Run("error hasing quote for signature verification", func(t *testing.T) {
+	t.Run("error hashing quote for signature verification", func(t *testing.T) {
 		repo := new(mocks.PegoutQuoteRepositoryMock)
 		repo.On("GetQuote", mock.Anything, acceptPegoutQuoteHash).Return(&pegoutQuote, nil)
 		contract := new(mocks.PegoutContractMock)
