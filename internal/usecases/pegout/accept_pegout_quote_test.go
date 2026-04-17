@@ -114,7 +114,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 }
 
 // TODO Tests don't require modification; however, they should be split to avoid linter complaints.
-// nolint:funlen,maintidx
+// nolint:funlen,maintidx,cyclop
 func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	signerMock := &mocks.SignerMock{}
 	signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
