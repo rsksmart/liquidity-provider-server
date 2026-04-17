@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"strconv"
 	"time"
 )
 
@@ -141,6 +142,11 @@ func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider
 	}
 	if err = configuration.ValidateAmount(request.valueToTransfer); err != nil {
 		return args, err
+	}
+	if len(request.callContractArguments) > MaxPeginDataSize {
+		args["size"] = request.callEoaOrContractAddress
+		args["limit"] = strconv.Itoa(MaxPeginDataSize)
+		return args, DataCapExceededError
 	}
 	return nil, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -56,8 +57,9 @@ func TestCreatePeginContract(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
-				KeystorePassword: "test",
+				KeystoreFile:         keystorePath,
+				KeystorePassword:     "test",
+				PeginContractAddress: test.AnyRskAddress,
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
 		}
@@ -67,6 +69,7 @@ func TestCreatePeginContract(t *testing.T) {
 		contract, err := scripts.CreatePeginContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, contract)
+		require.Equal(t, env.Rsk.PeginContractAddress, contract.GetAddress())
 	})
 }
 
@@ -77,8 +80,9 @@ func TestCreatePegoutContract(t *testing.T) {
 			SecretSource:     "env",
 			WalletManagement: "native",
 			Rsk: environment.RskEnv{
-				KeystoreFile:     keystorePath,
-				KeystorePassword: "test",
+				KeystoreFile:          keystorePath,
+				KeystorePassword:      "test",
+				PegoutContractAddress: test.AnyRskAddress,
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
 		}
@@ -88,6 +92,7 @@ func TestCreatePegoutContract(t *testing.T) {
 		contract, err := scripts.CreatePegoutContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, contract)
+		require.Equal(t, env.Rsk.PegoutContractAddress, contract.GetAddress())
 	})
 }
 
@@ -100,6 +105,7 @@ func TestCreateDiscoveryContract(t *testing.T) {
 			Rsk: environment.RskEnv{
 				KeystoreFile:     keystorePath,
 				KeystorePassword: "test",
+				DiscoveryAddress: test.AnyRskAddress,
 			},
 			Btc: environment.BtcEnv{Network: "regtest"},
 		}
@@ -109,6 +115,7 @@ func TestCreateDiscoveryContract(t *testing.T) {
 		contract, err := scripts.CreateDiscoveryContract(context.Background(), factoryMock, env, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, contract)
+		require.Equal(t, env.Rsk.DiscoveryAddress, contract.GetAddress())
 	})
 }
 

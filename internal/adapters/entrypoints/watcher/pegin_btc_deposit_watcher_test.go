@@ -448,6 +448,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			}, nil).Twice()
 			btcRpc.On("GetHeight").Return(big.NewInt(19), nil).Once()
 			btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
+			btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 			peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
@@ -531,6 +532,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionBlockInfo", txHash).Return(blockchain.BitcoinBlockInformation{Time: time.Unix(now-2000, 0)}, nil).Twice()
 		btcRpc.On("GetTransactionInfo", txHash).Return(confirmedTx, nil).Twice()
 		btcRpc.On("GetTransactionInfo", mock.Anything).Return(unconfirmedTx, nil).Once() // the quote from the old test still in the watcher
+		btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 		peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Twice()
 		peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
