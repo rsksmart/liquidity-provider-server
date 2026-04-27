@@ -260,11 +260,14 @@ func NewUseCaseRegistry(
 			env.Provider.ApiBaseUrl,
 		),
 		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(
-			databaseRegistry.PegoutRepository,
 			liquidityProvider,
-			rskRegistry.Wallet,
-			rskRegistry.Contracts,
-			mutexes.RskWalletMutex(),
+			pegout.NewRebalanceHandler(
+				pegout.RebalanceStrategy(env.Pegout.RebalanceStrategy),
+				databaseRegistry.PegoutRepository,
+				rskRegistry.Wallet,
+				rskRegistry.Contracts,
+				mutexes.RskWalletMutex(),
+			),
 		),
 		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
 		pegoutStatusUseCase:       pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),

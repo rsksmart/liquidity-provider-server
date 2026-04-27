@@ -72,17 +72,14 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	if err != nil {
 		log.Fatal("Error creating BTC registry:", err)
 	}
-
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
 	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
-
 	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection, externalClients)
 	liquidityProvider := registry.NewLiquidityProvider(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry)
 	mutexes := environment.NewApplicationMutexes()
-
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, liquidityProvider, messagingRegistry, mutexes)
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, liquidityProvider, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{

@@ -49,6 +49,7 @@ func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	require.ErrorIs(t, err, blockchain.ContractPausedError)
 }
 
+//nolint:funlen
 func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	quoteHash := acceptPegoutQuoteHash
 	now := time.Now()
@@ -77,6 +78,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash: quoteHash, DepositAddress: quoteMock.LbcAddress, Signature: signature,
 		RequiredLiquidity: entities.NewWei(18), State: quote.PegoutStateWaitingForDeposit,
+		RemainingToRefund: quoteMock.Total(),
 	}
 	creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(1), FixedFee: entities.NewWei(100)}
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
@@ -178,6 +180,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			RequiredLiquidity:   requiredLiquidity,
 			State:               quote.PegoutStateWaitingForDeposit,
 			OwnerAccountAddress: ownerAccountAddress,
+			RemainingToRefund:   quoteMock.Total(),
 		}
 
 		creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(1.5), FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(1), FixedFee: entities.NewWei(100)}
