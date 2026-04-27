@@ -154,3 +154,70 @@ func TestAwaitTxWithCtx(t *testing.T) {
 		assert.Nil(t, receipt)
 	})
 }
+
+func TestParseRevertReason(t *testing.T) {
+	t.Run("nil error returns nil", func(t *testing.T) {
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, nil)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("non-DataError returns error", func(t *testing.T) {
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, assert.AnError)
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with non-string ErrorData returns error", func(t *testing.T) {
+		e := rskRpcErrorWithIntData{message: "revert", data: 42}
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with invalid hex returns error", func(t *testing.T) {
+		e := NewRskRpcError("revert", "0xZZ")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with generic Error(string) ABI revert returns error", func(t *testing.T) {
+		// Error("test") ABI-encoded: selector 0x08c379a0 + offset + length + data
+		e := NewRskRpcError("revert", "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000047465737400000000000000000000000000000000000000000000000000000000")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with empty data returns ErrShortRevertData", func(t *testing.T) {
+		e := NewRskRpcError("execution reverted", "0x")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.ErrorIs(t, err, rootstock.ErrShortRevertData)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with data shorter than selector returns ErrShortRevertData", func(t *testing.T) {
+		e := NewRskRpcError("execution reverted", "0xaabbcc")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.ErrorIs(t, err, rootstock.ErrShortRevertData)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with unknown 4-byte selector returns error", func(t *testing.T) {
+		e := NewRskRpcError("revert", "0xdeadbeef")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+	t.Run("DataError with known ABI error selector returns parsed error", func(t *testing.T) {
+		// NotEnoughConfirmations selector from the pegout ABI with valid ABI-encoded arguments
+		e := NewRskRpcError("transaction reverted", "0xd2506f8c00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000002")
+		result, err := rootstock.ParseRevertReason(Abis.PegOut, e)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "NotEnoughConfirmations", result.Name)
+	})
+}
+
+// rskRpcErrorWithIntData is a DataError whose ErrorData returns a non-string value.
+type rskRpcErrorWithIntData struct {
+	message string
+	data    int
+}
+
+func (r rskRpcErrorWithIntData) Error() string          { return r.message }
+func (r rskRpcErrorWithIntData) ErrorData() interface{} { return r.data }

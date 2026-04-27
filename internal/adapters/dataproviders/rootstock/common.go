@@ -22,6 +22,14 @@ const (
 	rpcCallRetrySleep = 1 * time.Minute
 )
 
+// ErrShortRevertData is returned by ParseRevertReason when the revert payload
+// is shorter than a 4-byte ABI selector, so the error cannot be decoded into a
+// named custom error (or revert string). This can happen for multiple reasons
+// (e.g. ABI decode failures, calling an address with no code, or other opaque
+// reverts), and should not be interpreted as a specific on-chain condition by
+// the parser.
+var ErrShortRevertData = errors.New("revert data shorter than ABI selector")
+
 var DefaultRetryParams = RetryParams{
 	Retries: rpcCallRetryMax,
 	Sleep:   rpcCallRetrySleep,
@@ -157,6 +165,10 @@ func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
 
 	if reason, unpackErr := abi.UnpackRevert(revertDataBytes); unpackErr == nil {
 		return nil, fmt.Errorf("found generic error: %s", reason)
+	}
+
+	if len(revertDataBytes) < errorSelectorSize {
+		return nil, fmt.Errorf("%w: %w", ErrShortRevertData, dataError)
 	}
 
 	var selectorBytes [errorSelectorSize]byte
