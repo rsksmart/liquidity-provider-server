@@ -105,9 +105,9 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	t.Run("should return EffectiveAmountTooLowError with exact suggested amount when userBalance equals MinValue", func(t *testing.T) {
 		// MinValue=1000, gasFee=20000*100=2000000, fixedFee=100, feePercentage=1.25%, scale=10000
 		// scaledCallFeePercentage=125, totalPercentages=10125
-		// result = floor((1000-2000000-100)*10000/10125) = -1974419
+		// result = trunc((1000-2000000-100)*10000/10125) = -1974419
 		// requiredNet = ceil(1000*10125/10000) = 1013
-		// suggestedAmount = 2000000+100+1013 = 2001113
+		// minimumAcceptable = 2000000+100+1013 = 2001113
 		useCase := pegin.NewRecommendedPeginUseCase(lp, contracts, rpc, utils.Scale)
 		result, err = useCase.Run(context.Background(), entities.NewWei(1000), test.AnyRskAddress, data)
 		var effectiveErr *usecases.EffectiveAmountTooLowError

@@ -74,15 +74,15 @@ func (useCase *RecommendedPeginUseCase) Run(
 	// It is an estimate because gas is re-estimated against the original user amount, not the
 	// suggested one, so the follow-up request may yield a slightly different fee.
 	// requiredNet = ceil(MinValue * totalPercentages / scale)
-	// suggestedAmount = gasFee + fixedFee + requiredNet
+	// minimumAcceptable = gasFee + fixedFee + requiredNet
 	minValue := config.MinValue.AsBigInt()
 	requiredNet := new(big.Int).Mul(minValue, totalPercentages)
 	requiredNet.Add(requiredNet, new(big.Int).Sub(big.NewInt(useCase.scale), big.NewInt(1)))
 	requiredNet.Quo(requiredNet, big.NewInt(useCase.scale))
-	suggestedAmount := new(big.Int).Add(gasFeeEstimation, fixedCallFeeEstimation)
-	suggestedAmount.Add(suggestedAmount, requiredNet)
+	minimumAcceptable := new(big.Int).Add(gasFeeEstimation, fixedCallFeeEstimation)
+	minimumAcceptable.Add(minimumAcceptable, requiredNet)
 
-	if err = useCase.validateRecommendedValue(ctx, config, result, suggestedAmount); err != nil {
+	if err = useCase.validateRecommendedValue(ctx, config, result, minimumAcceptable); err != nil {
 		return usecases.RecommendedOperationResult{}, err
 	}
 
@@ -140,17 +140,21 @@ func (useCase *RecommendedPeginUseCase) validateRecommendedValue(
 	ctx context.Context,
 	config liquidity_provider.PeginConfiguration,
 	result *big.Int,
-	suggestedAmount *big.Int,
+	minimumAcceptable *big.Int,
 ) error {
 	minValue := config.MinValue.AsBigInt()
-	if result.Cmp(minValue) < 0 {
-		if suggestedAmount.Cmp(config.MaxValue.AsBigInt()) > 0 {
-			return usecases.WrapUseCaseError(usecases.RecommendedPeginId,
-				fmt.Errorf("no valid input amount exists within provider range: %w", liquidity_provider.AmountOutOfRangeError),
-			)
-		}
+	if result.Cmp(minValue) < 0 && minimumAcceptable.Cmp(config.MaxValue.AsBigInt()) > 0 {
 		return usecases.WrapUseCaseError(usecases.RecommendedPeginId,
-			usecases.NewEffectiveAmountTooLowError(entities.NewBigWei(result), config.MinValue.Copy(), entities.NewBigWei(suggestedAmount)),
+			fmt.Errorf(
+				"suggested minimum amount %s exceeds provider max %s with current fee estimates: %w",
+				entities.NewBigWei(minimumAcceptable).String(),
+				config.MaxValue.String(),
+				liquidity_provider.AmountOutOfRangeError,
+			),
+		)
+	} else if result.Cmp(minValue) < 0 {
+		return usecases.WrapUseCaseError(usecases.RecommendedPeginId,
+			usecases.NewEffectiveAmountTooLowError(entities.NewBigWei(result), config.MinValue.Copy(), entities.NewBigWei(minimumAcceptable)),
 		)
 	}
 

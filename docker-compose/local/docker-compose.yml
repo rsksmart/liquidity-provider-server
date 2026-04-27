@@ -55,7 +55,7 @@ services:
       context: ../rskj
       args:
         UID: "${LPS_UID}"
-        RSKJ_VERSION: "${RSKJ_VERSION}"
+        RSKJ_VERSION: "${RSKJ_VERSION:-8.1.0~noble}"
     pull_policy: build
     image: rskj:latest
     container_name: rskj01
