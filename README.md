@@ -2,6 +2,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge?branch=master)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
 [![CodeQL](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml?query=branch%3Amaster)
 [![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml?query=branch%3Amaster)
+[![codecov](https://codecov.io/gh/rsksmart/liquidity-provider-server/branch/master/graph/badge.svg)](https://codecov.io/gh/rsksmart/liquidity-provider-server)
 
 The Liquidity Provider Server (LPS) is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both Rootstock and Bitcoin networks.
 
